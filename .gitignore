@@ -1,0 +1,99 @@
+# ----------------------------------------------------------------------
+# Generated benchmark artifacts
+# ----------------------------------------------------------------------
+
+# Generated synthetic Git repositories.
+# These are derived from scenario.yml files and should be reproducible.
+generated-input-repos/
+
+# Outputs from SZZ tools or benchmark runs.
+generated-szz-results/
+
+# Generated metadata, logs, temporary derived files.
+generated-metadata/
+
+# Temporary working directories.
+tmp/
+temp/
+
+# Optional local experiment outputs.
+results/
+outputs/
+
+
+# ----------------------------------------------------------------------
+# Python cache and build artifacts
+# ----------------------------------------------------------------------
+
+__pycache__/
+*.py[cod]
+*$py.class
+
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Editable install / setuptools artifacts may appear under src/
+src/*.egg-info/
+
+
+# ----------------------------------------------------------------------
+# Virtual environments
+# ----------------------------------------------------------------------
+
+.venv/
+venv/
+env/
+ENV/
+
+
+# ----------------------------------------------------------------------
+# Test and coverage artifacts
+# ----------------------------------------------------------------------
+
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+
+# ----------------------------------------------------------------------
+# Type checker / linter caches
+# ----------------------------------------------------------------------
+
+.mypy_cache/
+.pyright/
+.ruff_cache/
+
+
+# ----------------------------------------------------------------------
+# Logs
+# ----------------------------------------------------------------------
+
+*.log
+
+
+# ----------------------------------------------------------------------
+# OS / editor files
+# ----------------------------------------------------------------------
+
+.DS_Store
+Thumbs.db
+
+.idea/
+.vscode/
+
+*.swp
+*.swo
+*~
+
+
+# ----------------------------------------------------------------------
+# Local configuration
+# ----------------------------------------------------------------------
+
+.env
+.env.*
