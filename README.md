@@ -7,7 +7,7 @@ Supported initial scope:
 - Linear Git history only.
 - `write_file` and `replace` operations.
 - `scenario.yml` as the source of truth.
-- `validate`, `validate --simulate`, `generate`, and `verify` commands.
+- `validate`, `validate --simulate`, `generate`, `verify`, and `clean` commands.
 - Deterministic Git commits using author/date from the scenario.
 - `commit-map.json`, `validation-result.json`, `verify-result.json`, and `generation.log`.
 
@@ -53,6 +53,16 @@ szzbench verify \
   generated-input-repos/basic/simple-line-modification/default/repo \
   --scenario examples/basic/simple-line-modification/scenario.yml
 ```
+
+## Clean
+
+```bash
+szzbench clean
+szzbench clean --dry-run
+szzbench clean --root generated-input-repos
+```
+
+`clean` removes generated outputs under `generated-input-repos` by default. A generated output is a directory containing the generator layout, including `repo/.git` and `metadata/`.
 
 ## Notes
 

@@ -5,6 +5,7 @@ import argparse
 import json
 import sys
 
+from .cleaner import CleanError, DEFAULT_CLEAN_ROOT, clean_generated_outputs
 from .generator import GenerationError, generate_repository
 from .validator import validate_scenario_file
 from .verifier import verify_generated_repo
@@ -49,6 +50,24 @@ def cmd_verify(args) -> int:
         return 1
     return 0
 
+def cmd_clean(args) -> int:
+    root = Path(args.root)
+    try:
+        outputs = clean_generated_outputs(root, dry_run=args.dry_run)
+    except CleanError as exc:
+        print(f"[ERROR] CLEAN_FAILED: {exc}", file=sys.stderr)
+        return 1
+    root_display = root.resolve()
+    if not outputs:
+        print(f"No generated repositories found under: {root_display}")
+        return 0
+    verb = "Would remove" if args.dry_run else "Removed"
+    for output in outputs:
+        print(f"{verb}: {output}")
+    suffix = "found" if args.dry_run else "removed"
+    print(f"Summary: {len(outputs)} generated output(s) {suffix}.")
+    return 0
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="szzbench")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -71,6 +90,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_verify.add_argument("--strict", action="store_true", help="Treat warnings as failures")
     p_verify.add_argument("--json", action="store_true", help="Print JSON output")
     p_verify.set_defaults(func=cmd_verify)
+    p_clean = sub.add_parser("clean", help="Remove generated repositories")
+    p_clean.add_argument("--root", default=str(DEFAULT_CLEAN_ROOT), help="Root directory to scan for generated outputs")
+    p_clean.add_argument("--dry-run", action="store_true", help="Show generated outputs without removing them")
+    p_clean.set_defaults(func=cmd_clean)
     return parser
 
 def main(argv: list[str] | None = None) -> int:
