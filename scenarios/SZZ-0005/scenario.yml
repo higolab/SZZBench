@@ -1,0 +1,102 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0005"
+  title: "Constant value change"
+  slug: "constant-value-change"
+  description: >
+    A bug is introduced by changing a retry limit constant to an incorrect
+    value. The fixing commit restores the correct constant.
+  category: "basic"
+  factors:
+    - "single-bic"
+    - "single-bfc"
+    - "line-modification"
+    - "constant-change"
+  difficulty: "easy"
+  status: "active"
+
+repository:
+  name: "SZZ-0005-constant-value-change"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Initial retry policy"
+    author: "Alice <alice@example.com>"
+    date: "2024-01-01T10:00:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/example/RetryPolicy.java"
+        content: |
+          package example;
+
+          public class RetryPolicy {
+              public int maxAttempts() {
+                  return 3;
+              }
+          }
+
+  - id: "c1"
+    message: "Lower retry attempts"
+    author: "Bob <bob@example.com>"
+    date: "2024-01-02T10:00:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/RetryPolicy.java"
+        old: "return 3;"
+        new: "return 2;"
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Restore retry attempts"
+    author: "Alice <alice@example.com>"
+    date: "2024-01-03T10:00:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/RetryPolicy.java"
+        old: "return 2;"
+        new: "return 3;"
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "Retry attempts are too low"
+    bug_fixing_commit: "c2"
+    bug_introducing_commits: ["c1"]
+    fault:
+      commit: "c1"
+      file: "src/main/java/example/RetryPolicy.java"
+      entity:
+        type: "method"
+        name: "maxAttempts"
+        signature: "int maxAttempts()"
+      statement: "return 2;"
+      change_type: "line_modification"
+    fix:
+      commit: "c2"
+      file: "src/main/java/example/RetryPolicy.java"
+      entity:
+        type: "method"
+        name: "maxAttempts"
+        signature: "int maxAttempts()"
+      statement: "return 3;"
+      fix_type: "line_modification"
+    expected_szz:
+      commit_level:
+        true_positives: ["c1"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "return 2;"
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2"]

@@ -1,0 +1,119 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0010"
+  title: "Tangled bug-introducing commit"
+  slug: "tangled-bug-introducing-commit"
+  description: >
+    The bug-introducing commit contains both a faulty change and an unrelated
+    feature addition. This scenario checks whether SZZ can identify the correct
+    BIC even when the BIC is tangled.
+  category: "tangled"
+  factors:
+    - "single-bic"
+    - "single-bfc"
+    - "line-modification"
+    - "tangled-bic"
+  difficulty: "medium"
+  status: "active"
+
+repository:
+  name: "SZZ-0010-tangled-bug-introducing-commit"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Initial range implementation"
+    author: "Alice <alice@example.com>"
+    date: "2024-01-01T10:00:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/example/RangeBox.java"
+        content: |
+          package example;
+
+          public class RangeBox {
+              public boolean contains(int value, int min, int max) {
+                  return value >= min && value <= max;
+              }
+          }
+
+  - id: "c1"
+    message: "Update range logic and add width helper"
+    author: "Bob <bob@example.com>"
+    date: "2024-01-02T10:00:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/RangeBox.java"
+        old: "return value >= min && value <= max;"
+        new: "return value > min && value < max;"
+        labels: ["B001", "fault"]
+      - type: "replace"
+        path: "src/main/java/example/RangeBox.java"
+        old: |
+          public boolean contains(int value, int min, int max) {
+                  return value > min && value < max;
+              }
+        new: |
+          public boolean contains(int value, int min, int max) {
+                  return value > min && value < max;
+              }
+
+              public int width(int min, int max) {
+                  return max - min;
+              }
+        labels: ["non_bug_introducing_change"]
+
+  - id: "c2"
+    message: "Fix range inclusiveness"
+    author: "Alice <alice@example.com>"
+    date: "2024-01-03T10:00:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/RangeBox.java"
+        old: "return value > min && value < max;"
+        new: "return value >= min && value <= max;"
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "Boundary values are excluded in tangled BIC"
+    bug_fixing_commit: "c2"
+    bug_introducing_commits: ["c1"]
+    fault:
+      commit: "c1"
+      file: "src/main/java/example/RangeBox.java"
+      entity:
+        type: "method"
+        name: "contains"
+        signature: "boolean contains(int value, int min, int max)"
+      statement: "return value > min && value < max;"
+      change_type: "line_modification"
+    fix:
+      commit: "c2"
+      file: "src/main/java/example/RangeBox.java"
+      entity:
+        type: "method"
+        name: "contains"
+        signature: "boolean contains(int value, int min, int max)"
+      statement: "return value >= min && value <= max;"
+      fix_type: "line_modification"
+    expected_szz:
+      commit_level:
+        true_positives: ["c1"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "return value > min && value < max;"
+        note: "The BIC includes an unrelated helper method addition."
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2"]

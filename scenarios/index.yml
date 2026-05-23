@@ -25,3 +25,111 @@ scenarios:
     difficulty: "medium"
     status: "active"
     path: "scenarios/SZZ-0003/scenario.yml"
+
+  - id: "SZZ-0004"
+    title: "Boolean return value modification"
+    slug: "boolean-return-value-modification"
+    category: "basic"
+    factors: ["single-bic", "single-bfc", "line-modification", "boolean-return-change"]
+    difficulty: "easy"
+    status: "active"
+    path: "scenarios/SZZ-0004/scenario.yml"
+
+  - id: "SZZ-0005"
+    title: "Constant value change"
+    slug: "constant-value-change"
+    category: "basic"
+    factors: ["single-bic", "single-bfc", "line-modification", "constant-change"]
+    difficulty: "easy"
+    status: "active"
+    path: "scenarios/SZZ-0005/scenario.yml"
+
+  - id: "SZZ-0006"
+    title: "Conditional expression change"
+    slug: "conditional-expression-change"
+    category: "basic"
+    factors: ["single-bic", "single-bfc", "line-modification", "conditional-expression-change"]
+    difficulty: "easy"
+    status: "active"
+    path: "scenarios/SZZ-0006/scenario.yml"
+
+  - id: "SZZ-0007"
+    title: "Bounds check omission bug"
+    slug: "bounds-check-omission-bug"
+    category: "omission"
+    factors: ["single-bic", "single-bfc", "omission-bug", "line-addition-fix", "bounds-check"]
+    difficulty: "medium"
+    status: "active"
+    path: "scenarios/SZZ-0007/scenario.yml"
+
+  - id: "SZZ-0008"
+    title: "Formatting-only rewrite after bug introduction"
+    slug: "formatting-only-rewrite-after-bic"
+    category: "formatting"
+    factors: ["single-bic", "single-bfc", "line-modification", "formatting-after-bic", "line-number-shift", "basic-blame-distractor"]
+    difficulty: "medium"
+    status: "active"
+    path: "scenarios/SZZ-0008/scenario.yml"
+
+  - id: "SZZ-0009"
+    title: "Whitespace-only rewrite after bug introduction"
+    slug: "whitespace-only-rewrite-after-bic"
+    category: "formatting"
+    factors: ["single-bic", "single-bfc", "line-modification", "whitespace-only-after-bic", "basic-blame-distractor"]
+    difficulty: "medium"
+    status: "active"
+    path: "scenarios/SZZ-0009/scenario.yml"
+
+  - id: "SZZ-0010"
+    title: "Tangled bug-introducing commit"
+    slug: "tangled-bug-introducing-commit"
+    category: "tangled"
+    factors: ["single-bic", "single-bfc", "line-modification", "tangled-bic"]
+    difficulty: "medium"
+    status: "active"
+    path: "scenarios/SZZ-0010/scenario.yml"
+
+  - id: "SZZ-0011"
+    title: "Tangled bug-fixing commit"
+    slug: "tangled-bug-fixing-commit"
+    category: "tangled"
+    factors: ["single-bic", "single-bfc", "line-modification", "tangled-bfc"]
+    difficulty: "medium"
+    status: "active"
+    path: "scenarios/SZZ-0011/scenario.yml"
+
+  - id: "SZZ-0012"
+    title: "Basic multiple bug-introducing commits"
+    slug: "basic-multiple-bic"
+    category: "multi-bic"
+    factors: ["multi-bic", "single-bfc", "line-modification", "caller-callee-interaction"]
+    difficulty: "hard"
+    status: "active"
+    path: "scenarios/SZZ-0012/scenario.yml"
+
+  - id: "SZZ-0013"
+    title: "Duplicate fault statement"
+    slug: "duplicate-fault-statement"
+    category: "ambiguity"
+    factors: ["single-bic", "single-bfc", "line-modification", "duplicate-fault-statement", "ambiguous-blame"]
+    difficulty: "medium"
+    status: "active"
+    path: "scenarios/SZZ-0013/scenario.yml"
+
+  - id: "SZZ-0014"
+    title: "Java annotation syntax change"
+    slug: "java-annotation-syntax-change"
+    category: "language-specific"
+    factors: ["single-bic", "single-bfc", "line-modification", "language-specific-syntax-change", "annotation-change"]
+    difficulty: "medium"
+    status: "active"
+    path: "scenarios/SZZ-0014/scenario.yml"
+
+  - id: "SZZ-0015"
+    title: "Security validation omission"
+    slug: "security-validation-omission"
+    category: "security"
+    factors: ["single-bic", "single-bfc", "omission-bug", "line-addition-fix", "security-validation-omission"]
+    difficulty: "medium"
+    status: "active"
+    path: "scenarios/SZZ-0015/scenario.yml"

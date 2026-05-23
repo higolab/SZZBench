@@ -1,0 +1,103 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0006"
+  title: "Conditional expression change"
+  slug: "conditional-expression-change"
+  description: >
+    A bug is introduced by changing an inclusive comparison to a strict
+    comparison inside a conditional expression. The fixing commit restores the
+    inclusive comparison.
+  category: "basic"
+  factors:
+    - "single-bic"
+    - "single-bfc"
+    - "line-modification"
+    - "conditional-expression-change"
+  difficulty: "easy"
+  status: "active"
+
+repository:
+  name: "SZZ-0006-conditional-expression-change"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Initial payment validator"
+    author: "Alice <alice@example.com>"
+    date: "2024-01-01T10:00:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/example/PaymentValidator.java"
+        content: |
+          package example;
+
+          public class PaymentValidator {
+              public boolean canPay(int amount, int balance) {
+                  return amount <= balance;
+              }
+          }
+
+  - id: "c1"
+    message: "Reject exact balance payments"
+    author: "Bob <bob@example.com>"
+    date: "2024-01-02T10:00:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/PaymentValidator.java"
+        old: "return amount <= balance;"
+        new: "return amount < balance;"
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Allow exact balance payments"
+    author: "Alice <alice@example.com>"
+    date: "2024-01-03T10:00:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/PaymentValidator.java"
+        old: "return amount < balance;"
+        new: "return amount <= balance;"
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "Exact balance payments are rejected"
+    bug_fixing_commit: "c2"
+    bug_introducing_commits: ["c1"]
+    fault:
+      commit: "c1"
+      file: "src/main/java/example/PaymentValidator.java"
+      entity:
+        type: "method"
+        name: "canPay"
+        signature: "boolean canPay(int amount, int balance)"
+      statement: "return amount < balance;"
+      change_type: "line_modification"
+    fix:
+      commit: "c2"
+      file: "src/main/java/example/PaymentValidator.java"
+      entity:
+        type: "method"
+        name: "canPay"
+        signature: "boolean canPay(int amount, int balance)"
+      statement: "return amount <= balance;"
+      fix_type: "line_modification"
+    expected_szz:
+      commit_level:
+        true_positives: ["c1"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "return amount < balance;"
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2"]

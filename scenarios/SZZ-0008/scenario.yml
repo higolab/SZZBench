@@ -1,0 +1,127 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0008"
+  title: "Formatting-only rewrite after bug introduction"
+  slug: "formatting-only-rewrite-after-bic"
+  description: >
+    A boundary-check bug is introduced, then a formatting-only commit rewrites
+    the faulty statement as a multi-line expression. The fixing commit repairs
+    the formatted expression.
+  category: "formatting"
+  factors:
+    - "single-bic"
+    - "single-bfc"
+    - "line-modification"
+    - "formatting-after-bic"
+    - "line-number-shift"
+    - "basic-blame-distractor"
+  difficulty: "medium"
+  status: "active"
+
+repository:
+  name: "SZZ-0008-formatting-only-rewrite-after-bic"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Initial score threshold"
+    author: "Alice <alice@example.com>"
+    date: "2024-01-01T10:00:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/example/ScoreGate.java"
+        content: |
+          package example;
+
+          public class ScoreGate {
+              public boolean accepts(int score, int min, int max) {
+                  return score >= min && score <= max;
+              }
+          }
+
+  - id: "c1"
+    message: "Introduce threshold bug"
+    author: "Bob <bob@example.com>"
+    date: "2024-01-02T10:00:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/ScoreGate.java"
+        old: "return score >= min && score <= max;"
+        new: "return score > min && score < max;"
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Format score gate"
+    author: "Carol <carol@example.com>"
+    date: "2024-01-03T10:00:00Z"
+    role: "formatting"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/ScoreGate.java"
+        old: "return score > min && score < max;"
+        new: |
+          return score > min
+                          && score < max;
+        labels: ["formatting_only", "non_bug_introducing_change"]
+
+  - id: "c3"
+    message: "Fix threshold inclusiveness"
+    author: "Alice <alice@example.com>"
+    date: "2024-01-04T10:00:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/ScoreGate.java"
+        old: |
+          return score > min
+                          && score < max;
+        new: |
+          return score >= min
+                          && score <= max;
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "Boundary scores are excluded"
+    bug_fixing_commit: "c3"
+    bug_introducing_commits: ["c1"]
+    fault:
+      commit: "c1"
+      file: "src/main/java/example/ScoreGate.java"
+      entity:
+        type: "method"
+        name: "accepts"
+        signature: "boolean accepts(int score, int min, int max)"
+      statement: "return score > min && score < max;"
+      change_type: "line_modification"
+    fix:
+      commit: "c3"
+      file: "src/main/java/example/ScoreGate.java"
+      entity:
+        type: "method"
+        name: "accepts"
+        signature: "boolean accepts(int score, int min, int max)"
+      statement: |
+        return score >= min
+                        && score <= max;
+      fix_type: "line_modification"
+    expected_szz:
+      commit_level:
+        true_positives: ["c1"]
+        known_distractors: ["c2"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "return score > min && score < max;"
+        note: "The faulty statement is rewritten by a formatting-only commit before the BFC."
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3"]

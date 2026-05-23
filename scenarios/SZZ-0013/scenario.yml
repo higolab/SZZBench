@@ -1,0 +1,117 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0013"
+  title: "Duplicate fault statement"
+  slug: "duplicate-fault-statement"
+  description: >
+    The same faulty statement appears in two methods after the BIC. The fixing
+    commit repairs only one occurrence. This scenario checks ambiguous line-level
+    oracle and blame behavior.
+  category: "ambiguity"
+  factors:
+    - "single-bic"
+    - "single-bfc"
+    - "line-modification"
+    - "duplicate-fault-statement"
+    - "ambiguous-blame"
+  difficulty: "medium"
+  status: "active"
+
+repository:
+  name: "SZZ-0013-duplicate-fault-statement"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Initial validators"
+    author: "Alice <alice@example.com>"
+    date: "2024-01-01T10:00:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/example/NumberValidators.java"
+        content: |
+          package example;
+
+          public class NumberValidators {
+              public boolean acceptsAge(int value) {
+                  return value >= 0;
+              }
+
+              public boolean acceptsScore(int value) {
+                  return value >= 0;
+              }
+          }
+
+  - id: "c1"
+    message: "Make zero invalid in validators"
+    author: "Bob <bob@example.com>"
+    date: "2024-01-02T10:00:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/NumberValidators.java"
+        old: "return value >= 0;"
+        new: "return value > 0;"
+        occurrence: 1
+        labels: ["B001", "fault"]
+      - type: "replace"
+        path: "src/main/java/example/NumberValidators.java"
+        old: "return value >= 0;"
+        new: "return value > 0;"
+        occurrence: 1
+        labels: ["related_fault_like_change"]
+
+  - id: "c2"
+    message: "Allow zero age"
+    author: "Alice <alice@example.com>"
+    date: "2024-01-03T10:00:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/NumberValidators.java"
+        old: "return value > 0;"
+        new: "return value >= 0;"
+        occurrence: 1
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "Zero age is rejected"
+    bug_fixing_commit: "c2"
+    bug_introducing_commits: ["c1"]
+    fault:
+      commit: "c1"
+      file: "src/main/java/example/NumberValidators.java"
+      entity:
+        type: "method"
+        name: "acceptsAge"
+        signature: "boolean acceptsAge(int value)"
+      statement: "return value > 0;"
+      change_type: "line_modification"
+    fix:
+      commit: "c2"
+      file: "src/main/java/example/NumberValidators.java"
+      entity:
+        type: "method"
+        name: "acceptsAge"
+        signature: "boolean acceptsAge(int value)"
+      statement: "return value >= 0;"
+      fix_type: "line_modification"
+    expected_szz:
+      commit_level:
+        true_positives: ["c1"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "return value > 0;"
+        note: "The faulty statement text appears twice at the BIC, so entity context is needed to disambiguate."
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2"]
