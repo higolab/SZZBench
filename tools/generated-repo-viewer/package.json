@@ -1,0 +1,27 @@
+{
+  "name": "szzbench-generated-repo-viewer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"node server/index.js\" \"vite --host 127.0.0.1 --port 5174\"",
+    "server": "node server/index.js",
+    "build": "tsc && vite build",
+    "start": "node server/index.js --serve-dist"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^5.0.0",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "js-yaml": "^4.1.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.15",
+    "@types/react-dom": "^19.2.3",
+    "concurrently": "^9.2.0",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.0"
+  }
+}
