@@ -1,0 +1,133 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0051
+  source_future_id: FUTURE-051
+  title: Unrelated commits mixed in same issue
+  slug: issue-commit
+  description: 同一issue内にtrue BIC、cleanup、doc change、fixが混在する。
+  category: work item / commit series 系未対応シナリオ
+  category_code: H
+  factors:
+  - work_items
+  - issues
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0051-issue-commit
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: 'issue #10: c1 true BIC / c2 cleanup / c3 docs / c4 fix'
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: Initial range service
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/RangeService.java
+    content: "package example;\n\npublic class RangeService {\n  public boolean isEnabled() { return true; }\n  public boolean contains(int value,\
+      \ int min, int max) { return value >= min && value <= max; }\n  public int normalize(int value) { return value; }\n}\n"
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: ISSUE-10 introduce validation boundary bug
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/RangeService.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: ISSUE-10 cleanup naming in normalize
+  role: unrelated
+  operations:
+  - type: replace
+    path: src/main/java/example/RangeService.java
+    old: public int normalize(int value) { return value; }
+    new: public int normalize(int rawValue) { return rawValue; }
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: ISSUE-10 add documentation note
+  role: unrelated
+  operations:
+  - type: write_file
+    path: docs/issue-10-note.md
+    content: 'This note is unrelated to the boundary defect.
+
+      '
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: ISSUE-10 fix validation boundary bug
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/RangeService.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+bugs:
+- id: B001
+  title: Issue contains unrelated commits around true BIC
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  bug_fixing_commits:
+  - commit: c4
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/RangeService.java
+    statement: return value > min && value < max;
+  fixes:
+  - id: X001
+    commit: c4
+    file: src/main/java/example/RangeService.java
+    statement: return value >= min && value <= max;
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+work_items:
+- id: ISSUE-10
+  title: Range validation issue with unrelated commits
+  commits:
+  - commit: c1
+    relevance: bug_introducing
+  - commit: c2
+    relevance: unrelated
+  - commit: c3
+    relevance: unrelated
+  - commit: c4
+    relevance: bug_fixing
+issues:
+- id: ISSUE-10
+  title: Range validation fails on boundaries
+  description: The issue thread also contains cleanup and documentation commits.
+  linked_bugs:
+  - B001
+scenario_design:
+  purpose: work item / issue に無関係な commit が混在するケースを評価する。
+  current_schema_limitation: issue に含まれる commit と bug への関連度を表現できない。
+  required_extensions_from_source: "```yaml\nwork_items:\n  - id: \"ISSUE-10\"\n    commits:\n      - commit: \"c1\"\n        relevance: \"bug_introducing\"\
+    \n      - commit: \"c2\"\n        relevance: \"unrelated\"\n```"
+  evaluation_points:
+  - issue-aware SZZ の false positive
+  - work item 内のノイズ
+  - candidate filtering の評価
+notes:
+- Draft scenario.graph.yml for future graph-aware SZZBench support.
+- This revision replaces placeholder/no-op operations with concrete file states so that graph generation can proceed.

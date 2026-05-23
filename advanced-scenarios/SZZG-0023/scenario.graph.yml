@@ -1,0 +1,134 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0023
+  source_future_id: FUTURE-023
+  title: Only one clone instance is fixed first
+  slug: clone
+  description: A.javaだけを先に直し、コピー先B.javaを後で直す。
+  category: copy / clone / propagation 系未対応シナリオ
+  category_code: E
+  factors:
+  - clone_relationships
+  - bug_instances
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0023-clone
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: c0 origin bug / c1 copy / c2 fix original / c3 fix clone
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: Introduce buggy original A
+  role: origin_bug_introducing
+  operations:
+  - type: write_file
+    path: src/main/java/example/A.java
+    content: "package example;\n\npublic class A {\n  public boolean contains(int value, int min, int max) {\n    return value > min && value\
+      \ < max;\n  }\n}\n"
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: Copy buggy A to B
+  role: bug_introducing
+  operations:
+  - type: copy_file
+    from: src/main/java/example/A.java
+    to: src/main/java/example/B.java
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: Fix original A only
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/A.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: Fix copied B later
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/B.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+bugs:
+- id: B001-A
+  title: Original instance fixed first
+  bug_introducing_commits:
+  - commit: c0
+    role: origin
+  bug_fixing_commits:
+  - commit: c2
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c0
+    file: src/main/java/example/A.java
+    statement: return value > min && value < max;
+  fixes:
+  - id: X001
+    commit: c2
+    file: src/main/java/example/A.java
+    statement: return value >= min && value <= max;
+- id: B001-B
+  title: Copied instance fixed later
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  - commit: c0
+    role: origin
+  bug_fixing_commits:
+  - commit: c3
+    role: complete_fix
+  faults:
+  - id: F002
+    commit: c1
+    file: src/main/java/example/B.java
+    statement: return value > min && value < max;
+  fixes:
+  - id: X002
+    commit: c3
+    file: src/main/java/example/B.java
+    statement: return value >= min && value <= max;
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+clone_relationships:
+- origin_file: src/main/java/example/A.java
+  copied_file: src/main/java/example/B.java
+  origin_commit: c0
+  copy_commit: c1
+bug_instances:
+- id: B001-A
+  file: src/main/java/example/A.java
+  status: fixed_at_c2
+- id: B001-B
+  file: src/main/java/example/B.java
+  status: fixed_at_c3
+scenario_design:
+  purpose: 同型バグの片方だけが修正され、もう片方が残るケースを評価する。
+  current_schema_limitation: 複数 bug instance と clone relationship が必要。
+  required_extensions_from_source: "```yaml\nbug_instances:\n  - id: \"B001-A\"\n    file: \"A.java\"\n  - id: \"B001-B\"\n    file: \"B.java\"\
+    \n```"
+  evaluation_points:
+  - instance 単位の BIC/BFC 対応
+  - partial propagation
+  - 同じ root cause を共有する複数 bug instance
+notes:
+- Draft scenario.graph.yml for future graph-aware SZZBench support.
+- This revision replaces placeholder/no-op operations with concrete file states so that graph generation can proceed.

@@ -1,0 +1,95 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0059
+  source_future_id: FUTURE-059
+  title: semantically equivalent rewrite
+  slug: semantically-equivalent-rewrite
+  description: 中間 commit が意味的には同じだが構文上大きく異なる rewrite を行うケースを評価する。
+  category: context-aware / LLM-based SZZ 向け未対応シナリオ
+  category_code: J
+  factors: []
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0059-semantically-equivalent-rewrite
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: 'c1: bug introduced
+
+    c2: semantically equivalent rewrite of faulty logic
+
+    c3: fix'
+commits:
+- id: c1
+  branch: main
+  parents: []
+  message: 'c1: bug introduced'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value > min && value < max;\n  }\n}\n"
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'c2: semantically equivalent rewrite of faulty logic'
+  role: intermediate
+  operations:
+  - type: write_file
+    path: docs/intermediate-note.md
+    content: 'intermediate change
+
+      '
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'c3: fix'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+bugs:
+- id: B001
+  title: Synthetic graph scenario bug
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  bug_fixing_commits:
+  - commit: c3
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c3
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+scenario_design:
+  purpose: 中間 commit が意味的には同じだが構文上大きく異なる rewrite を行うケースを評価する。
+  current_schema_limitation: write/replace で表現はできるが、c2 が semantic-preserving rewrite であることを表現できない。
+  required_extensions_from_source: "```yaml\ncommits:\n  - id: \"c2\"\n    role: \"semantic_preserving_rewrite\"\n    preserves_behavior: true\n```"
+  evaluation_points:
+  - token/AST/semantic SZZ の違い
+  - basic blame が c2 を返す場合の解釈
+  - LLM-based SZZ の可能性
+notes:
+- Draft scenario.graph.yml for future graph-aware SZZBench support.
+- This file is not expected to be executable by the current simple scenario.yml generator.

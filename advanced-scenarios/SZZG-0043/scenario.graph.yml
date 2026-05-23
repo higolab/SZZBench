@@ -1,0 +1,130 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0043
+  source_future_id: FUTURE-043
+  title: Fix split across multiple commits
+  slug: fix-commit
+  description: failing test、partial fix、final fixに分かれたfix seriesを表す。
+  category: work item / commit series 系未対応シナリオ
+  category_code: H
+  factors:
+  - bug_fixing_commits
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0043-fix-commit
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: c1 bug / c2 test / c3 partial fix / c4 final fix
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: Initial correct range
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value >= min && value\
+      \ <= max;\n  }\n}\n"
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: Introduce boundary bug
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: Add failing boundary test
+  role: test_added
+  operations:
+  - type: write_file
+    path: src/test/java/example/RangeTest.java
+    content: 'package example;
+
+      // expected: boundary values must be accepted
+
+      '
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: Partial fix lower boundary
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value < max;
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: Final fix upper boundary
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value < max;
+    new: return value >= min && value <= max;
+bugs:
+- id: B001
+  title: Fix series split across test, partial fix, final fix
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  bug_fixing_commits:
+  - commit: c3
+    role: partial_fix
+  - commit: c4
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+  fixes:
+  - id: X001
+    commit: c3
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value < max;
+    fix_type: partial_fix
+  - id: X002
+    commit: c4
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+    fix_type: complete_fix
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+fix_series:
+- id: FIX-B001
+  commits:
+  - c2
+  - c3
+  - c4
+scenario_design:
+  purpose: 修正作業が複数 commit に分かれ、単一 BFC では不十分なケースを評価する。
+  current_schema_limitation: fix series を1つの単位として表現できない。
+  required_extensions_from_source: "```yaml\nfix_series:\n  - id: \"FIX-B001\"\n    commits:\n      - \"c2\"\n      - \"c3\"\n      - \"c4\"\n\
+    ```"
+  evaluation_points:
+  - test commit を BFC に含めるか
+  - final fix のみを BFC とするか
+  - fix series 全体から SZZ を行うか
+notes:
+- Draft scenario.graph.yml for future graph-aware SZZBench support.
+- This revision replaces placeholder/no-op operations with concrete file states so that graph generation can proceed.

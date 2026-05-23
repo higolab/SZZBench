@@ -224,6 +224,12 @@ textarea.code {
   color: #8d1f1f;
 }
 
+.notice.info {
+  background: #eef6ff;
+  border-color: #9fc5f8;
+  color: #184a8c;
+}
+
 .small {
   margin-top: 12px;
   font-size: 12px;

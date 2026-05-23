@@ -1,0 +1,100 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0052
+  source_future_id: FUTURE-052
+  title: Multiple overloaded methods
+  slug: multiple-overloaded-methods
+  description: contains(int,...)とcontains(double,...)があり、int overloadだけがfault。
+  category: ambiguous blame / duplicate 系未対応シナリオ
+  category_code: I
+  factors: []
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0052-multiple-overloaded-methods
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: c0 overloaded methods correct / c1 int overload bug / c2 int overload fix
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: Initial overloaded contains methods
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value >= min && value\
+      \ <= max;\n  }\n\n  public boolean contains(double value, double min, double max) {\n    return value >= min && value <= max;\n  }\n}\n"
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: Introduce bug only in int overload
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+    occurrence: 1
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: Fix int overload boundary bug
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+bugs:
+- id: B001
+  title: Only int overload is faulty
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  bug_fixing_commits:
+  - commit: c2
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    entity:
+      type: method
+      name: contains
+      signature: boolean contains(int value, int min, int max)
+    anchor_policy: entity_scope
+  fixes:
+  - id: X001
+    commit: c2
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+    entity:
+      type: method
+      name: contains
+      signature: boolean contains(int value, int min, int max)
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+scenario_design:
+  purpose: 同名メソッドが複数あり、fault.statement だけでは entity を特定できないケースを評価する。
+  current_schema_limitation: '`entity.signature` はあるが、validator / verifier が entity anchor を使って statement 範囲を限定できない。'
+  required_extensions_from_source: "```yaml\nfault:\n  entity:\n    type: \"method\"\n    name: \"contains\"\n    signature: \"boolean contains(int\
+    \ value, int min, int max)\"\n  anchor_policy: \"entity_scope\"\n```"
+  evaluation_points:
+  - statement matching の曖昧性
+  - method-level SZZ の必要性
+  - overload の扱い
+notes:
+- Draft scenario.graph.yml for future graph-aware SZZBench support.
+- This revision replaces placeholder/no-op operations with concrete file states so that graph generation can proceed.

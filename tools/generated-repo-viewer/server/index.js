@@ -12,7 +12,6 @@ const __dirname = path.dirname(__filename);
 const viewerRoot = path.resolve(__dirname, "..");
 const projectRoot = path.resolve(viewerRoot, "..", "..");
 const generatedRoot = path.join(projectRoot, "generated-input-repos");
-const scenariosRoot = path.join(projectRoot, "scenarios");
 
 const app = express();
 const port = Number(process.env.SZZBENCH_REPO_VIEWER_PORT || 4174);
@@ -75,6 +74,33 @@ async function readYamlIfExists(filePath) {
   }
 }
 
+async function readScenarioMetadata(metadataDir) {
+  const graphPath = path.join(metadataDir, "scenario.graph.yml");
+  const classicPath = path.join(metadataDir, "scenario.yml");
+  if (fssync.existsSync(graphPath)) {
+    return {
+      scenario: await readYamlIfExists(graphPath),
+      scenarioPath: graphPath,
+      scenarioFile: "scenario.graph.yml",
+      scenarioKind: "graph"
+    };
+  }
+  if (fssync.existsSync(classicPath)) {
+    return {
+      scenario: await readYamlIfExists(classicPath),
+      scenarioPath: classicPath,
+      scenarioFile: "scenario.yml",
+      scenarioKind: "classic"
+    };
+  }
+  return {
+    scenario: null,
+    scenarioPath: null,
+    scenarioFile: null,
+    scenarioKind: "unknown"
+  };
+}
+
 function runGit(repoDir, args, options = {}) {
   return new Promise((resolve, reject) => {
     execFile("git", args, {
@@ -130,10 +156,10 @@ async function findGeneratedRepositories() {
     const hasRepo = entries.some(e => e.isDirectory() && e.name === "repo");
     if (hasRepo && fssync.existsSync(path.join(dir, "repo", ".git"))) {
       const metadataDir = path.join(dir, "metadata");
-      const scenarioPath = path.join(metadataDir, "scenario.yml");
       const commitMapPath = path.join(metadataDir, "commit-map.json");
       const verifyPath = path.join(metadataDir, "verify-result.json");
-      const scenario = await readYamlIfExists(scenarioPath);
+      const scenarioInfo = await readScenarioMetadata(metadataDir);
+      const scenario = scenarioInfo.scenario;
       const meta = scenario?.meta || {};
       results.push({
         target: normalizeForClient(dir),
@@ -143,7 +169,9 @@ async function findGeneratedRepositories() {
         generatedDir: normalizeForClient(dir),
         repoDir: normalizeForClient(path.join(dir, "repo")),
         metadataDir: normalizeForClient(metadataDir),
-        hasScenario: fssync.existsSync(scenarioPath),
+        hasScenario: Boolean(scenarioInfo.scenarioPath),
+        scenarioKind: scenarioInfo.scenarioKind,
+        scenarioFile: scenarioInfo.scenarioFile,
         hasCommitMap: fssync.existsSync(commitMapPath),
         hasVerifyResult: fssync.existsSync(verifyPath)
       });
@@ -180,11 +208,17 @@ function collectOracleBadgesForCommits(scenario, commitMap) {
 
   for (const bug of bugs) {
     const bugId = bug.id || "bug";
-    for (const bic of bug.bug_introducing_commits || []) {
+    const bicEntries = Array.isArray(bug.bug_introducing_commits) ? bug.bug_introducing_commits : [];
+    const bfcEntries = Array.isArray(bug.bug_fixing_commits) ? bug.bug_fixing_commits : [];
+    for (const bic of bicEntries) {
       if (typeof bic === "string") add(bic, { kind: "BIC", bugId });
       else if (bic?.commit) add(bic.commit, { kind: "BIC", bugId, role: bic.role });
     }
     add(bug.bug_fixing_commit, { kind: "BFC", bugId });
+    for (const bfc of bfcEntries) {
+      if (typeof bfc === "string") add(bfc, { kind: "BFC", bugId });
+      else if (bfc?.commit) add(bfc.commit, { kind: "BFC", bugId, role: bfc.role });
+    }
   }
 
   return { byLogical, byHash };
@@ -211,14 +245,16 @@ app.get("/api/repository", async (req, res) => {
   try {
     const { generatedDir, repoDir } = repoDirFromTarget(req.query.target);
     const metadataDir = path.join(generatedDir, "metadata");
-    const scenarioPath = path.join(metadataDir, "scenario.yml");
     const commitMapPath = path.join(metadataDir, "commit-map.json");
+    const graphMapPath = path.join(metadataDir, "graph-map.json");
     const verifyResultPath = path.join(metadataDir, "verify-result.json");
     const validationResultPath = path.join(metadataDir, "validation-result.json");
     const generationLogPath = path.join(metadataDir, "generation.log");
 
-    const scenario = await readYamlIfExists(scenarioPath);
+    const scenarioInfo = await readScenarioMetadata(metadataDir);
+    const scenario = scenarioInfo.scenario;
     const commitMap = await readJsonIfExists(commitMapPath) || {};
+    const graphMap = await readJsonIfExists(graphMapPath);
     const verifyResult = await readJsonIfExists(verifyResultPath);
     const validationResult = await readJsonIfExists(validationResultPath);
 
@@ -237,8 +273,11 @@ app.get("/api/repository", async (req, res) => {
       generatedDir: normalizeForClient(generatedDir),
       repoDir: normalizeForClient(repoDir),
       metadataDir: normalizeForClient(metadataDir),
+      scenarioKind: scenarioInfo.scenarioKind,
+      scenarioFile: scenarioInfo.scenarioFile,
       scenario,
       commitMap,
+      graphMap,
       commits,
       oracleBadges,
       verifyResult,

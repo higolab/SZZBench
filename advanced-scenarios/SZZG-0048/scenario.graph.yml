@@ -1,0 +1,103 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0048
+  source_future_id: FUTURE-048
+  title: commit messageだけが手がかり
+  slug: commit-message
+  description: コード差分だけでは BIC の区別が難しく、commit message が重要になるケースを評価する。
+  category: work item / commit series 系未対応シナリオ
+  category_code: H
+  factors:
+  - context
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0048-commit-message
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: 'c1: "Temporarily bypass validation for legacy import"
+
+    c2: unrelated similar code change
+
+    c3: fix validation bypass'
+commits:
+- id: c1
+  branch: main
+  parents: []
+  message: 'c1: "Temporarily bypass validation for legacy import"'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value > min && value < max;\n  }\n}\n"
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'c2: unrelated similar code change'
+  role: intermediate
+  operations:
+  - type: write_file
+    path: docs/intermediate-note.md
+    content: 'intermediate change
+
+      '
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'c3: fix validation bypass'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+bugs:
+- id: B001
+  title: Synthetic graph scenario bug
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  bug_fixing_commits:
+  - commit: c3
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c3
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+scenario_design:
+  purpose: コード差分だけでは BIC の区別が難しく、commit message が重要になるケースを評価する。
+  current_schema_limitation: message-aware SZZ のための期待挙動を表現できない。
+  required_extensions_from_source: "```yaml\ncontext_requirements:\n  - type: \"commit_message\"\n    relevant_commits:\n      - \"c1\"\n```"
+  evaluation_points:
+  - commit message を使う手法の評価
+  - code-only SZZ との比較
+  - semantic context の必要性
+notes:
+- Draft scenario.graph.yml for future graph-aware SZZBench support.
+- This file is not expected to be executable by the current simple scenario.yml generator.
+context:
+  required_files:
+  - src/main/java/example/Caller.java
+  - src/main/java/example/Range.java
+  required_entities:
+  - type: method
+    name: callRange

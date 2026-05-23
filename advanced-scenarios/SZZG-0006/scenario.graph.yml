@@ -1,0 +1,94 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0006
+  source_future_id: FUTURE-006
+  title: BFC が generated file を含む
+  slug: bfc-generated-file
+  description: 修正 commit に生成ファイルの大きな差分が含まれる場合、SZZ が生成物差分を誤って起点にしないかを評価する。
+  category: BFC の形状に関する未対応シナリオ
+  category_code: A
+  factors: []
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0006-bfc-generated-file
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: 'c0: source file と generated file を導入
+
+    c1: source file に bug 混入
+
+    c2: source file を修正し、同時に generated file も更新'
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'c0: source file と generated file を導入'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value >= min && value <= max;\n  }\n}\n"
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'c1: source file に bug 混入'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'c2: source file を修正し、同時に generated file も更新'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+bugs:
+- id: B001
+  title: Synthetic graph scenario bug
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  bug_fixing_commits:
+  - commit: c2
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c2
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+scenario_design:
+  purpose: 修正 commit に生成ファイルの大きな差分が含まれる場合、SZZ が生成物差分を誤って起点にしないかを評価する。
+  current_schema_limitation: "生成ファイルであることをメタデータとして表現できない。  \nSZZ の評価上、generated file を除外すべきかどうかの方針も記述できない。"
+  required_extensions_from_source: "```yaml\nfiles:\n  - path: \"src/generated/Parser.java\"\n    kind: \"generated\"\n    generated_from: \"grammar/Parser.g4\"\n```"
+  evaluation_points:
+  - generated file を対象から除外できるか
+  - generated file の blame が false positive を生むか
+  - source file と generated file の両方を修正した場合の評価方針
+notes:
+- Draft scenario.graph.yml for future graph-aware SZZBench support.
+- This file is not expected to be executable by the current simple scenario.yml generator.

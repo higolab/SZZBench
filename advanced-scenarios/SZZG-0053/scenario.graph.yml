@@ -1,0 +1,120 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0053
+  source_future_id: FUTURE-053
+  title: line moved and duplicated
+  slug: line-moved-and-duplicated
+  description: faulty line が移動され、さらに複製されることで、blame と oracle が曖昧になるケースを評価する。
+  category: ambiguous blame / duplicate 系未対応シナリオ
+  category_code: I
+  factors:
+  - move_entity
+  - copy_entity
+  - bug_instances
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0053-line-moved-and-duplicated
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: 'c1: faulty line 導入
+
+    c2: faulty line を別メソッドへ移動し、元にも残す
+
+    c3: 片方のみ修正'
+commits:
+- id: c1
+  branch: main
+  parents: []
+  message: 'c1: faulty line 導入'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value > min && value < max;\n  }\n}\n"
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'c2: faulty line を別メソッドへ移動し、元にも残す'
+  role: intermediate
+  operations:
+  - type: move_entity
+    entity:
+      type: method
+      name: contains
+      signature: boolean contains(int value, int min, int max)
+    from_file: src/main/java/example/Range.java
+    to_file: src/main/java/example/RangeUtils.java
+  - type: copy_entity
+    entity:
+      type: statement
+      text: return value > min && value < max;
+    from_file: src/main/java/example/Range.java
+    to_file: src/main/java/example/RangeUtils.java
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'c3: 片方のみ修正'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+bugs:
+- id: B001
+  title: Synthetic graph scenario bug
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  bug_fixing_commits:
+  - commit: c3
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: line_modification
+    entity:
+      type: method
+      signature: boolean contains(int value, int min, int max)
+  fixes:
+  - id: X001
+    commit: c3
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+scenario_design:
+  purpose: faulty line が移動され、さらに複製されることで、blame と oracle が曖昧になるケースを評価する。
+  current_schema_limitation: "line move / duplication の関係を表現できない。  \ndirect / origin / instance の区別が必要。"
+  required_extensions_from_source: '- `move_entity`
+
+    - `copy_entity`
+
+    - bug instance'
+  evaluation_points:
+  - どの instance を修正したか
+  - moved line の origin
+  - duplicate line の blame
+notes:
+- Draft scenario.graph.yml for future graph-aware SZZBench support.
+- This file is not expected to be executable by the current simple scenario.yml generator.
+bug_instances:
+- id: B001-main
+  branch: main
+  status: fixed
+- id: B001-release
+  branch: release
+  status: open

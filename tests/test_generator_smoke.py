@@ -1,6 +1,7 @@
 from pathlib import Path
 import subprocess
 import sys
+import textwrap
 import yaml
 
 def test_validate_and_generate(tmp_path):
@@ -105,3 +106,162 @@ def test_new_scenario_creates_next_skeleton(tmp_path):
     index = yaml.safe_load((root / "index.yml").read_text(encoding="utf-8"))
     assert index["scenarios"][-1]["id"] == "SZZ-0004"
     assert index["scenarios"][-1]["path"].endswith("SZZ-0004/scenario.yml")
+
+def test_graph_apply_patch_from_generates(tmp_path):
+    scenario = tmp_path / "scenario.graph.yml"
+    scenario.write_text(
+        textwrap.dedent(
+            """\
+            schema_version: graph-0.1-draft
+            meta:
+              id: SZZG-9998
+              title: Apply patch from smoke
+              category: smoke
+              factors: []
+            repository:
+              name: graph-apply-patch-from-smoke
+              default_branch: main
+            commits:
+            - id: c0
+              branch: main
+              parents: []
+              message: Initial implementation
+              role: initial
+              operations:
+              - type: write_file
+                path: src/main/java/example/Range.java
+                content: |
+                  package example;
+                  public class Range {
+                    public boolean contains(int value, int min, int max) {
+                      return value >= min && value <= max;
+                    }
+                  }
+            - id: c1
+              branch: main
+              parents: [c0]
+              message: Introduce boundary bug
+              role: bug_introducing
+              operations:
+              - type: replace
+                path: src/main/java/example/Range.java
+                old: return value >= min && value <= max;
+                new: return value > min && value < max;
+            - id: c2
+              branch: main
+              parents: [c1]
+              message: Fix boundary bug
+              role: bug_fixing
+              operations:
+              - type: replace
+                path: src/main/java/example/Range.java
+                old: return value > min && value < max;
+                new: return value >= min && value <= max;
+            - id: r1
+              branch: release
+              parents: [c0]
+              message: Cherry-pick boundary bug
+              role: cherry_pick
+              operations:
+              - type: apply_patch_from
+                commit: c1
+            bugs:
+            - id: B001
+              bug_introducing_commits:
+              - commit: c1
+                role: direct
+              bug_fixing_commits:
+              - commit: c2
+                role: complete_fix
+              faults:
+              - id: F001
+                commit: c1
+                file: src/main/java/example/Range.java
+                statement: return value > min && value < max;
+              fixes:
+              - id: X001
+                commit: c2
+                file: src/main/java/example/Range.java
+                statement: return value >= min && value <= max;
+            expected_szz:
+              commit_level:
+                evaluation_policy: exact_set
+                required: [c1]
+            """
+        ),
+        encoding="utf-8",
+    )
+    out = tmp_path / "generated"
+
+    subprocess.run([sys.executable, "-m", "szzbench.cli", "validate-graph", str(scenario), "--simulate"], check=True)
+    subprocess.run([sys.executable, "-m", "szzbench.cli", "generate-graph", str(scenario), "--out", str(out), "--force"], check=True)
+
+    release_content = subprocess.run(
+        ["git", "show", "HEAD:src/main/java/example/Range.java"],
+        cwd=out / "repo",
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=True,
+    ).stdout
+    assert "return value > min && value < max;" in release_content
+
+def test_validate_graph_simulate_reports_operation_state_errors(tmp_path):
+    scenario = tmp_path / "scenario.graph.yml"
+    scenario.write_text(
+        textwrap.dedent(
+            """\
+            schema_version: graph-0.1-draft
+            meta:
+              id: SZZG-9999
+              title: Broken graph smoke
+              category: smoke
+              factors: []
+            repository:
+              name: broken-graph-smoke
+              default_branch: main
+            commits:
+            - id: c0
+              branch: main
+              parents: []
+              message: Initial implementation
+              role: initial
+              operations:
+              - type: write_file
+                path: src/main/java/example/Range.java
+                content: ok
+            - id: c1
+              branch: main
+              parents: [c0]
+              message: Rename missing file
+              role: intermediate
+              operations:
+              - type: rename_file
+                from: src/main/java/example/Missing.java
+                to: src/main/java/example/Range.java
+            bugs:
+            - id: B001
+              bug_introducing_commits:
+              - commit: c0
+                role: direct
+              bug_fixing_commits:
+              - commit: c1
+                role: complete_fix
+            expected_szz:
+              commit_level:
+                evaluation_policy: exact_set
+                required: [c0]
+            """
+        ),
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [sys.executable, "-m", "szzbench.cli", "validate-graph", str(scenario), "--simulate"],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    assert result.returncode == 1
+    assert "rename_file source does not exist" in result.stdout

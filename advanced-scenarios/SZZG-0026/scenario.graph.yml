@@ -1,0 +1,97 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0026
+  source_future_id: FUTURE-026
+  title: direct BIC vs origin BIC の明示評価
+  slug: direct-bic-vs-origin-bic
+  description: 同じ履歴に対して、direct BIC と origin BIC のどちらを正解とするかを切り替えて評価する。
+  category: copy / clone / propagation 系未対応シナリオ
+  category_code: E
+  factors:
+  - expected_szz
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0026-direct-bic-vs-origin-bic
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: 'c0: origin bug
+
+    c1: buggy code copied
+
+    c2: copied bug fixed'
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'c0: origin bug'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value >= min && value <= max;\n  }\n}\n"
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'c1: buggy code copied'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'c2: copied bug fixed'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+bugs:
+- id: B001
+  title: Synthetic graph scenario bug
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  - commit: c0
+    role: origin
+  bug_fixing_commits:
+  - commit: c2
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c2
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+scenario_design:
+  purpose: 同じ履歴に対して、direct BIC と origin BIC のどちらを正解とするかを切り替えて評価する。
+  current_schema_limitation: "`bug_introducing_commits` に両方を書いても役割が分からない。  \n評価対象を direct / origin から選べない。"
+  required_extensions_from_source: "```yaml\nexpected_szz:\n  commit_level:\n    primary_target: \"direct\"\n    true_positives:\n      - \"c1\"\n    related_origins:\n      - \"c0\"\n```"
+  evaluation_points:
+  - direct を正解にする設定
+  - origin を正解にする設定
+  - SZZ の目的による oracle 定義の違い
+notes:
+- Draft scenario.graph.yml for future graph-aware SZZBench support.
+- This file is not expected to be executable by the current simple scenario.yml generator.

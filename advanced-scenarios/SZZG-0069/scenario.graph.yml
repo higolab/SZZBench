@@ -1,0 +1,83 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0069
+  source_future_id: FUTURE-071
+  title: malformed commit message
+  slug: malformed-commit-message
+  description: 極端に長い commit message、非ASCII文字、制御文字などを含む場合の SZZ 実装の robustness を確認する。
+  category: robustness / 実装品質確認系未対応シナリオ
+  category_code: K
+  factors:
+  - evaluation_variants
+  - message_variants
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0069-malformed-commit-message
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: 'c1: bug introduced with malformed message
+
+    c2: fix'
+commits:
+- id: c1
+  branch: main
+  parents: []
+  message: 'c1: bug introduced with malformed message'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value > min && value < max;\n  }\n}\n"
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'c2: fix'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+bugs:
+- id: B001
+  title: Synthetic graph scenario bug
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  bug_fixing_commits:
+  - commit: c2
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c2
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+scenario_design:
+  purpose: 極端に長い commit message、非ASCII文字、制御文字などを含む場合の SZZ 実装の robustness を確認する。
+  current_schema_limitation: ある程度は書けるが、malformed message の種類を体系化できない。
+  required_extensions_from_source: "```yaml\nmessage_variants:\n  - type: \"non_ascii\"\n  - type: \"very_long\"\n  - type: \"control_chars\"\n```"
+  evaluation_points:
+  - parser robustness
+  - CSV/JSON出力時の壊れ
+  - LLM/context-aware SZZ の入力処理
+notes:
+- Draft scenario.graph.yml for future graph-aware SZZBench support.
+- This file is not expected to be executable by the current simple scenario.yml generator.

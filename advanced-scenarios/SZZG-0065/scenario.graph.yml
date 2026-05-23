@@ -1,0 +1,108 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0065
+  source_future_id: FUTURE-065
+  title: chmod only
+  slug: chmod-only
+  description: File-mode-only commit scenario.
+  category: robustness / implementation-quality scenarios
+  category_code: K
+  factors:
+  - chmod
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0065-chmod-only
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: "c0: add script and code\nc1: chmod +x only\nc2: code bug\nc3: fix"
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: "c0: add script and code"
+  role: initial
+  operations:
+  - type: write_file
+    path: scripts/run.sh
+    content: "#!/bin/sh\npython -m example.Range\n"
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value >= min && value <= max;\n  }\n}\n"
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: "c1: chmod +x only"
+  role: intermediate
+  allow_empty: true
+  operations:
+  - type: chmod
+    path: scripts/run.sh
+    mode: "755"
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: "c2: code bug"
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: "c3: fix"
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+bugs:
+- id: B001
+  title: Synthetic graph scenario bug
+  bug_introducing_commits:
+  - commit: c2
+    role: direct
+  bug_fixing_commits:
+  - commit: c3
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c2
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c3
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c2
+scenario_design:
+  purpose: Check that a file-mode-only commit is not mistaken for the code bug.
+  current_schema_limitation: File mode changes need explicit chmod support.
+  required_extensions_from_source: |
+    - type: "chmod"
+      path: "scripts/run.sh"
+      mode: "755"
+  evaluation_points:
+  - Handling of file-mode-only commits.
+  - Robustness of diff parsers.
+  - Avoiding false positives from chmod-only history.
+notes:
+- Draft scenario.graph.yml for future graph-aware SZZBench support.
+- The chmod commit is allow_empty because the current generator disables core.filemode.

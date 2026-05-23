@@ -1,0 +1,97 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0044
+  source_future_id: FUTURE-044
+  title: BICとBFCが同一issueのcommit列に属する
+  slug: bic-bfc-issue-commit
+  description: issue / work item を利用する SZZ が、候補範囲を狭められるか評価する。
+  category: work item / commit series 系未対応シナリオ
+  category_code: H
+  factors:
+  - issues
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0044-bic-bfc-issue-commit
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: "issue #10:\n  c1: initial implementation\n  c2: buggy adjustment\n  c3: later fix"
+commits:
+- id: c1
+  branch: main
+  parents: []
+  message: 'c1: initial implementation'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value >= min && value <= max;\n  }\n}\n"
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'c2: buggy adjustment'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'c3: later fix'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+bugs:
+- id: B001
+  title: Synthetic graph scenario bug
+  bug_introducing_commits:
+  - commit: c2
+    role: direct
+  bug_fixing_commits:
+  - commit: c3
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c2
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c3
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+scenario_design:
+  purpose: issue / work item を利用する SZZ が、候補範囲を狭められるか評価する。
+  current_schema_limitation: issue linkage がない。
+  required_extensions_from_source: "```yaml\nissues:\n  - id: \"ISSUE-10\"\n    commits:\n      - \"c1\"\n      - \"c2\"\n      - \"c3\"\n```"
+  evaluation_points:
+  - issue-aware SZZ
+  - work item 内候補の ranking
+  - commit message 依存の評価
+notes:
+- Draft scenario.graph.yml for future graph-aware SZZBench support.
+- This file is not expected to be executable by the current simple scenario.yml generator.
+issues:
+- id: ISSUE-001
+  title: Synthetic issue for graph scenario
+  description: Issue text intentionally provides contextual information for SZZ.
+  linked_bugs:
+  - B001

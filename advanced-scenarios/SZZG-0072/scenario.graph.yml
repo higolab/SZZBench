@@ -1,0 +1,90 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0072
+  source_future_id: FUTURE-074
+  title: line-level 不可だが entity-level は可能なケース
+  slug: line-level-entity-level
+  description: omission や semantic relation bug のように line-level oracle はないが、method-level/entity-level oracle はあるケースを評価する。
+  category: schema / evaluation policy が必要な横断シナリオ
+  category_code: L
+  factors:
+  - expected_szz
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0072-line-level-entity-level
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: 'c1: method-level contract bug
+
+    c2: fix'
+commits:
+- id: c1
+  branch: main
+  parents: []
+  message: 'c1: method-level contract bug'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value > min && value < max;\n  }\n}\n"
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'c2: fix'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+bugs:
+- id: B001
+  title: Synthetic graph scenario bug
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  bug_fixing_commits:
+  - commit: c2
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: line_modification
+    entity:
+      type: method
+      signature: boolean contains(int value, int min, int max)
+  fixes:
+  - id: X001
+    commit: c2
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+    fix_type: line_modification
+expected_szz:
+  line_level:
+    available: false
+    reason: The scenario is defined at entity level.
+  entity_level:
+    available: true
+    entities:
+    - type: method
+      file: src/main/java/example/Range.java
+      signature: boolean contains(int value, int min, int max)
+scenario_design:
+  purpose: omission や semantic relation bug のように line-level oracle はないが、method-level/entity-level oracle はあるケースを評価する。
+  current_schema_limitation: '`line_level.available: false` は書けるが、entity-level oracle を標準化していない。'
+  required_extensions_from_source: "```yaml\nexpected_szz:\n  line_level:\n    available: false\n  entity_level:\n    available: true\n    entities:\n      - type: \"method\"\n        file: \"...\"\n        signature: \"...\"\n```"
+  evaluation_points:
+  - entity-level SZZ
+  - line-level だけでは評価不能な bug
+  - method-level precision/recall
+notes:
+- Draft scenario.graph.yml for future graph-aware SZZBench support.
+- This file is not expected to be executable by the current simple scenario.yml generator.

@@ -1,0 +1,129 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0017
+  source_future_id: FUTURE-017
+  title: One BFC fixes multiple bugs
+  slug: 1-bfc-bug
+  description: c3がbug Aとbug Bを同時修正する。
+  category: multiple BIC / multiple BFC に関する未対応シナリオ
+  category_code: D
+  factors:
+  - fixes
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0017-1-bfc-bug
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: c0 correct / c1 bug A / c2 bug B / c3 fixes A and B
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: Initial correct independent checks
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: "package example;\n\npublic class Range {\n  public boolean containsLower(int value, int min) {\n    return value >= min;\n  }\n\n\
+      \  public boolean containsUpper(int value, int max) {\n    return value <= max;\n  }\n}\n"
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: Introduce lower-bound BIC
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min;
+    new: return value > min;
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: Introduce upper-bound BIC
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value <= max;
+    new: return value < max;
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: Fix both lower and upper bugs together
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min;
+    new: return value >= min;
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value < max;
+    new: return value <= max;
+bugs:
+- id: B001
+  title: Lower-bound bug fixed in shared BFC
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  bug_fixing_commits:
+  - commit: c3
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/Range.java
+    statement: return value > min;
+    case: lower
+  fixes:
+  - id: X001
+    commit: c3
+    file: src/main/java/example/Range.java
+    statement: return value >= min;
+    case: lower
+- id: B002
+  title: Upper-bound bug fixed in shared BFC
+  bug_introducing_commits:
+  - commit: c2
+    role: direct
+  bug_fixing_commits:
+  - commit: c3
+    role: complete_fix
+  faults:
+  - id: F002
+    commit: c2
+    file: src/main/java/example/Range.java
+    statement: return value < max;
+    case: upper
+  fixes:
+  - id: X002
+    commit: c3
+    file: src/main/java/example/Range.java
+    statement: return value <= max;
+    case: upper
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+    - c2
+scenario_design:
+  purpose: 同一 BFC に複数 bug fix が混在するケースを評価する。
+  current_schema_limitation: 複数 `bugs` は書けるが、BFC 内のどの hunk がどの bug に対応するかを厳密に紐づけにくい。
+  required_extensions_from_source: "```yaml\nfixes:\n  - id: \"X001\"\n    bug: \"B001\"\n    commit: \"c3\"\n    file: \"...\"\n    statement:\
+    \ \"...\"\n\n  - id: \"X002\"\n    bug: \"B002\"\n    commit: \"c3\"\n    file: \"...\"\n    statement: \"...\"\n```"
+  evaluation_points:
+  - BFC 内で bug ごとの起点 hunk を分離できるか
+  - tangled BFC の拡張ケースとして扱うか
+  - bug-level evaluation と commit-level evaluation の違い
+notes:
+- Draft scenario.graph.yml for future graph-aware SZZBench support.
+- This revision replaces placeholder/no-op operations with concrete file states so that graph generation can proceed.

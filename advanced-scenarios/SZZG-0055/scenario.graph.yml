@@ -1,0 +1,98 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0055
+  source_future_id: FUTURE-055
+  title: caller/callee 相互作用バグ
+  slug: caller-callee
+  description: caller 側と callee 側の組合せで初めてバグが発生するケースを評価する。
+  category: context-aware / LLM-based SZZ 向け未対応シナリオ
+  category_code: J
+  factors:
+  - faults
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0055-caller-callee
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: 'c1: callee が null を許容しなくなる
+
+    c2: caller が null を渡すようになる
+
+    c3: caller または callee を修正'
+commits:
+- id: c1
+  branch: main
+  parents: []
+  message: 'c1: callee が null を許容しなくなる'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value > min && value < max;\n  }\n}\n"
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'c2: caller が null を渡すようになる'
+  role: intermediate
+  operations:
+  - type: write_file
+    path: docs/intermediate-note.md
+    content: 'intermediate change
+
+      '
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'c3: caller または callee を修正'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+bugs:
+- id: B001
+  title: Synthetic graph scenario bug
+  bug_introducing_commits:
+  - commit: c1
+    role: contributing
+  - commit: c2
+    role: direct
+  bug_fixing_commits:
+  - commit: c3
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c3
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+scenario_design:
+  purpose: caller 側と callee 側の組合せで初めてバグが発生するケースを評価する。
+  current_schema_limitation: 複数 fault location と contributing BIC が必要。
+  required_extensions_from_source: "```yaml\nbug_introducing_commits:\n  - commit: \"c1\"\n    role: \"contributing\"\n  - commit: \"c2\"\n    role: \"direct\"\nfaults:\n  - file: \"Callee.java\"\n  - file: \"Caller.java\"\n```"
+  evaluation_points:
+  - interaction bug の SZZ
+  - 複数 BIC の役割
+  - call graph context の必要性
+notes:
+- Draft scenario.graph.yml for future graph-aware SZZBench support.
+- This file is not expected to be executable by the current simple scenario.yml generator.

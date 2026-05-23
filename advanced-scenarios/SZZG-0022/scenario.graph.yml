@@ -1,0 +1,115 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0022
+  source_future_id: FUTURE-022
+  title: Clone diverges before fix
+  slug: clone
+  description: コピー後にB.javaが少し変形され、その後で修正される。
+  category: copy / clone / propagation 系未対応シナリオ
+  category_code: E
+  factors:
+  - clone_relationships
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0022-clone
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: c0 origin bug / c1 copy / c2 divergence / c3 fix clone
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: Introduce buggy original A
+  role: origin_bug_introducing
+  operations:
+  - type: write_file
+    path: src/main/java/example/A.java
+    content: "package example;\n\npublic class A {\n  public boolean contains(int value, int min, int max) {\n    return value > min && value\
+      \ < max;\n  }\n}\n"
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: Copy buggy A to B
+  role: bug_introducing
+  operations:
+  - type: copy_file
+    from: src/main/java/example/A.java
+    to: src/main/java/example/B.java
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: Diverge clone by renaming class and adding note
+  role: clone_divergence
+  operations:
+  - type: replace
+    path: src/main/java/example/B.java
+    old: public class A
+    new: public class B
+  - type: replace
+    path: src/main/java/example/B.java
+    old: public boolean contains
+    new: public boolean containsCopied
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: Fix diverged clone boundary bug
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/B.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+bugs:
+- id: B001
+  title: Diverged clone bug
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  - commit: c0
+    role: origin
+  bug_fixing_commits:
+  - commit: c3
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/B.java
+    statement: return value > min && value < max;
+    role: direct
+  fixes:
+  - id: X001
+    commit: c3
+    file: src/main/java/example/B.java
+    statement: return value >= min && value <= max;
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+clone_relationships:
+- origin_file: src/main/java/example/A.java
+  copied_file: src/main/java/example/B.java
+  origin_commit: c0
+  copy_commit: c1
+  divergence_commits:
+  - c2
+scenario_design:
+  purpose: コピーされたコードが変形された後に修正されるケースを評価する。
+  current_schema_limitation: copy とその後の clone divergence を表すメタデータがない。
+  required_extensions_from_source: "```yaml\nclone_relationships:\n  - origin_file: \"A.java\"\n    copied_file: \"B.java\"\n    copy_commit:\
+    \ \"c1\"\n    divergence_commits:\n      - \"c2\"\n```"
+  evaluation_points:
+  - 類似性が低下しても origin を追えるか
+  - direct BIC は c1 か c2 か
+  - clone-aware / semantic SZZ の比較
+notes:
+- Draft scenario.graph.yml for future graph-aware SZZBench support.
+- This revision replaces placeholder/no-op operations with concrete file states so that graph generation can proceed.

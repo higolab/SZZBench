@@ -1,0 +1,690 @@
+schema_version: graph-index-0.1-draft
+description: Index of draft advanced graph scenarios for SZZBench.
+scenario_count: 73
+excluded_future_ids:
+- id: FUTURE-069
+  reason: Deferred because it requires repository variants such as shallow history.
+- id: FUTURE-070
+  reason: Deferred because it requires intentionally corrupted or incomplete Git objects.
+scenarios:
+- id: SZZG-0001
+  source_future_id: FUTURE-001
+  title: BFC が rename + fix を同時に行う
+  category: BFC の形状に関する未対応シナリオ
+  path: advanced-scenarios/SZZG-0001/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0001/README.md
+  status: draft
+  factors:
+  - rename_file
+- id: SZZG-0002
+  source_future_id: FUTURE-002
+  title: BFC が file move + fix を同時に行う
+  category: BFC の形状に関する未対応シナリオ
+  path: advanced-scenarios/SZZG-0002/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0002/README.md
+  status: draft
+  factors:
+  - move_file
+- id: SZZG-0003
+  source_future_id: FUTURE-003
+  title: BFC が partial fix である
+  category: BFC の形状に関する未対応シナリオ
+  path: advanced-scenarios/SZZG-0003/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0003/README.md
+  status: draft
+  factors:
+  - bug_fixing_commits
+- id: SZZG-0004
+  source_future_id: FUTURE-004
+  title: follow-up fix が必要な BFC
+  category: BFC の形状に関する未対応シナリオ
+  path: advanced-scenarios/SZZG-0004/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0004/README.md
+  status: draft
+  factors:
+  - bug_fixing_commits
+- id: SZZG-0005
+  source_future_id: FUTURE-005
+  title: BFC が merge commit である
+  category: BFC の形状に関する未対応シナリオ
+  path: advanced-scenarios/SZZG-0005/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0005/README.md
+  status: draft
+  factors:
+  - branch
+  - parents
+  - merge
+- id: SZZG-0006
+  source_future_id: FUTURE-006
+  title: BFC が generated file を含む
+  category: BFC の形状に関する未対応シナリオ
+  path: advanced-scenarios/SZZG-0006/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0006/README.md
+  status: draft
+  factors: []
+- id: SZZG-0007
+  source_future_id: FUTURE-007
+  title: BIC が test-only commit である
+  category: BIC の性質に関する未対応シナリオ
+  path: advanced-scenarios/SZZG-0007/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0007/README.md
+  status: draft
+  factors:
+  - expected_szz
+- id: SZZG-0008
+  source_future_id: FUTURE-008
+  title: BIC が dependency update である
+  category: BIC の性質に関する未対応シナリオ
+  path: advanced-scenarios/SZZG-0008/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0008/README.md
+  status: draft
+  factors: []
+- id: SZZG-0009
+  source_future_id: FUTURE-009
+  title: file rename between BIC and BFC
+  category: 中間履歴に関する未対応シナリオ
+  path: advanced-scenarios/SZZG-0009/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0009/README.md
+  status: draft
+  factors:
+  - rename_file
+- id: SZZG-0010
+  source_future_id: FUTURE-010
+  title: file move between BIC and BFC
+  category: 中間履歴に関する未対応シナリオ
+  path: advanced-scenarios/SZZG-0010/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0010/README.md
+  status: draft
+  factors:
+  - rename_file
+  - move_file
+- id: SZZG-0011
+  source_future_id: FUTURE-011
+  title: method move between classes
+  category: 中間履歴に関する未対応シナリオ
+  path: advanced-scenarios/SZZG-0011/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0011/README.md
+  status: draft
+  factors:
+  - move_entity
+- id: SZZG-0012
+  source_future_id: FUTURE-012
+  title: extract class after BIC
+  category: 中間履歴に関する未対応シナリオ
+  path: advanced-scenarios/SZZG-0012/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0012/README.md
+  status: draft
+  factors:
+  - move_entity
+- id: SZZG-0013
+  source_future_id: FUTURE-013
+  title: 1つのBICを複数BFCで修正する
+  category: multiple BIC / multiple BFC に関する未対応シナリオ
+  path: advanced-scenarios/SZZG-0013/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0013/README.md
+  status: draft
+  factors:
+  - bug_fixing_commits
+- id: SZZG-0014
+  source_future_id: FUTURE-014
+  title: 複数BFCが同じbugを段階的に完全修正する
+  category: multiple BIC / multiple BFC に関する未対応シナリオ
+  path: advanced-scenarios/SZZG-0014/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0014/README.md
+  status: draft
+  factors:
+  - bug_fixing_commits
+- id: SZZG-0015
+  source_future_id: FUTURE-015
+  title: 1つのBFCが複数BICを修正するが、すべてのBICを返す必要がある
+  category: multiple BIC / multiple BFC に関する未対応シナリオ
+  path: advanced-scenarios/SZZG-0015/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0015/README.md
+  status: draft
+  factors:
+  - expected_szz
+- id: SZZG-0016
+  source_future_id: FUTURE-016
+  title: 複数BICのうち一部だけ返した場合の partial credit
+  category: multiple BIC / multiple BFC に関する未対応シナリオ
+  path: advanced-scenarios/SZZG-0016/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0016/README.md
+  status: draft
+  factors:
+  - expected_szz
+- id: SZZG-0017
+  source_future_id: FUTURE-017
+  title: 1つのBFCが複数bugを同時修正する
+  category: multiple BIC / multiple BFC に関する未対応シナリオ
+  path: advanced-scenarios/SZZG-0017/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0017/README.md
+  status: draft
+  factors:
+  - fixes
+- id: SZZG-0018
+  source_future_id: FUTURE-018
+  title: 同一BICが複数bugの原因になる
+  category: multiple BIC / multiple BFC に関する未対応シナリオ
+  path: advanced-scenarios/SZZG-0018/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0018/README.md
+  status: draft
+  factors:
+  - root_cause
+- id: SZZG-0019
+  source_future_id: FUTURE-019
+  title: buggy code copied to new file
+  category: copy / clone / propagation 系未対応シナリオ
+  path: advanced-scenarios/SZZG-0019/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0019/README.md
+  status: draft
+  factors:
+  - copy_file
+- id: SZZG-0020
+  source_future_id: FUTURE-020
+  title: buggy code copied, original later fixed
+  category: copy / clone / propagation 系未対応シナリオ
+  path: advanced-scenarios/SZZG-0020/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0020/README.md
+  status: draft
+  factors:
+  - copy_file
+  - faults
+- id: SZZG-0021
+  source_future_id: FUTURE-021
+  title: original と clone を同時修正
+  category: copy / clone / propagation 系未対応シナリオ
+  path: advanced-scenarios/SZZG-0021/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0021/README.md
+  status: draft
+  factors:
+  - faults
+  - clone_relationships
+- id: SZZG-0022
+  source_future_id: FUTURE-022
+  title: clone が少し変更されてから修正
+  category: copy / clone / propagation 系未対応シナリオ
+  path: advanced-scenarios/SZZG-0022/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0022/README.md
+  status: draft
+  factors:
+  - clone_relationships
+- id: SZZG-0023
+  source_future_id: FUTURE-023
+  title: clone の片方だけ修正
+  category: copy / clone / propagation 系未対応シナリオ
+  path: advanced-scenarios/SZZG-0023/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0023/README.md
+  status: draft
+  factors:
+  - clone_relationships
+  - bug_instances
+- id: SZZG-0024
+  source_future_id: FUTURE-024
+  title: same bug introduced independently
+  category: copy / clone / propagation 系未対応シナリオ
+  path: advanced-scenarios/SZZG-0024/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0024/README.md
+  status: draft
+  factors: []
+- id: SZZG-0025
+  source_future_id: FUTURE-025
+  title: generated code にバグがコピーされる
+  category: copy / clone / propagation 系未対応シナリオ
+  path: advanced-scenarios/SZZG-0025/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0025/README.md
+  status: draft
+  factors: []
+- id: SZZG-0026
+  source_future_id: FUTURE-026
+  title: direct BIC vs origin BIC の明示評価
+  category: copy / clone / propagation 系未対応シナリオ
+  path: advanced-scenarios/SZZG-0026/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0026/README.md
+  status: draft
+  factors:
+  - expected_szz
+- id: SZZG-0027
+  source_future_id: FUTURE-027
+  title: clone removal as fix
+  category: copy / clone / propagation 系未対応シナリオ
+  path: advanced-scenarios/SZZG-0027/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0027/README.md
+  status: draft
+  factors:
+  - clone_relationships
+- id: SZZG-0028
+  source_future_id: FUTURE-028
+  title: partial revert による再混入
+  category: revert / reintroduce 系未対応シナリオ
+  path: advanced-scenarios/SZZG-0028/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0028/README.md
+  status: draft
+  factors: []
+- id: SZZG-0029
+  source_future_id: FUTURE-029
+  title: old BIC と re-BIC の両方が plausible
+  category: revert / reintroduce 系未対応シナリオ
+  path: advanced-scenarios/SZZG-0029/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0029/README.md
+  status: draft
+  factors:
+  - expected_szz
+- id: SZZG-0030
+  source_future_id: FUTURE-030
+  title: BIC on feature branch, BFC on main
+  category: branch / merge / cherry-pick / backport 系未対応シナリオ
+  path: advanced-scenarios/SZZG-0030/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0030/README.md
+  status: draft
+  factors:
+  - branch
+  - parents
+  - merge
+- id: SZZG-0031
+  source_future_id: FUTURE-031
+  title: BIC before merge, BFC after merge
+  category: branch / merge / cherry-pick / backport 系未対応シナリオ
+  path: advanced-scenarios/SZZG-0031/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0031/README.md
+  status: draft
+  factors:
+  - branch
+  - parents
+  - merge
+- id: SZZG-0032
+  source_future_id: FUTURE-032
+  title: BIC in merge commit
+  category: branch / merge / cherry-pick / backport 系未対応シナリオ
+  path: advanced-scenarios/SZZG-0032/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0032/README.md
+  status: draft
+  factors:
+  - branch
+  - parents
+  - merge
+- id: SZZG-0033
+  source_future_id: FUTURE-033
+  title: BFC in merge commit
+  category: branch / merge / cherry-pick / backport 系未対応シナリオ
+  path: advanced-scenarios/SZZG-0033/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0033/README.md
+  status: draft
+  factors:
+  - branch
+  - merge
+- id: SZZG-0034
+  source_future_id: FUTURE-034
+  title: squash merge
+  category: branch / merge / cherry-pick / backport 系未対応シナリオ
+  path: advanced-scenarios/SZZG-0034/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0034/README.md
+  status: draft
+  factors:
+  - branch
+  - merge
+  - squash_merge
+- id: SZZG-0035
+  source_future_id: FUTURE-035
+  title: cherry-pick BIC
+  category: branch / merge / cherry-pick / backport 系未対応シナリオ
+  path: advanced-scenarios/SZZG-0035/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0035/README.md
+  status: draft
+  factors:
+  - branch
+  - cherry_pick_of
+- id: SZZG-0036
+  source_future_id: FUTURE-036
+  title: cherry-pick BFC
+  category: branch / merge / cherry-pick / backport 系未対応シナリオ
+  path: advanced-scenarios/SZZG-0036/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0036/README.md
+  status: draft
+  factors:
+  - branch
+  - cherry_pick_of
+  - bug_fixing_commits
+  - bug_instances
+- id: SZZG-0037
+  source_future_id: FUTURE-037
+  title: backport fix
+  category: branch / merge / cherry-pick / backport 系未対応シナリオ
+  path: advanced-scenarios/SZZG-0037/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0037/README.md
+  status: draft
+  factors:
+  - branch
+  - backport_of
+- id: SZZG-0038
+  source_future_id: FUTURE-038
+  title: backport introduces bug
+  category: branch / merge / cherry-pick / backport 系未対応シナリオ
+  path: advanced-scenarios/SZZG-0038/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0038/README.md
+  status: draft
+  factors:
+  - branch
+  - backport_of
+- id: SZZG-0039
+  source_future_id: FUTURE-039
+  title: criss-cross merge
+  category: branch / merge / cherry-pick / backport 系未対応シナリオ
+  path: advanced-scenarios/SZZG-0039/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0039/README.md
+  status: draft
+  factors:
+  - branch
+  - parents
+  - merge
+- id: SZZG-0040
+  source_future_id: FUTURE-040
+  title: release branch only bug
+  category: branch / merge / cherry-pick / backport 系未対応シナリオ
+  path: advanced-scenarios/SZZG-0040/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0040/README.md
+  status: draft
+  factors:
+  - branch
+- id: SZZG-0041
+  source_future_id: FUTURE-041
+  title: mainで修正済み、releaseで未修正
+  category: branch / merge / cherry-pick / backport 系未対応シナリオ
+  path: advanced-scenarios/SZZG-0041/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0041/README.md
+  status: draft
+  factors:
+  - branch
+  - bug_instances
+- id: SZZG-0042
+  source_future_id: FUTURE-042
+  title: feature作業の途中でBIC
+  category: work item / commit series 系未対応シナリオ
+  path: advanced-scenarios/SZZG-0042/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0042/README.md
+  status: draft
+  factors:
+  - work_items
+- id: SZZG-0043
+  source_future_id: FUTURE-043
+  title: fixが複数commitに分かれる
+  category: work item / commit series 系未対応シナリオ
+  path: advanced-scenarios/SZZG-0043/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0043/README.md
+  status: draft
+  factors:
+  - bug_fixing_commits
+- id: SZZG-0044
+  source_future_id: FUTURE-044
+  title: BICとBFCが同一issueのcommit列に属する
+  category: work item / commit series 系未対応シナリオ
+  path: advanced-scenarios/SZZG-0044/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0044/README.md
+  status: draft
+  factors:
+  - issues
+- id: SZZG-0045
+  source_future_id: FUTURE-045
+  title: BICがBFC直前のcleanupに隠れる
+  category: work item / commit series 系未対応シナリオ
+  path: advanced-scenarios/SZZG-0045/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0045/README.md
+  status: draft
+  factors:
+  - work_items
+- id: SZZG-0046
+  source_future_id: FUTURE-046
+  title: work item 内に複数候補BIC
+  category: work item / commit series 系未対応シナリオ
+  path: advanced-scenarios/SZZG-0046/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0046/README.md
+  status: draft
+  factors:
+  - work_items
+  - expected_szz
+- id: SZZG-0047
+  source_future_id: FUTURE-047
+  title: issue IDなしの work item 推定
+  category: work item / commit series 系未対応シナリオ
+  path: advanced-scenarios/SZZG-0047/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0047/README.md
+  status: draft
+  factors:
+  - work_items
+  - issues
+- id: SZZG-0048
+  source_future_id: FUTURE-048
+  title: commit messageだけが手がかり
+  category: work item / commit series 系未対応シナリオ
+  path: advanced-scenarios/SZZG-0048/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0048/README.md
+  status: draft
+  factors:
+  - context
+- id: SZZG-0049
+  source_future_id: FUTURE-049
+  title: BFC message references BIC
+  category: work item / commit series 系未対応シナリオ
+  path: advanced-scenarios/SZZG-0049/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0049/README.md
+  status: draft
+  factors:
+  - developer_hints
+- id: SZZG-0050
+  source_future_id: FUTURE-050
+  title: BFC message references wrong commit
+  category: work item / commit series 系未対応シナリオ
+  path: advanced-scenarios/SZZG-0050/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0050/README.md
+  status: draft
+  factors:
+  - developer_hints
+- id: SZZG-0051
+  source_future_id: FUTURE-051
+  title: 同一issueに無関係commitが混在
+  category: work item / commit series 系未対応シナリオ
+  path: advanced-scenarios/SZZG-0051/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0051/README.md
+  status: draft
+  factors:
+  - work_items
+  - issues
+- id: SZZG-0052
+  source_future_id: FUTURE-052
+  title: multiple overloaded methods
+  category: ambiguous blame / duplicate 系未対応シナリオ
+  path: advanced-scenarios/SZZG-0052/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0052/README.md
+  status: draft
+  factors: []
+- id: SZZG-0053
+  source_future_id: FUTURE-053
+  title: line moved and duplicated
+  category: ambiguous blame / duplicate 系未対応シナリオ
+  path: advanced-scenarios/SZZG-0053/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0053/README.md
+  status: draft
+  factors:
+  - move_entity
+  - copy_entity
+  - bug_instances
+- id: SZZG-0054
+  source_future_id: FUTURE-054
+  title: patch context が必要
+  category: context-aware / LLM-based SZZ 向け未対応シナリオ
+  path: advanced-scenarios/SZZG-0054/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0054/README.md
+  status: draft
+  factors:
+  - context
+- id: SZZG-0055
+  source_future_id: FUTURE-055
+  title: caller/callee 相互作用バグ
+  category: context-aware / LLM-based SZZ 向け未対応シナリオ
+  path: advanced-scenarios/SZZG-0055/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0055/README.md
+  status: draft
+  factors:
+  - faults
+- id: SZZG-0056
+  source_future_id: FUTURE-056
+  title: config と code の相互作用
+  category: context-aware / LLM-based SZZ 向け未対応シナリオ
+  path: advanced-scenarios/SZZG-0056/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0056/README.md
+  status: draft
+  factors:
+  - faults
+- id: SZZG-0057
+  source_future_id: FUTURE-057
+  title: test failure から原因推定可能
+  category: context-aware / LLM-based SZZ 向け未対応シナリオ
+  path: advanced-scenarios/SZZG-0057/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0057/README.md
+  status: draft
+  factors:
+  - test_context
+  - context
+- id: SZZG-0058
+  source_future_id: FUTURE-058
+  title: issue description が必要
+  category: context-aware / LLM-based SZZ 向け未対応シナリオ
+  path: advanced-scenarios/SZZG-0058/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0058/README.md
+  status: draft
+  factors:
+  - issues
+- id: SZZG-0059
+  source_future_id: FUTURE-059
+  title: semantically equivalent rewrite
+  category: context-aware / LLM-based SZZ 向け未対応シナリオ
+  path: advanced-scenarios/SZZG-0059/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0059/README.md
+  status: draft
+  factors: []
+- id: SZZG-0060
+  source_future_id: FUTURE-060
+  title: root cause not in changed lines
+  category: context-aware / LLM-based SZZ 向け未対応シナリオ
+  path: advanced-scenarios/SZZG-0060/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0060/README.md
+  status: draft
+  factors:
+  - root_cause
+- id: SZZG-0061
+  source_future_id: FUTURE-061
+  title: binary file変更
+  category: robustness / 実装品質確認系未対応シナリオ
+  path: advanced-scenarios/SZZG-0061/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0061/README.md
+  status: draft
+  factors:
+  - write_binary_file
+- id: SZZG-0062
+  source_future_id: FUTURE-062
+  title: file deletion
+  category: robustness / 実装品質確認系未対応シナリオ
+  path: advanced-scenarios/SZZG-0062/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0062/README.md
+  status: draft
+  factors:
+  - delete_file
+- id: SZZG-0063
+  source_future_id: FUTURE-063
+  title: file creation only as fix
+  category: robustness / 実装品質確認系未対応シナリオ
+  path: advanced-scenarios/SZZG-0063/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0063/README.md
+  status: draft
+  factors: []
+- id: SZZG-0064
+  source_future_id: FUTURE-064
+  title: empty commit
+  category: robustness / 実装品質確認系未対応シナリオ
+  path: advanced-scenarios/SZZG-0064/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0064/README.md
+  status: draft
+  factors:
+  - allow_empty
+- id: SZZG-0065
+  source_future_id: FUTURE-065
+  title: chmod only
+  category: robustness / 実装品質確認系未対応シナリオ
+  path: advanced-scenarios/SZZG-0065/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0065/README.md
+  status: draft
+  factors:
+  - chmod
+- id: SZZG-0066
+  source_future_id: FUTURE-066
+  title: non-UTF-8 file
+  category: robustness / 実装品質確認系未対応シナリオ
+  path: advanced-scenarios/SZZG-0066/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0066/README.md
+  status: draft
+  factors:
+  - encoding
+- id: SZZG-0067
+  source_future_id: FUTURE-067
+  title: huge file
+  category: robustness / 実装品質確認系未対応シナリオ
+  path: advanced-scenarios/SZZG-0067/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0067/README.md
+  status: draft
+  factors:
+  - write_generated_text_file
+- id: SZZG-0068
+  source_future_id: FUTURE-068
+  title: huge history
+  category: robustness / 実装品質確認系未対応シナリオ
+  path: advanced-scenarios/SZZG-0068/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0068/README.md
+  status: draft
+  factors:
+  - commit_generators
+- id: SZZG-0069
+  source_future_id: FUTURE-071
+  title: malformed commit message
+  category: robustness / 実装品質確認系未対応シナリオ
+  path: advanced-scenarios/SZZG-0069/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0069/README.md
+  status: draft
+  factors:
+  - evaluation_variants
+  - message_variants
+- id: SZZG-0070
+  source_future_id: FUTURE-072
+  title: top-k evaluation が必要なケース
+  category: schema / evaluation policy が必要な横断シナリオ
+  path: advanced-scenarios/SZZG-0070/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0070/README.md
+  status: draft
+  factors:
+  - expected_szz
+- id: SZZG-0071
+  source_future_id: FUTURE-073
+  title: acceptable false positives を明示するケース
+  category: schema / evaluation policy が必要な横断シナリオ
+  path: advanced-scenarios/SZZG-0071/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0071/README.md
+  status: draft
+  factors:
+  - expected_szz
+- id: SZZG-0072
+  source_future_id: FUTURE-074
+  title: line-level 不可だが entity-level は可能なケース
+  category: schema / evaluation policy が必要な横断シナリオ
+  path: advanced-scenarios/SZZG-0072/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0072/README.md
+  status: draft
+  factors:
+  - expected_szz
+- id: SZZG-0073
+  source_future_id: FUTURE-075
+  title: benchmark variant によって評価対象を切り替えるケース
+  category: schema / evaluation policy が必要な横断シナリオ
+  path: advanced-scenarios/SZZG-0073/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0073/README.md
+  status: draft
+  factors:
+  - evaluation_variants
+  - clone_relationships

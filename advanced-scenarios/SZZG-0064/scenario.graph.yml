@@ -1,0 +1,105 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0064
+  source_future_id: FUTURE-064
+  title: empty commit
+  slug: empty-commit
+  description: 空 commit が履歴に含まれても SZZ 実装が壊れないか確認する。
+  category: robustness / 実装品質確認系未対応シナリオ
+  category_code: K
+  factors:
+  - allow_empty
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0064-empty-commit
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: 'c0: 正常
+
+    c1: empty commit
+
+    c2: bug 混入
+
+    c3: fix'
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'c0: 正常'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value >= min && value <= max;\n  }\n}\n"
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'c1: empty commit'
+  role: intermediate
+  operations: []
+  allow_empty: true
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'c2: bug 混入'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'c3: fix'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+bugs:
+- id: B001
+  title: Synthetic graph scenario bug
+  bug_introducing_commits:
+  - commit: c2
+    role: direct
+  bug_fixing_commits:
+  - commit: c3
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c2
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c3
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+scenario_design:
+  purpose: 空 commit が履歴に含まれても SZZ 実装が壊れないか確認する。
+  current_schema_limitation: 現状 generator は空 commit を禁止する設計。
+  required_extensions_from_source: "```yaml\ncommits:\n  - id: \"c1\"\n    allow_empty: true\n    operations: []\n```"
+  evaluation_points:
+  - empty commit を無視できるか
+  - commit graph 処理の robustness
+  - generator / verifier の扱い
+notes:
+- Draft scenario.graph.yml for future graph-aware SZZBench support.
+- This file is not expected to be executable by the current simple scenario.yml generator.

@@ -1,0 +1,122 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0013
+  source_future_id: FUTURE-013
+  title: One BIC fixed by multiple BFCs
+  slug: 1-bic-bfc
+  description: 1つのBICが下限・上限の2症状を混入し、c2とc3で段階的に修正される。
+  category: multiple BIC / multiple BFC に関する未対応シナリオ
+  category_code: D
+  factors:
+  - bug_fixing_commits
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0013-1-bic-bfc
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: c0 correct A/B cases / c1 one BIC breaks both / c2 fixes case A / c3 fixes case B
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: Initial correct lower and upper checks
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: "package example;\n\npublic class Range {\n  public boolean acceptsLower(int value, int min) {\n    return value >= min;\n  }\n\n\
+      \  public boolean acceptsUpper(int value, int max) {\n    return value <= max;\n  }\n}\n"
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: Introduce lower and upper boundary bug in one commit
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min;
+    new: return value > min;
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value <= max;
+    new: return value < max;
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: Fix lower boundary case only
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min;
+    new: return value >= min;
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: Fix upper boundary case
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value < max;
+    new: return value <= max;
+bugs:
+- id: B001
+  title: One BIC requires two partial BFCs
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  bug_fixing_commits:
+  - commit: c2
+    role: partial_fix
+  - commit: c3
+    role: partial_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/Range.java
+    statement: return value > min;
+    case: lower
+  - id: F002
+    commit: c1
+    file: src/main/java/example/Range.java
+    statement: return value < max;
+    case: upper
+  fixes:
+  - id: X001
+    commit: c2
+    file: src/main/java/example/Range.java
+    statement: return value >= min;
+    fix_type: partial_fix
+    case: lower
+  - id: X002
+    commit: c3
+    file: src/main/java/example/Range.java
+    statement: return value <= max;
+    fix_type: partial_fix
+    case: upper
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+scenario_design:
+  purpose: 1つのバグ混入 commit が複数の後続修正によって段階的に修正されるケースを評価する。
+  current_schema_limitation: '`bug_fixing_commit` が単数であるため、複数 BFC を持つ bug を表現できない。'
+  required_extensions_from_source: "```yaml\nbug_fixing_commits:\n  - commit: \"c2\"\n    role: \"partial_fix\"\n  - commit: \"c3\"\n    role:\
+    \ \"partial_fix\"\n```"
+  evaluation_points:
+  - 各 BFC から同じ BIC に到達するか
+  - BFC ごとに oracle を分けるべきか
+  - bug 単位と fix commit 単位の評価差
+notes:
+- Draft scenario.graph.yml for future graph-aware SZZBench support.
+- This revision replaces placeholder/no-op operations with concrete file states so that graph generation can proceed.

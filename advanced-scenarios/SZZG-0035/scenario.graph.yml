@@ -1,0 +1,124 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0035
+  source_future_id: FUTURE-035
+  title: cherry-pick BIC
+  slug: cherry-pick-bic
+  description: bug-introducing commit が別 branch に cherry-pick されるケースを評価する。
+  category: branch / merge / cherry-pick / backport 系未対応シナリオ
+  category_code: G
+  factors:
+  - branch
+  - cherry_pick_of
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0035-cherry-pick-bic
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: 'main:    c0 -- c1 bug
+
+    release: c0 -- r1 cherry-pick of c1 -- r2 fix'
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: Initial implementation
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value >= min && value <= max;\n  }\n}\n"
+- id: c1
+  branch: feature
+  parents:
+  - c0
+  message: Introduce bug on feature branch
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+- id: c2
+  branch: feature
+  parents:
+  - c1
+  message: Feature branch follow-up change
+  role: intermediate
+  operations:
+  - type: write_file
+    path: docs/feature-note.md
+    content: 'feature note
+
+      '
+- id: c3
+  branch: main
+  parents:
+  - c0
+  - c2
+  message: Merge feature branch
+  role: merge
+  operations: []
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: Fix bug
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+- id: r1
+  branch: release
+  parents:
+  - c0
+  message: Cherry-pick relevant commit
+  role: cherry_pick
+  cherry_pick_of: c1
+  operations:
+  - type: apply_patch_from
+    commit: c1
+bugs:
+- id: B001
+  title: Synthetic graph scenario bug
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  bug_fixing_commits:
+  - commit: c4
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c4
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+scenario_design:
+  purpose: bug-introducing commit が別 branch に cherry-pick されるケースを評価する。
+  current_schema_limitation: cherry-pick relationship を表現できない。
+  required_extensions_from_source: "```yaml\ncommits:\n  - id: \"r1\"\n    cherry_pick_of: \"c1\"\n```"
+  evaluation_points:
+  - release branch での direct BIC は r1 か original c1 か
+  - duplicate commit の扱い
+  - hash が違う同一 patch の評価
+notes:
+- Draft scenario.graph.yml for future graph-aware SZZBench support.
+- This file is not expected to be executable by the current simple scenario.yml generator.

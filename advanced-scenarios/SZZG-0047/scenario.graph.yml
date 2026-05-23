@@ -1,0 +1,127 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0047
+  source_future_id: FUTURE-047
+  title: Work item inference without issue ID
+  slug: issue-id-work-item
+  description: issue IDなしで近いmessage/contextからwork itemを推定するケース。
+  category: work item / commit series 系未対応シナリオ
+  category_code: H
+  factors:
+  - work_items
+  - issues
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0047-issue-id-work-item
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: 'no issue id: related messages around c1-c4 / c2 true BIC'
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: Initial service
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/RangeService.java
+    content: "package example;\n\npublic class RangeService {\n  public boolean isEnabled() { return true; }\n  public boolean contains(int value,\
+      \ int min, int max) { return value >= min && value <= max; }\n  public int normalize(int value) { return value; }\n}\n"
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'range validation task: add feature flag plumbing'
+  role: candidate
+  operations:
+  - type: replace
+    path: src/main/java/example/RangeService.java
+    old: public boolean isEnabled() { return true; }
+    new: public boolean isEnabled() { return System.getProperty("range.enabled", "true").equals("true"); }
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'range validation task: change validation and introduce boundary bug'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/RangeService.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'range validation task: unrelated normalization tweak'
+  role: candidate
+  operations:
+  - type: replace
+    path: src/main/java/example/RangeService.java
+    old: public int normalize(int value) { return value; }
+    new: public int normalize(int value) { return Math.max(0, value); }
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: Fix validation boundary bug
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/RangeService.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+bugs:
+- id: B001
+  title: Work item contains multiple candidate BICs
+  bug_introducing_commits:
+  - commit: c2
+    role: direct
+  bug_fixing_commits:
+  - commit: c4
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c2
+    file: src/main/java/example/RangeService.java
+    statement: return value > min && value < max;
+  fixes:
+  - id: X001
+    commit: c4
+    file: src/main/java/example/RangeService.java
+    statement: return value >= min && value <= max;
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c2
+work_items:
+- id: INFERRED-WI-001
+  title: Inferred by time and message similarity
+  inference_required: true
+  commits:
+  - commit: c1
+    relevance: candidate
+  - commit: c2
+    relevance: bug_introducing
+  - commit: c3
+    relevance: context
+  - commit: c4
+    relevance: bug_fixing
+scenario_design:
+  purpose: commit message や時間的近接性だけから work item を推定する手法を評価する。
+  current_schema_limitation: work item が明示的ではなく、推定対象であることを表現できない。
+  required_extensions_from_source: "```yaml\nwork_item_ground_truth:\n  inference_required: true\n  commits:\n    - \"c1\"\n    - \"c2\"\n   \
+    \ - \"c3\"\n```"
+  evaluation_points:
+  - work item 推定の精度
+  - message/time heuristic の評価
+  - SZZ 前処理の評価
+notes:
+- Draft scenario.graph.yml for future graph-aware SZZBench support.
+- This revision replaces placeholder/no-op operations with concrete file states so that graph generation can proceed.

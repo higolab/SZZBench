@@ -1,0 +1,98 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0056
+  source_future_id: FUTURE-056
+  title: config と code の相互作用
+  slug: config-code
+  description: 設定変更とコード変更の組合せによりバグが発生するケースを評価する。
+  category: context-aware / LLM-based SZZ 向け未対応シナリオ
+  category_code: J
+  factors:
+  - faults
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0056-config-code
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: 'c1: config で feature flag を有効化
+
+    c2: code がその設定に未対応
+
+    c3: code fix'
+commits:
+- id: c1
+  branch: main
+  parents: []
+  message: 'c1: config で feature flag を有効化'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value > min && value < max;\n  }\n}\n"
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'c2: code がその設定に未対応'
+  role: intermediate
+  operations:
+  - type: write_file
+    path: docs/intermediate-note.md
+    content: 'intermediate change
+
+      '
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'c3: code fix'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+bugs:
+- id: B001
+  title: Synthetic graph scenario bug
+  bug_introducing_commits:
+  - commit: c1
+    role: contributing
+  - commit: c2
+    role: direct
+  bug_fixing_commits:
+  - commit: c3
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c3
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+scenario_design:
+  purpose: 設定変更とコード変更の組合せによりバグが発生するケースを評価する。
+  current_schema_limitation: config file と code file の interaction を明示できない。
+  required_extensions_from_source: "```yaml\nfaults:\n  - kind: \"config\"\n    file: \"config.yml\"\n  - kind: \"code\"\n    file: \"Feature.java\"\n```"
+  evaluation_points:
+  - non-code BIC
+  - cross-file SZZ
+  - context-aware SZZ
+notes:
+- Draft scenario.graph.yml for future graph-aware SZZBench support.
+- This file is not expected to be executable by the current simple scenario.yml generator.

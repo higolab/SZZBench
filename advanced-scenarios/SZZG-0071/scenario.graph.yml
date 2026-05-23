@@ -1,0 +1,119 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0071
+  source_future_id: FUTURE-073
+  title: acceptable false positives を明示するケース
+  slug: acceptable-false-positives
+  description: direct BIC ではないが、関連 commit として許容したい候補を明示する。
+  category: schema / evaluation policy が必要な横断シナリオ
+  category_code: L
+  factors:
+  - expected_szz
+  - acceptable_related
+  - origin_bic
+  - direct_bic
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0071-acceptable-false-positives
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: 'c1: origin bug
+
+    c2: direct copy
+
+    c3: fix'
+commits:
+- id: c1
+  branch: main
+  parents: []
+  message: 'c1: origin bug'
+  role: origin_bug_introducing
+  operations:
+  - type: write_file
+    path: src/main/java/example/A.java
+    content: "package example;\n\npublic class A {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n}\n"
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'c2: direct copy'
+  role: bug_introducing
+  operations:
+  - type: copy_file
+    from: src/main/java/example/A.java
+    to: src/main/java/example/B.java
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'c3: fix copied bug'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/B.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+clone_relationships:
+- origin_file: src/main/java/example/A.java
+  copied_file: src/main/java/example/B.java
+  copy_commit: c2
+  origin_commit: c1
+  relationship: buggy_code_copy
+bugs:
+- id: B001
+  title: Copied range boundary bug
+  bug_introducing_commits:
+  - commit: c2
+    role: direct
+  - commit: c1
+    role: origin
+  bug_fixing_commits:
+  - commit: c3
+    role: complete_fix
+  faults:
+  - id: F001
+    role: direct
+    commit: c2
+    file: src/main/java/example/B.java
+    statement: return value > min && value < max;
+    change_type: copy_propagation
+  - id: F002
+    role: origin
+    commit: c1
+    file: src/main/java/example/A.java
+    statement: return value > min && value < max;
+    change_type: origin_bug
+  fixes:
+  - id: X001
+    commit: c3
+    file: src/main/java/example/B.java
+    statement: return value >= min && value <= max;
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: relaxed_with_credit
+    required:
+    - c2
+    acceptable_related:
+    - commit: c1
+      reason: origin_bic
+      credit: 0.5
+scenario_design:
+  purpose: direct BIC ではないが、関連 commit として許容したい候補を明示する。
+  current_schema_limitation: '`false_positives_allowed` はあるが、許容理由や評価上の重みを表せない。'
+  required_extensions_from_source: "expected_szz:\n  commit_level:\n    true_positives:\n      - \"c2\"\n    acceptable_related:\n\
+    \      - commit: \"c1\"\n        reason: \"origin_bic\"\n        credit: 0.5\n"
+  evaluation_points:
+  - strict evaluation と relaxed evaluation
+  - direct/origin の重み付け
+  - benchmark 結果の解釈
+notes:
+- Draft scenario.graph.yml for future graph-aware SZZBench support.
+- This file is not expected to be executable by the current simple scenario.yml generator.
+- This revision removes the undefined c0 reference and aligns the oracle with FUTURE-073.

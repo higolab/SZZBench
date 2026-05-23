@@ -424,6 +424,27 @@ input {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
+.oracle-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.oracle-item {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  padding: 8px;
+}
+
+.oracle-item span {
+  display: block;
+  margin: 4px 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
 .verify-actions {
   display: flex;
   gap: 8px;

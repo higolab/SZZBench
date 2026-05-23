@@ -1,0 +1,128 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0046
+  source_future_id: FUTURE-046
+  title: Multiple candidate BICs inside work item
+  slug: work-item-bic
+  description: 同一work item内にcandidate/distractorを持ち、c2が真のBICとなる。
+  category: work item / commit series 系未対応シナリオ
+  category_code: H
+  factors:
+  - work_items
+  - expected_szz
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0046-work-item-bic
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: 'WI-001: c1 candidate / c2 true BIC / c3 distractor / c4 fix'
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: Initial service
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/RangeService.java
+    content: "package example;\n\npublic class RangeService {\n  public boolean isEnabled() { return true; }\n  public boolean contains(int value,\
+      \ int min, int max) { return value >= min && value <= max; }\n  public int normalize(int value) { return value; }\n}\n"
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: WI-001 add feature flag plumbing
+  role: candidate
+  operations:
+  - type: replace
+    path: src/main/java/example/RangeService.java
+    old: public boolean isEnabled() { return true; }
+    new: public boolean isEnabled() { return System.getProperty("range.enabled", "true").equals("true"); }
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: WI-001 change validation and introduce boundary bug
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/RangeService.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: WI-001 unrelated normalization tweak
+  role: candidate
+  operations:
+  - type: replace
+    path: src/main/java/example/RangeService.java
+    old: public int normalize(int value) { return value; }
+    new: public int normalize(int value) { return Math.max(0, value); }
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: Fix validation boundary bug
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/RangeService.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+bugs:
+- id: B001
+  title: Work item contains multiple candidate BICs
+  bug_introducing_commits:
+  - commit: c2
+    role: direct
+  bug_fixing_commits:
+  - commit: c4
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c2
+    file: src/main/java/example/RangeService.java
+    statement: return value > min && value < max;
+  fixes:
+  - id: X001
+    commit: c4
+    file: src/main/java/example/RangeService.java
+    statement: return value >= min && value <= max;
+expected_szz:
+  commit_level:
+    evaluation_policy: top_k
+    relevant:
+    - c2
+    required:
+    - c2
+work_items:
+- id: WI-001
+  title: Implement range service changes
+  commits:
+  - commit: c1
+    relevance: candidate
+  - commit: c2
+    relevance: bug_introducing
+  - commit: c3
+    relevance: distractor
+  - commit: c4
+    relevance: bug_fixing
+scenario_design:
+  purpose: 同一 work item 内に複数の BIC 候補があり、ranking が必要なケースを評価する。
+  current_schema_limitation: work item と ranking expectation を表現できない。
+  required_extensions_from_source: "```yaml\nexpected_szz:\n  commit_level:\n    evaluation_policy: \"ranking\"\n    preferred_order:\n      -\
+    \ \"c2\"\n      - \"c3\"\n```"
+  evaluation_points:
+  - top-k accuracy
+  - ranking-based SZZ の評価
+  - exact match 以外の指標
+notes:
+- Draft scenario.graph.yml for future graph-aware SZZBench support.
+- This revision replaces placeholder/no-op operations with concrete file states so that graph generation can proceed.

@@ -1,0 +1,118 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0070
+  source_future_id: FUTURE-072
+  title: Top-k evaluation
+  slug: top-k-evaluation
+  description: c2とc3をdistractorにし、正解BIC c1がtop-kに含まれるかを評価する。
+  category: schema / evaluation policy が必要な横断シナリオ
+  category_code: L
+  factors:
+  - expected_szz
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0070-top-k-evaluation
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: c0 correct / c1 true BIC / c2 distractor / c3 distractor / c4 fix
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: Initial service
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/RangeService.java
+    content: "package example;\n\npublic class RangeService {\n  public boolean isEnabled() { return true; }\n  public boolean contains(int value,\
+      \ int min, int max) { return value >= min && value <= max; }\n  public int normalize(int value) { return value; }\n}\n"
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'True BIC: change boundary validation'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/RangeService.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'Distractor: change feature flag plumbing'
+  role: distractor
+  operations:
+  - type: replace
+    path: src/main/java/example/RangeService.java
+    old: public boolean isEnabled() { return true; }
+    new: public boolean isEnabled() { return Boolean.parseBoolean(System.getProperty("range.enabled", "true")); }
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'Distractor: add unrelated documentation'
+  role: distractor
+  operations:
+  - type: write_file
+    path: docs/ranking-distractor.md
+    content: 'This commit is a ranking distractor for top-k SZZ evaluation.
+
+      '
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: Fix true validation bug
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/RangeService.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+bugs:
+- id: B001
+  title: Top-k evaluation with distractor commits
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  bug_fixing_commits:
+  - commit: c4
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/RangeService.java
+    statement: return value > min && value < max;
+  fixes:
+  - id: X001
+    commit: c4
+    file: src/main/java/example/RangeService.java
+    statement: return value >= min && value <= max;
+expected_szz:
+  commit_level:
+    evaluation_policy: top_k
+    k_values:
+    - 1
+    - 3
+    - 5
+    relevant:
+    - c1
+scenario_design:
+  purpose: SZZ が ranking を返す場合、正解 BIC が top-k に含まれるかを評価する。
+  current_schema_limitation: '`expected_szz` に ranking / top-k の評価ポリシーがない。'
+  required_extensions_from_source: "```yaml\nexpected_szz:\n  commit_level:\n    evaluation_policy: \"top_k\"\n    k_values:\n      - 1\n    \
+    \  - 3\n      - 5\n    relevant:\n      - \"c1\"\n```"
+  evaluation_points:
+  - top-1 / top-3 / top-5 accuracy
+  - ranking quality
+  - distractor commit の影響
+notes:
+- Draft scenario.graph.yml for future graph-aware SZZBench support.
+- This revision replaces placeholder/no-op operations with concrete file states so that graph generation can proceed.

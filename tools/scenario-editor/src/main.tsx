@@ -435,6 +435,10 @@ function App() {
         </div>
       </header>
 
+      <div className="notice info">
+        This editor currently supports only the classic scenarios/SZZ-xxxx/scenario.yml format. It does not support advanced-scenarios or scenario.graph.yml yet.
+      </div>
+
       {saveMessage && <div className="notice success">{saveMessage}</div>}
       {saveError && <div className="notice error">{saveError}</div>}
 

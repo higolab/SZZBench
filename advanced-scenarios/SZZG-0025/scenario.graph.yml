@@ -1,0 +1,109 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0025
+  source_future_id: FUTURE-025
+  title: Bug propagates into generated code
+  slug: generated-code
+  description: buggy templateから生成されたgenerated file側でバグが修正される。
+  category: copy / clone / propagation 系未対応シナリオ
+  category_code: E
+  factors: []
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0025-generated-code
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: c0 buggy template / c1 generated code with bug / c2 fix generated code
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: Introduce buggy template
+  role: origin_bug_introducing
+  operations:
+  - type: write_file
+    path: templates/Range.tpl
+    content: '// Template for generated range code
+
+      return value > min && value < max;
+
+      '
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: Generate code from buggy template
+  role: bug_introducing
+  operations:
+  - type: write_file
+    path: src/generated/java/generated/GeneratedRange.java
+    content: "package generated;\n\npublic class GeneratedRange {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n}\n"
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: Fix generated code boundary bug
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/generated/java/generated/GeneratedRange.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+bugs:
+- id: B001
+  title: Bug propagated into generated code
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  - commit: c0
+    role: origin
+  bug_fixing_commits:
+  - commit: c2
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/generated/java/generated/GeneratedRange.java
+    statement: return value > min && value < max;
+    role: direct
+  - id: F002
+    commit: c0
+    file: templates/Range.tpl
+    statement: return value > min && value < max;
+    role: origin
+  fixes:
+  - id: X001
+    commit: c2
+    file: src/generated/java/generated/GeneratedRange.java
+    statement: return value >= min && value <= max;
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+    related_origins:
+    - c0
+files:
+- path: templates/Range.tpl
+  kind: template
+- path: src/generated/java/generated/GeneratedRange.java
+  kind: generated
+  generated_from: templates/Range.tpl
+scenario_design:
+  purpose: 生成コードにバグが伝播し、その生成コード側で修正されるケースを評価する。
+  current_schema_limitation: generated file と source template の関係を表現できない。
+  required_extensions_from_source: "```yaml\nfiles:\n  - path: \"generated/Parser.java\"\n    kind: \"generated\"\n    generated_from: \"templates/Parser.tpl\"\
+    \n```"
+  evaluation_points:
+  - generated file を評価対象に含めるか
+  - source template を origin BIC とするか
+  - generated file の commit を direct BIC とするか
+notes:
+- Draft scenario.graph.yml for future graph-aware SZZBench support.
+- This revision replaces placeholder/no-op operations with concrete file states so that graph generation can proceed.

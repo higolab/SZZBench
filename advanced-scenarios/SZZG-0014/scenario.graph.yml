@@ -1,0 +1,111 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0014
+  source_future_id: FUTURE-014
+  title: 複数BFCが同じbugを段階的に完全修正する
+  slug: bfc-bug
+  description: partial fix と complete fix の関係を明示する。
+  category: multiple BIC / multiple BFC に関する未対応シナリオ
+  category_code: D
+  factors:
+  - bug_fixing_commits
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0014-bfc-bug
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: 'c0: 正常実装
+
+    c1: bug 混入
+
+    c2: 一時的回避策
+
+    c3: 根本修正'
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'c0: 正常実装'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value >= min && value <= max;\n  }\n}\n"
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'c1: bug 混入'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'c2: 一時的回避策'
+  role: intermediate
+  operations:
+  - type: write_file
+    path: docs/intermediate-note.md
+    content: 'intermediate change
+
+      '
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'c3: 根本修正'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+bugs:
+- id: B001
+  title: Synthetic graph scenario bug
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  bug_fixing_commits:
+  - commit: c2
+    role: partial_fix
+  - commit: c3
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c3
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+scenario_design:
+  purpose: partial fix と complete fix の関係を明示する。
+  current_schema_limitation: '`temporary_fix` / `complete_fix` の区別ができない。'
+  required_extensions_from_source: "```yaml\nbug_fixing_commits:\n  - commit: \"c2\"\n    role: \"workaround\"\n  - commit: \"c3\"\n    role: \"complete_fix\"\n```"
+  evaluation_points:
+  - workaround を BFC として扱うか
+  - root-cause fix のみを BFC とするか
+  - SZZ 入力の選び方
+notes:
+- Draft scenario.graph.yml for future graph-aware SZZBench support.
+- This file is not expected to be executable by the current simple scenario.yml generator.

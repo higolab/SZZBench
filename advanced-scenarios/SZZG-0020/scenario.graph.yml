@@ -1,0 +1,114 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0020
+  source_future_id: FUTURE-020
+  title: buggy code copied, original later fixed
+  slug: buggy-code-copied-original-later-fixed
+  description: コピー元は修正されるが、コピー先のバグが残るケースを評価する。
+  category: copy / clone / propagation 系未対応シナリオ
+  category_code: E
+  factors:
+  - copy_file
+  - faults
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0020-buggy-code-copied-original-later-fixed
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: 'c0: A.java に bug
+
+    c1: A.java を B.java にコピー
+
+    c2: A.java の bug を修正
+
+    c3: B.java の bug を修正'
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'c0: A.java に bug'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/A.java
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value > min && value < max;\n  }\n}\n"
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'c1: A.java を B.java にコピー'
+  role: intermediate
+  operations:
+  - type: copy_file
+    from: src/main/java/example/A.java
+    to: src/main/java/example/B.java
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'c2: A.java の bug を修正'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/A.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'c3: B.java の bug を修正'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/B.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+bugs:
+- id: B001
+  title: Synthetic graph scenario bug
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  - commit: c0
+    role: origin
+  bug_fixing_commits:
+  - commit: c3
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/B.java
+    statement: return value > min && value < max;
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c3
+    file: src/main/java/example/B.java
+    statement: return value >= min && value <= max;
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+scenario_design:
+  purpose: コピー元は修正されるが、コピー先のバグが残るケースを評価する。
+  current_schema_limitation: copy の履歴、origin/direct BIC、複数 location が必要。
+  required_extensions_from_source: '- `copy_file`
+
+    - direct/origin BIC
+
+    - `faults: []`'
+  evaluation_points:
+  - B.java の direct BIC は c1 か
+  - origin BIC c0 をどのように扱うか
+  - A.java の fix が B.java の oracle に影響しないか
+notes:
+- Draft scenario.graph.yml for future graph-aware SZZBench support.
+- This file is not expected to be executable by the current simple scenario.yml generator.

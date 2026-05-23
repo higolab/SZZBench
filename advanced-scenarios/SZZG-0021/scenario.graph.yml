@@ -1,0 +1,115 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0021
+  source_future_id: FUTURE-021
+  title: Original and clone fixed together
+  slug: original-clone
+  description: A.javaとB.javaの同型バグをc2で同時に修正する。
+  category: copy / clone / propagation 系未対応シナリオ
+  category_code: E
+  factors:
+  - faults
+  - clone_relationships
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0021-original-clone
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: c0 origin bug / c1 copy / c2 fix original and clone
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: Introduce buggy original A
+  role: origin_bug_introducing
+  operations:
+  - type: write_file
+    path: src/main/java/example/A.java
+    content: "package example;\n\npublic class A {\n  public boolean contains(int value, int min, int max) {\n    return value > min && value\
+      \ < max;\n  }\n}\n"
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: Copy buggy A to B
+  role: bug_introducing
+  operations:
+  - type: copy_file
+    from: src/main/java/example/A.java
+    to: src/main/java/example/B.java
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: Fix original and clone together
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/A.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+  - type: replace
+    path: src/main/java/example/B.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+bugs:
+- id: B001
+  title: Original and clone fixed together
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  - commit: c0
+    role: origin
+  bug_fixing_commits:
+  - commit: c2
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c0
+    file: src/main/java/example/A.java
+    statement: return value > min && value < max;
+    role: origin
+  - id: F002
+    commit: c1
+    file: src/main/java/example/B.java
+    statement: return value > min && value < max;
+    role: direct
+  fixes:
+  - id: X001
+    commit: c2
+    file: src/main/java/example/A.java
+    statement: return value >= min && value <= max;
+  - id: X002
+    commit: c2
+    file: src/main/java/example/B.java
+    statement: return value >= min && value <= max;
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+    acceptable_related:
+    - commit: c0
+      reason: origin_bic
+      credit: 0.5
+clone_relationships:
+- origin_file: src/main/java/example/A.java
+  copied_file: src/main/java/example/B.java
+  origin_commit: c0
+  copy_commit: c1
+scenario_design:
+  purpose: コピー元とコピー先の同型バグを同じ BFC で修正する場合を評価する。
+  current_schema_limitation: "複数 fault location / fix location が必要。  \ndirect/origin の評価方針も必要。"
+  required_extensions_from_source: "```yaml\nfaults:\n  - id: \"F001\"\n    file: \"A.java\"\n  - id: \"F002\"\n    file: \"B.java\"\n```"
+  evaluation_points:
+  - SZZ が両方の BIC を返すか
+  - origin と direct の扱い
+  - clone-aware analysis の必要性
+notes:
+- Draft scenario.graph.yml for future graph-aware SZZBench support.
+- This revision replaces placeholder/no-op operations with concrete file states so that graph generation can proceed.

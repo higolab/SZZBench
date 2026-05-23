@@ -1,0 +1,121 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0041
+  source_future_id: FUTURE-041
+  title: mainで修正済み、releaseで未修正
+  slug: main-release
+  description: main と release の修正状態が異なるケースを評価する。
+  category: branch / merge / cherry-pick / backport 系未対応シナリオ
+  category_code: G
+  factors:
+  - branch
+  - bug_instances
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0041-main-release
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: 'main:    c1 bug -- c2 fix
+
+    release: r1 bug -- 未修正'
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: Initial implementation
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value >= min && value <= max;\n  }\n}\n"
+- id: c1
+  branch: feature
+  parents:
+  - c0
+  message: Introduce bug on feature branch
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+- id: c2
+  branch: feature
+  parents:
+  - c1
+  message: Feature branch follow-up change
+  role: intermediate
+  operations:
+  - type: write_file
+    path: docs/feature-note.md
+    content: 'feature note
+
+      '
+- id: c3
+  branch: main
+  parents:
+  - c0
+  - c2
+  message: Merge feature branch
+  role: merge
+  operations: []
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: Fix bug
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+bugs:
+- id: B001
+  title: Synthetic graph scenario bug
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  bug_fixing_commits:
+  - commit: c4
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c4
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+scenario_design:
+  purpose: main と release の修正状態が異なるケースを評価する。
+  current_schema_limitation: branch ごとの bug status を表現できない。
+  required_extensions_from_source: "```yaml\nbug_instances:\n  - id: \"B001-main\"\n    branch: \"main\"\n    status: \"fixed\"\n  - id: \"B001-release\"\n    branch: \"release\"\n    status: \"open\"\n```"
+  evaluation_points:
+  - branch ごとの BFC availability
+  - open bug を SZZ 評価対象にするか
+  - branch-aware oracle
+notes:
+- Draft scenario.graph.yml for future graph-aware SZZBench support.
+- This file is not expected to be executable by the current simple scenario.yml generator.
+bug_instances:
+- id: B001-main
+  branch: main
+  status: fixed
+- id: B001-release
+  branch: release
+  status: open

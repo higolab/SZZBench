@@ -11,6 +11,8 @@ type RepositorySummary = {
   repoDir: string;
   metadataDir: string;
   hasScenario: boolean;
+  scenarioKind: "classic" | "graph" | "unknown";
+  scenarioFile: string | null;
   hasCommitMap: boolean;
   hasVerifyResult: boolean;
 };
@@ -37,7 +39,10 @@ type RepositoryDetail = {
   repoDir: string;
   metadataDir: string;
   scenario: any;
-  commitMap: Record<string, { hash: string; message?: string; role?: string; date?: string }>;
+  scenarioKind: "classic" | "graph" | "unknown";
+  scenarioFile: string | null;
+  commitMap: Record<string, { hash: string; message?: string; role?: string; date?: string; branch?: string; parents?: string[] }>;
+  graphMap: any;
   commits: CommitInfo[];
   oracleBadges: {
     byLogical: Record<string, Badge[]>;
@@ -66,6 +71,53 @@ function short(value: string | null | undefined, len = 12): string {
 function roleOfCommit(detail: RepositoryDetail | null, commit: CommitInfo): string {
   if (!detail || !commit.logicalId) return "";
   return detail.commitMap?.[commit.logicalId]?.role || "";
+}
+
+function branchOfCommit(detail: RepositoryDetail | null, commit: CommitInfo): string {
+  if (!detail || !commit.logicalId) return "";
+  return detail.commitMap?.[commit.logicalId]?.branch || "";
+}
+
+function commitIdOf(entry: any): string {
+  if (typeof entry === "string") return entry;
+  if (entry && typeof entry.commit === "string") return entry.commit;
+  return "";
+}
+
+function roleOfRef(entry: any): string {
+  if (entry && typeof entry === "object" && typeof entry.role === "string") return entry.role;
+  return "";
+}
+
+function bicEntriesOf(bug: any): any[] {
+  return Array.isArray(bug?.bug_introducing_commits) ? bug.bug_introducing_commits : [];
+}
+
+function bfcEntriesOf(bug: any): any[] {
+  if (Array.isArray(bug?.bug_fixing_commits)) return bug.bug_fixing_commits;
+  return bug?.bug_fixing_commit ? [bug.bug_fixing_commit] : [];
+}
+
+function faultEntriesOf(bug: any): any[] {
+  if (Array.isArray(bug?.faults)) return bug.faults.filter((item: any) => item && typeof item === "object");
+  return bug?.fault && typeof bug.fault === "object" ? [bug.fault] : [];
+}
+
+function fixEntriesOf(bug: any): any[] {
+  if (Array.isArray(bug?.fixes)) return bug.fixes.filter((item: any) => item && typeof item === "object");
+  return bug?.fix && typeof bug.fix === "object" ? [bug.fix] : [];
+}
+
+function statementOf(entry: any): string {
+  return String(entry?.statement || entry?.missing_statement || entry?.added_statement || "");
+}
+
+function formatCommitRef(entry: any, commitMap: RepositoryDetail["commitMap"]): string {
+  const id = commitIdOf(entry);
+  if (!id) return "";
+  const hash = commitMap?.[id]?.hash ? ` (${short(commitMap[id].hash)})` : "";
+  const role = roleOfRef(entry);
+  return `${id}${role ? `:${role}` : ""}${hash}`;
 }
 
 function downloadText(name: string, text: string) {
@@ -216,7 +268,7 @@ function App() {
             <select value={selectedTarget} onChange={(e) => setSelectedTarget(e.target.value)}>
               {repositories.map(repo => (
                 <option key={repo.target} value={repo.target}>
-                  {repo.id} {repo.title ? `- ${repo.title}` : ""} ({repo.target})
+                  {repo.id} {repo.title ? `- ${repo.title}` : ""} [{repo.scenarioKind}] ({repo.target})
                 </option>
               ))}
             </select>
@@ -233,6 +285,7 @@ function App() {
                 <span>Title</span><div>{scenarioMeta.title || ""}</div>
                 <span>Category</span><div>{scenarioMeta.category || ""}</div>
                 <span>Difficulty</span><div>{scenarioMeta.difficulty || ""}</div>
+                <span>Schema</span><div>{detail.scenarioKind}{detail.scenarioFile ? ` / ${detail.scenarioFile}` : ""}</div>
                 <span>Repo</span><code>{detail.repoDir}</code>
               </div>
             ) : <p className="muted">No repository loaded.</p>}
@@ -252,7 +305,7 @@ function App() {
                   >
                     <div className="commit-line">
                       <strong>{commit.logicalId || short(commit.hash)}</strong>
-                      <span>{roleOfCommit(detail, commit)}</span>
+                      <span>{[roleOfCommit(detail, commit), branchOfCommit(detail, commit)].filter(Boolean).join(" / ")}</span>
                     </div>
                     <div className="commit-subject">{commit.subject}</div>
                     <div className="commit-hash">{commit.shortHash}</div>
@@ -375,14 +428,17 @@ function CodeViewer({
     const logicalId = selectedCommit.logicalId;
     const result: string[] = [];
     for (const bug of bugs) {
-      const fault = bug.fault || {};
-      const fix = bug.fix || {};
-      if (fault.commit === logicalId && fault.file === selectedFile && fault.statement) {
-        result.push(String(fault.statement));
+      for (const fault of faultEntriesOf(bug)) {
+        const text = statementOf(fault);
+        if (fault.commit === logicalId && fault.file === selectedFile && text) {
+          result.push(text);
+        }
       }
-      const fixText = fix.statement || fix.added_statement;
-      if (fix.commit === logicalId && fix.file === selectedFile && fixText) {
-        result.push(String(fixText));
+      for (const fix of fixEntriesOf(bug)) {
+        const text = statementOf(fix);
+        if (fix.commit === logicalId && fix.file === selectedFile && text) {
+          result.push(text);
+        }
       }
     }
     return result.map(normalizeText).filter(Boolean);
@@ -459,19 +515,36 @@ function OracleViewer({
     <div className="oracle-list">
       {bugs.length === 0 && <p className="muted">No bugs found.</p>}
       {bugs.map((bug) => {
-        const fault = bug.fault || {};
-        const fix = bug.fix || {};
-        const fixText = fix.statement || fix.added_statement || "";
+        const bicEntries = bicEntriesOf(bug);
+        const bfcEntries = bfcEntriesOf(bug);
+        const faults = faultEntriesOf(bug);
+        const fixes = fixEntriesOf(bug);
         return (
           <div key={bug.id} className="oracle-card">
             <h3>{bug.id}: {bug.title}</h3>
             <div className="meta-grid">
-              <span>BIC</span><div>{(bug.bug_introducing_commits || []).map((id: string) => `${id} ${commitMap[id]?.hash ? `(${short(commitMap[id].hash)})` : ""}`).join(", ")}</div>
-              <span>BFC</span><div>{bug.bug_fixing_commit} {commitMap[bug.bug_fixing_commit]?.hash ? `(${short(commitMap[bug.bug_fixing_commit].hash)})` : ""}</div>
-              <span>Fault file</span><code>{fault.file || ""}</code>
-              <span>Fault</span><pre>{fault.statement || fault.missing_statement || ""}</pre>
-              <span>Fix file</span><code>{fix.file || ""}</code>
-              <span>Fix</span><pre>{fixText}</pre>
+              <span>BIC</span><div>{bicEntries.map((entry) => formatCommitRef(entry, commitMap)).filter(Boolean).join(", ")}</div>
+              <span>BFC</span><div>{bfcEntries.map((entry) => formatCommitRef(entry, commitMap)).filter(Boolean).join(", ")}</div>
+              <span>Faults</span>
+              <div className="oracle-items">
+                {faults.map((fault, i) => (
+                  <div key={i} className="oracle-item">
+                    <code>{fault.file || ""}</code>
+                    <span>{fault.commit || ""}{fault.change_type ? ` / ${fault.change_type}` : ""}</span>
+                    <pre>{statementOf(fault)}</pre>
+                  </div>
+                ))}
+              </div>
+              <span>Fixes</span>
+              <div className="oracle-items">
+                {fixes.map((fix, i) => (
+                  <div key={i} className="oracle-item">
+                    <code>{fix.file || ""}</code>
+                    <span>{fix.commit || ""}{fix.fix_type ? ` / ${fix.fix_type}` : ""}</span>
+                    <pre>{statementOf(fix)}</pre>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         );
@@ -483,16 +556,24 @@ function OracleViewer({
 function VerifyViewer({ detail }: { detail: RepositoryDetail }) {
   const verifyJson = JSON.stringify(detail.verifyResult, null, 2);
   const validationJson = JSON.stringify(detail.validationResult, null, 2);
+  const graphMapJson = JSON.stringify(detail.graphMap, null, 2);
   return (
     <div className="verify-panel">
       <div className="verify-actions">
         <button onClick={() => downloadText("verify-result.json", verifyJson)}>Download verify-result.json</button>
+        {detail.graphMap && <button onClick={() => downloadText("graph-map.json", graphMapJson)}>Download graph-map.json</button>}
         <button onClick={() => downloadText("generation.log", detail.generationLog || "")}>Download generation.log</button>
       </div>
       <h3>verify-result.json</h3>
       <pre className="json-box">{verifyJson || "No verify-result.json found."}</pre>
       <h3>validation-result.json</h3>
       <pre className="json-box">{validationJson || "No validation-result.json found."}</pre>
+      {detail.graphMap && (
+        <>
+          <h3>graph-map.json</h3>
+          <pre className="json-box">{graphMapJson}</pre>
+        </>
+      )}
       <h3>generation.log</h3>
       <pre className="json-box">{detail.generationLog || "No generation.log found."}</pre>
     </div>

@@ -1,0 +1,111 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0004
+  source_future_id: FUTURE-004
+  title: Attempted fix followed by follow-up fix
+  slug: follow-up-fix-bfc
+  description: c2の修正は不完全で、c3のfollow-up fixで初めて完全に直る。
+  category: BFC の形状に関する未対応シナリオ
+  category_code: A
+  factors:
+  - bug_fixing_commits
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0004-follow-up-fix-bfc
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: c0 correct / c1 bug / c2 attempted fix / c3 follow-up fix
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: Initial correct inclusive range implementation
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value >= min && value\
+      \ <= max;\n  }\n}\n"
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: Introduce boundary bug on both sides
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'Attempted fix: restore lower boundary only'
+  role: attempted_fix
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value < max;
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'Follow-up fix: restore upper boundary as well'
+  role: follow_up_fix
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value < max;
+    new: return value >= min && value <= max;
+bugs:
+- id: B001
+  title: Attempted boundary fix needs follow-up
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  bug_fixing_commits:
+  - commit: c2
+    role: attempted_fix
+  - commit: c3
+    role: follow_up_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c2
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value < max;
+    fix_type: attempted_fix
+  - id: X002
+    commit: c3
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+    fix_type: follow_up_fix
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+scenario_design:
+  purpose: 最初の修正が不完全で、その後 follow-up fix によって実質的な修正が完了する場合を評価する。
+  current_schema_limitation: "partial fix と同様、複数 BFC の意味関係を表現できない。  \n`c2` と `c3` のどちらを BFC として評価するかを明示できない。"
+  required_extensions_from_source: "```yaml\nbug_fixing_commits:\n  - commit: \"c2\"\n    role: \"attempted_fix\"\n  - commit: \"c3\"\n    role:\
+    \ \"follow_up_fix\"\n```"
+  evaluation_points:
+  - 最初の修正 commit のみを入力した場合の SZZ 結果
+  - follow-up fix まで含めた場合の SZZ 結果
+  - fix series を単位として扱う必要性
+notes:
+- Draft scenario.graph.yml for future graph-aware SZZBench support.
+- This revision replaces placeholder/no-op operations with concrete file states so that graph generation can proceed.

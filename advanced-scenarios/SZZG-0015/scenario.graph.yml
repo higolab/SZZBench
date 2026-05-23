@@ -1,0 +1,121 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0015
+  source_future_id: FUTURE-015
+  title: One BFC fixes multiple BICs
+  slug: 1-bfc-bic-bic
+  description: c1とc2の独立したBICをc3の1つのBFCが同時に直す。
+  category: multiple BIC / multiple BFC に関する未対応シナリオ
+  category_code: D
+  factors:
+  - expected_szz
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0015-1-bfc-bic-bic
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: c0 correct / c1 lower bug / c2 upper bug / c3 fixes both
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: Initial correct independent checks
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: "package example;\n\npublic class Range {\n  public boolean containsLower(int value, int min) {\n    return value >= min;\n  }\n\n\
+      \  public boolean containsUpper(int value, int max) {\n    return value <= max;\n  }\n}\n"
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: Introduce lower-bound BIC
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min;
+    new: return value > min;
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: Introduce upper-bound BIC
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value <= max;
+    new: return value < max;
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: Fix both lower and upper bugs together
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min;
+    new: return value >= min;
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value < max;
+    new: return value <= max;
+bugs:
+- id: B001
+  title: One BFC fixes two independent BICs
+  bug_introducing_commits:
+  - commit: c1
+    role: contributing
+  - commit: c2
+    role: direct
+  bug_fixing_commits:
+  - commit: c3
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/Range.java
+    statement: return value > min;
+    case: lower
+  - id: F002
+    commit: c2
+    file: src/main/java/example/Range.java
+    statement: return value < max;
+    case: upper
+  fixes:
+  - id: X001
+    commit: c3
+    file: src/main/java/example/Range.java
+    statement: return value >= min;
+    case: lower
+  - id: X002
+    commit: c3
+    file: src/main/java/example/Range.java
+    statement: return value <= max;
+    case: upper
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+    - c2
+scenario_design:
+  purpose: 複数 BIC の集合を exact set として評価する。
+  current_schema_limitation: 複数 BIC の記述はできるが、評価ポリシーとして「全部必要」「一部でもよい」を表現できない。
+  required_extensions_from_source: "```yaml\nexpected_szz:\n  commit_level:\n    evaluation_policy: \"exact_set\"\n    required:\n      - \"c1\"\
+    \n      - \"c2\"\n```"
+  evaluation_points:
+  - recall を重視するか
+  - partial credit を認めるか
+  - top-k での評価方法
+notes:
+- Draft scenario.graph.yml for future graph-aware SZZBench support.
+- This revision replaces placeholder/no-op operations with concrete file states so that graph generation can proceed.

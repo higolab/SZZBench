@@ -1,0 +1,98 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0061
+  source_future_id: FUTURE-061
+  title: binary file変更
+  slug: binary-file
+  description: バイナリファイル変更を含むリポジトリで SZZ 実装が落ちないか確認する。
+  category: robustness / 実装品質確認系未対応シナリオ
+  category_code: K
+  factors:
+  - write_binary_file
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0061-binary-file
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: 'c0: code + binary asset
+
+    c1: code bug
+
+    c2: code fix + binary asset update'
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'c0: code + binary asset'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value >= min && value <= max;\n  }\n}\n"
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'c1: code bug'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'c2: code fix + binary asset update'
+  role: bug_fixing
+  operations:
+  - type: write_binary_file
+    path: assets/data.bin
+    content_base64: AAECAwQF
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+bugs:
+- id: B001
+  title: Synthetic graph scenario bug
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  bug_fixing_commits:
+  - commit: c2
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c2
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+scenario_design:
+  purpose: バイナリファイル変更を含むリポジトリで SZZ 実装が落ちないか確認する。
+  current_schema_limitation: '`write_file` はテキスト前提であり、binary file を表現できない。'
+  required_extensions_from_source: "```yaml\n- type: \"write_binary_file\"\n  path: \"assets/data.bin\"\n  content_base64: \"...\"\n```"
+  evaluation_points:
+  - binary diff を無視できるか
+  - 実装がクラッシュしないか
+  - non-text file handling
+notes:
+- Draft scenario.graph.yml for future graph-aware SZZBench support.
+- This file is not expected to be executable by the current simple scenario.yml generator.

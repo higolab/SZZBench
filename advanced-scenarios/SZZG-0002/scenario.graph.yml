@@ -1,0 +1,98 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0002
+  source_future_id: FUTURE-002
+  title: BFC が file move + fix を同時に行う
+  slug: bfc-file-move-fix
+  description: ディレクトリ移動と修正が同時に起こる場合の SZZ の頑健性を評価する。
+  category: BFC の形状に関する未対応シナリオ
+  category_code: A
+  factors:
+  - move_file
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0002-bfc-file-move-fix
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: 'c0: src/main/java/example/Range.java を導入
+
+    c1: Range.java に bug を混入
+
+    c2: Range.java を src/main/java/domain/Range.java に移動しつつ修正'
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'c0: src/main/java/example/Range.java を導入'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value >= min && value <= max;\n  }\n}\n"
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'c1: Range.java に bug を混入'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'c2: Range.java を src/main/java/domain/Range.java に移動しつつ修正'
+  role: bug_fixing
+  operations:
+  - type: move_file
+    from: src/main/java/example/Range.java
+    to: src/main/java/domain/Range.java
+  - type: replace
+    path: src/main/java/domain/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+bugs:
+- id: B001
+  title: Synthetic graph scenario bug
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  bug_fixing_commits:
+  - commit: c2
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c2
+    file: src/main/java/domain/Range.java
+    statement: return value >= min && value <= max;
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+scenario_design:
+  purpose: ディレクトリ移動と修正が同時に起こる場合の SZZ の頑健性を評価する。
+  current_schema_limitation: "file move は rename と同様に、path の変化を Git 履歴として表現する必要がある。  \n単なる `write_file` / `replace` では move の意味が失われる。"
+  required_extensions_from_source: "```yaml\n- type: \"move_file\"\n  from: \"src/main/java/example/Range.java\"\n  to: \"src/main/java/domain/Range.java\"\n```"
+  evaluation_points:
+  - path 変更をまたいだ blame ができるか
+  - BFC の移動操作を BIC と誤認しないか
+  - file-level tracking を利用する SZZ の優位性が出るか
+notes:
+- Draft scenario.graph.yml for future graph-aware SZZBench support.
+- This file is not expected to be executable by the current simple scenario.yml generator.

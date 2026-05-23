@@ -1,0 +1,108 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0010
+  source_future_id: FUTURE-010
+  title: file move between BIC and BFC
+  slug: file-move-between-bic-and-bfc
+  description: ファイルが別ディレクトリへ移動された後に修正されるケースを評価する。
+  category: 中間履歴に関する未対応シナリオ
+  category_code: C
+  factors:
+  - rename_file
+  - move_file
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0010-file-move-between-bic-and-bfc
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: 'c0: example/Range.java 正常実装
+
+    c1: example/Range.java に bug 混入
+
+    c2: domain/Range.java へ移動
+
+    c3: domain/Range.java で修正'
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'c0: example/Range.java 正常実装'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value >= min && value <= max;\n  }\n}\n"
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'c1: example/Range.java に bug 混入'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'c2: domain/Range.java へ移動'
+  role: intermediate
+  operations:
+  - type: move_file
+    from: src/main/java/example/Range.java
+    to: src/main/java/domain/Range.java
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'c3: domain/Range.java で修正'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/domain/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+bugs:
+- id: B001
+  title: Synthetic graph scenario bug
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  bug_fixing_commits:
+  - commit: c3
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c3
+    file: src/main/java/domain/Range.java
+    statement: return value >= min && value <= max;
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+scenario_design:
+  purpose: ファイルが別ディレクトリへ移動された後に修正されるケースを評価する。
+  current_schema_limitation: path 移動を semantic operation として表せない。
+  required_extensions_from_source: '`move_file` または `rename_file` による path 変更。'
+  evaluation_points:
+  - directory move を rename と同様に追跡できるか
+  - path-sensitive SZZ の挙動
+  - file identity をどう扱うか
+notes:
+- Draft scenario.graph.yml for future graph-aware SZZBench support.
+- This file is not expected to be executable by the current simple scenario.yml generator.

@@ -1,0 +1,126 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0024
+  source_future_id: FUTURE-024
+  title: Same bug introduced independently
+  slug: same-bug-introduced-independently
+  description: コピーではなく、A/Bの2箇所で同型bugが独立に導入される。
+  category: copy / clone / propagation 系未対応シナリオ
+  category_code: E
+  factors: []
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0024-same-bug-introduced-independently
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: c0 correct A/B / c1 bug A / c2 bug B / c3 fix both
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: Initial independent range methods
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/IndependentRanges.java
+    content: "package example;\n\npublic class IndependentRanges {\n  public boolean containsA(int value, int min, int max) {\n    return value\
+      \ >= min && value <= max;\n  }\n\n  public boolean containsB(int value, int min, int max) {\n    return value >= min && value <= max;\n\
+      \  }\n}\n"
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: Independently introduce bug in containsA
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/IndependentRanges.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+    occurrence: 1
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: Independently introduce same-pattern bug in containsB
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/IndependentRanges.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+    occurrence: 1
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: Fix both independent same-pattern bugs
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/IndependentRanges.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+    occurrence: 1
+  - type: replace
+    path: src/main/java/example/IndependentRanges.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+    occurrence: 1
+bugs:
+- id: B001
+  title: Independent same-pattern boundary bugs
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  - commit: c2
+    role: direct
+  bug_fixing_commits:
+  - commit: c3
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/IndependentRanges.java
+    statement: return value > min && value < max;
+    method: containsA
+  - id: F002
+    commit: c2
+    file: src/main/java/example/IndependentRanges.java
+    statement: return value > min && value < max;
+    method: containsB
+  fixes:
+  - id: X001
+    commit: c3
+    file: src/main/java/example/IndependentRanges.java
+    statement: return value >= min && value <= max;
+    method: containsA
+  - id: X002
+    commit: c3
+    file: src/main/java/example/IndependentRanges.java
+    statement: return value >= min && value <= max;
+    method: containsB
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+    - c2
+bug_introduction_relationship:
+  type: independent_same_pattern
+scenario_design:
+  purpose: コピーではないが、同型のバグが別々の commit で独立に混入するケースを評価する。
+  current_schema_limitation: "複数 fault / fix は表せるが、「copyではない独立導入」を明示できない。  \ncopy propagation と区別するメタデータが必要。"
+  required_extensions_from_source: "```yaml\nbug_introduction_relationship:\n  type: \"independent_same_pattern\"\n```"
+  evaluation_points:
+  - clone-origin ではなく複数 direct BIC として扱うべきか
+  - pattern-aware SZZ との関係
+  - false origin inference の検出
+notes:
+- Draft scenario.graph.yml for future graph-aware SZZBench support.
+- This revision replaces placeholder/no-op operations with concrete file states so that graph generation can proceed.

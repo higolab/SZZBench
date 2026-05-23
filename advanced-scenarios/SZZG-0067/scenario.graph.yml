@@ -1,0 +1,99 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0067
+  source_future_id: FUTURE-067
+  title: huge file
+  slug: huge-file
+  description: 巨大ファイルを含む場合の SZZ 実装の性能・メモリ使用量を評価する。
+  category: robustness / 実装品質確認系未対応シナリオ
+  category_code: K
+  factors:
+  - write_generated_text_file
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0067-huge-file
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: 'c0: 1万行以上のファイル
+
+    c1: 1行 bug 混入
+
+    c2: fix'
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'c0: 1万行以上のファイル'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value >= min && value <= max;\n  }\n}\n"
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'c1: 1行 bug 混入'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'c2: fix'
+  role: bug_fixing
+  operations:
+  - type: write_generated_text_file
+    path: src/main/java/example/LargeRange.java
+    lines: 10000
+    template: public int value_${line} = ${line};
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+bugs:
+- id: B001
+  title: Synthetic graph scenario bug
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  bug_fixing_commits:
+  - commit: c2
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c2
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+scenario_design:
+  purpose: 巨大ファイルを含む場合の SZZ 実装の性能・メモリ使用量を評価する。
+  current_schema_limitation: 表現自体は可能だが、巨大 content を `scenario.yml` に直接埋め込むのは非現実的。
+  required_extensions_from_source: "```yaml\n- type: \"write_generated_text_file\"\n  path: \"src/main/java/example/Large.java\"\n  lines: 10000\n  template: \"...\"\n```"
+  evaluation_points:
+  - scalability
+  - large file diff
+  - blame performance
+notes:
+- Draft scenario.graph.yml for future graph-aware SZZBench support.
+- This file is not expected to be executable by the current simple scenario.yml generator.

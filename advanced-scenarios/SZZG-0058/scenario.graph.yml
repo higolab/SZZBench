@@ -1,0 +1,104 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0058
+  source_future_id: FUTURE-058
+  title: issue description が必要
+  slug: issue-description
+  description: issue description がなければ BIC 候補を絞れないケースを評価する。
+  category: context-aware / LLM-based SZZ 向け未対応シナリオ
+  category_code: J
+  factors:
+  - issues
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0058-issue-description
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: 'c1: ambiguous code change
+
+    c2: similar code change
+
+    c3: fix
+
+    issue description: "Null input to normalize should return empty string"'
+commits:
+- id: c1
+  branch: main
+  parents: []
+  message: 'c1: ambiguous code change'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value > min && value < max;\n  }\n}\n"
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'c2: similar code change'
+  role: intermediate
+  operations:
+  - type: write_file
+    path: docs/intermediate-note.md
+    content: 'intermediate change
+
+      '
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'c3: fix'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+bugs:
+- id: B001
+  title: Synthetic graph scenario bug
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  bug_fixing_commits:
+  - commit: c3
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c3
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+scenario_design:
+  purpose: issue description がなければ BIC 候補を絞れないケースを評価する。
+  current_schema_limitation: 外部 issue 情報を保持する場所がない。
+  required_extensions_from_source: "```yaml\nissues:\n  - id: \"ISSUE-1\"\n    title: \"Normalizer fails on null\"\n    description: \"...\"\n    linked_bugs:\n      - \"B001\"\n```"
+  evaluation_points:
+  - issue-aware SZZ
+  - natural language context
+  - LLM-based SZZ
+notes:
+- Draft scenario.graph.yml for future graph-aware SZZBench support.
+- This file is not expected to be executable by the current simple scenario.yml generator.
+issues:
+- id: ISSUE-001
+  title: Synthetic issue for graph scenario
+  description: Issue text intentionally provides contextual information for SZZ.
+  linked_bugs:
+  - B001

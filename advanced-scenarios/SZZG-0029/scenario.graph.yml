@@ -1,0 +1,121 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0029
+  source_future_id: FUTURE-029
+  title: Old BIC and re-BIC are both plausible
+  slug: old-bic-re-bic-plausible
+  description: c1の古いBICとc3の再混入commitのどちらも関連するが、主正解はc3。
+  category: revert / reintroduce 系未対応シナリオ
+  category_code: F
+  factors:
+  - expected_szz
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0029-old-bic-re-bic-plausible
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: c0 correct / c1 bug / c2 fix / c3 revert to bug / c4 re-fix
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: Initial correct range
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value >= min && value\
+      \ <= max;\n  }\n}\n"
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: Introduce boundary bug
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: Fix boundary bug
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: Partially revert the fix and reintroduce boundary bug
+  role: revert
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+  reverts:
+  - commit: c2
+    mode: partial
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: Fix reintroduced boundary bug
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+bugs:
+- id: B001
+  title: Partial revert reintroduces boundary bug
+  bug_introducing_commits:
+  - commit: c3
+    role: reintroducing
+  - commit: c1
+    role: origin
+  bug_fixing_commits:
+  - commit: c4
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c3
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: partial_revert
+  fixes:
+  - id: X001
+    commit: c4
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+expected_szz:
+  commit_level:
+    evaluation_policy: reintroduction_direct
+    required:
+    - c3
+    related_but_not_correct:
+    - c1
+scenario_design:
+  purpose: 再混入ケースで、古い BIC と再混入 commit のどちらを正解とするかが曖昧なケースを扱う。
+  current_schema_limitation: '`c1` と `c3` の関係、および評価ポリシーを表現できない。'
+  required_extensions_from_source: "```yaml\nexpected_szz:\n  commit_level:\n    primary_target: \"reintroducing\"\n    true_positives:\n    \
+    \  - \"c3\"\n    related_but_not_correct:\n      - \"c1\"\n```"
+  evaluation_points:
+  - 再混入 commit を正解とするか
+  - root cause と direct reintroduction の区別
+  - 評価ポリシーの明示
+notes:
+- Draft scenario.graph.yml for future graph-aware SZZBench support.
+- This revision replaces placeholder/no-op operations with concrete file states so that graph generation can proceed.
