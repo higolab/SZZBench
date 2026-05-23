@@ -7,6 +7,7 @@ import sys
 
 from .cleaner import CleanError, DEFAULT_CLEAN_ROOT, clean_generated_outputs
 from .generator import GenerationError, generate_repository
+from .scenario_builder import DEFAULT_SCENARIOS_ROOT, NewScenarioError, create_new_scenario
 from .validator import validate_scenario_file
 from .verifier import verify_generated_repo
 
@@ -68,6 +69,30 @@ def cmd_clean(args) -> int:
     print(f"Summary: {len(outputs)} generated output(s) {suffix}.")
     return 0
 
+def cmd_new_scenario(args) -> int:
+    try:
+        result = create_new_scenario(
+            title=args.title,
+            category=args.category,
+            root=Path(args.root),
+            slug=args.slug,
+            factors=args.factor,
+            difficulty=args.difficulty,
+            status=args.status,
+        )
+    except NewScenarioError as exc:
+        print(f"[ERROR] NEW_SCENARIO_FAILED: {exc}", file=sys.stderr)
+        return 1
+    print(f"Created {_display_path(result.scenario_dir)}/")
+    print(f"Updated {_display_path(result.index_path)}")
+    return 0
+
+def _display_path(path: Path) -> str:
+    try:
+        return path.relative_to(Path.cwd()).as_posix()
+    except ValueError:
+        return path.as_posix()
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="szzbench")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -94,6 +119,15 @@ def build_parser() -> argparse.ArgumentParser:
     p_clean.add_argument("--root", default=str(DEFAULT_CLEAN_ROOT), help="Root directory to scan for generated outputs")
     p_clean.add_argument("--dry-run", action="store_true", help="Show generated outputs without removing them")
     p_clean.set_defaults(func=cmd_clean)
+    p_new = sub.add_parser("new-scenario", help="Create a new scenario skeleton")
+    p_new.add_argument("--title", required=True, help="Scenario title")
+    p_new.add_argument("--category", required=True, help="Scenario category")
+    p_new.add_argument("--root", default=str(DEFAULT_SCENARIOS_ROOT), help="Scenario root directory")
+    p_new.add_argument("--slug", help="Override the generated slug")
+    p_new.add_argument("--factor", action="append", default=[], help="Scenario factor; can be repeated")
+    p_new.add_argument("--difficulty", default="medium", help="Scenario difficulty")
+    p_new.add_argument("--status", default="draft", help="Scenario status")
+    p_new.set_defaults(func=cmd_new_scenario)
     return parser
 
 def main(argv: list[str] | None = None) -> int:

@@ -1,0 +1,27 @@
+scenarios:
+  - id: "SZZ-0001"
+    title: "Simple line modification"
+    slug: "simple-line-modification"
+    category: "basic"
+    factors: ["single-bic", "single-bfc", "line-modification"]
+    difficulty: "easy"
+    status: "active"
+    path: "scenarios/SZZ-0001/scenario.yml"
+
+  - id: "SZZ-0002"
+    title: "Simple omission bug"
+    slug: "simple-omission-bug"
+    category: "basic"
+    factors: ["single-bic", "single-bfc", "omission-bug", "line-addition-fix"]
+    difficulty: "medium"
+    status: "active"
+    path: "scenarios/SZZ-0002/scenario.yml"
+
+  - id: "SZZ-0003"
+    title: "Formatting after bug introduction"
+    slug: "formatting-after-bic"
+    category: "formatting"
+    factors: ["single-bic", "single-bfc", "line-modification", "formatting-after-bic", "line-number-shift", "basic-blame-distractor"]
+    difficulty: "medium"
+    status: "active"
+    path: "scenarios/SZZ-0003/scenario.yml"
