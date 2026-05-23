@@ -1,0 +1,150 @@
+schema_version: '1.0'
+meta:
+  id: SZZ-0140
+  title: Duplicate boundary checks
+  slug: duplicate-boundary-checks
+  description: This scenario contains duplicate or similar statements so that line-level oracle interpretation is intentionally harder.
+  category: ambiguous-blame
+  factors:
+  - single-bic
+  - single-bfc
+  - line-modification
+  - ambiguous-blame
+  - duplicate-statement
+  difficulty: medium
+  status: active
+repository:
+  name: SZZ-0140-duplicate-boundary-checks
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+commits:
+- id: c0
+  message: Initial implementation with duplicate-looking statement
+  author: Alice <alice@example.com>
+  date: '2024-04-01T10:00:00Z'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Scenario0140.java
+    content: |
+      package example;
+
+      public class Scenario0140 {
+          public boolean withinLower(int value, int min) {
+              return value >= min;
+          }
+
+          public boolean otherMethod(int value, int min) {
+              return value > min;
+          }
+      }
+- id: c1
+  message: Introduce ambiguous faulty statement
+  author: Bob <bob@example.com>
+  date: '2024-04-02T10:00:00Z'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Scenario0140.java
+    old: |
+      package example;
+
+      public class Scenario0140 {
+          public boolean withinLower(int value, int min) {
+              return value >= min;
+          }
+
+          public boolean otherMethod(int value, int min) {
+              return value > min;
+          }
+      }
+    new: |
+      package example;
+
+      public class Scenario0140 {
+          public boolean withinLower(int value, int min) {
+              return value > min;
+          }
+
+          public boolean otherMethod(int value, int min) {
+              return value > min;
+          }
+      }
+    labels:
+    - B001
+    - fault
+- id: c2
+  message: Fix ambiguous faulty statement
+  author: Alice <alice@example.com>
+  date: '2024-04-03T10:00:00Z'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Scenario0140.java
+    old: |
+      package example;
+
+      public class Scenario0140 {
+          public boolean withinLower(int value, int min) {
+              return value > min;
+          }
+
+          public boolean otherMethod(int value, int min) {
+              return value > min;
+          }
+      }
+    new: |
+      package example;
+
+      public class Scenario0140 {
+          public boolean withinLower(int value, int min) {
+              return value >= min;
+          }
+
+          public boolean otherMethod(int value, int min) {
+              return value > min;
+          }
+      }
+    labels:
+    - B001
+    - fix
+bugs:
+- id: B001
+  title: Duplicate boundary checks
+  bug_fixing_commit: c2
+  bug_introducing_commits: &id001
+  - c1
+  fault:
+    commit: c1
+    file: src/main/java/example/Scenario0140.java
+    entity:
+      type: method
+      name: withinLower
+      signature: boolean withinLower(int value, int min)
+    statement: return value > min;
+    change_type: line_modification
+  fix:
+    commit: c2
+    file: src/main/java/example/Scenario0140.java
+    entity:
+      type: method
+      name: withinLower
+      signature: boolean withinLower(int value, int min)
+    statement: return value >= min;
+    fix_type: line_modification
+  expected_szz:
+    commit_level:
+      true_positives: *id001
+      false_positives_allowed: []
+    line_level:
+      available: true
+      faulty_statements:
+      - return value > min;
+checks:
+- type: git_history_contains
+  commits:
+  - c0
+  - c1
+  - c2

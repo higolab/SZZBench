@@ -1,0 +1,111 @@
+schema_version: '1.0'
+meta:
+  id: SZZ-0080
+  title: State transition check omission
+  slug: state-transition-check-omission
+  description: 'This scenario represents an omission bug: the method is introduced without a necessary state transition check, and the bug-fixing commit adds the missing statement.'
+  category: omission
+  factors:
+  - single-bic
+  - single-bfc
+  - omission-bug
+  - line-addition-fix
+  difficulty: medium
+  status: active
+repository:
+  name: SZZ-0080-state-transition-check-omission
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+commits:
+- id: c0
+  message: Initial class
+  author: Alice <alice@example.com>
+  date: '2024-02-01T10:00:00Z'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Scenario0080.java
+    content: 'package example;
+
+
+      public class Scenario0080 {
+
+      }
+
+      '
+- id: c1
+  message: Add canStart without state transition check
+  author: Bob <bob@example.com>
+  date: '2024-02-02T10:00:00Z'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Scenario0080.java
+    old: 'package example;
+
+
+      public class Scenario0080 {
+
+      }
+
+      '
+    new: "package example;\n\npublic class Scenario0080 {\n    public boolean canStart(boolean ready) {\n        return true;\n    }\n}\n"
+    labels:
+    - B001
+    - fault
+- id: c2
+  message: Add missing state transition check
+  author: Alice <alice@example.com>
+  date: '2024-02-03T10:00:00Z'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Scenario0080.java
+    old: "package example;\n\npublic class Scenario0080 {\n    public boolean canStart(boolean ready) {\n        return true;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0080 {\n    public boolean canStart(boolean ready) {\n        if (!ready) {\n                return false;\n            }\n            return true;\n    }\n}\n"
+    labels:
+    - B001
+    - fix
+bugs:
+- id: B001
+  title: State transition check omission
+  bug_fixing_commit: c2
+  bug_introducing_commits:
+  - c1
+  fault:
+    commit: c1
+    file: src/main/java/example/Scenario0080.java
+    entity:
+      type: method
+      name: canStart
+      signature: boolean canStart(boolean ready)
+    change_type: omission
+    missing_statement: "if (!ready) {\n            return false;\n        }\n"
+  fix:
+    commit: c2
+    file: src/main/java/example/Scenario0080.java
+    entity:
+      type: method
+      name: canStart
+      signature: boolean canStart(boolean ready)
+    added_statement: |
+      if (!ready) {
+                      return false;
+                  }
+    fix_type: line_addition
+  expected_szz:
+    commit_level:
+      true_positives:
+      - c1
+      false_positives_allowed: []
+    line_level:
+      available: false
+      reason: The fault is an omitted statement, so no faulty deleted line exists.
+checks:
+- type: git_history_contains
+  commits:
+  - c0
+  - c1
+  - c2

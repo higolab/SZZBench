@@ -1,0 +1,125 @@
+schema_version: '1.0'
+meta:
+  id: SZZ-0103
+  title: Comment deletion after BIC
+  slug: comment-deletion-after-bic
+  description: This scenario inserts an intermediate intermediate-history change between the BIC and BFC.
+  category: intermediate-history
+  factors:
+  - single-bic
+  - single-bfc
+  - line-modification
+  - comment-deletion-after-bic
+  difficulty: medium
+  status: active
+repository:
+  name: SZZ-0103-comment-deletion-after-bic
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+commits:
+- id: c0
+  message: Initial correct implementation
+  author: Alice <alice@example.com>
+  date: '2024-01-01T10:00:00Z'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Scenario0103.java
+    content: "package example;\n\npublic class Scenario0103 {\n    public boolean valid(int value) {\n        return value >= 0;\n    }\n}\n"
+- id: c1
+  message: Introduce bug
+  author: Bob <bob@example.com>
+  date: '2024-01-02T10:00:00Z'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Scenario0103.java
+    old: "package example;\n\npublic class Scenario0103 {\n    public boolean valid(int value) {\n        return value >= 0;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0103 {\n    public boolean valid(int value) {\n        return value > 0;\n    }\n}\n"
+    labels:
+    - B001
+    - fault
+- id: c2
+  message: Apply intermediate rewrite
+  author: Carol <carol@example.com>
+  date: '2024-01-03T10:00:00Z'
+  role: distractor
+  operations:
+  - type: replace
+    path: src/main/java/example/Scenario0103.java
+    old: "package example;\n\npublic class Scenario0103 {\n    public boolean valid(int value) {\n        return value > 0;\n    }\n}\n"
+    new: |
+      package example;
+
+      public class Scenario0103 {
+          public boolean valid(int value) {
+              // comment was removed in a later cleanup
+              return value > 0;
+          }
+      }
+    labels:
+    - non_bug_introducing_change
+- id: c3
+  message: Fix bug
+  author: Dave <dave@example.com>
+  date: '2024-01-04T10:00:00Z'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Scenario0103.java
+    old: |
+      package example;
+
+      public class Scenario0103 {
+          public boolean valid(int value) {
+              // comment was removed in a later cleanup
+              return value > 0;
+          }
+      }
+    new: "package example;\n\npublic class Scenario0103 {\n    public boolean valid(int value) {\n        return value >= 0;\n    }\n}\n"
+    labels:
+    - B001
+    - fix
+bugs:
+- id: B001
+  title: Comment deletion after BIC
+  bug_fixing_commit: c3
+  bug_introducing_commits: &id001
+  - c1
+  fault:
+    commit: c1
+    file: src/main/java/example/Scenario0103.java
+    entity:
+      type: method
+      name: valid
+      signature: boolean valid(int value)
+    statement: return value > 0;
+    change_type: line_modification
+  fix:
+    commit: c3
+    file: src/main/java/example/Scenario0103.java
+    entity:
+      type: method
+      name: valid
+      signature: boolean valid(int value)
+    statement: return value >= 0;
+    fix_type: line_modification
+  expected_szz:
+    commit_level:
+      true_positives: *id001
+      false_positives_allowed: []
+      known_distractors:
+      - c2
+    line_level:
+      available: true
+      faulty_statements:
+      - return value > 0;
+checks:
+- type: git_history_contains
+  commits:
+  - c0
+  - c1
+  - c2
+  - c3

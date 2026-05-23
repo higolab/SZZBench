@@ -1,0 +1,146 @@
+schema_version: '1.0'
+meta:
+  id: SZZ-0056
+  title: BFC with cleanup of unrelated method
+  slug: bfc-with-cleanup
+  description: 'This scenario evaluates SZZ behavior when the bug-fixing commit has the shape: BFC with cleanup of unrelated method.'
+  category: bfc-shape
+  factors:
+  - single-bic
+  - single-bfc
+  - line-modification
+  - tangled-bfc
+  - cleanup
+  difficulty: medium
+  status: active
+repository:
+  name: SZZ-0056-bfc-with-cleanup
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+commits:
+- id: c0
+  message: Initial correct implementation
+  author: Alice <alice@example.com>
+  date: '2024-01-01T10:00:00Z'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Scenario0056.java
+    content: |
+      package example;
+
+      public class Scenario0056 {
+          public boolean hasValue(String value) {
+              return value != null;
+          }
+
+          public int unused(int value) {
+              return 1;
+          }
+      }
+- id: c1
+  message: Introduce bug
+  author: Bob <bob@example.com>
+  date: '2024-01-02T10:00:00Z'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Scenario0056.java
+    old: |
+      package example;
+
+      public class Scenario0056 {
+          public boolean hasValue(String value) {
+              return value != null;
+          }
+
+          public int unused(int value) {
+              return 1;
+          }
+      }
+    new: |
+      package example;
+
+      public class Scenario0056 {
+          public boolean hasValue(String value) {
+              return value == null;
+          }
+
+          public int unused(int value) {
+              return 1;
+          }
+      }
+    labels:
+    - B001
+    - fault
+- id: c2
+  message: Fix bug
+  author: Carol <carol@example.com>
+  date: '2024-01-03T10:00:00Z'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Scenario0056.java
+    old: |
+      package example;
+
+      public class Scenario0056 {
+          public boolean hasValue(String value) {
+              return value == null;
+          }
+
+          public int unused(int value) {
+              return 1;
+          }
+      }
+    new: |
+      package example;
+
+      public class Scenario0056 {
+          public boolean hasValue(String value) {
+              return value != null;
+          }
+      }
+    labels:
+    - B001
+    - fix
+bugs:
+- id: B001
+  title: BFC with cleanup of unrelated method
+  bug_fixing_commit: c2
+  bug_introducing_commits: &id001
+  - c1
+  fault:
+    commit: c1
+    file: src/main/java/example/Scenario0056.java
+    entity:
+      type: method
+      name: hasValue
+      signature: boolean hasValue(String value)
+    statement: return value == null;
+    change_type: line_modification
+  fix:
+    commit: c2
+    file: src/main/java/example/Scenario0056.java
+    entity:
+      type: method
+      name: hasValue
+      signature: boolean hasValue(String value)
+    statement: return value != null;
+    fix_type: line_modification
+  expected_szz:
+    commit_level:
+      true_positives: *id001
+      false_positives_allowed: []
+    line_level:
+      available: true
+      faulty_statements:
+      - return value == null;
+checks:
+- type: git_history_contains
+  commits:
+  - c0
+  - c1
+  - c2

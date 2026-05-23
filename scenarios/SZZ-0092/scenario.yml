@@ -1,0 +1,158 @@
+schema_version: '1.0'
+meta:
+  id: SZZ-0092
+  title: Loop to conditional rewrite after BIC
+  slug: loop-to-conditional-after-bic
+  description: This scenario inserts an intermediate refactoring change between the BIC and BFC.
+  category: refactoring
+  factors:
+  - single-bic
+  - single-bfc
+  - line-modification
+  - loop-rewrite-after-bic
+  difficulty: medium
+  status: active
+repository:
+  name: SZZ-0092-loop-to-conditional-after-bic
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+commits:
+- id: c0
+  message: Initial correct implementation
+  author: Alice <alice@example.com>
+  date: '2024-01-01T10:00:00Z'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Scenario0092.java
+    content: |
+      package example;
+
+      public class Scenario0092 {
+          public boolean valid(int value) {
+              return count >= required;
+          }
+      }
+- id: c1
+  message: Introduce bug
+  author: Bob <bob@example.com>
+  date: '2024-01-02T10:00:00Z'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Scenario0092.java
+    old: |
+      package example;
+
+      public class Scenario0092 {
+          public boolean valid(int value) {
+              return count >= required;
+          }
+      }
+    new: |
+      package example;
+
+      public class Scenario0092 {
+          public boolean valid(int value) {
+              return count > required;
+          }
+      }
+    labels:
+    - B001
+    - fault
+- id: c2
+  message: Apply intermediate rewrite
+  author: Carol <carol@example.com>
+  date: '2024-01-03T10:00:00Z'
+  role: refactoring
+  operations:
+  - type: replace
+    path: src/main/java/example/Scenario0092.java
+    old: |
+      package example;
+
+      public class Scenario0092 {
+          public boolean valid(int value) {
+              return count > required;
+          }
+      }
+    new: |
+      package example;
+
+      public class Scenario0092 {
+          public boolean enough(int count, int required) {
+              return count > required;
+          }
+      }
+    labels:
+    - non_bug_introducing_change
+- id: c3
+  message: Fix bug
+  author: Dave <dave@example.com>
+  date: '2024-01-04T10:00:00Z'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Scenario0092.java
+    old: |
+      package example;
+
+      public class Scenario0092 {
+          public boolean enough(int count, int required) {
+              return count > required;
+          }
+      }
+    new: |
+      package example;
+
+      public class Scenario0092 {
+          public boolean valid(int value) {
+              return count >= required;
+          }
+      }
+    labels:
+    - B001
+    - fix
+bugs:
+- id: B001
+  title: Loop to conditional rewrite after BIC
+  bug_fixing_commit: c3
+  bug_introducing_commits: &id001
+  - c1
+  fault:
+    commit: c1
+    file: src/main/java/example/Scenario0092.java
+    entity:
+      type: method
+      name: valid
+      signature: boolean valid(int value)
+    statement: return count > required;
+    change_type: line_modification
+  fix:
+    commit: c3
+    file: src/main/java/example/Scenario0092.java
+    entity:
+      type: method
+      name: valid
+      signature: boolean valid(int value)
+    statement: return count >= required;
+    fix_type: line_modification
+  expected_szz:
+    commit_level:
+      true_positives: *id001
+      false_positives_allowed: []
+      known_distractors:
+      - c2
+    line_level:
+      available: true
+      faulty_statements:
+      - return count > required;
+checks:
+- type: git_history_contains
+  commits:
+  - c0
+  - c1
+  - c2
+  - c3

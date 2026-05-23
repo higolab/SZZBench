@@ -1,0 +1,129 @@
+schema_version: '1.0'
+meta:
+  id: SZZ-0155
+  title: Test failure described in BFC message
+  slug: test-failure-in-bfc-message
+  description: This scenario is intended for evaluating SZZ variants that use commit messages or broader patch context.
+  category: context-aware
+  factors:
+  - single-bic
+  - single-bfc
+  - line-modification
+  - context-aware
+  difficulty: medium
+  status: active
+repository:
+  name: SZZ-0155-test-failure-in-bfc-message
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+commits:
+- id: c0
+  message: Initial implementation
+  author: Alice <alice@example.com>
+  date: '2024-05-01T10:00:00Z'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Scenario0155.java
+    content: |
+      package example;
+
+      public class Scenario0155 {
+          public boolean check(int index, int size) {
+              return index < size;
+          }
+      }
+- id: c1
+  message: Introduce context-sensitive bug
+  author: Bob <bob@example.com>
+  date: '2024-05-02T10:00:00Z'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Scenario0155.java
+    old: |
+      package example;
+
+      public class Scenario0155 {
+          public boolean check(int index, int size) {
+              return index < size;
+          }
+      }
+    new: |
+      package example;
+
+      public class Scenario0155 {
+          public boolean check(int index, int size) {
+              return index <= size;
+          }
+      }
+    labels:
+    - B001
+    - fault
+- id: c2
+  message: Fix failing boundary test
+  author: Alice <alice@example.com>
+  date: '2024-05-03T10:00:00Z'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Scenario0155.java
+    old: |
+      package example;
+
+      public class Scenario0155 {
+          public boolean check(int index, int size) {
+              return index <= size;
+          }
+      }
+    new: |
+      package example;
+
+      public class Scenario0155 {
+          public boolean check(int index, int size) {
+              return index < size;
+          }
+      }
+    labels:
+    - B001
+    - fix
+bugs:
+- id: B001
+  title: Test failure described in BFC message
+  bug_fixing_commit: c2
+  bug_introducing_commits: &id001
+  - c1
+  fault:
+    commit: c1
+    file: src/main/java/example/Scenario0155.java
+    entity:
+      type: method
+      name: check
+      signature: boolean check(int index, int size)
+    statement: return index <= size;
+    change_type: line_modification
+  fix:
+    commit: c2
+    file: src/main/java/example/Scenario0155.java
+    entity:
+      type: method
+      name: check
+      signature: boolean check(int index, int size)
+    statement: return index < size;
+    fix_type: line_modification
+  expected_szz:
+    commit_level:
+      true_positives: *id001
+      false_positives_allowed: []
+    line_level:
+      available: true
+      faulty_statements:
+      - return index <= size;
+checks:
+- type: git_history_contains
+  commits:
+  - c0
+  - c1
+  - c2

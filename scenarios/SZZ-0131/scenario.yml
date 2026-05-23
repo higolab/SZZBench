@@ -1,0 +1,115 @@
+schema_version: '1.0'
+meta:
+  id: SZZ-0131
+  title: Null handling and empty handling changed separately
+  slug: null-and-empty-handling
+  description: This scenario requires treating two bug-introducing commits as contributing to the same later fix.
+  category: multiple-bic
+  factors:
+  - multi-bic
+  - single-bfc
+  - line-modification
+  difficulty: medium
+  status: active
+repository:
+  name: SZZ-0131-null-and-empty-handling
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+commits:
+- id: c0
+  message: Initial implementation
+  author: Alice <alice@example.com>
+  date: '2024-03-01T10:00:00Z'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Scenario0131.java
+    content: "package example;\n\npublic class Scenario0131 {\n    public boolean hasText(String value) {\n        return true;\n    }\n}\n"
+- id: c1
+  message: Introduce first contributing change
+  author: Bob <bob@example.com>
+  date: '2024-03-02T10:00:00Z'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Scenario0131.java
+    old: "package example;\n\npublic class Scenario0131 {\n    public boolean hasText(String value) {\n        return true;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0131 {\n    public boolean hasText(String value) {\n        return value != null;\n    }\n}\n"
+    labels:
+    - B001
+    - fault
+- id: c2
+  message: Introduce second contributing change
+  author: Carol <carol@example.com>
+  date: '2024-03-03T10:00:00Z'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Scenario0131.java
+    old: "package example;\n\npublic class Scenario0131 {\n    public boolean hasText(String value) {\n        return value != null;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0131 {\n    public boolean hasText(String value) {\n        return value != null && !value.isEmpty();\n    }\n}\n"
+    labels:
+    - B001
+    - fault
+- id: c3
+  message: Fix combined bug
+  author: Alice <alice@example.com>
+  date: '2024-03-04T10:00:00Z'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Scenario0131.java
+    old: "package example;\n\npublic class Scenario0131 {\n    public boolean hasText(String value) {\n        return value != null && !value.isEmpty();\n    }\n}\n"
+    new: |
+      package example;
+
+      public class Scenario0131 {
+          public boolean hasText(String value) {
+              return true;
+          }
+      }
+    labels:
+    - B001
+    - fix
+bugs:
+- id: B001
+  title: Null handling and empty handling changed separately
+  bug_fixing_commit: c3
+  bug_introducing_commits: &id001
+  - c1
+  - c2
+  fault:
+    commit: c1
+    file: src/main/java/example/Scenario0131.java
+    entity:
+      type: method
+      name: hasText
+      signature: boolean hasText(String value)
+    statement: return value != null;
+    change_type: line_modification
+  fix:
+    commit: c3
+    file: src/main/java/example/Scenario0131.java
+    entity:
+      type: method
+      name: hasText
+      signature: boolean hasText(String value)
+    statement: return true;
+    fix_type: line_modification
+  expected_szz:
+    commit_level:
+      true_positives: *id001
+      false_positives_allowed: []
+    line_level:
+      available: true
+      faulty_statements:
+      - return value != null;
+checks:
+- type: git_history_contains
+  commits:
+  - c0
+  - c1
+  - c2
+  - c3

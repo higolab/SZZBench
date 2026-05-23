@@ -1,0 +1,201 @@
+schema_version: '1.0'
+meta:
+  id: SZZ-0162
+  title: Huge method surrounding small bug
+  slug: huge-method-small-bug
+  description: This scenario is intended to stress implementation robustness under noisy or repetitive code conditions.
+  category: robustness
+  factors:
+  - single-bic
+  - single-bfc
+  - line-modification
+  - robustness
+  - large-method
+  - small-fault
+  difficulty: medium
+  status: active
+repository:
+  name: SZZ-0162-huge-method-small-bug
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+commits:
+- id: c0
+  message: Initial large method
+  author: Alice <alice@example.com>
+  date: '2024-06-01T10:00:00Z'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Scenario0162.java
+    content: |
+      package example;
+
+      public class Scenario0162 {
+          public boolean check(int value, int limit) {
+              int tmp1 = value + 1;
+                  int tmp2 = value + 2;
+                  int tmp3 = value + 3;
+                  int tmp4 = value + 4;
+                  int tmp5 = value + 5;
+                  int tmp6 = value + 6;
+                  int tmp7 = value + 7;
+                  int tmp8 = value + 8;
+                  int tmp9 = value + 9;
+                  int tmp10 = value + 10;
+                  int tmp11 = value + 11;
+                  int tmp12 = value + 12;
+                  int tmp13 = value + 13;
+                  int tmp14 = value + 14;
+                  return value < limit;
+          }
+      }
+- id: c1
+  message: Introduce small bug in large method
+  author: Bob <bob@example.com>
+  date: '2024-06-02T10:00:00Z'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Scenario0162.java
+    old: |
+      package example;
+
+      public class Scenario0162 {
+          public boolean check(int value, int limit) {
+              int tmp1 = value + 1;
+                  int tmp2 = value + 2;
+                  int tmp3 = value + 3;
+                  int tmp4 = value + 4;
+                  int tmp5 = value + 5;
+                  int tmp6 = value + 6;
+                  int tmp7 = value + 7;
+                  int tmp8 = value + 8;
+                  int tmp9 = value + 9;
+                  int tmp10 = value + 10;
+                  int tmp11 = value + 11;
+                  int tmp12 = value + 12;
+                  int tmp13 = value + 13;
+                  int tmp14 = value + 14;
+                  return value < limit;
+          }
+      }
+    new: |
+      package example;
+
+      public class Scenario0162 {
+          public boolean check(int value, int limit) {
+              int tmp1 = value + 1;
+                  int tmp2 = value + 2;
+                  int tmp3 = value + 3;
+                  int tmp4 = value + 4;
+                  int tmp5 = value + 5;
+                  int tmp6 = value + 6;
+                  int tmp7 = value + 7;
+                  int tmp8 = value + 8;
+                  int tmp9 = value + 9;
+                  int tmp10 = value + 10;
+                  int tmp11 = value + 11;
+                  int tmp12 = value + 12;
+                  int tmp13 = value + 13;
+                  int tmp14 = value + 14;
+                  return value <= limit;
+          }
+      }
+    labels:
+    - B001
+    - fault
+- id: c2
+  message: Fix small bug in large method
+  author: Alice <alice@example.com>
+  date: '2024-06-03T10:00:00Z'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Scenario0162.java
+    old: |
+      package example;
+
+      public class Scenario0162 {
+          public boolean check(int value, int limit) {
+              int tmp1 = value + 1;
+                  int tmp2 = value + 2;
+                  int tmp3 = value + 3;
+                  int tmp4 = value + 4;
+                  int tmp5 = value + 5;
+                  int tmp6 = value + 6;
+                  int tmp7 = value + 7;
+                  int tmp8 = value + 8;
+                  int tmp9 = value + 9;
+                  int tmp10 = value + 10;
+                  int tmp11 = value + 11;
+                  int tmp12 = value + 12;
+                  int tmp13 = value + 13;
+                  int tmp14 = value + 14;
+                  return value <= limit;
+          }
+      }
+    new: |
+      package example;
+
+      public class Scenario0162 {
+          public boolean check(int value, int limit) {
+              int tmp1 = value + 1;
+                  int tmp2 = value + 2;
+                  int tmp3 = value + 3;
+                  int tmp4 = value + 4;
+                  int tmp5 = value + 5;
+                  int tmp6 = value + 6;
+                  int tmp7 = value + 7;
+                  int tmp8 = value + 8;
+                  int tmp9 = value + 9;
+                  int tmp10 = value + 10;
+                  int tmp11 = value + 11;
+                  int tmp12 = value + 12;
+                  int tmp13 = value + 13;
+                  int tmp14 = value + 14;
+                  return value < limit;
+          }
+      }
+    labels:
+    - B001
+    - fix
+bugs:
+- id: B001
+  title: Huge method surrounding small bug
+  bug_fixing_commit: c2
+  bug_introducing_commits: &id001
+  - c1
+  fault:
+    commit: c1
+    file: src/main/java/example/Scenario0162.java
+    entity:
+      type: method
+      name: check
+      signature: boolean check(int value, int limit)
+    statement: return value <= limit;
+    change_type: line_modification
+  fix:
+    commit: c2
+    file: src/main/java/example/Scenario0162.java
+    entity:
+      type: method
+      name: check
+      signature: boolean check(int value, int limit)
+    statement: return value < limit;
+    fix_type: line_modification
+  expected_szz:
+    commit_level:
+      true_positives: *id001
+      false_positives_allowed: []
+    line_level:
+      available: true
+      faulty_statements:
+      - return value <= limit;
+checks:
+- type: git_history_contains
+  commits:
+  - c0
+  - c1
+  - c2

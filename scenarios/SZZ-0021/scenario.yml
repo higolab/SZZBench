@@ -1,0 +1,129 @@
+schema_version: '1.0'
+meta:
+  id: SZZ-0021
+  title: Equality comparison error
+  slug: equality-comparison-error
+  description: This scenario introduces a bug by changing `return status == expected;` to `return status != expected;` and later restores the correct implementation.
+  category: basic
+  factors:
+  - single-bic
+  - single-bfc
+  - line-modification
+  - comparison-error
+  difficulty: easy
+  status: active
+repository:
+  name: SZZ-0021-equality-comparison-error
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+commits:
+- id: c0
+  message: Initial correct implementation
+  author: Alice <alice@example.com>
+  date: '2024-01-01T10:00:00Z'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Scenario0021.java
+    content: |
+      package example;
+
+      public class Scenario0021 {
+          public boolean matches(int status, int expected) {
+              return status == expected;
+          }
+      }
+- id: c1
+  message: Introduce bug
+  author: Bob <bob@example.com>
+  date: '2024-01-02T10:00:00Z'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Scenario0021.java
+    old: |
+      package example;
+
+      public class Scenario0021 {
+          public boolean matches(int status, int expected) {
+              return status == expected;
+          }
+      }
+    new: |
+      package example;
+
+      public class Scenario0021 {
+          public boolean matches(int status, int expected) {
+              return status != expected;
+          }
+      }
+    labels:
+    - B001
+    - fault
+- id: c2
+  message: Fix bug
+  author: Alice <alice@example.com>
+  date: '2024-01-03T10:00:00Z'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Scenario0021.java
+    old: |
+      package example;
+
+      public class Scenario0021 {
+          public boolean matches(int status, int expected) {
+              return status != expected;
+          }
+      }
+    new: |
+      package example;
+
+      public class Scenario0021 {
+          public boolean matches(int status, int expected) {
+              return status == expected;
+          }
+      }
+    labels:
+    - B001
+    - fix
+bugs:
+- id: B001
+  title: Equality comparison error
+  bug_fixing_commit: c2
+  bug_introducing_commits: &id001
+  - c1
+  fault:
+    commit: c1
+    file: src/main/java/example/Scenario0021.java
+    entity:
+      type: method
+      name: matches
+      signature: boolean matches(int status, int expected)
+    statement: return status != expected;
+    change_type: line_modification
+  fix:
+    commit: c2
+    file: src/main/java/example/Scenario0021.java
+    entity:
+      type: method
+      name: matches
+      signature: boolean matches(int status, int expected)
+    statement: return status == expected;
+    fix_type: line_modification
+  expected_szz:
+    commit_level:
+      true_positives: *id001
+      false_positives_allowed: []
+    line_level:
+      available: true
+      faulty_statements:
+      - return status != expected;
+checks:
+- type: git_history_contains
+  commits:
+  - c0
+  - c1
+  - c2

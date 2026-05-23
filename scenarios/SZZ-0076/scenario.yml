@@ -1,0 +1,112 @@
+schema_version: '1.0'
+meta:
+  id: SZZ-0076
+  title: Token validation omission
+  slug: token-validation-omission
+  description: 'This scenario represents an omission bug: the method is introduced without a necessary token validation, and the bug-fixing commit adds the missing statement.'
+  category: security
+  factors:
+  - single-bic
+  - single-bfc
+  - omission-bug
+  - line-addition-fix
+  - security
+  difficulty: medium
+  status: active
+repository:
+  name: SZZ-0076-token-validation-omission
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+commits:
+- id: c0
+  message: Initial class
+  author: Alice <alice@example.com>
+  date: '2024-02-01T10:00:00Z'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Scenario0076.java
+    content: 'package example;
+
+
+      public class Scenario0076 {
+
+      }
+
+      '
+- id: c1
+  message: Add validToken without token validation
+  author: Bob <bob@example.com>
+  date: '2024-02-02T10:00:00Z'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Scenario0076.java
+    old: 'package example;
+
+
+      public class Scenario0076 {
+
+      }
+
+      '
+    new: "package example;\n\npublic class Scenario0076 {\n    public boolean validToken(String token) {\n        return true;\n    }\n}\n"
+    labels:
+    - B001
+    - fault
+- id: c2
+  message: Add missing token validation
+  author: Alice <alice@example.com>
+  date: '2024-02-03T10:00:00Z'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Scenario0076.java
+    old: "package example;\n\npublic class Scenario0076 {\n    public boolean validToken(String token) {\n        return true;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0076 {\n    public boolean validToken(String token) {\n        if (token == null || token.isEmpty()) {\n                return false;\n            }\n            return true;\n    }\n}\n"
+    labels:
+    - B001
+    - fix
+bugs:
+- id: B001
+  title: Token validation omission
+  bug_fixing_commit: c2
+  bug_introducing_commits:
+  - c1
+  fault:
+    commit: c1
+    file: src/main/java/example/Scenario0076.java
+    entity:
+      type: method
+      name: validToken
+      signature: boolean validToken(String token)
+    change_type: omission
+    missing_statement: "if (token == null || token.isEmpty()) {\n            return false;\n        }\n"
+  fix:
+    commit: c2
+    file: src/main/java/example/Scenario0076.java
+    entity:
+      type: method
+      name: validToken
+      signature: boolean validToken(String token)
+    added_statement: |
+      if (token == null || token.isEmpty()) {
+                      return false;
+                  }
+    fix_type: line_addition
+  expected_szz:
+    commit_level:
+      true_positives:
+      - c1
+      false_positives_allowed: []
+    line_level:
+      available: false
+      reason: The fault is an omitted statement, so no faulty deleted line exists.
+checks:
+- type: git_history_contains
+  commits:
+  - c0
+  - c1
+  - c2
