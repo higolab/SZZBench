@@ -4,8 +4,9 @@ meta:
   source_future_id: FUTURE-013
   title: One BIC fixed by multiple BFCs
   slug: 1-bic-bfc
-  description: 1つのBICが下限・上限の2症状を混入し、c2とc3で段階的に修正される。
-  category: multiple BIC / multiple BFC に関する未対応シナリオ
+  description: Evaluates one bic fixed by multiple bfcs and checks whether SZZ identifies the expected bug-introducing commit
+    set.
+  category: Multiple BIC and BFC scenarios
   category_code: D
   factors:
   - bug_fixing_commits
@@ -19,23 +20,29 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: c0 correct A/B cases / c1 one BIC breaks both / c2 fixes case A / c3 fixes case B
+  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
+
+    c1: introduce bug (replace src/main/java/example/Range.java; replace src/main/java/example/Range.java)
+
+    c2: fix bug (replace src/main/java/example/Range.java)
+
+    c3: fix bug (replace src/main/java/example/Range.java)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: Initial correct lower and upper checks
+  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean acceptsLower(int value, int min) {\n    return value >= min;\n  }\n\n\
-      \  public boolean acceptsUpper(int value, int max) {\n    return value <= max;\n  }\n}\n"
+    content: "package example;\n\npublic class Range {\n  public boolean acceptsLower(int value, int min) {\n    return value\
+      \ >= min;\n  }\n\n  public boolean acceptsUpper(int value, int max) {\n    return value <= max;\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: Introduce lower and upper boundary bug in one commit
+  message: 'c1: introduce bug (replace src/main/java/example/Range.java; replace src/main/java/example/Range.java)'
   role: bug_introducing
   operations:
   - type: replace
@@ -50,7 +57,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: Fix lower boundary case only
+  message: 'c2: fix bug (replace src/main/java/example/Range.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -61,7 +68,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: Fix upper boundary case
+  message: 'c3: fix bug (replace src/main/java/example/Range.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -109,14 +116,14 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: 1つのバグ混入 commit が複数の後続修正によって段階的に修正されるケースを評価する。
-  current_schema_limitation: '`bug_fixing_commit` が単数であるため、複数 BFC を持つ bug を表現できない。'
-  required_extensions_from_source: "```yaml\nbug_fixing_commits:\n  - commit: \"c2\"\n    role: \"partial_fix\"\n  - commit: \"c3\"\n    role:\
-    \ \"partial_fix\"\n```"
+  purpose: Evaluate One BIC fixed by multiple BFCs and whether SZZ identifies the expected bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: bug_fixing_commits; operations: write_file, replace.'
   evaluation_points:
-  - 各 BFC から同じ BIC に到達するか
-  - BFC ごとに oracle を分けるべきか
-  - bug 単位と fix commit 単位の評価差
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for future graph-aware SZZBench support.
-- This revision replaces placeholder/no-op operations with concrete file states so that graph generation can proceed.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

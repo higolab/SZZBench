@@ -2,10 +2,11 @@ schema_version: graph-0.1-draft
 meta:
   id: SZZG-0060
   source_future_id: FUTURE-060
-  title: root cause not in changed lines
+  title: Root cause not in changed lines
   slug: root-cause-not-in-changed-lines
-  description: BFC の変更行そのものではなく、その周辺 context が root cause を示すケースを評価する。
-  category: context-aware / LLM-based SZZ 向け未対応シナリオ
+  description: Evaluates root cause not in changed lines and checks whether SZZ identifies the expected bug-introducing commit
+    set.
+  category: Context-aware and LLM-based SZZ scenarios
   category_code: J
   factors:
   - root_cause
@@ -19,24 +20,25 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c1: caller contract を壊す
+  history_summary: 'c1: create initial state (write_file src/main/java/example/Range.java)
 
-    c2: BFC は guard を追加するだけ'
+    c2: fix bug (replace src/main/java/example/Range.java)'
 commits:
 - id: c1
   branch: main
   parents: []
-  message: 'c1: caller contract を壊す'
+  message: 'c1: create initial state (write_file src/main/java/example/Range.java)'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value > min && value < max;\n  }\n}\n"
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value > min && value < max;\n  }\n}\n"
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: BFC は guard を追加するだけ'
+  message: 'c2: fix bug (replace src/main/java/example/Range.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -70,16 +72,17 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: BFC の変更行そのものではなく、その周辺 context が root cause を示すケースを評価する。
-  current_schema_limitation: "fault.statement を単一の faulty line として書けない場合がある。  \nroot cause が changed line ではなく relation である。"
-  required_extensions_from_source: "```yaml\nroot_cause:\n  type: \"behavioral_relation\"\n  description: \"Caller may pass null while callee assumes non-null.\"\n```"
+  purpose: Evaluate Root cause not in changed lines and whether SZZ identifies the expected bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: root_cause; operations: write_file, replace.'
   evaluation_points:
-  - line-based SZZ の限界
-  - semantic / LLM-based SZZ
-  - root-cause oracle の表現
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for future graph-aware SZZBench support.
-- This file is not expected to be executable by the current simple scenario.yml generator.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.
 root_cause:
   type: behavioral_relation
   description: Root cause is represented by a relation rather than a single changed line.

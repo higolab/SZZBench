@@ -2,10 +2,10 @@ schema_version: graph-0.1-draft
 meta:
   id: SZZG-0053
   source_future_id: FUTURE-053
-  title: line moved and duplicated
+  title: Line moved and duplicated
   slug: line-moved-and-duplicated
-  description: faulty line が移動され、さらに複製されることで、blame と oracle が曖昧になるケースを評価する。
-  category: ambiguous blame / duplicate 系未対応シナリオ
+  description: Evaluates line moved and duplicated and checks whether SZZ identifies the expected bug-introducing commit set.
+  category: Ambiguous blame and duplicate-code scenarios
   category_code: I
   factors:
   - move_entity
@@ -21,26 +21,27 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c1: faulty line 導入
+  history_summary: 'c1: create initial state (write_file src/main/java/example/Range.java)
 
-    c2: faulty line を別メソッドへ移動し、元にも残す
+    c2: apply intermediate change (move_entity; copy_entity)
 
-    c3: 片方のみ修正'
+    c3: fix bug (replace src/main/java/example/Range.java)'
 commits:
 - id: c1
   branch: main
   parents: []
-  message: 'c1: faulty line 導入'
+  message: 'c1: create initial state (write_file src/main/java/example/Range.java)'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value > min && value < max;\n  }\n}\n"
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value > min && value < max;\n  }\n}\n"
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: faulty line を別メソッドへ移動し、元にも残す'
+  message: 'c2: apply intermediate change (move_entity; copy_entity)'
   role: intermediate
   operations:
   - type: move_entity
@@ -60,7 +61,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: 片方のみ修正'
+  message: 'c3: fix bug (replace src/main/java/example/Range.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -97,20 +98,18 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: faulty line が移動され、さらに複製されることで、blame と oracle が曖昧になるケースを評価する。
-  current_schema_limitation: "line move / duplication の関係を表現できない。  \ndirect / origin / instance の区別が必要。"
-  required_extensions_from_source: '- `move_entity`
-
-    - `copy_entity`
-
-    - bug instance'
+  purpose: Evaluate Line moved and duplicated and whether SZZ identifies the expected bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: move_entity, copy_entity, bug_instances; operations: write_file,
+    move_entity, copy_entity, replace.'
   evaluation_points:
-  - どの instance を修正したか
-  - moved line の origin
-  - duplicate line の blame
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for future graph-aware SZZBench support.
-- This file is not expected to be executable by the current simple scenario.yml generator.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.
 bug_instances:
 - id: B001-main
   branch: main

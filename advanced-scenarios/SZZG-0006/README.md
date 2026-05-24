@@ -1,54 +1,47 @@
-# SZZG-0006: BFC が generated file を含む
+# SZZG-0006: BFC includes generated files
 
 ## Source
 
 - Source scenario: `FUTURE-006`
-- Category: BFC の形状に関する未対応シナリオ
+- Category: BFC shape scenarios
 
 ## Purpose
 
-修正 commit に生成ファイルの大きな差分が含まれる場合、SZZ が生成物差分を誤って起点にしないかを評価する。
+Evaluate BFC includes generated files and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: source file と generated file を導入
-c1: source file に bug 混入
-c2: source file を修正し、同時に generated file も更新
+c0: create initial state (write_file src/main/java/example/Range.java)
+c1: introduce bug (replace src/main/java/example/Range.java)
+c2: fix bug (replace src/main/java/example/Range.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-生成ファイルであることをメタデータとして表現できない。  
-SZZ の評価上、generated file を除外すべきかどうかの方針も記述できない。
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-```yaml
-files:
-  - path: "src/generated/Parser.java"
-    kind: "generated"
-    generated_from: "grammar/Parser.g4"
-```
+- Operation types: write_file, replace
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- generated file を対象から除外できるか
-- generated file の blame が false positive を生むか
-- source file と generated file の両方を修正した場合の評価方針
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
 ---
 
-## B. BIC の性質に関する未対応シナリオ
-
 ## Draft status
 
-This scenario is a draft for the proposed `scenario.graph.yml` schema.  It is intended to guide the implementation of a future graph-aware validator/generator and should not be treated as executable by the current simple `scenario.yml` generator.
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
 
 ## Files
 
 ```text
 SZZG-0006/
-├── scenario.graph.yml
-└── README.md
+|-- scenario.graph.yml
+`-- README.md
 ```

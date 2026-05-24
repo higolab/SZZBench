@@ -4,8 +4,8 @@ meta:
   source_future_id: FUTURE-072
   title: Top-k evaluation
   slug: top-k-evaluation
-  description: c2とc3をdistractorにし、正解BIC c1がtop-kに含まれるかを評価する。
-  category: schema / evaluation policy が必要な横断シナリオ
+  description: Evaluates top-k evaluation and checks whether SZZ identifies the expected bug-introducing commit set.
+  category: Schema and evaluation-policy scenarios
   category_code: L
   factors:
   - expected_szz
@@ -19,23 +19,32 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: c0 correct / c1 true BIC / c2 distractor / c3 distractor / c4 fix
+  history_summary: 'c0: create initial state (write_file src/main/java/example/RangeService.java)
+
+    c1: introduce bug (replace src/main/java/example/RangeService.java)
+
+    c2: add distractor change (replace src/main/java/example/RangeService.java)
+
+    c3: add distractor change (write_file docs/ranking-distractor.md)
+
+    c4: fix bug (replace src/main/java/example/RangeService.java)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: Initial service
+  message: 'c0: create initial state (write_file src/main/java/example/RangeService.java)'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/RangeService.java
-    content: "package example;\n\npublic class RangeService {\n  public boolean isEnabled() { return true; }\n  public boolean contains(int value,\
-      \ int min, int max) { return value >= min && value <= max; }\n  public int normalize(int value) { return value; }\n}\n"
+    content: "package example;\n\npublic class RangeService {\n  public boolean isEnabled() { return true; }\n  public boolean\
+      \ contains(int value, int min, int max) { return value >= min && value <= max; }\n  public int normalize(int value)\
+      \ { return value; }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'True BIC: change boundary validation'
+  message: 'c1: introduce bug (replace src/main/java/example/RangeService.java)'
   role: bug_introducing
   operations:
   - type: replace
@@ -46,7 +55,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'Distractor: change feature flag plumbing'
+  message: 'c2: add distractor change (replace src/main/java/example/RangeService.java)'
   role: distractor
   operations:
   - type: replace
@@ -57,7 +66,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'Distractor: add unrelated documentation'
+  message: 'c3: add distractor change (write_file docs/ranking-distractor.md)'
   role: distractor
   operations:
   - type: write_file
@@ -69,7 +78,7 @@ commits:
   branch: main
   parents:
   - c3
-  message: Fix true validation bug
+  message: 'c4: fix bug (replace src/main/java/example/RangeService.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -105,14 +114,14 @@ expected_szz:
     relevant:
     - c1
 scenario_design:
-  purpose: SZZ が ranking を返す場合、正解 BIC が top-k に含まれるかを評価する。
-  current_schema_limitation: '`expected_szz` に ranking / top-k の評価ポリシーがない。'
-  required_extensions_from_source: "```yaml\nexpected_szz:\n  commit_level:\n    evaluation_policy: \"top_k\"\n    k_values:\n      - 1\n    \
-    \  - 3\n      - 5\n    relevant:\n      - \"c1\"\n```"
+  purpose: Evaluate Top-k evaluation and whether SZZ identifies the expected bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: expected_szz; operations: write_file, replace.'
   evaluation_points:
-  - top-1 / top-3 / top-5 accuracy
-  - ranking quality
-  - distractor commit の影響
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for future graph-aware SZZBench support.
-- This revision replaces placeholder/no-op operations with concrete file states so that graph generation can proceed.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

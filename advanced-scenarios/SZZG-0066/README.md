@@ -1,51 +1,48 @@
-# SZZG-0066: non-UTF-8 file
+# SZZG-0066: Non-UTF-8 file
 
 ## Source
 
 - Source scenario: `FUTURE-066`
-- Category: robustness / 実装品質確認系未対応シナリオ
+- Category: Robustness and implementation-quality scenarios
 
 ## Purpose
 
-非UTF-8ファイルを含むリポジトリで SZZ 実装が落ちないか確認する。
+Evaluate Non-UTF-8 file and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: Shift-JIS の設定ファイルを追加
-c1: code bug
-c2: fix
+c0: create initial state (write_file src/main/java/example/Range.java)
+c1: introduce bug (replace src/main/java/example/Range.java)
+c2: fix bug (replace src/main/java/example/Range.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-`write_file` は UTF-8 テキスト前提。
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-```yaml
-- type: "write_file"
-  path: "config/messages.properties"
-  encoding: "Shift_JIS"
-  content: "..."
-```
+- Factors: encoding
+- Operation types: write_file, replace
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- encoding handling
-- tool robustness
-- non-code file の扱い
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
 ---
 
 ## Draft status
 
-This scenario is a draft for the proposed `scenario.graph.yml` schema.  It is intended to guide the implementation of a future graph-aware validator/generator and should not be treated as executable by the current simple `scenario.yml` generator.
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
 
 ## Files
 
 ```text
 SZZG-0066/
-├── scenario.graph.yml
-└── README.md
+|-- scenario.graph.yml
+`-- README.md
 ```

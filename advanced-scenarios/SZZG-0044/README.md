@@ -1,54 +1,48 @@
-# SZZG-0044: BICとBFCが同一issueのcommit列に属する
+# SZZG-0044: BIC and BFC belong to the same issue commit series
 
 ## Source
 
 - Source scenario: `FUTURE-044`
-- Category: work item / commit series 系未対応シナリオ
+- Category: Work-item and commit-series scenarios
 
 ## Purpose
 
-issue / work item を利用する SZZ が、候補範囲を狭められるか評価する。
+Evaluate BIC and BFC belong to the same issue commit series and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-issue #10:
-  c1: initial implementation
-  c2: buggy adjustment
-  c3: later fix
+c1: create initial state (write_file src/main/java/example/Range.java)
+c2: introduce bug (replace src/main/java/example/Range.java)
+c3: fix bug (replace src/main/java/example/Range.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-issue linkage がない。
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-```yaml
-issues:
-  - id: "ISSUE-10"
-    commits:
-      - "c1"
-      - "c2"
-      - "c3"
-```
+- Factors: issues
+- Operation types: write_file, replace
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- issue-aware SZZ
-- work item 内候補の ranking
-- commit message 依存の評価
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
 ---
 
 ## Draft status
 
-This scenario is a draft for the proposed `scenario.graph.yml` schema.  It is intended to guide the implementation of a future graph-aware validator/generator and should not be treated as executable by the current simple `scenario.yml` generator.
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
 
 ## Files
 
 ```text
 SZZG-0044/
-├── scenario.graph.yml
-└── README.md
+|-- scenario.graph.yml
+`-- README.md
 ```

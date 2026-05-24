@@ -2,10 +2,10 @@ schema_version: graph-0.1-draft
 meta:
   id: SZZG-0012
   source_future_id: FUTURE-012
-  title: extract class after BIC
+  title: Extract class after BIC
   slug: extract-class-after-bic
-  description: faulty logic を含むクラスの一部が別クラスに抽出された後に修正されるケースを評価する。
-  category: 中間履歴に関する未対応シナリオ
+  description: Evaluates extract class after bic and checks whether SZZ identifies the expected bug-introducing commit set.
+  category: Intermediate-history scenarios
   category_code: C
   factors:
   - move_entity
@@ -19,28 +19,29 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: Range.java に複数責務の実装
+  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
 
-    c1: Range.java に bug 混入
+    c1: introduce bug (replace src/main/java/example/Range.java)
 
-    c2: Validation logic を RangeValidator.java に抽出
+    c2: apply intermediate change (move_entity)
 
-    c3: RangeValidator.java で修正'
+    c3: fix bug (replace src/main/java/example/Range.java)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: Range.java に複数責務の実装'
+  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value >= min && value <= max;\n  }\n}\n"
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: Range.java に bug 混入'
+  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
   role: bug_introducing
   operations:
   - type: replace
@@ -51,7 +52,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: Validation logic を RangeValidator.java に抽出'
+  message: 'c2: apply intermediate change (move_entity)'
   role: intermediate
   operations:
   - type: move_entity
@@ -65,7 +66,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: RangeValidator.java で修正'
+  message: 'c3: fix bug (replace src/main/java/example/Range.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -102,17 +103,14 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: faulty logic を含むクラスの一部が別クラスに抽出された後に修正されるケースを評価する。
-  current_schema_limitation: "複数ファイル・entity move・origin tracking が必要。  \n単純な `replace` では、なぜ fault が別ファイルへ移ったのかが表現できない。"
-  required_extensions_from_source: '- `move_entity`
-
-    - `origin_entity`
-
-    - 複数 file の fault/fix location'
+  purpose: Evaluate Extract class after BIC and whether SZZ identifies the expected bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: move_entity; operations: write_file, replace, move_entity.'
   evaluation_points:
-  - refactoring-aware SZZ の必要性
-  - entity identity の追跡
-  - BIC は抽出前の commit か、抽出 commit か
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for future graph-aware SZZBench support.
-- This file is not expected to be executable by the current simple scenario.yml generator.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

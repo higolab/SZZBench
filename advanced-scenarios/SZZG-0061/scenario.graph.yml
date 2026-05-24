@@ -2,10 +2,10 @@ schema_version: graph-0.1-draft
 meta:
   id: SZZG-0061
   source_future_id: FUTURE-061
-  title: binary file変更
+  title: Binary file change
   slug: binary-file
-  description: バイナリファイル変更を含むリポジトリで SZZ 実装が落ちないか確認する。
-  category: robustness / 実装品質確認系未対応シナリオ
+  description: Evaluates binary file change and checks whether SZZ identifies the expected bug-introducing commit set.
+  category: Robustness and implementation-quality scenarios
   category_code: K
   factors:
   - write_binary_file
@@ -19,26 +19,27 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: code + binary asset
+  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
 
-    c1: code bug
+    c1: introduce bug (replace src/main/java/example/Range.java)
 
-    c2: code fix + binary asset update'
+    c2: fix bug (write_binary_file assets/data.bin; replace src/main/java/example/Range.java)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: code + binary asset'
+  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value >= min && value <= max;\n  }\n}\n"
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: code bug'
+  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
   role: bug_introducing
   operations:
   - type: replace
@@ -49,7 +50,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: code fix + binary asset update'
+  message: 'c2: fix bug (write_binary_file assets/data.bin; replace src/main/java/example/Range.java)'
   role: bug_fixing
   operations:
   - type: write_binary_file
@@ -86,13 +87,14 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: バイナリファイル変更を含むリポジトリで SZZ 実装が落ちないか確認する。
-  current_schema_limitation: '`write_file` はテキスト前提であり、binary file を表現できない。'
-  required_extensions_from_source: "```yaml\n- type: \"write_binary_file\"\n  path: \"assets/data.bin\"\n  content_base64: \"...\"\n```"
+  purpose: Evaluate Binary file change and whether SZZ identifies the expected bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: write_binary_file; operations: write_file, replace, write_binary_file.'
   evaluation_points:
-  - binary diff を無視できるか
-  - 実装がクラッシュしないか
-  - non-text file handling
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for future graph-aware SZZBench support.
-- This file is not expected to be executable by the current simple scenario.yml generator.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

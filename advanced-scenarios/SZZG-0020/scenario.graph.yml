@@ -2,10 +2,11 @@ schema_version: graph-0.1-draft
 meta:
   id: SZZG-0020
   source_future_id: FUTURE-020
-  title: buggy code copied, original later fixed
+  title: Buggy code copied while original is fixed later
   slug: buggy-code-copied-original-later-fixed
-  description: コピー元は修正されるが、コピー先のバグが残るケースを評価する。
-  category: copy / clone / propagation 系未対応シナリオ
+  description: Evaluates buggy code copied while original is fixed later and checks whether SZZ identifies the expected bug-introducing
+    commit set.
+  category: Copy, clone, and propagation scenarios
   category_code: E
   factors:
   - copy_file
@@ -20,28 +21,29 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: A.java に bug
+  history_summary: 'c0: create initial state (write_file src/main/java/example/A.java)
 
-    c1: A.java を B.java にコピー
+    c1: apply intermediate change (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)
 
-    c2: A.java の bug を修正
+    c2: fix bug (replace src/main/java/example/A.java)
 
-    c3: B.java の bug を修正'
+    c3: fix bug (replace src/main/java/example/B.java)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: A.java に bug'
+  message: 'c0: create initial state (write_file src/main/java/example/A.java)'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/A.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value > min && value < max;\n  }\n}\n"
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value > min && value < max;\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: A.java を B.java にコピー'
+  message: 'c1: apply intermediate change (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)'
   role: intermediate
   operations:
   - type: copy_file
@@ -51,7 +53,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: A.java の bug を修正'
+  message: 'c2: fix bug (replace src/main/java/example/A.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -62,7 +64,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: B.java の bug を修正'
+  message: 'c3: fix bug (replace src/main/java/example/B.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -98,17 +100,15 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: コピー元は修正されるが、コピー先のバグが残るケースを評価する。
-  current_schema_limitation: copy の履歴、origin/direct BIC、複数 location が必要。
-  required_extensions_from_source: '- `copy_file`
-
-    - direct/origin BIC
-
-    - `faults: []`'
+  purpose: Evaluate Buggy code copied while original is fixed later and whether SZZ identifies the expected bug-introducing
+    commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: copy_file, faults; operations: write_file, copy_file, replace.'
   evaluation_points:
-  - B.java の direct BIC は c1 か
-  - origin BIC c0 をどのように扱うか
-  - A.java の fix が B.java の oracle に影響しないか
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for future graph-aware SZZBench support.
-- This file is not expected to be executable by the current simple scenario.yml generator.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

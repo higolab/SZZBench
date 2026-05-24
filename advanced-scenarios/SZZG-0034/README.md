@@ -1,56 +1,50 @@
-# SZZG-0034: squash merge
+# SZZG-0034: Squash merge
 
 ## Source
 
 - Source scenario: `FUTURE-034`
-- Category: branch / merge / cherry-pick / backport 系未対応シナリオ
+- Category: Branch, merge, cherry-pick, and backport scenarios
 
 ## Purpose
 
-feature branch の複数 commit が squash merge され、元の個別 BIC が main に残らないケースを評価する。
+Evaluate Squash merge and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-feature:
-  f1: bug 混入
-  f2: unrelated
-main:
-  c1: squash merge feature as one commit
-  c2: fix
+c0: create initial state (write_file src/main/java/example/Range.java)
+c1: introduce bug (replace src/main/java/example/Range.java)
+c2: apply intermediate change (write_file docs/feature-note.md)
+c3: apply squash merge
+c4: fix bug (replace src/main/java/example/Range.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-squash の元 commit と squash commit の関係を表現できない。
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-```yaml
-commits:
-  - id: "c1"
-    role: "squash_merge"
-    squashes:
-      - "f1"
-      - "f2"
-```
+- Factors: branch, merge, squash_merge
+- Operation types: write_file, replace
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- 正解 BIC は original f1 か squash commit c1 か
-- 実際の main 履歴上では f1 が存在しない場合の評価
-- repository-visible oracle と conceptual oracle の違い
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
 ---
 
 ## Draft status
 
-This scenario is a draft for the proposed `scenario.graph.yml` schema.  It is intended to guide the implementation of a future graph-aware validator/generator and should not be treated as executable by the current simple `scenario.yml` generator.
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
 
 ## Files
 
 ```text
 SZZG-0034/
-├── scenario.graph.yml
-└── README.md
+|-- scenario.graph.yml
+`-- README.md
 ```

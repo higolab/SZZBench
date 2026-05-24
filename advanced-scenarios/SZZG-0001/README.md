@@ -1,53 +1,48 @@
-# SZZG-0001: BFC が rename + fix を同時に行う
+# SZZG-0001: BFC performs rename and fix in the same commit
 
 ## Source
 
 - Source scenario: `FUTURE-001`
-- Category: BFC の形状に関する未対応シナリオ
+- Category: BFC shape scenarios
 
 ## Purpose
 
-ファイル名変更とバグ修正が同一 BFC に含まれる場合に、SZZ が正しい BIC を特定できるかを評価する。
+Evaluate BFC performs rename and fix in the same commit and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: OldRange.java に正しい実装を導入
-c1: OldRange.java に boundary bug を混入
-c2: OldRange.java を Range.java に rename しつつ bug を修正
+c0: create initial state (write_file src/main/java/example/OldRange.java)
+c1: introduce bug (replace src/main/java/example/OldRange.java)
+c2: fix bug (rename_file src/main/java/example/OldRange.java -> src/main/java/example/Range.java; replace src/main/java/example/Range.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-`replace` だけでも擬似的には表現できるが、Git 履歴上の rename として表現できない。  
-rename-aware SZZ の評価には、Git が rename として認識できる履歴を生成する必要がある。
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-```yaml
-- type: "rename_file"
-  from: "src/main/java/example/OldRange.java"
-  to: "src/main/java/example/Range.java"
-```
-
-さらに BFC 側で rename と replace を同一 commit に入れる必要がある。
+- Factors: rename_file
+- Operation types: write_file, replace, rename_file
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- `git log --follow` 相当の追跡が必要か
-- file path が変わっても BIC に到達できるか
-- rename commit 自体を誤って BIC としないか
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
 ---
 
 ## Draft status
 
-This scenario is a draft for the proposed `scenario.graph.yml` schema.  It is intended to guide the implementation of a future graph-aware validator/generator and should not be treated as executable by the current simple `scenario.yml` generator.
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
 
 ## Files
 
 ```text
 SZZG-0001/
-├── scenario.graph.yml
-└── README.md
+|-- scenario.graph.yml
+`-- README.md
 ```

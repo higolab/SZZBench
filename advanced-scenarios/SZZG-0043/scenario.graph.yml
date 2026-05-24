@@ -4,8 +4,9 @@ meta:
   source_future_id: FUTURE-043
   title: Fix split across multiple commits
   slug: fix-commit
-  description: failing test、partial fix、final fixに分かれたfix seriesを表す。
-  category: work item / commit series 系未対応シナリオ
+  description: Evaluates fix split across multiple commits and checks whether SZZ identifies the expected bug-introducing
+    commit set.
+  category: Work-item and commit-series scenarios
   category_code: H
   factors:
   - bug_fixing_commits
@@ -19,23 +20,31 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: c1 bug / c2 test / c3 partial fix / c4 final fix
+  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
+
+    c1: introduce bug (replace src/main/java/example/Range.java)
+
+    c2: add test context (write_file src/test/java/example/RangeTest.java)
+
+    c3: fix bug (replace src/main/java/example/Range.java)
+
+    c4: fix bug (replace src/main/java/example/Range.java)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: Initial correct range
+  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value >= min && value\
-      \ <= max;\n  }\n}\n"
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: Introduce boundary bug
+  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
   role: bug_introducing
   operations:
   - type: replace
@@ -46,7 +55,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: Add failing boundary test
+  message: 'c2: add test context (write_file src/test/java/example/RangeTest.java)'
   role: test_added
   operations:
   - type: write_file
@@ -60,7 +69,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: Partial fix lower boundary
+  message: 'c3: fix bug (replace src/main/java/example/Range.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -71,7 +80,7 @@ commits:
   branch: main
   parents:
   - c3
-  message: Final fix upper boundary
+  message: 'c4: fix bug (replace src/main/java/example/Range.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -117,14 +126,14 @@ fix_series:
   - c3
   - c4
 scenario_design:
-  purpose: 修正作業が複数 commit に分かれ、単一 BFC では不十分なケースを評価する。
-  current_schema_limitation: fix series を1つの単位として表現できない。
-  required_extensions_from_source: "```yaml\nfix_series:\n  - id: \"FIX-B001\"\n    commits:\n      - \"c2\"\n      - \"c3\"\n      - \"c4\"\n\
-    ```"
+  purpose: Evaluate Fix split across multiple commits and whether SZZ identifies the expected bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: bug_fixing_commits; operations: write_file, replace.'
   evaluation_points:
-  - test commit を BFC に含めるか
-  - final fix のみを BFC とするか
-  - fix series 全体から SZZ を行うか
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for future graph-aware SZZBench support.
-- This revision replaces placeholder/no-op operations with concrete file states so that graph generation can proceed.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

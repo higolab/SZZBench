@@ -1,50 +1,49 @@
-# SZZG-0038: backport introduces bug
+# SZZG-0038: Backport introduces release-specific bug
 
 ## Source
 
 - Source scenario: `FUTURE-038`
-- Category: branch / merge / cherry-pick / backport 系未対応シナリオ
+- Category: Branch, merge, cherry-pick, and backport scenarios
 
 ## Purpose
 
-backport 作業自体が新たな bug を混入するケースを評価する。
+Evaluate Backport introduces release-specific bug and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-main:
-  c1: fix
-release:
-  r1: backport fix but introduces release-specific bug
-  r2: release-specific fix
+c0: create initial state (write_file src/main/java/example/Range.java)
+c1: fix bug (write_file src/main/java/example/RangePolicy.java)
+r1: introduce bug (replace src/main/java/example/Range.java; write_file src/main/java/example/RangePolicy.java)
+r2: fix bug (replace src/main/java/example/Range.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-backport relation と branch-specific BIC が必要。
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-- `backport_of`
-- branch
-- release-specific oracle
+- Factors: branch, backport_of
+- Operation types: write_file, replace
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- backport commit を BIC として返せるか
-- original fix と backport bug の区別
-- release maintenance における SZZ
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
 ---
 
 ## Draft status
 
-This scenario is a draft for the proposed `scenario.graph.yml` schema.  It is intended to guide the implementation of a future graph-aware validator/generator and should not be treated as executable by the current simple `scenario.yml` generator.
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
 
 ## Files
 
 ```text
 SZZG-0038/
-├── scenario.graph.yml
-└── README.md
+|-- scenario.graph.yml
+`-- README.md
 ```

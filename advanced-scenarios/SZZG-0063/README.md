@@ -1,50 +1,46 @@
-# SZZG-0063: file creation only as fix
+# SZZG-0063: File creation only as fix
 
 ## Source
 
 - Source scenario: `FUTURE-063`
-- Category: robustness / 実装品質確認系未対応シナリオ
+- Category: Robustness and implementation-quality scenarios
 
 ## Purpose
 
-新しいファイルの追加のみで bug が修正されるケースを評価する。
+Evaluate File creation only as fix and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: caller expects plugin class
-c1: plugin class missing
-c2: missing plugin class を追加
+c0: introduce bug (write_file src/main/java/example/PluginLoader.java)
+c1: fix bug (write_file src/main/java/example/DefaultPlugin.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-omission bug として書けるが、fix が file creation であることを明示できない。
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-```yaml
-fix:
-  fix_type: "file_creation"
-  file: "src/main/java/example/Plugin.java"
-```
+- Operation types: write_file
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- line addition より大きい omission fix
-- deleted-line-based SZZ の失敗
-- file-level oracle
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
 ---
 
 ## Draft status
 
-This scenario is a draft for the proposed `scenario.graph.yml` schema.  It is intended to guide the implementation of a future graph-aware validator/generator and should not be treated as executable by the current simple `scenario.yml` generator.
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
 
 ## Files
 
 ```text
 SZZG-0063/
-├── scenario.graph.yml
-└── README.md
+|-- scenario.graph.yml
+`-- README.md
 ```

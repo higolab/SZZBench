@@ -1,58 +1,50 @@
-# SZZG-0051: 同一issueに無関係commitが混在
+# SZZG-0051: Unrelated commits mixed in the same issue
 
 ## Source
 
 - Source scenario: `FUTURE-051`
-- Category: work item / commit series 系未対応シナリオ
+- Category: Work-item and commit-series scenarios
 
 ## Purpose
 
-work item / issue に無関係な commit が混在するケースを評価する。
+Evaluate Unrelated commits mixed in the same issue and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-issue #10:
-  c1: true BIC
-  c2: unrelated cleanup
-  c3: unrelated formatting
-  c4: fix
+c0: create initial state (write_file src/main/java/example/RangeService.java)
+c1: introduce bug (replace src/main/java/example/RangeService.java)
+c2: add unrelated change (replace src/main/java/example/RangeService.java)
+c3: add unrelated change (write_file docs/issue-10-note.md)
+c4: fix bug (replace src/main/java/example/RangeService.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-issue に含まれる commit と bug への関連度を表現できない。
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-```yaml
-work_items:
-  - id: "ISSUE-10"
-    commits:
-      - commit: "c1"
-        relevance: "bug_introducing"
-      - commit: "c2"
-        relevance: "unrelated"
-```
+- Factors: work_items, issues
+- Operation types: write_file, replace
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- issue-aware SZZ の false positive
-- work item 内のノイズ
-- candidate filtering の評価
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
 ---
 
-## I. ambiguous blame / duplicate 系未対応シナリオ
-
 ## Draft status
 
-This scenario is a draft for the proposed `scenario.graph.yml` schema.  It is intended to guide the implementation of a future graph-aware validator/generator and should not be treated as executable by the current simple `scenario.yml` generator.
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
 
 ## Files
 
 ```text
 SZZG-0051/
-├── scenario.graph.yml
-└── README.md
+|-- scenario.graph.yml
+`-- README.md
 ```

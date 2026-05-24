@@ -2,10 +2,11 @@ schema_version: graph-0.1-draft
 meta:
   id: SZZG-0050
   source_future_id: FUTURE-050
-  title: BFC message references wrong commit
+  title: BFC message references the wrong commit
   slug: bfc-message-references-wrong-commit
-  description: developer hint が誤っている場合に、hint-aware SZZ が誤誘導されるかを評価する。
-  category: work item / commit series 系未対応シナリオ
+  description: Evaluates bfc message references the wrong commit and checks whether SZZ identifies the expected bug-introducing
+    commit set.
+  category: Work-item and commit-series scenarios
   category_code: H
   factors:
   - developer_hints
@@ -19,26 +20,27 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c1: true BIC
+  history_summary: 'c1: create initial state (write_file src/main/java/example/Range.java)
 
-    c2: distractor
+    c2: apply intermediate change (write_file docs/intermediate-note.md)
 
-    c3: fix message incorrectly references c2'
+    c3: fix bug (replace src/main/java/example/Range.java)'
 commits:
 - id: c1
   branch: main
   parents: []
-  message: 'c1: true BIC'
+  message: 'c1: create initial state (write_file src/main/java/example/Range.java)'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value > min && value < max;\n  }\n}\n"
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value > min && value < max;\n  }\n}\n"
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: distractor'
+  message: 'c2: apply intermediate change (write_file docs/intermediate-note.md)'
   role: intermediate
   operations:
   - type: write_file
@@ -50,7 +52,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: fix message incorrectly references c2'
+  message: 'c3: fix bug (replace src/main/java/example/Range.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -84,16 +86,18 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: developer hint が誤っている場合に、hint-aware SZZ が誤誘導されるかを評価する。
-  current_schema_limitation: hint の正誤を表現できない。
-  required_extensions_from_source: "```yaml\ndeveloper_hints:\n  - bug: \"B001\"\n    referenced_commits:\n      - \"c2\"\n    correctness: \"incorrect\"\n```"
+  purpose: Evaluate BFC message references the wrong commit and whether SZZ identifies the expected bug-introducing commit
+    set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: developer_hints; operations: write_file, replace.'
   evaluation_points:
-  - noisy hint に対する頑健性
-  - hint と code evidence の矛盾
-  - LLM/context-aware SZZ の検証
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for future graph-aware SZZBench support.
-- This file is not expected to be executable by the current simple scenario.yml generator.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.
 developer_hints:
 - bug: B001
   source: commit_message

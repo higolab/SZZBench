@@ -2,10 +2,11 @@ schema_version: graph-0.1-draft
 meta:
   id: SZZG-0059
   source_future_id: FUTURE-059
-  title: semantically equivalent rewrite
+  title: Semantically equivalent rewrite
   slug: semantically-equivalent-rewrite
-  description: 中間 commit が意味的には同じだが構文上大きく異なる rewrite を行うケースを評価する。
-  category: context-aware / LLM-based SZZ 向け未対応シナリオ
+  description: Evaluates semantically equivalent rewrite and checks whether SZZ identifies the expected bug-introducing commit
+    set.
+  category: Context-aware and LLM-based SZZ scenarios
   category_code: J
   factors: []
   difficulty: advanced
@@ -18,26 +19,27 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c1: bug introduced
+  history_summary: 'c1: create initial state (write_file src/main/java/example/Range.java)
 
-    c2: semantically equivalent rewrite of faulty logic
+    c2: apply intermediate change (write_file docs/intermediate-note.md)
 
-    c3: fix'
+    c3: fix bug (replace src/main/java/example/Range.java)'
 commits:
 - id: c1
   branch: main
   parents: []
-  message: 'c1: bug introduced'
+  message: 'c1: create initial state (write_file src/main/java/example/Range.java)'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value > min && value < max;\n  }\n}\n"
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value > min && value < max;\n  }\n}\n"
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: semantically equivalent rewrite of faulty logic'
+  message: 'c2: apply intermediate change (write_file docs/intermediate-note.md)'
   role: intermediate
   operations:
   - type: write_file
@@ -49,7 +51,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: fix'
+  message: 'c3: fix bug (replace src/main/java/example/Range.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -83,13 +85,14 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: 中間 commit が意味的には同じだが構文上大きく異なる rewrite を行うケースを評価する。
-  current_schema_limitation: write/replace で表現はできるが、c2 が semantic-preserving rewrite であることを表現できない。
-  required_extensions_from_source: "```yaml\ncommits:\n  - id: \"c2\"\n    role: \"semantic_preserving_rewrite\"\n    preserves_behavior: true\n```"
+  purpose: Evaluate Semantically equivalent rewrite and whether SZZ identifies the expected bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses operations: write_file, replace.'
   evaluation_points:
-  - token/AST/semantic SZZ の違い
-  - basic blame が c2 を返す場合の解釈
-  - LLM-based SZZ の可能性
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for future graph-aware SZZBench support.
-- This file is not expected to be executable by the current simple scenario.yml generator.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

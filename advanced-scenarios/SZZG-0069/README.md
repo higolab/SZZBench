@@ -1,52 +1,47 @@
-# SZZG-0069: malformed commit message
+# SZZG-0069: Malformed commit message
 
 ## Source
 
 - Source scenario: `FUTURE-071`
-- Category: robustness / 実装品質確認系未対応シナリオ
+- Category: Robustness and implementation-quality scenarios
 
 ## Purpose
 
-極端に長い commit message、非ASCII文字、制御文字などを含む場合の SZZ 実装の robustness を確認する。
+Evaluate Malformed commit message and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c1: bug introduced with malformed message
-c2: fix
+c1: create initial state (write_file src/main/java/example/Range.java)
+c2: fix bug (replace src/main/java/example/Range.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-ある程度は書けるが、malformed message の種類を体系化できない。
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-```yaml
-message_variants:
-  - type: "non_ascii"
-  - type: "very_long"
-  - type: "control_chars"
-```
+- Factors: evaluation_variants, message_variants
+- Operation types: write_file, replace
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- parser robustness
-- CSV/JSON出力時の壊れ
-- LLM/context-aware SZZ の入力処理
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
 ---
 
-## L. schema / evaluation policy が必要な横断シナリオ
-
 ## Draft status
 
-This scenario is a draft for the proposed `scenario.graph.yml` schema.  It is intended to guide the implementation of a future graph-aware validator/generator and should not be treated as executable by the current simple `scenario.yml` generator.
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
 
 ## Files
 
 ```text
 SZZG-0069/
-├── scenario.graph.yml
-└── README.md
+|-- scenario.graph.yml
+`-- README.md
 ```

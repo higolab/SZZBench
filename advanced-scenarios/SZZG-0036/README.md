@@ -1,51 +1,51 @@
-# SZZG-0036: cherry-pick BFC
+# SZZG-0036: Cherry-pick BFC
 
 ## Source
 
 - Source scenario: `FUTURE-036`
-- Category: branch / merge / cherry-pick / backport 系未対応シナリオ
+- Category: Branch, merge, cherry-pick, and backport scenarios
 
 ## Purpose
 
-修正 commit が複数 branch に cherry-pick されるケースを評価する。
+Evaluate Cherry-pick BFC and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-main:
-  c1: bug
-  c2: fix
-
-release:
-  r1: cherry-pick of c2
+c0: create initial state (write_file src/main/java/example/Range.java)
+c1: introduce bug (replace src/main/java/example/Range.java)
+c2: apply intermediate change (write_file docs/feature-note.md)
+c3: merge branch
+c4: fix bug (replace src/main/java/example/Range.java)
+r1: cherry-pick change (apply_patch_from c1)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-同一修正が複数 branch に存在することを表せない。
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-- branch
-- cherry_pick_of
-- 複数 BFC instance
+- Factors: branch, cherry_pick_of, bug_fixing_commits, bug_instances
+- Operation types: write_file, replace, apply_patch_from
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- branch-specific SZZ
-- BFC の original と cherry-pick の区別
-- release branch の評価
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
 ---
 
 ## Draft status
 
-This scenario is a draft for the proposed `scenario.graph.yml` schema.  It is intended to guide the implementation of a future graph-aware validator/generator and should not be treated as executable by the current simple `scenario.yml` generator.
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
 
 ## Files
 
 ```text
 SZZG-0036/
-├── scenario.graph.yml
-└── README.md
+|-- scenario.graph.yml
+`-- README.md
 ```

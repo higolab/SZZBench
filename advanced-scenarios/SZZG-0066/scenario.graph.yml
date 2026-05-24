@@ -2,10 +2,10 @@ schema_version: graph-0.1-draft
 meta:
   id: SZZG-0066
   source_future_id: FUTURE-066
-  title: non-UTF-8 file
+  title: Non-UTF-8 file
   slug: non-utf-8-file
-  description: 非UTF-8ファイルを含むリポジトリで SZZ 実装が落ちないか確認する。
-  category: robustness / 実装品質確認系未対応シナリオ
+  description: Evaluates non-utf-8 file and checks whether SZZ identifies the expected bug-introducing commit set.
+  category: Robustness and implementation-quality scenarios
   category_code: K
   factors:
   - encoding
@@ -19,26 +19,27 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: Shift-JIS の設定ファイルを追加
+  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
 
-    c1: code bug
+    c1: introduce bug (replace src/main/java/example/Range.java)
 
-    c2: fix'
+    c2: fix bug (replace src/main/java/example/Range.java)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: Shift-JIS の設定ファイルを追加'
+  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value >= min && value <= max;\n  }\n}\n"
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: code bug'
+  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
   role: bug_introducing
   operations:
   - type: replace
@@ -49,7 +50,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: fix'
+  message: 'c2: fix bug (replace src/main/java/example/Range.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -83,13 +84,14 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: 非UTF-8ファイルを含むリポジトリで SZZ 実装が落ちないか確認する。
-  current_schema_limitation: '`write_file` は UTF-8 テキスト前提。'
-  required_extensions_from_source: "```yaml\n- type: \"write_file\"\n  path: \"config/messages.properties\"\n  encoding: \"Shift_JIS\"\n  content: \"...\"\n```"
+  purpose: Evaluate Non-UTF-8 file and whether SZZ identifies the expected bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: encoding; operations: write_file, replace.'
   evaluation_points:
-  - encoding handling
-  - tool robustness
-  - non-code file の扱い
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for future graph-aware SZZBench support.
-- This file is not expected to be executable by the current simple scenario.yml generator.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

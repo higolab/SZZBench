@@ -4,8 +4,8 @@ meta:
   source_future_id: FUTURE-068
   title: Huge history
   slug: huge-history
-  description: 巨大履歴を2つのnon-empty placeholder commitで表し、最後にlarge fileのbugを修正する。
-  category: robustness / 実装品質確認系未対応シナリオ
+  description: Evaluates huge history and checks whether SZZ identifies the expected bug-introducing commit set.
+  category: Robustness and implementation-quality scenarios
   category_code: K
   factors:
   - commit_generators
@@ -19,12 +19,20 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: c0 large file / c1 one-line bug / c2-c3 history placeholders / c4 fix
+  history_summary: 'c0: create initial state (write_generated_text_file src/main/java/example/LargeRange.java)
+
+    c1: introduce bug (replace src/main/java/example/LargeRange.java)
+
+    c2: apply intermediate change (commit_generator)
+
+    c3: apply intermediate change (commit_generator)
+
+    c4: fix bug (replace src/main/java/example/LargeRange.java)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: Create large generated file
+  message: 'c0: create initial state (write_generated_text_file src/main/java/example/LargeRange.java)'
   role: initial
   operations:
   - type: write_generated_text_file
@@ -35,7 +43,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: Introduce one-line bug in large file
+  message: 'c1: introduce bug (replace src/main/java/example/LargeRange.java)'
   role: bug_introducing
   operations:
   - type: replace
@@ -46,7 +54,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: Record generated unrelated history batch 1
+  message: 'c2: apply intermediate change (commit_generator)'
   role: intermediate
   operations:
   - type: commit_generator
@@ -58,7 +66,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: Record generated unrelated history batch 2
+  message: 'c3: apply intermediate change (commit_generator)'
   role: intermediate
   operations:
   - type: commit_generator
@@ -70,7 +78,7 @@ commits:
   branch: main
   parents:
   - c3
-  message: Fix one-line bug in large file
+  message: 'c4: fix bug (replace src/main/java/example/LargeRange.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -109,13 +117,15 @@ commit_generators:
   - c2
   - c3
 scenario_design:
-  purpose: 多数の中間 commit を含む長い履歴で SZZ の性能を測る。
-  current_schema_limitation: "全 commit を手書きするのは現実的でない。  \nsynthetic commit series generator が必要。"
-  required_extensions_from_source: "```yaml\ncommit_generators:\n  - type: \"unrelated_changes\"\n    count: 1000\n    files: 10\n```"
+  purpose: Evaluate Huge history and whether SZZ identifies the expected bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: commit_generators; operations: write_generated_text_file,
+    replace, commit_generator.'
   evaluation_points:
-  - 履歴長に対する実行時間
-  - candidate pruning
-  - scalability
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for future graph-aware SZZBench support.
-- This revision replaces placeholder/no-op operations with concrete file states so that graph generation can proceed.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

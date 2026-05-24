@@ -2,10 +2,10 @@ schema_version: graph-0.1-draft
 meta:
   id: SZZG-0007
   source_future_id: FUTURE-007
-  title: BIC が test-only commit である
+  title: BIC is a test-only commit
   slug: bic-test-only-commit
-  description: テスト変更だけが将来の failure を引き起こす、またはテスト oracle を壊す場合を扱う。
-  category: BIC の性質に関する未対応シナリオ
+  description: Evaluates bic is a test-only commit and checks whether SZZ identifies the expected bug-introducing commit set.
+  category: BIC property scenarios
   category_code: B
   factors:
   - expected_szz
@@ -19,26 +19,27 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: 正常な本体コードとテスト
+  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
 
-    c1: テスト oracle を誤って変更
+    c1: introduce bug (replace src/main/java/example/Range.java)
 
-    c2: テスト oracle を修正'
+    c2: fix bug (replace src/main/java/example/Range.java)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: 正常な本体コードとテスト'
+  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value >= min && value <= max;\n  }\n}\n"
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: テスト oracle を誤って変更'
+  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
   role: bug_introducing
   operations:
   - type: replace
@@ -49,7 +50,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: テスト oracle を修正'
+  message: 'c2: fix bug (replace src/main/java/example/Range.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -83,13 +84,14 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: テスト変更だけが将来の failure を引き起こす、またはテスト oracle を壊す場合を扱う。
-  current_schema_limitation: "SZZBench は主に production code の fault / fix を前提にしている。  \ntest-only change を BIC として扱う評価方針が未定義。"
-  required_extensions_from_source: "```yaml\nfiles:\n  - path: \"src/test/java/example/RangeTest.java\"\n    kind: \"test\"\n\nexpected_szz:\n  file_scope:\n    include:\n      - \"test\"\n```"
+  purpose: Evaluate BIC is a test-only commit and whether SZZ identifies the expected bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: expected_szz; operations: write_file, replace.'
   evaluation_points:
-  - SZZ が test files を対象にするか
-  - test-only BIC を正解とする評価が妥当か
-  - defect prediction 用のラベル付けに含めるべきか
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for future graph-aware SZZBench support.
-- This file is not expected to be executable by the current simple scenario.yml generator.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

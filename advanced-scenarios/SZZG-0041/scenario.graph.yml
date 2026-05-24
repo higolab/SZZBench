@@ -2,10 +2,11 @@ schema_version: graph-0.1-draft
 meta:
   id: SZZG-0041
   source_future_id: FUTURE-041
-  title: mainで修正済み、releaseで未修正
+  title: Fixed on main but unfixed on release
   slug: main-release
-  description: main と release の修正状態が異なるケースを評価する。
-  category: branch / merge / cherry-pick / backport 系未対応シナリオ
+  description: Evaluates fixed on main but unfixed on release and checks whether SZZ identifies the expected bug-introducing
+    commit set.
+  category: Branch, merge, cherry-pick, and backport scenarios
   category_code: G
   factors:
   - branch
@@ -20,24 +21,31 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'main:    c1 bug -- c2 fix
+  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
 
-    release: r1 bug -- 未修正'
+    c1: introduce bug (replace src/main/java/example/Range.java)
+
+    c2: apply intermediate change (write_file docs/feature-note.md)
+
+    c3: merge branch
+
+    c4: fix bug (replace src/main/java/example/Range.java)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: Initial implementation
+  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value >= min && value <= max;\n  }\n}\n"
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
   branch: feature
   parents:
   - c0
-  message: Introduce bug on feature branch
+  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
   role: bug_introducing
   operations:
   - type: replace
@@ -48,7 +56,7 @@ commits:
   branch: feature
   parents:
   - c1
-  message: Feature branch follow-up change
+  message: 'c2: apply intermediate change (write_file docs/feature-note.md)'
   role: intermediate
   operations:
   - type: write_file
@@ -61,14 +69,14 @@ commits:
   parents:
   - c0
   - c2
-  message: Merge feature branch
+  message: 'c3: merge branch'
   role: merge
   operations: []
 - id: c4
   branch: main
   parents:
   - c3
-  message: Fix bug
+  message: 'c4: fix bug (replace src/main/java/example/Range.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -102,16 +110,17 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: main と release の修正状態が異なるケースを評価する。
-  current_schema_limitation: branch ごとの bug status を表現できない。
-  required_extensions_from_source: "```yaml\nbug_instances:\n  - id: \"B001-main\"\n    branch: \"main\"\n    status: \"fixed\"\n  - id: \"B001-release\"\n    branch: \"release\"\n    status: \"open\"\n```"
+  purpose: Evaluate Fixed on main but unfixed on release and whether SZZ identifies the expected bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: branch, bug_instances; operations: write_file, replace.'
   evaluation_points:
-  - branch ごとの BFC availability
-  - open bug を SZZ 評価対象にするか
-  - branch-aware oracle
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for future graph-aware SZZBench support.
-- This file is not expected to be executable by the current simple scenario.yml generator.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.
 bug_instances:
 - id: B001-main
   branch: main

@@ -2,10 +2,11 @@ schema_version: graph-0.1-draft
 meta:
   id: SZZG-0019
   source_future_id: FUTURE-019
-  title: buggy code copied to new file
+  title: Buggy code copied to a new file
   slug: buggy-code-copied-to-new-file
-  description: バグを含むコードが別ファイルへコピーされ、コピー先で後に修正されるケースを評価する。
-  category: copy / clone / propagation 系未対応シナリオ
+  description: Evaluates buggy code copied to a new file and checks whether SZZ identifies the expected bug-introducing commit
+    set.
+  category: Copy, clone, and propagation scenarios
   category_code: E
   factors:
   - copy_file
@@ -19,26 +20,27 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: A.java に bug を含む実装
+  history_summary: 'c0: create initial state (write_file src/main/java/example/A.java)
 
-    c1: A.java の処理を B.java にコピー
+    c1: apply intermediate change (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)
 
-    c2: B.java の bug を修正'
+    c2: fix bug (replace src/main/java/example/B.java)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: A.java に bug を含む実装'
+  message: 'c0: create initial state (write_file src/main/java/example/A.java)'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/A.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value > min && value < max;\n  }\n}\n"
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value > min && value < max;\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: A.java の処理を B.java にコピー'
+  message: 'c1: apply intermediate change (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)'
   role: intermediate
   operations:
   - type: copy_file
@@ -48,7 +50,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: B.java の bug を修正'
+  message: 'c2: fix bug (replace src/main/java/example/B.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -84,13 +86,14 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: バグを含むコードが別ファイルへコピーされ、コピー先で後に修正されるケースを評価する。
-  current_schema_limitation: "`copy_file` がないため、copy commit として表現できない。  \nまた、direct BIC と origin BIC の区別が必要。"
-  required_extensions_from_source: "```yaml\n- type: \"copy_file\"\n  from: \"src/main/java/example/A.java\"\n  to: \"src/main/java/example/B.java\"\n\nbug_introducing_commits:\n  - commit: \"c1\"\n    role: \"direct\"\n  - commit: \"c0\"\n    role: \"origin\"\n```"
+  purpose: Evaluate Buggy code copied to a new file and whether SZZ identifies the expected bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: copy_file; operations: write_file, copy_file, replace.'
   evaluation_points:
-  - direct BIC を正解とするか origin BIC を正解とするか
-  - clone-aware SZZ の評価
-  - conventional SZZ が copy commit を返すか
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for future graph-aware SZZBench support.
-- This file is not expected to be executable by the current simple scenario.yml generator.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

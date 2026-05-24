@@ -1,51 +1,47 @@
-# SZZG-0059: semantically equivalent rewrite
+# SZZG-0059: Semantically equivalent rewrite
 
 ## Source
 
 - Source scenario: `FUTURE-059`
-- Category: context-aware / LLM-based SZZ 向け未対応シナリオ
+- Category: Context-aware and LLM-based SZZ scenarios
 
 ## Purpose
 
-中間 commit が意味的には同じだが構文上大きく異なる rewrite を行うケースを評価する。
+Evaluate Semantically equivalent rewrite and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c1: bug introduced
-c2: semantically equivalent rewrite of faulty logic
-c3: fix
+c1: create initial state (write_file src/main/java/example/Range.java)
+c2: apply intermediate change (write_file docs/intermediate-note.md)
+c3: fix bug (replace src/main/java/example/Range.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-write/replace で表現はできるが、c2 が semantic-preserving rewrite であることを表現できない。
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-```yaml
-commits:
-  - id: "c2"
-    role: "semantic_preserving_rewrite"
-    preserves_behavior: true
-```
+- Operation types: write_file, replace
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- token/AST/semantic SZZ の違い
-- basic blame が c2 を返す場合の解釈
-- LLM-based SZZ の可能性
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
 ---
 
 ## Draft status
 
-This scenario is a draft for the proposed `scenario.graph.yml` schema.  It is intended to guide the implementation of a future graph-aware validator/generator and should not be treated as executable by the current simple `scenario.yml` generator.
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
 
 ## Files
 
 ```text
 SZZG-0059/
-├── scenario.graph.yml
-└── README.md
+|-- scenario.graph.yml
+`-- README.md
 ```

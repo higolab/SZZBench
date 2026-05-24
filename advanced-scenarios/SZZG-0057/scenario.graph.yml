@@ -2,10 +2,11 @@ schema_version: graph-0.1-draft
 meta:
   id: SZZG-0057
   source_future_id: FUTURE-057
-  title: test failure から原因推定可能
+  title: Cause can be inferred from test failure
   slug: test-failure
-  description: テストの失敗内容を見れば BIC が推定できるが、コード差分だけでは難しいケースを評価する。
-  category: context-aware / LLM-based SZZ 向け未対応シナリオ
+  description: Evaluates cause can be inferred from test failure and checks whether SZZ identifies the expected bug-introducing
+    commit set.
+  category: Context-aware and LLM-based SZZ scenarios
   category_code: J
   factors:
   - test_context
@@ -20,26 +21,27 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c1: bug introduced
+  history_summary: 'c1: create initial state (write_file src/main/java/example/Range.java)
 
-    c2: failing test added
+    c2: apply intermediate change (write_file docs/intermediate-note.md)
 
-    c3: fix'
+    c3: fix bug (replace src/main/java/example/Range.java)'
 commits:
 - id: c1
   branch: main
   parents: []
-  message: 'c1: bug introduced'
+  message: 'c1: create initial state (write_file src/main/java/example/Range.java)'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value > min && value < max;\n  }\n}\n"
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value > min && value < max;\n  }\n}\n"
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: failing test added'
+  message: 'c2: apply intermediate change (write_file docs/intermediate-note.md)'
   role: intermediate
   operations:
   - type: write_file
@@ -51,7 +53,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: fix'
+  message: 'c3: fix bug (replace src/main/java/example/Range.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -85,16 +87,18 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: テストの失敗内容を見れば BIC が推定できるが、コード差分だけでは難しいケースを評価する。
-  current_schema_limitation: test failure や expected/actual output を表現できない。
-  required_extensions_from_source: "```yaml\ntest_context:\n  failing_tests:\n    - name: \"RangeTest.boundaryValues\"\n      introduced_in: \"c2\"\n      failure_message: \"expected true but was false\"\n```"
+  purpose: Evaluate Cause can be inferred from test failure and whether SZZ identifies the expected bug-introducing commit
+    set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: test_context, context; operations: write_file, replace.'
   evaluation_points:
-  - test-aware SZZ
-  - LLM による failure explanation 利用
-  - test追加commitの扱い
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for future graph-aware SZZBench support.
-- This file is not expected to be executable by the current simple scenario.yml generator.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.
 test_context:
   failing_tests:
   - name: RangeTest.boundaryValues

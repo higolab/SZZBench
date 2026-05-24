@@ -1,55 +1,50 @@
-# SZZG-0041: mainで修正済み、releaseで未修正
+# SZZG-0041: Fixed on main but unfixed on release
 
 ## Source
 
 - Source scenario: `FUTURE-041`
-- Category: branch / merge / cherry-pick / backport 系未対応シナリオ
+- Category: Branch, merge, cherry-pick, and backport scenarios
 
 ## Purpose
 
-main と release の修正状態が異なるケースを評価する。
+Evaluate Fixed on main but unfixed on release and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-main:    c1 bug -- c2 fix
-release: r1 bug -- 未修正
+c0: create initial state (write_file src/main/java/example/Range.java)
+c1: introduce bug (replace src/main/java/example/Range.java)
+c2: apply intermediate change (write_file docs/feature-note.md)
+c3: merge branch
+c4: fix bug (replace src/main/java/example/Range.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-branch ごとの bug status を表現できない。
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-```yaml
-bug_instances:
-  - id: "B001-main"
-    branch: "main"
-    status: "fixed"
-  - id: "B001-release"
-    branch: "release"
-    status: "open"
-```
+- Factors: branch, bug_instances
+- Operation types: write_file, replace
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- branch ごとの BFC availability
-- open bug を SZZ 評価対象にするか
-- branch-aware oracle
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
 ---
 
-## H. work item / commit series 系未対応シナリオ
-
 ## Draft status
 
-This scenario is a draft for the proposed `scenario.graph.yml` schema.  It is intended to guide the implementation of a future graph-aware validator/generator and should not be treated as executable by the current simple `scenario.yml` generator.
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
 
 ## Files
 
 ```text
 SZZG-0041/
-├── scenario.graph.yml
-└── README.md
+|-- scenario.graph.yml
+`-- README.md
 ```

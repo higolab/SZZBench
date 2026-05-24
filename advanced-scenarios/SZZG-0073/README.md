@@ -1,57 +1,48 @@
-# SZZG-0073: benchmark variant によって評価対象を切り替えるケース
+# SZZG-0073: Switching evaluated targets by benchmark variant
 
 ## Source
 
 - Source scenario: `FUTURE-075`
-- Category: schema / evaluation policy が必要な横断シナリオ
+- Category: Schema and evaluation-policy scenarios
 
 ## Purpose
 
-同じ履歴に対して、strict / relaxed / direct-only / origin-aware など複数評価を行う。
+Evaluate Switching evaluated targets by benchmark variant and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-copy propagation:
-  c1 origin
-  c2 direct
-  c3 fix
+c1: introduce origin bug (write_file src/main/java/example/A.java)
+c2: introduce bug (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)
+c3: fix bug (replace src/main/java/example/B.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-1つの `expected_szz` しか持てない。
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-```yaml
-evaluation_variants:
-  - name: "direct-only"
-    true_positives:
-      - "c2"
-  - name: "origin-aware"
-    true_positives:
-      - "c2"
-    acceptable_related:
-      - "c1"
-```
+- Factors: evaluation_variants, direct_bic, origin_bic, copy_propagation
+- Operation types: write_file, copy_file, replace
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- 評価ポリシーによる結果の違い
-- benchmark paper での透明性
-- 手法比較の公平性
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
 ---
 
 ## Draft status
 
-This scenario is a draft for the proposed `scenario.graph.yml` schema.  It is intended to guide the implementation of a future graph-aware validator/generator and should not be treated as executable by the current simple `scenario.yml` generator.
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
 
 ## Files
 
 ```text
 SZZG-0073/
-├── scenario.graph.yml
-└── README.md
+|-- scenario.graph.yml
+`-- README.md
 ```

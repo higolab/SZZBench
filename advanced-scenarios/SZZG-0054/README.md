@@ -1,52 +1,47 @@
-# SZZG-0054: patch context が必要
+# SZZG-0054: Patch context required
 
 ## Source
 
 - Source scenario: `FUTURE-054`
-- Category: context-aware / LLM-based SZZ 向け未対応シナリオ
+- Category: Context-aware and LLM-based SZZ scenarios
 
 ## Purpose
 
-変更行だけでは原因を判断できず、周辺文脈が必要なケースを評価する。
+Evaluate Patch context required and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c1: caller/callee の前提を崩す変更
-c2: fix は別行で guard を追加
+c1: create initial state (write_file src/main/java/example/Range.java)
+c2: fix bug (replace src/main/java/example/Range.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-changed line 以外の context lines を評価対象として明示できない。
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-```yaml
-context:
-  required_files:
-    - "src/main/java/example/Caller.java"
-  required_entities:
-    - type: "method"
-      name: "callNormalize"
-```
+- Factors: context
+- Operation types: write_file, replace
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- line-based SZZ の限界
-- patch context を使う LLM-SZZ
-- 周辺コードを評価に含める必要性
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
 ---
 
 ## Draft status
 
-This scenario is a draft for the proposed `scenario.graph.yml` schema.  It is intended to guide the implementation of a future graph-aware validator/generator and should not be treated as executable by the current simple `scenario.yml` generator.
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
 
 ## Files
 
 ```text
 SZZG-0054/
-├── scenario.graph.yml
-└── README.md
+|-- scenario.graph.yml
+`-- README.md
 ```

@@ -2,10 +2,11 @@ schema_version: graph-0.1-draft
 meta:
   id: SZZG-0042
   source_future_id: FUTURE-042
-  title: feature作業の途中でBIC
+  title: BIC occurs during feature work
   slug: feature-bic
-  description: 1つの feature work item の中の途中 commit が BIC になるケースを評価する。
-  category: work item / commit series 系未対応シナリオ
+  description: Evaluates bic occurs during feature work and checks whether SZZ identifies the expected bug-introducing commit
+    set.
+  category: Work-item and commit-series scenarios
   category_code: H
   factors:
   - work_items
@@ -19,22 +20,29 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: "WI-001:\n  c1: add API\n  c2: add validation but buggy\n  c3: add tests\nc4: later fix"
+  history_summary: 'c1: create initial state (write_file src/main/java/example/Range.java)
+
+    c2: introduce bug (replace src/main/java/example/Range.java)
+
+    c3: apply intermediate change (write_file docs/intermediate-note.md)
+
+    c4: fix bug (replace src/main/java/example/Range.java)'
 commits:
 - id: c1
   branch: main
   parents: []
-  message: 'c1: add API'
+  message: 'c1: create initial state (write_file src/main/java/example/Range.java)'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value >= min && value <= max;\n  }\n}\n"
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n}\n"
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: add validation but buggy'
+  message: 'c2: introduce bug (replace src/main/java/example/Range.java)'
   role: bug_introducing
   operations:
   - type: replace
@@ -45,7 +53,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: add tests'
+  message: 'c3: apply intermediate change (write_file docs/intermediate-note.md)'
   role: intermediate
   operations:
   - type: write_file
@@ -57,7 +65,7 @@ commits:
   branch: main
   parents:
   - c3
-  message: 'c4: later fix'
+  message: 'c4: fix bug (replace src/main/java/example/Range.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -91,16 +99,17 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: 1つの feature work item の中の途中 commit が BIC になるケースを評価する。
-  current_schema_limitation: work item / issue 単位を表現できない。
-  required_extensions_from_source: "```yaml\nwork_items:\n  - id: \"WI-001\"\n    commits:\n      - \"c1\"\n      - \"c2\"\n      - \"c3\"\n```"
+  purpose: Evaluate BIC occurs during feature work and whether SZZ identifies the expected bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: work_items; operations: write_file, replace.'
   evaluation_points:
-  - work item 内の候補を使う SZZ
-  - commit message / issue linkage の利用
-  - BIC ranking の改善
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for future graph-aware SZZBench support.
-- This file is not expected to be executable by the current simple scenario.yml generator.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.
 work_items:
 - id: WI-001
   title: Synthetic work item for graph scenario

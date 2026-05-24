@@ -2,10 +2,11 @@ schema_version: graph-0.1-draft
 meta:
   id: SZZG-0071
   source_future_id: FUTURE-073
-  title: acceptable false positives を明示するケース
+  title: Case with explicit acceptable false positives
   slug: acceptable-false-positives
-  description: direct BIC ではないが、関連 commit として許容したい候補を明示する。
-  category: schema / evaluation policy が必要な横断シナリオ
+  description: Evaluates case with explicit acceptable false positives and checks whether SZZ identifies the expected bug-introducing
+    commit set.
+  category: Schema and evaluation-policy scenarios
   category_code: L
   factors:
   - expected_szz
@@ -22,16 +23,16 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c1: origin bug
+  history_summary: 'c1: introduce origin bug (write_file src/main/java/example/A.java)
 
-    c2: direct copy
+    c2: introduce bug (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)
 
-    c3: fix'
+    c3: fix bug (replace src/main/java/example/B.java)'
 commits:
 - id: c1
   branch: main
   parents: []
-  message: 'c1: origin bug'
+  message: 'c1: introduce origin bug (write_file src/main/java/example/A.java)'
   role: origin_bug_introducing
   operations:
   - type: write_file
@@ -42,7 +43,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: direct copy'
+  message: 'c2: introduce bug (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)'
   role: bug_introducing
   operations:
   - type: copy_file
@@ -52,7 +53,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: fix copied bug'
+  message: 'c3: fix bug (replace src/main/java/example/B.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -105,15 +106,16 @@ expected_szz:
       reason: origin_bic
       credit: 0.5
 scenario_design:
-  purpose: direct BIC ではないが、関連 commit として許容したい候補を明示する。
-  current_schema_limitation: '`false_positives_allowed` はあるが、許容理由や評価上の重みを表せない。'
-  required_extensions_from_source: "expected_szz:\n  commit_level:\n    true_positives:\n      - \"c2\"\n    acceptable_related:\n\
-    \      - commit: \"c1\"\n        reason: \"origin_bic\"\n        credit: 0.5\n"
+  purpose: Evaluate Case with explicit acceptable false positives and whether SZZ identifies the expected bug-introducing
+    commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: expected_szz, acceptable_related, origin_bic, direct_bic;
+    operations: write_file, copy_file, replace.'
   evaluation_points:
-  - strict evaluation と relaxed evaluation
-  - direct/origin の重み付け
-  - benchmark 結果の解釈
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for future graph-aware SZZBench support.
-- This file is not expected to be executable by the current simple scenario.yml generator.
-- This revision removes the undefined c0 reference and aligns the oracle with FUTURE-073.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

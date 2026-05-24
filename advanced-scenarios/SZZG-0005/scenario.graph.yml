@@ -2,10 +2,10 @@ schema_version: graph-0.1-draft
 meta:
   id: SZZG-0005
   source_future_id: FUTURE-005
-  title: BFC が merge commit である
+  title: BFC is a merge commit
   slug: bfc-merge-commit
-  description: merge commit 上で初めてバグ修正が行われる場合を評価する。
-  category: BFC の形状に関する未対応シナリオ
+  description: Evaluates bfc is a merge commit and checks whether SZZ identifies the expected bug-introducing commit set.
+  category: BFC shape scenarios
   category_code: A
   factors:
   - branch
@@ -21,24 +21,31 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'main:    c0 ---- c3 merge/fix
+  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
 
-    feature:    c1 bug ---- c2 change'
+    c1: introduce bug (replace src/main/java/example/Range.java)
+
+    c2: apply intermediate change (write_file docs/feature-note.md)
+
+    c3: merge branch
+
+    c4: fix bug (replace src/main/java/example/Range.java)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: Initial implementation
+  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value >= min && value <= max;\n  }\n}\n"
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
   branch: feature
   parents:
   - c0
-  message: Introduce bug on feature branch
+  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
   role: bug_introducing
   operations:
   - type: replace
@@ -49,7 +56,7 @@ commits:
   branch: feature
   parents:
   - c1
-  message: Feature branch follow-up change
+  message: 'c2: apply intermediate change (write_file docs/feature-note.md)'
   role: intermediate
   operations:
   - type: write_file
@@ -62,14 +69,14 @@ commits:
   parents:
   - c0
   - c2
-  message: Merge feature branch
+  message: 'c3: merge branch'
   role: merge
   operations: []
 - id: c4
   branch: main
   parents:
   - c3
-  message: Fix bug
+  message: 'c4: fix bug (replace src/main/java/example/Range.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -103,13 +110,14 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: merge commit 上で初めてバグ修正が行われる場合を評価する。
-  current_schema_limitation: commit DAG、branch、merge commit の親を表現できない。
-  required_extensions_from_source: "```yaml\ncommits:\n  - id: \"c3\"\n    role: \"bug_fixing\"\n    branch: \"main\"\n    parents:\n      - \"c0\"\n      - \"c2\"\n```"
+  purpose: Evaluate BFC is a merge commit and whether SZZ identifies the expected bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: branch, parents, merge; operations: write_file, replace.'
   evaluation_points:
-  - merge commit の diff を SZZ が扱えるか
-  - どちらの親との差分を起点にするか
-  - merge commit を無視する SZZ 実装が失敗するか
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for future graph-aware SZZBench support.
-- This file is not expected to be executable by the current simple scenario.yml generator.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

@@ -1,54 +1,48 @@
-# SZZG-0058: issue description が必要
+# SZZG-0058: Issue description required
 
 ## Source
 
 - Source scenario: `FUTURE-058`
-- Category: context-aware / LLM-based SZZ 向け未対応シナリオ
+- Category: Context-aware and LLM-based SZZ scenarios
 
 ## Purpose
 
-issue description がなければ BIC 候補を絞れないケースを評価する。
+Evaluate Issue description required and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c1: ambiguous code change
-c2: similar code change
-c3: fix
-issue description: "Null input to normalize should return empty string"
+c1: create initial state (write_file src/main/java/example/Range.java)
+c2: apply intermediate change (write_file docs/intermediate-note.md)
+c3: fix bug (replace src/main/java/example/Range.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-外部 issue 情報を保持する場所がない。
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-```yaml
-issues:
-  - id: "ISSUE-1"
-    title: "Normalizer fails on null"
-    description: "..."
-    linked_bugs:
-      - "B001"
-```
+- Factors: issues
+- Operation types: write_file, replace
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- issue-aware SZZ
-- natural language context
-- LLM-based SZZ
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
 ---
 
 ## Draft status
 
-This scenario is a draft for the proposed `scenario.graph.yml` schema.  It is intended to guide the implementation of a future graph-aware validator/generator and should not be treated as executable by the current simple `scenario.yml` generator.
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
 
 ## Files
 
 ```text
 SZZG-0058/
-├── scenario.graph.yml
-└── README.md
+|-- scenario.graph.yml
+`-- README.md
 ```

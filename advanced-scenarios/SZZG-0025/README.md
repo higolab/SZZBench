@@ -1,51 +1,47 @@
-# SZZG-0025: generated code にバグがコピーされる
+# SZZG-0025: Bug propagates into generated code
 
 ## Source
 
 - Source scenario: `FUTURE-025`
-- Category: copy / clone / propagation 系未対応シナリオ
+- Category: Copy, clone, and propagation scenarios
 
 ## Purpose
 
-生成コードにバグが伝播し、その生成コード側で修正されるケースを評価する。
+Evaluate Bug propagates into generated code and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: source template に bug
-c1: generated file を更新
-c2: generated file 側で修正
+c0: introduce origin bug (write_file templates/Range.tpl)
+c1: introduce bug (write_file src/generated/java/generated/GeneratedRange.java)
+c2: fix bug (replace src/generated/java/generated/GeneratedRange.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-generated file と source template の関係を表現できない。
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-```yaml
-files:
-  - path: "generated/Parser.java"
-    kind: "generated"
-    generated_from: "templates/Parser.tpl"
-```
+- Operation types: write_file, replace
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- generated file を評価対象に含めるか
-- source template を origin BIC とするか
-- generated file の commit を direct BIC とするか
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
 ---
 
 ## Draft status
 
-This scenario is a draft for the proposed `scenario.graph.yml` schema.  It is intended to guide the implementation of a future graph-aware validator/generator and should not be treated as executable by the current simple `scenario.yml` generator.
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
 
 ## Files
 
 ```text
 SZZG-0025/
-├── scenario.graph.yml
-└── README.md
+|-- scenario.graph.yml
+`-- README.md
 ```

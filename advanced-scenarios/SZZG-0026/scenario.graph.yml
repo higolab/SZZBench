@@ -2,10 +2,11 @@ schema_version: graph-0.1-draft
 meta:
   id: SZZG-0026
   source_future_id: FUTURE-026
-  title: direct BIC vs origin BIC の明示評価
+  title: Explicit evaluation of direct BIC vs origin BIC
   slug: direct-bic-vs-origin-bic
-  description: 同じ履歴に対して、direct BIC と origin BIC のどちらを正解とするかを切り替えて評価する。
-  category: copy / clone / propagation 系未対応シナリオ
+  description: Evaluates explicit evaluation of direct bic vs origin bic and checks whether SZZ identifies the expected bug-introducing
+    commit set.
+  category: Copy, clone, and propagation scenarios
   category_code: E
   factors:
   - expected_szz
@@ -19,26 +20,27 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: origin bug
+  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
 
-    c1: buggy code copied
+    c1: introduce bug (replace src/main/java/example/Range.java)
 
-    c2: copied bug fixed'
+    c2: fix bug (replace src/main/java/example/Range.java)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: origin bug'
+  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value >= min && value <= max;\n  }\n}\n"
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: buggy code copied'
+  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
   role: bug_introducing
   operations:
   - type: replace
@@ -49,7 +51,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: copied bug fixed'
+  message: 'c2: fix bug (replace src/main/java/example/Range.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -85,13 +87,15 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: 同じ履歴に対して、direct BIC と origin BIC のどちらを正解とするかを切り替えて評価する。
-  current_schema_limitation: "`bug_introducing_commits` に両方を書いても役割が分からない。  \n評価対象を direct / origin から選べない。"
-  required_extensions_from_source: "```yaml\nexpected_szz:\n  commit_level:\n    primary_target: \"direct\"\n    true_positives:\n      - \"c1\"\n    related_origins:\n      - \"c0\"\n```"
+  purpose: Evaluate Explicit evaluation of direct BIC vs origin BIC and whether SZZ identifies the expected bug-introducing
+    commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: expected_szz; operations: write_file, replace.'
   evaluation_points:
-  - direct を正解にする設定
-  - origin を正解にする設定
-  - SZZ の目的による oracle 定義の違い
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for future graph-aware SZZBench support.
-- This file is not expected to be executable by the current simple scenario.yml generator.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

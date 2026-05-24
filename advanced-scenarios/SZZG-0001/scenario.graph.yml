@@ -2,10 +2,11 @@ schema_version: graph-0.1-draft
 meta:
   id: SZZG-0001
   source_future_id: FUTURE-001
-  title: BFC が rename + fix を同時に行う
+  title: BFC performs rename and fix in the same commit
   slug: bfc-rename-fix
-  description: ファイル名変更とバグ修正が同一 BFC に含まれる場合に、SZZ が正しい BIC を特定できるかを評価する。
-  category: BFC の形状に関する未対応シナリオ
+  description: Evaluates bfc performs rename and fix in the same commit and checks whether SZZ identifies the expected bug-introducing
+    commit set.
+  category: BFC shape scenarios
   category_code: A
   factors:
   - rename_file
@@ -19,26 +20,27 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: OldRange.java に正しい実装を導入
+  history_summary: 'c0: create initial state (write_file src/main/java/example/OldRange.java)
 
-    c1: OldRange.java に boundary bug を混入
+    c1: introduce bug (replace src/main/java/example/OldRange.java)
 
-    c2: OldRange.java を Range.java に rename しつつ bug を修正'
+    c2: fix bug (rename_file src/main/java/example/OldRange.java -> src/main/java/example/Range.java; replace src/main/java/example/Range.java)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: OldRange.java に正しい実装を導入'
+  message: 'c0: create initial state (write_file src/main/java/example/OldRange.java)'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/OldRange.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value >= min && value <= max;\n  }\n}\n"
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: OldRange.java に boundary bug を混入'
+  message: 'c1: introduce bug (replace src/main/java/example/OldRange.java)'
   role: bug_introducing
   operations:
   - type: replace
@@ -49,7 +51,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: OldRange.java を Range.java に rename しつつ bug を修正'
+  message: 'c2: fix bug (rename_file src/main/java/example/OldRange.java -> src/main/java/example/Range.java; replace src/main/java/example/Range.java)'
   role: bug_fixing
   operations:
   - type: rename_file
@@ -86,13 +88,15 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: ファイル名変更とバグ修正が同一 BFC に含まれる場合に、SZZ が正しい BIC を特定できるかを評価する。
-  current_schema_limitation: "`replace` だけでも擬似的には表現できるが、Git 履歴上の rename として表現できない。  \nrename-aware SZZ の評価には、Git が rename として認識できる履歴を生成する必要がある。"
-  required_extensions_from_source: "```yaml\n- type: \"rename_file\"\n  from: \"src/main/java/example/OldRange.java\"\n  to: \"src/main/java/example/Range.java\"\n```\n\nさらに BFC 側で rename と replace を同一 commit に入れる必要がある。"
+  purpose: Evaluate BFC performs rename and fix in the same commit and whether SZZ identifies the expected bug-introducing
+    commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: rename_file; operations: write_file, replace, rename_file.'
   evaluation_points:
-  - '`git log --follow` 相当の追跡が必要か'
-  - file path が変わっても BIC に到達できるか
-  - rename commit 自体を誤って BIC としないか
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for future graph-aware SZZBench support.
-- This file is not expected to be executable by the current simple scenario.yml generator.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

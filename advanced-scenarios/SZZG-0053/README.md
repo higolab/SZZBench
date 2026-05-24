@@ -1,51 +1,48 @@
-# SZZG-0053: line moved and duplicated
+# SZZG-0053: Line moved and duplicated
 
 ## Source
 
 - Source scenario: `FUTURE-053`
-- Category: ambiguous blame / duplicate 系未対応シナリオ
+- Category: Ambiguous blame and duplicate-code scenarios
 
 ## Purpose
 
-faulty line が移動され、さらに複製されることで、blame と oracle が曖昧になるケースを評価する。
+Evaluate Line moved and duplicated and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c1: faulty line 導入
-c2: faulty line を別メソッドへ移動し、元にも残す
-c3: 片方のみ修正
+c1: create initial state (write_file src/main/java/example/Range.java)
+c2: apply intermediate change (move_entity; copy_entity)
+c3: fix bug (replace src/main/java/example/Range.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-line move / duplication の関係を表現できない。  
-direct / origin / instance の区別が必要。
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-- `move_entity`
-- `copy_entity`
-- bug instance
+- Factors: move_entity, copy_entity, bug_instances
+- Operation types: write_file, move_entity, copy_entity, replace
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- どの instance を修正したか
-- moved line の origin
-- duplicate line の blame
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
 ---
 
-## J. context-aware / LLM-based SZZ 向け未対応シナリオ
-
 ## Draft status
 
-This scenario is a draft for the proposed `scenario.graph.yml` schema.  It is intended to guide the implementation of a future graph-aware validator/generator and should not be treated as executable by the current simple `scenario.yml` generator.
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
 
 ## Files
 
 ```text
 SZZG-0053/
-├── scenario.graph.yml
-└── README.md
+|-- scenario.graph.yml
+`-- README.md
 ```

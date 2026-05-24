@@ -1,48 +1,47 @@
-# SZZG-0062: file deletion
+# SZZG-0062: File deletion
 
 ## Source
 
 - Source scenario: `FUTURE-062`
-- Category: robustness / 実装品質確認系未対応シナリオ
+- Category: Robustness and implementation-quality scenarios
 
 ## Purpose
 
-ファイル削除が修正になる、または削除ファイルの blame が必要になるケースを評価する。
+Evaluate File deletion and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: buggy file を導入
-c1: bug を含むファイルを削除して修正
+c0: create initial state (write_file src/main/java/example/Buggy.java)
+c1: fix bug (delete_file src/main/java/example/Buggy.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-`delete_file` が正式 operation として未対応。
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-```yaml
-- type: "delete_file"
-  path: "src/main/java/example/Buggy.java"
-```
+- Factors: delete_file
+- Operation types: write_file, delete_file
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- file deletion BFC
-- 削除されたファイルの履歴追跡
-- SZZ 実装の robustness
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
 ---
 
 ## Draft status
 
-This scenario is a draft for the proposed `scenario.graph.yml` schema.  It is intended to guide the implementation of a future graph-aware validator/generator and should not be treated as executable by the current simple `scenario.yml` generator.
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
 
 ## Files
 
 ```text
 SZZG-0062/
-├── scenario.graph.yml
-└── README.md
+|-- scenario.graph.yml
+`-- README.md
 ```

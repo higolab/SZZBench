@@ -4,8 +4,9 @@ meta:
   source_future_id: FUTURE-052
   title: Multiple overloaded methods
   slug: multiple-overloaded-methods
-  description: contains(int,...)とcontains(double,...)があり、int overloadだけがfault。
-  category: ambiguous blame / duplicate 系未対応シナリオ
+  description: Evaluates multiple overloaded methods and checks whether SZZ identifies the expected bug-introducing commit
+    set.
+  category: Ambiguous blame and duplicate-code scenarios
   category_code: I
   factors: []
   difficulty: advanced
@@ -18,23 +19,28 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: c0 overloaded methods correct / c1 int overload bug / c2 int overload fix
+  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
+
+    c1: introduce bug (replace src/main/java/example/Range.java)
+
+    c2: fix bug (replace src/main/java/example/Range.java)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: Initial overloaded contains methods
+  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value >= min && value\
-      \ <= max;\n  }\n\n  public boolean contains(double value, double min, double max) {\n    return value >= min && value <= max;\n  }\n}\n"
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n\n  public boolean contains(double value, double min, double max) {\n    return\
+      \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: Introduce bug only in int overload
+  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
   role: bug_introducing
   operations:
   - type: replace
@@ -46,7 +52,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: Fix int overload boundary bug
+  message: 'c2: fix bug (replace src/main/java/example/Range.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -87,14 +93,14 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: 同名メソッドが複数あり、fault.statement だけでは entity を特定できないケースを評価する。
-  current_schema_limitation: '`entity.signature` はあるが、validator / verifier が entity anchor を使って statement 範囲を限定できない。'
-  required_extensions_from_source: "```yaml\nfault:\n  entity:\n    type: \"method\"\n    name: \"contains\"\n    signature: \"boolean contains(int\
-    \ value, int min, int max)\"\n  anchor_policy: \"entity_scope\"\n```"
+  purpose: Evaluate Multiple overloaded methods and whether SZZ identifies the expected bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses operations: write_file, replace.'
   evaluation_points:
-  - statement matching の曖昧性
-  - method-level SZZ の必要性
-  - overload の扱い
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for future graph-aware SZZBench support.
-- This revision replaces placeholder/no-op operations with concrete file states so that graph generation can proceed.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

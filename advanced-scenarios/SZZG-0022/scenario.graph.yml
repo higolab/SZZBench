@@ -4,8 +4,8 @@ meta:
   source_future_id: FUTURE-022
   title: Clone diverges before fix
   slug: clone
-  description: コピー後にB.javaが少し変形され、その後で修正される。
-  category: copy / clone / propagation 系未対応シナリオ
+  description: Evaluates clone diverges before fix and checks whether SZZ identifies the expected bug-introducing commit set.
+  category: Copy, clone, and propagation scenarios
   category_code: E
   factors:
   - clone_relationships
@@ -19,23 +19,29 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: c0 origin bug / c1 copy / c2 divergence / c3 fix clone
+  history_summary: 'c0: introduce origin bug (write_file src/main/java/example/A.java)
+
+    c1: introduce bug (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)
+
+    c2: diverge clone (replace src/main/java/example/B.java; replace src/main/java/example/B.java)
+
+    c3: fix bug (replace src/main/java/example/B.java)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: Introduce buggy original A
+  message: 'c0: introduce origin bug (write_file src/main/java/example/A.java)'
   role: origin_bug_introducing
   operations:
   - type: write_file
     path: src/main/java/example/A.java
-    content: "package example;\n\npublic class A {\n  public boolean contains(int value, int min, int max) {\n    return value > min && value\
-      \ < max;\n  }\n}\n"
+    content: "package example;\n\npublic class A {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: Copy buggy A to B
+  message: 'c1: introduce bug (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)'
   role: bug_introducing
   operations:
   - type: copy_file
@@ -45,7 +51,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: Diverge clone by renaming class and adding note
+  message: 'c2: diverge clone (replace src/main/java/example/B.java; replace src/main/java/example/B.java)'
   role: clone_divergence
   operations:
   - type: replace
@@ -60,7 +66,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: Fix diverged clone boundary bug
+  message: 'c3: fix bug (replace src/main/java/example/B.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -102,14 +108,14 @@ clone_relationships:
   divergence_commits:
   - c2
 scenario_design:
-  purpose: コピーされたコードが変形された後に修正されるケースを評価する。
-  current_schema_limitation: copy とその後の clone divergence を表すメタデータがない。
-  required_extensions_from_source: "```yaml\nclone_relationships:\n  - origin_file: \"A.java\"\n    copied_file: \"B.java\"\n    copy_commit:\
-    \ \"c1\"\n    divergence_commits:\n      - \"c2\"\n```"
+  purpose: Evaluate Clone diverges before fix and whether SZZ identifies the expected bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: clone_relationships; operations: write_file, copy_file, replace.'
   evaluation_points:
-  - 類似性が低下しても origin を追えるか
-  - direct BIC は c1 か c2 か
-  - clone-aware / semantic SZZ の比較
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for future graph-aware SZZBench support.
-- This revision replaces placeholder/no-op operations with concrete file states so that graph generation can proceed.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

@@ -2,10 +2,11 @@ schema_version: graph-0.1-draft
 meta:
   id: SZZG-0073
   source_future_id: FUTURE-075
-  title: benchmark variant によって評価対象を切り替えるケース
+  title: Switching evaluated targets by benchmark variant
   slug: evaluation-variants
-  description: 同じ履歴に対して、strict / relaxed / direct-only / origin-aware など複数評価を行う。
-  category: schema / evaluation policy が必要な横断シナリオ
+  description: Evaluates switching evaluated targets by benchmark variant and checks whether SZZ identifies the expected bug-introducing
+    commit set.
+  category: Schema and evaluation-policy scenarios
   category_code: L
   factors:
   - evaluation_variants
@@ -22,12 +23,16 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: "copy propagation:\n  c1 origin\n  c2 direct\n  c3 fix"
+  history_summary: 'c1: introduce origin bug (write_file src/main/java/example/A.java)
+
+    c2: introduce bug (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)
+
+    c3: fix bug (replace src/main/java/example/B.java)'
 commits:
 - id: c1
   branch: main
   parents: []
-  message: 'c1: origin bug'
+  message: 'c1: introduce origin bug (write_file src/main/java/example/A.java)'
   role: origin_bug_introducing
   operations:
   - type: write_file
@@ -38,7 +43,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: direct copy'
+  message: 'c2: introduce bug (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)'
   role: bug_introducing
   operations:
   - type: copy_file
@@ -48,7 +53,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: fix copied bug'
+  message: 'c3: fix bug (replace src/main/java/example/B.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -94,13 +99,13 @@ bugs:
 expected_szz:
   evaluation_variants:
   - name: direct-only
-    description: direct BIC のみを正解とする厳しめの評価。
+    description: English description for SZZG-0073.
     commit_level:
       evaluation_policy: exact_set
       required:
       - c2
   - name: origin-aware
-    description: direct BIC を主正解とし、origin BIC も関連commitとして許容する評価。
+    description: English description for SZZG-0073.
     commit_level:
       evaluation_policy: relaxed_with_related
       required:
@@ -110,15 +115,16 @@ expected_szz:
         reason: origin_bic
         credit: 0.5
 scenario_design:
-  purpose: 同じ履歴に対して、strict / relaxed / direct-only / origin-aware など複数評価を行う。
-  current_schema_limitation: 1つの expected_szz しか持てないため、評価ポリシーを切り替えられない。
-  required_extensions_from_source: "evaluation_variants:\n  - name: \"direct-only\"\n    true_positives:\n      - \"c2\"\n\
-    \  - name: \"origin-aware\"\n    true_positives:\n      - \"c2\"\n    acceptable_related:\n      - \"c1\"\n"
+  purpose: Evaluate Switching evaluated targets by benchmark variant and whether SZZ identifies the expected bug-introducing
+    commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: evaluation_variants, direct_bic, origin_bic, copy_propagation;
+    operations: write_file, copy_file, replace.'
   evaluation_points:
-  - 評価ポリシーによる結果の違い
-  - benchmark paper での透明性
-  - 手法比較の公平性
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for future graph-aware SZZBench support.
-- This file is not expected to be executable by the current simple scenario.yml generator.
-- This revision removes the undefined c0 reference and aligns the oracle with FUTURE-075.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

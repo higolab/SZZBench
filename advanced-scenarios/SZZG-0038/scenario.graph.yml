@@ -4,8 +4,9 @@ meta:
   source_future_id: FUTURE-038
   title: Backport introduces release-specific bug
   slug: backport-introduces-bug
-  description: r1のbackport作業自体がrelease固有のbugを混入し、r2で修正される。
-  category: branch / merge / cherry-pick / backport 系未対応シナリオ
+  description: Evaluates backport introduces release-specific bug and checks whether SZZ identifies the expected bug-introducing
+    commit set.
+  category: Branch, merge, cherry-pick, and backport scenarios
   category_code: G
   factors:
   - branch
@@ -20,23 +21,29 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: main c0-c1 / release r1 backport introduces bug / r2 fix
+  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
+
+    c1: fix bug (write_file src/main/java/example/RangePolicy.java)
+
+    r1: introduce bug (replace src/main/java/example/Range.java; write_file src/main/java/example/RangePolicy.java)
+
+    r2: fix bug (replace src/main/java/example/Range.java)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: Initial correct range
+  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value >= min && value\
-      \ <= max;\n  }\n}\n"
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: Mainline maintenance fix unrelated to release bug
+  message: 'c1: fix bug (write_file src/main/java/example/RangePolicy.java)'
   role: bug_fixing
   operations:
   - type: write_file
@@ -50,7 +57,7 @@ commits:
   branch: release
   parents:
   - c0
-  message: Backport main change but introduce release-specific range bug
+  message: 'r1: introduce bug (replace src/main/java/example/Range.java; write_file src/main/java/example/RangePolicy.java)'
   role: bug_introducing
   operations:
   - type: replace
@@ -69,7 +76,7 @@ commits:
   branch: release
   parents:
   - r1
-  message: Fix release-specific bug introduced by backport
+  message: 'r2: fix bug (replace src/main/java/example/Range.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -102,17 +109,15 @@ expected_szz:
     required:
     - r1
 scenario_design:
-  purpose: backport 作業自体が新たな bug を混入するケースを評価する。
-  current_schema_limitation: backport relation と branch-specific BIC が必要。
-  required_extensions_from_source: '- `backport_of`
-
-    - branch
-
-    - release-specific oracle'
+  purpose: Evaluate Backport introduces release-specific bug and whether SZZ identifies the expected bug-introducing commit
+    set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: branch, backport_of; operations: write_file, replace.'
   evaluation_points:
-  - backport commit を BIC として返せるか
-  - original fix と backport bug の区別
-  - release maintenance における SZZ
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for future graph-aware SZZBench support.
-- This revision replaces placeholder/no-op operations with concrete file states so that graph generation can proceed.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

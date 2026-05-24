@@ -1,53 +1,49 @@
-# SZZG-0014: 複数BFCが同じbugを段階的に完全修正する
+# SZZG-0014: Multiple BFCs progressively fix the same bug
 
 ## Source
 
 - Source scenario: `FUTURE-014`
-- Category: multiple BIC / multiple BFC に関する未対応シナリオ
+- Category: Multiple BIC and BFC scenarios
 
 ## Purpose
 
-partial fix と complete fix の関係を明示する。
+Evaluate Multiple BFCs progressively fix the same bug and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: 正常実装
-c1: bug 混入
-c2: 一時的回避策
-c3: 根本修正
+c0: create initial state (write_file src/main/java/example/Range.java)
+c1: introduce bug (replace src/main/java/example/Range.java)
+c2: apply intermediate change (write_file docs/intermediate-note.md)
+c3: fix bug (replace src/main/java/example/Range.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-`temporary_fix` / `complete_fix` の区別ができない。
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-```yaml
-bug_fixing_commits:
-  - commit: "c2"
-    role: "workaround"
-  - commit: "c3"
-    role: "complete_fix"
-```
+- Factors: bug_fixing_commits
+- Operation types: write_file, replace
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- workaround を BFC として扱うか
-- root-cause fix のみを BFC とするか
-- SZZ 入力の選び方
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
 ---
 
 ## Draft status
 
-This scenario is a draft for the proposed `scenario.graph.yml` schema.  It is intended to guide the implementation of a future graph-aware validator/generator and should not be treated as executable by the current simple `scenario.yml` generator.
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
 
 ## Files
 
 ```text
 SZZG-0014/
-├── scenario.graph.yml
-└── README.md
+|-- scenario.graph.yml
+`-- README.md
 ```

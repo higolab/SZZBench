@@ -4,8 +4,9 @@ meta:
   source_future_id: FUTURE-023
   title: Only one clone instance is fixed first
   slug: clone
-  description: A.javaだけを先に直し、コピー先B.javaを後で直す。
-  category: copy / clone / propagation 系未対応シナリオ
+  description: Evaluates only one clone instance is fixed first and checks whether SZZ identifies the expected bug-introducing
+    commit set.
+  category: Copy, clone, and propagation scenarios
   category_code: E
   factors:
   - clone_relationships
@@ -20,23 +21,29 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: c0 origin bug / c1 copy / c2 fix original / c3 fix clone
+  history_summary: 'c0: introduce origin bug (write_file src/main/java/example/A.java)
+
+    c1: introduce bug (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)
+
+    c2: fix bug (replace src/main/java/example/A.java)
+
+    c3: fix bug (replace src/main/java/example/B.java)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: Introduce buggy original A
+  message: 'c0: introduce origin bug (write_file src/main/java/example/A.java)'
   role: origin_bug_introducing
   operations:
   - type: write_file
     path: src/main/java/example/A.java
-    content: "package example;\n\npublic class A {\n  public boolean contains(int value, int min, int max) {\n    return value > min && value\
-      \ < max;\n  }\n}\n"
+    content: "package example;\n\npublic class A {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: Copy buggy A to B
+  message: 'c1: introduce bug (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)'
   role: bug_introducing
   operations:
   - type: copy_file
@@ -46,7 +53,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: Fix original A only
+  message: 'c2: fix bug (replace src/main/java/example/A.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -57,7 +64,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: Fix copied B later
+  message: 'c3: fix bug (replace src/main/java/example/B.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -121,14 +128,16 @@ bug_instances:
   file: src/main/java/example/B.java
   status: fixed_at_c3
 scenario_design:
-  purpose: 同型バグの片方だけが修正され、もう片方が残るケースを評価する。
-  current_schema_limitation: 複数 bug instance と clone relationship が必要。
-  required_extensions_from_source: "```yaml\nbug_instances:\n  - id: \"B001-A\"\n    file: \"A.java\"\n  - id: \"B001-B\"\n    file: \"B.java\"\
-    \n```"
+  purpose: Evaluate Only one clone instance is fixed first and whether SZZ identifies the expected bug-introducing commit
+    set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: clone_relationships, bug_instances; operations: write_file,
+    copy_file, replace.'
   evaluation_points:
-  - instance 単位の BIC/BFC 対応
-  - partial propagation
-  - 同じ root cause を共有する複数 bug instance
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for future graph-aware SZZBench support.
-- This revision replaces placeholder/no-op operations with concrete file states so that graph generation can proceed.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

@@ -4,8 +4,9 @@ meta:
   source_future_id: FUTURE-047
   title: Work item inference without issue ID
   slug: issue-id-work-item
-  description: issue IDなしで近いmessage/contextからwork itemを推定するケース。
-  category: work item / commit series 系未対応シナリオ
+  description: Evaluates work item inference without issue id and checks whether SZZ identifies the expected bug-introducing
+    commit set.
+  category: Work-item and commit-series scenarios
   category_code: H
   factors:
   - work_items
@@ -20,23 +21,32 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'no issue id: related messages around c1-c4 / c2 true BIC'
+  history_summary: 'c0: create initial state (write_file src/main/java/example/RangeService.java)
+
+    c1: add candidate change (replace src/main/java/example/RangeService.java)
+
+    c2: introduce bug (replace src/main/java/example/RangeService.java)
+
+    c3: add candidate change (replace src/main/java/example/RangeService.java)
+
+    c4: fix bug (replace src/main/java/example/RangeService.java)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: Initial service
+  message: 'c0: create initial state (write_file src/main/java/example/RangeService.java)'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/RangeService.java
-    content: "package example;\n\npublic class RangeService {\n  public boolean isEnabled() { return true; }\n  public boolean contains(int value,\
-      \ int min, int max) { return value >= min && value <= max; }\n  public int normalize(int value) { return value; }\n}\n"
+    content: "package example;\n\npublic class RangeService {\n  public boolean isEnabled() { return true; }\n  public boolean\
+      \ contains(int value, int min, int max) { return value >= min && value <= max; }\n  public int normalize(int value)\
+      \ { return value; }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'range validation task: add feature flag plumbing'
+  message: 'c1: add candidate change (replace src/main/java/example/RangeService.java)'
   role: candidate
   operations:
   - type: replace
@@ -47,7 +57,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'range validation task: change validation and introduce boundary bug'
+  message: 'c2: introduce bug (replace src/main/java/example/RangeService.java)'
   role: bug_introducing
   operations:
   - type: replace
@@ -58,7 +68,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'range validation task: unrelated normalization tweak'
+  message: 'c3: add candidate change (replace src/main/java/example/RangeService.java)'
   role: candidate
   operations:
   - type: replace
@@ -69,7 +79,7 @@ commits:
   branch: main
   parents:
   - c3
-  message: Fix validation boundary bug
+  message: 'c4: fix bug (replace src/main/java/example/RangeService.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -114,14 +124,14 @@ work_items:
   - commit: c4
     relevance: bug_fixing
 scenario_design:
-  purpose: commit message や時間的近接性だけから work item を推定する手法を評価する。
-  current_schema_limitation: work item が明示的ではなく、推定対象であることを表現できない。
-  required_extensions_from_source: "```yaml\nwork_item_ground_truth:\n  inference_required: true\n  commits:\n    - \"c1\"\n    - \"c2\"\n   \
-    \ - \"c3\"\n```"
+  purpose: Evaluate Work item inference without issue ID and whether SZZ identifies the expected bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: work_items, issues; operations: write_file, replace.'
   evaluation_points:
-  - work item 推定の精度
-  - message/time heuristic の評価
-  - SZZ 前処理の評価
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for future graph-aware SZZBench support.
-- This revision replaces placeholder/no-op operations with concrete file states so that graph generation can proceed.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

@@ -2,10 +2,10 @@ schema_version: graph-0.1-draft
 meta:
   id: SZZG-0067
   source_future_id: FUTURE-067
-  title: huge file
+  title: Huge file
   slug: huge-file
-  description: 巨大ファイルを含む場合の SZZ 実装の性能・メモリ使用量を評価する。
-  category: robustness / 実装品質確認系未対応シナリオ
+  description: Evaluates huge file and checks whether SZZ identifies the expected bug-introducing commit set.
+  category: Robustness and implementation-quality scenarios
   category_code: K
   factors:
   - write_generated_text_file
@@ -19,26 +19,27 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: 1万行以上のファイル
+  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
 
-    c1: 1行 bug 混入
+    c1: introduce bug (replace src/main/java/example/Range.java)
 
-    c2: fix'
+    c2: fix bug (write_generated_text_file src/main/java/example/LargeRange.java; replace src/main/java/example/Range.java)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: 1万行以上のファイル'
+  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value >= min && value <= max;\n  }\n}\n"
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: 1行 bug 混入'
+  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
   role: bug_introducing
   operations:
   - type: replace
@@ -49,7 +50,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: fix'
+  message: 'c2: fix bug (write_generated_text_file src/main/java/example/LargeRange.java; replace src/main/java/example/Range.java)'
   role: bug_fixing
   operations:
   - type: write_generated_text_file
@@ -87,13 +88,15 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: 巨大ファイルを含む場合の SZZ 実装の性能・メモリ使用量を評価する。
-  current_schema_limitation: 表現自体は可能だが、巨大 content を `scenario.yml` に直接埋め込むのは非現実的。
-  required_extensions_from_source: "```yaml\n- type: \"write_generated_text_file\"\n  path: \"src/main/java/example/Large.java\"\n  lines: 10000\n  template: \"...\"\n```"
+  purpose: Evaluate Huge file and whether SZZ identifies the expected bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: write_generated_text_file; operations: write_file, replace,
+    write_generated_text_file.'
   evaluation_points:
-  - scalability
-  - large file diff
-  - blame performance
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for future graph-aware SZZBench support.
-- This file is not expected to be executable by the current simple scenario.yml generator.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

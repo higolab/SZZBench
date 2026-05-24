@@ -1,47 +1,50 @@
-# SZZG-0039: criss-cross merge
+# SZZG-0039: Criss-cross merge
 
 ## Source
 
 - Source scenario: `FUTURE-039`
-- Category: branch / merge / cherry-pick / backport 系未対応シナリオ
+- Category: Branch, merge, cherry-pick, and backport scenarios
 
 ## Purpose
 
-複雑な merge DAG で SZZ が ancestor を正しく扱えるか評価する。
+Evaluate Criss-cross merge and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-branch A と branch B が相互に複数回 merge される
-その途中で bug が混入し、後続 merge 後に修正される
+c0: create initial state (write_file src/main/java/example/Range.java)
+c1: introduce bug (replace src/main/java/example/Range.java)
+c2: apply intermediate change (write_file docs/feature-note.md)
+c3: merge branch
+c4: fix bug (replace src/main/java/example/Range.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-複雑な commit DAG を表現できない。
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-- commit graph
-- multiple parents
-- branch history
+- Factors: branch, parents, merge
+- Operation types: write_file, replace
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- ancestor traversal の正確性
-- first-parent vs full-history の違い
-- merge-heavy project での SZZ
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
 ---
 
 ## Draft status
 
-This scenario is a draft for the proposed `scenario.graph.yml` schema.  It is intended to guide the implementation of a future graph-aware validator/generator and should not be treated as executable by the current simple `scenario.yml` generator.
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
 
 ## Files
 
 ```text
 SZZG-0039/
-├── scenario.graph.yml
-└── README.md
+|-- scenario.graph.yml
+`-- README.md
 ```

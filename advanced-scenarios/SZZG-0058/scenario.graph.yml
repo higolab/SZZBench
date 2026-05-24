@@ -2,10 +2,11 @@ schema_version: graph-0.1-draft
 meta:
   id: SZZG-0058
   source_future_id: FUTURE-058
-  title: issue description が必要
+  title: Issue description required
   slug: issue-description
-  description: issue description がなければ BIC 候補を絞れないケースを評価する。
-  category: context-aware / LLM-based SZZ 向け未対応シナリオ
+  description: Evaluates issue description required and checks whether SZZ identifies the expected bug-introducing commit
+    set.
+  category: Context-aware and LLM-based SZZ scenarios
   category_code: J
   factors:
   - issues
@@ -19,28 +20,27 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c1: ambiguous code change
+  history_summary: 'c1: create initial state (write_file src/main/java/example/Range.java)
 
-    c2: similar code change
+    c2: apply intermediate change (write_file docs/intermediate-note.md)
 
-    c3: fix
-
-    issue description: "Null input to normalize should return empty string"'
+    c3: fix bug (replace src/main/java/example/Range.java)'
 commits:
 - id: c1
   branch: main
   parents: []
-  message: 'c1: ambiguous code change'
+  message: 'c1: create initial state (write_file src/main/java/example/Range.java)'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value > min && value < max;\n  }\n}\n"
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value > min && value < max;\n  }\n}\n"
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: similar code change'
+  message: 'c2: apply intermediate change (write_file docs/intermediate-note.md)'
   role: intermediate
   operations:
   - type: write_file
@@ -52,7 +52,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: fix'
+  message: 'c3: fix bug (replace src/main/java/example/Range.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -86,16 +86,17 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: issue description がなければ BIC 候補を絞れないケースを評価する。
-  current_schema_limitation: 外部 issue 情報を保持する場所がない。
-  required_extensions_from_source: "```yaml\nissues:\n  - id: \"ISSUE-1\"\n    title: \"Normalizer fails on null\"\n    description: \"...\"\n    linked_bugs:\n      - \"B001\"\n```"
+  purpose: Evaluate Issue description required and whether SZZ identifies the expected bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: issues; operations: write_file, replace.'
   evaluation_points:
-  - issue-aware SZZ
-  - natural language context
-  - LLM-based SZZ
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for future graph-aware SZZBench support.
-- This file is not expected to be executable by the current simple scenario.yml generator.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.
 issues:
 - id: ISSUE-001
   title: Synthetic issue for graph scenario

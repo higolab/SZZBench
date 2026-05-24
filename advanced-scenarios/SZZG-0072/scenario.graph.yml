@@ -2,10 +2,11 @@ schema_version: graph-0.1-draft
 meta:
   id: SZZG-0072
   source_future_id: FUTURE-074
-  title: line-level 不可だが entity-level は可能なケース
+  title: Line-level impossible but entity-level possible
   slug: line-level-entity-level
-  description: omission や semantic relation bug のように line-level oracle はないが、method-level/entity-level oracle はあるケースを評価する。
-  category: schema / evaluation policy が必要な横断シナリオ
+  description: Evaluates line-level impossible but entity-level possible and checks whether SZZ identifies the expected bug-introducing
+    commit set.
+  category: Schema and evaluation-policy scenarios
   category_code: L
   factors:
   - expected_szz
@@ -19,24 +20,25 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c1: method-level contract bug
+  history_summary: 'c1: create initial state (write_file src/main/java/example/Range.java)
 
-    c2: fix'
+    c2: fix bug (replace src/main/java/example/Range.java)'
 commits:
 - id: c1
   branch: main
   parents: []
-  message: 'c1: method-level contract bug'
+  message: 'c1: create initial state (write_file src/main/java/example/Range.java)'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value > min && value < max;\n  }\n}\n"
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value > min && value < max;\n  }\n}\n"
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: fix'
+  message: 'c2: fix bug (replace src/main/java/example/Range.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -78,13 +80,15 @@ expected_szz:
       file: src/main/java/example/Range.java
       signature: boolean contains(int value, int min, int max)
 scenario_design:
-  purpose: omission や semantic relation bug のように line-level oracle はないが、method-level/entity-level oracle はあるケースを評価する。
-  current_schema_limitation: '`line_level.available: false` は書けるが、entity-level oracle を標準化していない。'
-  required_extensions_from_source: "```yaml\nexpected_szz:\n  line_level:\n    available: false\n  entity_level:\n    available: true\n    entities:\n      - type: \"method\"\n        file: \"...\"\n        signature: \"...\"\n```"
+  purpose: Evaluate Line-level impossible but entity-level possible and whether SZZ identifies the expected bug-introducing
+    commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: expected_szz; operations: write_file, replace.'
   evaluation_points:
-  - entity-level SZZ
-  - line-level だけでは評価不能な bug
-  - method-level precision/recall
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for future graph-aware SZZBench support.
-- This file is not expected to be executable by the current simple scenario.yml generator.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

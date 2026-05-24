@@ -1,57 +1,48 @@
-# SZZG-0019: buggy code copied to new file
+# SZZG-0019: Buggy code copied to a new file
 
 ## Source
 
 - Source scenario: `FUTURE-019`
-- Category: copy / clone / propagation 系未対応シナリオ
+- Category: Copy, clone, and propagation scenarios
 
 ## Purpose
 
-バグを含むコードが別ファイルへコピーされ、コピー先で後に修正されるケースを評価する。
+Evaluate Buggy code copied to a new file and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: A.java に bug を含む実装
-c1: A.java の処理を B.java にコピー
-c2: B.java の bug を修正
+c0: create initial state (write_file src/main/java/example/A.java)
+c1: apply intermediate change (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)
+c2: fix bug (replace src/main/java/example/B.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-`copy_file` がないため、copy commit として表現できない。  
-また、direct BIC と origin BIC の区別が必要。
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-```yaml
-- type: "copy_file"
-  from: "src/main/java/example/A.java"
-  to: "src/main/java/example/B.java"
-
-bug_introducing_commits:
-  - commit: "c1"
-    role: "direct"
-  - commit: "c0"
-    role: "origin"
-```
+- Factors: copy_file
+- Operation types: write_file, copy_file, replace
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- direct BIC を正解とするか origin BIC を正解とするか
-- clone-aware SZZ の評価
-- conventional SZZ が copy commit を返すか
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
 ---
 
 ## Draft status
 
-This scenario is a draft for the proposed `scenario.graph.yml` schema.  It is intended to guide the implementation of a future graph-aware validator/generator and should not be treated as executable by the current simple `scenario.yml` generator.
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
 
 ## Files
 
 ```text
 SZZG-0019/
-├── scenario.graph.yml
-└── README.md
+|-- scenario.graph.yml
+`-- README.md
 ```

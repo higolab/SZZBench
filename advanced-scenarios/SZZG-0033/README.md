@@ -3,44 +3,48 @@
 ## Source
 
 - Source scenario: `FUTURE-033`
-- Category: branch / merge / cherry-pick / backport 系未対応シナリオ
+- Category: Branch, merge, cherry-pick, and backport scenarios
 
 ## Purpose
 
-merge conflict 解消時に bug を修正するケースを評価する。
+Evaluate BFC in merge commit and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-main:    c0 ---- c2 bug
-feature:    c1 fix candidate
-merge:              c3 merge resolves bug
+c0: create initial state (write_file src/main/java/example/Range.java)
+c1: introduce bug (replace src/main/java/example/Range.java)
+c2: apply intermediate change (write_file docs/feature-note.md)
+c3: merge branch
+c4: fix bug (replace src/main/java/example/Range.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-merge commit を BFC とする表現が必要。
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-commit graph / merge parent / merge diff。
+- Factors: branch, merge
+- Operation types: write_file, replace
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- どの親との差分を BFC として使うか
-- merge commit の修正行から BIC を追えるか
-- merge commit を除外する実装の失敗
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
 ---
 
 ## Draft status
 
-This scenario is a draft for the proposed `scenario.graph.yml` schema.  It is intended to guide the implementation of a future graph-aware validator/generator and should not be treated as executable by the current simple `scenario.yml` generator.
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
 
 ## Files
 
 ```text
 SZZG-0033/
-├── scenario.graph.yml
-└── README.md
+|-- scenario.graph.yml
+`-- README.md
 ```

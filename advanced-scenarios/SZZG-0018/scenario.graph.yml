@@ -4,8 +4,9 @@ meta:
   source_future_id: FUTURE-018
   title: One BIC causes multiple bug symptoms
   slug: bic-bug
-  description: 共有helperの1つのBICがimport/searchの2症状として現れる。
-  category: multiple BIC / multiple BFC に関する未対応シナリオ
+  description: Evaluates one bic causes multiple bug symptoms and checks whether SZZ identifies the expected bug-introducing
+    commit set.
+  category: Multiple BIC and BFC scenarios
   category_code: D
   factors:
   - root_cause
@@ -19,24 +20,31 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: c0 shared helper correct / c1 helper bug / c2 import symptom fix / c3 search symptom fix
+  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
+
+    c1: introduce bug (replace src/main/java/example/Range.java)
+
+    c2: fix bug (replace src/main/java/example/Range.java)
+
+    c3: fix bug (replace src/main/java/example/Range.java)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: Initial shared range helper
+  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  private boolean within(int value, int min, int max) {\n    return value >= min && value\
-      \ <= max;\n  }\n\n  public boolean acceptImport(int value, int min, int max) {\n    return within(value, min, max);\n  }\n\n  public boolean\
-      \ acceptSearch(int value, int min, int max) {\n    return within(value, min, max);\n  }\n}\n"
+    content: "package example;\n\npublic class Range {\n  private boolean within(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n\n  public boolean acceptImport(int value, int min, int max) {\n    return within(value,\
+      \ min, max);\n  }\n\n  public boolean acceptSearch(int value, int min, int max) {\n    return within(value, min, max);\n\
+      \  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: Break shared range helper
+  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
   role: bug_introducing
   operations:
   - type: replace
@@ -47,7 +55,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: Fix import symptom locally
+  message: 'c2: fix bug (replace src/main/java/example/Range.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -59,7 +67,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: Fix search symptom locally
+  message: 'c3: fix bug (replace src/main/java/example/Range.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -120,14 +128,14 @@ bug_groups:
   - B001
   - B002
 scenario_design:
-  purpose: 共通処理の bug が複数の症状として後に現れるケースを評価する。
-  current_schema_limitation: 複数 bug から同一 BIC を参照することは可能だが、bug 間の関係を表現できない。
-  required_extensions_from_source: "```yaml\nbug_groups:\n  - id: \"BG001\"\n    root_cause: \"c1\"\n    bugs:\n      - \"B001\"\n      - \"B002\"\
-    \n```"
+  purpose: Evaluate One BIC causes multiple bug symptoms and whether SZZ identifies the expected bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: root_cause; operations: write_file, replace.'
   evaluation_points:
-  - 症状別 BFC から同じ BIC に到達するか
-  - root cause と symptom fix の関係
-  - 実プロジェクトでの multi-symptom bug 評価
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for future graph-aware SZZBench support.
-- This revision replaces placeholder/no-op operations with concrete file states so that graph generation can proceed.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

@@ -1,55 +1,49 @@
-# SZZG-0042: feature作業の途中でBIC
+# SZZG-0042: BIC occurs during feature work
 
 ## Source
 
 - Source scenario: `FUTURE-042`
-- Category: work item / commit series 系未対応シナリオ
+- Category: Work-item and commit-series scenarios
 
 ## Purpose
 
-1つの feature work item の中の途中 commit が BIC になるケースを評価する。
+Evaluate BIC occurs during feature work and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-WI-001:
-  c1: add API
-  c2: add validation but buggy
-  c3: add tests
-c4: later fix
+c1: create initial state (write_file src/main/java/example/Range.java)
+c2: introduce bug (replace src/main/java/example/Range.java)
+c3: apply intermediate change (write_file docs/intermediate-note.md)
+c4: fix bug (replace src/main/java/example/Range.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-work item / issue 単位を表現できない。
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-```yaml
-work_items:
-  - id: "WI-001"
-    commits:
-      - "c1"
-      - "c2"
-      - "c3"
-```
+- Factors: work_items
+- Operation types: write_file, replace
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- work item 内の候補を使う SZZ
-- commit message / issue linkage の利用
-- BIC ranking の改善
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
 ---
 
 ## Draft status
 
-This scenario is a draft for the proposed `scenario.graph.yml` schema.  It is intended to guide the implementation of a future graph-aware validator/generator and should not be treated as executable by the current simple `scenario.yml` generator.
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
 
 ## Files
 
 ```text
 SZZG-0042/
-├── scenario.graph.yml
-└── README.md
+|-- scenario.graph.yml
+`-- README.md
 ```

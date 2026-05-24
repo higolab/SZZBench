@@ -1,53 +1,48 @@
-# SZZG-0021: original と clone を同時修正
+# SZZG-0021: Original and clone fixed together
 
 ## Source
 
 - Source scenario: `FUTURE-021`
-- Category: copy / clone / propagation 系未対応シナリオ
+- Category: Copy, clone, and propagation scenarios
 
 ## Purpose
 
-コピー元とコピー先の同型バグを同じ BFC で修正する場合を評価する。
+Evaluate Original and clone fixed together and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: A.java に bug
-c1: A.java を B.java にコピー
-c2: A.java と B.java を同時修正
+c0: introduce origin bug (write_file src/main/java/example/A.java)
+c1: introduce bug (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)
+c2: fix bug (replace src/main/java/example/A.java; replace src/main/java/example/B.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-複数 fault location / fix location が必要。  
-direct/origin の評価方針も必要。
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-```yaml
-faults:
-  - id: "F001"
-    file: "A.java"
-  - id: "F002"
-    file: "B.java"
-```
+- Factors: faults, clone_relationships
+- Operation types: write_file, copy_file, replace
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- SZZ が両方の BIC を返すか
-- origin と direct の扱い
-- clone-aware analysis の必要性
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
 ---
 
 ## Draft status
 
-This scenario is a draft for the proposed `scenario.graph.yml` schema.  It is intended to guide the implementation of a future graph-aware validator/generator and should not be treated as executable by the current simple `scenario.yml` generator.
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
 
 ## Files
 
 ```text
 SZZG-0021/
-├── scenario.graph.yml
-└── README.md
+|-- scenario.graph.yml
+`-- README.md
 ```

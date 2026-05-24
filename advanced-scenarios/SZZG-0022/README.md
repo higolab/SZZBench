@@ -1,54 +1,49 @@
-# SZZG-0022: clone が少し変更されてから修正
+# SZZG-0022: Clone diverges before fix
 
 ## Source
 
 - Source scenario: `FUTURE-022`
-- Category: copy / clone / propagation 系未対応シナリオ
+- Category: Copy, clone, and propagation scenarios
 
 ## Purpose
 
-コピーされたコードが変形された後に修正されるケースを評価する。
+Evaluate Clone diverges before fix and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: A.java に bug
-c1: B.java にコピー
-c2: B.java の変数名や構造を少し変更
-c3: B.java の bug を修正
+c0: introduce origin bug (write_file src/main/java/example/A.java)
+c1: introduce bug (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)
+c2: diverge clone (replace src/main/java/example/B.java; replace src/main/java/example/B.java)
+c3: fix bug (replace src/main/java/example/B.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-copy とその後の clone divergence を表すメタデータがない。
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-```yaml
-clone_relationships:
-  - origin_file: "A.java"
-    copied_file: "B.java"
-    copy_commit: "c1"
-    divergence_commits:
-      - "c2"
-```
+- Factors: clone_relationships
+- Operation types: write_file, copy_file, replace
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- 類似性が低下しても origin を追えるか
-- direct BIC は c1 か c2 か
-- clone-aware / semantic SZZ の比較
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
 ---
 
 ## Draft status
 
-This scenario is a draft for the proposed `scenario.graph.yml` schema.  It is intended to guide the implementation of a future graph-aware validator/generator and should not be treated as executable by the current simple `scenario.yml` generator.
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
 
 ## Files
 
 ```text
 SZZG-0022/
-├── scenario.graph.yml
-└── README.md
+|-- scenario.graph.yml
+`-- README.md
 ```

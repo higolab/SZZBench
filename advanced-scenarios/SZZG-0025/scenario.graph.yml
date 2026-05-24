@@ -4,8 +4,9 @@ meta:
   source_future_id: FUTURE-025
   title: Bug propagates into generated code
   slug: generated-code
-  description: buggy templateから生成されたgenerated file側でバグが修正される。
-  category: copy / clone / propagation 系未対応シナリオ
+  description: Evaluates bug propagates into generated code and checks whether SZZ identifies the expected bug-introducing
+    commit set.
+  category: Copy, clone, and propagation scenarios
   category_code: E
   factors: []
   difficulty: advanced
@@ -18,12 +19,16 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: c0 buggy template / c1 generated code with bug / c2 fix generated code
+  history_summary: 'c0: introduce origin bug (write_file templates/Range.tpl)
+
+    c1: introduce bug (write_file src/generated/java/generated/GeneratedRange.java)
+
+    c2: fix bug (replace src/generated/java/generated/GeneratedRange.java)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: Introduce buggy template
+  message: 'c0: introduce origin bug (write_file templates/Range.tpl)'
   role: origin_bug_introducing
   operations:
   - type: write_file
@@ -37,18 +42,18 @@ commits:
   branch: main
   parents:
   - c0
-  message: Generate code from buggy template
+  message: 'c1: introduce bug (write_file src/generated/java/generated/GeneratedRange.java)'
   role: bug_introducing
   operations:
   - type: write_file
     path: src/generated/java/generated/GeneratedRange.java
-    content: "package generated;\n\npublic class GeneratedRange {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n}\n"
+    content: "package generated;\n\npublic class GeneratedRange {\n  public boolean contains(int value, int min, int max)\
+      \ {\n    return value > min && value < max;\n  }\n}\n"
 - id: c2
   branch: main
   parents:
   - c1
-  message: Fix generated code boundary bug
+  message: 'c2: fix bug (replace src/generated/java/generated/GeneratedRange.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -96,14 +101,14 @@ files:
   kind: generated
   generated_from: templates/Range.tpl
 scenario_design:
-  purpose: 生成コードにバグが伝播し、その生成コード側で修正されるケースを評価する。
-  current_schema_limitation: generated file と source template の関係を表現できない。
-  required_extensions_from_source: "```yaml\nfiles:\n  - path: \"generated/Parser.java\"\n    kind: \"generated\"\n    generated_from: \"templates/Parser.tpl\"\
-    \n```"
+  purpose: Evaluate Bug propagates into generated code and whether SZZ identifies the expected bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses operations: write_file, replace.'
   evaluation_points:
-  - generated file を評価対象に含めるか
-  - source template を origin BIC とするか
-  - generated file の commit を direct BIC とするか
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for future graph-aware SZZBench support.
-- This revision replaces placeholder/no-op operations with concrete file states so that graph generation can proceed.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

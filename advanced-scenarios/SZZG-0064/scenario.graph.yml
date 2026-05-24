@@ -2,10 +2,10 @@ schema_version: graph-0.1-draft
 meta:
   id: SZZG-0064
   source_future_id: FUTURE-064
-  title: empty commit
+  title: Empty commit
   slug: empty-commit
-  description: 空 commit が履歴に含まれても SZZ 実装が壊れないか確認する。
-  category: robustness / 実装品質確認系未対応シナリオ
+  description: Evaluates empty commit and checks whether SZZ identifies the expected bug-introducing commit set.
+  category: Robustness and implementation-quality scenarios
   category_code: K
   factors:
   - allow_empty
@@ -19,28 +19,29 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: 正常
+  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
 
-    c1: empty commit
+    c1: apply intermediate change
 
-    c2: bug 混入
+    c2: introduce bug (replace src/main/java/example/Range.java)
 
-    c3: fix'
+    c3: fix bug (replace src/main/java/example/Range.java)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: 正常'
+  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value >= min && value <= max;\n  }\n}\n"
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: empty commit'
+  message: 'c1: apply intermediate change'
   role: intermediate
   operations: []
   allow_empty: true
@@ -48,7 +49,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: bug 混入'
+  message: 'c2: introduce bug (replace src/main/java/example/Range.java)'
   role: bug_introducing
   operations:
   - type: replace
@@ -59,7 +60,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: fix'
+  message: 'c3: fix bug (replace src/main/java/example/Range.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -93,13 +94,14 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: 空 commit が履歴に含まれても SZZ 実装が壊れないか確認する。
-  current_schema_limitation: 現状 generator は空 commit を禁止する設計。
-  required_extensions_from_source: "```yaml\ncommits:\n  - id: \"c1\"\n    allow_empty: true\n    operations: []\n```"
+  purpose: Evaluate Empty commit and whether SZZ identifies the expected bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: allow_empty; operations: write_file, replace.'
   evaluation_points:
-  - empty commit を無視できるか
-  - commit graph 処理の robustness
-  - generator / verifier の扱い
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for future graph-aware SZZBench support.
-- This file is not expected to be executable by the current simple scenario.yml generator.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

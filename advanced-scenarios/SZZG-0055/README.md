@@ -1,55 +1,48 @@
-# SZZG-0055: caller/callee 相互作用バグ
+# SZZG-0055: Caller/callee interaction bug
 
 ## Source
 
 - Source scenario: `FUTURE-055`
-- Category: context-aware / LLM-based SZZ 向け未対応シナリオ
+- Category: Context-aware and LLM-based SZZ scenarios
 
 ## Purpose
 
-caller 側と callee 側の組合せで初めてバグが発生するケースを評価する。
+Evaluate Caller/callee interaction bug and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c1: callee が null を許容しなくなる
-c2: caller が null を渡すようになる
-c3: caller または callee を修正
+c1: create initial state (write_file src/main/java/example/Range.java)
+c2: apply intermediate change (write_file docs/intermediate-note.md)
+c3: fix bug (replace src/main/java/example/Range.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-複数 fault location と contributing BIC が必要。
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-```yaml
-bug_introducing_commits:
-  - commit: "c1"
-    role: "contributing"
-  - commit: "c2"
-    role: "direct"
-faults:
-  - file: "Callee.java"
-  - file: "Caller.java"
-```
+- Factors: faults
+- Operation types: write_file, replace
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- interaction bug の SZZ
-- 複数 BIC の役割
-- call graph context の必要性
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
 ---
 
 ## Draft status
 
-This scenario is a draft for the proposed `scenario.graph.yml` schema.  It is intended to guide the implementation of a future graph-aware validator/generator and should not be treated as executable by the current simple `scenario.yml` generator.
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
 
 ## Files
 
 ```text
 SZZG-0055/
-├── scenario.graph.yml
-└── README.md
+|-- scenario.graph.yml
+`-- README.md
 ```

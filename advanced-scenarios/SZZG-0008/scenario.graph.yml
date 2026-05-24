@@ -4,8 +4,8 @@ meta:
   source_future_id: FUTURE-008
   title: Dependency update as BIC
   slug: bic-dependency-update
-  description: pom.xmlの依存バージョン更新をBICとし、ソース側のAPI適応をBFCとする。
-  category: BIC の性質に関する未対応シナリオ
+  description: Evaluates dependency update as bic and checks whether SZZ identifies the expected bug-introducing commit set.
+  category: BIC property scenarios
   category_code: B
   factors: []
   difficulty: advanced
@@ -18,28 +18,32 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: c0 dependency v1 / c1 dependency update to v2 / c2 code adapts to v2
+  history_summary: 'c0: create initial state (write_file pom.xml; write_file src/main/java/example/RangeAdapter.java)
+
+    c1: introduce bug (replace pom.xml)
+
+    c2: fix bug (replace src/main/java/example/RangeAdapter.java)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: Use range-lib 1.0.0
+  message: 'c0: create initial state (write_file pom.xml; write_file src/main/java/example/RangeAdapter.java)'
   role: initial
   operations:
   - type: write_file
     path: pom.xml
-    content: "<project>\n  <modelVersion>4.0.0</modelVersion>\n  <groupId>example</groupId>\n  <artifactId>dependency-bic</artifactId>\n  <version>1.0-SNAPSHOT</version>\n\
-      \  <dependencies>\n    <dependency>\n      <groupId>org.example</groupId>\n      <artifactId>range-lib</artifactId>\n      <version>1.0.0</version>\n\
-      \    </dependency>\n  </dependencies>\n</project>\n"
+    content: "<project>\n  <modelVersion>4.0.0</modelVersion>\n  <groupId>example</groupId>\n  <artifactId>dependency-bic</artifactId>\n\
+      \  <version>1.0-SNAPSHOT</version>\n  <dependencies>\n    <dependency>\n      <groupId>org.example</groupId>\n     \
+      \ <artifactId>range-lib</artifactId>\n      <version>1.0.0</version>\n    </dependency>\n  </dependencies>\n</project>\n"
   - type: write_file
     path: src/main/java/example/RangeAdapter.java
-    content: "package example;\n\npublic class RangeAdapter {\n  public boolean contains(int value, int min, int max) {\n    return RangeLib.includes(value,\
-      \ min, max);\n  }\n}\n"
+    content: "package example;\n\npublic class RangeAdapter {\n  public boolean contains(int value, int min, int max) {\n\
+      \    return RangeLib.includes(value, min, max);\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: Update range-lib to 2.0.0 with changed API semantics
+  message: 'c1: introduce bug (replace pom.xml)'
   role: bug_introducing
   operations:
   - type: replace
@@ -50,7 +54,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: Adapt code to range-lib 2.0.0 inclusive API
+  message: 'c2: fix bug (replace src/main/java/example/RangeAdapter.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -89,15 +93,14 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: 外部ライブラリ更新により、既存コードがバグを持つようになるケースを評価する。
-  current_schema_limitation: "dependency update が BIC であることは書けるが、外部依存関係と code behavior の関係を表現できない。  \nfault location がソースコード行ではなく build file の\
-    \ dependency line になる。"
-  required_extensions_from_source: "```yaml\nfault:\n  change_type: \"dependency_update\"\n  file: \"pom.xml\"\n  dependency:\n    group: \"...\"\
-    \n    artifact: \"...\"\n    from: \"1.0\"\n    to: \"2.0\"\n```"
+  purpose: Evaluate Dependency update as BIC and whether SZZ identifies the expected bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses operations: write_file, replace.'
   evaluation_points:
-  - non-code BIC を SZZ が扱えるか
-  - code fix から build file の変更へ到達できるか
-  - context-aware / issue-aware SZZ が有利か
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for future graph-aware SZZBench support.
-- This revision replaces placeholder/no-op operations with concrete file states so that graph generation can proceed.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

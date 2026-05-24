@@ -1,51 +1,48 @@
-# SZZG-0067: huge file
+# SZZG-0067: Huge file
 
 ## Source
 
 - Source scenario: `FUTURE-067`
-- Category: robustness / 実装品質確認系未対応シナリオ
+- Category: Robustness and implementation-quality scenarios
 
 ## Purpose
 
-巨大ファイルを含む場合の SZZ 実装の性能・メモリ使用量を評価する。
+Evaluate Huge file and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: 1万行以上のファイル
-c1: 1行 bug 混入
-c2: fix
+c0: create initial state (write_file src/main/java/example/Range.java)
+c1: introduce bug (replace src/main/java/example/Range.java)
+c2: fix bug (write_generated_text_file src/main/java/example/LargeRange.java; replace src/main/java/example/Range.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-表現自体は可能だが、巨大 content を `scenario.yml` に直接埋め込むのは非現実的。
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-```yaml
-- type: "write_generated_text_file"
-  path: "src/main/java/example/Large.java"
-  lines: 10000
-  template: "..."
-```
+- Factors: write_generated_text_file
+- Operation types: write_file, replace, write_generated_text_file
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- scalability
-- large file diff
-- blame performance
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
 ---
 
 ## Draft status
 
-This scenario is a draft for the proposed `scenario.graph.yml` schema.  It is intended to guide the implementation of a future graph-aware validator/generator and should not be treated as executable by the current simple `scenario.yml` generator.
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
 
 ## Files
 
 ```text
 SZZG-0067/
-├── scenario.graph.yml
-└── README.md
+|-- scenario.graph.yml
+`-- README.md
 ```

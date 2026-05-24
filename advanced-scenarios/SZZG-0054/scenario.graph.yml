@@ -2,10 +2,10 @@ schema_version: graph-0.1-draft
 meta:
   id: SZZG-0054
   source_future_id: FUTURE-054
-  title: patch context が必要
+  title: Patch context required
   slug: patch-context
-  description: 変更行だけでは原因を判断できず、周辺文脈が必要なケースを評価する。
-  category: context-aware / LLM-based SZZ 向け未対応シナリオ
+  description: Evaluates patch context required and checks whether SZZ identifies the expected bug-introducing commit set.
+  category: Context-aware and LLM-based SZZ scenarios
   category_code: J
   factors:
   - context
@@ -19,24 +19,25 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c1: caller/callee の前提を崩す変更
+  history_summary: 'c1: create initial state (write_file src/main/java/example/Range.java)
 
-    c2: fix は別行で guard を追加'
+    c2: fix bug (replace src/main/java/example/Range.java)'
 commits:
 - id: c1
   branch: main
   parents: []
-  message: 'c1: caller/callee の前提を崩す変更'
+  message: 'c1: create initial state (write_file src/main/java/example/Range.java)'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value > min && value < max;\n  }\n}\n"
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value > min && value < max;\n  }\n}\n"
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: fix は別行で guard を追加'
+  message: 'c2: fix bug (replace src/main/java/example/Range.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -70,16 +71,17 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: 変更行だけでは原因を判断できず、周辺文脈が必要なケースを評価する。
-  current_schema_limitation: changed line 以外の context lines を評価対象として明示できない。
-  required_extensions_from_source: "```yaml\ncontext:\n  required_files:\n    - \"src/main/java/example/Caller.java\"\n  required_entities:\n    - type: \"method\"\n      name: \"callNormalize\"\n```"
+  purpose: Evaluate Patch context required and whether SZZ identifies the expected bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: context; operations: write_file, replace.'
   evaluation_points:
-  - line-based SZZ の限界
-  - patch context を使う LLM-SZZ
-  - 周辺コードを評価に含める必要性
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for future graph-aware SZZBench support.
-- This file is not expected to be executable by the current simple scenario.yml generator.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.
 context:
   required_files:
   - src/main/java/example/Caller.java

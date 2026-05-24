@@ -1,55 +1,49 @@
-# SZZG-0028: partial revert による再混入
+# SZZG-0028: Partial revert reintroduces bug
 
 ## Source
 
 - Source scenario: `FUTURE-028`
-- Category: revert / reintroduce 系未対応シナリオ
+- Category: Revert and reintroduction scenarios
 
 ## Purpose
 
-過去の修正の一部だけを revert し、バグが再混入するケースを評価する。
+Evaluate Partial revert reintroduces bug and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: 正常
-c1: bug 混入
-c2: bug 修正
-c3: 修正の一部だけ revert し再混入
-c4: 再修正
+c0: create initial state (write_file src/main/java/example/Range.java)
+c1: introduce bug (replace src/main/java/example/Range.java)
+c2: fix bug (replace src/main/java/example/Range.java)
+c3: revert change (replace src/main/java/example/Range.java)
+c4: fix bug (replace src/main/java/example/Range.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-`c3` が `c2` の partial revert であることを表現できない。
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-```yaml
-commits:
-  - id: "c3"
-    role: "revert"
-    reverts:
-      - commit: "c2"
-        mode: "partial"
-```
+- Operation types: write_file, replace
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- c4 に対する BIC は c1 ではなく c3 とすべきか
-- partial revert の検出
-- revert-aware SZZ の必要性
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
 ---
 
 ## Draft status
 
-This scenario is a draft for the proposed `scenario.graph.yml` schema.  It is intended to guide the implementation of a future graph-aware validator/generator and should not be treated as executable by the current simple `scenario.yml` generator.
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
 
 ## Files
 
 ```text
 SZZG-0028/
-├── scenario.graph.yml
-└── README.md
+|-- scenario.graph.yml
+`-- README.md
 ```

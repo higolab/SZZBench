@@ -2,10 +2,11 @@ schema_version: graph-0.1-draft
 meta:
   id: SZZG-0011
   source_future_id: FUTURE-011
-  title: method move between classes
+  title: Method move between classes
   slug: method-move-between-classes
-  description: faulty method が別クラスに移動された後に修正されるケースを評価する。
-  category: 中間履歴に関する未対応シナリオ
+  description: Evaluates method move between classes and checks whether SZZ identifies the expected bug-introducing commit
+    set.
+  category: Intermediate-history scenarios
   category_code: C
   factors:
   - move_entity
@@ -19,28 +20,29 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: Range.contains が Range.java に存在
+  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
 
-    c1: contains に bug 混入
+    c1: introduce bug (replace src/main/java/example/Range.java)
 
-    c2: contains を RangeUtils.java に移動
+    c2: apply intermediate change (move_entity)
 
-    c3: RangeUtils.contains で bug 修正'
+    c3: fix bug (replace src/main/java/example/Range.java)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: Range.contains が Range.java に存在'
+  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value >= min && value <= max;\n  }\n}\n"
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: contains に bug 混入'
+  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
   role: bug_introducing
   operations:
   - type: replace
@@ -51,7 +53,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: contains を RangeUtils.java に移動'
+  message: 'c2: apply intermediate change (move_entity)'
   role: intermediate
   operations:
   - type: move_entity
@@ -65,7 +67,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: RangeUtils.contains で bug 修正'
+  message: 'c3: fix bug (replace src/main/java/example/Range.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -102,13 +104,14 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: faulty method が別クラスに移動された後に修正されるケースを評価する。
-  current_schema_limitation: full-file replace で擬似的に表現できるが、method move としての意味を validator / verifier が理解できない。
-  required_extensions_from_source: "```yaml\n- type: \"move_entity\"\n  entity:\n    type: \"method\"\n    name: \"contains\"\n  from_file: \"src/main/java/example/Range.java\"\n  to_file: \"src/main/java/example/RangeUtils.java\"\n```"
+  purpose: Evaluate Method move between classes and whether SZZ identifies the expected bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: move_entity; operations: write_file, replace, move_entity.'
   evaluation_points:
-  - method-level tracking が必要か
-  - file-level SZZ が失敗するか
-  - entity-aware SZZ の利点
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for future graph-aware SZZBench support.
-- This file is not expected to be executable by the current simple scenario.yml generator.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

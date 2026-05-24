@@ -1,52 +1,47 @@
-# SZZG-0060: root cause not in changed lines
+# SZZG-0060: Root cause not in changed lines
 
 ## Source
 
 - Source scenario: `FUTURE-060`
-- Category: context-aware / LLM-based SZZ 向け未対応シナリオ
+- Category: Context-aware and LLM-based SZZ scenarios
 
 ## Purpose
 
-BFC の変更行そのものではなく、その周辺 context が root cause を示すケースを評価する。
+Evaluate Root cause not in changed lines and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c1: caller contract を壊す
-c2: BFC は guard を追加するだけ
+c1: create initial state (write_file src/main/java/example/Range.java)
+c2: fix bug (replace src/main/java/example/Range.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-fault.statement を単一の faulty line として書けない場合がある。  
-root cause が changed line ではなく relation である。
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-```yaml
-root_cause:
-  type: "behavioral_relation"
-  description: "Caller may pass null while callee assumes non-null."
-```
+- Factors: root_cause
+- Operation types: write_file, replace
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- line-based SZZ の限界
-- semantic / LLM-based SZZ
-- root-cause oracle の表現
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
 ---
 
-## K. robustness / 実装品質確認系未対応シナリオ
-
 ## Draft status
 
-This scenario is a draft for the proposed `scenario.graph.yml` schema.  It is intended to guide the implementation of a future graph-aware validator/generator and should not be treated as executable by the current simple `scenario.yml` generator.
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
 
 ## Files
 
 ```text
 SZZG-0060/
-├── scenario.graph.yml
-└── README.md
+|-- scenario.graph.yml
+`-- README.md
 ```

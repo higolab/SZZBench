@@ -4,8 +4,8 @@ meta:
   source_future_id: FUTURE-027
   title: Clone removal as fix
   slug: clone-removal-as-fix
-  description: buggy clone B.javaを削除することをfixとして表す。
-  category: copy / clone / propagation 系未対応シナリオ
+  description: Evaluates clone removal as fix and checks whether SZZ identifies the expected bug-introducing commit set.
+  category: Copy, clone, and propagation scenarios
   category_code: E
   factors:
   - clone_relationships
@@ -19,34 +19,38 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: c0 correct A / c1 add buggy clone B / c2 delete B
+  history_summary: 'c0: create initial state (write_file src/main/java/example/A.java)
+
+    c1: introduce bug (write_file src/main/java/example/B.java)
+
+    c2: fix bug (delete_file src/main/java/example/B.java; write_file docs/clone-removal.md)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: Initial correct A implementation
+  message: 'c0: create initial state (write_file src/main/java/example/A.java)'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/A.java
-    content: "package example;\n\npublic class A {\n  public boolean contains(int value, int min, int max) {\n    return value >= min && value\
-      \ <= max;\n  }\n}\n"
+    content: "package example;\n\npublic class A {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ >= min && value <= max;\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: Add buggy clone B
+  message: 'c1: introduce bug (write_file src/main/java/example/B.java)'
   role: bug_introducing
   operations:
   - type: write_file
     path: src/main/java/example/B.java
-    content: "package example;\n\npublic class B {\n  public boolean contains(int value, int min, int max) {\n    return value > min && value\
-      \ < max;\n  }\n}\n"
+    content: "package example;\n\npublic class B {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n}\n"
 - id: c2
   branch: main
   parents:
   - c1
-  message: Remove buggy clone B and reuse A
+  message: 'c2: fix bug (delete_file src/main/java/example/B.java; write_file docs/clone-removal.md)'
   role: bug_fixing
   operations:
   - type: delete_file
@@ -81,13 +85,14 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: バグを含むコピーコードを削除することが修正になるケースを評価する。
-  current_schema_limitation: "`delete_file` が必要。  \nまた、fix.statement ではなく fix action が deletion になる。"
-  required_extensions_from_source: "```yaml\nfix:\n  commit: \"c2\"\n  file: \"B.java\"\n  fix_type: \"file_deletion\"\n```"
+  purpose: Evaluate Clone removal as fix and whether SZZ identifies the expected bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: clone_relationships; operations: write_file, delete_file.'
   evaluation_points:
-  - BFC が削除のみの場合の SZZ
-  - 削除されたコードの BIC を追えるか
-  - file deletion fix の oracle 表現
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for future graph-aware SZZBench support.
-- This revision replaces placeholder/no-op operations with concrete file states so that graph generation can proceed.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

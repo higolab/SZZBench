@@ -1,55 +1,48 @@
-# SZZG-0071: acceptable false positives を明示するケース
+# SZZG-0071: Case with explicit acceptable false positives
 
 ## Source
 
 - Source scenario: `FUTURE-073`
-- Category: schema / evaluation policy が必要な横断シナリオ
+- Category: Schema and evaluation-policy scenarios
 
 ## Purpose
 
-direct BIC ではないが、関連 commit として許容したい候補を明示する。
+Evaluate Case with explicit acceptable false positives and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c1: origin bug
-c2: direct copy
-c3: fix
+c1: introduce origin bug (write_file src/main/java/example/A.java)
+c2: introduce bug (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)
+c3: fix bug (replace src/main/java/example/B.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-`false_positives_allowed` はあるが、許容理由や評価上の重みを表せない。
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-```yaml
-expected_szz:
-  commit_level:
-    true_positives:
-      - "c2"
-    acceptable_related:
-      - commit: "c1"
-        reason: "origin_bic"
-        credit: 0.5
-```
+- Factors: expected_szz, acceptable_related, origin_bic, direct_bic
+- Operation types: write_file, copy_file, replace
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- strict evaluation と relaxed evaluation
-- direct/origin の重み付け
-- benchmark 結果の解釈
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
 ---
 
 ## Draft status
 
-This scenario is a draft for the proposed `scenario.graph.yml` schema.  It is intended to guide the implementation of a future graph-aware validator/generator and should not be treated as executable by the current simple `scenario.yml` generator.
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
 
 ## Files
 
 ```text
 SZZG-0071/
-├── scenario.graph.yml
-└── README.md
+|-- scenario.graph.yml
+`-- README.md
 ```

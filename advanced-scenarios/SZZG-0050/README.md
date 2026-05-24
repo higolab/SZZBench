@@ -1,52 +1,48 @@
-# SZZG-0050: BFC message references wrong commit
+# SZZG-0050: BFC message references the wrong commit
 
 ## Source
 
 - Source scenario: `FUTURE-050`
-- Category: work item / commit series 系未対応シナリオ
+- Category: Work-item and commit-series scenarios
 
 ## Purpose
 
-developer hint が誤っている場合に、hint-aware SZZ が誤誘導されるかを評価する。
+Evaluate BFC message references the wrong commit and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c1: true BIC
-c2: distractor
-c3: fix message incorrectly references c2
+c1: create initial state (write_file src/main/java/example/Range.java)
+c2: apply intermediate change (write_file docs/intermediate-note.md)
+c3: fix bug (replace src/main/java/example/Range.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-hint の正誤を表現できない。
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-```yaml
-developer_hints:
-  - bug: "B001"
-    referenced_commits:
-      - "c2"
-    correctness: "incorrect"
-```
+- Factors: developer_hints
+- Operation types: write_file, replace
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- noisy hint に対する頑健性
-- hint と code evidence の矛盾
-- LLM/context-aware SZZ の検証
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
 ---
 
 ## Draft status
 
-This scenario is a draft for the proposed `scenario.graph.yml` schema.  It is intended to guide the implementation of a future graph-aware validator/generator and should not be treated as executable by the current simple `scenario.yml` generator.
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
 
 ## Files
 
 ```text
 SZZG-0050/
-├── scenario.graph.yml
-└── README.md
+|-- scenario.graph.yml
+`-- README.md
 ```

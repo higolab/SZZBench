@@ -1,52 +1,48 @@
-# SZZG-0056: config と code の相互作用
+# SZZG-0056: Config and code interaction
 
 ## Source
 
 - Source scenario: `FUTURE-056`
-- Category: context-aware / LLM-based SZZ 向け未対応シナリオ
+- Category: Context-aware and LLM-based SZZ scenarios
 
 ## Purpose
 
-設定変更とコード変更の組合せによりバグが発生するケースを評価する。
+Evaluate Config and code interaction and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c1: config で feature flag を有効化
-c2: code がその設定に未対応
-c3: code fix
+c1: create initial state (write_file src/main/java/example/Range.java)
+c2: apply intermediate change (write_file docs/intermediate-note.md)
+c3: fix bug (replace src/main/java/example/Range.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-config file と code file の interaction を明示できない。
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-```yaml
-faults:
-  - kind: "config"
-    file: "config.yml"
-  - kind: "code"
-    file: "Feature.java"
-```
+- Factors: faults
+- Operation types: write_file, replace
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- non-code BIC
-- cross-file SZZ
-- context-aware SZZ
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
 ---
 
 ## Draft status
 
-This scenario is a draft for the proposed `scenario.graph.yml` schema.  It is intended to guide the implementation of a future graph-aware validator/generator and should not be treated as executable by the current simple `scenario.yml` generator.
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
 
 ## Files
 
 ```text
 SZZG-0056/
-├── scenario.graph.yml
-└── README.md
+|-- scenario.graph.yml
+`-- README.md
 ```

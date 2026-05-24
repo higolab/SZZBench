@@ -2,10 +2,10 @@ schema_version: graph-0.1-draft
 meta:
   id: SZZG-0034
   source_future_id: FUTURE-034
-  title: squash merge
+  title: Squash merge
   slug: squash-merge
-  description: feature branch の複数 commit が squash merge され、元の個別 BIC が main に残らないケースを評価する。
-  category: branch / merge / cherry-pick / backport 系未対応シナリオ
+  description: Evaluates squash merge and checks whether SZZ identifies the expected bug-introducing commit set.
+  category: Branch, merge, cherry-pick, and backport scenarios
   category_code: G
   factors:
   - branch
@@ -21,22 +21,31 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: "feature:\n  f1: bug 混入\n  f2: unrelated\nmain:\n  c1: squash merge feature as one commit\n  c2: fix"
+  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
+
+    c1: introduce bug (replace src/main/java/example/Range.java)
+
+    c2: apply intermediate change (write_file docs/feature-note.md)
+
+    c3: apply squash merge
+
+    c4: fix bug (replace src/main/java/example/Range.java)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: Initial implementation
+  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value >= min && value <= max;\n  }\n}\n"
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
   branch: feature
   parents:
   - c0
-  message: Introduce bug on feature branch
+  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
   role: bug_introducing
   operations:
   - type: replace
@@ -47,7 +56,7 @@ commits:
   branch: feature
   parents:
   - c1
-  message: Feature branch follow-up change
+  message: 'c2: apply intermediate change (write_file docs/feature-note.md)'
   role: intermediate
   operations:
   - type: write_file
@@ -60,7 +69,7 @@ commits:
   parents:
   - c0
   - c2
-  message: Merge feature branch
+  message: 'c3: apply squash merge'
   role: squash_merge
   operations: []
   squashes:
@@ -70,7 +79,7 @@ commits:
   branch: main
   parents:
   - c3
-  message: Fix bug
+  message: 'c4: fix bug (replace src/main/java/example/Range.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -104,13 +113,14 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: feature branch の複数 commit が squash merge され、元の個別 BIC が main に残らないケースを評価する。
-  current_schema_limitation: squash の元 commit と squash commit の関係を表現できない。
-  required_extensions_from_source: "```yaml\ncommits:\n  - id: \"c1\"\n    role: \"squash_merge\"\n    squashes:\n      - \"f1\"\n      - \"f2\"\n```"
+  purpose: Evaluate Squash merge and whether SZZ identifies the expected bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: branch, merge, squash_merge; operations: write_file, replace.'
   evaluation_points:
-  - 正解 BIC は original f1 か squash commit c1 か
-  - 実際の main 履歴上では f1 が存在しない場合の評価
-  - repository-visible oracle と conceptual oracle の違い
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for future graph-aware SZZBench support.
-- This file is not expected to be executable by the current simple scenario.yml generator.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

@@ -2,10 +2,11 @@ schema_version: graph-0.1-draft
 meta:
   id: SZZG-0051
   source_future_id: FUTURE-051
-  title: Unrelated commits mixed in same issue
+  title: Unrelated commits mixed in the same issue
   slug: issue-commit
-  description: 同一issue内にtrue BIC、cleanup、doc change、fixが混在する。
-  category: work item / commit series 系未対応シナリオ
+  description: Evaluates unrelated commits mixed in the same issue and checks whether SZZ identifies the expected bug-introducing
+    commit set.
+  category: Work-item and commit-series scenarios
   category_code: H
   factors:
   - work_items
@@ -20,23 +21,32 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'issue #10: c1 true BIC / c2 cleanup / c3 docs / c4 fix'
+  history_summary: 'c0: create initial state (write_file src/main/java/example/RangeService.java)
+
+    c1: introduce bug (replace src/main/java/example/RangeService.java)
+
+    c2: add unrelated change (replace src/main/java/example/RangeService.java)
+
+    c3: add unrelated change (write_file docs/issue-10-note.md)
+
+    c4: fix bug (replace src/main/java/example/RangeService.java)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: Initial range service
+  message: 'c0: create initial state (write_file src/main/java/example/RangeService.java)'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/RangeService.java
-    content: "package example;\n\npublic class RangeService {\n  public boolean isEnabled() { return true; }\n  public boolean contains(int value,\
-      \ int min, int max) { return value >= min && value <= max; }\n  public int normalize(int value) { return value; }\n}\n"
+    content: "package example;\n\npublic class RangeService {\n  public boolean isEnabled() { return true; }\n  public boolean\
+      \ contains(int value, int min, int max) { return value >= min && value <= max; }\n  public int normalize(int value)\
+      \ { return value; }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: ISSUE-10 introduce validation boundary bug
+  message: 'c1: introduce bug (replace src/main/java/example/RangeService.java)'
   role: bug_introducing
   operations:
   - type: replace
@@ -47,7 +57,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: ISSUE-10 cleanup naming in normalize
+  message: 'c2: add unrelated change (replace src/main/java/example/RangeService.java)'
   role: unrelated
   operations:
   - type: replace
@@ -58,7 +68,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: ISSUE-10 add documentation note
+  message: 'c3: add unrelated change (write_file docs/issue-10-note.md)'
   role: unrelated
   operations:
   - type: write_file
@@ -70,7 +80,7 @@ commits:
   branch: main
   parents:
   - c3
-  message: ISSUE-10 fix validation boundary bug
+  message: 'c4: fix bug (replace src/main/java/example/RangeService.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -120,14 +130,15 @@ issues:
   linked_bugs:
   - B001
 scenario_design:
-  purpose: work item / issue に無関係な commit が混在するケースを評価する。
-  current_schema_limitation: issue に含まれる commit と bug への関連度を表現できない。
-  required_extensions_from_source: "```yaml\nwork_items:\n  - id: \"ISSUE-10\"\n    commits:\n      - commit: \"c1\"\n        relevance: \"bug_introducing\"\
-    \n      - commit: \"c2\"\n        relevance: \"unrelated\"\n```"
+  purpose: Evaluate Unrelated commits mixed in the same issue and whether SZZ identifies the expected bug-introducing commit
+    set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: work_items, issues; operations: write_file, replace.'
   evaluation_points:
-  - issue-aware SZZ の false positive
-  - work item 内のノイズ
-  - candidate filtering の評価
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for future graph-aware SZZBench support.
-- This revision replaces placeholder/no-op operations with concrete file states so that graph generation can proceed.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.
