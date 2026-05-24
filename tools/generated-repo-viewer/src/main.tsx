@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 
@@ -136,6 +136,8 @@ function App() {
   const [detail, setDetail] = useState<RepositoryDetail | null>(null);
   const [selectedCommit, setSelectedCommit] = useState<CommitInfo | null>(null);
   const [files, setFiles] = useState<string[]>([]);
+  const [filesTarget, setFilesTarget] = useState<string>("");
+  const [filesCommitHash, setFilesCommitHash] = useState<string>("");
   const [selectedFile, setSelectedFile] = useState<string>("");
   const [fileContent, setFileContent] = useState<string>("");
   const [diff, setDiff] = useState<string>("");
@@ -143,6 +145,8 @@ function App() {
   const [tab, setTab] = useState<"file" | "diff" | "blame" | "oracle" | "verify">("file");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
+  const treeRequestId = useRef(0);
+  const fileViewsRequestId = useRef(0);
 
   async function fetchJson<T>(url: string): Promise<T> {
     const response = await fetch(url);
@@ -175,19 +179,34 @@ function App() {
 
   useEffect(() => {
     if (!selectedTarget || !selectedCommit) return;
+    if (!detail || detail.generatedDir !== selectedTarget) return;
+    fileViewsRequestId.current += 1;
+    setFiles([]);
+    setFilesTarget("");
+    setFilesCommitHash("");
+    setSelectedFile("");
+    setFileContent("");
+    setDiff("");
+    setBlame([]);
     loadTree(selectedTarget, selectedCommit.hash);
-  }, [selectedTarget, selectedCommit?.hash]);
+  }, [selectedTarget, detail?.generatedDir, selectedCommit?.hash]);
 
   useEffect(() => {
     if (!selectedTarget || !selectedCommit || !selectedFile) return;
+    if (!detail || detail.generatedDir !== selectedTarget) return;
+    if (filesTarget !== selectedTarget || filesCommitHash !== selectedCommit.hash || !files.includes(selectedFile)) return;
     loadFileViews(selectedTarget, selectedCommit.hash, selectedFile);
-  }, [selectedTarget, selectedCommit?.hash, selectedFile]);
+  }, [selectedTarget, detail?.generatedDir, selectedCommit?.hash, selectedFile, filesTarget, filesCommitHash, files]);
 
   async function loadRepository(target: string) {
+    treeRequestId.current += 1;
+    fileViewsRequestId.current += 1;
     setLoading(true);
     setError("");
     setDetail(null);
     setFiles([]);
+    setFilesTarget("");
+    setFilesCommitHash("");
     setSelectedFile("");
     setFileContent("");
     setDiff("");
@@ -205,20 +224,25 @@ function App() {
   }
 
   async function loadTree(target: string, commit: string) {
+    const requestId = ++treeRequestId.current;
     try {
       const data = await fetchJson<{ files: string[] }>(
         `${API}/api/tree?target=${encodeURIComponent(target)}&commit=${encodeURIComponent(commit)}`
       );
+      if (requestId !== treeRequestId.current) return;
       setFiles(data.files);
-      if (!data.files.includes(selectedFile)) {
-        setSelectedFile(data.files[0] || "");
-      }
+      setFilesTarget(target);
+      setFilesCommitHash(commit);
+      setSelectedFile((current) => data.files.includes(current) ? current : data.files[0] || "");
+      setError("");
     } catch (e: any) {
+      if (requestId !== treeRequestId.current) return;
       setError(e.message);
     }
   }
 
   async function loadFileViews(target: string, commit: string, file: string) {
+    const requestId = ++fileViewsRequestId.current;
     try {
       const [fileData, diffData, blameData] = await Promise.all([
         fetchJson<{ content: string }>(
@@ -231,10 +255,13 @@ function App() {
           `${API}/api/blame?target=${encodeURIComponent(target)}&commit=${encodeURIComponent(commit)}&file=${encodeURIComponent(file)}`
         )
       ]);
+      if (requestId !== fileViewsRequestId.current) return;
       setFileContent(fileData.content);
       setDiff(diffData.diff);
       setBlame(blameData.lines);
+      setError("");
     } catch (e: any) {
+      if (requestId !== fileViewsRequestId.current) return;
       setError(e.message);
     }
   }
