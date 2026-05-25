@@ -1,14 +1,8 @@
 schema_version: graph-index-0.1-draft
 description: Index of draft advanced graph scenarios for SZZBench.
 scenario_count: 72
-excluded_future_ids:
-- id: FUTURE-069
-  reason: Deferred because it requires repository variants such as shallow history.
-- id: FUTURE-070
-  reason: Deferred because it requires intentionally corrupted or incomplete Git objects.
 scenarios:
 - id: SZZG-0001
-  source_future_id: FUTURE-001
   title: BFC performs rename and fix in the same commit
   category: BFC shape scenarios
   path: advanced-scenarios/SZZG-0001/scenario.graph.yml
@@ -17,7 +11,6 @@ scenarios:
   factors:
   - rename_file
 - id: SZZG-0002
-  source_future_id: FUTURE-002
   title: BFC performs file move and fix in the same commit
   category: BFC shape scenarios
   path: advanced-scenarios/SZZG-0002/scenario.graph.yml
@@ -26,7 +19,6 @@ scenarios:
   factors:
   - move_file
 - id: SZZG-0003
-  source_future_id: FUTURE-003
   title: Partial fix followed by complete fix
   category: BFC shape scenarios
   path: advanced-scenarios/SZZG-0003/scenario.graph.yml
@@ -35,7 +27,6 @@ scenarios:
   factors:
   - bug_fixing_commits
 - id: SZZG-0004
-  source_future_id: FUTURE-004
   title: Attempted fix followed by follow-up fix
   category: BFC shape scenarios
   path: advanced-scenarios/SZZG-0004/scenario.graph.yml
@@ -47,7 +38,6 @@ scenarios:
   - follow_up_fix
   - incorrect_fix
 - id: SZZG-0005
-  source_future_id: FUTURE-005
   title: BFC is a merge commit
   category: BFC shape scenarios
   path: advanced-scenarios/SZZG-0005/scenario.graph.yml
@@ -58,7 +48,6 @@ scenarios:
   - bug_fixing_commit
   - branch
 - id: SZZG-0006
-  source_future_id: FUTURE-006
   title: BFC includes generated files
   category: BFC shape scenarios
   path: advanced-scenarios/SZZG-0006/scenario.graph.yml
@@ -66,7 +55,6 @@ scenarios:
   status: draft
   factors: []
 - id: SZZG-0007
-  source_future_id: FUTURE-007
   title: BIC is a test-only commit
   category: BIC property scenarios
   path: advanced-scenarios/SZZG-0007/scenario.graph.yml
@@ -75,7 +63,6 @@ scenarios:
   factors:
   - expected_szz
 - id: SZZG-0008
-  source_future_id: FUTURE-008
   title: Dependency update as BIC
   category: BIC property scenarios
   path: advanced-scenarios/SZZG-0008/scenario.graph.yml
@@ -83,7 +70,6 @@ scenarios:
   status: draft
   factors: []
 - id: SZZG-0009
-  source_future_id: FUTURE-009
   title: File rename between BIC and BFC
   category: Intermediate-history scenarios
   path: advanced-scenarios/SZZG-0009/scenario.graph.yml
@@ -92,7 +78,6 @@ scenarios:
   factors:
   - rename_file
 - id: SZZG-0010
-  source_future_id: FUTURE-010
   title: File move between BIC and BFC
   category: Intermediate-history scenarios
   path: advanced-scenarios/SZZG-0010/scenario.graph.yml
@@ -102,7 +87,6 @@ scenarios:
   - rename_file
   - move_file
 - id: SZZG-0011
-  source_future_id: FUTURE-011
   title: Method move between classes
   category: Intermediate-history scenarios
   path: advanced-scenarios/SZZG-0011/scenario.graph.yml
@@ -111,7 +95,6 @@ scenarios:
   factors:
   - move_entity
 - id: SZZG-0012
-  source_future_id: FUTURE-012
   title: Extract class after BIC
   category: Intermediate-history scenarios
   path: advanced-scenarios/SZZG-0012/scenario.graph.yml
@@ -123,7 +106,6 @@ scenarios:
   - move_entity
   - post_bic_refactoring
 - id: SZZG-0013
-  source_future_id: FUTURE-013
   title: One BIC fixed by multiple BFCs
   category: Multiple BIC and BFC scenarios
   path: advanced-scenarios/SZZG-0013/scenario.graph.yml
@@ -132,7 +114,6 @@ scenarios:
   factors:
   - bug_fixing_commits
 - id: SZZG-0014
-  source_future_id: FUTURE-014
   title: Multiple BFCs progressively fix the same bug
   category: Multiple BIC and BFC scenarios
   path: advanced-scenarios/SZZG-0014/scenario.graph.yml
@@ -145,7 +126,6 @@ scenarios:
   - partial_fix
   - complete_fix
 - id: SZZG-0015
-  source_future_id: FUTURE-015
   title: One BFC fixes multiple BICs for one composite bug
   category: Multiple BIC and BFC scenarios
   path: advanced-scenarios/SZZG-0015/scenario.graph.yml
@@ -158,7 +138,6 @@ scenarios:
   - same_bug
   - multiple_fault_locations
 - id: SZZG-0016
-  source_future_id: FUTURE-016
   title: Partial credit when only some BICs are returned
   category: Multiple BIC and BFC scenarios
   path: advanced-scenarios/SZZG-0016/scenario.graph.yml
@@ -167,7 +146,6 @@ scenarios:
   factors:
   - expected_szz
 - id: SZZG-0017
-  source_future_id: FUTURE-017
   title: One BFC fixes multiple independent bugs
   category: Multiple BIC and BFC scenarios
   path: advanced-scenarios/SZZG-0017/scenario.graph.yml
@@ -179,7 +157,6 @@ scenarios:
   - independent_faults
   - different_files
 - id: SZZG-0018
-  source_future_id: FUTURE-018
   title: One BIC causes multiple bug symptoms
   category: Multiple BIC and BFC scenarios
   path: advanced-scenarios/SZZG-0018/scenario.graph.yml
@@ -188,7 +165,6 @@ scenarios:
   factors:
   - root_cause
 - id: SZZG-0019
-  source_future_id: FUTURE-019
   title: Buggy code copied to a new file
   category: Copy, clone, and propagation scenarios
   path: advanced-scenarios/SZZG-0019/scenario.graph.yml
@@ -197,7 +173,6 @@ scenarios:
   factors:
   - copy_file
 - id: SZZG-0020
-  source_future_id: FUTURE-020
   title: Buggy code copied while original is fixed later
   category: Copy, clone, and propagation scenarios
   path: advanced-scenarios/SZZG-0020/scenario.graph.yml
@@ -207,7 +182,6 @@ scenarios:
   - copy_file
   - faults
 - id: SZZG-0021
-  source_future_id: FUTURE-021
   title: Original and clone fixed together
   category: Copy, clone, and propagation scenarios
   path: advanced-scenarios/SZZG-0021/scenario.graph.yml
@@ -217,7 +191,6 @@ scenarios:
   - faults
   - clone_relationships
 - id: SZZG-0022
-  source_future_id: FUTURE-022
   title: Clone diverges before fix
   category: Copy, clone, and propagation scenarios
   path: advanced-scenarios/SZZG-0022/scenario.graph.yml
@@ -226,7 +199,6 @@ scenarios:
   factors:
   - clone_relationships
 - id: SZZG-0023
-  source_future_id: FUTURE-023
   title: Only one clone instance is fixed first
   category: Copy, clone, and propagation scenarios
   path: advanced-scenarios/SZZG-0023/scenario.graph.yml
@@ -236,7 +208,6 @@ scenarios:
   - clone_relationships
   - bug_instances
 - id: SZZG-0024
-  source_future_id: FUTURE-024
   title: Same bug introduced independently
   category: Copy, clone, and propagation scenarios
   path: advanced-scenarios/SZZG-0024/scenario.graph.yml
@@ -244,7 +215,6 @@ scenarios:
   status: draft
   factors: []
 - id: SZZG-0025
-  source_future_id: FUTURE-025
   title: Bug propagates into generated code
   category: Copy, clone, and propagation scenarios
   path: advanced-scenarios/SZZG-0025/scenario.graph.yml
@@ -252,7 +222,6 @@ scenarios:
   status: draft
   factors: []
 - id: SZZG-0026
-  source_future_id: FUTURE-026
   title: Explicit evaluation of direct BIC vs origin BIC
   category: Copy, clone, and propagation scenarios
   path: advanced-scenarios/SZZG-0026/scenario.graph.yml
@@ -261,7 +230,6 @@ scenarios:
   factors:
   - expected_szz
 - id: SZZG-0027
-  source_future_id: FUTURE-027
   title: Clone removal as fix
   category: Copy, clone, and propagation scenarios
   path: advanced-scenarios/SZZG-0027/scenario.graph.yml
@@ -270,7 +238,6 @@ scenarios:
   factors:
   - clone_relationships
 - id: SZZG-0028
-  source_future_id: FUTURE-028
   title: Partial revert reintroduces bug
   category: Revert and reintroduction scenarios
   path: advanced-scenarios/SZZG-0028/scenario.graph.yml
@@ -278,7 +245,6 @@ scenarios:
   status: draft
   factors: []
 - id: SZZG-0029
-  source_future_id: FUTURE-029
   title: Old BIC and re-BIC are both plausible
   category: Revert and reintroduction scenarios
   path: advanced-scenarios/SZZG-0029/scenario.graph.yml
@@ -287,7 +253,6 @@ scenarios:
   factors:
   - expected_szz
 - id: SZZG-0030
-  source_future_id: FUTURE-030
   title: BIC on feature branch, BFC on main
   category: Branch, merge, cherry-pick, and backport scenarios
   path: advanced-scenarios/SZZG-0030/scenario.graph.yml
@@ -299,7 +264,6 @@ scenarios:
   - feature_branch_bic
   - main_branch_bfc
 - id: SZZG-0031
-  source_future_id: FUTURE-031
   title: BIC before merge, BFC after merge
   category: Branch, merge, cherry-pick, and backport scenarios
   path: advanced-scenarios/SZZG-0031/scenario.graph.yml
@@ -311,7 +275,6 @@ scenarios:
   - pre_merge_bic
   - post_merge_bfc
 - id: SZZG-0032
-  source_future_id: FUTURE-032
   title: BIC in merge commit
   category: Branch, merge, cherry-pick, and backport scenarios
   path: advanced-scenarios/SZZG-0032/scenario.graph.yml
@@ -322,7 +285,6 @@ scenarios:
   - merge
   - merge_commit_bic
 - id: SZZG-0033
-  source_future_id: FUTURE-033
   title: BFC in merge commit
   category: Branch, merge, cherry-pick, and backport scenarios
   path: advanced-scenarios/SZZG-0033/scenario.graph.yml
@@ -334,7 +296,6 @@ scenarios:
   - merge_commit_bfc
   - partial_fix
 - id: SZZG-0034
-  source_future_id: FUTURE-034
   title: Squash merge
   category: Branch, merge, cherry-pick, and backport scenarios
   path: advanced-scenarios/SZZG-0034/scenario.graph.yml
@@ -345,7 +306,6 @@ scenarios:
   - squash_merge
   - squashed_bic
 - id: SZZG-0035
-  source_future_id: FUTURE-035
   title: Cherry-pick BIC
   category: Branch, merge, cherry-pick, and backport scenarios
   path: advanced-scenarios/SZZG-0035/scenario.graph.yml
@@ -355,7 +315,6 @@ scenarios:
   - branch
   - cherry_pick_of
 - id: SZZG-0036
-  source_future_id: FUTURE-036
   title: Cherry-pick BFC
   category: Branch, merge, cherry-pick, and backport scenarios
   path: advanced-scenarios/SZZG-0036/scenario.graph.yml
@@ -368,7 +327,6 @@ scenarios:
   - bug_instances
   - backport_like_fix
 - id: SZZG-0037
-  source_future_id: FUTURE-037
   title: Backport fix
   category: Branch, merge, cherry-pick, and backport scenarios
   path: advanced-scenarios/SZZG-0037/scenario.graph.yml
@@ -378,7 +336,6 @@ scenarios:
   - branch
   - backport_of
 - id: SZZG-0038
-  source_future_id: FUTURE-038
   title: Backport introduces release-specific bug
   category: Branch, merge, cherry-pick, and backport scenarios
   path: advanced-scenarios/SZZG-0038/scenario.graph.yml
@@ -388,7 +345,6 @@ scenarios:
   - branch
   - backport_of
 - id: SZZG-0039
-  source_future_id: FUTURE-039
   title: Criss-cross merge
   category: Branch, merge, cherry-pick, and backport scenarios
   path: advanced-scenarios/SZZG-0039/scenario.graph.yml
@@ -399,7 +355,6 @@ scenarios:
   - merge
   - criss_cross_merge
 - id: SZZG-0040
-  source_future_id: FUTURE-040
   title: Release-branch-only bug
   category: Branch, merge, cherry-pick, and backport scenarios
   path: advanced-scenarios/SZZG-0040/scenario.graph.yml
@@ -409,7 +364,6 @@ scenarios:
   - release_branch
   - branch_only_bug
 - id: SZZG-0041
-  source_future_id: FUTURE-041
   title: Fixed on main but unfixed on release
   category: Branch, merge, cherry-pick, and backport scenarios
   path: advanced-scenarios/SZZG-0041/scenario.graph.yml
@@ -420,7 +374,6 @@ scenarios:
   - partial_fix_propagation
   - unfixed_release
 - id: SZZG-0042
-  source_future_id: FUTURE-042
   title: BIC occurs during feature work
   category: Work-item and commit-series scenarios
   path: advanced-scenarios/SZZG-0042/scenario.graph.yml
@@ -432,7 +385,6 @@ scenarios:
   - bic_inside_work_item
   - commit_series
 - id: SZZG-0043
-  source_future_id: FUTURE-043
   title: Fix split across multiple commits
   category: Work-item and commit-series scenarios
   path: advanced-scenarios/SZZG-0043/scenario.graph.yml
@@ -441,7 +393,6 @@ scenarios:
   factors:
   - bug_fixing_commits
 - id: SZZG-0044
-  source_future_id: FUTURE-044
   title: BIC and BFC belong to the same issue commit series
   category: Work-item and commit-series scenarios
   path: advanced-scenarios/SZZG-0044/scenario.graph.yml
@@ -450,7 +401,6 @@ scenarios:
   factors:
   - issues
 - id: SZZG-0045
-  source_future_id: FUTURE-045
   title: BIC hidden by cleanup immediately before BFC
   category: Work-item and commit-series scenarios
   path: advanced-scenarios/SZZG-0045/scenario.graph.yml
@@ -459,7 +409,6 @@ scenarios:
   factors:
   - work_items
 - id: SZZG-0046
-  source_future_id: FUTURE-046
   title: Multiple candidate BICs inside a work item
   category: Work-item and commit-series scenarios
   path: advanced-scenarios/SZZG-0046/scenario.graph.yml
@@ -469,7 +418,6 @@ scenarios:
   - work_items
   - expected_szz
 - id: SZZG-0047
-  source_future_id: FUTURE-047
   title: Work item inference without issue ID
   category: Work-item and commit-series scenarios
   path: advanced-scenarios/SZZG-0047/scenario.graph.yml
@@ -482,7 +430,6 @@ scenarios:
   - commit_series
   - related_but_not_correct
 - id: SZZG-0048
-  source_future_id: FUTURE-048
   title: Only commit message provides the clue
   category: Work-item and commit-series scenarios
   path: advanced-scenarios/SZZG-0048/scenario.graph.yml
@@ -491,7 +438,6 @@ scenarios:
   factors:
   - context
 - id: SZZG-0049
-  source_future_id: FUTURE-049
   title: BFC message references BIC
   category: Work-item and commit-series scenarios
   path: advanced-scenarios/SZZG-0049/scenario.graph.yml
@@ -500,7 +446,6 @@ scenarios:
   factors:
   - developer_hints
 - id: SZZG-0050
-  source_future_id: FUTURE-050
   title: BFC message references the wrong commit
   category: Work-item and commit-series scenarios
   path: advanced-scenarios/SZZG-0050/scenario.graph.yml
@@ -509,7 +454,6 @@ scenarios:
   factors:
   - developer_hints
 - id: SZZG-0051
-  source_future_id: FUTURE-051
   title: Unrelated commits mixed in the same issue
   category: Work-item and commit-series scenarios
   path: advanced-scenarios/SZZG-0051/scenario.graph.yml
@@ -519,7 +463,6 @@ scenarios:
   - work_items
   - issues
 - id: SZZG-0052
-  source_future_id: FUTURE-052
   title: Multiple overloaded methods
   category: Ambiguous blame and duplicate-code scenarios
   path: advanced-scenarios/SZZG-0052/scenario.graph.yml
@@ -527,7 +470,6 @@ scenarios:
   status: draft
   factors: []
 - id: SZZG-0053
-  source_future_id: FUTURE-053
   title: Line moved and duplicated
   category: Ambiguous blame and duplicate-code scenarios
   path: advanced-scenarios/SZZG-0053/scenario.graph.yml
@@ -538,7 +480,6 @@ scenarios:
   - copy_entity
   - bug_instances
 - id: SZZG-0054
-  source_future_id: FUTURE-054
   title: Patch context required
   category: Context-aware and LLM-based SZZ scenarios
   path: advanced-scenarios/SZZG-0054/scenario.graph.yml
@@ -547,7 +488,6 @@ scenarios:
   factors:
   - context
 - id: SZZG-0055
-  source_future_id: FUTURE-055
   title: Caller/callee interaction bug
   category: Context-aware and LLM-based SZZ scenarios
   path: advanced-scenarios/SZZG-0055/scenario.graph.yml
@@ -556,7 +496,6 @@ scenarios:
   factors:
   - faults
 - id: SZZG-0056
-  source_future_id: FUTURE-056
   title: Config and code interaction
   category: Context-aware and LLM-based SZZ scenarios
   path: advanced-scenarios/SZZG-0056/scenario.graph.yml
@@ -565,7 +504,6 @@ scenarios:
   factors:
   - faults
 - id: SZZG-0057
-  source_future_id: FUTURE-057
   title: Cause can be inferred from test failure
   category: Context-aware and LLM-based SZZ scenarios
   path: advanced-scenarios/SZZG-0057/scenario.graph.yml
@@ -575,7 +513,6 @@ scenarios:
   - test_context
   - context
 - id: SZZG-0058
-  source_future_id: FUTURE-058
   title: Issue description required
   category: Context-aware and LLM-based SZZ scenarios
   path: advanced-scenarios/SZZG-0058/scenario.graph.yml
@@ -584,7 +521,6 @@ scenarios:
   factors:
   - issues
 - id: SZZG-0059
-  source_future_id: FUTURE-059
   title: Semantically equivalent rewrite
   category: Context-aware and LLM-based SZZ scenarios
   path: advanced-scenarios/SZZG-0059/scenario.graph.yml
@@ -592,7 +528,6 @@ scenarios:
   status: draft
   factors: []
 - id: SZZG-0060
-  source_future_id: FUTURE-060
   title: Root cause not in changed lines
   category: Context-aware and LLM-based SZZ scenarios
   path: advanced-scenarios/SZZG-0060/scenario.graph.yml
@@ -601,7 +536,6 @@ scenarios:
   factors:
   - root_cause
 - id: SZZG-0061
-  source_future_id: FUTURE-061
   title: Binary file change
   category: Robustness and implementation-quality scenarios
   path: advanced-scenarios/SZZG-0061/scenario.graph.yml
@@ -610,7 +544,6 @@ scenarios:
   factors:
   - write_binary_file
 - id: SZZG-0062
-  source_future_id: FUTURE-062
   title: File deletion
   category: Robustness and implementation-quality scenarios
   path: advanced-scenarios/SZZG-0062/scenario.graph.yml
@@ -619,7 +552,6 @@ scenarios:
   factors:
   - delete_file
 - id: SZZG-0063
-  source_future_id: FUTURE-063
   title: File creation only as fix
   category: Robustness and implementation-quality scenarios
   path: advanced-scenarios/SZZG-0063/scenario.graph.yml
@@ -627,7 +559,6 @@ scenarios:
   status: draft
   factors: []
 - id: SZZG-0064
-  source_future_id: FUTURE-064
   title: Empty commit
   category: Robustness and implementation-quality scenarios
   path: advanced-scenarios/SZZG-0064/scenario.graph.yml
@@ -636,7 +567,6 @@ scenarios:
   factors:
   - allow_empty
 - id: SZZG-0065
-  source_future_id: FUTURE-065
   title: Chmod only
   category: Robustness and implementation-quality scenarios
   path: advanced-scenarios/SZZG-0065/scenario.graph.yml
@@ -645,7 +575,6 @@ scenarios:
   factors:
   - chmod
 - id: SZZG-0066
-  source_future_id: FUTURE-066
   title: Non-UTF-8 file
   category: Robustness and implementation-quality scenarios
   path: advanced-scenarios/SZZG-0066/scenario.graph.yml
@@ -654,7 +583,6 @@ scenarios:
   factors:
   - encoding
 - id: SZZG-0067
-  source_future_id: FUTURE-067
   title: Huge file
   category: Robustness and implementation-quality scenarios
   path: advanced-scenarios/SZZG-0067/scenario.graph.yml
@@ -663,7 +591,6 @@ scenarios:
   factors:
   - write_generated_text_file
 - id: SZZG-0068
-  source_future_id: FUTURE-068
   title: Huge history
   category: Robustness and implementation-quality scenarios
   path: advanced-scenarios/SZZG-0068/scenario.graph.yml
@@ -672,7 +599,6 @@ scenarios:
   factors:
   - commit_generators
 - id: SZZG-0069
-  source_future_id: FUTURE-071
   title: Malformed commit message
   category: Robustness and implementation-quality scenarios
   path: advanced-scenarios/SZZG-0069/scenario.graph.yml
@@ -682,7 +608,6 @@ scenarios:
   - evaluation_variants
   - message_variants
 - id: SZZG-0070
-  source_future_id: FUTURE-072
   title: Top-k evaluation
   category: Schema and evaluation-policy scenarios
   path: advanced-scenarios/SZZG-0070/scenario.graph.yml
@@ -691,7 +616,6 @@ scenarios:
   factors:
   - expected_szz
 - id: SZZG-0071
-  source_future_id: FUTURE-075
   title: Copy propagation with direct and origin BIC evaluation variants
   category: Schema and evaluation-policy scenarios
   path: advanced-scenarios/SZZG-0071/scenario.graph.yml
@@ -704,7 +628,6 @@ scenarios:
   - evaluation_variants
   - relaxed_with_credit
 - id: SZZG-0072
-  source_future_id: FUTURE-074
   title: Line-level impossible but entity-level possible
   category: Schema and evaluation-policy scenarios
   path: advanced-scenarios/SZZG-0072/scenario.graph.yml

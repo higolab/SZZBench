@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0005
-  source_future_id: FUTURE-005
   title: BFC is a merge commit
   slug: bfc-merge-commit
   description: A bug is introduced on a feature branch, and the merge commit itself resolves the bug while merging the feature

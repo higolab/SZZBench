@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0034
-  source_future_id: FUTURE-034
   title: Squash merge
   slug: squash-merge
   description: Feature branch commits introduce and extend a bug, but main receives them through a single-parent squash-merge

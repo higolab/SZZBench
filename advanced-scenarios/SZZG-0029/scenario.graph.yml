@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0029
-  source_future_id: FUTURE-029
   title: Old BIC and re-BIC are both plausible
   slug: old-bic-re-bic-plausible
   description: Evaluates old bic and re-bic are both plausible and checks whether SZZ identifies the expected bug-introducing

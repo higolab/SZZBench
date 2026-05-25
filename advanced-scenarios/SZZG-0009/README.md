@@ -2,7 +2,6 @@
 
 ## Source
 
-- Source scenario: `FUTURE-009`
 - Category: Intermediate-history scenarios
 
 ## Purpose

@@ -2,7 +2,6 @@
 
 ## Source
 
-- Source scenario: `FUTURE-064`
 - Category: Robustness and implementation-quality scenarios
 
 ## Purpose

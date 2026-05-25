@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0030
-  source_future_id: FUTURE-030
   title: BIC on feature branch, BFC on main
   slug: bic-on-feature-branch-bfc-on-main
   description: A feature branch introduces a bug, extends feature code that depends on the buggy method, is merged into main,

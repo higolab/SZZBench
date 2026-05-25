@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0045
-  source_future_id: FUTURE-045
   title: BIC hidden by cleanup immediately before BFC
   slug: bic-bfc-cleanup
   description: Evaluates bic hidden by cleanup immediately before bfc and checks whether SZZ identifies the expected bug-introducing

@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0011
-  source_future_id: FUTURE-011
   title: Method move between classes
   slug: method-move-between-classes
   description: Evaluates method move between classes and checks whether SZZ identifies the expected bug-introducing commit

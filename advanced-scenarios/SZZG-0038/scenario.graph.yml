@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0038
-  source_future_id: FUTURE-038
   title: Backport introduces release-specific bug
   slug: backport-introduces-bug
   description: Evaluates backport introduces release-specific bug and checks whether SZZ identifies the expected bug-introducing

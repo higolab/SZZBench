@@ -2,7 +2,6 @@
 
 ## Source
 
-- Source scenario: `FUTURE-007`
 - Category: BIC property scenarios
 
 ## Purpose

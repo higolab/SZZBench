@@ -2,7 +2,6 @@
 
 ## Source
 
-- Source scenario: `FUTURE-052`
 - Category: Ambiguous blame and duplicate-code scenarios
 
 ## Purpose

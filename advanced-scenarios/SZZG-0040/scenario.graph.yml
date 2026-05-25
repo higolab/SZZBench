@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0040
-  source_future_id: FUTURE-040
   title: Release-branch-only bug
   slug: release-branch-only-bug
   description: A release branch introduces and fixes a bug that never exists on main.

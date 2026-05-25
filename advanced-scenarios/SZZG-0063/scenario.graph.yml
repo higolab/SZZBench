@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0063
-  source_future_id: FUTURE-063
   title: File creation only as fix
   slug: file-creation-only-as-fix
   description: Evaluates file creation only as fix and checks whether SZZ identifies the expected bug-introducing commit set.

@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0032
-  source_future_id: FUTURE-032
   title: BIC in merge commit
   slug: bic-in-merge-commit
   description: The merge commit itself introduces the bug during merge resolution; a later normal commit fixes it.

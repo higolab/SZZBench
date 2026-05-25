@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0052
-  source_future_id: FUTURE-052
   title: Multiple overloaded methods
   slug: multiple-overloaded-methods
   description: Evaluates multiple overloaded methods and checks whether SZZ identifies the expected bug-introducing commit

@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0004
-  source_future_id: FUTURE-004
   title: Attempted fix followed by follow-up fix
   slug: follow-up-fix-bfc
   description: A bug is introduced by excluding boundary values. A later attempted fix changes the condition but uses the

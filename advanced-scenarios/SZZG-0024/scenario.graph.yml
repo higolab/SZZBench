@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0024
-  source_future_id: FUTURE-024
   title: Same bug introduced independently
   slug: same-bug-introduced-independently
   description: Evaluates same bug introduced independently and checks whether SZZ identifies the expected bug-introducing

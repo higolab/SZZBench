@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0021
-  source_future_id: FUTURE-021
   title: Original and clone fixed together
   slug: original-clone
   description: Evaluates original and clone fixed together and checks whether SZZ identifies the expected bug-introducing

@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0036
-  source_future_id: FUTURE-036
   title: Cherry-pick BFC
   slug: cherry-pick-bfc
   description: A bug exists on both main and release branches. The bug is fixed on main, and the BFC is then cherry-picked

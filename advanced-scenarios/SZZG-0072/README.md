@@ -2,7 +2,6 @@
 
 ## Source
 
-- Source scenario: `FUTURE-074`
 - Category: Schema and evaluation-policy scenarios
 
 ## Purpose

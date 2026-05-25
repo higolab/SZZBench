@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0042
-  source_future_id: FUTURE-042
   title: BIC occurs during feature work
   slug: feature-bic
   description: A feature work item consists of multiple commits. The feature starts correctly, the BIC occurs in the middle

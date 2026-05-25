@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0026
-  source_future_id: FUTURE-026
   title: Explicit evaluation of direct BIC vs origin BIC
   slug: direct-bic-vs-origin-bic
   description: Evaluates explicit evaluation of direct bic vs origin bic and checks whether SZZ identifies the expected bug-introducing

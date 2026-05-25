@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0016
-  source_future_id: FUTURE-016
   title: Partial credit when only some BICs are returned
   slug: bic-partial-credit
   description: Evaluates partial credit when only some bics are returned and checks whether SZZ identifies the expected bug-introducing

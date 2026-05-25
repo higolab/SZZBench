@@ -2,7 +2,6 @@
 
 ## Source
 
-- Source scenario: `FUTURE-038`
 - Category: Branch, merge, cherry-pick, and backport scenarios
 
 ## Purpose

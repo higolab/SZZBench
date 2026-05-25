@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0068
-  source_future_id: FUTURE-068
   title: Huge history
   slug: huge-history
   description: Evaluates huge history and checks whether SZZ identifies the expected bug-introducing commit set.

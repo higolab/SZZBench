@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0035
-  source_future_id: FUTURE-035
   title: Cherry-pick BIC
   slug: cherry-pick-bic
   description: Evaluates cherry-pick bic and checks whether SZZ identifies the expected bug-introducing commit set.

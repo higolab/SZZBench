@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0048
-  source_future_id: FUTURE-048
   title: Only commit message provides the clue
   slug: commit-message
   description: Evaluates only commit message provides the clue and checks whether SZZ identifies the expected bug-introducing

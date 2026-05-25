@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0017
-  source_future_id: FUTURE-017
   title: One BFC fixes multiple independent bugs
   slug: 1-bfc-bug
   description: Two independent bugs are introduced in different files and different functional areas. One later BFC fixes

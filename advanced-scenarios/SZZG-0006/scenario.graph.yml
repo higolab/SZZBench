@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0006
-  source_future_id: FUTURE-006
   title: BFC includes generated files
   slug: bfc-generated-file
   description: Evaluates bfc includes generated files and checks whether SZZ identifies the expected bug-introducing commit

@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0027
-  source_future_id: FUTURE-027
   title: Clone removal as fix
   slug: clone-removal-as-fix
   description: Evaluates clone removal as fix and checks whether SZZ identifies the expected bug-introducing commit set.

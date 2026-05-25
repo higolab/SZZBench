@@ -2,7 +2,6 @@
 
 ## Source
 
-- Source scenario: `FUTURE-006`
 - Category: BFC shape scenarios
 
 ## Purpose

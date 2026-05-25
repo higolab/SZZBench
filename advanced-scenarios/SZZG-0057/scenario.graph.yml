@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0057
-  source_future_id: FUTURE-057
   title: Cause can be inferred from test failure
   slug: test-failure
   description: Evaluates cause can be inferred from test failure and checks whether SZZ identifies the expected bug-introducing

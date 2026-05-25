@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0001
-  source_future_id: FUTURE-001
   title: BFC performs rename and fix in the same commit
   slug: bfc-rename-fix
   description: Evaluates bfc performs rename and fix in the same commit and checks whether SZZ identifies the expected bug-introducing

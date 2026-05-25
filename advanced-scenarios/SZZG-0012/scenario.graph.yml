@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0012
-  source_future_id: FUTURE-012
   title: Extract class after BIC
   slug: extract-class-after-bic
   description: A bug is introduced in a class that mixes range validation and reporting responsibilities. After the BIC, a

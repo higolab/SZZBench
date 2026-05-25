@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0002
-  source_future_id: FUTURE-002
   title: BFC performs file move and fix in the same commit
   slug: bfc-file-move-fix
   description: Evaluates bfc performs file move and fix in the same commit and checks whether SZZ identifies the expected

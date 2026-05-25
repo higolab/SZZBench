@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0060
-  source_future_id: FUTURE-060
   title: Root cause not in changed lines
   slug: root-cause-not-in-changed-lines
   description: Evaluates root cause not in changed lines and checks whether SZZ identifies the expected bug-introducing commit

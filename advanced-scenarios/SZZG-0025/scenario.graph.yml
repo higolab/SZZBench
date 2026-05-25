@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0025
-  source_future_id: FUTURE-025
   title: Bug propagates into generated code
   slug: generated-code
   description: Evaluates bug propagates into generated code and checks whether SZZ identifies the expected bug-introducing

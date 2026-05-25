@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0047
-  source_future_id: FUTURE-047
   title: Work item inference without issue ID
   slug: issue-id-work-item
   description: A bug is introduced during a short sequence of related feature-work commits that do not contain an explicit

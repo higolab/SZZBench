@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0072
-  source_future_id: FUTURE-074
   title: Line-level impossible but entity-level possible
   slug: line-level-entity-level
   description: Evaluates line-level impossible but entity-level possible and checks whether SZZ identifies the expected bug-introducing

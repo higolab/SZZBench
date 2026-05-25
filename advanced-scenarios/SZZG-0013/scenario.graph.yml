@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0013
-  source_future_id: FUTURE-013
   title: One BIC fixed by multiple BFCs
   slug: 1-bic-bfc
   description: Evaluates one bic fixed by multiple bfcs and checks whether SZZ identifies the expected bug-introducing commit

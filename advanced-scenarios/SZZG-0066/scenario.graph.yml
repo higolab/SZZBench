@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0066
-  source_future_id: FUTURE-066
   title: Non-UTF-8 file
   slug: non-utf-8-file
   description: Evaluates non-utf-8 file and checks whether SZZ identifies the expected bug-introducing commit set.

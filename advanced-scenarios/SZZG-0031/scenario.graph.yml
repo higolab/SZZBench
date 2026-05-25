@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0031
-  source_future_id: FUTURE-031
   title: BIC before merge, BFC after merge
   slug: bic-before-merge-bfc-after-merge
   description: A bug is introduced on main before a feature branch is merged, and the bug is fixed on main after the merge.

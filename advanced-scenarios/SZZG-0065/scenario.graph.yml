@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0065
-  source_future_id: FUTURE-065
   title: Chmod only
   slug: chmod-only
   description: Evaluates chmod only and checks whether SZZ identifies the expected bug-introducing commit set.

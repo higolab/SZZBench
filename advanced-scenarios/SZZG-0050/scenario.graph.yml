@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0050
-  source_future_id: FUTURE-050
   title: BFC message references the wrong commit
   slug: bfc-message-references-wrong-commit
   description: Evaluates bfc message references the wrong commit and checks whether SZZ identifies the expected bug-introducing

@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0058
-  source_future_id: FUTURE-058
   title: Issue description required
   slug: issue-description
   description: Evaluates issue description required and checks whether SZZ identifies the expected bug-introducing commit

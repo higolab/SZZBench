@@ -2,7 +2,6 @@
 
 ## Source
 
-- Source scenario: `FUTURE-056`
 - Category: Context-aware and LLM-based SZZ scenarios
 
 ## Purpose

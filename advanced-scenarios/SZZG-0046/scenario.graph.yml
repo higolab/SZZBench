@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0046
-  source_future_id: FUTURE-046
   title: Multiple candidate BICs inside a work item
   slug: work-item-bic
   description: Evaluates multiple candidate bics inside a work item and checks whether SZZ identifies the expected bug-introducing

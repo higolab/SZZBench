@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0051
-  source_future_id: FUTURE-051
   title: Unrelated commits mixed in the same issue
   slug: issue-commit
   description: Evaluates unrelated commits mixed in the same issue and checks whether SZZ identifies the expected bug-introducing

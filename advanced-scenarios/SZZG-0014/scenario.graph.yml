@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0014
-  source_future_id: FUTURE-014
   title: Multiple BFCs progressively fix the same bug
   slug: bfc-bug
   description: 'A single bug affects two helper methods that together implement a range check. Two bug-fixing commits progressively

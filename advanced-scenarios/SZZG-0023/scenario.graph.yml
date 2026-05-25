@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0023
-  source_future_id: FUTURE-023
   title: Only one clone instance is fixed first
   slug: clone
   description: Evaluates only one clone instance is fixed first and checks whether SZZ identifies the expected bug-introducing

@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0033
-  source_future_id: FUTURE-033
   title: BFC in merge commit
   slug: bfc-in-merge-commit
   description: A bug is introduced before branches diverge; main and feature apply complementary partial changes, and the

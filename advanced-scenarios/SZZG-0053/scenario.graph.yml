@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0053
-  source_future_id: FUTURE-053
   title: Line moved and duplicated
   slug: line-moved-and-duplicated
   description: Evaluates line moved and duplicated and checks whether SZZ identifies the expected bug-introducing commit set.

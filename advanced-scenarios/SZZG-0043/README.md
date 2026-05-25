@@ -2,7 +2,6 @@
 
 ## Source
 
-- Source scenario: `FUTURE-043`
 - Category: Work-item and commit-series scenarios
 
 ## Purpose

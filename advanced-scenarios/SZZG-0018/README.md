@@ -2,7 +2,6 @@
 
 ## Source
 
-- Source scenario: `FUTURE-018`
 - Category: Multiple BIC and BFC scenarios
 
 ## Purpose

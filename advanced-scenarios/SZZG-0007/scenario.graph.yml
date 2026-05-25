@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0007
-  source_future_id: FUTURE-007
   title: BIC is a test-only commit
   slug: bic-test-only-commit
   description: Evaluates bic is a test-only commit and checks whether SZZ identifies the expected bug-introducing commit set.

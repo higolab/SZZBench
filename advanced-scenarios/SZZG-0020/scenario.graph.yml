@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0020
-  source_future_id: FUTURE-020
   title: Buggy code copied while original is fixed later
   slug: buggy-code-copied-original-later-fixed
   description: Evaluates buggy code copied while original is fixed later and checks whether SZZ identifies the expected bug-introducing

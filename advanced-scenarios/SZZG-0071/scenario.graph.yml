@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0071
-  source_future_id: FUTURE-071
   title: Copy propagation with direct and origin BIC evaluation variants
   slug: copy-propagation-direct-origin-evaluation-variants
   description: A bug is introduced in an original file and then propagated to a copied file. The copied file is fixed later.

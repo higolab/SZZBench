@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0008
-  source_future_id: FUTURE-008
   title: Dependency update as BIC
   slug: bic-dependency-update
   description: Evaluates dependency update as bic and checks whether SZZ identifies the expected bug-introducing commit set.

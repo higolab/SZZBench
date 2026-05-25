@@ -2,7 +2,6 @@
 
 ## Source
 
-- Source scenario: `FUTURE-028`
 - Category: Revert and reintroduction scenarios
 
 ## Purpose

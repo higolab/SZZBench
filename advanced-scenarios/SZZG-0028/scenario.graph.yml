@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0028
-  source_future_id: FUTURE-028
   title: Partial revert reintroduces bug
   slug: partial-revert
   description: Evaluates partial revert reintroduces bug and checks whether SZZ identifies the expected bug-introducing commit

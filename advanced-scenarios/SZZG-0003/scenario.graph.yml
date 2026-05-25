@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0003
-  source_future_id: FUTURE-003
   title: Partial fix followed by complete fix
   slug: bfc-partial-fix
   description: Evaluates partial fix followed by complete fix and checks whether SZZ identifies the expected bug-introducing

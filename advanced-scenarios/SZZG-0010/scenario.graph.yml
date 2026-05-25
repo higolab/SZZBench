@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0010
-  source_future_id: FUTURE-010
   title: File move between BIC and BFC
   slug: file-move-between-bic-and-bfc
   description: Evaluates file move between bic and bfc and checks whether SZZ identifies the expected bug-introducing commit

@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0039
-  source_future_id: FUTURE-039
   title: Criss-cross merge
   slug: criss-cross-merge
   description: Two long-lived branches merge each other in both directions before a bug introduced on one branch is fixed.

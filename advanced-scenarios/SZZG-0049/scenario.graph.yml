@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0049
-  source_future_id: FUTURE-049
   title: BFC message references BIC
   slug: bfc-message-references-bic
   description: Evaluates bfc message references bic and checks whether SZZ identifies the expected bug-introducing commit

@@ -2,7 +2,6 @@
 
 ## Source
 
-- Source scenario: `FUTURE-023`
 - Category: Copy, clone, and propagation scenarios
 
 ## Purpose

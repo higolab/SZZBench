@@ -1,7 +1,6 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0015
-  source_future_id: FUTURE-015
   title: One BFC fixes multiple BICs for one composite bug
   slug: 1-bfc-bic-bic
   description: A single composite range-check bug is created by two separate BICs. The first BIC breaks the lower-bound helper
