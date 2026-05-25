@@ -1,50 +1,39 @@
 # SZZG-0034: Squash merge
 
-## Source
+## Overview
 
-- Source scenario: `FUTURE-034`
-- Category: Branch, merge, cherry-pick, and backport scenarios
+Feature branch commits introduce and extend a bug, but main receives them through a single-parent squash-merge commit.
 
-## Purpose
-
-Evaluate Squash merge and whether SZZ identifies the expected bug-introducing commit set.
-
-## Expected history
+## Commit history
 
 ```text
-c0: create initial state (write_file src/main/java/example/Range.java)
-c1: introduce bug (replace src/main/java/example/Range.java)
-c2: apply intermediate change (write_file docs/feature-note.md)
-c3: apply squash merge
-c4: fix bug (replace src/main/java/example/Range.java)
+c0: create initial correct implementation on main
+c1: feature branch introduces bug
+c2: feature branch extends code using the buggy method
+c3: squash-merge feature branch into main as a single-parent commit
+c4: fix bug on main after squash merge
 ```
 
-## Why this needs `scenario.graph.yml`
+## Commit table
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
+| Commit | Branch | Parents | Role | Description |
+|---|---|---|---|---|
+| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
+| `c1` | `feature` | c0 | `source_bug_introducing` | c1: introduce range boundary bug on feature |
+| `c2` | `feature` | c1 | `intermediate` | c2: extend feature branch code using range check |
+| `c3` | `main` | c0 | `bug_introducing` | c3: squash merge feature branch into main |
+| `c4` | `main` | c3 | `bug_fixing` | c4: fix squashed range boundary bug |
 
-## Required graph-schema features
-
-- Factors: branch, merge, squash_merge
-- Operation types: write_file, replace
-- Expected SZZ policy is defined in expected_szz.
-
-## Evaluation points
-
-- Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
-- Whether the expected_szz evaluation policy is applied correctly.
-
----
-
-## Draft status
-
-This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
-
-## Files
+## Expected SZZ result
 
 ```text
-SZZG-0034/
-|-- scenario.graph.yml
-`-- README.md
+Expected BIC: c3
 ```
+
+## Scenario purpose
+
+Evaluate how SZZ handles a squash merge where the main-line BIC is the squash commit, even though the origin of the faulty change is on the feature branch.
+
+## Notes
+
+- The direct BIC for the generated main history is c3; c1 is recorded as origin metadata.

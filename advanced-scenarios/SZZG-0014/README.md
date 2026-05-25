@@ -1,49 +1,83 @@
 # SZZG-0014: Multiple BFCs progressively fix the same bug
 
-## Source
+## Overview
 
-- Source scenario: `FUTURE-014`
-- Category: Multiple BIC and BFC scenarios
+This scenario represents a single bug that is repaired progressively by multiple bug-fixing commits.
 
-## Purpose
-
-Evaluate Multiple BFCs progressively fix the same bug and whether SZZ identifies the expected bug-introducing commit set.
-
-## Expected history
+The implementation uses two helper methods:
 
 ```text
-c0: create initial state (write_file src/main/java/example/Range.java)
-c1: introduce bug (replace src/main/java/example/Range.java)
-c2: apply intermediate change (write_file docs/intermediate-note.md)
-c3: fix bug (replace src/main/java/example/Range.java)
+aboveMin(value, min)
+belowMax(value, max)
 ```
 
-## Why this needs `scenario.graph.yml`
+The BIC `c1` breaks both helper methods. The first BFC `c2` fixes only the lower-bound helper. The second BFC `c3` fixes the upper-bound helper and completes the repair.
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
-
-## Required graph-schema features
-
-- Factors: bug_fixing_commits
-- Operation types: write_file, replace
-- Expected SZZ policy is defined in expected_szz.
-
-## Evaluation points
-
-- Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
-- Whether the expected_szz evaluation policy is applied correctly.
-
----
-
-## Draft status
-
-This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
-
-## Files
+## Commit history
 
 ```text
-SZZG-0014/
-|-- scenario.graph.yml
-`-- README.md
+c0: create range check with separate lower-bound and upper-bound helpers
+c1: introduce the same boundary bug in both helper methods
+c2: first BFC fixes only the lower-bound helper
+c3: second BFC fixes the upper-bound helper and completes the repair
 ```
+
+## Commit table
+
+| Commit | Branch | Parents | Role | Description |
+|---|---|---|---|---|
+| `c0` | `main` | none | initial | Creates the correct helper-method based implementation. |
+| `c1` | `main` | `c0` | bug_introducing | Changes both boundary helpers from inclusive to exclusive checks. |
+| `c2` | `main` | `c1` | bug_fixing | Partially fixes the bug by repairing the lower-bound helper. |
+| `c3` | `main` | `c2` | bug_fixing | Completes the fix by repairing the upper-bound helper. |
+
+## Code states
+
+Correct state in `c0`:
+
+```java
+return value >= min;
+return value <= max;
+```
+
+Bug introduced in `c1`:
+
+```java
+return value > min;
+return value < max;
+```
+
+Partial fix in `c2`:
+
+```java
+return value >= min;
+return value < max;
+```
+
+Complete fix in `c3`:
+
+```java
+return value >= min;
+return value <= max;
+```
+
+## Oracle
+
+Expected BIC:
+
+```text
+c1
+```
+
+Bug-fixing commits:
+
+```text
+c2: partial fix for the lower-bound helper
+c3: complete fix for the upper-bound helper
+```
+
+## Difference from SZZG-0003
+
+`SZZG-0003` represents a partial-fix sequence on one condition expression.
+
+`SZZG-0014` represents multiple BFCs for the same bug, with two separate faulty helper methods and two separate fixing commits.

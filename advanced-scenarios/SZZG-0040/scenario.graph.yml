@@ -4,11 +4,12 @@ meta:
   source_future_id: FUTURE-040
   title: Release-branch-only bug
   slug: release-branch-only-bug
-  description: Evaluates release-branch-only bug and checks whether SZZ identifies the expected bug-introducing commit set.
+  description: A release branch introduces and fixes a bug that never exists on main.
   category: Branch, merge, cherry-pick, and backport scenarios
   category_code: G
   factors:
-  - branch
+  - release_branch
+  - branch_only_bug
   difficulty: advanced
   status: draft
 repository:
@@ -19,62 +20,66 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
+  history_summary: 'c0: create initial correct implementation on main
 
-    c1: introduce bug (replace src/main/java/example/Range.java)
+    c1: main continues correct development
 
-    c2: apply intermediate change (write_file docs/feature-note.md)
+    c2: release branch introduces release-only bug
 
-    c3: merge branch
+    c3: main adds unrelated correct change
 
-    c4: fix bug (replace src/main/java/example/Range.java)'
+    c4: release branch fixes release-only bug'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
+  message: 'c0: create initial correct implementation'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
       \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
-  branch: feature
+  branch: main
   parents:
   - c0
-  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
+  message: 'c1: add main-only version note'
+  role: intermediate
+  operations:
+  - type: write_file
+    path: docs/main-version.md
+    content: 'Main remains correct.
+
+      '
+- id: c2
+  branch: release
+  parents:
+  - c0
+  message: 'c2: introduce release-only range boundary bug'
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
     new: return value > min && value < max;
-- id: c2
-  branch: feature
-  parents:
-  - c1
-  message: 'c2: apply intermediate change (write_file docs/feature-note.md)'
-  role: intermediate
-  operations:
-  - type: write_file
-    path: docs/feature-note.md
-    content: 'feature note
-
-      '
 - id: c3
   branch: main
   parents:
-  - c0
-  - c2
-  message: 'c3: merge branch'
-  role: merge
-  operations: []
+  - c1
+  message: 'c3: add unrelated main documentation'
+  role: intermediate
+  operations:
+  - type: write_file
+    path: docs/main-unrelated.md
+    content: 'Unrelated main branch change.
+
+      '
 - id: c4
-  branch: main
+  branch: release
   parents:
-  - c3
-  message: 'c4: fix bug (replace src/main/java/example/Range.java)'
+  - c2
+  message: 'c4: fix release-only range boundary bug'
   role: bug_fixing
   operations:
   - type: replace
@@ -83,16 +88,16 @@ commits:
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Release-branch-only range boundary bug
   bug_introducing_commits:
-  - commit: c1
+  - commit: c2
     role: direct
   bug_fixing_commits:
   - commit: c4
     role: complete_fix
   faults:
   - id: F001
-    commit: c1
+    commit: c2
     file: src/main/java/example/Range.java
     statement: return value > min && value < max;
     change_type: line_modification
@@ -106,16 +111,13 @@ expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - c1
+    - c2
 scenario_design:
-  purpose: Evaluate Release-branch-only bug and whether SZZ identifies the expected bug-introducing commit set.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: branch; operations: write_file, replace.'
+  purpose: Evaluate whether SZZ can handle a bug that exists only on a release branch and not on main.
+  key_property: The BIC and BFC are both on release; main never contains the bug.
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Release-only BIC
+  - Release-only BFC
+  - Main branch has unrelated correct development.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
+- This scenario should not be collapsed into feature-to-main merge scenarios.

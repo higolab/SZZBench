@@ -3,49 +3,50 @@ meta:
   id: SZZG-0041
   source_future_id: FUTURE-041
   title: Fixed on main but unfixed on release
-  slug: main-release
-  description: Evaluates fixed on main but unfixed on release and checks whether SZZ identifies the expected bug-introducing
-    commit set.
+  slug: fixed-on-main-unfixed-on-release
+  description: A bug is introduced before a release branch is cut; main fixes the bug, but the release branch continues without
+    the fix.
   category: Branch, merge, cherry-pick, and backport scenarios
   category_code: G
   factors:
-  - branch
-  - bug_instances
+  - release_branch
+  - partial_fix_propagation
+  - unfixed_release
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0041-main-release
+  name: SZZG-0041-fixed-on-main-unfixed-on-release
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
+  history_summary: 'c0: create initial correct implementation on main
 
-    c1: introduce bug (replace src/main/java/example/Range.java)
+    c1: introduce bug on main before release branch
 
-    c2: apply intermediate change (write_file docs/feature-note.md)
+    c2: create release branch from buggy state and add release note
 
-    c3: merge branch
+    c3: fix bug on main
 
-    c4: fix bug (replace src/main/java/example/Range.java)'
+    c4: release branch continues with bug unfixed'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
+  message: 'c0: create initial correct implementation'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
       \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
-  branch: feature
+  branch: main
   parents:
   - c0
-  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
+  message: 'c1: introduce range boundary bug before release branch'
   role: bug_introducing
   operations:
   - type: replace
@@ -53,45 +54,49 @@ commits:
     old: return value >= min && value <= max;
     new: return value > min && value < max;
 - id: c2
-  branch: feature
+  branch: release
   parents:
   - c1
-  message: 'c2: apply intermediate change (write_file docs/feature-note.md)'
+  message: 'c2: cut release branch from buggy state'
   role: intermediate
   operations:
   - type: write_file
-    path: docs/feature-note.md
-    content: 'feature note
+    path: docs/release-note.md
+    content: 'Release branch is cut while the range bug is still present.
 
       '
 - id: c3
   branch: main
   parents:
-  - c0
-  - c2
-  message: 'c3: merge branch'
-  role: merge
-  operations: []
-- id: c4
-  branch: main
-  parents:
-  - c3
-  message: 'c4: fix bug (replace src/main/java/example/Range.java)'
+  - c1
+  message: 'c3: fix range boundary bug on main'
   role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value > min && value < max;
     new: return value >= min && value <= max;
+- id: c4
+  branch: release
+  parents:
+  - c2
+  message: 'c4: release branch continues without main fix'
+  role: unfixed_release
+  operations:
+  - type: write_file
+    path: docs/release-followup.md
+    content: 'Release branch follow-up. The code is still unfixed on this branch.
+
+      '
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Bug fixed on main but still present on release
   bug_introducing_commits:
   - commit: c1
     role: direct
   bug_fixing_commits:
-  - commit: c4
-    role: complete_fix
+  - commit: c3
+    role: main_fix
   faults:
   - id: F001
     commit: c1
@@ -100,31 +105,29 @@ bugs:
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c4
+    commit: c3
     file: src/main/java/example/Range.java
     statement: return value >= min && value <= max;
     fix_type: line_modification
+  bug_instances:
+  - branch: main
+    status: fixed
+    fix_commit: c3
+  - branch: release
+    status: unfixed
+    last_commit: c4
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
     - c1
 scenario_design:
-  purpose: Evaluate Fixed on main but unfixed on release and whether SZZ identifies the expected bug-introducing commit set.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: branch, bug_instances; operations: write_file, replace.'
+  purpose: Evaluate whether SZZ can identify the original BIC when a fix exists on main but has not been propagated to a release
+    branch.
+  key_property: The same BIC affects both branches, but only main contains a BFC.
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Main fixed
+  - Release unfixed
+  - Bug instance remains active on release.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
-bug_instances:
-- id: B001-main
-  branch: main
-  status: fixed
-- id: B001-release
-  branch: release
-  status: open
+- The release branch intentionally remains buggy at c4.

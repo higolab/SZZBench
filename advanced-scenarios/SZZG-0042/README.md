@@ -1,49 +1,88 @@
 # SZZG-0042: BIC occurs during feature work
 
-## Source
+## Overview
 
-- Source scenario: `FUTURE-042`
-- Category: Work-item and commit-series scenarios
+This scenario represents a bug-introducing commit that occurs in the middle of a multi-commit feature work item.
 
-## Purpose
-
-Evaluate BIC occurs during feature work and whether SZZ identifies the expected bug-introducing commit set.
-
-## Expected history
+The feature work item `WI-001` consists of three commits:
 
 ```text
-c1: create initial state (write_file src/main/java/example/Range.java)
-c2: introduce bug (replace src/main/java/example/Range.java)
-c3: apply intermediate change (write_file docs/intermediate-note.md)
-c4: fix bug (replace src/main/java/example/Range.java)
+c1: start feature work
+c2: introduce bug during feature implementation
+c3: continue feature work using the buggy method
 ```
 
-## Why this needs `scenario.graph.yml`
+Only `c2` is the BIC. Commits `c1` and `c3` are related to the same work item, but they are not the bug-introducing commit.
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
-
-## Required graph-schema features
-
-- Factors: work_items
-- Operation types: write_file, replace
-- Expected SZZ policy is defined in expected_szz.
-
-## Evaluation points
-
-- Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
-- Whether the expected_szz evaluation policy is applied correctly.
-
----
-
-## Draft status
-
-This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
-
-## Files
+## Commit history
 
 ```text
-SZZG-0042/
-|-- scenario.graph.yml
-`-- README.md
+c0: create base range filter
+c1: start feature work by adding feature metadata without introducing a bug
+c2: implement feature logic and introduce boundary bug during the work item
+c3: continue the same feature work by adding a caller that uses the buggy logic
+c4: fix the boundary bug after the feature work
 ```
+
+## Commit table
+
+| Commit | Branch | Parents | Role | Work item | Description |
+|---|---|---|---|---|---|
+| `c0` | `main` | none | initial | none | Creates the base range filter. |
+| `c1` | `main` | `c0` | feature_work | `WI-001` | Starts the range filtering feature without introducing a bug. |
+| `c2` | `main` | `c1` | bug_introducing | `WI-001` | Introduces the boundary bug during feature implementation. |
+| `c3` | `main` | `c2` | feature_work | `WI-001` | Adds a caller that uses the buggy method. |
+| `c4` | `main` | `c3` | bug_fixing | none | Fixes the boundary bug. |
+
+## Code states
+
+Correct range check in `c0` and `c1`:
+
+```java
+return value >= min && value <= max;
+```
+
+Bug introduced in `c2`:
+
+```java
+return value > min && value < max;
+```
+
+Feature work continues in `c3` by adding:
+
+```java
+public boolean acceptsUserInput(int value) {
+  return contains(value, 0, 100);
+}
+```
+
+Fix in `c4`:
+
+```java
+return value >= min && value <= max;
+```
+
+## Oracle
+
+Expected BIC:
+
+```text
+c2
+```
+
+Related but not correct:
+
+```text
+c1
+c3
+```
+
+Bug-fixing commit:
+
+```text
+c4
+```
+
+## Evaluation purpose
+
+This scenario checks whether SZZ identifies the specific BIC inside a feature work item. A work-item-aware method should not simply blame all commits in the work item, and a line-based method may be affected by the later caller added in `c3`.

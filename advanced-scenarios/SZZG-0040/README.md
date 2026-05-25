@@ -1,50 +1,39 @@
 # SZZG-0040: Release-branch-only bug
 
-## Source
+## Overview
 
-- Source scenario: `FUTURE-040`
-- Category: Branch, merge, cherry-pick, and backport scenarios
+A release branch introduces and fixes a bug that never exists on main.
 
-## Purpose
-
-Evaluate Release-branch-only bug and whether SZZ identifies the expected bug-introducing commit set.
-
-## Expected history
+## Commit history
 
 ```text
-c0: create initial state (write_file src/main/java/example/Range.java)
-c1: introduce bug (replace src/main/java/example/Range.java)
-c2: apply intermediate change (write_file docs/feature-note.md)
-c3: merge branch
-c4: fix bug (replace src/main/java/example/Range.java)
+c0: create initial correct implementation on main
+c1: main continues correct development
+c2: release branch introduces release-only bug
+c3: main adds unrelated correct change
+c4: release branch fixes release-only bug
 ```
 
-## Why this needs `scenario.graph.yml`
+## Commit table
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
+| Commit | Branch | Parents | Role | Description |
+|---|---|---|---|---|
+| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
+| `c1` | `main` | c0 | `intermediate` | c1: add main-only version note |
+| `c2` | `release` | c0 | `bug_introducing` | c2: introduce release-only range boundary bug |
+| `c3` | `main` | c1 | `intermediate` | c3: add unrelated main documentation |
+| `c4` | `release` | c2 | `bug_fixing` | c4: fix release-only range boundary bug |
 
-## Required graph-schema features
-
-- Factors: branch
-- Operation types: write_file, replace
-- Expected SZZ policy is defined in expected_szz.
-
-## Evaluation points
-
-- Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
-- Whether the expected_szz evaluation policy is applied correctly.
-
----
-
-## Draft status
-
-This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
-
-## Files
+## Expected SZZ result
 
 ```text
-SZZG-0040/
-|-- scenario.graph.yml
-`-- README.md
+Expected BIC: c2
 ```
+
+## Scenario purpose
+
+Evaluate whether SZZ can handle a bug that exists only on a release branch and not on main.
+
+## Notes
+
+- This scenario should not be collapsed into feature-to-main merge scenarios.

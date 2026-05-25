@@ -4,12 +4,17 @@ meta:
   source_future_id: FUTURE-014
   title: Multiple BFCs progressively fix the same bug
   slug: bfc-bug
-  description: Evaluates multiple bfcs progressively fix the same bug and checks whether SZZ identifies the expected bug-introducing
-    commit set.
+  description: 'A single bug affects two helper methods that together implement a range check. Two bug-fixing commits progressively
+    repair the same bug: the first BFC fixes the lower-bound helper, and the second BFC fixes the upper-bound helper and completes
+    the repair.'
   category: Multiple BIC and BFC scenarios
   category_code: D
   factors:
-  - bug_fixing_commits
+  - multiple_bfc
+  - progressive_fix
+  - same_bug
+  - partial_fix
+  - complete_fix
   difficulty: advanced
   status: draft
 repository:
@@ -20,96 +25,113 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
+  history_summary: 'c0: create range check with separate lower-bound and upper-bound helpers
 
-    c1: introduce bug (replace src/main/java/example/Range.java)
+    c1: introduce the same boundary bug in both helper methods
 
-    c2: apply intermediate change (write_file docs/intermediate-note.md)
+    c2: first BFC fixes only the lower-bound helper
 
-    c3: fix bug (replace src/main/java/example/Range.java)'
+    c3: second BFC fixes the upper-bound helper and completes the repair'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
+  message: 'c0: create range helper methods'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
+    content: "package example;\n\npublic class Range {\n  public boolean aboveMin(int value, int min) {\n    return value\
+      \ >= min;\n  }\n\n  public boolean belowMax(int value, int max) {\n    return value <= max;\n  }\n\n  public boolean\
+      \ contains(int value, int min, int max) {\n    return aboveMin(value, min) && belowMax(value, max);\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
+  message: 'c1: introduce lower and upper boundary bugs'
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
+    old: return value >= min;
+    new: return value > min;
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value <= max;
+    new: return value < max;
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: apply intermediate change (write_file docs/intermediate-note.md)'
-  role: intermediate
-  operations:
-  - type: write_file
-    path: docs/intermediate-note.md
-    content: 'intermediate change
-
-      '
-- id: c3
-  branch: main
-  parents:
-  - c2
-  message: 'c3: fix bug (replace src/main/java/example/Range.java)'
+  message: 'c2: partially fix lower boundary'
   role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    old: return value > min;
+    new: return value >= min;
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'c3: complete fix by repairing upper boundary'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value < max;
+    new: return value <= max;
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Boundary bug progressively fixed by multiple BFCs
   bug_introducing_commits:
   - commit: c1
     role: direct
   bug_fixing_commits:
   - commit: c2
-    role: partial_fix
+    role: partial_fix_lower_bound
   - commit: c3
-    role: complete_fix
+    role: complete_fix_upper_bound
   faults:
   - id: F001
     commit: c1
     file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    statement: return value > min;
+    change_type: line_modification
+  - id: F002
+    commit: c1
+    file: src/main/java/example/Range.java
+    statement: return value < max;
     change_type: line_modification
   fixes:
   - id: X001
+    commit: c2
+    file: src/main/java/example/Range.java
+    statement: return value >= min;
+    fix_type: partial_fix_lower_bound
+  - id: X002
     commit: c3
     file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
-    fix_type: line_modification
+    statement: return value <= max;
+    fix_type: complete_fix_upper_bound
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
     - c1
+    notes: The same BIC c1 introduced both faulty helper conditions. Both c2 and c3 are BFCs for the same bug, but the expected
+      BIC remains c1.
 scenario_design:
-  purpose: Evaluate Multiple BFCs progressively fix the same bug and whether SZZ identifies the expected bug-introducing commit
-    set.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: bug_fixing_commits; operations: write_file, replace.'
+  purpose: Evaluate whether SZZ identifies the original BIC when the same bug is repaired progressively by multiple BFCs.
+  key_property: 'Two BFCs are required to fully repair the same bug: c2 fixes the lower-bound helper, and c3 fixes the upper-bound
+    helper.'
+  difference_from_SZZG_0003: SZZG-0003 represents a single partial-fix sequence on one condition expression. SZZG-0014 represents
+    multiple BFCs for one bug with two distinct faulty helper methods.
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Whether SZZ identifies c1 rather than either fixing commit.
+  - Whether multiple BFCs for the same bug are represented and evaluated consistently.
+  - Whether partial and complete repairs of separate fault locations are handled.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
+- This revision makes c2 and c3 both meaningful bug-fixing commits.
+- The bug is introduced once in c1, but it affects two helper methods.
+- c2 fixes only the lower-bound helper; c3 completes the fix by repairing the upper-bound helper.

@@ -4,13 +4,14 @@ meta:
   source_future_id: FUTURE-034
   title: Squash merge
   slug: squash-merge
-  description: Evaluates squash merge and checks whether SZZ identifies the expected bug-introducing commit set.
+  description: Feature branch commits introduce and extend a bug, but main receives them through a single-parent squash-merge
+    commit.
   category: Branch, merge, cherry-pick, and backport scenarios
   category_code: G
   factors:
   - branch
-  - merge
   - squash_merge
+  - squashed_bic
   difficulty: advanced
   status: draft
 repository:
@@ -21,32 +22,32 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
+  history_summary: 'c0: create initial correct implementation on main
 
-    c1: introduce bug (replace src/main/java/example/Range.java)
+    c1: feature branch introduces bug
 
-    c2: apply intermediate change (write_file docs/feature-note.md)
+    c2: feature branch extends code using the buggy method
 
-    c3: apply squash merge
+    c3: squash-merge feature branch into main as a single-parent commit
 
-    c4: fix bug (replace src/main/java/example/Range.java)'
+    c4: fix bug on main after squash merge'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
+  message: 'c0: create initial correct implementation'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
       \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
   branch: feature
   parents:
   - c0
-  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
-  role: bug_introducing
+  message: 'c1: introduce range boundary bug on feature'
+  role: source_bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
@@ -56,30 +57,38 @@ commits:
   branch: feature
   parents:
   - c1
-  message: 'c2: apply intermediate change (write_file docs/feature-note.md)'
+  message: 'c2: extend feature branch code using range check'
   role: intermediate
   operations:
-  - type: write_file
-    path: docs/feature-note.md
-    content: 'feature note
-
-      '
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n}\n"
+    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
+      \ min, max);\n  }\n}\n"
 - id: c3
   branch: main
   parents:
   - c0
-  - c2
-  message: 'c3: apply squash merge'
-  role: squash_merge
-  operations: []
+  message: 'c3: squash merge feature branch into main'
+  role: bug_introducing
   squashes:
   - c1
   - c2
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ >= min && value <= max;\n  }\n}\n"
+    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
+      \ min, max);\n  }\n}\n"
 - id: c4
   branch: main
   parents:
   - c3
-  message: 'c4: fix bug (replace src/main/java/example/Range.java)'
+  message: 'c4: fix squashed range boundary bug'
   role: bug_fixing
   operations:
   - type: replace
@@ -88,16 +97,18 @@ commits:
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Range boundary bug propagated through squash merge
   bug_introducing_commits:
+  - commit: c3
+    role: direct_squash
   - commit: c1
-    role: direct
+    role: origin
   bug_fixing_commits:
   - commit: c4
     role: complete_fix
   faults:
   - id: F001
-    commit: c1
+    commit: c3
     file: src/main/java/example/Range.java
     statement: return value > min && value < max;
     change_type: line_modification
@@ -111,16 +122,16 @@ expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
+    - c3
+    related_but_not_correct:
     - c1
 scenario_design:
-  purpose: Evaluate Squash merge and whether SZZ identifies the expected bug-introducing commit set.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: branch, merge, squash_merge; operations: write_file, replace.'
+  purpose: Evaluate how SZZ handles a squash merge where the main-line BIC is the squash commit, even though the origin of
+    the faulty change is on the feature branch.
+  key_property: c3 is a single-parent squash commit, not a normal merge commit.
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Squash merge has one parent
+  - Origin BIC and direct BIC differ
+  - BFC follows the squash commit on main.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
+- The direct BIC for the generated main history is c3; c1 is recorded as origin metadata.

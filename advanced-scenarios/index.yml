@@ -1,6 +1,6 @@
 schema_version: graph-index-0.1-draft
 description: Index of draft advanced graph scenarios for SZZBench.
-scenario_count: 73
+scenario_count: 72
 excluded_future_ids:
 - id: FUTURE-069
   reason: Deferred because it requires repository variants such as shallow history.
@@ -43,6 +43,9 @@ scenarios:
   status: draft
   factors:
   - bug_fixing_commits
+  - attempted_fix
+  - follow_up_fix
+  - incorrect_fix
 - id: SZZG-0005
   source_future_id: FUTURE-005
   title: BFC is a merge commit
@@ -51,9 +54,9 @@ scenarios:
   readme: advanced-scenarios/SZZG-0005/README.md
   status: draft
   factors:
+  - merge_commit
+  - bug_fixing_commit
   - branch
-  - parents
-  - merge
 - id: SZZG-0006
   source_future_id: FUTURE-006
   title: BFC includes generated files
@@ -115,7 +118,10 @@ scenarios:
   readme: advanced-scenarios/SZZG-0012/README.md
   status: draft
   factors:
+  - refactoring
+  - extract_class
   - move_entity
+  - post_bic_refactoring
 - id: SZZG-0013
   source_future_id: FUTURE-013
   title: One BIC fixed by multiple BFCs
@@ -133,16 +139,24 @@ scenarios:
   readme: advanced-scenarios/SZZG-0014/README.md
   status: draft
   factors:
-  - bug_fixing_commits
+  - multiple_bfc
+  - progressive_fix
+  - same_bug
+  - partial_fix
+  - complete_fix
 - id: SZZG-0015
   source_future_id: FUTURE-015
-  title: One BFC fixes multiple BICs
+  title: One BFC fixes multiple BICs for one composite bug
   category: Multiple BIC and BFC scenarios
   path: advanced-scenarios/SZZG-0015/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0015/README.md
   status: draft
   factors:
-  - expected_szz
+  - multiple_bic
+  - single_bfc
+  - composite_bug
+  - same_bug
+  - multiple_fault_locations
 - id: SZZG-0016
   source_future_id: FUTURE-016
   title: Partial credit when only some BICs are returned
@@ -154,13 +168,16 @@ scenarios:
   - expected_szz
 - id: SZZG-0017
   source_future_id: FUTURE-017
-  title: One BFC fixes multiple bugs
+  title: One BFC fixes multiple independent bugs
   category: Multiple BIC and BFC scenarios
   path: advanced-scenarios/SZZG-0017/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0017/README.md
   status: draft
   factors:
-  - fixes
+  - multiple_bug
+  - single_bfc
+  - independent_faults
+  - different_files
 - id: SZZG-0018
   source_future_id: FUTURE-018
   title: One BIC causes multiple bug symptoms
@@ -278,8 +295,9 @@ scenarios:
   status: draft
   factors:
   - branch
-  - parents
   - merge
+  - feature_branch_bic
+  - main_branch_bfc
 - id: SZZG-0031
   source_future_id: FUTURE-031
   title: BIC before merge, BFC after merge
@@ -289,8 +307,9 @@ scenarios:
   status: draft
   factors:
   - branch
-  - parents
   - merge
+  - pre_merge_bic
+  - post_merge_bfc
 - id: SZZG-0032
   source_future_id: FUTURE-032
   title: BIC in merge commit
@@ -300,8 +319,8 @@ scenarios:
   status: draft
   factors:
   - branch
-  - parents
   - merge
+  - merge_commit_bic
 - id: SZZG-0033
   source_future_id: FUTURE-033
   title: BFC in merge commit
@@ -312,6 +331,8 @@ scenarios:
   factors:
   - branch
   - merge
+  - merge_commit_bfc
+  - partial_fix
 - id: SZZG-0034
   source_future_id: FUTURE-034
   title: Squash merge
@@ -321,8 +342,8 @@ scenarios:
   status: draft
   factors:
   - branch
-  - merge
   - squash_merge
+  - squashed_bic
 - id: SZZG-0035
   source_future_id: FUTURE-035
   title: Cherry-pick BIC
@@ -345,6 +366,7 @@ scenarios:
   - cherry_pick_of
   - bug_fixing_commits
   - bug_instances
+  - backport_like_fix
 - id: SZZG-0037
   source_future_id: FUTURE-037
   title: Backport fix
@@ -374,8 +396,8 @@ scenarios:
   status: draft
   factors:
   - branch
-  - parents
   - merge
+  - criss_cross_merge
 - id: SZZG-0040
   source_future_id: FUTURE-040
   title: Release-branch-only bug
@@ -384,7 +406,8 @@ scenarios:
   readme: advanced-scenarios/SZZG-0040/README.md
   status: draft
   factors:
-  - branch
+  - release_branch
+  - branch_only_bug
 - id: SZZG-0041
   source_future_id: FUTURE-041
   title: Fixed on main but unfixed on release
@@ -393,8 +416,9 @@ scenarios:
   readme: advanced-scenarios/SZZG-0041/README.md
   status: draft
   factors:
-  - branch
-  - bug_instances
+  - release_branch
+  - partial_fix_propagation
+  - unfixed_release
 - id: SZZG-0042
   source_future_id: FUTURE-042
   title: BIC occurs during feature work
@@ -404,6 +428,9 @@ scenarios:
   status: draft
   factors:
   - work_items
+  - feature_work
+  - bic_inside_work_item
+  - commit_series
 - id: SZZG-0043
   source_future_id: FUTURE-043
   title: Fix split across multiple commits
@@ -450,7 +477,10 @@ scenarios:
   status: draft
   factors:
   - work_items
-  - issues
+  - work_item_inference
+  - no_issue_id
+  - commit_series
+  - related_but_not_correct
 - id: SZZG-0048
   source_future_id: FUTURE-048
   title: Only commit message provides the clue
@@ -661,17 +691,18 @@ scenarios:
   factors:
   - expected_szz
 - id: SZZG-0071
-  source_future_id: FUTURE-073
-  title: Case with explicit acceptable false positives
+  source_future_id: FUTURE-075
+  title: Copy propagation with direct and origin BIC evaluation variants
   category: Schema and evaluation-policy scenarios
   path: advanced-scenarios/SZZG-0071/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0071/README.md
   status: draft
   factors:
-  - expected_szz
-  - acceptable_related
-  - origin_bic
+  - copy_propagation
   - direct_bic
+  - origin_bic
+  - evaluation_variants
+  - relaxed_with_credit
 - id: SZZG-0072
   source_future_id: FUTURE-074
   title: Line-level impossible but entity-level possible
@@ -681,15 +712,5 @@ scenarios:
   status: draft
   factors:
   - expected_szz
-- id: SZZG-0073
-  source_future_id: FUTURE-075
-  title: Switching evaluated targets by benchmark variant
-  category: Schema and evaluation-policy scenarios
-  path: advanced-scenarios/SZZG-0073/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0073/README.md
-  status: draft
-  factors:
-  - evaluation_variants
-  - direct_bic
-  - origin_bic
-  - copy_propagation
+notes:
+- Old SZZG-0073 was renamed to SZZG-0071 before public release; the old duplicate SZZG-0071 entry was removed.

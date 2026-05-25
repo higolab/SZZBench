@@ -4,12 +4,15 @@ meta:
   source_future_id: FUTURE-033
   title: BFC in merge commit
   slug: bfc-in-merge-commit
-  description: Evaluates bfc in merge commit and checks whether SZZ identifies the expected bug-introducing commit set.
+  description: A bug is introduced before branches diverge; main and feature apply complementary partial changes, and the
+    merge commit performs the final fix.
   category: Branch, merge, cherry-pick, and backport scenarios
   category_code: G
   factors:
   - branch
   - merge
+  - merge_commit_bfc
+  - partial_fix
   difficulty: advanced
   status: draft
 repository:
@@ -20,31 +23,31 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
+  history_summary: 'c0: create initial correct implementation on main
 
-    c1: introduce bug (replace src/main/java/example/Range.java)
+    c1: introduce bug before branch divergence
 
-    c2: apply intermediate change (write_file docs/feature-note.md)
+    c2: main branch adds tests but does not fix the bug
 
-    c3: merge branch
+    c3: feature branch adds a helper that still uses the buggy method
 
-    c4: fix bug (replace src/main/java/example/Range.java)'
+    c4: merge main and feature and fix the bug in the merge commit'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
+  message: 'c0: create initial correct implementation'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
       \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
-  branch: feature
+  branch: main
   parents:
   - c0
-  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
+  message: 'c1: introduce shared range boundary bug'
   role: bug_introducing
   operations:
   - type: replace
@@ -52,30 +55,37 @@ commits:
     old: return value >= min && value <= max;
     new: return value > min && value < max;
 - id: c2
-  branch: feature
+  branch: main
   parents:
   - c1
-  message: 'c2: apply intermediate change (write_file docs/feature-note.md)'
+  message: 'c2: add boundary test documentation without fixing code'
   role: intermediate
   operations:
   - type: write_file
-    path: docs/feature-note.md
-    content: 'feature note
+    path: docs/boundary-test-note.md
+    content: 'Boundary cases should be covered by tests, but the implementation is still buggy here.
 
       '
 - id: c3
-  branch: main
+  branch: feature
   parents:
-  - c0
-  - c2
-  message: 'c3: merge branch'
-  role: merge
-  operations: []
+  - c1
+  message: 'c3: add feature helper that depends on buggy range check'
+  role: intermediate
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n}\n"
+    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
+      \ min, max);\n  }\n}\n"
 - id: c4
   branch: main
   parents:
+  - c2
   - c3
-  message: 'c4: fix bug (replace src/main/java/example/Range.java)'
+  message: 'c4: merge feature and complete range boundary fix'
   role: bug_fixing
   operations:
   - type: replace
@@ -84,13 +94,13 @@ commits:
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Shared range boundary bug fixed by merge commit
   bug_introducing_commits:
   - commit: c1
     role: direct
   bug_fixing_commits:
   - commit: c4
-    role: complete_fix
+    role: merge_fix
   faults:
   - id: F001
     commit: c1
@@ -109,14 +119,12 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: Evaluate BFC in merge commit and whether SZZ identifies the expected bug-introducing commit set.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: branch, merge; operations: write_file, replace.'
+  purpose: 'Evaluate a BFC that is a merge commit, but with a different shape from SZZG-0005: the bug predates branch divergence
+    and the merge completes the fix after partial contextual changes on both branches.'
+  key_property: The BFC is merge commit c4, and both parents still contain the bug before c4 applies the final fix.
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Merge commit as BFC
+  - Bug introduced before branch divergence
+  - Both branches contain relevant intermediate context before the merge.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
+- This is案B for distinguishing SZZG-0033 from SZZG-0005.

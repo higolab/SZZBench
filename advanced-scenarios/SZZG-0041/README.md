@@ -1,50 +1,39 @@
 # SZZG-0041: Fixed on main but unfixed on release
 
-## Source
+## Overview
 
-- Source scenario: `FUTURE-041`
-- Category: Branch, merge, cherry-pick, and backport scenarios
+A bug is introduced before a release branch is cut; main fixes the bug, but the release branch continues without the fix.
 
-## Purpose
-
-Evaluate Fixed on main but unfixed on release and whether SZZ identifies the expected bug-introducing commit set.
-
-## Expected history
+## Commit history
 
 ```text
-c0: create initial state (write_file src/main/java/example/Range.java)
-c1: introduce bug (replace src/main/java/example/Range.java)
-c2: apply intermediate change (write_file docs/feature-note.md)
-c3: merge branch
-c4: fix bug (replace src/main/java/example/Range.java)
+c0: create initial correct implementation on main
+c1: introduce bug on main before release branch
+c2: create release branch from buggy state and add release note
+c3: fix bug on main
+c4: release branch continues with bug unfixed
 ```
 
-## Why this needs `scenario.graph.yml`
+## Commit table
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
+| Commit | Branch | Parents | Role | Description |
+|---|---|---|---|---|
+| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
+| `c1` | `main` | c0 | `bug_introducing` | c1: introduce range boundary bug before release branch |
+| `c2` | `release` | c1 | `intermediate` | c2: cut release branch from buggy state |
+| `c3` | `main` | c1 | `bug_fixing` | c3: fix range boundary bug on main |
+| `c4` | `release` | c2 | `unfixed_release` | c4: release branch continues without main fix |
 
-## Required graph-schema features
-
-- Factors: branch, bug_instances
-- Operation types: write_file, replace
-- Expected SZZ policy is defined in expected_szz.
-
-## Evaluation points
-
-- Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
-- Whether the expected_szz evaluation policy is applied correctly.
-
----
-
-## Draft status
-
-This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
-
-## Files
+## Expected SZZ result
 
 ```text
-SZZG-0041/
-|-- scenario.graph.yml
-`-- README.md
+Expected BIC: c1
 ```
+
+## Scenario purpose
+
+Evaluate whether SZZ can identify the original BIC when a fix exists on main but has not been propagated to a release branch.
+
+## Notes
+
+- The release branch intentionally remains buggy at c4.

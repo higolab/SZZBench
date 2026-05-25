@@ -4,7 +4,8 @@ meta:
   source_future_id: FUTURE-036
   title: Cherry-pick BFC
   slug: cherry-pick-bfc
-  description: Evaluates cherry-pick bfc and checks whether SZZ identifies the expected bug-introducing commit set.
+  description: A bug exists on both main and release branches. The bug is fixed on main, and the BFC is then cherry-picked
+    onto the release branch to fix the release instance.
   category: Branch, merge, cherry-pick, and backport scenarios
   category_code: G
   factors:
@@ -12,6 +13,7 @@ meta:
   - cherry_pick_of
   - bug_fixing_commits
   - bug_instances
+  - backport_like_fix
   difficulty: advanced
   status: draft
 repository:
@@ -22,91 +24,82 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
+  history_summary: 'c0: create initial correct implementation on main
 
-    c1: introduce bug (replace src/main/java/example/Range.java)
+    c1: introduce bug on main before the release branch is cut
 
-    c2: apply intermediate change (write_file docs/feature-note.md)
+    r1: create release branch from the buggy state
 
-    c3: merge branch
+    c2: fix bug on main
 
-    c4: fix bug (replace src/main/java/example/Range.java)
-
-    r1: cherry-pick change (apply_patch_from c1)'
+    r2: cherry-pick the main BFC onto release'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
+  message: 'c0: create initial correct implementation'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
       \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
-  branch: feature
+  branch: main
   parents:
   - c0
-  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
+  message: 'c1: introduce range boundary bug'
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
     new: return value > min && value < max;
-- id: c2
-  branch: feature
+- id: r1
+  branch: release
   parents:
   - c1
-  message: 'c2: apply intermediate change (write_file docs/feature-note.md)'
-  role: intermediate
+  message: 'r1: create release branch from buggy state'
+  role: release_branch_point
   operations:
   - type: write_file
-    path: docs/feature-note.md
-    content: 'feature note
+    path: docs/release-note.md
+    content: 'Release branch is cut while the range boundary bug is still present.
 
       '
-- id: c3
+- id: c2
   branch: main
   parents:
-  - c0
-  - c2
-  message: 'c3: merge branch'
-  role: merge
-  operations: []
-- id: c4
-  branch: main
-  parents:
-  - c3
-  message: 'c4: fix bug (replace src/main/java/example/Range.java)'
+  - c1
+  message: 'c2: fix range boundary bug on main'
   role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value > min && value < max;
     new: return value >= min && value <= max;
-- id: r1
+- id: r2
   branch: release
   parents:
-  - c0
-  message: 'r1: cherry-pick change (apply_patch_from c1)'
-  role: cherry_pick
-  cherry_pick_of: c1
+  - r1
+  message: 'r2: cherry-pick main range boundary fix onto release'
+  role: bug_fixing
+  cherry_pick_of: c2
   operations:
   - type: apply_patch_from
-    commit: c1
+    commit: c2
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Range boundary bug fixed on main and cherry-picked to release
   bug_introducing_commits:
   - commit: c1
     role: direct
   bug_fixing_commits:
   - commit: c2
-    role: partial_fix
-  - commit: c4
-    role: complete_fix
+    role: main_fix
+  - commit: r2
+    role: cherry_picked_release_fix
+    cherry_pick_of: c2
   faults:
   - id: F001
     commit: c1
@@ -115,28 +108,55 @@ bugs:
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c4
+    commit: c2
     file: src/main/java/example/Range.java
     statement: return value >= min && value <= max;
-    fix_type: line_modification
+    fix_type: main_line_fix
+  - id: X002
+    commit: r2
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+    fix_type: cherry_picked_fix
+  bug_instances:
+  - branch: main
+    status: fixed
+    fix_commit: c2
+  - branch: release
+    status: fixed
+    fix_commit: r2
+    cherry_pick_of: c2
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
     - c1
+    notes: The original BIC is c1. Both c2 and r2 are BFCs. r2 is a cherry-picked instance of the main-line BFC c2.
+  branch_level:
+    main:
+      bfc: c2
+      required:
+      - c1
+    release:
+      bfc: r2
+      required:
+      - c1
 scenario_design:
-  purpose: Evaluate Cherry-pick BFC and whether SZZ identifies the expected bug-introducing commit set.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: branch, cherry_pick_of, bug_fixing_commits, bug_instances;
-    operations: write_file, replace, apply_patch_from.'
+  purpose: Evaluate whether SZZ can identify the original BIC when a bug-fixing commit is cherry-picked from main to a release
+    branch.
+  key_property: The cherry-picked commit r2 is a BFC, not a BIC. This distinguishes SZZG-0036 from SZZG-0035, where the cherry-picked
+    commit is a BIC.
+  difference_from_SZZG_0035: SZZG-0035 is about cherry-picking the BIC onto another branch. SZZG-0036 is about cherry-picking
+    the BFC onto another branch.
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Whether SZZ treats the release BFC r2 as a fixing commit.
+  - Whether SZZ traces from r2 back to the original BIC c1 rather than to the main-line BFC c2.
+  - Whether a cherry-picked fix is handled as a branch-specific bug-fixing instance.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
+- This revision changes the cherry-picked commit from the BIC to the BFC.
+- The release branch is created from the buggy state at c1.
+- The main fix c2 is cherry-picked onto release as r2.
+- If apply_patch_from cannot be validated by the current verifier, r2 can be represented with an explicit replace operation
+  equivalent to c2.
 bug_instances:
 - id: B001-main
   branch: main

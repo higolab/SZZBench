@@ -4,13 +4,13 @@ meta:
   source_future_id: FUTURE-039
   title: Criss-cross merge
   slug: criss-cross-merge
-  description: Evaluates criss-cross merge and checks whether SZZ identifies the expected bug-introducing commit set.
+  description: Two long-lived branches merge each other in both directions before a bug introduced on one branch is fixed.
   category: Branch, merge, cherry-pick, and backport scenarios
   category_code: G
   factors:
   - branch
-  - parents
   - merge
+  - criss_cross_merge
   difficulty: advanced
   status: draft
 repository:
@@ -21,31 +21,33 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
+  history_summary: 'c0: create initial correct implementation
 
-    c1: introduce bug (replace src/main/java/example/Range.java)
+    c1: branchA introduces bug
 
-    c2: apply intermediate change (write_file docs/feature-note.md)
+    c2: branchB adds unrelated work
 
-    c3: merge branch
+    c3: branchA merges branchB
 
-    c4: fix bug (replace src/main/java/example/Range.java)'
+    c4: branchB merges branchA
+
+    c5: branchB fixes the bug after criss-cross merges'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
+  message: 'c0: create initial correct implementation'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
       \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
-  branch: feature
+  branch: branchA
   parents:
   - c0
-  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
+  message: 'c1: introduce range boundary bug on branchA'
   role: bug_introducing
   operations:
   - type: replace
@@ -53,30 +55,36 @@ commits:
     old: return value >= min && value <= max;
     new: return value > min && value < max;
 - id: c2
-  branch: feature
+  branch: branchB
   parents:
-  - c1
-  message: 'c2: apply intermediate change (write_file docs/feature-note.md)'
+  - c0
+  message: 'c2: add branchB reporter'
   role: intermediate
   operations:
   - type: write_file
-    path: docs/feature-note.md
-    content: 'feature note
-
-      '
+    path: src/main/java/example/BranchBReporter.java
+    content: "package example;\n\npublic class BranchBReporter {\n  public String branch() {\n    return \"B\";\n  }\n}\n"
 - id: c3
-  branch: main
+  branch: branchA
   parents:
-  - c0
+  - c1
   - c2
-  message: 'c3: merge branch'
+  message: 'c3: merge branchB into branchA'
   role: merge
   operations: []
 - id: c4
-  branch: main
+  branch: branchB
   parents:
+  - c2
   - c3
-  message: 'c4: fix bug (replace src/main/java/example/Range.java)'
+  message: 'c4: merge branchA back into branchB'
+  role: merge
+  operations: []
+- id: c5
+  branch: branchB
+  parents:
+  - c4
+  message: 'c5: fix range boundary bug after criss-cross merge'
   role: bug_fixing
   operations:
   - type: replace
@@ -85,12 +93,12 @@ commits:
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Range boundary bug through criss-cross merge
   bug_introducing_commits:
   - commit: c1
     role: direct
   bug_fixing_commits:
-  - commit: c4
+  - commit: c5
     role: complete_fix
   faults:
   - id: F001
@@ -100,7 +108,7 @@ bugs:
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c4
+    commit: c5
     file: src/main/java/example/Range.java
     statement: return value >= min && value <= max;
     fix_type: line_modification
@@ -110,14 +118,11 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: Evaluate Criss-cross merge and whether SZZ identifies the expected bug-introducing commit set.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: branch, parents, merge; operations: write_file, replace.'
+  purpose: Evaluate whether SZZ can identify a BIC when branch history includes reciprocal merges.
+  key_property: The history contains merges in both directions between branchA and branchB before the BFC.
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Criss-cross-like reciprocal merge structure
+  - BIC on branchA
+  - BFC after the bug has propagated to branchB.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
+- This scenario uses a simplified criss-cross-like DAG that current graph_generator should be able to create.

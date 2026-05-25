@@ -4,14 +4,14 @@ meta:
   source_future_id: FUTURE-031
   title: BIC before merge, BFC after merge
   slug: bic-before-merge-bfc-after-merge
-  description: Evaluates bic before merge, bfc after merge and checks whether SZZ identifies the expected bug-introducing
-    commit set.
+  description: A bug is introduced on main before a feature branch is merged, and the bug is fixed on main after the merge.
   category: Branch, merge, cherry-pick, and backport scenarios
   category_code: G
   factors:
   - branch
-  - parents
   - merge
+  - pre_merge_bic
+  - post_merge_bfc
   difficulty: advanced
   status: draft
 repository:
@@ -22,31 +22,31 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
+  history_summary: 'c0: create initial correct implementation on main
 
-    c1: introduce bug (replace src/main/java/example/Range.java)
+    c1: introduce bug on main before merge
 
-    c2: apply intermediate change (write_file docs/feature-note.md)
+    c2: perform unrelated feature branch work
 
-    c3: merge branch
+    c3: merge feature branch into main
 
-    c4: fix bug (replace src/main/java/example/Range.java)'
+    c4: fix the pre-merge bug on main after merge'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
+  message: 'c0: create initial correct implementation'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
       \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
-  branch: feature
+  branch: main
   parents:
   - c0
-  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
+  message: 'c1: introduce range boundary bug on main before merge'
   role: bug_introducing
   operations:
   - type: replace
@@ -56,28 +56,26 @@ commits:
 - id: c2
   branch: feature
   parents:
-  - c1
-  message: 'c2: apply intermediate change (write_file docs/feature-note.md)'
+  - c0
+  message: 'c2: add unrelated feature helper'
   role: intermediate
   operations:
   - type: write_file
-    path: docs/feature-note.md
-    content: 'feature note
-
-      '
+    path: src/main/java/example/FeatureFlag.java
+    content: "package example;\n\npublic class FeatureFlag {\n  public boolean enabled() {\n    return true;\n  }\n}\n"
 - id: c3
   branch: main
   parents:
-  - c0
+  - c1
   - c2
-  message: 'c3: merge branch'
+  message: 'c3: merge feature branch after bug introduction'
   role: merge
   operations: []
 - id: c4
   branch: main
   parents:
   - c3
-  message: 'c4: fix bug (replace src/main/java/example/Range.java)'
+  message: 'c4: fix pre-merge range boundary bug'
   role: bug_fixing
   operations:
   - type: replace
@@ -86,7 +84,7 @@ commits:
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Pre-merge main-branch bug fixed after merge
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -111,14 +109,11 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: Evaluate BIC before merge, BFC after merge and whether SZZ identifies the expected bug-introducing commit set.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: branch, parents, merge; operations: write_file, replace.'
+  purpose: Evaluate a BIC that exists before a merge and a BFC that appears after that merge.
+  key_property: Unlike SZZG-0030, the BIC is on main before the merge, not on the feature branch.
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Pre-merge main BIC
+  - Unrelated feature merge between BIC and BFC
+  - Post-merge main BFC.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
+- This scenario separates pre-merge main-line bug introduction from feature-branch bug introduction.

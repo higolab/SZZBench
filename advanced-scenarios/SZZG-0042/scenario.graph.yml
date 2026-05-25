@@ -4,12 +4,15 @@ meta:
   source_future_id: FUTURE-042
   title: BIC occurs during feature work
   slug: feature-bic
-  description: Evaluates bic occurs during feature work and checks whether SZZ identifies the expected bug-introducing commit
-    set.
+  description: A feature work item consists of multiple commits. The feature starts correctly, the BIC occurs in the middle
+    of the work item, and a later commit in the same work item expands code that depends on the buggy method.
   category: Work-item and commit-series scenarios
   category_code: H
   factors:
   - work_items
+  - feature_work
+  - bic_inside_work_item
+  - commit_series
   difficulty: advanced
   status: draft
 repository:
@@ -20,61 +23,81 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c1: create initial state (write_file src/main/java/example/Range.java)
+  history_summary: 'c0: create base range filter
 
-    c2: introduce bug (replace src/main/java/example/Range.java)
+    c1: start feature work by adding feature metadata without introducing a bug
 
-    c3: apply intermediate change (write_file docs/intermediate-note.md)
+    c2: implement feature logic and introduce boundary bug during the work item
 
-    c4: fix bug (replace src/main/java/example/Range.java)'
+    c3: continue the same feature work by adding a caller that uses the buggy logic
+
+    c4: fix the boundary bug after the feature work'
 commits:
-- id: c1
+- id: c0
   branch: main
   parents: []
-  message: 'c1: create initial state (write_file src/main/java/example/Range.java)'
+  message: 'c0: create base range filter'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+    path: src/main/java/example/RangeFilter.java
+    content: "package example;\n\npublic class RangeFilter {\n  public boolean contains(int value, int min, int max) {\n \
+      \   return value >= min && value <= max;\n  }\n}\n"
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'WI-001 c1: start range filtering feature'
+  role: feature_work
+  work_item: WI-001
+  operations:
+  - type: replace
+    path: src/main/java/example/RangeFilter.java
+    old: "package example;\n\npublic class RangeFilter {\n  public boolean contains(int value, int min, int max) {\n    return\
       \ value >= min && value <= max;\n  }\n}\n"
+    new: "package example;\n\npublic class RangeFilter {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n\n  public String featureName() {\n    return \"range-filter\";\n  }\n}\n"
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: introduce bug (replace src/main/java/example/Range.java)'
+  message: 'WI-001 c2: implement range feature with boundary bug'
   role: bug_introducing
+  work_item: WI-001
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
+    path: src/main/java/example/RangeFilter.java
     old: return value >= min && value <= max;
     new: return value > min && value < max;
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'c3: apply intermediate change (write_file docs/intermediate-note.md)'
-  role: intermediate
+  message: 'WI-001 c3: add caller for range filtering feature'
+  role: feature_work
+  work_item: WI-001
   operations:
-  - type: write_file
-    path: docs/intermediate-note.md
-    content: 'intermediate change
-
-      '
+  - type: replace
+    path: src/main/java/example/RangeFilter.java
+    old: "package example;\n\npublic class RangeFilter {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value > min && value < max;\n  }\n\n  public String featureName() {\n    return \"range-filter\";\n  }\n}\n"
+    new: "package example;\n\npublic class RangeFilter {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value > min && value < max;\n  }\n\n  public String featureName() {\n    return \"range-filter\";\n  }\n\n  public\
+      \ boolean acceptsUserInput(int value) {\n    return contains(value, 0, 100);\n  }\n}\n"
 - id: c4
   branch: main
   parents:
   - c3
-  message: 'c4: fix bug (replace src/main/java/example/Range.java)'
+  message: 'c4: fix boundary bug after feature work'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
+    path: src/main/java/example/RangeFilter.java
     old: return value > min && value < max;
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Boundary bug introduced during feature work
   bug_introducing_commits:
   - commit: c2
     role: direct
@@ -84,39 +107,43 @@ bugs:
   faults:
   - id: F001
     commit: c2
-    file: src/main/java/example/Range.java
+    file: src/main/java/example/RangeFilter.java
     statement: return value > min && value < max;
     change_type: line_modification
   fixes:
   - id: X001
     commit: c4
-    file: src/main/java/example/Range.java
+    file: src/main/java/example/RangeFilter.java
     statement: return value >= min && value <= max;
     fix_type: line_modification
+  work_item: WI-001
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
+    - c2
+    related_but_not_correct:
     - c1
+    - c3
+    notes: The BIC occurs in the middle of WI-001. c1 starts the feature and c3 continues it, but neither is the BIC.
 scenario_design:
-  purpose: Evaluate BIC occurs during feature work and whether SZZ identifies the expected bug-introducing commit set.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: work_items; operations: write_file, replace.'
+  purpose: Evaluate whether SZZ identifies the specific BIC inside a multi-commit feature work item rather than blaming the
+    whole work item or a neighboring commit.
+  key_property: c1, c2, and c3 belong to the same feature work item, but only c2 introduces the bug.
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Whether SZZ identifies c2 as the BIC.
+  - Whether neighboring work-item commits c1 and c3 are avoided as false positives.
+  - Whether work-item metadata can be used without collapsing all commits in the work item into one cause.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
+- This revision makes the work-item structure explicit through the top-level work_items section and per-commit work_item fields.
+- c1 and c3 are related feature-work commits but are not the BIC.
+- The expected BIC is c2.
 work_items:
 - id: WI-001
-  title: Synthetic work item for graph scenario
+  title: Add range filtering feature
   commits:
-  - commit: c1
-    relevance: bug_introducing
-  - commit: c2
-    relevance: candidate
-  - commit: c3
-    relevance: bug_fixing
+  - c1
+  - c2
+  - c3
+  bug_introducing_commit: c2
+  description: The BIC occurs in the middle of a multi-commit feature work item.

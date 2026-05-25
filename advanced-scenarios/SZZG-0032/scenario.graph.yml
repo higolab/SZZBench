@@ -4,13 +4,13 @@ meta:
   source_future_id: FUTURE-032
   title: BIC in merge commit
   slug: bic-in-merge-commit
-  description: Evaluates bic in merge commit and checks whether SZZ identifies the expected bug-introducing commit set.
+  description: The merge commit itself introduces the bug during merge resolution; a later normal commit fixes it.
   category: Branch, merge, cherry-pick, and backport scenarios
   category_code: G
   factors:
   - branch
-  - parents
   - merge
+  - merge_commit_bic
   difficulty: advanced
   status: draft
 repository:
@@ -21,62 +21,66 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
+  history_summary: 'c0: create initial correct implementation on main
 
-    c1: introduce bug (replace src/main/java/example/Range.java)
+    c1: add feature branch helper without changing the range logic
 
-    c2: apply intermediate change (write_file docs/feature-note.md)
+    c2: add unrelated main branch note
 
-    c3: merge branch
+    c3: merge feature into main and introduce bug in the merge commit
 
-    c4: fix bug (replace src/main/java/example/Range.java)'
+    c4: fix the merge-introduced bug'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
+  message: 'c0: create initial correct implementation'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
       \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
   branch: feature
   parents:
   - c0
-  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
+  message: 'c1: add feature helper without bug'
+  role: intermediate
+  operations:
+  - type: write_file
+    path: src/main/java/example/FeatureReporter.java
+    content: "package example;\n\npublic class FeatureReporter {\n  public String name() {\n    return \"feature\";\n  }\n\
+      }\n"
+- id: c2
+  branch: main
+  parents:
+  - c0
+  message: 'c2: add unrelated main branch note'
+  role: intermediate
+  operations:
+  - type: write_file
+    path: docs/main-note.md
+    content: 'Main branch note before merge.
+
+      '
+- id: c3
+  branch: main
+  parents:
+  - c2
+  - c1
+  message: 'c3: merge feature and introduce boundary bug'
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
     new: return value > min && value < max;
-- id: c2
-  branch: feature
-  parents:
-  - c1
-  message: 'c2: apply intermediate change (write_file docs/feature-note.md)'
-  role: intermediate
-  operations:
-  - type: write_file
-    path: docs/feature-note.md
-    content: 'feature note
-
-      '
-- id: c3
-  branch: main
-  parents:
-  - c0
-  - c2
-  message: 'c3: merge branch'
-  role: merge
-  operations: []
 - id: c4
   branch: main
   parents:
   - c3
-  message: 'c4: fix bug (replace src/main/java/example/Range.java)'
+  message: 'c4: fix merge-introduced range boundary bug'
   role: bug_fixing
   operations:
   - type: replace
@@ -85,16 +89,16 @@ commits:
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Range boundary bug introduced by merge commit
   bug_introducing_commits:
-  - commit: c1
-    role: direct
+  - commit: c3
+    role: merge_introducing
   bug_fixing_commits:
   - commit: c4
     role: complete_fix
   faults:
   - id: F001
-    commit: c1
+    commit: c3
     file: src/main/java/example/Range.java
     statement: return value > min && value < max;
     change_type: line_modification
@@ -108,16 +112,13 @@ expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - c1
+    - c3
 scenario_design:
-  purpose: Evaluate BIC in merge commit and whether SZZ identifies the expected bug-introducing commit set.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: branch, parents, merge; operations: write_file, replace.'
+  purpose: Evaluate whether SZZ can identify a merge commit as the BIC when the merge resolution itself introduces the bug.
+  key_property: The BIC is the two-parent merge commit c3.
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Merge commit as BIC
+  - Later normal BFC
+  - No parent contains the buggy range condition before the merge.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
+- This scenario requires support for operations on merge commits.

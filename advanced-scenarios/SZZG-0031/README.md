@@ -1,50 +1,39 @@
 # SZZG-0031: BIC before merge, BFC after merge
 
-## Source
+## Overview
 
-- Source scenario: `FUTURE-031`
-- Category: Branch, merge, cherry-pick, and backport scenarios
+A bug is introduced on main before a feature branch is merged, and the bug is fixed on main after the merge.
 
-## Purpose
-
-Evaluate BIC before merge, BFC after merge and whether SZZ identifies the expected bug-introducing commit set.
-
-## Expected history
+## Commit history
 
 ```text
-c0: create initial state (write_file src/main/java/example/Range.java)
-c1: introduce bug (replace src/main/java/example/Range.java)
-c2: apply intermediate change (write_file docs/feature-note.md)
-c3: merge branch
-c4: fix bug (replace src/main/java/example/Range.java)
+c0: create initial correct implementation on main
+c1: introduce bug on main before merge
+c2: perform unrelated feature branch work
+c3: merge feature branch into main
+c4: fix the pre-merge bug on main after merge
 ```
 
-## Why this needs `scenario.graph.yml`
+## Commit table
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
+| Commit | Branch | Parents | Role | Description |
+|---|---|---|---|---|
+| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
+| `c1` | `main` | c0 | `bug_introducing` | c1: introduce range boundary bug on main before merge |
+| `c2` | `feature` | c0 | `intermediate` | c2: add unrelated feature helper |
+| `c3` | `main` | c1, c2 | `merge` | c3: merge feature branch after bug introduction |
+| `c4` | `main` | c3 | `bug_fixing` | c4: fix pre-merge range boundary bug |
 
-## Required graph-schema features
-
-- Factors: branch, parents, merge
-- Operation types: write_file, replace
-- Expected SZZ policy is defined in expected_szz.
-
-## Evaluation points
-
-- Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
-- Whether the expected_szz evaluation policy is applied correctly.
-
----
-
-## Draft status
-
-This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
-
-## Files
+## Expected SZZ result
 
 ```text
-SZZG-0031/
-|-- scenario.graph.yml
-`-- README.md
+Expected BIC: c1
 ```
+
+## Scenario purpose
+
+Evaluate a BIC that exists before a merge and a BFC that appears after that merge.
+
+## Notes
+
+- This scenario separates pre-merge main-line bug introduction from feature-branch bug introduction.

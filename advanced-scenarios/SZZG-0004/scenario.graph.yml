@@ -4,12 +4,15 @@ meta:
   source_future_id: FUTURE-004
   title: Attempted fix followed by follow-up fix
   slug: follow-up-fix-bfc
-  description: Evaluates attempted fix followed by follow-up fix and checks whether SZZ identifies the expected bug-introducing
-    commit set.
+  description: A bug is introduced by excluding boundary values. A later attempted fix changes the condition but uses the
+    wrong boolean operator, so the code is still incorrect. A follow-up fix then applies the correct condition.
   category: BFC shape scenarios
   category_code: A
   factors:
   - bug_fixing_commits
+  - attempted_fix
+  - follow_up_fix
+  - incorrect_fix
   difficulty: advanced
   status: draft
 repository:
@@ -20,18 +23,18 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
+  history_summary: 'c0: create initial correct implementation
 
-    c1: introduce bug (replace src/main/java/example/Range.java)
+    c1: introduce boundary exclusion bug
 
-    c2: apply attempted fix (replace src/main/java/example/Range.java)
+    c2: attempt to fix the bug but introduce wrong boolean logic
 
-    c3: apply follow-up fix (replace src/main/java/example/Range.java)'
+    c3: apply follow-up fix with the correct boundary condition'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
+  message: 'c0: create initial correct implementation'
   role: initial
   operations:
   - type: write_file
@@ -42,7 +45,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
+  message: 'c1: introduce boundary exclusion bug'
   role: bug_introducing
   operations:
   - type: replace
@@ -53,23 +56,23 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: apply attempted fix (replace src/main/java/example/Range.java)'
+  message: 'c2: attempt fix but use wrong boolean operator'
   role: attempted_fix
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value > min && value < max;
-    new: return value >= min && value < max;
+    new: return value >= min || value <= max;
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'c3: apply follow-up fix (replace src/main/java/example/Range.java)'
+  message: 'c3: follow-up fix with correct boolean operator'
   role: follow_up_fix
   operations:
   - type: replace
     path: src/main/java/example/Range.java
-    old: return value >= min && value < max;
+    old: return value >= min || value <= max;
     new: return value >= min && value <= max;
 bugs:
 - id: B001
@@ -92,8 +95,8 @@ bugs:
   - id: X001
     commit: c2
     file: src/main/java/example/Range.java
-    statement: return value >= min && value < max;
-    fix_type: attempted_fix
+    statement: return value >= min || value <= max;
+    fix_type: attempted_fix_wrong_boolean_operator
   - id: X002
     commit: c3
     file: src/main/java/example/Range.java
@@ -104,16 +107,19 @@ expected_szz:
     evaluation_policy: exact_set
     required:
     - c1
+    notes: c2 is an attempted fix, not the original BIC. It may be considered a misleading candidate, but the expected BIC
+      remains c1.
 scenario_design:
-  purpose: Evaluate Attempted fix followed by follow-up fix and whether SZZ identifies the expected bug-introducing commit
-    set.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: bug_fixing_commits; operations: write_file, replace.'
+  purpose: Evaluate an attempted fix followed by a follow-up fix. Unlike a partial fix, the attempted fix in c2 uses an incorrect
+    boolean operator and is therefore a failed repair attempt rather than a correct partial repair.
+  key_property: c2 changes the code in a fix-like direction but leaves the behavior wrong by using || instead of &&.
+  difference_from_SZZG_0003: SZZG-0003 represents a partial fix where one side of the boundary condition is correctly repaired.
+    This scenario represents an attempted fix that introduces wrong boolean logic and requires a follow-up fix.
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Whether SZZ identifies c1 as the original BIC rather than c2.
+  - Whether a failed attempted fix is distinguished from a true partial fix.
+  - Whether the follow-up fix c3 is treated as the effective bug-fixing commit.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
+- This revision changes c2 from the same partial-fix state as SZZG-0003 to an attempted fix with incorrect boolean logic.
+- The attempted fix `value >= min || value <= max` is intentionally wrong because it accepts almost all integer values.
+- The expected BIC remains c1.
