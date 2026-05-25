@@ -3,8 +3,8 @@ meta:
   id: SZZG-0060
   title: Root cause not in changed lines
   slug: root-cause-not-in-changed-lines
-  description: Evaluates root cause not in changed lines and checks whether SZZ identifies the expected bug-introducing commit
-    set.
+  description: Evaluates a fix that changes a caller-side guard while the root-cause bug was introduced earlier in a callee
+    method that the BFC does not edit.
   category: Context-aware and LLM-based SZZ scenarios
   category_code: J
   factors:
@@ -19,34 +19,63 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c1: create initial state (write_file src/main/java/example/Range.java)
+  history_summary: 'c0: create correct range and access policy
 
-    c2: fix bug (replace src/main/java/example/Range.java)'
+    c1: introduce boundary bug in Range.contains
+
+    c2: fix symptom in AccessPolicy without editing Range.contains'
 commits:
-- id: c1
+- id: c0
   branch: main
   parents: []
-  message: 'c1: create initial state (write_file src/main/java/example/Range.java)'
+  message: 'c0: create correct range and access policy'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value > min && value < max;\n  }\n}\n"
+    content: |
+      package example;
+      public class Range {
+        public boolean contains(int value, int min, int max) {
+          return value >= min && value <= max;
+        }
+      }
+  - type: write_file
+    path: src/main/java/example/AccessPolicy.java
+    content: |
+      package example;
+      public class AccessPolicy {
+        private final Range range = new Range();
+
+        public boolean allows(int value, int min, int max) {
+          return range.contains(value, min, max);
+        }
+      }
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'c1: introduce boundary bug in Range.contains'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: fix bug (replace src/main/java/example/Range.java)'
+  message: 'c2: compensate for boundary bug in AccessPolicy'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/AccessPolicy.java
+    old: return range.contains(value, min, max);
+    new: return range.contains(value, min, max) || value == min || value == max;
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Boundary bug whose fix changes the caller instead of the root cause
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -59,29 +88,44 @@ bugs:
     file: src/main/java/example/Range.java
     statement: return value > min && value < max;
     change_type: line_modification
+    entity:
+      type: method
+      signature: boolean contains(int value, int min, int max)
   fixes:
   - id: X001
     commit: c2
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
+    file: src/main/java/example/AccessPolicy.java
+    statement: return range.contains(value, min, max) || value == min || value == max;
     fix_type: line_modification
+    entity:
+      type: method
+      signature: boolean allows(int value, int min, int max)
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
     - c1
 scenario_design:
-  purpose: Evaluate Root cause not in changed lines and whether SZZ identifies the expected bug-introducing commit set.
+  purpose: Evaluate whether SZZ can identify a callee-side BIC when the BFC changes only caller-side compensation logic.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
   required_extensions_from_source: 'This scenario uses factors: root_cause; operations: write_file, replace.'
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Whether tools avoid blaming the caller line edited by the BFC when the root cause is in Range.contains.
+  - Whether context-aware analysis can connect the caller-side workaround to the callee-side boundary bug.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.
 root_cause:
-  type: behavioral_relation
-  description: Root cause is represented by a relation rather than a single changed line.
+  type: callee_contract_violation
+  commit: c1
+  file: src/main/java/example/Range.java
+  statement: return value > min && value < max;
+  changed_by_fix: false
+  observed_fix:
+    commit: c2
+    file: src/main/java/example/AccessPolicy.java
+    statement: return range.contains(value, min, max) || value == min || value == max;
+  description: The BFC restores correct behavior by compensating in AccessPolicy, but the root cause is the earlier exclusive
+    boundary check introduced in Range.contains.

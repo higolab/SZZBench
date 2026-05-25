@@ -6,18 +6,20 @@
 
 ## Purpose
 
-Evaluate Root cause not in changed lines and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate whether SZZ can identify a callee-side BIC when the BFC changes only caller-side compensation logic.
 
 ## Expected history
 
 ```text
-c1: create initial state (write_file src/main/java/example/Range.java)
-c2: fix bug (replace src/main/java/example/Range.java)
+c0: create correct range and access policy
+c1: introduce boundary bug in Range.contains
+c2: compensate for boundary bug in AccessPolicy
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
+This history needs graph-aware root-cause metadata because the BFC edits `AccessPolicy.java`, while the expected BIC is the earlier
+change to `Range.java`.
 
 ## Required graph-schema features
 
@@ -28,8 +30,8 @@ This history requires graph-aware scenario semantics that are difficult to expre
 ## Evaluation points
 
 - Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
-- Whether the expected_szz evaluation policy is applied correctly.
+- Whether tools avoid blaming the caller line edited by the BFC when the root cause is in `Range.contains`.
+- Whether context-aware analysis can connect the caller-side workaround to the callee-side boundary bug.
 
 ---
 
