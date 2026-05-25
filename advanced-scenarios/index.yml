@@ -1,6 +1,6 @@
 schema_version: graph-index-0.1-draft
 description: Index of draft advanced graph scenarios for SZZBench.
-scenario_count: 72
+scenario_count: 71
 scenarios:
 - id: SZZG-0001
   title: BFC performs rename and fix in the same commit
@@ -437,14 +437,6 @@ scenarios:
   status: draft
   factors:
   - context
-- id: SZZG-0049
-  title: BFC message references BIC
-  category: Work-item and commit-series scenarios
-  path: advanced-scenarios/SZZG-0049/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0049/README.md
-  status: draft
-  factors:
-  - developer_hints
 - id: SZZG-0050
   title: BFC message references the wrong commit
   category: Work-item and commit-series scenarios
