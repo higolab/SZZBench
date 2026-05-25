@@ -1968,3 +1968,18 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0162/scenario.yml
+- id: SZZ-0163
+  title: Malformed commit message
+  slug: malformed-commit-message
+  category: robustness
+  factors:
+  - single-bic
+  - single-bfc
+  - line-modification
+  - robustness
+  - malformed-commit-message
+  - message-robustness
+  - bfc-message
+  difficulty: medium
+  status: active
+  path: scenarios/SZZ-0163/scenario.yml

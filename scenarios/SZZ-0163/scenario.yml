@@ -1,0 +1,104 @@
+schema_version: '1.0'
+meta:
+  id: SZZ-0163
+  source_graph_id: SZZG-0069
+  title: Malformed commit message
+  slug: malformed-commit-message
+  description: A malformed but text-safe bug-fixing commit message is used. The repository history itself is a simple two-commit
+    normal scenario, so this case is represented as a normal scenario under scenarios.
+  category: robustness
+  factors:
+  - single-bic
+  - single-bfc
+  - line-modification
+  - robustness
+  - malformed-commit-message
+  - message-robustness
+  - bfc-message
+  difficulty: medium
+  status: active
+repository:
+  name: SZZ-0163-malformed-commit-message
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+commits:
+- id: c1
+  message: Introduce boundary bug
+  author: Bob <bob@example.com>
+  date: '2024-06-04T10:00:00Z'
+  role: bug_introducing
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value > min && value < max;\n  }\n}\n"
+    labels:
+    - B001
+    - fault
+- id: c2
+  message: 'FIX:::: boundary regression ??? refs=[[[unknown]]] introduced-by=<missing>'
+  author: Alice <alice@example.com>
+  date: '2024-06-05T10:00:00Z'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+    labels:
+    - B001
+    - fix
+bugs:
+- id: B001
+  title: Range boundary bug fixed by a commit with malformed message
+  bug_fixing_commit: c2
+  bug_introducing_commits: &id001
+  - c1
+  fault:
+    commit: c1
+    file: src/main/java/example/Range.java
+    entity:
+      type: method
+      name: contains
+      signature: boolean contains(int value, int min, int max)
+    statement: return value > min && value < max;
+    change_type: line_modification
+  fix:
+    commit: c2
+    file: src/main/java/example/Range.java
+    entity:
+      type: method
+      name: contains
+      signature: boolean contains(int value, int min, int max)
+    statement: return value >= min && value <= max;
+    fix_type: line_modification
+  expected_szz:
+    commit_level:
+      true_positives: *id001
+      false_positives_allowed: []
+    line_level:
+      available: true
+      faulty_statements:
+      - return value > min && value < max;
+scenario_design:
+  purpose: Evaluate robustness when the BFC message has an unusual malformed-looking structure rather than a conventional
+    issue or fix message.
+  key_property: The BFC message intentionally contains repeated punctuation, unknown reference brackets, and a missing introduced-by
+    field, but it avoids control characters so that it remains safe for YAML and Git tooling.
+  moved_from: SZZG-0069
+  reason_for_normal_scenario: The scenario requires only a linear two-commit history and does not require the graph schema.
+  evaluation_points:
+  - Whether tools tolerate malformed-looking commit messages.
+  - Whether message parsing failures do not break BIC identification.
+  - Whether the expected BIC remains c1 despite the unusual BFC message.
+notes:
+- Moved from SZZG-0069 to SZZ-0163 because the history does not need scenario.graph.yml.
+- The BFC message is deliberately malformed-looking but text-safe.
+- No control characters or invalid Git commit message bytes are used.
+checks:
+- type: git_history_contains
+  commits:
+  - c1
+  - c2
