@@ -6,31 +6,31 @@
 
 ## Purpose
 
-Evaluate BIC is a test-only commit and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate whether SZZ can report a BIC that only edits test code.
 
 ## Expected history
 
 ```text
-c0: create initial state (write_file src/main/java/example/Range.java)
-c1: introduce bug (replace src/main/java/example/Range.java)
-c2: fix bug (replace src/main/java/example/Range.java)
+c0: create correct Range code and boundary test
+c1: introduce faulty boundary expectation in test only
+c2: fix the test oracle
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
+The bug is a faulty test oracle rather than a production source bug, so the expected BIC is a test-only commit.
 
 ## Required graph-schema features
 
-- Factors: expected_szz
+- Factors: test_only_bic, expected_szz
 - Operation types: write_file, replace
 - Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
-- Whether the expected_szz evaluation policy is applied correctly.
+- Whether SZZ identifies c1 as the test-only BIC.
+- Whether production code remaining unchanged in the BIC is handled correctly.
+- Whether the expected_szz exact-set policy is applied correctly.
 
 ---
 

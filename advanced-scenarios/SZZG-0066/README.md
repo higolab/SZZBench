@@ -6,31 +6,31 @@
 
 ## Purpose
 
-Evaluate Non-UTF-8 file and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate whether SZZBench tooling handles non-UTF-8 files without assuming all changed files are UTF-8 text.
 
 ## Expected history
 
 ```text
-c0: create initial state (write_file src/main/java/example/Range.java)
-c1: introduce bug (replace src/main/java/example/Range.java)
-c2: fix bug (replace src/main/java/example/Range.java)
+c0: create CP1252-encoded boundary configuration
+c1: introduce boundary bug in the non-UTF-8 config
+c2: fix the non-UTF-8 config
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
+The non-UTF-8 file is modeled with `write_binary_file` so that invalid UTF-8 bytes can be represented safely.
 
 ## Required graph-schema features
 
-- Factors: encoding
-- Operation types: write_file, replace
+- Factors: encoding, non_utf8_file, write_binary_file
+- Operation types: write_file, write_binary_file
 - Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
-- Whether the expected_szz evaluation policy is applied correctly.
+- Whether SZZ identifies c1 as the BIC for the encoded configuration change.
+- Whether non-UTF-8 file content does not break parsing, generation, or verification.
+- Whether the expected_szz exact-set policy is applied correctly.
 
 ---
 

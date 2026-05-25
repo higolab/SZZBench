@@ -6,19 +6,19 @@
 
 ## Purpose
 
-Evaluate BIC and BFC belong to the same issue commit series and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate whether issue-series context is preserved when the BIC and BFC both reference the same issue.
 
 ## Expected history
 
 ```text
-c1: create initial state (write_file src/main/java/example/Range.java)
-c2: introduce bug (replace src/main/java/example/Range.java)
-c3: fix bug (replace src/main/java/example/Range.java)
+c1: create initial range implementation
+c2: ISSUE-101 implement boundary optimization but introduce bug
+c3: ISSUE-101 fix inclusive boundary regression
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
+Issue membership and linked commits require graph-aware contextual metadata.
 
 ## Required graph-schema features
 
@@ -28,9 +28,9 @@ This history requires graph-aware scenario semantics that are difficult to expre
 
 ## Evaluation points
 
-- Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
-- Whether the expected_szz evaluation policy is applied correctly.
+- Whether SZZ identifies c2 as the BIC rather than the initial commit.
+- Whether both the BIC and BFC are represented as part of ISSUE-101.
+- Whether the expected_szz exact-set policy is applied correctly.
 
 ---
 

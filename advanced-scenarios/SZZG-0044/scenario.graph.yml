@@ -3,8 +3,7 @@ meta:
   id: SZZG-0044
   title: BIC and BFC belong to the same issue commit series
   slug: bic-bfc-issue-commit
-  description: Evaluates bic and bfc belong to the same issue commit series and checks whether SZZ identifies the expected
-    bug-introducing commit set.
+  description: Evaluates a bug-introducing commit and a bug-fixing commit that are both linked to the same issue series.
   category: Work-item and commit-series scenarios
   category_code: H
   factors:
@@ -19,27 +18,32 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c1: create initial state (write_file src/main/java/example/Range.java)
+  history_summary: 'c1: create initial range implementation
 
-    c2: introduce bug (replace src/main/java/example/Range.java)
+    c2: ISSUE-101 implement boundary optimization but introduce bug
 
-    c3: fix bug (replace src/main/java/example/Range.java)'
+    c3: ISSUE-101 fix inclusive boundary regression'
 commits:
 - id: c1
   branch: main
   parents: []
-  message: 'c1: create initial state (write_file src/main/java/example/Range.java)'
+  message: 'c1: create initial range implementation'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
+    content: |
+      package example;
+      public class Range {
+        public boolean contains(int value, int min, int max) {
+          return value >= min && value <= max;
+        }
+      }
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: introduce bug (replace src/main/java/example/Range.java)'
+  message: 'ISSUE-101: implement boundary optimization'
   role: bug_introducing
   operations:
   - type: replace
@@ -50,7 +54,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: fix bug (replace src/main/java/example/Range.java)'
+  message: 'ISSUE-101: fix inclusive boundary regression'
   role: bug_fixing
   operations:
   - type: replace
@@ -59,7 +63,7 @@ commits:
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Boundary regression introduced and fixed in the same issue series
   bug_introducing_commits:
   - commit: c2
     role: direct
@@ -82,23 +86,25 @@ expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - c1
+    - c2
 scenario_design:
-  purpose: Evaluate BIC and BFC belong to the same issue commit series and whether SZZ identifies the expected bug-introducing
-    commit set.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
+  purpose: Evaluate whether issue-series context is preserved when the BIC and BFC both reference the same issue.
+  current_schema_limitation: Issue membership and linked commits require graph-aware contextual metadata.
   required_extensions_from_source: 'This scenario uses factors: issues; operations: write_file, replace.'
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Whether SZZ identifies c2 as the BIC rather than the initial commit.
+  - Whether both the BIC and BFC are represented as part of ISSUE-101.
+  - Whether the expected_szz exact-set policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
+- This scenario intentionally keeps the source change simple while making issue membership explicit.
 issues:
-- id: ISSUE-001
-  title: Synthetic issue for graph scenario
-  description: Issue text intentionally provides contextual information for SZZ.
+- id: ISSUE-101
+  title: Boundary handling issue series
+  description: The same issue contains the optimization that introduced the boundary bug and the follow-up fix.
   linked_bugs:
   - B001
+  commits:
+  - commit: c2
+    relevance: bug_introducing
+  - commit: c3
+    relevance: bug_fixing

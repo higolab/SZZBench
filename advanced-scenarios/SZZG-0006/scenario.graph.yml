@@ -3,11 +3,11 @@ meta:
   id: SZZG-0006
   title: BFC includes generated files
   slug: bfc-generated-file
-  description: Evaluates bfc includes generated files and checks whether SZZ identifies the expected bug-introducing commit
-    set.
+  description: Evaluates a bug-fixing commit that fixes source code while also updating generated artifacts in the same commit.
   category: BFC shape scenarios
   category_code: A
-  factors: []
+  factors:
+  - generated_files
   difficulty: advanced
   status: draft
 repository:
@@ -18,27 +18,32 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
+  history_summary: 'c0: create correct range implementation
 
-    c1: introduce bug (replace src/main/java/example/Range.java)
+    c1: introduce exclusive-boundary bug
 
-    c2: fix bug (replace src/main/java/example/Range.java)'
+    c2: fix range bug and update generated boundary table'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
+  message: 'c0: create correct range implementation'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
+    content: |
+      package example;
+      public class Range {
+        public boolean contains(int value, int min, int max) {
+          return value >= min && value <= max;
+        }
+      }
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
+  message: 'c1: introduce exclusive-boundary bug'
   role: bug_introducing
   operations:
   - type: replace
@@ -49,16 +54,20 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: fix bug (replace src/main/java/example/Range.java)'
+  message: 'c2: fix range bug and update generated boundary table'
   role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value > min && value < max;
     new: return value >= min && value <= max;
+  - type: write_generated_text_file
+    path: build/generated/range-boundary-table.txt
+    lines: 5
+    template: boundary-case-${line}=generated
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Boundary bug fixed alongside generated file updates
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -83,14 +92,13 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: Evaluate BFC includes generated files and whether SZZ identifies the expected bug-introducing commit set.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses operations: write_file, replace.'
+  purpose: Evaluate whether SZZ identifies the source BIC when the BFC contains both the real source fix and generated-file noise.
+  current_schema_limitation: The generated artifact in the BFC is represented explicitly with graph operations.
+  required_extensions_from_source: 'This scenario uses factors: generated_files; operations: write_file, replace, write_generated_text_file.'
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Whether SZZ identifies c1 as the BIC.
+  - Whether generated files added or refreshed in the BFC are ignored as blame targets.
+  - Whether the expected_szz exact-set policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
+- The generated file is intentionally changed only in the BFC.
+- The source fix remains in src/main/java/example/Range.java.

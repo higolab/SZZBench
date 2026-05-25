@@ -6,31 +6,32 @@
 
 ## Purpose
 
-Evaluate Explicit evaluation of direct BIC vs origin BIC and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate direct-BIC versus origin-BIC accounting for copied buggy code.
 
 ## Expected history
 
 ```text
-c0: create initial state (write_file src/main/java/example/Range.java)
-c1: introduce bug (replace src/main/java/example/Range.java)
-c2: fix bug (replace src/main/java/example/Range.java)
+c0: create correct original range implementation
+c1: introduce bug in original Range
+c2: copy buggy Range into CopiedRange
+c3: fix CopiedRange only
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
+Direct and origin BIC roles require graph-aware bug metadata and evaluation policy.
 
 ## Required graph-schema features
 
-- Factors: expected_szz
-- Operation types: write_file, replace
-- Expected SZZ policy is defined in expected_szz.
+- Factors: copy_file, expected_szz, direct_bic, origin_bic
+- Operation types: write_file, replace, copy_file
+- Expected SZZ policy distinguishes direct-only and origin-aware variants.
 
 ## Evaluation points
 
-- Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
-- Whether the expected_szz evaluation policy is applied correctly.
+- Whether SZZ identifies c2 as the direct BIC for `CopiedRange`.
+- Whether c1 is tracked as the origin BIC without being required under direct-only scoring.
+- Whether evaluation variants can distinguish direct-only and origin-aware policies.
 
 ---
 

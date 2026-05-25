@@ -53,7 +53,8 @@ scenarios:
   path: advanced-scenarios/SZZG-0006/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0006/README.md
   status: draft
-  factors: []
+  factors:
+  - generated_files
 - id: SZZG-0007
   title: BIC is a test-only commit
   category: BIC property scenarios
@@ -61,6 +62,7 @@ scenarios:
   readme: advanced-scenarios/SZZG-0007/README.md
   status: draft
   factors:
+  - test_only_bic
   - expected_szz
 - id: SZZG-0008
   title: Dependency update as BIC
@@ -228,7 +230,10 @@ scenarios:
   readme: advanced-scenarios/SZZG-0026/README.md
   status: draft
   factors:
+  - copy_file
   - expected_szz
+  - direct_bic
+  - origin_bic
 - id: SZZG-0027
   title: Clone removal as fix
   category: Copy, clone, and propagation scenarios
@@ -574,6 +579,8 @@ scenarios:
   status: draft
   factors:
   - encoding
+  - non_utf8_file
+  - write_binary_file
 - id: SZZG-0067
   title: Huge file
   category: Robustness and implementation-quality scenarios

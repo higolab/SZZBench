@@ -3,10 +3,11 @@ meta:
   id: SZZG-0007
   title: BIC is a test-only commit
   slug: bic-test-only-commit
-  description: Evaluates bic is a test-only commit and checks whether SZZ identifies the expected bug-introducing commit set.
+  description: Evaluates a bug where the bug-introducing commit changes only a test oracle, not production code.
   category: BIC property scenarios
   category_code: B
   factors:
+  - test_only_bic
   - expected_szz
   difficulty: advanced
   status: draft
@@ -18,47 +19,74 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
+  history_summary: 'c0: create correct Range code and boundary test
 
-    c1: introduce bug (replace src/main/java/example/Range.java)
+    c1: introduce faulty boundary expectation in test only
 
-    c2: fix bug (replace src/main/java/example/Range.java)'
+    c2: fix the test oracle'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
+  message: 'c0: create correct Range code and boundary test'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
+    content: |
+      package example;
+      public class Range {
+        public boolean contains(int value, int min, int max) {
+          return value >= min && value <= max;
+        }
+      }
+  - type: write_file
+    path: src/test/java/example/RangeTest.java
+    content: |
+      package example;
+      public class RangeTest {
+        public void includesLowerBoundary() {
+          Range range = new Range();
+          assertTrue(range.contains(0, 0, 10));
+        }
+
+        private void assertTrue(boolean value) {
+          if (!value) {
+            throw new AssertionError();
+          }
+        }
+
+        private void assertFalse(boolean value) {
+          if (value) {
+            throw new AssertionError();
+          }
+        }
+      }
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
+  message: 'c1: introduce faulty boundary expectation in test only'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
+    path: src/test/java/example/RangeTest.java
+    old: assertTrue(range.contains(0, 0, 10));
+    new: assertFalse(range.contains(0, 0, 10));
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: fix bug (replace src/main/java/example/Range.java)'
+  message: 'c2: fix test oracle for inclusive lower boundary'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/test/java/example/RangeTest.java
+    old: assertFalse(range.contains(0, 0, 10));
+    new: assertTrue(range.contains(0, 0, 10));
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Test oracle rejects an inclusive boundary that production code accepts
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -68,29 +96,28 @@ bugs:
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
-    change_type: line_modification
+    file: src/test/java/example/RangeTest.java
+    statement: assertFalse(range.contains(0, 0, 10));
+    change_type: test_oracle_modification
   fixes:
   - id: X001
     commit: c2
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
-    fix_type: line_modification
+    file: src/test/java/example/RangeTest.java
+    statement: assertTrue(range.contains(0, 0, 10));
+    fix_type: test_oracle_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
     - c1
 scenario_design:
-  purpose: Evaluate BIC is a test-only commit and whether SZZ identifies the expected bug-introducing commit set.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: expected_szz; operations: write_file, replace.'
+  purpose: Evaluate whether SZZ can report a BIC that only edits test code.
+  current_schema_limitation: Normal scenarios generally focus on production source faults; this case records a test-only oracle fault.
+  required_extensions_from_source: 'This scenario uses factors: test_only_bic, expected_szz; operations: write_file, replace.'
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Whether SZZ identifies c1 as the test-only BIC.
+  - Whether production code remaining unchanged in the BIC is handled correctly.
+  - Whether the expected_szz exact-set policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
+- The BIC touches only src/test/java/example/RangeTest.java.
+- Production code remains correct throughout the scenario.
