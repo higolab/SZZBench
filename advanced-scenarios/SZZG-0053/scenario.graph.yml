@@ -3,7 +3,8 @@ meta:
   id: SZZG-0053
   title: Line moved and duplicated
   slug: line-moved-and-duplicated
-  description: Evaluates line moved and duplicated and checks whether SZZ identifies the expected bug-introducing commit set.
+  description: Evaluates a faulty line that is introduced in the initial file, then moved and duplicated before being fixed
+    in the moved location.
   category: Ambiguous blame and duplicate-code scenarios
   category_code: I
   factors:
@@ -20,16 +21,16 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c1: create initial state (write_file src/main/java/example/Range.java)
+  history_summary: 'c1: create initial buggy range implementation (write_file src/main/java/example/Range.java)
 
-    c2: apply intermediate change (move_entity; copy_entity)
+    c2: move and duplicate the existing buggy range check (move_entity; copy_entity)
 
-    c3: fix bug (replace src/main/java/example/Range.java)'
+    c3: fix moved duplicated bug (replace src/main/java/example/RangeUtils.java)'
 commits:
 - id: c1
   branch: main
   parents: []
-  message: 'c1: create initial state (write_file src/main/java/example/Range.java)'
+  message: 'c1: create initial buggy range implementation (write_file src/main/java/example/Range.java)'
   role: initial
   operations:
   - type: write_file
@@ -40,7 +41,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: apply intermediate change (move_entity; copy_entity)'
+  message: 'c2: move and duplicate the existing buggy range check (move_entity; copy_entity)'
   role: intermediate
   operations:
   - type: move_entity
@@ -60,16 +61,16 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: fix bug (replace src/main/java/example/Range.java)'
+  message: 'c3: fix moved duplicated bug (replace src/main/java/example/RangeUtils.java)'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
+    path: src/main/java/example/RangeUtils.java
     old: return value > min && value < max;
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Boundary bug moved and duplicated before the fix
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -88,7 +89,7 @@ bugs:
   fixes:
   - id: X001
     commit: c3
-    file: src/main/java/example/Range.java
+    file: src/main/java/example/RangeUtils.java
     statement: return value >= min && value <= max;
     fix_type: line_modification
 expected_szz:
@@ -97,22 +98,28 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: Evaluate Line moved and duplicated and whether SZZ identifies the expected bug-introducing commit set.
+  purpose: Evaluate whether SZZ traces a fix in the moved duplicated location back to the initial BIC c1.
+  key_property: Commit c2 only moves and duplicates an already buggy line. It is related propagation history, not the expected
+    BIC; c1 remains the required bug-introducing commit.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
   required_extensions_from_source: 'This scenario uses factors: move_entity, copy_entity, bug_instances; operations: write_file,
     move_entity, copy_entity, replace.'
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether SZZ identifies c1 as the original BIC despite the move and duplicate in c2.
+  - Whether SZZ does not treat the move/copy commit c2 as the direct BIC.
   - Whether the expected_szz evaluation policy is applied correctly.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.
 bug_instances:
-- id: B001-main
-  branch: main
+- id: B001-origin
+  file: src/main/java/example/Range.java
+  introduced_by: c1
+  status: moved_and_duplicated_by_c2
+- id: B001-moved-duplicate
+  file: src/main/java/example/RangeUtils.java
+  introduced_by: c1
+  propagated_by: c2
+  fixed_by: c3
   status: fixed
-- id: B001-release
-  branch: release
-  status: open

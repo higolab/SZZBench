@@ -1,6 +1,6 @@
 # SZZG-0012: Extract class after BIC
 
-## Overview
+## Purpose
 
 This scenario represents an extract-class refactoring after a bug-introducing commit.
 

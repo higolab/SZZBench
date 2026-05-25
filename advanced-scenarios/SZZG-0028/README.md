@@ -6,7 +6,9 @@
 
 ## Purpose
 
-Evaluate Partial revert reintroduces bug and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate a partial revert where `c3` reintroduces the boundary bug and is the expected direct BIC for the final fix.
+
+The original BIC `c1` is related history, but the `reintroduction_direct` oracle requires the reintroducing commit `c3`.
 
 ## Expected history
 
@@ -14,7 +16,7 @@ Evaluate Partial revert reintroduces bug and whether SZZ identifies the expected
 c0: create initial state (write_file src/main/java/example/Range.java)
 c1: introduce bug (replace src/main/java/example/Range.java)
 c2: fix bug (replace src/main/java/example/Range.java)
-c3: revert change (replace src/main/java/example/Range.java)
+c3: partially revert c2 and reintroduce bug (replace src/main/java/example/Range.java)
 c4: fix bug (replace src/main/java/example/Range.java)
 ```
 
@@ -29,8 +31,8 @@ This history requires graph-aware scenario semantics that are difficult to expre
 
 ## Evaluation points
 
-- Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
+- Whether SZZ identifies `c3` as the reintroducing BIC for the final fix.
+- Whether SZZ treats the original BIC `c1` as related history, not the required direct answer.
 - Whether the expected_szz evaluation policy is applied correctly.
 
 ---

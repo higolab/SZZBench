@@ -24,7 +24,7 @@ graph:
 
     c2: fix bug (replace src/main/java/example/Range.java)
 
-    c3: revert change (replace src/main/java/example/Range.java)
+    c3: partially revert c2 and reintroduce bug (replace src/main/java/example/Range.java)
 
     c4: fix bug (replace src/main/java/example/Range.java)'
 commits:
@@ -64,8 +64,9 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: revert change (replace src/main/java/example/Range.java)'
-  role: revert
+  message: 'c3: partially revert c2 and reintroduce bug (replace src/main/java/example/Range.java)'
+  role: bug_reintroducing
+  revert_of: c2
   operations:
   - type: replace
     path: src/main/java/example/Range.java
@@ -115,13 +116,15 @@ expected_szz:
     related_but_not_correct:
     - c1
 scenario_design:
-  purpose: Evaluate Partial revert reintroduces bug and whether SZZ identifies the expected bug-introducing commit set.
+  purpose: Evaluate a partial revert where c3 reintroduces the boundary bug and is the expected direct BIC for the final
+    fix.
+  key_property: Commit c1 is the original BIC, but c3 is the reintroducing BIC required by the reintroduction_direct policy.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
   required_extensions_from_source: 'This scenario uses operations: write_file, replace.'
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether SZZ identifies c3 as the reintroducing BIC for the final fix.
+  - Whether SZZ treats the original BIC c1 as related history, not the required direct answer.
   - Whether the expected_szz evaluation policy is applied correctly.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.

@@ -1,6 +1,6 @@
 # SZZG-0037: Backport fix
 
-## Overview
+## Purpose
 
 This scenario represents a main-line fix that is backported to a release branch.
 

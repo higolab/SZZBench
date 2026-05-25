@@ -1,6 +1,6 @@
 # SZZG-0015: One BFC fixes multiple BICs for one composite bug
 
-## Overview
+## Purpose
 
 This scenario represents one composite bug that is created by two separate bug-introducing commits and fixed by one bug-fixing commit.
 

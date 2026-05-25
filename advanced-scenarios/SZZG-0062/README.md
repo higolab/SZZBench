@@ -6,12 +6,14 @@
 
 ## Purpose
 
-Evaluate File deletion and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate a deletion-based fix where `c0` creates a buggy file and `c1` fixes the bug by deleting that file.
+
+The required BIC is `c0`, because the initial commit introduced both `Buggy.java` and the faulty return statement.
 
 ## Expected history
 
 ```text
-c0: create initial state (write_file src/main/java/example/Buggy.java)
+c0: create initial buggy file (write_file src/main/java/example/Buggy.java)
 c1: fix bug (delete_file src/main/java/example/Buggy.java)
 ```
 
@@ -27,8 +29,8 @@ This history requires graph-aware scenario semantics that are difficult to expre
 
 ## Evaluation points
 
-- Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
+- Whether SZZ identifies `c0` as the BIC for the deleted buggy file.
+- Whether SZZ handles file deletion as the complete fix.
 - Whether the expected_szz evaluation policy is applied correctly.
 
 ---

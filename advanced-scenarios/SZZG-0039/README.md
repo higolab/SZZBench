@@ -1,6 +1,6 @@
 # SZZG-0039: Criss-cross merge
 
-## Overview
+## Purpose
 
 Two long-lived branches merge each other in both directions before a bug introduced on one branch is fixed.
 

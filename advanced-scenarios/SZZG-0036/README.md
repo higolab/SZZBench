@@ -1,6 +1,6 @@
 # SZZG-0036: Cherry-pick BFC
 
-## Overview
+## Purpose
 
 This scenario represents a bug-fixing commit that is cherry-picked from `main` to a `release` branch.
 

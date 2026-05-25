@@ -1,6 +1,6 @@
 # SZZ-0163: Malformed commit message
 
-## Overview
+## Purpose
 
 This scenario checks robustness against a malformed-looking bug-fixing commit message.
 

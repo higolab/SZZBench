@@ -3,8 +3,8 @@ meta:
   id: SZZG-0019
   title: Buggy code copied to a new file
   slug: buggy-code-copied-to-new-file
-  description: Evaluates buggy code copied to a new file and checks whether SZZ identifies the expected bug-introducing commit
-    set.
+  description: Evaluates a copied buggy implementation where the copy commit is the direct BIC for the copied file while
+    the original file remains only origin context.
   category: Copy, clone, and propagation scenarios
   category_code: E
   factors:
@@ -21,7 +21,7 @@ graph:
   model: commit_dag
   history_summary: 'c0: create initial state (write_file src/main/java/example/A.java)
 
-    c1: apply intermediate change (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)
+    c1: copy buggy code to B.java (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)
 
     c2: fix bug (replace src/main/java/example/B.java)'
 commits:
@@ -39,8 +39,8 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: apply intermediate change (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)'
-  role: intermediate
+  message: 'c1: copy buggy code to B.java (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)'
+  role: bug_introducing
   operations:
   - type: copy_file
     from: src/main/java/example/A.java
@@ -58,12 +58,14 @@ commits:
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Copied boundary bug in B.java
   bug_introducing_commits:
   - commit: c1
     role: direct
+    description: Direct BIC for B.java because this commit copies the faulty logic into the fixed file.
   - commit: c0
     role: origin
+    description: Origin context where the faulty logic already existed before it was copied.
   bug_fixing_commits:
   - commit: c2
     role: complete_fix
@@ -72,7 +74,7 @@ bugs:
     commit: c1
     file: src/main/java/example/B.java
     statement: return value > min && value < max;
-    change_type: line_modification
+    change_type: copy_propagated_line_modification
   fixes:
   - id: X001
     commit: c2
@@ -85,13 +87,15 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: Evaluate Buggy code copied to a new file and whether SZZ identifies the expected bug-introducing commit set.
+  purpose: Evaluate a copy-propagated bug where the copy commit c1 is the direct BIC for the later fix in B.java.
+  key_property: Commit c0 contains the original faulty logic, but c1 is the expected direct BIC because it introduces that
+    faulty logic into B.java, the file fixed by c2.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
   required_extensions_from_source: 'This scenario uses factors: copy_file; operations: write_file, copy_file, replace.'
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether SZZ identifies c1 as the direct BIC for B.java.
+  - Whether SZZ keeps c0 as origin context without replacing the direct copy commit.
   - Whether the expected_szz evaluation policy is applied correctly.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.

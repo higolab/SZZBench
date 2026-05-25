@@ -1,6 +1,6 @@
 # SZZG-0041: Fixed on main but unfixed on release
 
-## Overview
+## Purpose
 
 A bug is introduced before a release branch is cut; main fixes the bug, but the release branch continues without the fix.
 

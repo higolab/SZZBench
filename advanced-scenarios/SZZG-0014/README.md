@@ -1,6 +1,6 @@
 # SZZG-0014: Multiple BFCs progressively fix the same bug
 
-## Overview
+## Purpose
 
 This scenario represents a single bug that is repaired progressively by multiple bug-fixing commits.
 

@@ -1,6 +1,6 @@
 # SZZG-0033: BFC in merge commit
 
-## Overview
+## Purpose
 
 A bug is introduced before branches diverge; main and feature apply complementary partial changes, and the merge commit performs the final fix.
 

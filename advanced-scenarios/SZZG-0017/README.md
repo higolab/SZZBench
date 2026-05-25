@@ -1,6 +1,6 @@
 # SZZG-0017: One BFC fixes multiple independent bugs
 
-## Overview
+## Purpose
 
 This scenario represents one bug-fixing commit that fixes two independent bugs.
 

@@ -1,6 +1,6 @@
 # SZZG-0031: BIC before merge, BFC after merge
 
-## Overview
+## Purpose
 
 A bug is introduced on main before a feature branch is merged, and the bug is fixed on main after the merge.
 

@@ -8,10 +8,12 @@
 
 Evaluate whether SZZ can use caller context to interpret a boundary fix in the callee.
 
+Commit `c1` creates the already buggy `Range.contains` implementation together with `Caller.callRange`, which supplies the caller context. Commit `c2` fixes only the callee boundary check.
+
 ## Expected history
 
 ```text
-c1: create initial state (write_file src/main/java/example/Range.java; write_file src/main/java/example/Caller.java)
+c1: create initial buggy callee/caller context (write_file src/main/java/example/Range.java; write_file src/main/java/example/Caller.java)
 c2: fix bug (replace src/main/java/example/Range.java)
 ```
 
@@ -27,7 +29,7 @@ This history requires graph-aware scenario semantics that are difficult to expre
 
 ## Evaluation points
 
-- Whether SZZ identifies the expected BIC set.
+- Whether SZZ identifies `c1` as the BIC for the callee boundary bug.
 - Whether Caller.callRange provides the patch context needed to interpret Range.contains.
 - Whether the expected_szz evaluation policy is applied correctly.
 

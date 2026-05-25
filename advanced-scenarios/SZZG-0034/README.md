@@ -1,6 +1,6 @@
 # SZZG-0034: Squash merge
 
-## Overview
+## Purpose
 
 Feature branch commits introduce and extend a bug, but main receives them through a single-parent squash-merge commit.
 

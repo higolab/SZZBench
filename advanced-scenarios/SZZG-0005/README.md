@@ -1,6 +1,6 @@
 # SZZG-0005: BFC is a merge commit
 
-## Overview
+## Purpose
 
 This scenario evaluates a case where the bug-fixing commit is itself a merge commit.
 

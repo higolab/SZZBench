@@ -19,14 +19,14 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c1: create initial state (write_file src/main/java/example/Range.java)
+  history_summary: 'c1: create initial buggy range implementation (write_file src/main/java/example/Range.java)
 
     c2: fix bug (replace src/main/java/example/Range.java)'
 commits:
 - id: c1
   branch: main
   parents: []
-  message: 'c1: create initial state (write_file src/main/java/example/Range.java)'
+  message: 'c1: create initial buggy range implementation (write_file src/main/java/example/Range.java)'
   role: initial
   operations:
   - type: write_file
@@ -82,6 +82,8 @@ expected_szz:
 scenario_design:
   purpose: Evaluate whether SZZ output can be judged against an entity-level oracle when line-level evaluation is intentionally
     disabled.
+  key_property: This is an oracle-policy scenario. The faulty line is recorded for traceability, but line-level evaluation
+    is deliberately unavailable and the expected answer is the Range.contains method entity.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
   required_extensions_from_source: 'This scenario uses factors: expected_szz; operations: write_file, replace.'

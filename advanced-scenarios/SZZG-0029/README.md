@@ -1,6 +1,6 @@
 # SZZG-0029: Old BIC and re-BIC are both plausible
 
-## Overview
+## Purpose
 
 This scenario represents a bug that is introduced, fixed, reintroduced by a partial revert, and fixed again.
 

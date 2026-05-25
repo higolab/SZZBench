@@ -1,6 +1,6 @@
 # SZZG-0047: Work item inference without issue ID
 
-## Overview
+## Purpose
 
 This scenario represents a work-item inference case where commit messages do not contain explicit issue IDs.
 

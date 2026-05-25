@@ -1,6 +1,6 @@
 # SZZG-0032: BIC in merge commit
 
-## Overview
+## Purpose
 
 The merge commit itself introduces the bug during merge resolution; a later normal commit fixes it.
 

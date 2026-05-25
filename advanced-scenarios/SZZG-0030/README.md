@@ -1,6 +1,6 @@
 # SZZG-0030: BIC on feature branch, BFC on main
 
-## Overview
+## Purpose
 
 A feature branch introduces a bug, extends feature code that depends on the buggy method, is merged into main, and is then fixed by a normal main-branch commit.
 

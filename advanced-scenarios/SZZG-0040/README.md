@@ -1,6 +1,6 @@
 # SZZG-0040: Release-branch-only bug
 
-## Overview
+## Purpose
 
 A release branch introduces and fixes a bug that never exists on main.
 

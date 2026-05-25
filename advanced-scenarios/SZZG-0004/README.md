@@ -1,6 +1,6 @@
 # SZZG-0004: Attempted fix followed by follow-up fix
 
-## Overview
+## Purpose
 
 This scenario represents an attempted fix followed by a follow-up fix.
 

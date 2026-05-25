@@ -1,6 +1,6 @@
 # SZZG-0071: Copy propagation with direct and origin BIC evaluation variants
 
-## Overview
+## Purpose
 
 This scenario represents a copy-propagated bug.
 

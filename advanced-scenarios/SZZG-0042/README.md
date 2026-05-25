@@ -1,6 +1,6 @@
 # SZZG-0042: BIC occurs during feature work
 
-## Overview
+## Purpose
 
 This scenario represents a bug-introducing commit that occurs in the middle of a multi-commit feature work item.
 
