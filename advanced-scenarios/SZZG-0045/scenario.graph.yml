@@ -3,12 +3,14 @@ meta:
   id: SZZG-0045
   title: BIC separated from BFC by an intermediate work-item commit
   slug: bic-bfc-intermediate-work-item
-  description: Evaluates a work-item series where an unrelated intermediate commit appears between the bug-introducing commit
-    and the bug-fixing commit.
+  description: Evaluates a work-item series where an unrelated commit from the same work item appears between the BIC and
+    the BFC.
   category: Work-item and commit-series scenarios
   category_code: H
   factors:
   - work_items
+  - intermediate_commit
+  - related_but_not_correct
   difficulty: advanced
   status: draft
 repository:
@@ -19,48 +21,70 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c1: create initial state (write_file src/main/java/example/Range.java)
-
-    c2: apply unrelated work-item note (write_file docs/intermediate-note.md)
-
-    c3: fix bug (replace src/main/java/example/Range.java)'
+  history_summary: |
+    c0: create inventory reservation logic
+    c1: introduce exact-stock reservation bug
+    c2: add unrelated audit event in the same work item
+    c3: fix exact-stock reservation bug
 commits:
-- id: c1
+- id: c0
   branch: main
   parents: []
-  message: 'c1: create initial state (write_file src/main/java/example/Range.java)'
+  message: 'WI-418 c0: create inventory reservation logic'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value > min && value < max;\n  }\n}\n"
+    path: src/main/java/example/InventoryReservation.java
+    content: |
+      package example;
+
+      public class InventoryReservation {
+        public boolean canReserve(int available, int alreadyReserved, int requested) {
+          return available - alreadyReserved >= requested;
+        }
+      }
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'WI-418 c1: reject oversold reservations'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/InventoryReservation.java
+    old: return available - alreadyReserved >= requested;
+    new: return available - alreadyReserved > requested;
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: apply unrelated work-item note (write_file docs/intermediate-note.md)'
+  message: 'WI-418 c2: add inventory audit event names'
   role: intermediate
   operations:
   - type: write_file
-    path: docs/intermediate-note.md
-    content: 'intermediate change
+    path: src/main/java/example/InventoryAudit.java
+    content: |
+      package example;
 
-      '
+      public class InventoryAudit {
+        public String reservationEvent() {
+          return "inventory.reservation.requested";
+        }
+      }
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'c3: fix bug (replace src/main/java/example/Range.java)'
+  message: 'WI-418 c3: allow reservation when stock exactly matches request'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/InventoryReservation.java
+    old: return available - alreadyReserved > requested;
+    new: return available - alreadyReserved >= requested;
 bugs:
 - id: B001
-  title: Range boundary bug with an intermediate work-item commit
+  title: Exact-stock reservations are rejected after a work-item change
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -70,40 +94,43 @@ bugs:
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/InventoryReservation.java
+    statement: return available - alreadyReserved > requested;
     change_type: line_modification
   fixes:
   - id: X001
     commit: c3
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
+    file: src/main/java/example/InventoryReservation.java
+    statement: return available - alreadyReserved >= requested;
     fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
     - c1
+    related_but_not_correct:
+    - c2
 scenario_design:
-  purpose: Evaluate whether SZZ identifies the original BIC when an unrelated work-item candidate commit appears immediately
-    before the BFC.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: work_items; operations: write_file, replace.'
+  purpose: Evaluate whether SZZ identifies the original BIC when a related but non-faulty work-item commit sits immediately
+    between the BIC and BFC.
+  current_schema_limitation: Work-item membership and related-but-not-correct candidates are graph-specific metadata.
+  required_extensions_from_source: 'This scenario uses factors: work_items, intermediate_commit, related_but_not_correct; operations: write_file, replace.'
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether an unrelated intermediate work-item commit is not mistaken for the BIC.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Whether SZZ identifies c1 as the BIC.
+  - Whether the intermediate audit commit c2 is not mistaken for the BIC.
+  - Whether work-item membership is represented without collapsing all commits in the work item into one cause.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.
 work_items:
-- id: WI-001
-  title: Work item containing a boundary bug, an unrelated note, and the fix
+- id: WI-418
+  title: Inventory reservation reliability work
   commits:
+  - commit: c0
+    relevance: setup
   - commit: c1
     relevance: bug_introducing
   - commit: c2
-    relevance: candidate
+    relevance: related_but_not_correct
   - commit: c3
     relevance: bug_fixing

@@ -3,12 +3,13 @@ meta:
   id: SZZG-0050
   title: BFC message references the wrong commit
   slug: bfc-message-references-wrong-commit
-  description: Evaluates bfc message references the wrong commit and checks whether SZZ identifies the expected bug-introducing
-    commit set.
+  description: Evaluates a BFC whose message points to a plausible but incorrect prior commit, while the true BIC is an earlier
+    rounding change.
   category: Work-item and commit-series scenarios
   category_code: H
   factors:
   - developer_hints
+  - misleading_commit_message
   difficulty: advanced
   status: draft
 repository:
@@ -19,48 +20,70 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c1: create initial state (write_file src/main/java/example/Range.java)
-
-    c2: apply intermediate change (write_file docs/intermediate-note.md)
-
-    c3: fix bug (replace src/main/java/example/Range.java)'
+  history_summary: |
+    c0: create currency rounding helper
+    c1: introduce truncating cents normalization
+    c2: add invoice label helper mentioned by mistake
+    c3: fix rounding while incorrectly blaming c2 in the message
 commits:
-- id: c1
+- id: c0
   branch: main
   parents: []
-  message: 'c1: create initial state (write_file src/main/java/example/Range.java)'
+  message: 'c0: create currency rounding helper'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value > min && value < max;\n  }\n}\n"
+    path: src/main/java/example/CurrencyFormatter.java
+    content: |
+      package example;
+
+      public class CurrencyFormatter {
+        public double roundToCents(double amount) {
+          return Math.round(amount * 100.0) / 100.0;
+        }
+      }
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'c1: speed up cents normalization by truncating fractions'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/CurrencyFormatter.java
+    old: return Math.round(amount * 100.0) / 100.0;
+    new: return (int)(amount * 100.0) / 100.0;
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: apply intermediate change (write_file docs/intermediate-note.md)'
+  message: 'c2: add invoice total label helper'
   role: intermediate
   operations:
   - type: write_file
-    path: docs/intermediate-note.md
-    content: 'intermediate change
+    path: src/main/java/example/InvoiceLabels.java
+    content: |
+      package example;
 
-      '
+      public class InvoiceLabels {
+        public String totalLabel() {
+          return "Invoice total";
+        }
+      }
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'c3: fix bug (replace src/main/java/example/Range.java)'
+  message: 'c3: fix invoice rounding regression from c2'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/CurrencyFormatter.java
+    old: return (int)(amount * 100.0) / 100.0;
+    new: return Math.round(amount * 100.0) / 100.0;
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Currency values are truncated instead of rounded
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -70,30 +93,30 @@ bugs:
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/CurrencyFormatter.java
+    statement: return (int)(amount * 100.0) / 100.0;
     change_type: line_modification
   fixes:
   - id: X001
     commit: c3
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
+    file: src/main/java/example/CurrencyFormatter.java
+    statement: return Math.round(amount * 100.0) / 100.0;
     fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
     - c1
+    related_but_not_correct:
+    - c2
 scenario_design:
-  purpose: Evaluate BFC message references the wrong commit and whether SZZ identifies the expected bug-introducing commit
-    set.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: developer_hints; operations: write_file, replace.'
+  purpose: Evaluate whether SZZ resists an incorrect BFC-message hint and still identifies the true code-level BIC.
+  current_schema_limitation: Misleading developer hints are represented as metadata attached to the BFC.
+  required_extensions_from_source: 'This scenario uses factors: developer_hints, misleading_commit_message; operations: write_file, replace.'
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Whether SZZ identifies c1 as the true rounding BIC.
+  - Whether c2 is treated as an incorrect message reference rather than the expected BIC.
+  - Whether developer hints are distinguished from trustworthy blame evidence.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.
@@ -102,5 +125,6 @@ developer_hints:
   source: commit_message
   commit: c3
   referenced_commits:
-  - c1
+  - c2
   correctness: incorrect
+  explanation: The BFC message blames c2, but c2 only adds labels; c1 introduced the truncating arithmetic.

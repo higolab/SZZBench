@@ -3,11 +3,13 @@ meta:
   id: SZZG-0016
   title: Partial credit when only some BICs are returned
   slug: bic-partial-credit
-  description: Evaluates partial credit when only some bics are returned and checks whether SZZ identifies the expected bug-introducing
-    commit set.
+  description: Evaluates a single checkout defect whose complete cause is split across two independent BICs, allowing partial
+    credit when an SZZ result returns only one of them.
   category: Multiple BIC and BFC scenarios
   category_code: D
   factors:
+  - multiple_bic
+  - partial_credit
   - expected_szz
   difficulty: advanced
   status: draft
@@ -19,67 +21,107 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c1: create initial state (write_file src/main/java/example/Range.java)
-
-    c2: apply intermediate change (write_file docs/intermediate-note.md)
-
-    c3: fix bug (replace src/main/java/example/Range.java)'
+  history_summary: |
+    c0: create checkout policy classes
+    c1: introduce loyalty-discount threshold bug
+    c2: introduce tax-exemption logic bug
+    c3: fix both checkout policy faults
 commits:
-- id: c1
+- id: c0
   branch: main
   parents: []
-  message: 'c1: create initial state (write_file src/main/java/example/Range.java)'
+  message: 'c0: create checkout policy classes'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value > min && value < max;\n  }\n}\n"
+    path: src/main/java/example/PricePolicy.java
+    content: |
+      package example;
+
+      public class PricePolicy {
+        public int loyaltyDiscountCents(int subtotalCents) {
+          return subtotalCents >= 10000 ? 1000 : 0;
+        }
+      }
+  - type: write_file
+    path: src/main/java/example/TaxPolicy.java
+    content: |
+      package example;
+
+      public class TaxPolicy {
+        public boolean isTaxExempt(String stateCode) {
+          return stateCode.equals("OR") || stateCode.equals("MT");
+        }
+      }
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'c1: require totals above the loyalty threshold'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/PricePolicy.java
+    old: 'return subtotalCents >= 10000 ? 1000 : 0;'
+    new: 'return subtotalCents > 10000 ? 1000 : 0;'
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: apply intermediate change (write_file docs/intermediate-note.md)'
-  role: intermediate
+  message: 'c2: tighten tax-exempt state matching'
+  role: bug_introducing
   operations:
-  - type: write_file
-    path: docs/intermediate-note.md
-    content: 'intermediate change
-
-      '
+  - type: replace
+    path: src/main/java/example/TaxPolicy.java
+    old: return stateCode.equals("OR") || stateCode.equals("MT");
+    new: return stateCode.equals("OR") && stateCode.equals("MT");
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'c3: fix bug (replace src/main/java/example/Range.java)'
+  message: 'c3: fix checkout totals at discount and tax boundaries'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/PricePolicy.java
+    old: 'return subtotalCents > 10000 ? 1000 : 0;'
+    new: 'return subtotalCents >= 10000 ? 1000 : 0;'
+  - type: replace
+    path: src/main/java/example/TaxPolicy.java
+    old: return stateCode.equals("OR") && stateCode.equals("MT");
+    new: return stateCode.equals("OR") || stateCode.equals("MT");
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Checkout total bug caused by two independent policy regressions
   bug_introducing_commits:
   - commit: c1
     role: contributing
   - commit: c2
-    role: direct
+    role: contributing
   bug_fixing_commits:
   - commit: c3
     role: complete_fix
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/PricePolicy.java
+    statement: 'return subtotalCents > 10000 ? 1000 : 0;'
+    change_type: line_modification
+  - id: F002
+    commit: c2
+    file: src/main/java/example/TaxPolicy.java
+    statement: return stateCode.equals("OR") && stateCode.equals("MT");
     change_type: line_modification
   fixes:
   - id: X001
     commit: c3
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
+    file: src/main/java/example/PricePolicy.java
+    statement: 'return subtotalCents >= 10000 ? 1000 : 0;'
+    fix_type: line_modification
+  - id: X002
+    commit: c3
+    file: src/main/java/example/TaxPolicy.java
+    statement: return stateCode.equals("OR") || stateCode.equals("MT");
     fix_type: line_modification
 expected_szz:
   commit_level:
@@ -89,15 +131,14 @@ expected_szz:
     - c2
     minimum_required: 1
 scenario_design:
-  purpose: Evaluate Partial credit when only some BICs are returned and whether SZZ identifies the expected bug-introducing
-    commit set.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: expected_szz; operations: write_file, replace.'
+  purpose: Evaluate scoring behavior when a complete answer contains two BICs but an SZZ implementation returns only one
+    of them.
+  current_schema_limitation: Partial-credit evaluation is represented as graph-specific expected_szz metadata.
+  required_extensions_from_source: 'This scenario uses factors: multiple_bic, partial_credit, expected_szz; operations: write_file, replace.'
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Whether SZZ can identify both checkout-policy BICs for one bug.
+  - Whether returning only c1 or only c2 receives partial credit rather than full exact-set credit.
+  - Whether the BFC that edits two files is evaluated against both required BICs.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.

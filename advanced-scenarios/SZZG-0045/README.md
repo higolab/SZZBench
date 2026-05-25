@@ -6,31 +6,32 @@
 
 ## Purpose
 
-Evaluate whether SZZ identifies the original BIC when an unrelated intermediate work-item commit appears immediately before the BFC.
+Evaluate whether SZZ identifies the original BIC when a related but non-faulty work-item commit sits immediately between the BIC and BFC.
 
 ## Expected history
 
 ```text
-c1: create initial state (write_file src/main/java/example/Range.java)
-c2: apply unrelated work-item note (write_file docs/intermediate-note.md)
-c3: fix bug (replace src/main/java/example/Range.java)
+c0: create inventory reservation logic
+c1: introduce exact-stock reservation bug
+c2: add unrelated audit event in the same work item
+c3: fix exact-stock reservation bug
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-This history uses graph-aware work-item metadata to mark the intermediate commit as a candidate in the same work-item series.
+Work-item membership and related-but-not-correct candidates require metadata beyond the normal linear scenario schema.
 
 ## Required graph-schema features
 
-- Factors: work_items
+- Factors: work_items, intermediate_commit, related_but_not_correct
 - Operation types: write_file, replace
 - Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- Whether SZZ identifies the expected BIC set.
-- Whether an unrelated intermediate work-item commit is not mistaken for the BIC.
-- Whether the expected_szz evaluation policy is applied correctly.
+- Whether SZZ identifies c1 as the BIC.
+- Whether the intermediate audit commit c2 is not mistaken for the BIC.
+- Whether work-item membership is represented without collapsing all commits in the work item into one cause.
 
 ---
 

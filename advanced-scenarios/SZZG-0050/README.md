@@ -6,31 +6,32 @@
 
 ## Purpose
 
-Evaluate BFC message references the wrong commit and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate whether SZZ resists an incorrect BFC-message hint and still identifies the true code-level BIC.
 
 ## Expected history
 
 ```text
-c1: create initial state (write_file src/main/java/example/Range.java)
-c2: apply intermediate change (write_file docs/intermediate-note.md)
-c3: fix bug (replace src/main/java/example/Range.java)
+c0: create currency rounding helper
+c1: introduce truncating cents normalization
+c2: add invoice label helper mentioned by mistake
+c3: fix rounding while incorrectly blaming c2 in the message
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
+The BFC contains a misleading developer hint that must be represented separately from the code-level fault metadata.
 
 ## Required graph-schema features
 
-- Factors: developer_hints
+- Factors: developer_hints, misleading_commit_message
 - Operation types: write_file, replace
 - Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
-- Whether the expected_szz evaluation policy is applied correctly.
+- Whether SZZ identifies c1 as the true rounding BIC.
+- Whether c2 is treated as an incorrect message reference rather than the expected BIC.
+- Whether developer hints are distinguished from trustworthy blame evidence.
 
 ---
 

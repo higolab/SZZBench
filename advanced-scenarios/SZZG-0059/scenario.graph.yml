@@ -3,11 +3,13 @@ meta:
   id: SZZG-0059
   title: Semantically equivalent rewrite
   slug: semantically-equivalent-rewrite
-  description: Evaluates semantically equivalent rewrite and checks whether SZZ identifies the expected bug-introducing commit
-    set.
+  description: Evaluates a buggy predicate that is rewritten into equivalent form before the BFC, so the rewrite commit should
+    not be treated as the BIC.
   category: Context-aware and LLM-based SZZ scenarios
   category_code: J
-  factors: []
+  factors:
+  - semantic_rewrite
+  - related_but_not_correct
   difficulty: advanced
   status: draft
 repository:
@@ -18,48 +20,75 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c1: create initial state (write_file src/main/java/example/Range.java)
-
-    c2: apply intermediate change (write_file docs/intermediate-note.md)
-
-    c3: fix bug (replace src/main/java/example/Range.java)'
+  history_summary: |
+    c0: create API key validator
+    c1: weaken API key length requirement
+    c2: rewrite the buggy predicate without changing behavior
+    c3: fix the length requirement inside the rewritten predicate
 commits:
-- id: c1
+- id: c0
   branch: main
   parents: []
-  message: 'c1: create initial state (write_file src/main/java/example/Range.java)'
+  message: 'c0: create API key validator'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value > min && value < max;\n  }\n}\n"
+    path: src/main/java/example/ApiKeyValidator.java
+    content: |
+      package example;
+
+      public class ApiKeyValidator {
+        public boolean isValid(String token) {
+          return token != null && token.startsWith("sk_") && token.length() == 32;
+        }
+      }
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'c1: accept shorter API keys during migration'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/ApiKeyValidator.java
+    old: return token != null && token.startsWith("sk_") && token.length() == 32;
+    new: return token != null && token.startsWith("sk_") && token.length() >= 16;
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: apply intermediate change (write_file docs/intermediate-note.md)'
-  role: intermediate
+  message: 'c2: rewrite API key predicate for readability'
+  role: semantic_rewrite
   operations:
-  - type: write_file
-    path: docs/intermediate-note.md
-    content: 'intermediate change
-
-      '
+  - type: replace
+    path: src/main/java/example/ApiKeyValidator.java
+    old: |-
+      public boolean isValid(String token) {
+          return token != null && token.startsWith("sk_") && token.length() >= 16;
+        }
+    new: |-
+      public boolean isValid(String token) {
+          if (token == null) {
+            return false;
+          }
+          boolean hasPrefix = token.startsWith("sk_");
+          boolean hasAcceptableLength = token.length() >= 16;
+          return hasPrefix && hasAcceptableLength;
+        }
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'c3: fix bug (replace src/main/java/example/Range.java)'
+  message: 'c3: require full-length API keys again'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/ApiKeyValidator.java
+    old: boolean hasAcceptableLength = token.length() >= 16;
+    new: boolean hasAcceptableLength = token.length() == 32;
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: API key validator accepts shortened tokens after a semantic rewrite
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -69,29 +98,41 @@ bugs:
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/ApiKeyValidator.java
+    statement: return token != null && token.startsWith("sk_") && token.length() >= 16;
     change_type: line_modification
+  - id: F002
+    commit: c2
+    file: src/main/java/example/ApiKeyValidator.java
+    statement: boolean hasAcceptableLength = token.length() >= 16;
+    change_type: semantic_equivalent_rewrite
+    semantic_role: preserves_existing_bug
   fixes:
   - id: X001
     commit: c3
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
+    file: src/main/java/example/ApiKeyValidator.java
+    statement: boolean hasAcceptableLength = token.length() == 32;
     fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
     - c1
+    related_but_not_correct:
+    - c2
 scenario_design:
-  purpose: Evaluate Semantically equivalent rewrite and whether SZZ identifies the expected bug-introducing commit set.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses operations: write_file, replace.'
+  purpose: Evaluate whether SZZ traces through a semantically equivalent rewrite and reports the earlier bug-introducing commit.
+  current_schema_limitation: Semantic equivalence is represented as scenario metadata rather than mechanically proven.
+  required_extensions_from_source: 'This scenario uses factors: semantic_rewrite, related_but_not_correct; operations: write_file, replace.'
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Whether SZZ identifies c1 as the BIC.
+  - Whether c2 is recognized as preserving the already-buggy predicate rather than introducing it.
+  - Whether blame can pass through the predicate rewrite to the original weakening commit.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.
+semantic_rewrites:
+- commit: c2
+  file: src/main/java/example/ApiKeyValidator.java
+  preserves_behavior_from: c1
+  description: The one-line predicate is expanded into local variables while preserving the weakened length check.

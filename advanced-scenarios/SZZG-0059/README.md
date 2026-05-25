@@ -6,30 +6,32 @@
 
 ## Purpose
 
-Evaluate Semantically equivalent rewrite and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate whether SZZ traces through a semantically equivalent rewrite and reports the earlier bug-introducing commit.
 
 ## Expected history
 
 ```text
-c1: create initial state (write_file src/main/java/example/Range.java)
-c2: apply intermediate change (write_file docs/intermediate-note.md)
-c3: fix bug (replace src/main/java/example/Range.java)
+c0: create API key validator
+c1: weaken API key length requirement
+c2: rewrite the buggy predicate without changing behavior
+c3: fix the length requirement inside the rewritten predicate
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
+The intermediate rewrite preserves the bug, so it needs semantic metadata to avoid treating the rewrite as the BIC.
 
 ## Required graph-schema features
 
+- Factors: semantic_rewrite, related_but_not_correct
 - Operation types: write_file, replace
 - Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
-- Whether the expected_szz evaluation policy is applied correctly.
+- Whether SZZ identifies c1 as the BIC.
+- Whether c2 is recognized as preserving the already-buggy predicate rather than introducing it.
+- Whether blame can pass through the predicate rewrite to the original weakening commit.
 
 ---
 

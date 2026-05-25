@@ -146,6 +146,8 @@ scenarios:
   readme: advanced-scenarios/SZZG-0016/README.md
   status: draft
   factors:
+  - multiple_bic
+  - partial_credit
   - expected_szz
 - id: SZZG-0017
   title: One BFC fixes multiple independent bugs
@@ -413,6 +415,8 @@ scenarios:
   status: draft
   factors:
   - work_items
+  - intermediate_commit
+  - related_but_not_correct
 - id: SZZG-0046
   title: Multiple candidate BICs inside a work item
   category: Work-item and commit-series scenarios
@@ -442,6 +446,7 @@ scenarios:
   status: draft
   factors:
   - context
+  - commit_messages
 - id: SZZG-0050
   title: BFC message references the wrong commit
   category: Work-item and commit-series scenarios
@@ -450,6 +455,7 @@ scenarios:
   status: draft
   factors:
   - developer_hints
+  - misleading_commit_message
 - id: SZZG-0051
   title: Unrelated commits mixed in the same issue
   category: Work-item and commit-series scenarios
@@ -491,6 +497,8 @@ scenarios:
   readme: advanced-scenarios/SZZG-0055/README.md
   status: draft
   factors:
+  - caller_callee
+  - context
   - faults
 - id: SZZG-0056
   title: Config and code interaction
@@ -499,6 +507,9 @@ scenarios:
   readme: advanced-scenarios/SZZG-0056/README.md
   status: draft
   factors:
+  - config
+  - code_interaction
+  - context
   - faults
 - id: SZZG-0057
   title: Cause can be inferred from test failure
@@ -517,13 +528,16 @@ scenarios:
   status: draft
   factors:
   - issues
+  - context
 - id: SZZG-0059
   title: Semantically equivalent rewrite
   category: Context-aware and LLM-based SZZ scenarios
   path: advanced-scenarios/SZZG-0059/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0059/README.md
   status: draft
-  factors: []
+  factors:
+  - semantic_rewrite
+  - related_but_not_correct
 - id: SZZG-0060
   title: Root cause not in changed lines
   category: Context-aware and LLM-based SZZ scenarios

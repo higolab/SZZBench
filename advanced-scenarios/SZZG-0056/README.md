@@ -6,31 +6,32 @@
 
 ## Purpose
 
-Evaluate Config and code interaction and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate whether SZZ can identify a configuration BIC when the BFC changes code that interprets the configuration.
 
 ## Expected history
 
 ```text
-c1: create initial state (write_file src/main/java/example/Range.java)
-c2: apply intermediate change (write_file docs/intermediate-note.md)
-c3: fix bug (replace src/main/java/example/Range.java)
+c0: create retry delay config and interpreter
+c1: change config unit from seconds to milliseconds
+c2: document retry delay tuning
+c3: make code honor the configured delay unit
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
+The BIC is in configuration while the BFC is in code, so the scenario needs explicit context for the config/code dependency.
 
 ## Required graph-schema features
 
-- Factors: faults
+- Factors: config, code_interaction, context, faults
 - Operation types: write_file, replace
 - Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
-- Whether the expected_szz evaluation policy is applied correctly.
+- Whether SZZ identifies c1 as the config BIC.
+- Whether the code-only BFC is connected back to the config unit change.
+- Whether the unrelated documentation commit c2 is ignored.
 
 ---
 

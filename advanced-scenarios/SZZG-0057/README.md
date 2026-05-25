@@ -6,19 +6,20 @@
 
 ## Purpose
 
-Evaluate Cause can be inferred from test failure and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate whether SZZ can use failing-test context to connect the BFC to the parser-pattern BIC.
 
 ## Expected history
 
 ```text
-c1: create initial state (write_file src/main/java/example/Range.java)
-c2: apply intermediate change (write_file docs/intermediate-note.md)
-c3: fix bug (replace src/main/java/example/Range.java)
+c0: create ISO event date parser
+c1: introduce locale-specific parser pattern
+c2: add failing webhook date regression test
+c3: restore ISO parser pattern
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
+The key clue is in the failing test message and the regression test added after the BIC.
 
 ## Required graph-schema features
 
@@ -28,9 +29,9 @@ This history requires graph-aware scenario semantics that are difficult to expre
 
 ## Evaluation points
 
-- Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
-- Whether the expected_szz evaluation policy is applied correctly.
+- Whether SZZ identifies c1 as the BIC.
+- Whether the failing test message points to ISO date parsing rather than generic parser churn.
+- Whether the test commit c2 is not mistaken for a BIC.
 
 ---
 

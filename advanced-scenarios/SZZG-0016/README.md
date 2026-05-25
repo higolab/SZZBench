@@ -6,31 +6,32 @@
 
 ## Purpose
 
-Evaluate Partial credit when only some BICs are returned and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate scoring behavior when a complete answer contains two BICs but an SZZ implementation returns only one of them.
 
 ## Expected history
 
 ```text
-c1: create initial state (write_file src/main/java/example/Range.java)
-c2: apply intermediate change (write_file docs/intermediate-note.md)
-c3: fix bug (replace src/main/java/example/Range.java)
+c0: create checkout policy classes
+c1: introduce loyalty-discount threshold bug
+c2: introduce tax-exemption logic bug
+c3: fix both checkout policy faults
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
+This scenario needs graph-aware expected-SZZ metadata because the oracle allows partial credit for returning only one of the two required BICs.
 
 ## Required graph-schema features
 
-- Factors: expected_szz
+- Factors: multiple_bic, partial_credit, expected_szz
 - Operation types: write_file, replace
 - Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
-- Whether the expected_szz evaluation policy is applied correctly.
+- Whether SZZ can identify both checkout-policy BICs for one bug.
+- Whether returning only c1 or only c2 receives partial credit rather than full exact-set credit.
+- Whether the BFC that edits two files is evaluated against both required BICs.
 
 ---
 

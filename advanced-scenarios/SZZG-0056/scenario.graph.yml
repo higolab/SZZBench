@@ -3,11 +3,14 @@ meta:
   id: SZZG-0056
   title: Config and code interaction
   slug: config-code
-  description: Evaluates config and code interaction and checks whether SZZ identifies the expected bug-introducing commit
-    set.
+  description: Evaluates a bug introduced by a configuration unit change that is only visible when read together with the
+    code that interprets the setting.
   category: Context-aware and LLM-based SZZ scenarios
   category_code: J
   factors:
+  - config
+  - code_interaction
+  - context
   - faults
   difficulty: advanced
   status: draft
@@ -19,52 +22,79 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c1: create initial state (write_file src/main/java/example/Range.java)
-
-    c2: apply intermediate change (write_file docs/intermediate-note.md)
-
-    c3: fix bug (replace src/main/java/example/Range.java)'
+  history_summary: |
+    c0: create retry delay config and interpreter
+    c1: change config unit from seconds to milliseconds
+    c2: document retry delay tuning
+    c3: make code honor the configured delay unit
 commits:
-- id: c1
+- id: c0
   branch: main
   parents: []
-  message: 'c1: create initial state (write_file src/main/java/example/Range.java)'
+  message: 'c0: create retry delay config and interpreter'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value > min && value < max;\n  }\n}\n"
+    path: config/retry.properties
+    content: |
+      retry.delay.unit=seconds
+      retry.delay.value=2
+  - type: write_file
+    path: src/main/java/example/RetryPolicy.java
+    content: |
+      package example;
+
+      public class RetryPolicy {
+        private final String unit;
+        private final int configuredDelay;
+
+        public RetryPolicy(String unit, int configuredDelay) {
+          this.unit = unit;
+          this.configuredDelay = configuredDelay;
+        }
+
+        public int delayMillis() {
+          return configuredDelay * 1000;
+        }
+      }
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'c1: tune retry delay config to milliseconds'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: config/retry.properties
+    old: retry.delay.unit=seconds
+    new: retry.delay.unit=milliseconds
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: apply intermediate change (write_file docs/intermediate-note.md)'
+  message: 'c2: document retry delay configuration'
   role: intermediate
   operations:
   - type: write_file
-    path: docs/intermediate-note.md
-    content: 'intermediate change
-
-      '
+    path: docs/retry-delay.md
+    content: |
+      Retry delay is configured by retry.delay.value and retry.delay.unit.
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'c3: fix bug (replace src/main/java/example/Range.java)'
+  message: 'c3: honor millisecond retry delay config'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/RetryPolicy.java
+    old: return configuredDelay * 1000;
+    new: 'return unit.equals("milliseconds") ? configuredDelay : configuredDelay * 1000;'
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Millisecond retry config is interpreted as seconds
   bug_introducing_commits:
   - commit: c1
-    role: contributing
-  - commit: c2
     role: direct
   bug_fixing_commits:
   - commit: c3
@@ -72,14 +102,14 @@ bugs:
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
-    change_type: line_modification
+    file: config/retry.properties
+    statement: retry.delay.unit=milliseconds
+    change_type: config_modification
   fixes:
   - id: X001
     commit: c3
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
+    file: src/main/java/example/RetryPolicy.java
+    statement: 'return unit.equals("milliseconds") ? configuredDelay : configuredDelay * 1000;'
     fix_type: line_modification
 expected_szz:
   commit_level:
@@ -87,14 +117,18 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: Evaluate Config and code interaction and whether SZZ identifies the expected bug-introducing commit set.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: faults; operations: write_file, replace.'
+  purpose: Evaluate whether SZZ can identify a configuration BIC when the BFC changes code that interprets the configuration.
+  current_schema_limitation: Config/code dependencies are represented as context metadata rather than executable config parsing.
+  required_extensions_from_source: 'This scenario uses factors: config, code_interaction, context, faults; operations: write_file, replace.'
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Whether SZZ identifies c1 as the config BIC.
+  - Whether the code-only BFC is connected back to the config unit change.
+  - Whether the unrelated documentation commit c2 is ignored.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.
+context:
+  required_files:
+  - config/retry.properties
+  - src/main/java/example/RetryPolicy.java
+  interaction: RetryPolicy.delayMillis must interpret retry.delay.unit consistently with config/retry.properties.
