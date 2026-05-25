@@ -3,47 +3,51 @@ meta:
   id: SZZG-0029
   title: Old BIC and re-BIC are both plausible
   slug: old-bic-re-bic-plausible
-  description: Evaluates old bic and re-bic are both plausible and checks whether SZZ identifies the expected bug-introducing
-    commit set.
+  description: A bug is introduced, fixed, reintroduced by a partial revert, and fixed again. The direct BIC for the final
+    fix is the reintroducing commit, but the old original BIC is also a plausible origin-related answer under an origin-aware
+    evaluation policy.
   category: Revert and reintroduction scenarios
   category_code: F
   factors:
-  - expected_szz
+  - reintroduction
+  - partial_revert
+  - origin_bic
+  - evaluation_variants
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0029-old-bic-re-bic-plausible
+  name: SZZG-0029-old-bic-and-re-bic-plausible
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
+  history_summary: 'c0: create initial correct implementation
 
-    c1: introduce bug (replace src/main/java/example/Range.java)
+    c1: introduce original range boundary bug
 
-    c2: fix bug (replace src/main/java/example/Range.java)
+    c2: fix original bug and perform a small refactoring
 
-    c3: revert change (replace src/main/java/example/Range.java)
+    c3: partially revert c2 and reintroduce the boundary bug while keeping the refactoring
 
-    c4: fix bug (replace src/main/java/example/Range.java)'
+    c4: fix the reintroduced bug'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
+  message: 'c0: create initial correct implementation'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
     content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
+      \ value >= min && value <= max;\n  }\n\n  public String source() {\n    return \"main\";\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
+  message: 'c1: introduce original range boundary bug'
   role: bug_introducing
   operations:
   - type: replace
@@ -54,32 +58,34 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: fix bug (replace src/main/java/example/Range.java)'
+  message: 'c2: fix range boundary bug and rename source label'
   role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value > min && value < max;
     new: return value >= min && value <= max;
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return "main";
+    new: return "range-service";
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'c3: revert change (replace src/main/java/example/Range.java)'
-  role: revert
+  message: 'c3: partially revert boundary fix and reintroduce bug'
+  role: bug_reintroducing
+  revert_of: c2
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
     new: return value > min && value < max;
-  reverts:
-  - commit: c2
-    mode: partial
 - id: c4
   branch: main
   parents:
   - c3
-  message: 'c4: fix bug (replace src/main/java/example/Range.java)'
+  message: 'c4: fix reintroduced range boundary bug'
   role: bug_fixing
   operations:
   - type: replace
@@ -88,42 +94,68 @@ commits:
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Partial revert reintroduces boundary bug
+  title: Reintroduced range boundary bug with old and new plausible BICs
   bug_introducing_commits:
   - commit: c3
-    role: reintroducing
+    role: direct_reintroduction
+    description: Direct BIC for the final bug instance fixed by c4.
+    reverts: c2
   - commit: c1
-    role: origin
+    role: old_origin_bic
+    description: Original BIC where the same faulty logic first appeared.
   bug_fixing_commits:
   - commit: c4
-    role: complete_fix
+    role: final_fix
   faults:
   - id: F001
     commit: c3
     file: src/main/java/example/Range.java
     statement: return value > min && value < max;
-    change_type: partial_revert
+    change_type: reintroduced_line_modification
+  origin_faults:
+  - id: OF001
+    commit: c1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: origin_line_modification
   fixes:
   - id: X001
     commit: c4
     file: src/main/java/example/Range.java
     statement: return value >= min && value <= max;
+    fix_type: line_modification
 expected_szz:
-  commit_level:
-    evaluation_policy: reintroduction_direct
-    required:
-    - c3
-    related_but_not_correct:
-    - c1
+  default_variant: reintroduction-direct
+  evaluation_variants:
+  - name: reintroduction-direct
+    description: Only the reintroducing commit is considered the correct BIC for the final fix.
+    commit_level:
+      evaluation_policy: exact_set
+      required:
+      - c3
+      related_but_not_correct:
+      - c1
+  - name: origin-aware
+    description: The reintroducing commit is required, and the old origin BIC is accepted as related context.
+    commit_level:
+      evaluation_policy: relaxed_with_related
+      required:
+      - c3
+      acceptable_related:
+      - commit: c1
+        reason: old_origin_bic
+        credit: 0.5
 scenario_design:
-  purpose: Evaluate Old BIC and re-BIC are both plausible and whether SZZ identifies the expected bug-introducing commit set.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: expected_szz; operations: write_file, replace.'
+  purpose: Evaluate a reintroduced bug where the direct re-BIC and the old origin BIC are both plausible depending on the
+    evaluation policy.
+  key_property: c3 partially reverts c2 by restoring only the faulty boundary condition, while keeping c2's unrelated refactoring.
+  difference_from_SZZG_0028: SZZG-0028 should focus on direct reintroduction. SZZG-0029 keeps the same reintroduction theme
+    but adds explicit evaluation variants for old-origin-aware evaluation.
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Whether SZZ identifies c3 as the direct reintroducing BIC for c4.
+  - Whether c1 can be treated as an origin-related answer under an alternative evaluation policy.
+  - Whether a partial revert is distinguished from the old original BIC.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
+- This revision makes SZZG-0029 an evaluation-variant scenario for old BIC versus re-BIC.
+- c3 partially reverts c2 only for the boundary condition; it keeps the source-label refactoring from c2.
+- The default expected BIC is c3.

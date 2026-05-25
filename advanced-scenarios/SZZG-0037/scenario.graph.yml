@@ -3,12 +3,16 @@ meta:
   id: SZZG-0037
   title: Backport fix
   slug: backport-fix
-  description: Evaluates backport fix and checks whether SZZ identifies the expected bug-introducing commit set.
+  description: A bug is introduced on main before a release branch is cut. Main fixes the bug, continues with unrelated development,
+    and the release branch receives release-specific changes. The main fix is then backported to release.
   category: Branch, merge, cherry-pick, and backport scenarios
   category_code: G
   factors:
   - branch
   - backport_of
+  - release_branch
+  - release_specific_changes
+  - bug_instances
   difficulty: advanced
   status: draft
 repository:
@@ -19,20 +23,24 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
+  history_summary: 'c0: create initial correct implementation on main
 
-    c1: introduce bug (replace src/main/java/example/Range.java)
+    c1: introduce bug on main before release branch is cut
 
-    c2: fix bug (replace src/main/java/example/Range.java)
+    r0: create release branch from the buggy state and add release metadata
 
-    r1: introduce bug (replace src/main/java/example/Range.java)
+    c2: fix bug on main
 
-    r2: fix bug (replace src/main/java/example/Range.java)'
+    c3: continue main development after the fix
+
+    r1: add release-specific configuration while bug is still present on release
+
+    r2: backport main fix c2 onto release'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
+  message: 'c0: create initial correct implementation'
   role: initial
   operations:
   - type: write_file
@@ -43,87 +51,135 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
+  message: 'c1: introduce range boundary bug before release branch'
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
     new: return value > min && value < max;
+- id: r0
+  branch: release
+  parents:
+  - c1
+  message: 'r0: cut release branch from buggy state'
+  role: release_branch_point
+  operations:
+  - type: write_file
+    path: release/version.txt
+    content: '1.0.0
+
+      '
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: fix bug (replace src/main/java/example/Range.java)'
+  message: 'c2: fix range boundary bug on main'
   role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value > min && value < max;
     new: return value >= min && value <= max;
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'c3: continue main development after fix'
+  role: intermediate
+  operations:
+  - type: write_file
+    path: docs/main-after-fix.md
+    content: 'Main branch continues after the range bug fix.
+
+      '
 - id: r1
   branch: release
   parents:
-  - c0
-  message: 'r1: introduce bug (replace src/main/java/example/Range.java)'
-  role: bug_introducing
+  - r0
+  message: 'r1: add release-specific configuration before backport'
+  role: intermediate
   operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
+  - type: write_file
+    path: release/config.properties
+    content: 'range.mode=compat
+
+      '
 - id: r2
   branch: release
   parents:
   - r1
-  message: 'r2: fix bug (replace src/main/java/example/Range.java)'
+  message: 'r2: backport range boundary fix from main'
   role: bug_fixing
+  backport_of: c2
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value > min && value < max;
     new: return value >= min && value <= max;
-  backport_of: c2
 bugs:
 - id: B001
-  title: Release branch bug fixed by backport
+  title: Range boundary bug fixed on main and backported to release
   bug_introducing_commits:
-  - commit: r1
-    role: direct
   - commit: c1
-    role: origin
+    role: direct
   bug_fixing_commits:
+  - commit: c2
+    role: main_fix
   - commit: r2
     role: backport_fix
+    backport_of: c2
   faults:
   - id: F001
-    commit: r1
+    commit: c1
     file: src/main/java/example/Range.java
     statement: return value > min && value < max;
+    change_type: line_modification
   fixes:
   - id: X001
+    commit: c2
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+    fix_type: main_line_fix
+  - id: X002
     commit: r2
     file: src/main/java/example/Range.java
     statement: return value >= min && value <= max;
     fix_type: backport_fix
+  bug_instances:
+  - branch: main
+    status: fixed
+    fix_commit: c2
+  - branch: release
+    status: fixed
+    fix_commit: r2
+    backport_of: c2
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - r1
-    acceptable_related:
-    - commit: c1
-      reason: mainline_origin
-      credit: 0.5
+    - c1
+    notes: Both the main fix c2 and the release backport r2 should trace back to the original BIC c1.
+  branch_level:
+    main:
+      bfc: c2
+      required:
+      - c1
+    release:
+      bfc: r2
+      required:
+      - c1
 scenario_design:
-  purpose: Evaluate Backport fix and whether SZZ identifies the expected bug-introducing commit set.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: branch, backport_of; operations: write_file, replace.'
+  purpose: Evaluate whether SZZ can identify the original BIC when a main-line fix is backported to a release branch.
+  key_property: The release branch has release-specific changes before the backport, so the history is not just a linear correct-buggy-fixed
+    sequence.
+  difference_from_SZZG_0028_0029: SZZG-0028 and SZZG-0029 are revert/reintroduction scenarios. SZZG-0037 is a branch scenario
+    where the release fix is a backport of the main-line BFC.
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Whether SZZ traces the release backport r2 to c1.
+  - Whether backport metadata is handled without treating c2 as the BIC.
+  - Whether release-specific changes before the backport do not hide the original BIC.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
+- This revision adds release-specific changes to avoid collapsing the source history into a simple correct-buggy-fixed sequence.
+- r2 is an explicit backport of c2.
+- The expected BIC remains c1 for both main and release fixes.

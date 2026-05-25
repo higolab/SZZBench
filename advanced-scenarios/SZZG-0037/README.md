@@ -1,49 +1,48 @@
 # SZZG-0037: Backport fix
 
-## Source
+## Overview
 
-- Category: Branch, merge, cherry-pick, and backport scenarios
+This scenario represents a main-line fix that is backported to a release branch.
 
-## Purpose
+A bug is introduced on `main` before the release branch is cut. The release branch is created from the buggy state. Main fixes the bug and continues development. The release branch also receives release-specific changes. Finally, the main fix is backported to release.
 
-Evaluate Backport fix and whether SZZ identifies the expected bug-introducing commit set.
-
-## Expected history
+## Commit graph
 
 ```text
-c0: create initial state (write_file src/main/java/example/Range.java)
-c1: introduce bug (replace src/main/java/example/Range.java)
-c2: fix bug (replace src/main/java/example/Range.java)
-r1: introduce bug (replace src/main/java/example/Range.java)
-r2: fix bug (replace src/main/java/example/Range.java)
+main:     c0 ---- c1(BIC) ---- c2(BFC) ---- c3
+                    \
+release:             r0 ---- r1 ---- r2(BFC, backport of c2)
 ```
 
-## Why this needs `scenario.graph.yml`
-
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
-
-## Required graph-schema features
-
-- Factors: branch, backport_of
-- Operation types: write_file, replace
-- Expected SZZ policy is defined in expected_szz.
-
-## Evaluation points
-
-- Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
-- Whether the expected_szz evaluation policy is applied correctly.
-
----
-
-## Draft status
-
-This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
-
-## Files
+## Commit history
 
 ```text
-SZZG-0037/
-|-- scenario.graph.yml
-`-- README.md
+c0: create initial correct implementation on main
+c1: introduce bug on main before release branch is cut
+r0: create release branch from the buggy state and add release metadata
+c2: fix bug on main
+c3: continue main development after the fix
+r1: add release-specific configuration while bug is still present on release
+r2: backport main fix c2 onto release
 ```
+
+## Oracle
+
+Expected BIC:
+
+```text
+c1
+```
+
+Bug-fixing commits:
+
+```text
+c2: main-line fix
+r2: release-branch backport fix
+```
+
+## Difference from SZZG-0028 and SZZG-0029
+
+`SZZG-0028` and `SZZG-0029` are revert / reintroduction scenarios.
+
+`SZZG-0037` is a branch and backport scenario. The release branch keeps the bug until the main-line fix is backported.

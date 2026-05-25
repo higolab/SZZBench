@@ -1,49 +1,84 @@
 # SZZG-0029: Old BIC and re-BIC are both plausible
 
-## Source
+## Overview
 
-- Category: Revert and reintroduction scenarios
+This scenario represents a bug that is introduced, fixed, reintroduced by a partial revert, and fixed again.
 
-## Purpose
+The direct BIC for the final fix is the reintroducing commit `c3`. However, the original old BIC `c1` is also a plausible origin-related answer under an origin-aware evaluation policy.
 
-Evaluate Old BIC and re-BIC are both plausible and whether SZZ identifies the expected bug-introducing commit set.
-
-## Expected history
+## Commit history
 
 ```text
-c0: create initial state (write_file src/main/java/example/Range.java)
-c1: introduce bug (replace src/main/java/example/Range.java)
-c2: fix bug (replace src/main/java/example/Range.java)
-c3: revert change (replace src/main/java/example/Range.java)
-c4: fix bug (replace src/main/java/example/Range.java)
+c0: create initial correct implementation
+c1: introduce original range boundary bug
+c2: fix original bug and perform a small refactoring
+c3: partially revert c2 and reintroduce the boundary bug while keeping the refactoring
+c4: fix the reintroduced bug
 ```
 
-## Why this needs `scenario.graph.yml`
+## Code states
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
+Correct state in `c0`:
 
-## Required graph-schema features
+```java
+return value >= min && value <= max;
+return "main";
+```
 
-- Factors: expected_szz
-- Operation types: write_file, replace
-- Expected SZZ policy is defined in expected_szz.
+Original bug in `c1`:
 
-## Evaluation points
+```java
+return value > min && value < max;
+return "main";
+```
 
-- Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
-- Whether the expected_szz evaluation policy is applied correctly.
+Fix and unrelated refactoring in `c2`:
 
----
+```java
+return value >= min && value <= max;
+return "range-service";
+```
 
-## Draft status
+Partial revert / reintroduction in `c3`:
 
-This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
+```java
+return value > min && value < max;
+return "range-service";
+```
 
-## Files
+Final fix in `c4`:
+
+```java
+return value >= min && value <= max;
+return "range-service";
+```
+
+## Oracle
+
+Default expected BIC:
 
 ```text
-SZZG-0029/
-|-- scenario.graph.yml
-`-- README.md
+c3
 ```
+
+Related old origin BIC:
+
+```text
+c1
+```
+
+## Evaluation variants
+
+### reintroduction-direct
+
+Only `c3` is considered correct for the final fix.
+
+### origin-aware
+
+`c3` is required, while `c1` is accepted as an origin-related BIC with partial credit.
+
+## Difference from SZZG-0028
+
+`SZZG-0028` should focus on the direct reintroduction case.
+
+`SZZG-0029` explicitly models the evaluation question where both the reintroducing BIC and the old origin BIC may be considered plausible depending on evaluation policy.
