@@ -1,10 +1,10 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0045
-  title: BIC hidden by cleanup immediately before BFC
-  slug: bic-bfc-cleanup
-  description: Evaluates bic hidden by cleanup immediately before bfc and checks whether SZZ identifies the expected bug-introducing
-    commit set.
+  title: BIC separated from BFC by an intermediate work-item commit
+  slug: bic-bfc-intermediate-work-item
+  description: Evaluates a work-item series where an unrelated intermediate commit appears between the bug-introducing commit
+    and the bug-fixing commit.
   category: Work-item and commit-series scenarios
   category_code: H
   factors:
@@ -12,7 +12,7 @@ meta:
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0045-bic-bfc-cleanup
+  name: SZZG-0045-bic-bfc-intermediate-work-item
   default_branch: main
   language: java
   build_system: none
@@ -21,7 +21,7 @@ graph:
   model: commit_dag
   history_summary: 'c1: create initial state (write_file src/main/java/example/Range.java)
 
-    c2: apply intermediate change (write_file docs/intermediate-note.md)
+    c2: apply unrelated work-item note (write_file docs/intermediate-note.md)
 
     c3: fix bug (replace src/main/java/example/Range.java)'
 commits:
@@ -39,7 +39,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: apply intermediate change (write_file docs/intermediate-note.md)'
+  message: 'c2: apply unrelated work-item note (write_file docs/intermediate-note.md)'
   role: intermediate
   operations:
   - type: write_file
@@ -60,7 +60,7 @@ commits:
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Range boundary bug with an intermediate work-item commit
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -85,21 +85,21 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: Evaluate BIC hidden by cleanup immediately before BFC and whether SZZ identifies the expected bug-introducing commit
-    set.
+  purpose: Evaluate whether SZZ identifies the original BIC when an unrelated work-item candidate commit appears immediately
+    before the BFC.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
   required_extensions_from_source: 'This scenario uses factors: work_items; operations: write_file, replace.'
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether an unrelated intermediate work-item commit is not mistaken for the BIC.
   - Whether the expected_szz evaluation policy is applied correctly.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.
 work_items:
 - id: WI-001
-  title: Synthetic work item for graph scenario
+  title: Work item containing a boundary bug, an unrelated note, and the fix
   commits:
   - commit: c1
     relevance: bug_introducing

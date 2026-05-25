@@ -716,14 +716,14 @@ scenarios:
   status: active
   path: scenarios/SZZ-0059/scenario.yml
 - id: SZZ-0060
-  title: BFC changes exception behavior
-  slug: bfc-exception-behavior-change
+  title: BFC restores division guard condition
+  slug: bfc-restores-division-guard
   category: bfc-shape
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - exception-behavior
+  - comparison-error
   difficulty: medium
   status: active
   path: scenarios/SZZ-0060/scenario.yml

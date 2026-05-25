@@ -1,4 +1,4 @@
-# SZZG-0072: Line-level impossible but entity-level possible
+# SZZG-0072: Entity-level-only expected SZZ policy
 
 ## Source
 
@@ -6,7 +6,7 @@
 
 ## Purpose
 
-Evaluate Line-level impossible but entity-level possible and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate whether SZZ output can be judged against an entity-level oracle when line-level evaluation is intentionally disabled.
 
 ## Expected history
 
@@ -23,13 +23,13 @@ This history requires graph-aware scenario semantics that are difficult to expre
 
 - Factors: expected_szz
 - Operation types: write_file, replace
-- Expected SZZ policy is defined in expected_szz.
+- Expected SZZ policy defines line-level evaluation as unavailable and method-level entity evaluation as available.
 
 ## Evaluation points
 
-- Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
-- Whether the expected_szz evaluation policy is applied correctly.
+- Whether SZZ output can be evaluated at method-entity level.
+- Whether tooling respects the line_level.available=false policy.
+- Whether the expected_szz entity-level oracle is applied correctly.
 
 ---
 

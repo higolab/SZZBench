@@ -1,19 +1,20 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0060
-  title: BFC changes exception behavior
-  slug: bfc-exception-behavior-change
-  description: 'This scenario evaluates SZZ behavior when the bug-fixing commit has the shape: BFC changes exception behavior.'
+  title: BFC restores division guard condition
+  slug: bfc-restores-division-guard
+  description: This scenario evaluates SZZ behavior when the bug-fixing commit restores a boolean guard condition for a division
+    denominator check.
   category: bfc-shape
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - exception-behavior
+  - comparison-error
   difficulty: medium
   status: active
 repository:
-  name: SZZ-0060-bfc-exception-behavior-change
+  name: SZZ-0060-bfc-restores-division-guard
   default_branch: main
   language: java
   build_system: none
@@ -91,7 +92,7 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: BFC changes exception behavior
+  title: BFC restores division guard condition
   bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1

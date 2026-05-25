@@ -1,4 +1,4 @@
-# SZZG-0045: BIC hidden by cleanup immediately before BFC
+# SZZG-0045: BIC separated from BFC by an intermediate work-item commit
 
 ## Source
 
@@ -6,19 +6,19 @@
 
 ## Purpose
 
-Evaluate BIC hidden by cleanup immediately before BFC and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate whether SZZ identifies the original BIC when an unrelated intermediate work-item commit appears immediately before the BFC.
 
 ## Expected history
 
 ```text
 c1: create initial state (write_file src/main/java/example/Range.java)
-c2: apply intermediate change (write_file docs/intermediate-note.md)
+c2: apply unrelated work-item note (write_file docs/intermediate-note.md)
 c3: fix bug (replace src/main/java/example/Range.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
+This history uses graph-aware work-item metadata to mark the intermediate commit as a candidate in the same work-item series.
 
 ## Required graph-schema features
 
@@ -29,7 +29,7 @@ This history requires graph-aware scenario semantics that are difficult to expre
 ## Evaluation points
 
 - Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
+- Whether an unrelated intermediate work-item commit is not mistaken for the BIC.
 - Whether the expected_szz evaluation policy is applied correctly.
 
 ---

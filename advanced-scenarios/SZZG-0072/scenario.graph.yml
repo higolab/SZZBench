@@ -1,10 +1,10 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0072
-  title: Line-level impossible but entity-level possible
-  slug: line-level-entity-level
-  description: Evaluates line-level impossible but entity-level possible and checks whether SZZ identifies the expected bug-introducing
-    commit set.
+  title: Entity-level-only expected SZZ policy
+  slug: entity-level-only-expected-szz
+  description: Evaluates an expected SZZ policy that records the faulty method entity while intentionally disabling line-level
+    evaluation for this graph scenario.
   category: Schema and evaluation-policy scenarios
   category_code: L
   factors:
@@ -12,7 +12,7 @@ meta:
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0072-line-level-entity-level
+  name: SZZG-0072-entity-level-only-expected-szz
   default_branch: main
   language: java
   build_system: none
@@ -46,7 +46,7 @@ commits:
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Range boundary bug evaluated at entity level
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -71,7 +71,8 @@ bugs:
 expected_szz:
   line_level:
     available: false
-    reason: The scenario is defined at entity level.
+    reason: This scenario intentionally evaluates entity-level output only, even though the changed statement is recorded for
+      traceability.
   entity_level:
     available: true
     entities:
@@ -79,15 +80,15 @@ expected_szz:
       file: src/main/java/example/Range.java
       signature: boolean contains(int value, int min, int max)
 scenario_design:
-  purpose: Evaluate Line-level impossible but entity-level possible and whether SZZ identifies the expected bug-introducing
-    commit set.
+  purpose: Evaluate whether SZZ output can be judged against an entity-level oracle when line-level evaluation is intentionally
+    disabled.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
   required_extensions_from_source: 'This scenario uses factors: expected_szz; operations: write_file, replace.'
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Whether SZZ output can be evaluated at method-entity level.
+  - Whether tooling respects the line_level.available=false policy.
+  - Whether the expected_szz entity-level oracle is applied correctly.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.

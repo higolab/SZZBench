@@ -1,8 +1,8 @@
-# SZZ-0060: BFC changes exception behavior
+# SZZ-0060: BFC restores division guard condition
 
 ## Purpose
 
-This scenario evaluates SZZ behavior when the bug-fixing commit has the shape: BFC changes exception behavior.
+This scenario evaluates SZZ behavior when the bug-fixing commit restores a boolean guard condition for a division denominator check.
 
 ## Commit structure
 
@@ -19,4 +19,4 @@ The expected BFC is `c2` and the expected BIC is `c1`.
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `exception-behavior`
+- `comparison-error`
