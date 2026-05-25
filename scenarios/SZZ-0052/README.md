@@ -2,13 +2,13 @@
 
 ## Purpose
 
-This scenario evaluates SZZ behavior when the bug-fixing commit has the shape: BFC with test file addition.
+This scenario evaluates SZZ behavior when the bug-fixing commit fixes production code and adds a regression test file in the same BFC.
 
 ## Commit structure
 
 - `c0`: Initial correct implementation
 - `c1`: Introduce bug
-- `c2`: Fix bug
+- `c2`: Fix bug and add regression test file
 
 ## Expected behavior
 

@@ -7,7 +7,7 @@ This scenario evaluates a bug-introducing commit shape: Large commit with small 
 ## Commit structure
 
 - `c0`: initial correct implementation
-- `c1`: introduces the bug
+- `c1`: large cleanup commit that introduces a small bug
 - `c2`: fixes the bug
 
 ## Expected behavior

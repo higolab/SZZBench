@@ -37,7 +37,7 @@ commits:
           }
       }
 - id: c1
-  message: Introduce bug
+  message: Introduce bug inside large validation cleanup
   author: Bob <bob@example.com>
   date: '2024-01-02T10:00:00Z'
   role: bug_introducing
@@ -59,6 +59,22 @@ commits:
           public boolean valid(int value) {
               return value > 0;
           }
+
+          public int normalize(int value) {
+              return Math.max(value, 0);
+          }
+
+          public boolean belowLimit(int value, int limit) {
+              return value < limit;
+          }
+
+          public String label(int value) {
+              return "value=" + value;
+          }
+
+          public boolean hasValue(String value) {
+              return value != null && !value.isEmpty();
+          }
       }
     labels:
     - B001
@@ -78,6 +94,22 @@ commits:
           public boolean valid(int value) {
               return value > 0;
           }
+
+          public int normalize(int value) {
+              return Math.max(value, 0);
+          }
+
+          public boolean belowLimit(int value, int limit) {
+              return value < limit;
+          }
+
+          public String label(int value) {
+              return "value=" + value;
+          }
+
+          public boolean hasValue(String value) {
+              return value != null && !value.isEmpty();
+          }
       }
     new: |
       package example;
@@ -85,6 +117,22 @@ commits:
       public class Scenario0118 {
           public boolean valid(int value) {
               return value >= 0;
+          }
+
+          public int normalize(int value) {
+              return Math.max(value, 0);
+          }
+
+          public boolean belowLimit(int value, int limit) {
+              return value < limit;
+          }
+
+          public String label(int value) {
+              return "value=" + value;
+          }
+
+          public boolean hasValue(String value) {
+              return value != null && !value.isEmpty();
           }
       }
     labels:

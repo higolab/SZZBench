@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This scenario is intended for evaluating SZZ variants that use commit messages or broader patch context.
+This scenario is intended for evaluating SZZ variants that need caller context around a patched helper method.
 
 ## Commit structure
 

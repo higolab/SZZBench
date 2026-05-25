@@ -89,6 +89,18 @@ commits:
     labels:
     - B001
     - fix
+  - type: write_file
+    path: src/test/java/example/Scenario0052Test.java
+    content: |
+      package example;
+
+      public class Scenario0052Test {
+          public void zeroIsValid() {
+              if (!new Scenario0052().valid(0)) {
+                  throw new AssertionError("zero should be valid");
+              }
+          }
+      }
 bugs:
 - id: B001
   title: BFC with test file addition

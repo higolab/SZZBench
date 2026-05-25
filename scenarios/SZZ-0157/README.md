@@ -8,11 +8,12 @@ This scenario is intended for evaluating SZZ variants that use commit messages o
 
 - `c0`: initial implementation
 - `c1`: introduces the bug
-- `c2`: BFC with message: Fix retry condition after cleanup
+- `c2`: performance cleanup distractor
+- `c3`: BFC with message: Fix retry condition after performance cleanup
 
 ## Expected behavior
 
-The expected BFC is `c2` and the expected BIC is `c1`.
+The expected BFC is `c3` and the expected BIC is `c1`.
 
 ## Factors
 

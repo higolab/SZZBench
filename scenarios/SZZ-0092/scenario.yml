@@ -31,8 +31,11 @@ commits:
       package example;
 
       public class Scenario0092 {
-          public boolean valid(int value) {
-              return count >= required;
+          public boolean enough(int count, int required) {
+              for (int ignored = 0; ignored < 1; ignored++) {
+                  return count >= required;
+              }
+              return false;
           }
       }
 - id: c1
@@ -43,27 +46,13 @@ commits:
   operations:
   - type: replace
     path: src/main/java/example/Scenario0092.java
-    old: |
-      package example;
-
-      public class Scenario0092 {
-          public boolean valid(int value) {
-              return count >= required;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0092 {
-          public boolean valid(int value) {
-              return count > required;
-          }
-      }
+    old: return count >= required;
+    new: return count > required;
     labels:
     - B001
     - fault
 - id: c2
-  message: Apply intermediate rewrite
+  message: Rewrite loop to conditional after bug introduction
   author: Carol <carol@example.com>
   date: '2024-01-03T10:00:00Z'
   role: refactoring
@@ -74,8 +63,11 @@ commits:
       package example;
 
       public class Scenario0092 {
-          public boolean valid(int value) {
-              return count > required;
+          public boolean enough(int count, int required) {
+              for (int ignored = 0; ignored < 1; ignored++) {
+                  return count > required;
+              }
+              return false;
           }
       }
     new: |
@@ -96,22 +88,8 @@ commits:
   operations:
   - type: replace
     path: src/main/java/example/Scenario0092.java
-    old: |
-      package example;
-
-      public class Scenario0092 {
-          public boolean enough(int count, int required) {
-              return count > required;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0092 {
-          public boolean valid(int value) {
-              return count >= required;
-          }
-      }
+    old: return count > required;
+    new: return count >= required;
     labels:
     - B001
     - fix
@@ -126,8 +104,8 @@ bugs:
     file: src/main/java/example/Scenario0092.java
     entity:
       type: method
-      name: valid
-      signature: boolean valid(int value)
+      name: enough
+      signature: boolean enough(int count, int required)
     statement: return count > required;
     change_type: line_modification
   fix:
@@ -135,8 +113,8 @@ bugs:
     file: src/main/java/example/Scenario0092.java
     entity:
       type: method
-      name: valid
-      signature: boolean valid(int value)
+      name: enough
+      signature: boolean enough(int count, int required)
     statement: return count >= required;
     fix_type: line_modification
   expected_szz:

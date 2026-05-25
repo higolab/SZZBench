@@ -27,7 +27,15 @@ commits:
   operations:
   - type: write_file
     path: src/main/java/example/Scenario0103.java
-    content: "package example;\n\npublic class Scenario0103 {\n    public boolean valid(int value) {\n        return value >= 0;\n    }\n}\n"
+    content: |
+      package example;
+
+      public class Scenario0103 {
+          public boolean valid(int value) {
+              // zero is valid
+              return value >= 0;
+          }
+      }
 - id: c1
   message: Introduce bug
   author: Bob <bob@example.com>
@@ -36,26 +44,33 @@ commits:
   operations:
   - type: replace
     path: src/main/java/example/Scenario0103.java
-    old: "package example;\n\npublic class Scenario0103 {\n    public boolean valid(int value) {\n        return value >= 0;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0103 {\n    public boolean valid(int value) {\n        return value > 0;\n    }\n}\n"
+    old: return value >= 0;
+    new: return value > 0;
     labels:
     - B001
     - fault
 - id: c2
-  message: Apply intermediate rewrite
+  message: Delete stale comment after bug introduction
   author: Carol <carol@example.com>
   date: '2024-01-03T10:00:00Z'
   role: distractor
   operations:
   - type: replace
     path: src/main/java/example/Scenario0103.java
-    old: "package example;\n\npublic class Scenario0103 {\n    public boolean valid(int value) {\n        return value > 0;\n    }\n}\n"
+    old: |
+      package example;
+
+      public class Scenario0103 {
+          public boolean valid(int value) {
+              // zero is valid
+              return value > 0;
+          }
+      }
     new: |
       package example;
 
       public class Scenario0103 {
           public boolean valid(int value) {
-              // comment was removed in a later cleanup
               return value > 0;
           }
       }
@@ -69,16 +84,8 @@ commits:
   operations:
   - type: replace
     path: src/main/java/example/Scenario0103.java
-    old: |
-      package example;
-
-      public class Scenario0103 {
-          public boolean valid(int value) {
-              // comment was removed in a later cleanup
-              return value > 0;
-          }
-      }
-    new: "package example;\n\npublic class Scenario0103 {\n    public boolean valid(int value) {\n        return value >= 0;\n    }\n}\n"
+    old: return value > 0;
+    new: return value >= 0;
     labels:
     - B001
     - fix

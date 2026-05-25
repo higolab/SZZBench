@@ -31,7 +31,11 @@ commits:
       package example;
 
       public class Scenario0091 {
-          public boolean valid(int value) {
+          public boolean valid(int value, int min) {
+              return atLeastMin(value, min);
+          }
+
+          private boolean atLeastMin(int value, int min) {
               return value >= min;
           }
       }
@@ -47,7 +51,11 @@ commits:
       package example;
 
       public class Scenario0091 {
-          public boolean valid(int value) {
+          public boolean valid(int value, int min) {
+              return atLeastMin(value, min);
+          }
+
+          private boolean atLeastMin(int value, int min) {
               return value >= min;
           }
       }
@@ -55,7 +63,11 @@ commits:
       package example;
 
       public class Scenario0091 {
-          public boolean valid(int value) {
+          public boolean valid(int value, int min) {
+              return atLeastMin(value, min);
+          }
+
+          private boolean atLeastMin(int value, int min) {
               return value > min;
           }
       }
@@ -63,7 +75,7 @@ commits:
     - B001
     - fault
 - id: c2
-  message: Apply intermediate rewrite
+  message: Inline helper after bug introduction
   author: Carol <carol@example.com>
   date: '2024-01-03T10:00:00Z'
   role: refactoring
@@ -74,7 +86,11 @@ commits:
       package example;
 
       public class Scenario0091 {
-          public boolean valid(int value) {
+          public boolean valid(int value, int min) {
+              return atLeastMin(value, min);
+          }
+
+          private boolean atLeastMin(int value, int min) {
               return value > min;
           }
       }
@@ -82,7 +98,7 @@ commits:
       package example;
 
       public class Scenario0091 {
-          public boolean check(int value, int min) {
+          public boolean valid(int value, int min) {
               return value > min;
           }
       }
@@ -100,7 +116,7 @@ commits:
       package example;
 
       public class Scenario0091 {
-          public boolean check(int value, int min) {
+          public boolean valid(int value, int min) {
               return value > min;
           }
       }
@@ -108,7 +124,7 @@ commits:
       package example;
 
       public class Scenario0091 {
-          public boolean valid(int value) {
+          public boolean valid(int value, int min) {
               return value >= min;
           }
       }
@@ -126,8 +142,8 @@ bugs:
     file: src/main/java/example/Scenario0091.java
     entity:
       type: method
-      name: valid
-      signature: boolean valid(int value)
+      name: atLeastMin
+      signature: boolean atLeastMin(int value, int min)
     statement: return value > min;
     change_type: line_modification
   fix:
@@ -136,7 +152,7 @@ bugs:
     entity:
       type: method
       name: valid
-      signature: boolean valid(int value)
+      signature: boolean valid(int value, int min)
     statement: return value >= min;
     fix_type: line_modification
   expected_szz:

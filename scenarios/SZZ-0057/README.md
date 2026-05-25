@@ -2,13 +2,13 @@
 
 ## Purpose
 
-This scenario evaluates SZZ behavior when the bug-fixing commit has the shape: BFC with multiple files represented by write_file.
+This scenario evaluates SZZ behavior when the bug-fixing commit touches the fixed source file and creates an additional file using `write_file`.
 
 ## Commit structure
 
 - `c0`: Initial correct implementation
 - `c1`: Introduce bug
-- `c2`: Fix bug
+- `c2`: Fix bug and add an extra source file
 
 ## Expected behavior
 

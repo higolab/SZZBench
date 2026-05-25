@@ -7,7 +7,7 @@ This scenario is intended for evaluating SZZ variants that use commit messages o
 ## Commit structure
 
 - `c0`: initial implementation
-- `c1`: introduces the bug
+- `c1`: introduces the bug with a message that describes the root cause
 - `c2`: BFC with message: Fix normalization regression
 
 ## Expected behavior

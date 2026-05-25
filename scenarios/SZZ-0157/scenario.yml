@@ -63,10 +63,10 @@ commits:
     - B001
     - fault
 - id: c2
-  message: Fix retry condition after cleanup
-  author: Alice <alice@example.com>
+  message: Performance cleanup before retry-condition fix
+  author: Carol <carol@example.com>
   date: '2024-05-03T10:00:00Z'
-  role: bug_fixing
+  role: cleanup
   operations:
   - type: replace
     path: src/main/java/example/Scenario0157.java
@@ -83,16 +83,30 @@ commits:
 
       public class Scenario0157 {
           public boolean check(int attempts, int limit) {
-              return attempts < limit;
+              return attempts <= limit;
+          }
+
+          public int cachedLimit(int limit) {
+              return limit;
           }
       }
+- id: c3
+  message: Fix retry condition after performance cleanup
+  author: Alice <alice@example.com>
+  date: '2024-05-04T10:00:00Z'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Scenario0157.java
+    old: return attempts <= limit;
+    new: return attempts < limit;
     labels:
     - B001
     - fix
 bugs:
 - id: B001
   title: Performance cleanup distractor with message
-  bug_fixing_commit: c2
+  bug_fixing_commit: c3
   bug_introducing_commits: &id001
   - c1
   fault:
@@ -105,7 +119,7 @@ bugs:
     statement: return attempts <= limit;
     change_type: line_modification
   fix:
-    commit: c2
+    commit: c3
     file: src/main/java/example/Scenario0157.java
     entity:
       type: method
@@ -117,6 +131,8 @@ bugs:
     commit_level:
       true_positives: *id001
       false_positives_allowed: []
+      known_distractors:
+      - c2
     line_level:
       available: true
       faulty_statements:
@@ -127,3 +143,4 @@ checks:
   - c0
   - c1
   - c2
+  - c3

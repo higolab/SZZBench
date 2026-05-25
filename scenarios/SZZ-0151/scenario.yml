@@ -31,61 +31,37 @@ commits:
       package example;
 
       public class Scenario0151 {
-          public boolean check(int size) {
-              return size > 0;
+          public boolean callerAllowsEmptyCart(int itemCount) {
+              return hasItems(itemCount);
+          }
+
+          private boolean hasItems(int itemCount) {
+              return itemCount > 0;
           }
       }
 - id: c1
-  message: Introduce context-sensitive bug
+  message: Introduce context-sensitive caller bug
   author: Bob <bob@example.com>
   date: '2024-05-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Scenario0151.java
-    old: |
-      package example;
-
-      public class Scenario0151 {
-          public boolean check(int size) {
-              return size > 0;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0151 {
-          public boolean check(int size) {
-              return size >= 0;
-          }
-      }
+    old: return itemCount > 0;
+    new: return itemCount >= 0;
     labels:
     - B001
     - fault
 - id: c2
-  message: Fix caller-visible boundary failure
+  message: Fix caller-visible empty-cart acceptance
   author: Alice <alice@example.com>
   date: '2024-05-03T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/Scenario0151.java
-    old: |
-      package example;
-
-      public class Scenario0151 {
-          public boolean check(int size) {
-              return size >= 0;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0151 {
-          public boolean check(int size) {
-              return size > 0;
-          }
-      }
+    old: return itemCount >= 0;
+    new: return itemCount > 0;
     labels:
     - B001
     - fix
@@ -100,18 +76,18 @@ bugs:
     file: src/main/java/example/Scenario0151.java
     entity:
       type: method
-      name: check
-      signature: boolean check(int size)
-    statement: return size >= 0;
+      name: hasItems
+      signature: boolean hasItems(int itemCount)
+    statement: return itemCount >= 0;
     change_type: line_modification
   fix:
     commit: c2
     file: src/main/java/example/Scenario0151.java
     entity:
       type: method
-      name: check
-      signature: boolean check(int size)
-    statement: return size > 0;
+      name: hasItems
+      signature: boolean hasItems(int itemCount)
+    statement: return itemCount > 0;
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -120,7 +96,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return size >= 0;
+      - return itemCount >= 0;
 checks:
 - type: git_history_contains
   commits:

@@ -26,50 +26,58 @@ commits:
   operations:
   - type: write_file
     path: src/main/java/example/Scenario0128.java
-    content: "package example;\n\npublic class Scenario0128 {\n    public boolean check(int value) {\n        return true;\n    }\n}\n"
+    content: |
+      package example;
+
+      public class Scenario0128 {
+          public boolean validate(int value) {
+              return value >= 0 && value <= 10;
+          }
+
+          public boolean callerAccepts(int value) {
+              return validate(value);
+          }
+      }
 - id: c1
-  message: Introduce first contributing change
+  message: Weaken validator upper bound
   author: Bob <bob@example.com>
   date: '2024-03-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Scenario0128.java
-    old: "package example;\n\npublic class Scenario0128 {\n    public boolean check(int value) {\n        return true;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0128 {\n    public boolean check(int value) {\n        return value >= 0;\n    }\n}\n"
+    old: return value >= 0 && value <= 10;
+    new: return value >= 0;
     labels:
     - B001
     - fault
 - id: c2
-  message: Introduce second contributing change
+  message: Let caller accept a migration sentinel
   author: Carol <carol@example.com>
   date: '2024-03-03T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Scenario0128.java
-    old: "package example;\n\npublic class Scenario0128 {\n    public boolean check(int value) {\n        return value >= 0;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0128 {\n    public boolean check(int value) {\n        return value >= 0 && value != 13;\n    }\n}\n"
+    old: return validate(value);
+    new: return validate(value) || value == 99;
     labels:
     - B001
     - fault
 - id: c3
-  message: Fix combined bug
+  message: Fix combined validation and caller acceptance bug
   author: Alice <alice@example.com>
   date: '2024-03-04T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/Scenario0128.java
-    old: "package example;\n\npublic class Scenario0128 {\n    public boolean check(int value) {\n        return value >= 0 && value != 13;\n    }\n}\n"
-    new: |
-      package example;
-
-      public class Scenario0128 {
-          public boolean check(int value) {
-              return true;
-          }
-      }
+    old: return value >= 0;
+    new: return value >= 0 && value <= 10;
+  - type: replace
+    path: src/main/java/example/Scenario0128.java
+    old: return validate(value) || value == 99;
+    new: return validate(value);
     labels:
     - B001
     - fix
@@ -85,8 +93,8 @@ bugs:
     file: src/main/java/example/Scenario0128.java
     entity:
       type: method
-      name: check
-      signature: boolean check(int value)
+      name: validate
+      signature: boolean validate(int value)
     statement: return value >= 0;
     change_type: line_modification
   fix:
@@ -94,9 +102,9 @@ bugs:
     file: src/main/java/example/Scenario0128.java
     entity:
       type: method
-      name: check
-      signature: boolean check(int value)
-    statement: return true;
+      name: validate
+      signature: boolean validate(int value)
+    statement: return value >= 0 && value <= 10;
     fix_type: line_modification
   expected_szz:
     commit_level:

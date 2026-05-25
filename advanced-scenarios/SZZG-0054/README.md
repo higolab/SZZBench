@@ -6,12 +6,12 @@
 
 ## Purpose
 
-Evaluate Patch context required and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate whether SZZ can use caller context to interpret a boundary fix in the callee.
 
 ## Expected history
 
 ```text
-c1: create initial state (write_file src/main/java/example/Range.java)
+c1: create initial state (write_file src/main/java/example/Range.java; write_file src/main/java/example/Caller.java)
 c2: fix bug (replace src/main/java/example/Range.java)
 ```
 
@@ -28,7 +28,7 @@ This history requires graph-aware scenario semantics that are difficult to expre
 ## Evaluation points
 
 - Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
+- Whether Caller.callRange provides the patch context needed to interpret Range.contains.
 - Whether the expected_szz evaluation policy is applied correctly.
 
 ---

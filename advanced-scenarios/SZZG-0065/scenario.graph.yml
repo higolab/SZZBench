@@ -1,9 +1,9 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0065
-  title: Chmod only
-  slug: chmod-only
-  description: Evaluates chmod only and checks whether SZZ identifies the expected bug-introducing commit set.
+  title: Chmod-only intermediate
+  slug: chmod-only-intermediate
+  description: Evaluates a chmod-only intermediate commit between the BIC and BFC and checks whether SZZ ignores it as a cause.
   category: Robustness and implementation-quality scenarios
   category_code: K
   factors:
@@ -11,7 +11,7 @@ meta:
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0065-chmod-only
+  name: SZZG-0065-chmod-only-intermediate
   default_branch: main
   language: java
   build_system: none
@@ -103,13 +103,13 @@ expected_szz:
     required:
     - c2
 scenario_design:
-  purpose: Evaluate Chmod only and whether SZZ identifies the expected bug-introducing commit set.
+  purpose: Evaluate whether SZZ identifies the real BIC when a chmod-only commit appears in the intermediate history.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
   required_extensions_from_source: 'This scenario uses factors: chmod; operations: write_file, chmod, replace.'
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the chmod-only intermediate commit c1 is not reported as the BIC.
   - Whether the expected_szz evaluation policy is applied correctly.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.

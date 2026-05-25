@@ -1,4 +1,4 @@
-# SZZG-0065: Chmod only
+# SZZG-0065: Chmod-only intermediate
 
 ## Source
 
@@ -6,7 +6,7 @@
 
 ## Purpose
 
-Evaluate Chmod only and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate whether SZZ identifies the real BIC when a chmod-only commit appears in the intermediate history.
 
 ## Expected history
 
@@ -30,7 +30,7 @@ This history requires graph-aware scenario semantics that are difficult to expre
 ## Evaluation points
 
 - Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the chmod-only intermediate commit c1 is not reported as the BIC.
 - Whether the expected_szz evaluation policy is applied correctly.
 
 ---

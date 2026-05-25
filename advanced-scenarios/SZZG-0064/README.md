@@ -1,4 +1,4 @@
-# SZZG-0064: Empty commit
+# SZZG-0064: Empty intermediate commit
 
 ## Source
 
@@ -6,13 +6,13 @@
 
 ## Purpose
 
-Evaluate Empty commit and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate whether SZZ identifies the real BIC when an empty commit appears in the intermediate history.
 
 ## Expected history
 
 ```text
 c0: create initial state (write_file src/main/java/example/Range.java)
-c1: apply intermediate change
+c1: apply empty intermediate change
 c2: introduce bug (replace src/main/java/example/Range.java)
 c3: fix bug (replace src/main/java/example/Range.java)
 ```
@@ -30,7 +30,7 @@ This history requires graph-aware scenario semantics that are difficult to expre
 ## Evaluation points
 
 - Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the empty intermediate commit c1 is not reported as the BIC.
 - Whether the expected_szz evaluation policy is applied correctly.
 
 ---

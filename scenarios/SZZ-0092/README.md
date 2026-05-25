@@ -8,7 +8,7 @@ This scenario inserts an intermediate refactoring change between the BIC and BFC
 
 - `c0`: Initial correct implementation
 - `c1`: Introduce bug
-- `c2`: Apply intermediate rewrite
+- `c2`: Rewrite loop to conditional after bug introduction
 - `c3`: Fix bug
 
 ## Expected behavior

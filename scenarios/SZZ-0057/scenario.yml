@@ -89,6 +89,16 @@ commits:
     labels:
     - B001
     - fix
+  - type: write_file
+    path: src/main/java/example/Scenario0057Audit.java
+    content: |
+      package example;
+
+      public class Scenario0057Audit {
+          public String fixedBy() {
+              return "Scenario0057";
+          }
+      }
 bugs:
 - id: B001
   title: BFC with multiple files represented by write_file

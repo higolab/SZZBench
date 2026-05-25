@@ -8,7 +8,7 @@ This scenario inserts an intermediate intermediate-history change between the BI
 
 - `c0`: Initial correct implementation
 - `c1`: Introduce bug
-- `c2`: Apply intermediate rewrite
+- `c2`: Delete comment after bug introduction
 - `c3`: Fix bug
 
 ## Expected behavior

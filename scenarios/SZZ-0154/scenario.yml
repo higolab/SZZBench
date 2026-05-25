@@ -36,7 +36,7 @@ commits:
           }
       }
 - id: c1
-  message: Introduce context-sensitive bug
+  message: Remove trim from normalization; root cause is preserved surrounding whitespace
   author: Bob <bob@example.com>
   date: '2024-05-02T10:00:00Z'
   role: bug_introducing

@@ -570,7 +570,7 @@ scenarios:
   status: draft
   factors: []
 - id: SZZG-0064
-  title: Empty commit
+  title: Empty intermediate commit
   category: Robustness and implementation-quality scenarios
   path: advanced-scenarios/SZZG-0064/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0064/README.md
@@ -578,7 +578,7 @@ scenarios:
   factors:
   - allow_empty
 - id: SZZG-0065
-  title: Chmod only
+  title: Chmod-only intermediate
   category: Robustness and implementation-quality scenarios
   path: advanced-scenarios/SZZG-0065/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0065/README.md
