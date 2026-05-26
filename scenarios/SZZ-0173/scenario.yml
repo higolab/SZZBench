@@ -1,0 +1,78 @@
+schema_version: '1.0'
+meta:
+  id: SZZ-0173
+  title: File creation only as fix
+  slug: file-creation-only-as-fix
+  description: Evaluates file creation only as fix and checks whether SZZ identifies the expected bug-introducing commit set.
+  category: Robustness and implementation-quality scenarios
+  factors: []
+  difficulty: hard
+  status: active
+repository:
+  name: SZZ-0173-file-creation-only-as-fix
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+commits:
+- id: c0
+  message: 'c0: introduce bug (write_file src/main/java/example/PluginLoader.java)'
+  role: bug_introducing
+  operations:
+  - type: write_file
+    path: src/main/java/example/PluginLoader.java
+    content: |
+      package example;
+
+      public class PluginLoader {
+        public Object loadDefault() {
+          return null;
+        }
+      }
+- id: c1
+  message: 'c1: fix bug (write_file src/main/java/example/DefaultPlugin.java)'
+  role: bug_fixing
+  operations:
+  - type: write_file
+    path: src/main/java/example/DefaultPlugin.java
+    content: |
+      package example;
+
+      public class DefaultPlugin {
+        public String name() {
+          return "default";
+        }
+      }
+bugs:
+- id: B001
+  title: Missing DefaultPlugin class is fixed by file creation
+  bug_fixing_commit: c1
+  bug_introducing_commits:
+  - c0
+  fault:
+    commit: c0
+    file: src/main/java/example/PluginLoader.java
+    entity:
+      type: class
+      name: DefaultPlugin
+    change_type: omission
+    description: DefaultPlugin.java is absent before the fix.
+    missing_statement: DefaultPlugin
+  fix:
+    commit: c1
+    file: src/main/java/example/DefaultPlugin.java
+    statement: public class DefaultPlugin
+    fix_type: file_creation
+  expected_szz:
+    commit_level:
+      true_positives:
+      - c0
+      false_positives_allowed: []
+    line_level:
+      available: false
+      faulty_statements: []
+checks:
+- type: git_history_contains
+  commits:
+  - c0
+  - c1

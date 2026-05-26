@@ -1,6 +1,6 @@
 schema_version: graph-index-0.1-draft
 description: Index of draft advanced graph scenarios for SZZBench.
-scenario_count: 70
+scenario_count: 60
 scenarios:
 - id: SZZG-0001
   title: BFC performs rename and fix in the same commit
@@ -55,22 +55,6 @@ scenarios:
   status: draft
   factors:
   - generated_files
-- id: SZZG-0007
-  title: BIC is a test-only commit
-  category: BIC property scenarios
-  path: advanced-scenarios/SZZG-0007/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0007/README.md
-  status: draft
-  factors:
-  - test_only_bic
-  - expected_szz
-- id: SZZG-0008
-  title: Dependency update as BIC
-  category: BIC property scenarios
-  path: advanced-scenarios/SZZG-0008/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0008/README.md
-  status: draft
-  factors: []
 - id: SZZG-0009
   title: File rename between BIC and BFC
   category: Intermediate-history scenarios
@@ -127,18 +111,6 @@ scenarios:
   - same_bug
   - partial_fix
   - complete_fix
-- id: SZZG-0015
-  title: One BFC fixes multiple BICs for one composite bug
-  category: Multiple BIC and BFC scenarios
-  path: advanced-scenarios/SZZG-0015/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0015/README.md
-  status: draft
-  factors:
-  - multiple_bic
-  - single_bfc
-  - composite_bug
-  - same_bug
-  - multiple_fault_locations
 - id: SZZG-0016
   title: Partial credit when only some BICs are returned
   category: Multiple BIC and BFC scenarios
@@ -211,13 +183,6 @@ scenarios:
   factors:
   - clone_relationships
   - bug_instances
-- id: SZZG-0024
-  title: Same bug introduced independently
-  category: Copy, clone, and propagation scenarios
-  path: advanced-scenarios/SZZG-0024/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0024/README.md
-  status: draft
-  factors: []
 - id: SZZG-0025
   title: Bug propagates into generated code
   category: Copy, clone, and propagation scenarios
@@ -465,13 +430,6 @@ scenarios:
   factors:
   - work_items
   - issues
-- id: SZZG-0052
-  title: Multiple overloaded methods
-  category: Ambiguous blame and duplicate-code scenarios
-  path: advanced-scenarios/SZZG-0052/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0052/README.md
-  status: draft
-  factors: []
 - id: SZZG-0053
   title: Line moved and duplicated
   category: Ambiguous blame and duplicate-code scenarios
@@ -482,14 +440,6 @@ scenarios:
   - move_entity
   - copy_entity
   - bug_instances
-- id: SZZG-0054
-  title: Patch context required
-  category: Context-aware and LLM-based SZZ scenarios
-  path: advanced-scenarios/SZZG-0054/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0054/README.md
-  status: draft
-  factors:
-  - context
 - id: SZZG-0055
   title: Caller/callee interaction bug
   category: Context-aware and LLM-based SZZ scenarios
@@ -500,26 +450,6 @@ scenarios:
   - caller_callee
   - context
   - faults
-- id: SZZG-0056
-  title: Config and code interaction
-  category: Context-aware and LLM-based SZZ scenarios
-  path: advanced-scenarios/SZZG-0056/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0056/README.md
-  status: draft
-  factors:
-  - config
-  - code_interaction
-  - context
-  - faults
-- id: SZZG-0057
-  title: Cause can be inferred from test failure
-  category: Context-aware and LLM-based SZZ scenarios
-  path: advanced-scenarios/SZZG-0057/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0057/README.md
-  status: draft
-  factors:
-  - test_context
-  - context
 - id: SZZG-0058
   title: Issue description required
   category: Context-aware and LLM-based SZZ scenarios
@@ -538,14 +468,6 @@ scenarios:
   factors:
   - semantic_rewrite
   - related_but_not_correct
-- id: SZZG-0060
-  title: Root cause not in changed lines
-  category: Context-aware and LLM-based SZZ scenarios
-  path: advanced-scenarios/SZZG-0060/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0060/README.md
-  status: draft
-  factors:
-  - root_cause
 - id: SZZG-0061
   title: Binary file change
   category: Robustness and implementation-quality scenarios
@@ -562,13 +484,6 @@ scenarios:
   status: draft
   factors:
   - delete_file
-- id: SZZG-0063
-  title: File creation only as fix
-  category: Robustness and implementation-quality scenarios
-  path: advanced-scenarios/SZZG-0063/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0063/README.md
-  status: draft
-  factors: []
 - id: SZZG-0064
   title: Empty intermediate commit
   category: Robustness and implementation-quality scenarios

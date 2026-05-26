@@ -34,7 +34,7 @@ They mainly assume the following:
 - linear histories
 - a single branch
 - operations mainly based on `write_file` / `replace`
-- one or a small number of BICs / BFCs
+- one BFC per bug, with one or more BICs when the oracle is still an exact commit set
 - small and readable synthetic histories
 
 For normal scenarios, use the following commands:
@@ -62,7 +62,7 @@ They mainly assume the following:
 - branch / merge
 - cherry-pick / backport
 - rename / move / copy / delete
-- multiple BICs / multiple BFCs
+- multiple BFCs or multiple independent bugs
 - direct BIC / origin BIC / contributing BIC
 - work item / issue / developer hint
 - evaluation policies such as top-k and relaxed evaluation
@@ -77,6 +77,29 @@ szzbench new-graph-scenario
 ```
 
 `scenario.graph.yml` is more expressive than the normal `scenario.yml`, but it is still positioned as an evolving draft schema.
+
+### Scenario schema boundary policy
+
+Use `scenario.yml` for the constrained subset of scenarios that can be represented as a linear `main` history with simple file operations and a simple commit-level exact-set oracle.
+
+In practice, `scenario.yml` is appropriate when all of the following are true:
+
+- the history is a single linear chain on `main`
+- commit parents are implicit, or each commit depends only on the previous commit
+- operations are limited to `write_file` and `replace`
+- a commit may contain multiple operations
+- a bug may have multiple BICs, as long as the expected answer is still a commit-level exact set
+- each bug has one BFC
+
+Use `scenario.graph.yml` when the scenario needs graph-specific history, relation metadata, special operations, or advanced evaluation semantics. This includes:
+
+- explicit DAG history, branches, merge commits, squash merges, release branches, cherry-picks, or backports
+- operations outside the normal subset, such as rename, move, copy, delete, binary writes, chmod, generated-file operations, entity moves/copies, commit generators, or patch-from/squash operations
+- work items, issues, developer hints, clone/copy relationships, bug instances, origin faults, direct/origin BIC relationships, or refactoring metadata
+- multiple BFCs or multiple independent bugs as the main evaluation unit
+- evaluation variants, top-k evaluation, partial or relaxed credit, acceptable related commits, related-but-not-correct commits, or line/entity/branch/work-item/bug-level evaluation policies
+
+In short, `scenario.yml` is treated as a restricted subset of `scenario.graph.yml`: linear `main` history plus a simple commit-level exact-set oracle. Anything that needs graph structure or richer evaluation metadata stays in `scenario.graph.yml`.
 
 ## Directory structure
 

@@ -1,33 +1,23 @@
-schema_version: graph-0.1-draft
+schema_version: '1.0'
 meta:
-  id: SZZG-0007
+  id: SZZ-0164
   title: BIC is a test-only commit
   slug: bic-test-only-commit
   description: Evaluates a bug where the bug-introducing commit changes only a test oracle, not production code.
   category: BIC property scenarios
-  category_code: B
   factors:
   - test_only_bic
   - expected_szz
-  difficulty: advanced
-  status: draft
+  difficulty: hard
+  status: active
 repository:
-  name: SZZG-0007-bic-test-only-commit
+  name: SZZ-0164-bic-test-only-commit
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
-graph:
-  model: commit_dag
-  history_summary: 'c0: create correct Range code and boundary test
-
-    c1: introduce faulty boundary expectation in test only
-
-    c2: fix the test oracle'
 commits:
 - id: c0
-  branch: main
-  parents: []
   message: 'c0: create correct Range code and boundary test'
   role: initial
   operations:
@@ -63,9 +53,6 @@ commits:
         }
       }
 - id: c1
-  branch: main
-  parents:
-  - c0
   message: 'c1: introduce faulty boundary expectation in test only'
   role: bug_introducing
   operations:
@@ -74,9 +61,6 @@ commits:
     old: assertTrue(range.contains(0, 0, 10));
     new: assertFalse(range.contains(0, 0, 10));
 - id: c2
-  branch: main
-  parents:
-  - c1
   message: 'c2: fix test oracle for inclusive lower boundary'
   role: bug_fixing
   operations:
@@ -87,37 +71,31 @@ commits:
 bugs:
 - id: B001
   title: Test oracle rejects an inclusive boundary that production code accepts
+  bug_fixing_commit: c2
   bug_introducing_commits:
-  - commit: c1
-    role: direct
-  bug_fixing_commits:
-  - commit: c2
-    role: complete_fix
-  faults:
-  - id: F001
+  - c1
+  fault:
     commit: c1
     file: src/test/java/example/RangeTest.java
     statement: assertFalse(range.contains(0, 0, 10));
     change_type: test_oracle_modification
-  fixes:
-  - id: X001
+  fix:
     commit: c2
     file: src/test/java/example/RangeTest.java
     statement: assertTrue(range.contains(0, 0, 10));
     fix_type: test_oracle_modification
-expected_szz:
-  commit_level:
-    evaluation_policy: exact_set
-    required:
-    - c1
-scenario_design:
-  purpose: Evaluate whether SZZ can report a BIC that only edits test code.
-  current_schema_limitation: Normal scenarios generally focus on production source faults; this case records a test-only oracle fault.
-  required_extensions_from_source: 'This scenario uses factors: test_only_bic, expected_szz; operations: write_file, replace.'
-  evaluation_points:
-  - Whether SZZ identifies c1 as the test-only BIC.
-  - Whether production code remaining unchanged in the BIC is handled correctly.
-  - Whether the expected_szz exact-set policy is applied correctly.
-notes:
-- The BIC touches only src/test/java/example/RangeTest.java.
-- Production code remains correct throughout the scenario.
+  expected_szz:
+    commit_level:
+      true_positives:
+      - c1
+      false_positives_allowed: []
+    line_level:
+      available: true
+      faulty_statements:
+      - assertFalse(range.contains(0, 0, 10));
+checks:
+- type: git_history_contains
+  commits:
+  - c0
+  - c1
+  - c2

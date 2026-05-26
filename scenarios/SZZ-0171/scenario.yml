@@ -1,34 +1,24 @@
-schema_version: graph-0.1-draft
+schema_version: '1.0'
 meta:
-  id: SZZG-0057
+  id: SZZ-0171
   title: Cause can be inferred from test failure
   slug: test-failure
   description: Evaluates a case where the BFC is a small parser change and the specific cause is clarified by a failing test
     message.
   category: Context-aware and LLM-based SZZ scenarios
-  category_code: J
   factors:
   - test_context
   - context
-  difficulty: advanced
-  status: draft
+  difficulty: hard
+  status: active
 repository:
-  name: SZZG-0057-test-failure
+  name: SZZ-0171-test-failure
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
-graph:
-  model: commit_dag
-  history_summary: |
-    c0: create ISO event date parser
-    c1: introduce locale-specific parser pattern
-    c2: add failing webhook date regression test
-    c3: restore ISO parser pattern
 commits:
 - id: c0
-  branch: main
-  parents: []
   message: 'c0: create ISO event date parser'
   role: initial
   operations:
@@ -48,9 +38,6 @@ commits:
         }
       }
 - id: c1
-  branch: main
-  parents:
-  - c0
   message: 'c1: parse dates with local slash format'
   role: bug_introducing
   operations:
@@ -59,11 +46,8 @@ commits:
     old: private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
     new: private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("MM/dd/yyyy");
 - id: c2
-  branch: main
-  parents:
-  - c1
   message: 'c2: add webhook ISO date regression test'
-  role: test
+  role: test_change
   operations:
   - type: write_file
     path: src/test/java/example/EventDateParserTest.java
@@ -81,9 +65,6 @@ commits:
         }
       }
 - id: c3
-  branch: main
-  parents:
-  - c2
   message: 'c3: restore ISO webhook date parsing'
   role: bug_fixing
   operations:
@@ -94,51 +75,32 @@ commits:
 bugs:
 - id: B001
   title: Webhook ISO dates fail under slash-based parser pattern
+  bug_fixing_commit: c3
   bug_introducing_commits:
-  - commit: c1
-    role: direct
-  bug_fixing_commits:
-  - commit: c3
-    role: complete_fix
-  faults:
-  - id: F001
+  - c1
+  fault:
     commit: c1
     file: src/main/java/example/EventDateParser.java
     statement: private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("MM/dd/yyyy");
     change_type: line_modification
-  fixes:
-  - id: X001
+  fix:
     commit: c3
     file: src/main/java/example/EventDateParser.java
     statement: private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
     fix_type: line_modification
-expected_szz:
-  commit_level:
-    evaluation_policy: exact_set
-    required:
-    - c1
-scenario_design:
-  purpose: Evaluate whether SZZ can use failing-test context to connect the BFC to the parser-pattern BIC.
-  current_schema_limitation: Test failure details are represented as scenario metadata, not as an executable test run.
-  required_extensions_from_source: 'This scenario uses factors: test_context, context; operations: write_file, replace.'
-  evaluation_points:
-  - Whether SZZ identifies c1 as the BIC.
-  - Whether the failing test message points to ISO date parsing rather than generic parser churn.
-  - Whether the test commit c2 is not mistaken for a BIC.
-notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
-test_context:
-  failing_tests:
-  - name: EventDateParserTest.parsesIsoWebhookDate
-    introduced_in: c2
-    observed_at: c2
-    failure_message: "Text '2024-03-05' could not be parsed at index 2 by pattern MM/dd/yyyy"
-    inferred_cause: Parser pattern in c1 no longer accepts ISO_LOCAL_DATE webhook payloads.
-context:
-  required_files:
-  - src/main/java/example/EventDateParser.java
-  - src/test/java/example/EventDateParserTest.java
-  required_entities:
-  - type: method
-    name: parseWebhookDate
+  expected_szz:
+    commit_level:
+      true_positives:
+      - c1
+      false_positives_allowed: []
+    line_level:
+      available: true
+      faulty_statements:
+      - private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("MM/dd/yyyy");
+checks:
+- type: git_history_contains
+  commits:
+  - c0
+  - c1
+  - c2
+  - c3

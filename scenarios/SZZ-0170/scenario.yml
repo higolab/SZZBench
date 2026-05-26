@@ -1,36 +1,27 @@
-schema_version: graph-0.1-draft
+schema_version: '1.0'
 meta:
-  id: SZZG-0056
+  id: SZZ-0170
   title: Config and code interaction
   slug: config-code
-  description: Evaluates a bug introduced by a configuration unit change that is only visible when read together with the
-    code that interprets the setting.
+  description: >-
+    Evaluates a bug introduced by a configuration unit change that is only visible when read together with the code that interprets
+    the setting.
   category: Context-aware and LLM-based SZZ scenarios
-  category_code: J
   factors:
   - config
   - code_interaction
   - context
   - faults
-  difficulty: advanced
-  status: draft
+  difficulty: hard
+  status: active
 repository:
-  name: SZZG-0056-config-code
+  name: SZZ-0170-config-code
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
-graph:
-  model: commit_dag
-  history_summary: |
-    c0: create retry delay config and interpreter
-    c1: change config unit from seconds to milliseconds
-    c2: document retry delay tuning
-    c3: make code honor the configured delay unit
 commits:
 - id: c0
-  branch: main
-  parents: []
   message: 'c0: create retry delay config and interpreter'
   role: initial
   operations:
@@ -58,9 +49,6 @@ commits:
         }
       }
 - id: c1
-  branch: main
-  parents:
-  - c0
   message: 'c1: tune retry delay config to milliseconds'
   role: bug_introducing
   operations:
@@ -69,20 +57,15 @@ commits:
     old: retry.delay.unit=seconds
     new: retry.delay.unit=milliseconds
 - id: c2
-  branch: main
-  parents:
-  - c1
   message: 'c2: document retry delay configuration'
-  role: intermediate
+  role: distractor
   operations:
   - type: write_file
     path: docs/retry-delay.md
-    content: |
-      Retry delay is configured by retry.delay.value and retry.delay.unit.
+    content: 'Retry delay is configured by retry.delay.value and retry.delay.unit.
+
+'
 - id: c3
-  branch: main
-  parents:
-  - c2
   message: 'c3: honor millisecond retry delay config'
   role: bug_fixing
   operations:
@@ -93,42 +76,32 @@ commits:
 bugs:
 - id: B001
   title: Millisecond retry config is interpreted as seconds
+  bug_fixing_commit: c3
   bug_introducing_commits:
-  - commit: c1
-    role: direct
-  bug_fixing_commits:
-  - commit: c3
-    role: complete_fix
-  faults:
-  - id: F001
+  - c1
+  fault:
     commit: c1
     file: config/retry.properties
     statement: retry.delay.unit=milliseconds
     change_type: config_modification
-  fixes:
-  - id: X001
+  fix:
     commit: c3
     file: src/main/java/example/RetryPolicy.java
     statement: 'return unit.equals("milliseconds") ? configuredDelay : configuredDelay * 1000;'
     fix_type: line_modification
-expected_szz:
-  commit_level:
-    evaluation_policy: exact_set
-    required:
-    - c1
-scenario_design:
-  purpose: Evaluate whether SZZ can identify a configuration BIC when the BFC changes code that interprets the configuration.
-  current_schema_limitation: Config/code dependencies are represented as context metadata rather than executable config parsing.
-  required_extensions_from_source: 'This scenario uses factors: config, code_interaction, context, faults; operations: write_file, replace.'
-  evaluation_points:
-  - Whether SZZ identifies c1 as the config BIC.
-  - Whether the code-only BFC is connected back to the config unit change.
-  - Whether the unrelated documentation commit c2 is ignored.
-notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
-context:
-  required_files:
-  - config/retry.properties
-  - src/main/java/example/RetryPolicy.java
-  interaction: RetryPolicy.delayMillis must interpret retry.delay.unit consistently with config/retry.properties.
+  expected_szz:
+    commit_level:
+      true_positives:
+      - c1
+      false_positives_allowed: []
+    line_level:
+      available: true
+      faulty_statements:
+      - retry.delay.unit=milliseconds
+checks:
+- type: git_history_contains
+  commits:
+  - c0
+  - c1
+  - c2
+  - c3

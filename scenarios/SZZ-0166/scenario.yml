@@ -1,0 +1,110 @@
+schema_version: '1.0'
+meta:
+  id: SZZ-0166
+  title: One BFC fixes multiple BICs for one composite bug
+  slug: 1-bfc-bic-bic
+  description: >-
+    A single composite range-check bug is created by two separate BICs. The first BIC breaks the lower-bound helper and the
+    second BIC breaks the upper-bound helper. A single BFC fixes both faults together.
+  category: Multiple BIC and BFC scenarios
+  factors:
+  - multiple_bic
+  - single_bfc
+  - composite_bug
+  - same_bug
+  - multiple_fault_locations
+  difficulty: hard
+  status: active
+repository:
+  name: SZZ-0166-1-bfc-bic-bic
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+commits:
+- id: c0
+  message: 'c0: create composite range check'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: |
+      package example;
+
+      public class Range {
+        public boolean lowerOk(int value, int min) {
+          return value >= min;
+        }
+
+        public boolean upperOk(int value, int max) {
+          return value <= max;
+        }
+
+        public boolean contains(int value, int min, int max) {
+          return lowerOk(value, min) && upperOk(value, max);
+        }
+      }
+- id: c1
+  message: 'c1: introduce lower-bound part of composite bug'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min;
+    new: return value > min;
+- id: c2
+  message: 'c2: introduce upper-bound part of composite bug'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value <= max;
+    new: return value < max;
+- id: c3
+  message: 'c3: fix both parts of composite range bug'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min;
+    new: return value >= min;
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value < max;
+    new: return value <= max;
+bugs:
+- id: B001
+  title: Composite range boundary bug created by two BICs
+  bug_fixing_commit: c3
+  bug_introducing_commits:
+  - c1
+  - c2
+  fault:
+    commit: c1
+    file: src/main/java/example/Range.java
+    statement: return value > min;
+    change_type: line_modification
+  fix:
+    commit: c3
+    file: src/main/java/example/Range.java
+    statement: return value >= min;
+    fix_type: line_modification
+  expected_szz:
+    commit_level:
+      true_positives:
+      - c1
+      - c2
+      false_positives_allowed: []
+      notes: Both c1 and c2 are required because they jointly create one composite bug fixed by c3.
+    line_level:
+      available: true
+      faulty_statements:
+      - return value > min;
+      - return value < max;
+checks:
+- type: git_history_contains
+  commits:
+  - c0
+  - c1
+  - c2
+  - c3

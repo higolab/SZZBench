@@ -93,8 +93,8 @@ Bug-fixing commit:
 c3
 ```
 
-## Difference from SZZG-0015
+## Difference from SZZ-0166
 
-`SZZG-0015` represents one composite bug with multiple BICs.
+`SZZ-0166` represents one composite bug with multiple BICs.
 
 `SZZG-0017` represents two independent bugs that happen to be fixed by one shared BFC.

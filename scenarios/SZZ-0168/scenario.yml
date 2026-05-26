@@ -1,0 +1,90 @@
+schema_version: '1.0'
+meta:
+  id: SZZ-0168
+  title: Multiple overloaded methods
+  slug: multiple-overloaded-methods
+  description: Evaluates multiple overloaded methods and checks whether SZZ identifies the expected bug-introducing commit
+    set.
+  category: Ambiguous blame and duplicate-code scenarios
+  factors: []
+  difficulty: hard
+  status: active
+repository:
+  name: SZZ-0168-multiple-overloaded-methods
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+commits:
+- id: c0
+  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: |
+      package example;
+
+      public class Range {
+        public boolean contains(int value, int min, int max) {
+          return value >= min && value <= max;
+        }
+
+        public boolean contains(double value, double min, double max) {
+          return value >= min && value <= max;
+        }
+      }
+- id: c1
+  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+    occurrence: 1
+- id: c2
+  message: 'c2: fix bug (replace src/main/java/example/Range.java)'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+bugs:
+- id: B001
+  title: Only int overload is faulty
+  bug_fixing_commit: c2
+  bug_introducing_commits:
+  - c1
+  fault:
+    commit: c1
+    file: src/main/java/example/Range.java
+    entity:
+      type: method
+      name: contains
+      signature: boolean contains(int value, int min, int max)
+    statement: return value > min && value < max;
+  fix:
+    commit: c2
+    file: src/main/java/example/Range.java
+    entity:
+      type: method
+      name: contains
+      signature: boolean contains(int value, int min, int max)
+    statement: return value >= min && value <= max;
+  expected_szz:
+    commit_level:
+      true_positives:
+      - c1
+      false_positives_allowed: []
+    line_level:
+      available: true
+      faulty_statements:
+      - return value > min && value < max;
+checks:
+- type: git_history_contains
+  commits:
+  - c0
+  - c1
+  - c2

@@ -1,0 +1,103 @@
+schema_version: '1.0'
+meta:
+  id: SZZ-0167
+  title: Same bug introduced independently
+  slug: same-bug-introduced-independently
+  description: Evaluates same bug introduced independently and checks whether SZZ identifies the expected bug-introducing
+    commit set.
+  category: Copy, clone, and propagation scenarios
+  factors: []
+  difficulty: hard
+  status: active
+repository:
+  name: SZZ-0167-same-bug-introduced-independently
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+commits:
+- id: c0
+  message: 'c0: create initial state (write_file src/main/java/example/IndependentRanges.java)'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/IndependentRanges.java
+    content: |
+      package example;
+
+      public class IndependentRanges {
+        public boolean containsA(int value, int min, int max) {
+          return value >= min && value <= max;
+        }
+
+        public boolean containsB(int value, int min, int max) {
+          return value >= min && value <= max;
+        }
+      }
+- id: c1
+  message: 'c1: introduce bug (replace src/main/java/example/IndependentRanges.java)'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/IndependentRanges.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+    occurrence: 1
+- id: c2
+  message: 'c2: introduce bug (replace src/main/java/example/IndependentRanges.java)'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/IndependentRanges.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+    occurrence: 1
+- id: c3
+  message: 'c3: fix bug (replace src/main/java/example/IndependentRanges.java; replace src/main/java/example/IndependentRanges.java)'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/IndependentRanges.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+    occurrence: 1
+  - type: replace
+    path: src/main/java/example/IndependentRanges.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+    occurrence: 1
+bugs:
+- id: B001
+  title: Independent same-pattern boundary bugs
+  bug_fixing_commit: c3
+  bug_introducing_commits:
+  - c1
+  - c2
+  fault:
+    commit: c1
+    file: src/main/java/example/IndependentRanges.java
+    statement: return value > min && value < max;
+    method: containsA
+  fix:
+    commit: c3
+    file: src/main/java/example/IndependentRanges.java
+    statement: return value >= min && value <= max;
+    method: containsA
+  expected_szz:
+    commit_level:
+      true_positives:
+      - c1
+      - c2
+      false_positives_allowed: []
+    line_level:
+      available: true
+      faulty_statements:
+      - return value > min && value < max;
+      - return value > min && value < max;
+checks:
+- type: git_history_contains
+  commits:
+  - c0
+  - c1
+  - c2
+  - c3

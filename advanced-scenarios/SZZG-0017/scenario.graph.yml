@@ -139,7 +139,7 @@ expected_szz:
 scenario_design:
   purpose: Evaluate a BFC that fixes multiple independent bugs in one commit.
   key_property: 'The two bugs are in different files and different functional areas: range checking and discount calculation.'
-  difference_from_SZZG_0015: SZZG-0015 is one composite bug with multiple BICs. SZZG-0017 is two independent bugs with a shared
+  difference_from_SZZ_0166: SZZ-0166 is one composite bug with multiple BICs. SZZG-0017 is two independent bugs with a shared
     BFC.
   evaluation_points:
   - Whether SZZ can return both BICs for a shared BFC.

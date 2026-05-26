@@ -1,0 +1,82 @@
+schema_version: '1.0'
+meta:
+  id: SZZ-0169
+  title: Patch context required
+  slug: patch-context
+  description: Evaluates a boundary fix where the caller method provides the context needed to interpret the patched line.
+  category: Context-aware and LLM-based SZZ scenarios
+  factors:
+  - context
+  difficulty: hard
+  status: active
+repository:
+  name: SZZ-0169-patch-context
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+commits:
+- id: c1
+  message: >-
+    c1: create initial buggy callee/caller context (write_file src/main/java/example/Range.java; write_file src/main/java/example/Caller.java)
+  role: bug_introducing
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: |
+      package example;
+      public class Range {
+        public boolean contains(int value, int min, int max) {
+          return value > min && value < max;
+        }
+      }
+  - type: write_file
+    path: src/main/java/example/Caller.java
+    content: |
+      package example;
+
+      public class Caller {
+        private final Range range = new Range();
+
+        public boolean callRange(int value) {
+          return range.contains(value, 0, 10);
+        }
+      }
+- id: c2
+  message: 'c2: fix bug (replace src/main/java/example/Range.java)'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+bugs:
+- id: B001
+  title: Range boundary bug requiring caller context
+  bug_fixing_commit: c2
+  bug_introducing_commits:
+  - c1
+  fault:
+    commit: c1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: line_modification
+  fix:
+    commit: c2
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+    fix_type: line_modification
+  expected_szz:
+    commit_level:
+      true_positives:
+      - c1
+      false_positives_allowed: []
+    line_level:
+      available: true
+      faulty_statements:
+      - return value > min && value < max;
+checks:
+- type: git_history_contains
+  commits:
+  - c1
+  - c2

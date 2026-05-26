@@ -1983,3 +1983,98 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0163/scenario.yml
+- id: SZZ-0164
+  title: BIC is a test-only commit
+  slug: bic-test-only-commit
+  category: BIC property scenarios
+  factors:
+  - test_only_bic
+  - expected_szz
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0164/scenario.yml
+- id: SZZ-0165
+  title: Dependency update as BIC
+  slug: bic-dependency-update
+  category: BIC property scenarios
+  factors: []
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0165/scenario.yml
+- id: SZZ-0166
+  title: One BFC fixes multiple BICs for one composite bug
+  slug: 1-bfc-bic-bic
+  category: Multiple BIC and BFC scenarios
+  factors:
+  - multiple_bic
+  - single_bfc
+  - composite_bug
+  - same_bug
+  - multiple_fault_locations
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0166/scenario.yml
+- id: SZZ-0167
+  title: Same bug introduced independently
+  slug: same-bug-introduced-independently
+  category: Copy, clone, and propagation scenarios
+  factors: []
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0167/scenario.yml
+- id: SZZ-0168
+  title: Multiple overloaded methods
+  slug: multiple-overloaded-methods
+  category: Ambiguous blame and duplicate-code scenarios
+  factors: []
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0168/scenario.yml
+- id: SZZ-0169
+  title: Patch context required
+  slug: patch-context
+  category: Context-aware and LLM-based SZZ scenarios
+  factors:
+  - context
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0169/scenario.yml
+- id: SZZ-0170
+  title: Config and code interaction
+  slug: config-code
+  category: Context-aware and LLM-based SZZ scenarios
+  factors:
+  - config
+  - code_interaction
+  - context
+  - faults
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0170/scenario.yml
+- id: SZZ-0171
+  title: Cause can be inferred from test failure
+  slug: test-failure
+  category: Context-aware and LLM-based SZZ scenarios
+  factors:
+  - test_context
+  - context
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0171/scenario.yml
+- id: SZZ-0172
+  title: Root cause not in changed lines
+  slug: root-cause-not-in-changed-lines
+  category: Context-aware and LLM-based SZZ scenarios
+  factors:
+  - root_cause
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0172/scenario.yml
+- id: SZZ-0173
+  title: File creation only as fix
+  slug: file-creation-only-as-fix
+  category: Robustness and implementation-quality scenarios
+  factors: []
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0173/scenario.yml
