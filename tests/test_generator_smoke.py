@@ -4,6 +4,117 @@ import sys
 import textwrap
 import yaml
 
+def _write_classic_scenario(path: Path, scenario_id: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        textwrap.dedent(
+            f"""\
+            schema_version: "1.0"
+            meta:
+              id: "{scenario_id}"
+              title: "Bulk classic smoke"
+              category: "smoke"
+              factors: []
+            repository:
+              name: "{scenario_id.lower()}-bulk-classic-smoke"
+              default_branch: "main"
+              language: "text"
+            commits:
+              - id: "c0"
+                message: "Introduce text bug"
+                role: "bug_introducing"
+                operations:
+                  - type: "write_file"
+                    path: "src/example.txt"
+                    content: |
+                      state=buggy
+              - id: "c1"
+                message: "Fix text bug"
+                role: "bug_fixing"
+                operations:
+                  - type: "replace"
+                    path: "src/example.txt"
+                    old: "state=buggy"
+                    new: "state=fixed"
+            bugs:
+              - id: "B001"
+                bug_fixing_commit: "c1"
+                bug_introducing_commits:
+                  - "c0"
+                fault:
+                  commit: "c0"
+                  file: "src/example.txt"
+                  statement: "state=buggy"
+                  change_type: "line_modification"
+                fix:
+                  commit: "c1"
+                  file: "src/example.txt"
+                  statement: "state=fixed"
+            """
+        ),
+        encoding="utf-8",
+    )
+
+def _write_graph_scenario(path: Path, scenario_id: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        textwrap.dedent(
+            f"""\
+            schema_version: graph-0.1-draft
+            meta:
+              id: "{scenario_id}"
+              title: "Bulk graph smoke"
+              category: "smoke"
+              factors: []
+            repository:
+              name: "{scenario_id.lower()}-bulk-graph-smoke"
+              default_branch: main
+            commits:
+              - id: c0
+                branch: main
+                parents: []
+                message: Introduce graph text bug
+                role: bug_introducing
+                operations:
+                  - type: write_file
+                    path: src/example.txt
+                    content: |
+                      state=buggy
+              - id: c1
+                branch: main
+                parents: [c0]
+                message: Fix graph text bug
+                role: bug_fixing
+                operations:
+                  - type: replace
+                    path: src/example.txt
+                    old: state=buggy
+                    new: state=fixed
+            bugs:
+              - id: B001
+                bug_introducing_commits:
+                  - commit: c0
+                    role: direct
+                bug_fixing_commits:
+                  - commit: c1
+                    role: complete_fix
+                faults:
+                  - commit: c0
+                    file: src/example.txt
+                    statement: state=buggy
+                fixes:
+                  - commit: c1
+                    file: src/example.txt
+                    statement: state=fixed
+            expected_szz:
+              commit_level:
+                evaluation_policy: exact_set
+                required: [c0]
+            """
+        ),
+        encoding="utf-8",
+    )
+
 def test_validate_and_generate(tmp_path):
     scenario = Path("examples/basic/simple-line-modification/scenario.yml")
     out = tmp_path / "generated"
@@ -15,6 +126,43 @@ def test_validate_and_generate(tmp_path):
     assert "Initial correct implementation" in log
     assert "Introduce boundary bug" in log
     assert "Fix boundary bug" in log
+
+def test_generate_all_repos_generates_skips_and_overwrites(tmp_path):
+    scenarios_root = tmp_path / "scenarios"
+    advanced_scenarios_root = tmp_path / "advanced-scenarios"
+    output_root = tmp_path / "generated-input-repos"
+    _write_classic_scenario(scenarios_root / "SZZ-9000" / "scenario.yml", "SZZ-9000")
+    _write_graph_scenario(advanced_scenarios_root / "SZZG-9000" / "scenario.graph.yml", "SZZG-9000")
+
+    base_cmd = [
+        sys.executable,
+        "-m",
+        "szzbench.cli",
+        "generate-all-repos",
+        "--scenarios-root",
+        str(scenarios_root),
+        "--advanced-scenarios-root",
+        str(advanced_scenarios_root),
+        "--out-root",
+        str(output_root),
+    ]
+    first = subprocess.run(base_cmd, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+    assert "Generated [classic] SZZ-9000" in first.stdout
+    assert "Generated [graph] SZZG-9000" in first.stdout
+    assert (output_root / "SZZ-9000" / "default" / "repo" / ".git").exists()
+    assert (output_root / "SZZG-9000" / "default" / "repo" / ".git").exists()
+
+    marker = output_root / "SZZ-9000" / "default" / "marker.txt"
+    marker.write_text("keep until overwrite\n", encoding="utf-8")
+    second = subprocess.run(base_cmd, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+    assert "Skipped [classic] SZZ-9000" in second.stdout
+    assert "Skipped [graph] SZZG-9000" in second.stdout
+    assert marker.exists()
+
+    third = subprocess.run([*base_cmd, "--overwrite"], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+    assert "Overwrote [classic] SZZ-9000" in third.stdout
+    assert "Overwrote [graph] SZZG-9000" in third.stdout
+    assert not marker.exists()
 
 def test_clean_removes_generated_outputs(tmp_path):
     scenario = Path("examples/basic/simple-line-modification/scenario.yml")

@@ -5,6 +5,12 @@ import argparse
 import json
 import sys
 
+from .bulk_generator import (
+    DEFAULT_ADVANCED_SCENARIOS_ROOT,
+    DEFAULT_GENERATED_INPUT_REPOS_ROOT,
+    GenerateAllRepositoriesError,
+    generate_all_repositories,
+)
 from .cleaner import CleanError, DEFAULT_CLEAN_ROOT, clean_generated_outputs
 from .generator import GenerationError, generate_repository
 from .graph_generator import GraphGenerationError, generate_graph_repository
@@ -76,6 +82,37 @@ def cmd_generate_graph(args) -> int:
         print_result(verify_result, json_output=False)
         return 1 if verify_result.has_errors() else 0
     return 0
+
+def cmd_generate_all_repos(args) -> int:
+    try:
+        result = generate_all_repositories(
+            scenarios_root=Path(args.scenarios_root),
+            advanced_scenarios_root=Path(args.advanced_scenarios_root),
+            output_root=Path(args.out_root),
+            overwrite=args.overwrite,
+            verify=not args.no_verify,
+        )
+    except GenerateAllRepositoriesError as exc:
+        print(f"[ERROR] GENERATE_ALL_REPOS_FAILED: {exc}", file=sys.stderr)
+        return 1
+
+    for item in result.items:
+        output = _display_path(item.output_dir)
+        if item.status == "skipped":
+            print(f"Skipped [{item.kind}] {item.scenario_id}: {output} already exists.")
+        elif item.status == "generated":
+            verb = "Overwrote" if item.overwritten else "Generated"
+            print(f"{verb} [{item.kind}] {item.scenario_id}: {output} ({item.commit_count} commit(s)).")
+        else:
+            print(f"Failed [{item.kind}] {item.scenario_id}: {output}: {item.error}", file=sys.stderr)
+
+    print("Summary:")
+    print(f"  Total:       {result.total_count}")
+    print(f"  Generated:   {result.generated_count}")
+    print(f"  Skipped:     {result.skipped_count}")
+    print(f"  Overwritten: {result.overwritten_count}")
+    print(f"  Failed:      {result.failed_count}")
+    return 1 if result.failed_count else 0
 
 def cmd_verify_graph(args) -> int:
     result = verify_graph_generated_repo(
@@ -187,6 +224,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_generate_graph.add_argument("--force", action="store_true", help="Overwrite output directory if it exists")
     p_generate_graph.add_argument("--no-verify", action="store_true", help="Skip post-generation graph verification")
     p_generate_graph.set_defaults(func=cmd_generate_graph)
+
+    p_generate_all = sub.add_parser("generate-all-repos", help="Generate repositories for every classic and graph scenario")
+    p_generate_all.add_argument("--overwrite", action="store_true", help="Overwrite existing generated repositories")
+    p_generate_all.add_argument("--no-verify", action="store_true", help="Skip post-generation verification")
+    p_generate_all.add_argument("--out-root", default=str(DEFAULT_GENERATED_INPUT_REPOS_ROOT), help="Root directory for generated repositories")
+    p_generate_all.add_argument("--scenarios-root", default=str(DEFAULT_SCENARIOS_ROOT), help="Root directory for classic scenarios")
+    p_generate_all.add_argument("--advanced-scenarios-root", default=str(DEFAULT_ADVANCED_SCENARIOS_ROOT), help="Root directory for graph scenarios")
+    p_generate_all.set_defaults(func=cmd_generate_all_repos)
 
     p_verify_graph = sub.add_parser("verify-graph", help="Verify a generated repository against scenario.graph.yml")
     p_verify_graph.add_argument("repo")

@@ -336,6 +336,37 @@ advanced-scenarios/SZZG-XXXX/
 └── README.md
 ```
 
+## generate-all-repos
+
+Generate repositories for all normal scenarios under `scenarios/` and all Graph scenarios under `advanced-scenarios/` with one command.
+
+```bash
+szzbench generate-all-repos
+```
+
+The command scans the following files.
+
+- `scenarios/*/scenario.yml`
+- `advanced-scenarios/*/scenario.graph.yml`
+
+Each generated repository is written under `generated-input-repos/<SCENARIO_ID>/default/`.
+
+By default, if that output directory already contains `repo/.git`, the scenario is skipped. This makes the command safe to run repeatedly when you only want to generate missing repositories.
+
+To remove existing generated repositories and create them again, use `--overwrite`.
+
+```bash
+szzbench generate-all-repos --overwrite
+```
+
+`--overwrite` deletes the existing `generated-input-repos/<SCENARIO_ID>/default/` output for each scenario before generating it again.
+
+Add `--no-verify` to skip post-generation verification for all generated repositories.
+
+```bash
+szzbench generate-all-repos --no-verify
+```
+
 ## clean
 
 Delete generated repositories under `generated-input-repos/`.
@@ -809,6 +840,37 @@ szzbench new-graph-scenario   --title "BIC on feature branch and BFC on main"   
 advanced-scenarios/SZZG-XXXX/
 ├── scenario.graph.yml
 └── README.md
+```
+
+## generate-all-repos
+
+`scenarios/` 以下の通常シナリオと、`advanced-scenarios/` 以下の Graph シナリオから、まとめてリポジトリを生成します。
+
+```bash
+szzbench generate-all-repos
+```
+
+このコマンドは、次のファイルを走査します。
+
+- `scenarios/*/scenario.yml`
+- `advanced-scenarios/*/scenario.graph.yml`
+
+各リポジトリは `generated-input-repos/<SCENARIO_ID>/default/` 以下に生成されます。
+
+デフォルトでは、出力先に `repo/.git` が存在する場合、そのシナリオはスキップされます。そのため、不足しているリポジトリだけを生成したい場合にも繰り返し実行できます。
+
+既存の生成済みリポジトリを削除して作り直す場合は、`--overwrite` を使います。
+
+```bash
+szzbench generate-all-repos --overwrite
+```
+
+`--overwrite` は、対象シナリオの既存出力 `generated-input-repos/<SCENARIO_ID>/default/` を削除してから再生成します。
+
+生成後の検証をまとめてスキップする場合は、`--no-verify` を使います。
+
+```bash
+szzbench generate-all-repos --no-verify
 ```
 
 ## clean
