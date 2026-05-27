@@ -172,24 +172,55 @@ The main roles are as follows.
 
 Python 3.10 or later is required.
 
-Run the following command in the SZZBench root directory.
+Create and activate a virtual environment in the SZZBench root directory.
+
+On macOS / Linux:
 
 ```bash
-pip install -e ".[dev]"
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+On Windows PowerShell:
+
+```powershell
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+```
+
+Then install SZZBench.
+
+```bash
+python -m pip install -U pip setuptools wheel
+python -m pip install -e ".[dev]"
 ```
 
 `-e` means editable install. It directly references the source code under development, so changes under `src/szzbench/` are usually reflected without reinstalling.
 
-If you do not need development dependencies, the following is also acceptable.
+If you do not need development dependencies, install without the `dev` extra.
 
 ```bash
-pip install -e .
+python -m pip install -e .
 ```
 
 After installation, the `szzbench` command becomes available.
 
 ```bash
 szzbench --help
+```
+
+When returning to this project later, activate the virtual environment again before running `szzbench`, `pytest`, or other project commands.
+
+On macOS / Linux:
+
+```bash
+source .venv/bin/activate
+```
+
+On Windows PowerShell:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
 ```
 
 ## Using normal scenarios
@@ -678,24 +709,55 @@ SZZBench/
 
 Python 3.10 以上が必要です。
 
-SZZBench のルートディレクトリで、次を実行します。
+SZZBench のルートディレクトリで、仮想環境を作成して有効化します。
+
+macOS / Linux の場合:
 
 ```bash
-pip install -e ".[dev]"
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+Windows PowerShell の場合:
+
+```powershell
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+```
+
+その後、SZZBench をインストールします。
+
+```bash
+python -m pip install -U pip setuptools wheel
+python -m pip install -e ".[dev]"
 ```
 
 `-e` は editable install の意味です。開発中のソースコードを直接参照するため、`src/szzbench/` 以下を修正した場合でも、基本的には再インストールせずに変更が反映されます。
 
-開発用依存関係が不要な場合は、次でも構いません。
+開発用依存関係が不要な場合は、`dev` extra なしでインストールします。
 
 ```bash
-pip install -e .
+python -m pip install -e .
 ```
 
 インストール後、次のように `szzbench` コマンドが使えます。
 
 ```bash
 szzbench --help
+```
+
+後でこのプロジェクトで作業するときは、`szzbench`、`pytest`、その他のプロジェクト用コマンドを実行する前に、再度仮想環境を有効化します。
+
+macOS / Linux の場合:
+
+```bash
+source .venv/bin/activate
+```
+
+Windows PowerShell の場合:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
 ```
 
 ## 通常シナリオの使い方
