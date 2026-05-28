@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 import subprocess
 import sys
 import textwrap
@@ -353,6 +354,16 @@ def test_graph_apply_patch_from_generates(tmp_path):
         check=True,
     ).stdout
     assert "return value > min && value < max;" in release_content
+
+def test_graph_map_records_rebase_of(tmp_path):
+    scenario = Path("advanced-scenarios/SZZG-0073/scenario.graph.yml")
+    out = tmp_path / "generated"
+
+    subprocess.run([sys.executable, "-m", "szzbench.cli", "generate-graph", str(scenario), "--out", str(out), "--force"], check=True)
+
+    graph_map = json.loads((out / "metadata" / "graph-map.json").read_text(encoding="utf-8"))
+    assert graph_map["commits"]["r1"]["rebase_of"] == "f1"
+    assert graph_map["commits"]["r2"]["rebase_of"] == "f2"
 
 def test_validate_graph_simulate_reports_operation_state_errors(tmp_path):
     scenario = tmp_path / "scenario.graph.yml"

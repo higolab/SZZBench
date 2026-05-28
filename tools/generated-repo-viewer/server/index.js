@@ -141,6 +141,26 @@ function parseGitLog(raw, commitMap) {
   });
 }
 
+function sortCommitsForScenario(commits, scenario) {
+  const orderedSpecs = Array.isArray(scenario?.commits) ? scenario.commits : [];
+  const orderByLogical = new Map();
+  orderedSpecs.forEach((commit, index) => {
+    if (commit && typeof commit.id === "string") {
+      orderByLogical.set(commit.id, index);
+    }
+  });
+  if (orderByLogical.size === 0) {
+    return commits;
+  }
+
+  return [...commits].sort((a, b) => {
+    const aOrder = a.logicalId && orderByLogical.has(a.logicalId) ? orderByLogical.get(a.logicalId) : Number.MAX_SAFE_INTEGER;
+    const bOrder = b.logicalId && orderByLogical.has(b.logicalId) ? orderByLogical.get(b.logicalId) : Number.MAX_SAFE_INTEGER;
+    if (aOrder !== bOrder) return aOrder - bOrder;
+    return a.hash.localeCompare(b.hash);
+  });
+}
+
 async function findGeneratedRepositories() {
   const results = [];
 
@@ -265,8 +285,8 @@ app.get("/api/repository", async (req, res) => {
       generationLog = "";
     }
 
-    const logRaw = await runGit(repoDir, ["log", "--reverse", "--format=%H%x01%P%x01%an%x01%ae%x01%aI%x01%s"]);
-    const commits = parseGitLog(logRaw, commitMap);
+    const logRaw = await runGit(repoDir, ["log", "--all", "--topo-order", "--reverse", "--format=%H%x01%P%x01%an%x01%ae%x01%aI%x01%s"]);
+    const commits = sortCommitsForScenario(parseGitLog(logRaw, commitMap), scenario);
     const oracleBadges = collectOracleBadgesForCommits(scenario, commitMap);
 
     res.json({

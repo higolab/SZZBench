@@ -109,6 +109,7 @@ def generate_graph_repository(
                 "role": commit_spec.get("role"),
                 "cherry_pick_of": commit_spec.get("cherry_pick_of"),
                 "backport_of": commit_spec.get("backport_of"),
+                "rebase_of": commit_spec.get("rebase_of"),
             }
             graph_map["branches"] = branch_heads.copy()
             log(f"Created graph commit {cid}: {actual_hash}")

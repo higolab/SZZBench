@@ -34,6 +34,31 @@ type Badge = {
   role?: string;
 };
 
+type CommitMapEntry = {
+  hash: string;
+  message?: string;
+  role?: string;
+  date?: string;
+  branch?: string;
+  parents?: string[];
+};
+
+type GraphCommitEntry = {
+  hash?: string;
+  branch?: string;
+  parents?: string[];
+  parent_hashes?: string[];
+  role?: string;
+  cherry_pick_of?: string | null;
+  backport_of?: string | null;
+  rebase_of?: string | null;
+};
+
+type GraphMap = {
+  commits?: Record<string, GraphCommitEntry>;
+  branches?: Record<string, string>;
+};
+
 type RepositoryDetail = {
   generatedDir: string;
   repoDir: string;
@@ -41,8 +66,8 @@ type RepositoryDetail = {
   scenario: any;
   scenarioKind: "classic" | "graph" | "unknown";
   scenarioFile: string | null;
-  commitMap: Record<string, { hash: string; message?: string; role?: string; date?: string; branch?: string; parents?: string[] }>;
-  graphMap: any;
+  commitMap: Record<string, CommitMapEntry>;
+  graphMap: GraphMap | null;
   commits: CommitInfo[];
   oracleBadges: {
     byLogical: Record<string, Badge[]>;
@@ -76,6 +101,21 @@ function roleOfCommit(detail: RepositoryDetail | null, commit: CommitInfo): stri
 function branchOfCommit(detail: RepositoryDetail | null, commit: CommitInfo): string {
   if (!detail || !commit.logicalId) return "";
   return detail.commitMap?.[commit.logicalId]?.branch || "";
+}
+
+function graphEntryOfCommit(detail: RepositoryDetail | null, commit: CommitInfo | null): GraphCommitEntry | null {
+  if (!detail || !commit?.logicalId) return null;
+  const entry = detail.graphMap?.commits?.[commit.logicalId];
+  return entry && typeof entry === "object" ? entry : null;
+}
+
+function rebaseSourceOfCommit(detail: RepositoryDetail | null, commit: CommitInfo | null): string {
+  const source = graphEntryOfCommit(detail, commit)?.rebase_of;
+  return typeof source === "string" ? source : "";
+}
+
+function sourceHashOf(detail: RepositoryDetail | null, logicalId: string): string {
+  return detail?.commitMap?.[logicalId]?.hash || "";
 }
 
 function commitIdOf(entry: any): string {
@@ -272,6 +312,13 @@ function App() {
   const selectedBadges = selectedCommit && detail
     ? detail.oracleBadges.byHash[selectedCommit.hash] || []
     : [];
+  const selectedRebaseSource = rebaseSourceOfCommit(detail, selectedCommit);
+  const selectedRebaseHash = selectedRebaseSource ? sourceHashOf(detail, selectedRebaseSource) : "";
+
+  function selectLogicalCommit(logicalId: string) {
+    const commit = detail?.commits.find(item => item.logicalId === logicalId);
+    if (commit) setSelectedCommit(commit);
+  }
 
   return (
     <div className="app-shell">
@@ -324,6 +371,8 @@ function App() {
               {detail?.commits.map(commit => {
                 const isSelected = commit.hash === selectedCommit?.hash;
                 const badges = detail.oracleBadges.byHash[commit.hash] || [];
+                const rebaseSource = rebaseSourceOfCommit(detail, commit);
+                const rebaseSourceHash = rebaseSource ? sourceHashOf(detail, rebaseSource) : "";
                 return (
                   <button
                     key={commit.hash}
@@ -336,7 +385,15 @@ function App() {
                     </div>
                     <div className="commit-subject">{commit.subject}</div>
                     <div className="commit-hash">{commit.shortHash}</div>
+                    {rebaseSource && (
+                      <div className="commit-relation">
+                        Rebased from <strong>{rebaseSource}</strong>{rebaseSourceHash ? ` / ${short(rebaseSourceHash)}` : ""}
+                      </div>
+                    )}
                     <div className="badges">
+                      {rebaseSource && (
+                        <span className="badge rebase">rebase from {rebaseSource}</span>
+                      )}
                       {badges.map((b, i) => (
                         <span key={i} className={`badge ${b.kind.toLowerCase()}`}>
                           {b.kind} {b.bugId}{b.role ? `:${b.role}` : ""}
@@ -363,8 +420,21 @@ function App() {
                       {selectedCommit?.logicalId || "(no logical id)"} / {selectedCommit?.shortHash}
                       {" "}— {selectedCommit?.subject}
                     </p>
+                    {selectedRebaseSource && (
+                      <p className="commit-relation selected-relation">
+                        Rebased from <strong>{selectedRebaseSource}</strong>{selectedRebaseHash ? ` / ${short(selectedRebaseHash)}` : ""}
+                        {detail.commits.some(item => item.logicalId === selectedRebaseSource) && (
+                          <button className="inline-button" onClick={() => selectLogicalCommit(selectedRebaseSource)}>
+                            Open source commit
+                          </button>
+                        )}
+                      </p>
+                    )}
                   </div>
                   <div className="badges">
+                    {selectedRebaseSource && (
+                      <span className="badge rebase">rebase from {selectedRebaseSource}</span>
+                    )}
                     {selectedBadges.map((b, i) => (
                       <span key={i} className={`badge ${b.kind.toLowerCase()}`}>
                         {b.kind} {b.bugId}{b.role ? `:${b.role}` : ""}

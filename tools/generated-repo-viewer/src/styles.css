@@ -238,6 +238,38 @@ input {
   border-color: #bbf7d0;
 }
 
+.badge.rebase {
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #fde68a;
+}
+
+.commit-relation {
+  color: var(--warning);
+  font-size: 11px;
+  margin-top: 5px;
+  line-height: 1.35;
+}
+
+.commit-relation strong {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.selected-relation {
+  font-size: 12px;
+  margin: 4px 0 0 0;
+}
+
+.inline-button {
+  margin-left: 8px;
+  padding: 3px 7px;
+  border-radius: 8px;
+  font-size: 11px;
+  color: var(--warning);
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
 .section-header {
   display: flex;
   justify-content: space-between;
