@@ -554,5 +554,17 @@ scenarios:
   status: draft
   factors:
   - expected_szz
+- id: SZZG-0073
+  title: Rebase feature branch with BIC
+  category: Branch, merge, cherry-pick, and backport scenarios
+  path: advanced-scenarios/SZZG-0073/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0073/README.md
+  status: draft
+  factors:
+  - branch
+  - rebase
+  - rebased_bic
+  - direct_bic
+  - origin_bic
 notes:
-- Old SZZG-0073 was renamed to SZZG-0071 before public release; the old duplicate SZZG-0071 entry was removed.
+- Current SZZG-0073 adds the rebase feature branch with BIC graph scenario.

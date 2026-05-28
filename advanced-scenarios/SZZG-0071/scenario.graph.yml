@@ -149,14 +149,11 @@ scenario_design:
   merged_from:
   - old_id: SZZG-0071
     reason: Former relaxed-with-credit copy-propagation scenario.
-  - old_id: SZZG-0073
-    reason: Former evaluation-variant scenario. Renumbered to SZZG-0071 before public release.
   evaluation_points:
   - Whether SZZ identifies the direct BIC c2 for the copied file B.java.
   - Whether the origin BIC c1 can be treated as related without replacing the direct BIC.
   - Whether multiple evaluation policies can be applied to the same repository history.
 notes:
-- Former SZZG-0073, renumbered to SZZG-0071 before public release after removing the duplicate old SZZG-0071.
 - This scenario absorbs the relaxed-with-credit evaluation policy from the old SZZG-0071.
 - The default evaluation variant is direct-only; origin-aware and relaxed-with-credit variants are provided for alternative
   evaluation settings.

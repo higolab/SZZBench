@@ -15,8 +15,6 @@ origin BIC: c1
 
 The direct BIC is the commit that copied the faulty logic into the fixed file. The origin BIC is the commit where the faulty logic first appeared.
 
-This scenario is the renumbered successor of the former `SZZG-0073` and also absorbs the relaxed-with-credit policy from the former `SZZG-0071`.
-
 ## Commit history
 
 ```text
@@ -109,7 +107,3 @@ Compatibility variant equivalent to the former `SZZG-0071` policy.
 required: c2
 acceptable_related: c1, credit 0.5
 ```
-
-## Renumbering note
-
-Before public release, the old `SZZG-0071` and old `SZZG-0073` were found to use the same repository history. The old `SZZG-0073` evaluation-variant design was retained, expanded to include the old `SZZG-0071` relaxed-with-credit policy, and renumbered to `SZZG-0071`.
