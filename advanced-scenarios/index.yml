@@ -1,6 +1,6 @@
 schema_version: graph-index-0.1-draft
 description: Index of draft advanced graph scenarios for SZZBench.
-scenario_count: 60
+scenario_count: 87
 scenarios:
 - id: SZZG-0001
   title: BFC performs rename and fix in the same commit
@@ -566,5 +566,339 @@ scenarios:
   - rebased_bic
   - direct_bic
   - origin_bic
+- id: SZZG-0074
+  title: Rebase with non-BIC intermediate commit
+  category: Branch, merge, cherry-pick, and backport scenarios
+  path: advanced-scenarios/SZZG-0074/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0074/README.md
+  status: draft
+  factors:
+  - branch
+  - rebase
+  - rebased_bic
+  - intermediate_commit
+  - direct_bic
+  - origin_bic
+- id: SZZG-0075
+  title: Rebase conflict resolution introduces bug
+  category: Branch, merge, cherry-pick, and backport scenarios
+  path: advanced-scenarios/SZZG-0075/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0075/README.md
+  status: draft
+  factors:
+  - branch
+  - rebase
+  - rebase_conflict_resolution
+  - conflict_resolution_bic
+  - direct_bic
+- id: SZZG-0076
+  title: Rebase conflict resolution propagates existing bug
+  category: Branch, merge, cherry-pick, and backport scenarios
+  path: advanced-scenarios/SZZG-0076/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0076/README.md
+  status: draft
+  factors:
+  - branch
+  - rebase
+  - rebase_conflict_resolution
+  - origin_bic
+  - direct_bic
+- id: SZZG-0077
+  title: Rebase conflict resolution fixes bug
+  category: Branch, merge, cherry-pick, and backport scenarios
+  path: advanced-scenarios/SZZG-0077/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0077/README.md
+  status: draft
+  factors:
+  - branch
+  - rebase
+  - rebase_conflict_resolution
+  - conflict_resolution_bfc
+  - rebased_bic
+- id: SZZG-0078
+  title: Rebase changes patch content during replay
+  category: Branch, merge, cherry-pick, and backport scenarios
+  path: advanced-scenarios/SZZG-0078/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0078/README.md
+  status: draft
+  factors:
+  - branch
+  - rebase
+  - patch_modified_during_rebase
+  - origin_bic
+  - direct_bic
+- id: SZZG-0079
+  title: Rebase splits original BIC into multiple commits
+  category: Branch, merge, cherry-pick, and backport scenarios
+  path: advanced-scenarios/SZZG-0079/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0079/README.md
+  status: draft
+  factors:
+  - branch
+  - rebase
+  - split_bic
+  - multiple_bic
+  - origin_bic
+  - direct_bic
+- id: SZZG-0080
+  title: Rebase combines multiple BICs into one commit
+  category: Branch, merge, cherry-pick, and backport scenarios
+  path: advanced-scenarios/SZZG-0080/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0080/README.md
+  status: draft
+  factors:
+  - branch
+  - rebase
+  - interactive_rebase
+  - squash
+  - multiple_origin_bic
+  - direct_bic
+- id: SZZG-0081
+  title: Interactive rebase edits BIC commit
+  category: Branch, merge, cherry-pick, and backport scenarios
+  path: advanced-scenarios/SZZG-0081/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0081/README.md
+  status: draft
+  factors:
+  - branch
+  - rebase
+  - interactive_rebase
+  - edit
+  - patch_modified_during_rebase
+  - direct_bic
+  - origin_bic
+- id: SZZG-0082
+  title: Interactive rebase drops original BIC but bug remains
+  category: Branch, merge, cherry-pick, and backport scenarios
+  path: advanced-scenarios/SZZG-0082/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0082/README.md
+  status: draft
+  factors:
+  - branch
+  - rebase
+  - interactive_rebase
+  - drop
+  - dropped_origin_bic
+  - direct_bic
+- id: SZZG-0083
+  title: Interactive rebase reorders commits before BIC
+  category: Branch, merge, cherry-pick, and backport scenarios
+  path: advanced-scenarios/SZZG-0083/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0083/README.md
+  status: draft
+  factors:
+  - branch
+  - rebase
+  - interactive_rebase
+  - reorder
+  - direct_bic
+  - origin_bic
+- id: SZZG-0084
+  title: Interactive rebase fixup combines buggy commits
+  category: Branch, merge, cherry-pick, and backport scenarios
+  path: advanced-scenarios/SZZG-0084/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0084/README.md
+  status: draft
+  factors:
+  - branch
+  - rebase
+  - interactive_rebase
+  - fixup
+  - squash
+  - direct_bic
+  - origin_bic
+- id: SZZG-0085
+  title: Release branch change rebased onto main
+  category: Branch, merge, cherry-pick, and backport scenarios
+  path: advanced-scenarios/SZZG-0085/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0085/README.md
+  status: draft
+  factors:
+  - branch
+  - rebase
+  - release_branch
+  - release_to_main
+  - direct_bic
+  - origin_bic
+- id: SZZG-0086
+  title: Main fix rebased onto release branch
+  category: Branch, merge, cherry-pick, and backport scenarios
+  path: advanced-scenarios/SZZG-0086/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0086/README.md
+  status: draft
+  factors:
+  - branch
+  - rebase
+  - release_branch
+  - main_fix_to_release
+  - rebased_bfc
+  - bug_fixing_commits
+- id: SZZG-0087
+  title: Rebase old feature branch after unrelated main changes
+  category: Branch, merge, cherry-pick, and backport scenarios
+  path: advanced-scenarios/SZZG-0087/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0087/README.md
+  status: draft
+  factors:
+  - branch
+  - rebase
+  - old_base
+  - unrelated_main_changes
+  - direct_bic
+  - origin_bic
+- id: SZZG-0088
+  title: Bug-fixing commit is rebased onto main
+  category: Branch, merge, cherry-pick, and backport scenarios
+  path: advanced-scenarios/SZZG-0088/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0088/README.md
+  status: draft
+  factors:
+  - branch
+  - rebase
+  - rebased_bic
+  - rebased_bfc
+  - direct_bic
+  - origin_bic
+- id: SZZG-0089
+  title: Interactive rebase squashes BIC and BFC into neutral commit
+  category: Branch, merge, cherry-pick, and backport scenarios
+  path: advanced-scenarios/SZZG-0089/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0089/README.md
+  status: draft
+  factors:
+  - branch
+  - rebase
+  - interactive_rebase
+  - squash
+  - transient_bug
+  - scope_boundary
+- id: SZZG-0090
+  title: Multiple BICs replayed by rebase
+  category: Branch, merge, cherry-pick, and backport scenarios
+  path: advanced-scenarios/SZZG-0090/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0090/README.md
+  status: draft
+  factors:
+  - branch
+  - rebase
+  - multiple_bic
+  - rebased_bic
+  - direct_bic
+  - origin_bic
+- id: SZZG-0091
+  title: Rebased BIC fixed by multiple BFCs
+  category: Branch, merge, cherry-pick, and backport scenarios
+  path: advanced-scenarios/SZZG-0091/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0091/README.md
+  status: draft
+  factors:
+  - branch
+  - rebase
+  - rebased_bic
+  - multiple_bfc
+  - partial_fix
+  - complete_fix
+- id: SZZG-0092
+  title: Rebase with copy propagation
+  category: Branch, merge, cherry-pick, and backport scenarios
+  path: advanced-scenarios/SZZG-0092/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0092/README.md
+  status: draft
+  factors:
+  - branch
+  - rebase
+  - copy_propagation
+  - copy_file
+  - direct_bic
+  - origin_bic
+- id: SZZG-0093
+  title: Clone diverges before rebase
+  category: Branch, merge, cherry-pick, and backport scenarios
+  path: advanced-scenarios/SZZG-0093/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0093/README.md
+  status: draft
+  factors:
+  - branch
+  - rebase
+  - clone_relationships
+  - clone_divergence
+  - direct_bic
+  - origin_bic
+- id: SZZG-0094
+  title: Rebase commit message reveals origin
+  category: Branch, merge, cherry-pick, and backport scenarios
+  path: advanced-scenarios/SZZG-0094/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0094/README.md
+  status: draft
+  factors:
+  - branch
+  - rebase
+  - commit_messages
+  - developer_hints
+  - origin_bic
+  - direct_bic
+- id: SZZG-0095
+  title: Misleading rebase commit message
+  category: Branch, merge, cherry-pick, and backport scenarios
+  path: advanced-scenarios/SZZG-0095/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0095/README.md
+  status: draft
+  factors:
+  - branch
+  - rebase
+  - commit_messages
+  - misleading_commit_message
+  - direct_bic
+- id: SZZG-0096
+  title: BFC message identifies rebase regression
+  category: Branch, merge, cherry-pick, and backport scenarios
+  path: advanced-scenarios/SZZG-0096/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0096/README.md
+  status: draft
+  factors:
+  - branch
+  - rebase
+  - commit_messages
+  - bfc_message
+  - context
+  - direct_bic
+- id: SZZG-0097
+  title: Rebase with formatting rewrite noise
+  category: Branch, merge, cherry-pick, and backport scenarios
+  path: advanced-scenarios/SZZG-0097/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0097/README.md
+  status: draft
+  factors:
+  - branch
+  - rebase
+  - formatting_rewrite
+  - formatting
+  - robustness
+  - direct_bic
+- id: SZZG-0098
+  title: Rebase with generated file update
+  category: Branch, merge, cherry-pick, and backport scenarios
+  path: advanced-scenarios/SZZG-0098/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0098/README.md
+  status: draft
+  factors:
+  - branch
+  - rebase
+  - generated_files
+  - generated_code_noise
+  - direct_bic
+- id: SZZG-0099
+  title: Huge noisy rebased commit
+  category: Branch, merge, cherry-pick, and backport scenarios
+  path: advanced-scenarios/SZZG-0099/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0099/README.md
+  status: draft
+  factors:
+  - branch
+  - rebase
+  - large_noisy_commit
+  - multi_file
+  - robustness
+  - direct_bic
 notes:
-- Current SZZG-0073 adds the rebase feature branch with BIC graph scenario.
+- Old SZZG-0073 was renamed to SZZG-0071 before public release; the old duplicate SZZG-0071 entry was removed.

@@ -1,0 +1,119 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0089
+  title: Interactive rebase squashes BIC and BFC into neutral commit
+  slug: interactive-rebase-squashes-bic-and-bfc-into-neutral-commit
+  description: A transient feature bug is fixed before rebase and does not survive into main.
+  category: Branch, merge, cherry-pick, and backport scenarios
+  category_code: G
+  factors:
+  - branch
+  - rebase
+  - interactive_rebase
+  - squash
+  - transient_bug
+  - scope_boundary
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0089-interactive-rebase-squashes-bic-and-bfc-into-neutral-commit
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: 'c0: create initial correct implementation
+
+    f1: introduce transient bug on feature
+
+    f2: fix transient bug on feature
+
+    r1: squash transient bug and fix into neutral commit'
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'c0: create initial correct implementation'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n}\n"
+- id: f1
+  branch: feature
+  parents:
+  - c0
+  message: 'f1: introduce transient bug on feature'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+- id: f2
+  branch: feature
+  parents:
+  - f1
+  message: 'f2: fix transient bug on feature'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+- id: r1
+  branch: main
+  parents:
+  - c0
+  message: 'r1: squash transient bug and fix into neutral commit'
+  role: intermediate
+  operations:
+  - type: write_file
+    path: docs/rebase-note.md
+    content: 'transient bug squashed out
+
+      '
+  rebase_of:
+  - f1
+  - f2
+  interactive_rebase: squash_transient_bug_fix
+bugs:
+- id: B001
+  title: Transient feature bug squashed out before main
+  bug_introducing_commits:
+  - commit: f1
+    role: direct
+  bug_fixing_commits:
+  - commit: f2
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: f1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: f2
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - f1
+    notes: This records the pre-rebase transient BIC/BFC pair; r1 is not a main-line SZZ target.
+scenario_design:
+  purpose: Clarify a scope boundary for bugs that do not survive into final main history.
+  key_property: The final main history has no main-line BIC for this transient bug.
+  difference_from_SZZG_0073: SZZG-0073 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
+    adds a distinct rebase-related complication.
+  evaluation_points:
+  - Record transient pair.
+  - Treat as special scope-boundary case.
+notes:
+- This scenario models a rebase-related development history for SZZ evaluation.
+- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

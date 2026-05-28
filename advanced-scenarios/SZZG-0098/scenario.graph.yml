@@ -1,0 +1,141 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0098
+  title: Rebase with generated file update
+  slug: rebase-with-generated-file-update
+  description: A generated file is updated during rebase after the source BIC.
+  category: Branch, merge, cherry-pick, and backport scenarios
+  category_code: G
+  factors:
+  - branch
+  - rebase
+  - generated_files
+  - generated_code_noise
+  - direct_bic
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0098-rebase-with-generated-file-update
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: 'c0: create initial correct implementation
+
+    f1: introduce range bug
+
+    r1: rebase bug onto main
+
+    r2: regenerate derived range metadata during rebase
+
+    c3: fix source range bug'
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'c0: create initial correct implementation'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n}\n"
+- id: f1
+  branch: feature
+  parents:
+  - c0
+  message: 'f1: introduce range bug'
+  role: origin_bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+- id: r1
+  branch: main
+  parents:
+  - c0
+  message: 'r1: rebase bug onto main'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+  rebase_of: f1
+- id: r2
+  branch: main
+  parents:
+  - r1
+  message: 'r2: regenerate derived range metadata during rebase'
+  role: intermediate
+  operations:
+  - type: write_file
+    path: generated/range.properties
+    content: 'minInclusive=false
+
+      maxInclusive=false
+
+      '
+  generated_files: true
+- id: c3
+  branch: main
+  parents:
+  - r2
+  message: 'c3: fix source range bug'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+bugs:
+- id: B001
+  title: Source bug with generated file noise after rebase
+  bug_introducing_commits:
+  - commit: r1
+    role: direct
+  - commit: f1
+    role: origin
+  bug_fixing_commits:
+  - commit: c3
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: r1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c3
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+    fix_type: line_modification
+  origin_faults:
+  - id: OF001
+    commit: f1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: origin_line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - r1
+    related_but_not_correct:
+    - f1
+    - r2
+scenario_design:
+  purpose: Evaluate generated-file noise during rebase.
+  key_property: r2 updates generated metadata only.
+  difference_from_SZZG_0073: SZZG-0073 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
+    adds a distinct rebase-related complication.
+  evaluation_points:
+  - Report r1.
+  - Ignore r2.
+notes:
+- This scenario models a rebase-related development history for SZZ evaluation.
+- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

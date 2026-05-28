@@ -1,0 +1,154 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0087
+  title: Rebase old feature branch after unrelated main changes
+  slug: rebase-old-feature-branch-after-unrelated-main-changes
+  description: A feature branch from an old base is rebased after unrelated main changes.
+  category: Branch, merge, cherry-pick, and backport scenarios
+  category_code: G
+  factors:
+  - branch
+  - rebase
+  - old_base
+  - unrelated_main_changes
+  - direct_bic
+  - origin_bic
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0087-rebase-old-feature-branch-after-unrelated-main-changes
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: 'c0: create initial correct implementation
+
+    f1: introduce bug on old feature base
+
+    m1: unrelated main change
+
+    m2: second unrelated main change
+
+    r1: rebase old feature BIC onto latest main
+
+    c3: fix bug after rebase onto latest main'
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'c0: create initial correct implementation'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n}\n"
+- id: f1
+  branch: feature
+  parents:
+  - c0
+  message: 'f1: introduce bug on old feature base'
+  role: origin_bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+- id: m1
+  branch: main
+  parents:
+  - c0
+  message: 'm1: unrelated main change'
+  role: intermediate
+  operations:
+  - type: write_file
+    path: docs/main1.md
+    content: 'main 1
+
+      '
+- id: m2
+  branch: main
+  parents:
+  - m1
+  message: 'm2: second unrelated main change'
+  role: intermediate
+  operations:
+  - type: write_file
+    path: docs/main2.md
+    content: 'main 2
+
+      '
+- id: r1
+  branch: main
+  parents:
+  - m2
+  message: 'r1: rebase old feature BIC onto latest main'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+  rebase_of: f1
+- id: c3
+  branch: main
+  parents:
+  - r1
+  message: 'c3: fix bug after rebase onto latest main'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+bugs:
+- id: B001
+  title: Bug rebased after unrelated main changes
+  bug_introducing_commits:
+  - commit: r1
+    role: direct
+  - commit: f1
+    role: origin
+  bug_fixing_commits:
+  - commit: c3
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: r1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c3
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+    fix_type: line_modification
+  origin_faults:
+  - id: OF001
+    commit: f1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: origin_line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - r1
+    related_but_not_correct:
+    - f1
+    - m1
+    - m2
+scenario_design:
+  purpose: Evaluate rebase after unrelated main-line changes.
+  key_property: m1/m2 are distractors; r1 is direct BIC.
+  difference_from_SZZG_0073: SZZG-0073 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
+    adds a distinct rebase-related complication.
+  evaluation_points:
+  - Report r1.
+  - Avoid m1/m2.
+notes:
+- This scenario models a rebase-related development history for SZZ evaluation.
+- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

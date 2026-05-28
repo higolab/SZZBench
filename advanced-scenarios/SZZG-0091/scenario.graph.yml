@@ -1,0 +1,162 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0091
+  title: Rebased BIC fixed by multiple BFCs
+  slug: rebased-bic-fixed-by-multiple-bfcs
+  description: A rebased BIC is repaired by a partial fix followed by a complete fix.
+  category: Branch, merge, cherry-pick, and backport scenarios
+  category_code: G
+  factors:
+  - branch
+  - rebase
+  - rebased_bic
+  - multiple_bfc
+  - partial_fix
+  - complete_fix
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0091-rebased-bic-fixed-by-multiple-bfcs
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: 'c0: create initial correct implementation
+
+    f1: introduce both boundary bugs
+
+    r1: rebase feature BIC onto main
+
+    c3: partially fix lower boundary
+
+    c4: complete boundary fix'
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'c0: create initial correct implementation'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: |
+      package example;
+
+      public class Range {
+        public boolean contains(int value, int min, int max) {
+          boolean aboveMin = value >= min;
+          boolean belowMax = value <= max;
+          return aboveMin && belowMax;
+        }
+      }
+- id: f1
+  branch: feature
+  parents:
+  - c0
+  message: 'f1: introduce both boundary bugs'
+  role: origin_bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
+    new: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
+- id: r1
+  branch: main
+  parents:
+  - c0
+  message: 'r1: rebase feature BIC onto main'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
+    new: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
+  rebase_of: f1
+- id: c3
+  branch: main
+  parents:
+  - r1
+  message: 'c3: partially fix lower boundary'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: boolean aboveMin = value > min;
+    new: boolean aboveMin = value >= min;
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: 'c4: complete boundary fix'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: boolean belowMax = value < max;
+    new: boolean belowMax = value <= max;
+bugs:
+- id: B001
+  title: Rebased bug fixed progressively
+  bug_introducing_commits:
+  - commit: r1
+    role: direct
+  - commit: f1
+    role: origin
+  bug_fixing_commits:
+  - commit: c3
+    role: partial_fix
+  - commit: c4
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: r1
+    file: src/main/java/example/Range.java
+    statement: boolean belowMax = value < max;
+    change_type: upper_boundary_line_modification
+  - id: F002
+    commit: r1
+    file: src/main/java/example/Range.java
+    statement: boolean aboveMin = value > min;
+    change_type: lower_boundary_line_modification
+  fixes:
+  - id: X001
+    commit: c3
+    file: src/main/java/example/Range.java
+    statement: boolean aboveMin = value >= min;
+    fix_type: partial_line_modification
+  - id: X002
+    commit: c4
+    file: src/main/java/example/Range.java
+    statement: boolean belowMax = value <= max;
+    fix_type: complete_line_modification
+  origin_faults:
+  - id: OF001
+    commit: f1
+    file: src/main/java/example/Range.java
+    statement: boolean belowMax = value < max;
+    change_type: origin_upper_boundary_line_modification
+  - id: OF002
+    commit: f1
+    file: src/main/java/example/Range.java
+    statement: boolean aboveMin = value > min;
+    change_type: origin_lower_boundary_line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - r1
+    related_but_not_correct:
+    - f1
+scenario_design:
+  purpose: Evaluate progressive repair of a rebased BIC.
+  key_property: The rebased BIC introduces separate lower-bound and upper-bound faults. The partial fix repairs only the lower
+    bound, leaving the upper-bound fault present until the complete fix.
+  difference_from_SZZG_0073: SZZG-0073 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
+    adds a distinct rebase-related complication.
+  evaluation_points:
+  - Return r1 from final fix.
+notes:
+- This scenario models a rebase-related development history for SZZ evaluation.
+- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

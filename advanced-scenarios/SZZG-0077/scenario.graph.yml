@@ -1,0 +1,117 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0077
+  title: Rebase conflict resolution fixes bug
+  slug: rebase-conflict-resolution-fixes-bug
+  description: A rebase conflict resolution commit acts as the BFC.
+  category: Branch, merge, cherry-pick, and backport scenarios
+  category_code: G
+  factors:
+  - branch
+  - rebase
+  - rebase_conflict_resolution
+  - conflict_resolution_bfc
+  - rebased_bic
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0077-rebase-conflict-resolution-fixes-bug
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: 'c0: create initial correct implementation
+
+    r1: rebase feature bug commit onto main
+
+    m1: main change before conflict-resolution fix
+
+    r2: resolve rebase conflict and fix range bug'
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'c0: create initial correct implementation'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n}\n"
+- id: r1
+  branch: main
+  parents:
+  - c0
+  message: 'r1: rebase feature bug commit onto main'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+  rebase_of: f1
+- id: m1
+  branch: main
+  parents:
+  - r1
+  message: 'm1: main change before conflict-resolution fix'
+  role: intermediate
+  operations:
+  - type: write_file
+    path: docs/main.md
+    content: 'before fix
+
+      '
+- id: r2
+  branch: main
+  parents:
+  - m1
+  message: 'r2: resolve rebase conflict and fix range bug'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+  rebase_of: f2
+  rebase_conflict_resolution: true
+bugs:
+- id: B001
+  title: Bug fixed by rebase conflict resolution
+  bug_introducing_commits:
+  - commit: r1
+    role: direct
+  bug_fixing_commits:
+  - commit: r2
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: r1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: r2
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - r1
+    notes: The BFC is r2; the BIC is r1.
+scenario_design:
+  purpose: Evaluate whether SZZ can handle a BFC that is itself a rebase conflict resolution commit.
+  key_property: The fix is introduced by r2 during rebase conflict resolution.
+  difference_from_SZZG_0073: SZZG-0073 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
+    adds a distinct rebase-related complication.
+  evaluation_points:
+  - Start from r2.
+  - Return r1.
+notes:
+- This scenario models a rebase-related development history for SZZ evaluation.
+- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.
