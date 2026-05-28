@@ -1,0 +1,143 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0106
+  title: Misleading revert commit message reintroduces bug
+  slug: misleading-revert-commit-message-reintroduces-bug
+  description: A revert commit has a cleanup-like message but actually reintroduces a previously fixed bug.
+  category: Revert and reintroduction scenarios
+  category_code: G
+  factors:
+  - revert
+  - misleading_commit_message
+  - context_aware
+  - reintroduced_bug
+  - re_bic
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0106-misleading-revert-commit-message-reintroduces-bug
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: 'c0: create initial correct implementation
+
+    c1: introduce boundary bug
+
+    c2: fix boundary bug
+
+    c3: revert cleanup changes
+
+    c4: fix regression after misleading revert'
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'c0: create initial correct implementation'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    boolean\
+      \ aboveMin = value >= min;\n    boolean belowMax = value <= max;\n    return aboveMin && belowMax;\n  }\n}\n"
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'c1: introduce boundary bug'
+  role: origin_bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
+    new: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'c2: fix boundary bug'
+  role: prior_fix
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
+    new: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'c3: revert cleanup changes'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
+    new: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
+  reverts: c2
+  misleading_message: true
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: 'c4: fix regression after misleading revert'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
+    new: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
+bugs:
+- id: B001
+  title: Boundary bug hidden behind misleading revert message
+  bug_introducing_commits:
+  - commit: c3
+    role: direct
+  - commit: c1
+    role: origin
+  bug_fixing_commits:
+  - commit: c4
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c3
+    file: src/main/java/example/Range.java
+    statement: boolean belowMax = value < max;
+    change_type: misleading_revert_upper_boundary
+  - id: F002
+    commit: c3
+    file: src/main/java/example/Range.java
+    statement: boolean aboveMin = value > min;
+    change_type: misleading_revert_lower_boundary
+  fixes:
+  - id: X001
+    commit: c4
+    file: src/main/java/example/Range.java
+    statement: boolean belowMax = value <= max;
+    fix_type: line_modification
+  - id: X002
+    commit: c4
+    file: src/main/java/example/Range.java
+    statement: boolean aboveMin = value >= min;
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c3
+    related_but_not_correct:
+    - c1
+    - c2
+    notes: The misleading message should not obscure that c3 is the direct BIC.
+scenario_design:
+  purpose: Evaluate context-aware SZZ robustness when a revert message understates or mislabels the actual bug reintroduction.
+  key_property: The revert message looks like cleanup, but the patch reintroduces the boundary bug.
+  difference_from_existing_revert_scenarios: This scenario isolates a double-revert or revert-derived complication beyond
+    the existing partial revert and reintroduction scenarios.
+  evaluation_points:
+  - Whether SZZ reports c3.
+  - Whether context-aware methods avoid being misled by the message.
+notes:
+- This scenario models revert-related development history for SZZ evaluation.
+- The direct BIC is the commit that reintroduces the bug in the history observed from the BFC.

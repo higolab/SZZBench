@@ -1,6 +1,6 @@
 schema_version: graph-index-0.1-draft
 description: Index of draft advanced graph scenarios for SZZBench.
-scenario_count: 87
+scenario_count: 94
 scenarios:
 - id: SZZG-0001
   title: BFC performs rename and fix in the same commit
@@ -900,5 +900,89 @@ scenarios:
   - multi_file
   - robustness
   - direct_bic
+- id: SZZG-0100
+  title: Revert of fix reintroduces bug
+  category: Revert and reintroduction scenarios
+  path: advanced-scenarios/SZZG-0100/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0100/README.md
+  status: draft
+  factors:
+  - revert
+  - revert_of_fix
+  - reintroduced_bug
+  - re_bic
+  - origin_bic
+- id: SZZG-0101
+  title: Revert of revert fixes reintroduced bug
+  category: Revert and reintroduction scenarios
+  path: advanced-scenarios/SZZG-0101/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0101/README.md
+  status: draft
+  factors:
+  - revert
+  - revert_of_fix
+  - revert_of_revert
+  - reintroduced_bug
+  - re_bic
+- id: SZZG-0102
+  title: Partial revert of fix reintroduces one fault
+  category: Revert and reintroduction scenarios
+  path: advanced-scenarios/SZZG-0102/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0102/README.md
+  status: draft
+  factors:
+  - revert
+  - partial_revert
+  - reintroduced_bug
+  - single_fault_reintroduced
+  - re_bic
+- id: SZZG-0103
+  title: Revert of revert with conflict resolution
+  category: Revert and reintroduction scenarios
+  path: advanced-scenarios/SZZG-0103/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0103/README.md
+  status: draft
+  factors:
+  - revert
+  - revert_of_revert
+  - conflict_resolution
+  - intermediate_change
+  - re_bic
+- id: SZZG-0104
+  title: Repeated revert toggling before final fix
+  category: Revert and reintroduction scenarios
+  path: advanced-scenarios/SZZG-0104/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0104/README.md
+  status: draft
+  factors:
+  - revert
+  - revert_of_revert
+  - repeated_toggling
+  - reintroduced_bug
+  - re_bic
+- id: SZZG-0105
+  title: Multiple BICs with partial revert reintroducing one fault
+  category: Revert and reintroduction scenarios
+  path: advanced-scenarios/SZZG-0105/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0105/README.md
+  status: draft
+  factors:
+  - revert
+  - partial_revert
+  - multiple_bic
+  - single_fault_reintroduced
+  - re_bic
+- id: SZZG-0106
+  title: Misleading revert commit message reintroduces bug
+  category: Revert and reintroduction scenarios
+  path: advanced-scenarios/SZZG-0106/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0106/README.md
+  status: draft
+  factors:
+  - revert
+  - misleading_commit_message
+  - context_aware
+  - reintroduced_bug
+  - re_bic
 notes:
 - Old SZZG-0073 was renamed to SZZG-0071 before public release; the old duplicate SZZG-0071 entry was removed.
