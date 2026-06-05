@@ -200,6 +200,156 @@ def test_clean_removes_generated_outputs(tmp_path):
     assert not out_variant.exists()
     assert keep.exists()
 
+def test_evaluate_predictions_jsonl_pass_and_empty_fail(tmp_path):
+    scenarios_root = tmp_path / "scenarios"
+    advanced_scenarios_root = tmp_path / "advanced-scenarios"
+    advanced_scenarios_root.mkdir()
+    generated_root = tmp_path / "generated-input-repos"
+    _write_classic_scenario(scenarios_root / "SZZ-9100" / "scenario.yml", "SZZ-9100")
+    _write_classic_scenario(scenarios_root / "SZZ-9101" / "scenario.yml", "SZZ-9101")
+
+    for scenario_id in ["SZZ-9100", "SZZ-9101"]:
+        subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "szzbench.cli",
+                "generate",
+                str(scenarios_root / scenario_id / "scenario.yml"),
+                "--out",
+                str(generated_root / scenario_id / "default"),
+                "--force",
+            ],
+            check=True,
+        )
+
+    commit_map = json.loads((generated_root / "SZZ-9100" / "default" / "metadata" / "commit-map.json").read_text(encoding="utf-8"))
+    predictions = tmp_path / "predictions.jsonl"
+    predictions.write_text(
+        json.dumps(
+            {
+                "scenario_id": "SZZ-9100",
+                "predictions": [
+                    {
+                        "fix_commit": commit_map["c1"]["hash"],
+                        "inducing_commit": commit_map["c0"]["hash"],
+                    }
+                ],
+            }
+        )
+        + "\n"
+        + json.dumps({"scenario_id": "SZZ-9101", "predictions": []})
+        + "\n",
+        encoding="utf-8",
+    )
+    out_dir = tmp_path / "evaluation"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "szzbench.cli",
+            "evaluate",
+            "--predictions",
+            str(predictions),
+            "--generated-root",
+            str(generated_root),
+            "--scenarios-root",
+            str(scenarios_root),
+            "--advanced-scenarios-root",
+            str(advanced_scenarios_root),
+            "--out",
+            str(out_dir),
+            "--json",
+        ],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=True,
+    )
+
+    report = json.loads(result.stdout)
+    assert report["summary"]["total_scenarios"] == 2
+    assert report["summary"]["pass"] == 1
+    assert report["summary"]["fail"] == 1
+    assert report["summary"]["false_negatives"] == 1
+    by_id = {item["scenario_id"]: item for item in report["scenarios"]}
+    assert by_id["SZZ-9100"]["status"] == "PASS"
+    assert by_id["SZZ-9101"]["status"] == "FAIL"
+    assert by_id["SZZ-9101"]["false_negatives"] == ["c0"]
+    assert (out_dir / "evaluation-results.json").exists()
+    assert (out_dir / "evaluation-results.md").exists()
+
+def test_szz_unleashed_adapter_outputs_evaluable_predictions(tmp_path):
+    scenarios_root = tmp_path / "scenarios"
+    advanced_scenarios_root = tmp_path / "advanced-scenarios"
+    advanced_scenarios_root.mkdir()
+    generated_root = tmp_path / "generated-input-repos"
+    scenario_id = "SZZ-9200"
+    _write_classic_scenario(scenarios_root / scenario_id / "scenario.yml", scenario_id)
+
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "szzbench.cli",
+            "generate",
+            str(scenarios_root / scenario_id / "scenario.yml"),
+            "--out",
+            str(generated_root / scenario_id / "default"),
+            "--force",
+        ],
+        check=True,
+    )
+    commit_map = json.loads((generated_root / scenario_id / "default" / "metadata" / "commit-map.json").read_text(encoding="utf-8"))
+    unleashed_result = generated_root / scenario_id / "default" / "szz-unleashed" / "run-depth1" / "results" / "fix_and_introducers_pairs.json"
+    unleashed_result.parent.mkdir(parents=True)
+    unleashed_result.write_text(
+        json.dumps([[commit_map["c1"]["hash"], commit_map["c0"]["hash"]]]) + "\n",
+        encoding="utf-8",
+    )
+    predictions = tmp_path / "szz-unleashed-predictions.jsonl"
+
+    subprocess.run(
+        [
+            sys.executable,
+            "tools/adapters/szz_unleashed_to_predictions.py",
+            "--generated-root",
+            str(generated_root),
+            "--out",
+            str(predictions),
+        ],
+        check=True,
+    )
+    record = json.loads(predictions.read_text(encoding="utf-8"))
+    assert record["scenario_id"] == scenario_id
+    assert record["predictions"][0]["tool"] == "szz-unleashed"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "szzbench.cli",
+            "evaluate",
+            "--predictions",
+            str(predictions),
+            "--generated-root",
+            str(generated_root),
+            "--scenarios-root",
+            str(scenarios_root),
+            "--advanced-scenarios-root",
+            str(advanced_scenarios_root),
+            "--json",
+        ],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=True,
+    )
+    report = json.loads(result.stdout)
+    assert report["summary"]["total_scenarios"] == 1
+    assert report["summary"]["pass"] == 1
+
 def test_new_scenario_creates_next_skeleton(tmp_path):
     root = tmp_path / "scenarios"
     root.mkdir()

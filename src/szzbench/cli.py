@@ -20,6 +20,7 @@ from .validator import validate_scenario_file
 from .graph_validator import validate_graph_scenario_file
 from .verifier import verify_generated_repo
 from .graph_verifier import verify_graph_generated_repo
+from .evaluator import evaluate_predictions
 
 def print_result(result, *, json_output: bool = False) -> None:
     if json_output:
@@ -128,6 +129,49 @@ def cmd_verify_graph(args) -> int:
         return 1
     return 0
 
+def cmd_evaluate(args) -> int:
+    report = evaluate_predictions(
+        Path(args.predictions),
+        generated_root=Path(args.generated_root),
+        scenarios_root=Path(args.scenarios_root),
+        advanced_scenarios_root=Path(args.advanced_scenarios_root),
+        variant=args.variant,
+    )
+    if args.out:
+        out_dir = Path(args.out)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / "evaluation-results.json").write_text(
+            json.dumps(report.to_dict(), indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        (out_dir / "evaluation-results.md").write_text(report.to_markdown(), encoding="utf-8")
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2, ensure_ascii=False))
+    else:
+        summary = report.summary()
+        print("Summary:")
+        print(f"  Total:              {summary['total_scenarios']}")
+        print(f"  PASS:               {summary['pass']}")
+        print(f"  FAIL:               {summary['fail']}")
+        print(f"  True positives:     {summary['true_positives']}")
+        print(f"  False positives:    {summary['false_positives']}")
+        print(f"  False negatives:    {summary['false_negatives']}")
+        print(f"  Allowed FP:         {summary['allowed_false_positives']}")
+        print(f"  Precision:          {_display_ratio(summary['precision'])}")
+        print(f"  Recall:             {_display_ratio(summary['recall'])}")
+        if args.out:
+            print(f"Wrote: {_display_path(Path(args.out) / 'evaluation-results.json')}")
+            print(f"Wrote: {_display_path(Path(args.out) / 'evaluation-results.md')}")
+        for error in report.errors:
+            print(f"[ERROR] {error}", file=sys.stderr)
+        for warning in report.warnings:
+            print(f"[WARNING] {warning}", file=sys.stderr)
+    if report.errors:
+        return 1
+    if args.fail_on_non_pass and report.summary()["fail"] > 0:
+        return 1
+    return 0
+
 def cmd_new_graph_scenario(args) -> int:
     try:
         result = create_new_graph_scenario(
@@ -188,6 +232,11 @@ def _display_path(path: Path) -> str:
     except ValueError:
         return path.as_posix()
 
+def _display_ratio(value: float | None) -> str:
+    if value is None:
+        return "-"
+    return f"{value:.3f}"
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="szzbench")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -241,6 +290,17 @@ def build_parser() -> argparse.ArgumentParser:
     p_verify_graph.add_argument("--strict", action="store_true", help="Treat warnings as failures")
     p_verify_graph.add_argument("--json", action="store_true", help="Print JSON output")
     p_verify_graph.set_defaults(func=cmd_verify_graph)
+
+    p_evaluate = sub.add_parser("evaluate", help="Evaluate SZZ tool predictions against SZZBench oracles")
+    p_evaluate.add_argument("--predictions", required=True, help="Path to predictions JSON or JSONL")
+    p_evaluate.add_argument("--generated-root", default=str(DEFAULT_GENERATED_INPUT_REPOS_ROOT), help="Root directory for generated repositories")
+    p_evaluate.add_argument("--scenarios-root", default=str(DEFAULT_SCENARIOS_ROOT), help="Root directory for classic scenarios")
+    p_evaluate.add_argument("--advanced-scenarios-root", default=str(DEFAULT_ADVANCED_SCENARIOS_ROOT), help="Root directory for graph scenarios")
+    p_evaluate.add_argument("--variant", default="default", help="Generated repository variant name under each scenario")
+    p_evaluate.add_argument("--out", help="Output directory for evaluation-results.json and evaluation-results.md")
+    p_evaluate.add_argument("--json", action="store_true", help="Print JSON output")
+    p_evaluate.add_argument("--fail-on-non-pass", action="store_true", help="Return a non-zero exit code when any scenario is non-PASS")
+    p_evaluate.set_defaults(func=cmd_evaluate)
 
     p_new_graph = sub.add_parser("new-graph-scenario", help="Create a new graph scenario skeleton")
     p_new_graph.add_argument("--title", required=True, help="Graph scenario title")
