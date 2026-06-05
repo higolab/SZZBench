@@ -385,6 +385,7 @@ Evaluate SZZ tool predictions against SZZBench commit-level oracles.
 szzbench evaluate \
   --predictions predictions.jsonl \
   --generated-root generated-input-repos \
+  --include-generated \
   --out generated-szz-results/my-tool
 ```
 
@@ -403,12 +404,29 @@ It can also be one record per predicted BIC:
 
 `fix_commit` is optional for evaluation. `inducing_commit` may be an actual Git hash, a unique hash prefix, or a logical commit id from `commit-map.json`.
 
+Use `--include-generated` when the predictions file only contains scenarios where a tool produced at least one BIC. SZZBench then evaluates every generated repository under `--generated-root` and treats missing prediction records as empty predictions.
+
 For SZZ Unleashed output, convert the generated `fix_and_introducers_pairs.json` files first:
 
 ```bash
 tools/adapters/szz_unleashed_to_predictions.py \
   --generated-root generated-input-repos \
   --out generated-szz-results/szz-unleashed/predictions.jsonl
+```
+
+For PyDriller, run the adapter against the generated repositories:
+
+```bash
+tools/adapters/pydriller_to_predictions.py \
+  --pydriller-path /path/to/pydriller \
+  --generated-root generated-input-repos \
+  --out generated-szz-results/pydriller/pydriller-predictions.jsonl
+
+szzbench evaluate \
+  --predictions generated-szz-results/pydriller/pydriller-predictions.jsonl \
+  --generated-root generated-input-repos \
+  --include-generated \
+  --out generated-szz-results/pydriller
 ```
 
 ### new-graph-scenario
@@ -959,6 +977,7 @@ SZZ ツールの予測結果を、SZZBench の commit-level oracle と照合し�
 szzbench evaluate \
   --predictions predictions.jsonl \
   --generated-root generated-input-repos \
+  --include-generated \
   --out generated-szz-results/my-tool
 ```
 
@@ -977,12 +996,29 @@ szzbench evaluate \
 
 評価に必須なのは `scenario_id` と `inducing_commit` です。`fix_commit` は任意です。`inducing_commit` には実 Git hash、ユニークな hash prefix、または `commit-map.json` の論理 commit id を指定できます。
 
+予測ファイルに「BIC が 1 件以上出たシナリオ」だけが含まれる場合は、`--include-generated` を使います。この場合、SZZBench は `--generated-root` 以下の生成済みリポジトリをすべて評価対象にし、prediction record がないシナリオを空予測として扱います。
+
 SZZ Unleashed の出力は、先に `fix_and_introducers_pairs.json` を共通 prediction 形式へ変換します。
 
 ```bash
 tools/adapters/szz_unleashed_to_predictions.py \
   --generated-root generated-input-repos \
   --out generated-szz-results/szz-unleashed/predictions.jsonl
+```
+
+PyDriller の場合は、生成済みリポジトリに adapter を適用します。
+
+```bash
+tools/adapters/pydriller_to_predictions.py \
+  --pydriller-path /path/to/pydriller \
+  --generated-root generated-input-repos \
+  --out generated-szz-results/pydriller/pydriller-predictions.jsonl
+
+szzbench evaluate \
+  --predictions generated-szz-results/pydriller/pydriller-predictions.jsonl \
+  --generated-root generated-input-repos \
+  --include-generated \
+  --out generated-szz-results/pydriller
 ```
 
 ### new-graph-scenario

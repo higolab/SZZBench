@@ -181,17 +181,26 @@ class EvaluationReport:
 
 
 def evaluate_predictions(
-    predictions_path: Path,
+    predictions_path: Path | None,
     *,
     generated_root: Path,
     scenarios_root: Path,
     advanced_scenarios_root: Path,
     variant: str = "default",
+    include_generated: bool = False,
 ) -> EvaluationReport:
-    predictions_by_scenario, explicit_scenarios, errors, warnings = load_predictions(predictions_path)
-    scenario_ids = sorted(explicit_scenarios or predictions_by_scenario.keys())
+    if predictions_path is None:
+        predictions_by_scenario: dict[str, list[Prediction]] = {}
+        explicit_scenarios: set[str] = set()
+        errors: list[str] = []
+        warnings: list[str] = []
+    else:
+        predictions_by_scenario, explicit_scenarios, errors, warnings = load_predictions(predictions_path)
+    scenario_ids = set(explicit_scenarios or predictions_by_scenario.keys())
+    if include_generated:
+        scenario_ids.update(_generated_scenario_ids(generated_root, variant))
     evaluations: list[ScenarioEvaluation] = []
-    for scenario_id in scenario_ids:
+    for scenario_id in sorted(scenario_ids):
         scenario_path, suite = _find_scenario_path(scenario_id, scenarios_root, advanced_scenarios_root)
         if scenario_path is None:
             errors.append(f"Cannot find scenario for '{scenario_id}'.")
@@ -216,6 +225,14 @@ def evaluate_predictions(
             )
         )
     return EvaluationReport(evaluations, errors=errors, warnings=warnings)
+
+
+def _generated_scenario_ids(generated_root: Path, variant: str) -> set[str]:
+    scenario_ids = set()
+    for repo_dir in generated_root.glob(f"*/{variant}/repo"):
+        if repo_dir.is_dir() and (repo_dir / ".git").exists():
+            scenario_ids.add(repo_dir.parent.parent.name)
+    return scenario_ids
 
 
 def evaluate_scenario(

@@ -130,12 +130,16 @@ def cmd_verify_graph(args) -> int:
     return 0
 
 def cmd_evaluate(args) -> int:
+    if args.predictions is None and not args.include_generated:
+        print("[ERROR] EVALUATE_FAILED: --predictions is required unless --include-generated is used.", file=sys.stderr)
+        return 1
     report = evaluate_predictions(
-        Path(args.predictions),
+        Path(args.predictions) if args.predictions else None,
         generated_root=Path(args.generated_root),
         scenarios_root=Path(args.scenarios_root),
         advanced_scenarios_root=Path(args.advanced_scenarios_root),
         variant=args.variant,
+        include_generated=args.include_generated,
     )
     if args.out:
         out_dir = Path(args.out)
@@ -292,11 +296,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_verify_graph.set_defaults(func=cmd_verify_graph)
 
     p_evaluate = sub.add_parser("evaluate", help="Evaluate SZZ tool predictions against SZZBench oracles")
-    p_evaluate.add_argument("--predictions", required=True, help="Path to predictions JSON or JSONL")
+    p_evaluate.add_argument("--predictions", help="Path to predictions JSON or JSONL")
     p_evaluate.add_argument("--generated-root", default=str(DEFAULT_GENERATED_INPUT_REPOS_ROOT), help="Root directory for generated repositories")
     p_evaluate.add_argument("--scenarios-root", default=str(DEFAULT_SCENARIOS_ROOT), help="Root directory for classic scenarios")
     p_evaluate.add_argument("--advanced-scenarios-root", default=str(DEFAULT_ADVANCED_SCENARIOS_ROOT), help="Root directory for graph scenarios")
     p_evaluate.add_argument("--variant", default="default", help="Generated repository variant name under each scenario")
+    p_evaluate.add_argument("--include-generated", action="store_true", help="Evaluate every generated repository under --generated-root, using empty predictions for missing records")
     p_evaluate.add_argument("--out", help="Output directory for evaluation-results.json and evaluation-results.md")
     p_evaluate.add_argument("--json", action="store_true", help="Print JSON output")
     p_evaluate.add_argument("--fail-on-non-pass", action="store_true", help="Return a non-zero exit code when any scenario is non-PASS")

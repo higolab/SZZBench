@@ -1,5 +1,6 @@
 from pathlib import Path
 import json
+import os
 import subprocess
 import sys
 import textwrap
@@ -200,7 +201,7 @@ def test_clean_removes_generated_outputs(tmp_path):
     assert not out_variant.exists()
     assert keep.exists()
 
-def test_evaluate_predictions_jsonl_pass_and_empty_fail(tmp_path):
+def test_evaluate_include_generated_treats_missing_predictions_as_empty(tmp_path):
     scenarios_root = tmp_path / "scenarios"
     advanced_scenarios_root = tmp_path / "advanced-scenarios"
     advanced_scenarios_root.mkdir()
@@ -237,8 +238,6 @@ def test_evaluate_predictions_jsonl_pass_and_empty_fail(tmp_path):
                 ],
             }
         )
-        + "\n"
-        + json.dumps({"scenario_id": "SZZ-9101", "predictions": []})
         + "\n",
         encoding="utf-8",
     )
@@ -258,6 +257,7 @@ def test_evaluate_predictions_jsonl_pass_and_empty_fail(tmp_path):
             str(scenarios_root),
             "--advanced-scenarios-root",
             str(advanced_scenarios_root),
+            "--include-generated",
             "--out",
             str(out_dir),
             "--json",
@@ -279,6 +279,104 @@ def test_evaluate_predictions_jsonl_pass_and_empty_fail(tmp_path):
     assert by_id["SZZ-9101"]["false_negatives"] == ["c0"]
     assert (out_dir / "evaluation-results.json").exists()
     assert (out_dir / "evaluation-results.md").exists()
+
+def test_pydriller_adapter_outputs_evaluable_predictions(tmp_path):
+    scenarios_root = tmp_path / "scenarios"
+    advanced_scenarios_root = tmp_path / "advanced-scenarios"
+    advanced_scenarios_root.mkdir()
+    generated_root = tmp_path / "generated-input-repos"
+    scenario_id = "SZZ-9150"
+    _write_classic_scenario(scenarios_root / scenario_id / "scenario.yml", scenario_id)
+
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "szzbench.cli",
+            "generate",
+            str(scenarios_root / scenario_id / "scenario.yml"),
+            "--out",
+            str(generated_root / scenario_id / "default"),
+            "--force",
+        ],
+        check=True,
+    )
+    commit_map = json.loads((generated_root / scenario_id / "default" / "metadata" / "commit-map.json").read_text(encoding="utf-8"))
+    fake_root = tmp_path / "fake-pydriller"
+    fake_package = fake_root / "pydriller"
+    fake_package.mkdir(parents=True)
+    fake_package.joinpath("__init__.py").write_text(
+        textwrap.dedent(
+            """\
+            import os
+
+            class Git:
+                def __init__(self, path):
+                    self.path = path
+
+                def get_commit(self, commit_hash):
+                    return type("Commit", (), {"hash": commit_hash})()
+
+                def get_commits_last_modified_lines(self, commit):
+                    return {"src/example.txt": {os.environ["FAKE_INDUCING_HASH"]}}
+            """
+        ),
+        encoding="utf-8",
+    )
+    predictions = tmp_path / "pydriller-predictions.jsonl"
+    env = {**dict(os.environ), "FAKE_INDUCING_HASH": commit_map["c0"]["hash"]}
+
+    subprocess.run(
+        [
+            sys.executable,
+            "tools/adapters/pydriller_to_predictions.py",
+            "--pydriller-path",
+            str(fake_root),
+            "--generated-root",
+            str(generated_root),
+            "--scenarios-root",
+            str(scenarios_root),
+            "--advanced-scenarios-root",
+            str(advanced_scenarios_root),
+            "--out",
+            str(predictions),
+        ],
+        env=env,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=True,
+    )
+    record = json.loads(predictions.read_text(encoding="utf-8"))
+    assert record["scenario_id"] == scenario_id
+    assert record["predictions"][0]["tool"] == "pydriller"
+    assert record["predictions"][0]["inducing_commit"] == commit_map["c0"]["hash"]
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "szzbench.cli",
+            "evaluate",
+            "--predictions",
+            str(predictions),
+            "--generated-root",
+            str(generated_root),
+            "--scenarios-root",
+            str(scenarios_root),
+            "--advanced-scenarios-root",
+            str(advanced_scenarios_root),
+            "--include-generated",
+            "--json",
+        ],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=True,
+    )
+    report = json.loads(result.stdout)
+    assert report["summary"]["total_scenarios"] == 1
+    assert report["summary"]["pass"] == 1
 
 def test_szz_unleashed_adapter_outputs_evaluable_predictions(tmp_path):
     scenarios_root = tmp_path / "scenarios"
