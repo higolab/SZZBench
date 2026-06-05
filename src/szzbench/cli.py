@@ -140,6 +140,7 @@ def cmd_evaluate(args) -> int:
         advanced_scenarios_root=Path(args.advanced_scenarios_root),
         variant=args.variant,
         include_generated=args.include_generated,
+        evaluation_variant=args.evaluation_variant,
     )
     if args.out:
         out_dir = Path(args.out)
@@ -161,6 +162,10 @@ def cmd_evaluate(args) -> int:
         print(f"  False positives:    {summary['false_positives']}")
         print(f"  False negatives:    {summary['false_negatives']}")
         print(f"  Allowed FP:         {summary['allowed_false_positives']}")
+        print(f"  Hard FP:            {summary['hard_false_positives']}")
+        print(f"  Related origins:    {summary['related_origin_hits']}")
+        print(f"  Related not-correct: {summary['related_but_not_correct_hits']}")
+        print(f"  Weighted credit:    {_display_credit(summary['weighted_credit'], summary['possible_credit'])}")
         print(f"  Precision:          {_display_ratio(summary['precision'])}")
         print(f"  Recall:             {_display_ratio(summary['recall'])}")
         if args.out:
@@ -241,6 +246,13 @@ def _display_ratio(value: float | None) -> str:
         return "-"
     return f"{value:.3f}"
 
+
+def _display_credit(weighted_credit: float | None, possible_credit: float | None) -> str:
+    if weighted_credit is None or possible_credit is None:
+        return "-"
+    return f"{weighted_credit:.3f}/{possible_credit:.3f}"
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="szzbench")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -302,6 +314,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_evaluate.add_argument("--advanced-scenarios-root", default=str(DEFAULT_ADVANCED_SCENARIOS_ROOT), help="Root directory for graph scenarios")
     p_evaluate.add_argument("--variant", default="default", help="Generated repository variant name under each scenario")
     p_evaluate.add_argument("--include-generated", action="store_true", help="Evaluate every generated repository under --generated-root, using empty predictions for missing records")
+    p_evaluate.add_argument("--evaluation-variant", help="Graph scenario evaluation variant name to use, overriding expected_szz.default_variant")
     p_evaluate.add_argument("--out", help="Output directory for evaluation-results.json and evaluation-results.md")
     p_evaluate.add_argument("--json", action="store_true", help="Print JSON output")
     p_evaluate.add_argument("--fail-on-non-pass", action="store_true", help="Return a non-zero exit code when any scenario is non-PASS")

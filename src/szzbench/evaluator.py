@@ -37,6 +37,36 @@ class Prediction:
         return data
 
 
+@dataclass(frozen=True)
+class AcceptableRelated:
+    commit: str
+    reason: str | None = None
+    credit: float = 0.0
+
+    def to_dict(self) -> dict[str, Any]:
+        data: dict[str, Any] = {
+            "commit": self.commit,
+            "credit": self.credit,
+        }
+        if self.reason is not None:
+            data["reason"] = self.reason
+        return data
+
+
+@dataclass(frozen=True)
+class CommitLevelPolicy:
+    evaluation_policy: str
+    evaluation_variant: str | None
+    required: list[str]
+    acceptable_related: list[AcceptableRelated] = field(default_factory=list)
+    related_origins: list[str] = field(default_factory=list)
+    related_but_not_correct: list[str] = field(default_factory=list)
+    relevant: list[str] = field(default_factory=list)
+    minimum_required: int | None = None
+    k_values: list[int] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
+
+
 @dataclass
 class ScenarioEvaluation:
     scenario_id: str
@@ -50,6 +80,18 @@ class ScenarioEvaluation:
     false_negatives: list[str]
     allowed_false_positives: list[str]
     prediction_count: int
+    evaluation_policy: str | None = None
+    evaluation_variant: str | None = None
+    hard_false_positives: list[str] = field(default_factory=list)
+    related_origin_hits: list[str] = field(default_factory=list)
+    related_but_not_correct_hits: list[str] = field(default_factory=list)
+    acceptable_related_hits: list[dict[str, Any]] = field(default_factory=list)
+    weighted_credit: float | None = None
+    possible_credit: float | None = None
+    credit_ratio: float | None = None
+    minimum_required: int | None = None
+    minimum_required_met: bool | None = None
+    top_k: dict[str, Any] | None = None
     unknown_predictions: list[str] = field(default_factory=list)
     precision: float | None = None
     recall: float | None = None
@@ -69,6 +111,18 @@ class ScenarioEvaluation:
             "false_negatives": self.false_negatives,
             "allowed_false_positives": self.allowed_false_positives,
             "prediction_count": self.prediction_count,
+            "evaluation_policy": self.evaluation_policy,
+            "evaluation_variant": self.evaluation_variant,
+            "hard_false_positives": self.hard_false_positives,
+            "related_origin_hits": self.related_origin_hits,
+            "related_but_not_correct_hits": self.related_but_not_correct_hits,
+            "acceptable_related_hits": self.acceptable_related_hits,
+            "weighted_credit": self.weighted_credit,
+            "possible_credit": self.possible_credit,
+            "credit_ratio": self.credit_ratio,
+            "minimum_required": self.minimum_required,
+            "minimum_required_met": self.minimum_required_met,
+            "top_k": self.top_k,
             "unknown_predictions": self.unknown_predictions,
             "precision": self.precision,
             "recall": self.recall,
@@ -91,6 +145,11 @@ class EvaluationReport:
         fp = sum(len(item.false_positives) for item in self.scenarios)
         fn = sum(len(item.false_negatives) for item in self.scenarios)
         allowed_fp = sum(len(item.allowed_false_positives) for item in self.scenarios)
+        hard_fp = sum(len(item.hard_false_positives) for item in self.scenarios)
+        related_origin_hits = sum(len(item.related_origin_hits) for item in self.scenarios)
+        related_but_not_correct_hits = sum(len(item.related_but_not_correct_hits) for item in self.scenarios)
+        possible_credit = sum(item.possible_credit for item in self.scenarios if item.possible_credit is not None)
+        weighted_credit = sum(item.weighted_credit for item in self.scenarios if item.weighted_credit is not None)
         precision = _ratio(tp, tp + fp)
         recall = _ratio(tp, tp + fn)
         by_suite: dict[str, dict[str, int]] = {}
@@ -109,6 +168,12 @@ class EvaluationReport:
             "false_positives": fp,
             "false_negatives": fn,
             "allowed_false_positives": allowed_fp,
+            "hard_false_positives": hard_fp,
+            "related_origin_hits": related_origin_hits,
+            "related_but_not_correct_hits": related_but_not_correct_hits,
+            "weighted_credit": weighted_credit if possible_credit else None,
+            "possible_credit": possible_credit if possible_credit else None,
+            "credit_ratio": _float_ratio(weighted_credit, possible_credit),
             "precision": precision,
             "recall": recall,
             "by_suite": by_suite,
@@ -136,6 +201,10 @@ class EvaluationReport:
             f"- False positives: {summary['false_positives']}",
             f"- False negatives: {summary['false_negatives']}",
             f"- Allowed false positives: {summary['allowed_false_positives']}",
+            f"- Hard false positives: {summary['hard_false_positives']}",
+            f"- Related origin hits: {summary['related_origin_hits']}",
+            f"- Related-but-not-correct hits: {summary['related_but_not_correct_hits']}",
+            f"- Weighted credit: {_format_credit(summary['weighted_credit'], summary['possible_credit'])}",
             f"- Precision: {_format_ratio(summary['precision'])}",
             f"- Recall: {_format_ratio(summary['recall'])}",
             "",
@@ -152,8 +221,8 @@ class EvaluationReport:
             [
                 "## Results",
                 "",
-                "| Scenario | Status | Suite | Category | Expected BICs | Actual BICs | TP | FP | FN | Allowed FP | Predictions |",
-                "|---|---:|---|---|---|---|---|---|---|---|---:|",
+                "| Scenario | Status | Suite | Policy | Variant | Category | Expected BICs | Actual BICs | TP | FP | FN | Allowed FP | Predictions |",
+                "|---|---:|---|---|---|---|---|---|---|---|---|---|---:|",
             ]
         )
         for item in self.scenarios:
@@ -164,6 +233,8 @@ class EvaluationReport:
                         item.scenario_id,
                         item.status,
                         item.suite,
+                        item.evaluation_policy or "-",
+                        item.evaluation_variant or "-",
                         item.category or "-",
                         _join_ids(item.expected_bics),
                         _join_ids(item.actual_bics),
@@ -188,6 +259,7 @@ def evaluate_predictions(
     advanced_scenarios_root: Path,
     variant: str = "default",
     include_generated: bool = False,
+    evaluation_variant: str | None = None,
 ) -> EvaluationReport:
     if predictions_path is None:
         predictions_by_scenario: dict[str, list[Prediction]] = {}
@@ -222,6 +294,7 @@ def evaluate_predictions(
                 suite,
                 commit_map,
                 predictions_by_scenario.get(scenario_id, []),
+                evaluation_variant=evaluation_variant,
             )
         )
     return EvaluationReport(evaluations, errors=errors, warnings=warnings)
@@ -242,26 +315,46 @@ def evaluate_scenario(
     suite: str,
     commit_map: dict[str, Any],
     predictions: list[Prediction],
+    *,
+    evaluation_variant: str | None = None,
 ) -> ScenarioEvaluation:
-    expected_ids, allowed_ids, notes = _expected_commit_ids(scenario, suite)
+    policy = _commit_level_policy(scenario, suite, evaluation_variant)
     hash_to_id = _hash_to_logical_id(commit_map)
-    actual_ids: set[str] = set()
-    unknown_predictions: list[str] = []
-    for prediction in predictions:
-        normalized = _normalize_commit_ref(prediction.inducing_commit, commit_map, hash_to_id)
-        if normalized is None:
-            unknown_predictions.append(prediction.inducing_commit)
-            continue
-        actual_ids.add(normalized)
+    ranked_actual_ids, unknown_predictions = _ranked_actual_ids(predictions, commit_map, hash_to_id)
 
-    expected = set(expected_ids)
-    allowed = set(allowed_ids)
-    actual = set(actual_ids)
+    expected = set(policy.required)
+    allowed_map = {item.commit: item for item in policy.acceptable_related}
+    allowed = set(allowed_map)
+    actual = set(ranked_actual_ids)
     true_positives = sorted(actual & expected)
     false_positives = sorted(actual - expected - allowed)
     false_negatives = sorted(expected - actual)
     allowed_false_positives = sorted(actual & allowed)
-    status = "PASS" if not false_positives and not false_negatives and not unknown_predictions else "FAIL"
+    related_origins = set(policy.related_origins)
+    related_but_not_correct = set(policy.related_but_not_correct)
+    related_origin_hits = sorted(actual & related_origins)
+    related_but_not_correct_hits = sorted(actual & related_but_not_correct)
+    hard_false_positives = sorted(actual - expected - allowed - related_origins - related_but_not_correct)
+    acceptable_related_hits = [
+        allowed_map[commit].to_dict()
+        for commit in allowed_false_positives
+        if commit in allowed_map
+    ]
+    weighted_credit = _weighted_credit(true_positives, acceptable_related_hits, len(expected))
+    possible_credit = float(len(expected)) if expected else None
+    credit_ratio = _float_ratio(weighted_credit, possible_credit)
+    minimum_required_met = _minimum_required_met(policy, len(true_positives))
+    top_k = _top_k_metrics(policy, ranked_actual_ids)
+    status = _evaluation_status(
+        policy,
+        false_positives=false_positives,
+        false_negatives=false_negatives,
+        hard_false_positives=hard_false_positives,
+        related_but_not_correct_hits=related_but_not_correct_hits,
+        unknown_predictions=unknown_predictions,
+        minimum_required_met=minimum_required_met,
+        top_k=top_k,
+    )
     precision = _ratio(len(true_positives), len(true_positives) + len(false_positives))
     recall = _ratio(len(true_positives), len(true_positives) + len(false_negatives))
     category = _scenario_category(scenario)
@@ -277,11 +370,23 @@ def evaluate_scenario(
         false_negatives=false_negatives,
         allowed_false_positives=allowed_false_positives,
         prediction_count=len(predictions),
+        evaluation_policy=policy.evaluation_policy,
+        evaluation_variant=policy.evaluation_variant,
+        hard_false_positives=hard_false_positives,
+        related_origin_hits=related_origin_hits,
+        related_but_not_correct_hits=related_but_not_correct_hits,
+        acceptable_related_hits=acceptable_related_hits,
+        weighted_credit=weighted_credit,
+        possible_credit=possible_credit,
+        credit_ratio=credit_ratio,
+        minimum_required=policy.minimum_required,
+        minimum_required_met=minimum_required_met,
+        top_k=top_k,
         unknown_predictions=sorted(set(unknown_predictions)),
         precision=precision,
         recall=recall,
         scenario_path=str(scenario_path),
-        result_notes=notes,
+        result_notes=policy.notes,
     )
 
 
@@ -418,10 +523,262 @@ def _load_commit_map(path: Path) -> tuple[dict[str, Any] | None, list[str]]:
     return data, []
 
 
-def _expected_commit_ids(scenario: dict[str, Any], suite: str) -> tuple[list[str], list[str], list[str]]:
+def _commit_level_policy(
+    scenario: dict[str, Any],
+    suite: str,
+    evaluation_variant: str | None,
+) -> CommitLevelPolicy:
     if suite == "advanced-scenarios":
-        return _expected_graph_commit_ids(scenario)
-    return _expected_classic_commit_ids(scenario)
+        return _graph_commit_level_policy(scenario, evaluation_variant)
+    expected, allowed, notes = _expected_classic_commit_ids(scenario)
+    return CommitLevelPolicy(
+        evaluation_policy="exact_set",
+        evaluation_variant=None,
+        required=expected,
+        acceptable_related=[AcceptableRelated(commit=commit) for commit in allowed],
+        notes=notes,
+    )
+
+
+def _graph_commit_level_policy(
+    scenario: dict[str, Any],
+    evaluation_variant: str | None,
+) -> CommitLevelPolicy:
+    expected_szz = scenario.get("expected_szz") if isinstance(scenario.get("expected_szz"), dict) else {}
+    base_commit_level = expected_szz.get("commit_level") if isinstance(expected_szz.get("commit_level"), dict) else {}
+    notes: list[str] = []
+    selected_variant = _selected_evaluation_variant(expected_szz, evaluation_variant, notes)
+    selected_commit_level = base_commit_level
+    if selected_variant is not None:
+        variant_commit_level = selected_variant.get("commit_level")
+        if isinstance(variant_commit_level, dict):
+            selected_commit_level = dict(variant_commit_level)
+            if "evaluation_policy" not in selected_commit_level and isinstance(base_commit_level.get("evaluation_policy"), str):
+                selected_commit_level["evaluation_policy"] = base_commit_level["evaluation_policy"]
+        else:
+            selected_commit_level = {}
+            notes.append(f"Evaluation variant '{selected_variant['name']}' has no commit_level; using inferred BICs.")
+
+    policy_name = selected_commit_level.get("evaluation_policy")
+    if not isinstance(policy_name, str) or not policy_name:
+        policy_name = "exact_set"
+    if policy_name not in _SUPPORTED_GRAPH_POLICIES:
+        notes.append(f"Unsupported evaluation_policy '{policy_name}' treated as exact_set.")
+        policy_name = "exact_set"
+
+    required = _string_list(selected_commit_level.get("required"))
+    if not required:
+        required = _graph_direct_bic_ids(scenario)
+
+    return CommitLevelPolicy(
+        evaluation_policy=policy_name,
+        evaluation_variant=selected_variant["name"] if selected_variant is not None else None,
+        required=required,
+        acceptable_related=_acceptable_related_entries(selected_commit_level.get("acceptable_related")),
+        related_origins=_string_list(selected_commit_level.get("related_origins")),
+        related_but_not_correct=_string_list(selected_commit_level.get("related_but_not_correct")),
+        relevant=_string_list(selected_commit_level.get("relevant")),
+        minimum_required=_minimum_required_value(selected_commit_level.get("minimum_required"), notes),
+        k_values=_k_values(selected_commit_level.get("k_values")),
+        notes=notes,
+    )
+
+
+_SUPPORTED_GRAPH_POLICIES = {
+    "exact_set",
+    "direct_only",
+    "reintroduction_direct",
+    "partial_credit",
+    "top_k",
+    "relaxed_with_related",
+    "relaxed_with_credit",
+}
+
+
+def _selected_evaluation_variant(
+    expected_szz: dict[str, Any],
+    requested_variant: str | None,
+    notes: list[str],
+) -> dict[str, Any] | None:
+    variants = expected_szz.get("evaluation_variants")
+    if not isinstance(variants, list):
+        if requested_variant:
+            notes.append(f"Requested evaluation variant '{requested_variant}' is not defined; using commit_level.")
+        return None
+    default_variant = expected_szz.get("default_variant")
+    selected_name = requested_variant if requested_variant is not None else default_variant
+    if not isinstance(selected_name, str) or not selected_name:
+        return None
+    for item in variants:
+        if isinstance(item, dict) and item.get("name") == selected_name:
+            return item
+    selected_key = _evaluation_variant_key(selected_name)
+    for item in variants:
+        if isinstance(item, dict) and _evaluation_variant_key(item.get("name")) == selected_key:
+            return item
+    notes.append(f"Requested evaluation variant '{selected_name}' is not defined; using commit_level.")
+    return None
+
+
+def _evaluation_variant_key(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    return value.lower().replace("_", "-")
+
+
+def _graph_direct_bic_ids(scenario: dict[str, Any]) -> list[str]:
+    expected: set[str] = set()
+    for bug in scenario.get("bugs", []) or []:
+        if not isinstance(bug, dict):
+            continue
+        for entry in graph_bic_entries(bug):
+            commit = entry.get("commit")
+            role = entry.get("role")
+            if isinstance(commit, str) and role in {None, "direct", "reintroducing", "contributing"}:
+                expected.add(commit)
+    return sorted(expected)
+
+
+def _acceptable_related_entries(value: Any) -> list[AcceptableRelated]:
+    entries: list[AcceptableRelated] = []
+    for item in value or []:
+        if isinstance(item, str):
+            entries.append(AcceptableRelated(commit=item))
+        elif isinstance(item, dict) and isinstance(item.get("commit"), str):
+            credit = item.get("credit", 0.0)
+            reason = item.get("reason")
+            entries.append(
+                AcceptableRelated(
+                    commit=item["commit"],
+                    reason=reason if isinstance(reason, str) else None,
+                    credit=float(credit) if isinstance(credit, (int, float)) else 0.0,
+                )
+            )
+    return entries
+
+
+def _string_list(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, str)]
+
+
+def _minimum_required_value(value: Any, notes: list[str]) -> int | None:
+    if value is None:
+        return None
+    if isinstance(value, int) and value >= 0:
+        return value
+    notes.append("minimum_required must be a non-negative integer; ignoring it.")
+    return None
+
+
+def _k_values(value: Any) -> list[int]:
+    if not isinstance(value, list):
+        return []
+    return sorted({item for item in value if isinstance(item, int) and item > 0})
+
+
+def _ranked_actual_ids(
+    predictions: list[Prediction],
+    commit_map: dict[str, Any],
+    hash_to_id: dict[str, str],
+) -> tuple[list[str], list[str]]:
+    indexed_predictions = list(enumerate(predictions))
+    if any(prediction.rank is not None for prediction in predictions):
+        indexed_predictions.sort(
+            key=lambda item: (
+                item[1].rank is None,
+                item[1].rank if item[1].rank is not None else item[0],
+                item[0],
+            )
+        )
+    ranked_actual_ids: list[str] = []
+    seen: set[str] = set()
+    unknown_predictions: list[str] = []
+    for _, prediction in indexed_predictions:
+        normalized = _normalize_commit_ref(prediction.inducing_commit, commit_map, hash_to_id)
+        if normalized is None:
+            unknown_predictions.append(prediction.inducing_commit)
+            continue
+        if normalized not in seen:
+            ranked_actual_ids.append(normalized)
+            seen.add(normalized)
+    return ranked_actual_ids, unknown_predictions
+
+
+def _weighted_credit(
+    true_positives: list[str],
+    acceptable_related_hits: list[dict[str, Any]],
+    expected_count: int,
+) -> float | None:
+    if expected_count == 0:
+        return None
+    credit = float(len(true_positives))
+    for hit in acceptable_related_hits:
+        value = hit.get("credit")
+        if isinstance(value, (int, float)):
+            credit += float(value)
+    return min(float(expected_count), credit)
+
+
+def _minimum_required_met(policy: CommitLevelPolicy, true_positive_count: int) -> bool | None:
+    if policy.minimum_required is not None:
+        return true_positive_count >= policy.minimum_required
+    if policy.evaluation_policy == "partial_credit":
+        return true_positive_count >= len(policy.required)
+    return None
+
+
+def _top_k_metrics(policy: CommitLevelPolicy, ranked_actual_ids: list[str]) -> dict[str, Any] | None:
+    if policy.evaluation_policy != "top_k" and not policy.k_values:
+        return None
+    relevant = set(policy.relevant or policy.required)
+    k_values = policy.k_values or [1, 3, 5]
+    best_rank = None
+    for index, commit in enumerate(ranked_actual_ids, start=1):
+        if commit in relevant:
+            best_rank = index
+            break
+    return {
+        "k_values": k_values,
+        "relevant": sorted(relevant),
+        "ranked_actual_bics": ranked_actual_ids,
+        "best_rank": best_rank,
+        "hit_at": {str(k): best_rank is not None and best_rank <= k for k in k_values},
+        "mrr": (1.0 / best_rank) if best_rank is not None else 0.0,
+    }
+
+
+def _evaluation_status(
+    policy: CommitLevelPolicy,
+    *,
+    false_positives: list[str],
+    false_negatives: list[str],
+    hard_false_positives: list[str],
+    related_but_not_correct_hits: list[str],
+    unknown_predictions: list[str],
+    minimum_required_met: bool | None,
+    top_k: dict[str, Any] | None,
+) -> str:
+    if unknown_predictions:
+        return "FAIL"
+    if policy.evaluation_policy == "top_k":
+        return "PASS" if top_k is not None and top_k["best_rank"] is not None else "FAIL"
+    if policy.evaluation_policy == "partial_credit":
+        return "PASS" if minimum_required_met and not false_positives else "FAIL"
+    if _allows_related_context(policy):
+        relaxed_false_positives = hard_false_positives + related_but_not_correct_hits
+        return "PASS" if not relaxed_false_positives and not false_negatives else "FAIL"
+    return "PASS" if not false_positives and not false_negatives else "FAIL"
+
+
+def _allows_related_context(policy: CommitLevelPolicy) -> bool:
+    if policy.evaluation_policy in {"relaxed_with_related", "relaxed_with_credit"}:
+        return True
+    if policy.evaluation_variant is None:
+        return False
+    variant = policy.evaluation_variant.lower().replace("-", "_")
+    return "origin" in variant or "related" in variant
 
 
 def _expected_classic_commit_ids(scenario: dict[str, Any]) -> tuple[list[str], list[str], list[str]]:
@@ -440,34 +797,6 @@ def _expected_classic_commit_ids(scenario: dict[str, Any]) -> tuple[list[str], l
             expected.update(item for item in bics if isinstance(item, str))
         false_positives_allowed = commit_level.get("false_positives_allowed") or []
         allowed.update(item for item in false_positives_allowed if isinstance(item, str))
-    return sorted(expected), sorted(allowed), notes
-
-
-def _expected_graph_commit_ids(scenario: dict[str, Any]) -> tuple[list[str], list[str], list[str]]:
-    expected: set[str] = set()
-    allowed: set[str] = set()
-    notes: list[str] = []
-    commit_level = (scenario.get("expected_szz") or {}).get("commit_level") or {}
-    required = commit_level.get("required")
-    if isinstance(required, list):
-        expected.update(item for item in required if isinstance(item, str))
-    else:
-        for bug in scenario.get("bugs", []) or []:
-            if not isinstance(bug, dict):
-                continue
-            for entry in graph_bic_entries(bug):
-                commit = entry.get("commit")
-                role = entry.get("role")
-                if isinstance(commit, str) and role in {None, "direct", "reintroducing", "contributing"}:
-                    expected.add(commit)
-    for item in commit_level.get("acceptable_related") or []:
-        if isinstance(item, str):
-            allowed.add(item)
-        elif isinstance(item, dict) and isinstance(item.get("commit"), str):
-            allowed.add(item["commit"])
-    policy = commit_level.get("evaluation_policy")
-    if isinstance(policy, str) and policy not in {"exact_set", "direct_only"}:
-        notes.append(f"Unsupported evaluation_policy '{policy}' treated as exact_set.")
     return sorted(expected), sorted(allowed), notes
 
 
@@ -504,10 +833,22 @@ def _ratio(numerator: int, denominator: int) -> float | None:
     return numerator / denominator
 
 
+def _float_ratio(numerator: float | None, denominator: float | None) -> float | None:
+    if numerator is None or denominator is None or denominator == 0:
+        return None
+    return numerator / denominator
+
+
 def _format_ratio(value: float | None) -> str:
     if value is None:
         return "-"
     return f"{value:.3f}"
+
+
+def _format_credit(weighted_credit: float | None, possible_credit: float | None) -> str:
+    if weighted_credit is None or possible_credit is None:
+        return "-"
+    return f"{weighted_credit:.3f}/{possible_credit:.3f}"
 
 
 def _join_ids(values: list[str]) -> str:

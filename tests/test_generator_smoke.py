@@ -6,6 +6,8 @@ import sys
 import textwrap
 import yaml
 
+from szzbench.evaluator import Prediction, evaluate_scenario
+
 def _write_classic_scenario(path: Path, scenario_id: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
@@ -279,6 +281,179 @@ def test_evaluate_include_generated_treats_missing_predictions_as_empty(tmp_path
     assert by_id["SZZ-9101"]["false_negatives"] == ["c0"]
     assert (out_dir / "evaluation-results.json").exists()
     assert (out_dir / "evaluation-results.md").exists()
+
+
+def test_evaluate_graph_variant_allows_acceptable_related_predictions(tmp_path):
+    scenario = {
+        "meta": {"category": "variant-smoke"},
+        "expected_szz": {
+            "evaluation_variants": [
+                {
+                    "name": "direct-only",
+                    "commit_level": {
+                        "evaluation_policy": "exact_set",
+                        "required": ["c2"],
+                    },
+                },
+                {
+                    "name": "origin-aware",
+                    "commit_level": {
+                        "evaluation_policy": "relaxed_with_related",
+                        "required": ["c2"],
+                        "acceptable_related": [
+                            {"commit": "c1", "reason": "origin_bic", "credit": 0.5},
+                        ],
+                    },
+                },
+            ],
+            "default_variant": "direct-only",
+        },
+    }
+    commit_map = {"c1": {"hash": "1" * 40}, "c2": {"hash": "2" * 40}}
+    predictions = [
+        Prediction(scenario_id="SZZG-variant", inducing_commit="c2"),
+        Prediction(scenario_id="SZZG-variant", inducing_commit="c1"),
+    ]
+
+    direct = evaluate_scenario(
+        "SZZG-variant",
+        scenario,
+        tmp_path / "scenario.graph.yml",
+        "advanced-scenarios",
+        commit_map,
+        predictions,
+    )
+    origin_aware = evaluate_scenario(
+        "SZZG-variant",
+        scenario,
+        tmp_path / "scenario.graph.yml",
+        "advanced-scenarios",
+        commit_map,
+        predictions,
+        evaluation_variant="origin-aware",
+    )
+
+    assert direct.evaluation_variant == "direct-only"
+    assert direct.status == "FAIL"
+    assert direct.false_positives == ["c1"]
+    assert origin_aware.evaluation_variant == "origin-aware"
+    assert origin_aware.status == "PASS"
+    assert origin_aware.allowed_false_positives == ["c1"]
+    assert origin_aware.acceptable_related_hits == [{"commit": "c1", "credit": 0.5, "reason": "origin_bic"}]
+    assert origin_aware.weighted_credit == 1.0
+
+
+def test_evaluate_graph_origin_aware_variant_reports_related_origins(tmp_path):
+    scenario = {
+        "meta": {"category": "origin-smoke"},
+        "expected_szz": {
+            "commit_level": {
+                "evaluation_policy": "direct_only",
+                "required": ["c2"],
+                "related_origins": ["c1"],
+            },
+            "evaluation_variants": [
+                {
+                    "name": "direct_bic_only",
+                    "commit_level": {"required": ["c2"]},
+                },
+                {
+                    "name": "origin_aware",
+                    "commit_level": {
+                        "required": ["c2"],
+                        "related_origins": ["c1"],
+                    },
+                },
+            ],
+            "default_variant": "direct_bic_only",
+        },
+    }
+    commit_map = {"c1": {"hash": "1" * 40}, "c2": {"hash": "2" * 40}}
+    result = evaluate_scenario(
+        "SZZG-origin",
+        scenario,
+        tmp_path / "scenario.graph.yml",
+        "advanced-scenarios",
+        commit_map,
+        [
+            Prediction(scenario_id="SZZG-origin", inducing_commit="c2"),
+            Prediction(scenario_id="SZZG-origin", inducing_commit="c1"),
+        ],
+        evaluation_variant="origin-aware",
+    )
+
+    assert result.status == "PASS"
+    assert result.evaluation_variant == "origin_aware"
+    assert result.evaluation_policy == "direct_only"
+    assert result.related_origin_hits == ["c1"]
+    assert result.false_positives == ["c1"]
+    assert result.hard_false_positives == []
+
+
+def test_evaluate_graph_partial_credit_can_pass_with_minimum_required(tmp_path):
+    scenario = {
+        "meta": {"category": "partial-smoke"},
+        "expected_szz": {
+            "commit_level": {
+                "evaluation_policy": "partial_credit",
+                "required": ["c1", "c2"],
+                "minimum_required": 1,
+            }
+        },
+    }
+    commit_map = {"c1": {"hash": "1" * 40}, "c2": {"hash": "2" * 40}}
+    result = evaluate_scenario(
+        "SZZG-partial",
+        scenario,
+        tmp_path / "scenario.graph.yml",
+        "advanced-scenarios",
+        commit_map,
+        [Prediction(scenario_id="SZZG-partial", inducing_commit="c1")],
+    )
+
+    assert result.status == "PASS"
+    assert result.false_negatives == ["c2"]
+    assert result.minimum_required == 1
+    assert result.minimum_required_met is True
+    assert result.weighted_credit == 1.0
+    assert result.possible_credit == 2.0
+    assert result.credit_ratio == 0.5
+
+
+def test_evaluate_graph_top_k_reports_ranked_hits(tmp_path):
+    scenario = {
+        "meta": {"category": "top-k-smoke"},
+        "expected_szz": {
+            "commit_level": {
+                "evaluation_policy": "top_k",
+                "required": ["c2"],
+                "relevant": ["c2"],
+                "k_values": [1, 3],
+            }
+        },
+    }
+    commit_map = {"c1": {"hash": "1" * 40}, "c2": {"hash": "2" * 40}}
+    result = evaluate_scenario(
+        "SZZG-top-k",
+        scenario,
+        tmp_path / "scenario.graph.yml",
+        "advanced-scenarios",
+        commit_map,
+        [
+            Prediction(scenario_id="SZZG-top-k", inducing_commit="c2", rank=2),
+            Prediction(scenario_id="SZZG-top-k", inducing_commit="c1", rank=1),
+        ],
+    )
+
+    assert result.status == "PASS"
+    assert result.top_k == {
+        "k_values": [1, 3],
+        "relevant": ["c2"],
+        "ranked_actual_bics": ["c1", "c2"],
+        "best_rank": 2,
+        "hit_at": {"1": False, "3": True},
+        "mrr": 0.5,
+    }
 
 def test_pydriller_adapter_outputs_evaluable_predictions(tmp_path):
     scenarios_root = tmp_path / "scenarios"
