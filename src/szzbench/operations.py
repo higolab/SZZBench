@@ -39,6 +39,20 @@ def replace_once(content: str, old: str, new: str, occurrence: int | None = None
     end = start + len(old)
     return content[:start] + new + content[end:]
 
+def insert_after_once(content: str, anchor: str, inserted: str, occurrence: int | None = None) -> str:
+    positions = find_all_occurrences(content, anchor)
+    if not positions:
+        raise OperationError("insert_after.anchor not found")
+    if len(positions) > 1 and occurrence is None:
+        raise OperationError("insert_after.anchor is not unique; specify occurrence")
+    if occurrence is None:
+        occurrence = 1
+    if not isinstance(occurrence, int) or occurrence < 1 or occurrence > len(positions):
+        raise OperationError("insert_after.occurrence out of range")
+    start = positions[occurrence - 1]
+    end = start + len(anchor)
+    return content[:end] + inserted + content[end:]
+
 def apply_operation_to_memory(files: dict[str, str], op: dict) -> None:
     op_type = op.get("type")
     if op_type == "write_file":

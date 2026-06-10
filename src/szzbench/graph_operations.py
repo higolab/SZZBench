@@ -6,12 +6,13 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-from .operations import OperationError, normalize_newlines, replace_once
+from .operations import OperationError, insert_after_once, normalize_newlines, replace_once
 from .paths import safe_join
 
 SUPPORTED_GRAPH_OPERATIONS = {
     "write_file",
     "replace",
+    "insert_after",
     "delete_file",
     "rename_file",
     "move_file",
@@ -31,6 +32,7 @@ SUPPORTED_GRAPH_OPERATIONS = {
 PATH_FIELDS_BY_OPERATION: dict[str, list[str]] = {
     "write_file": ["path"],
     "replace": ["path"],
+    "insert_after": ["path"],
     "delete_file": ["path"],
     "rename_file": ["from", "to"],
     "move_file": ["from", "to"],
@@ -45,6 +47,7 @@ PATH_FIELDS_BY_OPERATION: dict[str, list[str]] = {
 REQUIRED_FIELDS_BY_OPERATION: dict[str, list[str]] = {
     "write_file": ["path", "content"],
     "replace": ["path", "old", "new"],
+    "insert_after": ["path", "anchor", "content"],
     "delete_file": ["path"],
     "rename_file": ["from", "to"],
     "move_file": ["from", "to"],
@@ -87,6 +90,17 @@ def apply_graph_operation_to_filesystem(repo_dir: Path, op: dict[str, Any]) -> N
         old = normalize_newlines(str(op["old"]))
         new = normalize_newlines(str(op["new"]))
         path.write_text(replace_once(content, old, new, op.get("occurrence")), encoding=encoding, newline="\n")
+        return
+
+    if op_type == "insert_after":
+        path = safe_join(repo_dir, op["path"])
+        if not path.exists():
+            raise OperationError(f"insert_after target does not exist: {op['path']}")
+        encoding = op.get("encoding") or "utf-8"
+        content = path.read_text(encoding=encoding)
+        anchor = normalize_newlines(str(op["anchor"]))
+        inserted = normalize_newlines(str(op["content"]))
+        path.write_text(insert_after_once(content, anchor, inserted, op.get("occurrence")), encoding=encoding, newline="\n")
         return
 
     if op_type == "delete_file":

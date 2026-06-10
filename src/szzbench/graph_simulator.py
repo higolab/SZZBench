@@ -6,7 +6,7 @@ from typing import Any
 import base64
 
 from .findings import ValidationResult
-from .operations import OperationError, normalize_newlines, replace_once
+from .operations import OperationError, insert_after_once, normalize_newlines, replace_once
 from .paths import PathValidationError, validate_repo_relative_path
 
 
@@ -147,6 +147,14 @@ def _apply_simulated_operation(
         old = normalize_newlines(str(op["old"]))
         new = normalize_newlines(str(op["new"]))
         _set_file(snapshot, path, SimFile(replace_once(content, old, new, op.get("occurrence")), snapshot[path].mode))
+        return
+
+    if op_type == "insert_after":
+        path = _validated_path(op["path"])
+        content = _require_text(snapshot, path, "insert_after")
+        anchor = normalize_newlines(str(op["anchor"]))
+        inserted = normalize_newlines(str(op["content"]))
+        _set_file(snapshot, path, SimFile(insert_after_once(content, anchor, inserted, op.get("occurrence")), snapshot[path].mode))
         return
 
     if op_type == "delete_file":
