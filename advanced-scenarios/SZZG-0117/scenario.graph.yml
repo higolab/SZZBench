@@ -1,0 +1,116 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0117
+  title: Clone origin versus copied direct BIC
+  slug: clone-origin-versus-direct-bic
+  description: Evaluates clone origin versus copied direct bic and checks whether SZZ identifies the expected bug-introducing
+    commit set.
+  category: Clone propagation scenarios
+  category_code: A
+  factors:
+  - clone
+  - copy_file
+  - origin_bic_policy
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0117-clone-origin-versus-direct-bic
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: 'c0: c0: create original sanitizer
+
+    c1: c1: introduce bug in original sanitizer
+
+    c2: c2: copy sanitizer into admin module
+
+    c3: c3: fix copied sanitizer only'
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'c0: create original sanitizer'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Sanitizer.java
+    content: "package example;\npublic class Sanitizer {\n  public String clean(String s) {\n    return s.replace(\"<\", \"\
+      &lt;\");\n  }\n\n}\n"
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'c1: introduce bug in original sanitizer'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Sanitizer.java
+    old: return s.replace("<", "&lt;");
+    new: return s;
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'c2: copy sanitizer into admin module'
+  role: other
+  operations:
+  - type: copy_file
+    from: src/main/java/example/Sanitizer.java
+    to: src/main/java/example/AdminSanitizer.java
+  - type: replace
+    path: src/main/java/example/AdminSanitizer.java
+    old: public class Sanitizer
+    new: public class AdminSanitizer
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'c3: fix copied sanitizer only'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/AdminSanitizer.java
+    old: return s;
+    new: return s.replace("<", "&lt;");
+bugs:
+- id: B001
+  title: Synthetic graph scenario bug
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  bug_fixing_commits:
+  - commit: c3
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/Sanitizer.java
+    statement: return s;
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c3
+    file: src/main/java/example/AdminSanitizer.java
+    statement: return s.replace("<", "&lt;");
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+scenario_design:
+  purpose: Evaluate clone origin versus copied direct bic and whether SZZ identifies the expected bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: clone, copy_file, origin_bic_policy; operations: copy_file,
+    replace, write_file.'
+  evaluation_points:
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
+notes:
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

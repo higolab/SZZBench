@@ -1,0 +1,132 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0108
+  title: One directly blamed BIC and one context-only BIC
+  slug: multi-bic-context-only
+  description: Evaluates one directly blamed bic and one context-only bic and checks whether SZZ identifies the expected bug-introducing
+    commit set.
+  category: Multiple-BIC scenarios
+  category_code: A
+  factors:
+  - multiple_bic
+  - context_dependent
+  - partial_observability
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0108-multi-bic-context-only
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: 'c0: c0: create discount service
+
+    c1: c1: introduce wrong threshold
+
+    c2: c2: introduce wrong base discount
+
+    c3: c3: fix customer discount behavior by restoring threshold only'
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'c0: create discount service'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/DiscountService.java
+    content: "package example;\npublic class DiscountService {\n  private int baseDiscount() {\n    return 10;\n  }\n  public\
+      \ int discountFor(int purchases) {\n    if (purchases > 5) {\n      return baseDiscount();\n    }\n    return 0;\n \
+      \ }\n\n}\n"
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'c1: introduce wrong threshold'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/DiscountService.java
+    old: if (purchases > 5) {
+    new: if (purchases >= 5) {
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'c2: introduce wrong base discount'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/DiscountService.java
+    old: return 10;
+    new: return 15;
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'c3: fix customer discount behavior by restoring threshold only'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/DiscountService.java
+    old: if (purchases >= 5) {
+    new: if (purchases > 5) {
+  - type: replace
+    path: src/main/java/example/DiscountService.java
+    old: return baseDiscount();
+    new: return 10;
+bugs:
+- id: B001
+  title: Synthetic graph scenario bug
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  - commit: c2
+    role: direct
+  bug_fixing_commits:
+  - commit: c3
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/DiscountService.java
+    statement: if (purchases >= 5) {
+    change_type: line_modification
+  - id: F002
+    commit: c2
+    file: src/main/java/example/DiscountService.java
+    statement: return 15;
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c3
+    file: src/main/java/example/DiscountService.java
+    statement: if (purchases > 5) {
+    fix_type: line_modification
+  - id: X002
+    commit: c3
+    file: src/main/java/example/DiscountService.java
+    statement: return 10;
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+    - c2
+scenario_design:
+  purpose: Evaluate one directly blamed bic and one context-only bic and whether SZZ identifies the expected bug-introducing
+    commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: multiple_bic, context_dependent, partial_observability; operations:
+    replace, write_file.'
+  evaluation_points:
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
+notes:
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

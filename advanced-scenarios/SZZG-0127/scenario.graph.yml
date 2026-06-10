@@ -1,0 +1,114 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0127
+  title: Cherry-picked BIC appears as duplicate commits on two branches
+  slug: cherry-picked-bic-duplicates
+  description: Evaluates cherry-picked bic appears as duplicate commits on two branches and checks whether SZZ identifies
+    the expected bug-introducing commit set.
+  category: Branch and merge scenarios
+  category_code: A
+  factors:
+  - cherry_pick
+  - duplicate_patch
+  - non_linear_history
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0127-cherry-picked-bic-duplicates
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: 'c0: c0: create status mapper
+
+    c1: c1: introduce wrong error status on release branch
+
+    c2: c2: cherry-pick wrong error status onto main
+
+    c3: c3: fix wrong error status on main'
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'c0: create status mapper'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/StatusMapper.java
+    content: "package example;\npublic class StatusMapper {\n  public int code(boolean ok) {\n    return ok ? 200 : 500;\n\
+      \  }\n\n}\n"
+- id: c1
+  branch: release
+  parents:
+  - c0
+  message: 'c1: introduce wrong error status on release branch'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/StatusMapper.java
+    old: 'return ok ? 200 : 500;'
+    new: 'return ok ? 200 : 400;'
+- id: c2
+  branch: main
+  parents:
+  - c0
+  message: 'c2: cherry-pick wrong error status onto main'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/StatusMapper.java
+    old: 'return ok ? 200 : 500;'
+    new: 'return ok ? 200 : 400;'
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'c3: fix wrong error status on main'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/StatusMapper.java
+    old: 'return ok ? 200 : 400;'
+    new: 'return ok ? 200 : 500;'
+bugs:
+- id: B001
+  title: Synthetic graph scenario bug
+  bug_introducing_commits:
+  - commit: c2
+    role: direct
+  bug_fixing_commits:
+  - commit: c3
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c2
+    file: src/main/java/example/StatusMapper.java
+    statement: 'return ok ? 200 : 400;'
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c3
+    file: src/main/java/example/StatusMapper.java
+    statement: 'return ok ? 200 : 500;'
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c2
+scenario_design:
+  purpose: Evaluate cherry-picked bic appears as duplicate commits on two branches and whether SZZ identifies the expected
+    bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: cherry_pick, duplicate_patch, non_linear_history; operations:
+    replace, write_file.'
+  evaluation_points:
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
+notes:
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

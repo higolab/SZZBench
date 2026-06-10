@@ -1,0 +1,135 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0107
+  title: One BFC fixes multiple BICs across multiple files
+  slug: multi-bic-multi-file-fix
+  description: Evaluates one bfc fixes multiple bics across multiple files and checks whether SZZ identifies the expected
+    bug-introducing commit set.
+  category: Multiple-BIC scenarios
+  category_code: A
+  factors:
+  - multiple_bic
+  - multiple_file
+  - single_bfc
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0107-multi-bic-multi-file-fix
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: 'c0: c0: create initial calculator and validator
+
+    c1: c1: introduce rounding bug in calculator
+
+    c2: c2: introduce zero-quantity validation bug
+
+    c3: c3: fix both pricing and validation bugs'
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'c0: create initial calculator and validator'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Calculator.java
+    content: "package example;\npublic class Calculator {\n  public int addTax(int price) {\n    return price + price / 10;\n\
+      \  }\n\n}\n"
+  - type: write_file
+    path: src/main/java/example/Validator.java
+    content: "package example;\npublic class Validator {\n  public boolean validQuantity(int quantity) {\n    return quantity\
+      \ >= 1;\n  }\n\n}\n"
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'c1: introduce rounding bug in calculator'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Calculator.java
+    old: return price + price / 10;
+    new: return price + (price + 9) / 10;
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'c2: introduce zero-quantity validation bug'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Validator.java
+    old: return quantity >= 1;
+    new: return quantity >= 0;
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'c3: fix both pricing and validation bugs'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Calculator.java
+    old: return price + (price + 9) / 10;
+    new: return price + price / 10;
+  - type: replace
+    path: src/main/java/example/Validator.java
+    old: return quantity >= 0;
+    new: return quantity >= 1;
+bugs:
+- id: B001
+  title: Synthetic graph scenario bug
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  - commit: c2
+    role: direct
+  bug_fixing_commits:
+  - commit: c3
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/Calculator.java
+    statement: return price + (price + 9) / 10;
+    change_type: line_modification
+  - id: F002
+    commit: c2
+    file: src/main/java/example/Validator.java
+    statement: return quantity >= 0;
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c3
+    file: src/main/java/example/Calculator.java
+    statement: return price + price / 10;
+    fix_type: line_modification
+  - id: X002
+    commit: c3
+    file: src/main/java/example/Validator.java
+    statement: return quantity >= 1;
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+    - c2
+scenario_design:
+  purpose: Evaluate one bfc fixes multiple bics across multiple files and whether SZZ identifies the expected bug-introducing
+    commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: multiple_bic, multiple_file, single_bfc; operations: replace,
+    write_file.'
+  evaluation_points:
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
+notes:
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

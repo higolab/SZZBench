@@ -1,0 +1,117 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0118
+  title: Copy followed by bug introduction only in the copied code
+  slug: copy-then-copied-bic
+  description: Evaluates copy followed by bug introduction only in the copied code and checks whether SZZ identifies the expected
+    bug-introducing commit set.
+  category: Clone propagation scenarios
+  category_code: A
+  factors:
+  - copy_file
+  - clone_divergence
+  - direct_bic_in_copy
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0118-copy-then-copied-bic
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: 'c0: c0: create original formatter
+
+    c1: c1: copy formatter to report formatter
+
+    c2: c2: introduce copied-code null handling bug
+
+    c3: c3: fix copied formatter null handling'
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'c0: create original formatter'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Formatter.java
+    content: "package example;\npublic class Formatter {\n  public String format(String s) {\n    return s == null ? \"\"\
+      \ : s.trim();\n  }\n\n}\n"
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'c1: copy formatter to report formatter'
+  role: other
+  operations:
+  - type: copy_file
+    from: src/main/java/example/Formatter.java
+    to: src/main/java/example/ReportFormatter.java
+  - type: replace
+    path: src/main/java/example/ReportFormatter.java
+    old: public class Formatter
+    new: public class ReportFormatter
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'c2: introduce copied-code null handling bug'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/ReportFormatter.java
+    old: 'return s == null ? "" : s.trim();'
+    new: return s.trim();
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'c3: fix copied formatter null handling'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/ReportFormatter.java
+    old: return s.trim();
+    new: 'return s == null ? "" : s.trim();'
+bugs:
+- id: B001
+  title: Synthetic graph scenario bug
+  bug_introducing_commits:
+  - commit: c2
+    role: direct
+  bug_fixing_commits:
+  - commit: c3
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c2
+    file: src/main/java/example/ReportFormatter.java
+    statement: return s.trim();
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c3
+    file: src/main/java/example/ReportFormatter.java
+    statement: 'return s == null ? "" : s.trim();'
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c2
+scenario_design:
+  purpose: Evaluate copy followed by bug introduction only in the copied code and whether SZZ identifies the expected bug-introducing
+    commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: copy_file, clone_divergence, direct_bic_in_copy; operations:
+    copy_file, replace, write_file.'
+  evaluation_points:
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
+notes:
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

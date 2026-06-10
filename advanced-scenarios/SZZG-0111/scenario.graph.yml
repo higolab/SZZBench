@@ -1,0 +1,118 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0111
+  title: Intermediate method extraction between BIC and BFC
+  slug: intermediate-method-extraction
+  description: Evaluates intermediate method extraction between bic and bfc and checks whether SZZ identifies the expected
+    bug-introducing commit set.
+  category: Refactoring scenarios
+  category_code: A
+  factors:
+  - intermediate_refactoring
+  - extract_method
+  - line_history_break
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0111-intermediate-method-extraction
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: 'c0: c0: create shipping fee calculation
+
+    c1: c1: introduce free-shipping threshold bug
+
+    c2: c2: extract free-shipping predicate
+
+    c3: c3: fix extracted threshold predicate'
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'c0: create shipping fee calculation'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Shipping.java
+    content: "package example;\npublic class Shipping {\n  public int fee(int subtotal) {\n    int base = 500;\n    if (subtotal\
+      \ >= 5000) {\n      base = 0;\n    }\n    return base;\n  }\n\n}\n"
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'c1: introduce free-shipping threshold bug'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Shipping.java
+    old: if (subtotal >= 5000) {
+    new: if (subtotal > 5000) {
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'c2: extract free-shipping predicate'
+  role: refactoring
+  operations:
+  - type: replace
+    path: src/main/java/example/Shipping.java
+    old: if (subtotal > 5000) {
+    new: if (qualifiesForFreeShipping(subtotal)) {
+  - type: insert_after
+    path: src/main/java/example/Shipping.java
+    anchor: "    return base;\n  }\n\n"
+    content: "  private boolean qualifiesForFreeShipping(int subtotal) {\n    return subtotal > 5000;\n  }\n"
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'c3: fix extracted threshold predicate'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Shipping.java
+    old: return subtotal > 5000;
+    new: return subtotal >= 5000;
+bugs:
+- id: B001
+  title: Synthetic graph scenario bug
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  bug_fixing_commits:
+  - commit: c3
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/Shipping.java
+    statement: if (subtotal > 5000) {
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c3
+    file: src/main/java/example/Shipping.java
+    statement: return subtotal >= 5000;
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+scenario_design:
+  purpose: Evaluate intermediate method extraction between bic and bfc and whether SZZ identifies the expected bug-introducing
+    commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: intermediate_refactoring, extract_method, line_history_break;
+    operations: insert_after, replace, write_file.'
+  evaluation_points:
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
+notes:
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

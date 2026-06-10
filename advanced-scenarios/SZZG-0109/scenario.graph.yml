@@ -1,0 +1,132 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0109
+  title: Prerequisite BIC and symptom BIC fixed together
+  slug: multi-bic-prerequisite-symptom
+  description: Evaluates prerequisite bic and symptom bic fixed together and checks whether SZZ identifies the expected bug-introducing
+    commit set.
+  category: Multiple-BIC scenarios
+  category_code: A
+  factors:
+  - multiple_bic
+  - causal_chain
+  - single_bfc
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0109-multi-bic-prerequisite-symptom
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: 'c0: c0: create token verifier
+
+    c1: c1: weaken token trust predicate
+
+    c2: c2: weaken access control condition
+
+    c3: c3: fix access control vulnerability'
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'c0: create token verifier'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/TokenVerifier.java
+    content: "package example;\npublic class TokenVerifier {\n  public boolean isTrusted(String token) {\n    return token\
+      \ != null && token.startsWith(\"T-\");\n  }\n  public boolean canAccess(String token, boolean admin) {\n    return admin\
+      \ && isTrusted(token);\n  }\n\n}\n"
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'c1: weaken token trust predicate'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/TokenVerifier.java
+    old: return token != null && token.startsWith("T-");
+    new: return token != null;
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'c2: weaken access control condition'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/TokenVerifier.java
+    old: return admin && isTrusted(token);
+    new: return admin || isTrusted(token);
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'c3: fix access control vulnerability'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/TokenVerifier.java
+    old: return token != null;
+    new: return token != null && token.startsWith("T-");
+  - type: replace
+    path: src/main/java/example/TokenVerifier.java
+    old: return admin || isTrusted(token);
+    new: return admin && isTrusted(token);
+bugs:
+- id: B001
+  title: Synthetic graph scenario bug
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  - commit: c2
+    role: direct
+  bug_fixing_commits:
+  - commit: c3
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/TokenVerifier.java
+    statement: return token != null;
+    change_type: line_modification
+  - id: F002
+    commit: c2
+    file: src/main/java/example/TokenVerifier.java
+    statement: return admin || isTrusted(token);
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c3
+    file: src/main/java/example/TokenVerifier.java
+    statement: return token != null && token.startsWith("T-");
+    fix_type: line_modification
+  - id: X002
+    commit: c3
+    file: src/main/java/example/TokenVerifier.java
+    statement: return admin && isTrusted(token);
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+    - c2
+scenario_design:
+  purpose: Evaluate prerequisite bic and symptom bic fixed together and whether SZZ identifies the expected bug-introducing
+    commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: multiple_bic, causal_chain, single_bfc; operations: replace,
+    write_file.'
+  evaluation_points:
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
+notes:
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.
