@@ -1,41 +1,36 @@
-# SZZG-0111: Defensive check BFC masks an earlier root-cause BIC
+# SZZG-0111: Chmod-only intermediate
 
 ## Source
 
-- Category: Context-dependent scenarios
+- Category: Robustness and implementation-quality scenarios
 
 ## Purpose
 
-Evaluate defensive check bfc masks an earlier root-cause bic and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate whether SZZ identifies the real BIC when a chmod-only commit appears in the intermediate history.
 
 ## Expected history
 
 ```text
-c0: c0: create profile renderer
-c1: c1: introduce null-producing root cause
-c2: c2: fix crash with defensive null checks
+c0: create initial state (write_file scripts/run.sh; write_file src/main/java/example/Range.java)
+c1: apply intermediate change (chmod scripts/run.sh)
+c2: introduce bug (replace src/main/java/example/Range.java)
+c3: fix bug (replace src/main/java/example/Range.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal `scenario.yml` schema.
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-- Factors: defensive_fix, root_cause_not_touched, context_dependent
-- Operation types: replace, write_file
-- Expected SZZ policy is defined in `expected_szz`.
-
-## Expected BICs
-
-```text
-c1
-```
+- Factors: chmod
+- Operation types: write_file, chmod, replace
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
 - Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the chmod-only intermediate commit c1 is not reported as the BIC.
 - Whether the expected_szz evaluation policy is applied correctly.
 
 ---

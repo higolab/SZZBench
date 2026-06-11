@@ -1,132 +1,175 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0097
-  title: Prerequisite BIC and symptom BIC fixed together
-  slug: multi-bic-prerequisite-symptom
-  description: Evaluates prerequisite bic and symptom bic fixed together and checks whether SZZ identifies the expected bug-introducing
-    commit set.
-  category: Multiple-BIC scenarios
-  category_code: A
+  title: Work item inference without issue ID
+  slug: issue-id-work-item
+  description: A bug is introduced during a short sequence of related feature-work commits that do not contain an explicit
+    issue ID. The scenario evaluates whether a method can infer the work item from commit messages, nearby commit order, and
+    related files, while still selecting the specific BIC inside that inferred work item.
+  category: "Issue, message, context, and non-local evidence"
+  category_code: "G7"
   factors:
-  - multiple_bic
-  - causal_chain
-  - single_bfc
+  - work_items
+  - work_item_inference
+  - no_issue_id
+  - commit_series
+  - related_but_not_correct
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0097-multi-bic-prerequisite-symptom
+  name: SZZG-0097-work-item-inference-without-issue-id
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: c0: create token verifier
+  history_summary: 'c0: create initial range filter
 
-    c1: c1: weaken token trust predicate
+    c1: start range filter cleanup without issue ID
 
-    c2: c2: weaken access control condition
+    c2: tighten boundary behavior during the same inferred work item and introduce bug
 
-    c3: c3: fix access control vulnerability'
+    c3: wire range filter into request path without issue ID
+
+    c4: fix boundary regression from range filter work'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create token verifier'
+  message: 'c0: create initial range filter'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/TokenVerifier.java
-    content: "package example;\npublic class TokenVerifier {\n  public boolean isTrusted(String token) {\n    return token\
-      \ != null && token.startsWith(\"T-\");\n  }\n  public boolean canAccess(String token, boolean admin) {\n    return admin\
-      \ && isTrusted(token);\n  }\n\n}\n"
+    path: src/main/java/example/RangeFilter.java
+    content: "package example;\n\npublic class RangeFilter {\n  public int normalize(int value) {\n    return value;\n  }\n\
+      \n  public boolean contains(int value, int min, int max) {\n    int normalized = normalize(value);\n    return normalized\
+      \ >= min && normalized <= max;\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: weaken token trust predicate'
-  role: bug_introducing
+  message: Start range filter cleanup
+  role: work_item_context
+  work_item: INFERRED-WI-001
   operations:
   - type: replace
-    path: src/main/java/example/TokenVerifier.java
-    old: return token != null && token.startsWith("T-");
-    new: return token != null;
+    path: src/main/java/example/RangeFilter.java
+    old: "package example;\n\npublic class RangeFilter {\n  public int normalize(int value) {\n    return value;\n  }\n\n\
+      \  public boolean contains(int value, int min, int max) {\n    int normalized = normalize(value);\n    return normalized\
+      \ >= min && normalized <= max;\n  }\n}\n"
+    new: "package example;\n\npublic class RangeFilter {\n  public int normalize(int value) {\n    return Math.max(0, value);\n\
+      \  }\n\n  public boolean contains(int value, int min, int max) {\n    int normalized = normalize(value);\n    return\
+      \ normalized >= min && normalized <= max;\n  }\n}\n"
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: weaken access control condition'
+  message: Tighten boundary behavior in range filter
   role: bug_introducing
+  work_item: INFERRED-WI-001
   operations:
   - type: replace
-    path: src/main/java/example/TokenVerifier.java
-    old: return admin && isTrusted(token);
-    new: return admin || isTrusted(token);
+    path: src/main/java/example/RangeFilter.java
+    old: return normalized >= min && normalized <= max;
+    new: return normalized > min && normalized < max;
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'c3: fix access control vulnerability'
+  message: Wire range filter into request path
+  role: work_item_context
+  work_item: INFERRED-WI-001
+  operations:
+  - type: replace
+    path: src/main/java/example/RangeFilter.java
+    old: "package example;\n\npublic class RangeFilter {\n  public int normalize(int value) {\n    return Math.max(0, value);\n\
+      \  }\n\n  public boolean contains(int value, int min, int max) {\n    int normalized = normalize(value);\n    return\
+      \ normalized > min && normalized < max;\n  }\n}\n"
+    new: "package example;\n\npublic class RangeFilter {\n  public int normalize(int value) {\n    return Math.max(0, value);\n\
+      \  }\n\n  public boolean contains(int value, int min, int max) {\n    int normalized = normalize(value);\n    return\
+      \ normalized > min && normalized < max;\n  }\n\n  public boolean acceptsRequestValue(int value) {\n    return contains(value,\
+      \ 0, 100);\n  }\n}\n"
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: Fix boundary regression from range filter work
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/TokenVerifier.java
-    old: return token != null;
-    new: return token != null && token.startsWith("T-");
-  - type: replace
-    path: src/main/java/example/TokenVerifier.java
-    old: return admin || isTrusted(token);
-    new: return admin && isTrusted(token);
+    path: src/main/java/example/RangeFilter.java
+    old: return normalized > min && normalized < max;
+    new: return normalized >= min && normalized <= max;
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Boundary regression introduced during inferred range-filter work item
   bug_introducing_commits:
-  - commit: c1
-    role: direct
   - commit: c2
     role: direct
   bug_fixing_commits:
-  - commit: c3
+  - commit: c4
     role: complete_fix
   faults:
   - id: F001
-    commit: c1
-    file: src/main/java/example/TokenVerifier.java
-    statement: return token != null;
-    change_type: line_modification
-  - id: F002
     commit: c2
-    file: src/main/java/example/TokenVerifier.java
-    statement: return admin || isTrusted(token);
+    file: src/main/java/example/RangeFilter.java
+    statement: return normalized > min && normalized < max;
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c3
-    file: src/main/java/example/TokenVerifier.java
-    statement: return token != null && token.startsWith("T-");
+    commit: c4
+    file: src/main/java/example/RangeFilter.java
+    statement: return normalized >= min && normalized <= max;
     fix_type: line_modification
-  - id: X002
-    commit: c3
-    file: src/main/java/example/TokenVerifier.java
-    statement: return admin && isTrusted(token);
-    fix_type: line_modification
+  work_item: INFERRED-WI-001
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
+    - c2
+    related_but_not_correct:
+    - c1
+    - c3
+    notes: The inferred work item contains c1, c2, and c3, but only c2 is the BIC. c1 and c3 are useful contextual candidates
+      but should not be reported as the BIC.
+  work_item_level:
+    inferred_work_item: INFERRED-WI-001
+    candidate_commits:
     - c1
     - c2
+    - c3
+    required_bic: c2
+    no_explicit_issue_id: true
+work_items:
+- id: INFERRED-WI-001
+  title: Range filter cleanup and request wiring
+  commits:
+  - c1
+  - c2
+  - c3
+  inference_required: true
+  explicit_issue_id: null
+  bug_introducing_commit: c2
+  inference_signals:
+  - No commit message contains an explicit issue ID.
+  - The commit messages share range-filter terminology.
+  - The commits appear consecutively in the same short time window.
+  - The commits touch the same file or closely related range-filter behavior.
+  - The fix message in c4 refers to a boundary regression from the range filter work.
 scenario_design:
-  purpose: Evaluate prerequisite bic and symptom bic fixed together and whether SZZ identifies the expected bug-introducing
-    commit set.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: multiple_bic, causal_chain, single_bfc; operations: replace,
-    write_file.'
+  purpose: Evaluate whether SZZ or a work-item-aware extension can infer a work item without explicit issue IDs and still
+    identify the specific BIC inside that inferred work item.
+  key_property: Commit messages intentionally omit issue identifiers. The work item must be inferred from message similarity,
+    commit locality, and related file changes.
+  difference_from_SZZG_0046: SZZG-0096 assumes an explicit work item containing multiple candidate BICs. SZZG-0097 removes
+    the explicit issue ID and relies on inference signals.
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Whether the work item can be inferred from context without issue IDs.
+  - Whether c2 is selected as the BIC rather than neighboring contextual commits c1 or c3.
+  - Whether c4's fix message helps connect the regression to the inferred range-filter work.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
+- This revision makes SZZG-0097 distinct from SZZG-0096 by removing explicit issue IDs from commit messages and adding inference
+  signals.
+- The work_items section is still present as oracle metadata, but the scenario states that the work item should be inferred.
+- c1 and c3 are related context commits; c2 is the only BIC.

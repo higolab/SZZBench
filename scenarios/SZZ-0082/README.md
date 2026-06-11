@@ -1,23 +1,17 @@
-# SZZ-0082: Role check omission
+# SZZ-0082: Formatting-only rewrite after bug introduction
 
 ## Purpose
 
-This scenario represents an omission bug: the method is introduced without a necessary role check, and the bug-fixing commit adds the missing statement.
+This scenario checks whether SZZ implementations confuse a formatting-only
+rewrite with the original bug-introducing commit.
 
 ## Commit structure
 
-- `c0`: initial class
-- `c1`: introduces the method without the role check
-- `c2`: adds the missing role check
+- `c0`: Introduces the correct inclusive condition.
+- `c1`: Introduces the strict boundary bug. This is the expected BIC.
+- `c2`: Reformats the faulty expression into multiple lines. This is a distractor.
+- `c3`: Fixes the formatted expression. This is the BFC.
 
 ## Expected behavior
 
-The expected BFC is `c2` and the expected BIC is `c1`. Line-level evaluation is unavailable because this is an omission bug.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `omission-bug`
-- `line-addition-fix`
-- `security`
+SZZ should report `c1`, not the formatting commit `c2`.

@@ -1,8 +1,8 @@
-# SZZ-0027: Absolute value omitted
+# SZZ-0027: Wrong collection size check
 
 ## Purpose
 
-This scenario introduces a bug by changing `return Math.abs(value);` to `return value;` and later restores the correct implementation.
+This scenario introduces a bug by changing `return size > 0;` to `return size >= 0;` and later restores the correct implementation.
 
 ## Commit structure
 
@@ -19,4 +19,4 @@ The expected BFC is `c2` and the expected BIC is `c1`.
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `arithmetic-error`
+- `comparison-error`

@@ -1,50 +1,100 @@
-# SZZG-0034: Backport introduces release-specific bug
-
-## Source
-
-- Category: Branch, merge, cherry-pick, and backport scenarios
+# SZZG-0034: One BFC fixes multiple independent bugs
 
 ## Purpose
 
-Evaluate a release-specific regression introduced while adapting a main-line source change onto a release branch.
+This scenario represents one bug-fixing commit that fixes two independent bugs.
 
-Commit `c1` is not a BFC. It is the main-line source change that adds `RangePolicy.java`. Commit `r1` is a release-side backport/adaptation of that source change, and it introduces the boundary bug in `Range.java`. The expected BIC is therefore `r1`, not `c1`.
-
-## Expected history
+The two bugs are in different files and different functional areas:
 
 ```text
-c0: create initial state (write_file src/main/java/example/Range.java)
-c1: add main range policy source change (write_file src/main/java/example/RangePolicy.java)
-r1: backport range policy to release and introduce boundary bug (replace src/main/java/example/Range.java; write_file src/main/java/example/RangePolicy.java)
-r2: fix bug (replace src/main/java/example/Range.java)
+B001: Range boundary bug in Range.java
+B002: Discount calculation bug in DiscountCalculator.java
 ```
 
-## Why this needs `scenario.graph.yml`
+Both are fixed by the same BFC `c3`.
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
-
-## Required graph-schema features
-
-- Factors: branch, backport_of
-- Operation types: write_file, replace
-- Expected SZZ policy is defined in expected_szz.
-
-## Evaluation points
-
-- Whether SZZ identifies `r1` as the release-specific BIC.
-- Whether `backport_of: c1` metadata does not cause SZZ to blame the main-line source change `c1`.
-- Whether the expected_szz evaluation policy is applied correctly.
-
----
-
-## Draft status
-
-This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
-
-## Files
+## Commit history
 
 ```text
-SZZG-0034/
-|-- scenario.graph.yml
-`-- README.md
+c0: create correct Range and DiscountCalculator implementations
+c1: introduce a range boundary bug in Range.java
+c2: introduce an independent discount calculation bug in DiscountCalculator.java
+c3: one BFC fixes both independent bugs
 ```
+
+## Commit table
+
+| Commit | Branch | Parents | Role | Description |
+|---|---|---|---|---|
+| `c0` | `main` | none | initial | Creates correct implementations of both files. |
+| `c1` | `main` | `c0` | bug_introducing | Introduces the range boundary bug. |
+| `c2` | `main` | `c1` | bug_introducing | Introduces the discount calculation bug. |
+| `c3` | `main` | `c2` | bug_fixing | Fixes both bugs in one commit. |
+
+## Bug B001
+
+File:
+
+```text
+src/main/java/example/Range.java
+```
+
+Fault introduced in `c1`:
+
+```java
+return value > min && value < max;
+```
+
+Fix in `c3`:
+
+```java
+return value >= min && value <= max;
+```
+
+## Bug B002
+
+File:
+
+```text
+src/main/java/example/DiscountCalculator.java
+```
+
+Fault introduced in `c2`:
+
+```java
+return price + discount;
+```
+
+Fix in `c3`:
+
+```java
+return price - discount;
+```
+
+## Oracle
+
+Commit-level expected BICs:
+
+```text
+c1
+c2
+```
+
+Bug-level expected BICs:
+
+```text
+B001: c1
+B002: c2
+```
+
+Bug-fixing commit:
+
+```text
+c3
+```
+
+## Difference from SZZ-0154
+
+`SZZ-0154` represents one composite bug with multiple BICs.
+
+`SZZG-0034` represents two independent bugs that happen to be fixed by one shared BFC.

@@ -1,48 +1,39 @@
-# SZZG-0054: Chmod-only intermediate
-
-## Source
-
-- Category: Robustness and implementation-quality scenarios
+# SZZG-0054: Fixed on main but unfixed on release
 
 ## Purpose
 
-Evaluate whether SZZ identifies the real BIC when a chmod-only commit appears in the intermediate history.
+A bug is introduced before a release branch is cut; main fixes the bug, but the release branch continues without the fix.
 
-## Expected history
-
-```text
-c0: create initial state (write_file scripts/run.sh; write_file src/main/java/example/Range.java)
-c1: apply intermediate change (chmod scripts/run.sh)
-c2: introduce bug (replace src/main/java/example/Range.java)
-c3: fix bug (replace src/main/java/example/Range.java)
-```
-
-## Why this needs `scenario.graph.yml`
-
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
-
-## Required graph-schema features
-
-- Factors: chmod
-- Operation types: write_file, chmod, replace
-- Expected SZZ policy is defined in expected_szz.
-
-## Evaluation points
-
-- Whether SZZ identifies the expected BIC set.
-- Whether the chmod-only intermediate commit c1 is not reported as the BIC.
-- Whether the expected_szz evaluation policy is applied correctly.
-
----
-
-## Draft status
-
-This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
-
-## Files
+## Commit history
 
 ```text
-SZZG-0054/
-|-- scenario.graph.yml
-`-- README.md
+c0: create initial correct implementation on main
+c1: introduce bug on main before release branch
+c2: create release branch from buggy state and add release note
+c3: fix bug on main
+c4: release branch continues with bug unfixed
 ```
+
+## Commit table
+
+| Commit | Branch | Parents | Role | Description |
+|---|---|---|---|---|
+| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
+| `c1` | `main` | c0 | `bug_introducing` | c1: introduce range boundary bug before release branch |
+| `c2` | `release` | c1 | `intermediate` | c2: cut release branch from buggy state |
+| `c3` | `main` | c1 | `bug_fixing` | c3: fix range boundary bug on main |
+| `c4` | `release` | c2 | `unfixed_release` | c4: release branch continues without main fix |
+
+## Expected SZZ result
+
+```text
+Expected BIC: c1
+```
+
+## Scenario purpose
+
+Evaluate whether SZZ can identify the original BIC when a fix exists on main but has not been propagated to a release branch.
+
+## Notes
+
+- The release branch intentionally remains buggy at c4.

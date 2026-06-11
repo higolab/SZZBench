@@ -1,19 +1,20 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0123
-  title: Off-by-one in new loop boundary
-  slug: loop-boundary-bic
-  description: 'This scenario evaluates a bug-introducing commit shape: Off-by-one in new loop boundary.'
-  category: bic-shape
+  title: BFC with two faulty expressions fixed
+  slug: bfc-fixes-two-expressions
+  description: 'This scenario evaluates SZZ behavior when the bug-fixing commit has the shape: BFC with two faulty expressions fixed.'
+  category: "BFC-side noise and tangled commits"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - off-by-one
+  - multiple-line-bfc
   difficulty: medium
   status: active
+  category_code: "S4"
 repository:
-  name: SZZ-0123-loop-boundary-bic
+  name: SZZ-0123-bfc-fixes-two-expressions
   default_branch: main
   language: java
   build_system: none
@@ -26,13 +27,13 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0123.java
+    path: src/main/java/example/Scenario0058.java
     content: |
       package example;
 
-      public class Scenario0123 {
-          public boolean canRead(int index, int size) {
-              return index < size;
+      public class Scenario0058 {
+          public boolean contains(int value, int min, int max) {
+              return value >= min && value <= max;
           }
       }
 - id: c1
@@ -42,21 +43,21 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0123.java
+    path: src/main/java/example/Scenario0058.java
     old: |
       package example;
 
-      public class Scenario0123 {
-          public boolean canRead(int index, int size) {
-              return index < size;
+      public class Scenario0058 {
+          public boolean contains(int value, int min, int max) {
+              return value >= min && value <= max;
           }
       }
     new: |
       package example;
 
-      public class Scenario0123 {
-          public boolean canRead(int index, int size) {
-              return index <= size;
+      public class Scenario0058 {
+          public boolean contains(int value, int min, int max) {
+              return value > min && value < max;
           }
       }
     labels:
@@ -64,26 +65,26 @@ commits:
     - fault
 - id: c2
   message: Fix bug
-  author: Alice <alice@example.com>
+  author: Carol <carol@example.com>
   date: '2024-01-03T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0123.java
+    path: src/main/java/example/Scenario0058.java
     old: |
       package example;
 
-      public class Scenario0123 {
-          public boolean canRead(int index, int size) {
-              return index <= size;
+      public class Scenario0058 {
+          public boolean contains(int value, int min, int max) {
+              return value > min && value < max;
           }
       }
     new: |
       package example;
 
-      public class Scenario0123 {
-          public boolean canRead(int index, int size) {
-              return index < size;
+      public class Scenario0058 {
+          public boolean contains(int value, int min, int max) {
+              return value >= min && value <= max;
           }
       }
     labels:
@@ -91,27 +92,27 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Off-by-one in new loop boundary
+  title: BFC with two faulty expressions fixed
   bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0123.java
+    file: src/main/java/example/Scenario0058.java
     entity:
       type: method
-      name: canRead
-      signature: boolean canRead(int index, int size)
-    statement: return index <= size;
+      name: contains
+      signature: boolean contains(int value, int min, int max)
+    statement: return value > min && value < max;
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0123.java
+    file: src/main/java/example/Scenario0058.java
     entity:
       type: method
-      name: canRead
-      signature: boolean canRead(int index, int size)
-    statement: return index < size;
+      name: contains
+      signature: boolean contains(int value, int min, int max)
+    statement: return value >= min && value <= max;
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -120,7 +121,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return index <= size;
+      - return value > min && value < max;
 checks:
 - type: git_history_contains
   commits:

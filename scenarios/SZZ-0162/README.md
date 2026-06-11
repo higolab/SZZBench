@@ -1,14 +1,14 @@
-# SZZ-0162: Huge method surrounding small bug
+# SZZ-0162: Ambiguous BFC message
 
 ## Purpose
 
-This scenario is intended to stress implementation robustness under noisy or repetitive code conditions.
+This scenario is intended for evaluating SZZ variants that use commit messages or broader patch context.
 
 ## Commit structure
 
-- `c0`: Initial large method
-- `c1`: Introduce small bug in large method
-- `c2`: Fix small bug in large method
+- `c0`: initial implementation
+- `c1`: introduces the bug
+- `c2`: BFC with message: Fix validation
 
 ## Expected behavior
 
@@ -19,6 +19,4 @@ The expected BFC is `c2` and the expected BIC is `c1`.
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `robustness`
-- `large-method`
-- `small-fault`
+- `context-aware`

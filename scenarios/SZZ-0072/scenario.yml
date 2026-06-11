@@ -1,19 +1,21 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0072
-  title: Default case omission
-  slug: default-case-omission
-  description: 'This scenario represents an omission bug: the method is introduced without a necessary default case, and the bug-fixing commit adds the missing statement.'
-  category: omission
+  title: Role check omission
+  slug: role-check-omission
+  description: 'This scenario represents an omission bug: the method is introduced without a necessary role check, and the bug-fixing commit adds the missing statement.'
+  category: "Omission and deletion bugs"
   factors:
   - single-bic
   - single-bfc
   - omission-bug
   - line-addition-fix
+  - security
   difficulty: medium
   status: active
+  category_code: "S2"
 repository:
-  name: SZZ-0072-default-case-omission
+  name: SZZ-0072-role-check-omission
   default_branch: main
   language: java
   build_system: none
@@ -26,73 +28,73 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0072.java
+    path: src/main/java/example/Scenario0082.java
     content: 'package example;
 
 
-      public class Scenario0072 {
+      public class Scenario0082 {
 
       }
 
       '
 - id: c1
-  message: Add label without default case
+  message: Add canDelete without role check
   author: Bob <bob@example.com>
   date: '2024-02-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0072.java
+    path: src/main/java/example/Scenario0082.java
     old: 'package example;
 
 
-      public class Scenario0072 {
+      public class Scenario0082 {
 
       }
 
       '
-    new: "package example;\n\npublic class Scenario0072 {\n    public String label(int code) {\n        return code == 1 ? \"one\" : \"two\";\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0082 {\n    public boolean canDelete(boolean admin) {\n        return true;\n    }\n}\n"
     labels:
     - B001
     - fault
 - id: c2
-  message: Add missing default case
+  message: Add missing role check
   author: Alice <alice@example.com>
   date: '2024-02-03T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0072.java
-    old: "package example;\n\npublic class Scenario0072 {\n    public String label(int code) {\n        return code == 1 ? \"one\" : \"two\";\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0072 {\n    public String label(int code) {\n        if (code != 1 && code != 2) {\n                return \"unknown\";\n            }\n            return code == 1 ? \"one\" : \"two\";\n    }\n}\n"
+    path: src/main/java/example/Scenario0082.java
+    old: "package example;\n\npublic class Scenario0082 {\n    public boolean canDelete(boolean admin) {\n        return true;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0082 {\n    public boolean canDelete(boolean admin) {\n        if (!admin) {\n                return false;\n            }\n            return true;\n    }\n}\n"
     labels:
     - B001
     - fix
 bugs:
 - id: B001
-  title: Default case omission
+  title: Role check omission
   bug_fixing_commit: c2
   bug_introducing_commits:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0072.java
+    file: src/main/java/example/Scenario0082.java
     entity:
       type: method
-      name: label
-      signature: String label(int code)
+      name: canDelete
+      signature: boolean canDelete(boolean admin)
     change_type: omission
-    missing_statement: "if (code != 1 && code != 2) {\n            return \"unknown\";\n        }\n"
+    missing_statement: "if (!admin) {\n            return false;\n        }\n"
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0072.java
+    file: src/main/java/example/Scenario0082.java
     entity:
       type: method
-      name: label
-      signature: String label(int code)
+      name: canDelete
+      signature: boolean canDelete(boolean admin)
     added_statement: |
-      if (code != 1 && code != 2) {
-                      return "unknown";
+      if (!admin) {
+                      return false;
                   }
     fix_type: line_addition
   expected_szz:

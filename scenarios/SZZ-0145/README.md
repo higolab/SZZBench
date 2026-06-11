@@ -1,4 +1,4 @@
-# SZZ-0145: Duplicate permission checks
+# SZZ-0145: Duplicate null checks
 
 ## Purpose
 

@@ -1,22 +1,15 @@
-# SZZ-0155: Test failure described in BFC message
+# SZZ-0155: Same bug introduced independently
 
-## Purpose
+## Summary
 
-This scenario is intended for evaluating SZZ variants that use commit messages or broader patch context.
+Evaluates same bug introduced independently and checks whether SZZ identifies the expected bug-introducing commit set.
 
-## Commit structure
+## Expected SZZ Behavior
 
-- `c0`: initial implementation
-- `c1`: introduces the bug
-- `c2`: BFC with message: Fix failing boundary test
+- Bug-introducing commit(s): c1, c2
+- Bug-fixing commit: c3
 
-## Expected behavior
+## Notes
 
-The expected BFC is `c2` and the expected BIC is `c1`.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `context-aware`
+- Moved from SZZG-0084 after applying the scenario.yml / scenario.graph.yml boundary policy.
+- This scenario uses a linear main-branch history and a commit-level exact-set oracle.

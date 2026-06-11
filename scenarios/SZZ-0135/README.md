@@ -1,4 +1,4 @@
-# SZZ-0135: Size and index checks introduced separately
+# SZZ-0135: Threshold change plus flag change
 
 ## Purpose
 

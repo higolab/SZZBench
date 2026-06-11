@@ -1,38 +1,30 @@
-# SZZG-0113: Merge commit itself is the BIC
+# SZZG-0113: Huge file
 
 ## Source
 
-- Category: Branch and merge scenarios
+- Category: Robustness and implementation-quality scenarios
 
 ## Purpose
 
-Evaluate merge commit itself is the bic and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate Huge file and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: c0: create feature flag
-c1: c1: main branch hardens feature flag
-c2: c2: feature branch keeps simple flag
-c3: c3: merge feature branch and accidentally drop safety check
-c4: c4: fix dropped safety check
+c0: create initial state (write_file src/main/java/example/Range.java)
+c1: introduce bug (replace src/main/java/example/Range.java)
+c2: fix bug (write_generated_text_file src/main/java/example/LargeRange.java; replace src/main/java/example/Range.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal `scenario.yml` schema.
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-- Factors: merge_commit, bug_introducing_merge, non_linear_history
-- Operation types: replace, write_file
-- Expected SZZ policy is defined in `expected_szz`.
-
-## Expected BICs
-
-```text
-c3
-```
+- Factors: write_generated_text_file
+- Operation types: write_file, replace, write_generated_text_file
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 

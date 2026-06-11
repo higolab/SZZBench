@@ -1,22 +1,22 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0077
-  title: Interactive rebase squashes BIC and BFC into neutral commit
-  slug: interactive-rebase-squashes-bic-and-bfc-into-neutral-commit
-  description: A transient feature bug is fixed before rebase and does not survive into main.
-  category: Branch, merge, cherry-pick, and backport scenarios
-  category_code: G
+  title: Rebased BIC fixed by multiple BFCs
+  slug: rebased-bic-fixed-by-multiple-bfcs
+  description: A rebased BIC is repaired by a partial fix followed by a complete fix.
+  category: "Rebase-specific history rewriting"
+  category_code: "G5"
   factors:
   - branch
   - rebase
-  - interactive_rebase
-  - squash
-  - transient_bug
-  - scope_boundary
+  - rebased_bic
+  - multiple_bfc
+  - partial_fix
+  - complete_fix
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0077-interactive-rebase-squashes-bic-and-bfc-into-neutral-commit
+  name: SZZG-0077-rebased-bic-fixed-by-multiple-bfcs
   default_branch: main
   language: java
   build_system: none
@@ -25,11 +25,13 @@ graph:
   model: commit_dag
   history_summary: 'c0: create initial correct implementation
 
-    f1: introduce transient bug on feature
+    f1: introduce both boundary bugs
 
-    f2: fix transient bug on feature
+    r1: rebase feature BIC onto main
 
-    r1: squash transient bug and fix into neutral commit'
+    c3: partially fix lower boundary
+
+    c4: complete boundary fix'
 commits:
 - id: c0
   branch: main
@@ -39,81 +41,122 @@ commits:
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
+    content: |
+      package example;
+
+      public class Range {
+        public boolean contains(int value, int min, int max) {
+          boolean aboveMin = value >= min;
+          boolean belowMax = value <= max;
+          return aboveMin && belowMax;
+        }
+      }
 - id: f1
   branch: feature
   parents:
   - c0
-  message: 'f1: introduce transient bug on feature'
-  role: bug_introducing
+  message: 'f1: introduce both boundary bugs'
+  role: origin_bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
-- id: f2
-  branch: feature
-  parents:
-  - f1
-  message: 'f2: fix transient bug on feature'
-  role: bug_fixing
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    old: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
+    new: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
 - id: r1
   branch: main
   parents:
   - c0
-  message: 'r1: squash transient bug and fix into neutral commit'
-  role: intermediate
+  message: 'r1: rebase feature BIC onto main'
+  role: bug_introducing
   operations:
-  - type: write_file
-    path: docs/rebase-note.md
-    content: 'transient bug squashed out
-
-      '
-  rebase_of:
-  - f1
-  - f2
-  interactive_rebase: squash_transient_bug_fix
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
+    new: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
+  rebase_of: f1
+- id: c3
+  branch: main
+  parents:
+  - r1
+  message: 'c3: partially fix lower boundary'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: boolean aboveMin = value > min;
+    new: boolean aboveMin = value >= min;
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: 'c4: complete boundary fix'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: boolean belowMax = value < max;
+    new: boolean belowMax = value <= max;
 bugs:
 - id: B001
-  title: Transient feature bug squashed out before main
+  title: Rebased bug fixed progressively
   bug_introducing_commits:
-  - commit: f1
+  - commit: r1
     role: direct
+  - commit: f1
+    role: origin
   bug_fixing_commits:
-  - commit: f2
+  - commit: c3
+    role: partial_fix
+  - commit: c4
     role: complete_fix
   faults:
   - id: F001
-    commit: f1
+    commit: r1
     file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
-    change_type: line_modification
+    statement: boolean belowMax = value < max;
+    change_type: upper_boundary_line_modification
+  - id: F002
+    commit: r1
+    file: src/main/java/example/Range.java
+    statement: boolean aboveMin = value > min;
+    change_type: lower_boundary_line_modification
   fixes:
   - id: X001
-    commit: f2
+    commit: c3
     file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
-    fix_type: line_modification
+    statement: boolean aboveMin = value >= min;
+    fix_type: partial_line_modification
+  - id: X002
+    commit: c4
+    file: src/main/java/example/Range.java
+    statement: boolean belowMax = value <= max;
+    fix_type: complete_line_modification
+  origin_faults:
+  - id: OF001
+    commit: f1
+    file: src/main/java/example/Range.java
+    statement: boolean belowMax = value < max;
+    change_type: origin_upper_boundary_line_modification
+  - id: OF002
+    commit: f1
+    file: src/main/java/example/Range.java
+    statement: boolean aboveMin = value > min;
+    change_type: origin_lower_boundary_line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
+    - r1
+    related_but_not_correct:
     - f1
-    notes: This records the pre-rebase transient BIC/BFC pair; r1 is not a main-line SZZ target.
 scenario_design:
-  purpose: Clarify a scope boundary for bugs that do not survive into final main history.
-  key_property: The final main history has no main-line BIC for this transient bug.
-  difference_from_SZZG_0073: SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
+  purpose: Evaluate progressive repair of a rebased BIC.
+  key_property: The rebased BIC introduces separate lower-bound and upper-bound faults. The partial fix repairs only the lower
+    bound, leaving the upper-bound fault present until the complete fix.
+  difference_from_SZZG_0073: SZZG-0063 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
     adds a distinct rebase-related complication.
   evaluation_points:
-  - Record transient pair.
-  - Treat as special scope-boundary case.
+  - Return r1 from final fix.
 notes:
 - This scenario models a rebase-related development history for SZZ evaluation.
 - Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

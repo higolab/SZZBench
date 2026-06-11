@@ -1,17 +1,18 @@
-# SZZG-0079: Rebased BIC fixed by multiple BFCs
+# SZZG-0079: Misleading rebase commit message
 
 ## Purpose
 
-Evaluate progressive repair of a rebased BIC.
+Evaluate whether message context helps or misleads SZZ in a rebase scenario.
 
 ## Commit history
 
 ```text
-c0: create initial correct implementation
-f1: introduce both boundary bugs
-r1: rebase feature BIC onto main
-c3: partially fix lower boundary
-c4: complete boundary fix
+c0: c0: create initial correct implementation
+f1: f1: introduce range boundary bug on feature
+f2: f2: add feature helper using buggy range check
+r1: r1: cleanup after rebase
+r2: r2: rebase feature helper onto main
+c3: c3: fix range boundary bug after rebase
 ```
 
 ## Commit table
@@ -19,10 +20,11 @@ c4: complete boundary fix
 | Commit | Branch | Parents | Role | Description |
 |---|---|---|---|---|
 | `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `f1` | `feature` | c0 | `origin_bug_introducing` | f1: introduce both boundary bugs |
-| `r1` | `main` | c0 | `bug_introducing` | r1: rebase feature BIC onto main |
-| `c3` | `main` | r1 | `bug_fixing` | c3: partially fix lower boundary |
-| `c4` | `main` | c3 | `bug_fixing` | c4: complete boundary fix |
+| `f1` | `feature` | c0 | `origin_bug_introducing` | f1: introduce range boundary bug on feature |
+| `f2` | `feature` | f1 | `intermediate` | f2: add feature helper using buggy range check |
+| `r1` | `main` | c0 | `bug_introducing` | r1: cleanup after rebase |
+| `r2` | `main` | r1 | `intermediate` | r2: rebase feature helper onto main |
+| `c3` | `main` | r2 | `bug_fixing` | c3: fix range boundary bug after rebase |
 
 ## Expected SZZ result
 
@@ -33,49 +35,15 @@ Related but not correct: f1
 
 ## Key property
 
-The rebased BIC introduces separate lower-bound and upper-bound faults. The partial fix repairs only the lower-bound fault, while the upper-bound fault remains until the complete fix.
+The direct BIC remains r1 despite message context.
 
-## Code states
+## Difference from SZZG-0063
 
-Correct implementation in `c0`:
-
-```java
-boolean aboveMin = value >= min;
-boolean belowMax = value <= max;
-return aboveMin && belowMax;
-```
-
-Rebased bug in `r1`:
-
-```java
-boolean aboveMin = value > min;
-boolean belowMax = value < max;
-return aboveMin && belowMax;
-```
-
-Partial fix in `c3`:
-
-```java
-boolean aboveMin = value >= min;
-boolean belowMax = value < max;
-return aboveMin && belowMax;
-```
-
-Complete fix in `c4`:
-
-```java
-boolean aboveMin = value >= min;
-boolean belowMax = value <= max;
-return aboveMin && belowMax;
-```
-
-## Difference from SZZG-0061
-
-SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
+SZZG-0063 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
 
 ## Evaluation points
 
-- Return r1 from final fix.
+- Report r1.
 
 ## Notes
 

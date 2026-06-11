@@ -1,22 +1,22 @@
-# SZZ-0061: BFC fixes an API misuse
+# SZZ-0061: Initialization omission
 
 ## Purpose
 
-This scenario evaluates SZZ behavior when the bug-fixing commit has the shape: BFC fixes an API misuse.
+This scenario represents an omission bug: the method is introduced without a necessary initialization, and the bug-fixing commit adds the missing statement.
 
 ## Commit structure
 
-- `c0`: Initial correct implementation
-- `c1`: Introduce bug
-- `c2`: Fix bug
+- `c0`: initial class
+- `c1`: introduces the method without the initialization
+- `c2`: adds the missing initialization
 
 ## Expected behavior
 
-The expected BFC is `c2` and the expected BIC is `c1`.
+The expected BFC is `c2` and the expected BIC is `c1`. Line-level evaluation is unavailable because this is an omission bug.
 
 ## Factors
 
 - `single-bic`
 - `single-bfc`
-- `line-modification`
-- `api-misuse`
+- `omission-bug`
+- `line-addition-fix`

@@ -1,119 +1,163 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0128
-  title: Validation weakening plus caller acceptance
-  slug: validation-weakening-plus-caller
-  description: This scenario requires treating two bug-introducing commits as contributing to the same later fix.
-  category: multiple-bic
+  title: Extract helper after BIC
+  slug: extract-helper-after-bic
+  description: This scenario inserts an intermediate refactoring change between the BIC and BFC.
+  category: "Refactoring, move, and rename after BIC"
   factors:
-  - multi-bic
+  - single-bic
   - single-bfc
   - line-modification
+  - extract-method-after-bic
   difficulty: medium
   status: active
+  category_code: "S5"
 repository:
-  name: SZZ-0128-validation-weakening-plus-caller
+  name: SZZ-0128-extract-helper-after-bic
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 commits:
 - id: c0
-  message: Initial implementation
+  message: Initial correct implementation
   author: Alice <alice@example.com>
-  date: '2024-03-01T10:00:00Z'
+  date: '2024-01-01T10:00:00Z'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0128.java
+    path: src/main/java/example/Scenario0090.java
     content: |
       package example;
 
-      public class Scenario0128 {
-          public boolean validate(int value) {
-              return value >= 0 && value <= 10;
-          }
-
-          public boolean callerAccepts(int value) {
-              return validate(value);
+      public class Scenario0090 {
+          public boolean valid(int value) {
+              return value >= min;
           }
       }
 - id: c1
-  message: Weaken validator upper bound
+  message: Introduce bug
   author: Bob <bob@example.com>
-  date: '2024-03-02T10:00:00Z'
+  date: '2024-01-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0128.java
-    old: return value >= 0 && value <= 10;
-    new: return value >= 0;
+    path: src/main/java/example/Scenario0090.java
+    old: |
+      package example;
+
+      public class Scenario0090 {
+          public boolean valid(int value) {
+              return value >= min;
+          }
+      }
+    new: |
+      package example;
+
+      public class Scenario0090 {
+          public boolean valid(int value) {
+              return value > min;
+          }
+      }
     labels:
     - B001
     - fault
 - id: c2
-  message: Let caller accept a migration sentinel
+  message: Apply intermediate rewrite
   author: Carol <carol@example.com>
-  date: '2024-03-03T10:00:00Z'
-  role: bug_introducing
+  date: '2024-01-03T10:00:00Z'
+  role: refactoring
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0128.java
-    old: return validate(value);
-    new: return validate(value) || value == 99;
+    path: src/main/java/example/Scenario0090.java
+    old: |
+      package example;
+
+      public class Scenario0090 {
+          public boolean valid(int value) {
+              return value > min;
+          }
+      }
+    new: |
+      package example;
+
+      public class Scenario0090 {
+          public boolean check(int value, int min) {
+              return greaterThanMin(value, min);
+          }
+
+          public boolean greaterThanMin(int value, int min) {
+              return value > min;
+          }
+      }
     labels:
-    - B001
-    - fault
+    - non_bug_introducing_change
 - id: c3
-  message: Fix combined validation and caller acceptance bug
-  author: Alice <alice@example.com>
-  date: '2024-03-04T10:00:00Z'
+  message: Fix bug
+  author: Dave <dave@example.com>
+  date: '2024-01-04T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0128.java
-    old: return value >= 0;
-    new: return value >= 0 && value <= 10;
-  - type: replace
-    path: src/main/java/example/Scenario0128.java
-    old: return validate(value) || value == 99;
-    new: return validate(value);
+    path: src/main/java/example/Scenario0090.java
+    old: |
+      package example;
+
+      public class Scenario0090 {
+          public boolean check(int value, int min) {
+              return greaterThanMin(value, min);
+          }
+
+          public boolean greaterThanMin(int value, int min) {
+              return value > min;
+          }
+      }
+    new: |
+      package example;
+
+      public class Scenario0090 {
+          public boolean valid(int value) {
+              return value >= min;
+          }
+      }
     labels:
     - B001
     - fix
 bugs:
 - id: B001
-  title: Validation weakening plus caller acceptance
+  title: Extract helper after BIC
   bug_fixing_commit: c3
   bug_introducing_commits: &id001
   - c1
-  - c2
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0128.java
+    file: src/main/java/example/Scenario0090.java
     entity:
       type: method
-      name: validate
-      signature: boolean validate(int value)
-    statement: return value >= 0;
+      name: valid
+      signature: boolean valid(int value)
+    statement: return value > min;
     change_type: line_modification
   fix:
     commit: c3
-    file: src/main/java/example/Scenario0128.java
+    file: src/main/java/example/Scenario0090.java
     entity:
       type: method
-      name: validate
-      signature: boolean validate(int value)
-    statement: return value >= 0 && value <= 10;
+      name: valid
+      signature: boolean valid(int value)
+    statement: return value >= min;
     fix_type: line_modification
   expected_szz:
     commit_level:
       true_positives: *id001
       false_positives_allowed: []
+      known_distractors:
+      - c2
     line_level:
       available: true
       faulty_statements:
-      - return value >= 0;
+      - return value > min;
 checks:
 - type: git_history_contains
   commits:

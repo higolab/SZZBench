@@ -1,48 +1,48 @@
-# SZZG-0033: Backport fix
+# SZZG-0033: Partial credit when only some BICs are returned
+
+## Source
+
+- Category: Multiple BIC and BFC scenarios
 
 ## Purpose
 
-This scenario represents a main-line fix that is backported to a release branch.
+Evaluate scoring behavior when a complete answer contains two BICs but an SZZ implementation returns only one of them.
 
-A bug is introduced on `main` before the release branch is cut. The release branch is created from the buggy state. Main fixes the bug and continues development. The release branch also receives release-specific changes. Finally, the main fix is backported to release.
-
-## Commit graph
+## Expected history
 
 ```text
-main:     c0 ---- c1(BIC) ---- c2(BFC) ---- c3
-                    \
-release:             r0 ---- r1 ---- r2(BFC, backport of c2)
+c0: create checkout policy classes
+c1: introduce loyalty-discount threshold bug
+c2: introduce tax-exemption logic bug
+c3: fix both checkout policy faults
 ```
 
-## Commit history
+## Why this needs `scenario.graph.yml`
+
+This scenario needs graph-aware expected-SZZ metadata because the oracle allows partial credit for returning only one of the two required BICs.
+
+## Required graph-schema features
+
+- Factors: multiple_bic, partial_credit, expected_szz
+- Operation types: write_file, replace
+- Expected SZZ policy is defined in expected_szz.
+
+## Evaluation points
+
+- Whether SZZ can identify both checkout-policy BICs for one bug.
+- Whether returning only c1 or only c2 receives partial credit rather than full exact-set credit.
+- Whether the BFC that edits two files is evaluated against both required BICs.
+
+---
+
+## Draft status
+
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
+
+## Files
 
 ```text
-c0: create initial correct implementation on main
-c1: introduce bug on main before release branch is cut
-r0: create release branch from the buggy state and add release metadata
-c2: fix bug on main
-c3: continue main development after the fix
-r1: add release-specific configuration while bug is still present on release
-r2: backport main fix c2 onto release
+SZZG-0033/
+|-- scenario.graph.yml
+`-- README.md
 ```
-
-## Oracle
-
-Expected BIC:
-
-```text
-c1
-```
-
-Bug-fixing commits:
-
-```text
-c2: main-line fix
-r2: release-branch backport fix
-```
-
-## Difference from SZZG-0024 and SZZG-0025
-
-`SZZG-0024` and `SZZG-0025` are revert / reintroduction scenarios.
-
-`SZZG-0033` is a branch and backport scenario. The release branch keeps the bug until the main-line fix is backported.

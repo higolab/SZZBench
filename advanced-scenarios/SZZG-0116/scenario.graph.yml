@@ -1,123 +1,96 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0116
-  title: Backported fix on maintenance branch traces to original mainline BIC
-  slug: backported-fix-maintenance-branch
-  description: Evaluates backported fix on maintenance branch traces to original mainline bic and checks whether SZZ identifies
-    the expected bug-introducing commit set.
-  category: Branch and merge scenarios
-  category_code: A
+  title: Entity-level-only expected SZZ policy
+  slug: entity-level-only-expected-szz
+  description: Evaluates an expected SZZ policy that records the faulty method entity while intentionally disabling line-level
+    evaluation for this graph scenario.
+  category: "Evaluation policy variants"
+  category_code: "G9"
   factors:
-  - backport
-  - maintenance_branch
-  - cross_branch_bic
+  - expected_szz
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0116-backported-fix-maintenance-branch
+  name: SZZG-0116-entity-level-only-expected-szz
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: c0: create lock timeout
+  history_summary: 'c1: create initial buggy range implementation (write_file src/main/java/example/Range.java)
 
-    c1: c1: introduce too-short timeout on main
-
-    c2: c2: release branch cut from buggy main
-
-    c3: c3: fix timeout on main
-
-    c4: c4: backport timeout fix to release branch'
+    c2: fix bug (replace src/main/java/example/Range.java)'
 commits:
-- id: c0
+- id: c1
   branch: main
   parents: []
-  message: 'c0: create lock timeout'
+  message: 'c1: create initial buggy range implementation (write_file src/main/java/example/Range.java)'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/LockPolicy.java
-    content: "package example;\npublic class LockPolicy {\n  public int timeoutSeconds() {\n    return 30;\n  }\n\n}\n"
-- id: c1
-  branch: main
-  parents:
-  - c0
-  message: 'c1: introduce too-short timeout on main'
-  role: bug_introducing
-  operations:
-  - type: replace
-    path: src/main/java/example/LockPolicy.java
-    old: return 30;
-    new: return 3;
+    path: src/main/java/example/Range.java
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value > min && value < max;\n  }\n}\n"
 - id: c2
-  branch: release
-  parents:
-  - c1
-  message: 'c2: release branch cut from buggy main'
-  role: other
-  allow_empty: true
-  operations: []
-- id: c3
   branch: main
   parents:
   - c1
-  message: 'c3: fix timeout on main'
+  message: 'c2: fix bug (replace src/main/java/example/Range.java)'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/LockPolicy.java
-    old: return 3;
-    new: return 30;
-- id: c4
-  branch: release
-  parents:
-  - c2
-  message: 'c4: backport timeout fix to release branch'
-  role: bug_fixing
-  operations:
-  - type: replace
-    path: src/main/java/example/LockPolicy.java
-    old: return 3;
-    new: return 30;
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Range boundary bug evaluated at entity level
   bug_introducing_commits:
   - commit: c1
     role: direct
   bug_fixing_commits:
-  - commit: c4
+  - commit: c2
     role: complete_fix
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/LockPolicy.java
-    statement: return 3;
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
     change_type: line_modification
+    entity:
+      type: method
+      signature: boolean contains(int value, int min, int max)
   fixes:
   - id: X001
-    commit: c4
-    file: src/main/java/example/LockPolicy.java
-    statement: return 30;
+    commit: c2
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
     fix_type: line_modification
 expected_szz:
-  commit_level:
-    evaluation_policy: exact_set
-    required:
-    - c1
+  line_level:
+    available: false
+    reason: This scenario intentionally evaluates entity-level output only, even though the changed statement is recorded for
+      traceability.
+  entity_level:
+    available: true
+    entities:
+    - type: method
+      file: src/main/java/example/Range.java
+      signature: boolean contains(int value, int min, int max)
 scenario_design:
-  purpose: Evaluate backported fix on maintenance branch traces to original mainline bic and whether SZZ identifies the expected
-    bug-introducing commit set.
+  purpose: Evaluate whether SZZ output can be judged against an entity-level oracle when line-level evaluation is intentionally
+    disabled.
+  key_property: This is an oracle-policy scenario. The faulty line is recorded for traceability, but line-level evaluation
+    is deliberately unavailable and the expected answer is the Range.contains method entity.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: backport, maintenance_branch, cross_branch_bic; operations:
-    replace, write_file.'
+  required_extensions_from_source: 'This scenario uses factors: expected_szz; operations: write_file, replace.'
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Whether SZZ output can be evaluated at method-entity level.
+  - Whether tooling respects the line_level.available=false policy.
+  - Whether the expected_szz entity-level oracle is applied correctly.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.

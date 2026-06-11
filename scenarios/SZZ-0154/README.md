@@ -1,22 +1,15 @@
-# SZZ-0154: Root cause described in BIC message
+# SZZ-0154: One BFC fixes multiple BICs for one composite bug
 
-## Purpose
+## Summary
 
-This scenario is intended for evaluating SZZ variants that use commit messages or broader patch context.
+A single composite range-check bug is created by two separate BICs. The first BIC breaks the lower-bound helper and the second BIC breaks the upper-bound helper. A single BFC fixes both faults together.
 
-## Commit structure
+## Expected SZZ Behavior
 
-- `c0`: initial implementation
-- `c1`: introduces the bug with a message that describes the root cause
-- `c2`: BFC with message: Fix normalization regression
+- Bug-introducing commit(s): c1, c2
+- Bug-fixing commit: c3
 
-## Expected behavior
+## Notes
 
-The expected BFC is `c2` and the expected BIC is `c1`.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `context-aware`
+- Moved from SZZG-0035 after applying the scenario.yml / scenario.graph.yml boundary policy.
+- This scenario uses a linear main-branch history and a commit-level exact-set oracle.

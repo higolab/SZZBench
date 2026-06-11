@@ -1,37 +1,32 @@
-# SZZG-0115: Cherry-picked BIC appears as duplicate commits on two branches
+# SZZG-0115: Top-k evaluation
 
 ## Source
 
-- Category: Branch and merge scenarios
+- Category: Schema and evaluation-policy scenarios
 
 ## Purpose
 
-Evaluate cherry-picked bic appears as duplicate commits on two branches and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate Top-k evaluation and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: c0: create status mapper
-c1: c1: introduce wrong error status on release branch
-c2: c2: cherry-pick wrong error status onto main
-c3: c3: fix wrong error status on main
+c0: create initial state (write_file src/main/java/example/RangeService.java)
+c1: introduce bug (replace src/main/java/example/RangeService.java)
+c2: add distractor change (replace src/main/java/example/RangeService.java)
+c3: add distractor change (write_file docs/ranking-distractor.md)
+c4: fix bug (replace src/main/java/example/RangeService.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal `scenario.yml` schema.
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-- Factors: cherry_pick, duplicate_patch, non_linear_history
-- Operation types: replace, write_file
-- Expected SZZ policy is defined in `expected_szz`.
-
-## Expected BICs
-
-```text
-c2
-```
+- Factors: expected_szz
+- Operation types: write_file, replace
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 

@@ -1,21 +1,21 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0086
-  title: Rebase with generated file update
-  slug: rebase-with-generated-file-update
-  description: A generated file is updated during rebase after the source BIC.
-  category: Branch, merge, cherry-pick, and backport scenarios
-  category_code: G
+  title: Revert of fix reintroduces bug
+  slug: revert-of-fix-reintroduces-bug
+  description: A bug is fixed, the fix is reverted and the bug is reintroduced, then the bug is fixed again.
+  category: "Revert-specific reintroduction"
+  category_code: "G6"
   factors:
-  - branch
-  - rebase
-  - generated_files
-  - generated_code_noise
-  - direct_bic
+  - revert
+  - revert_of_fix
+  - reintroduced_bug
+  - re_bic
+  - origin_bic
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0086-rebase-with-generated-file-update
+  name: SZZG-0086-revert-of-fix-reintroduces-bug
   default_branch: main
   language: java
   build_system: none
@@ -24,13 +24,13 @@ graph:
   model: commit_dag
   history_summary: 'c0: create initial correct implementation
 
-    f1: introduce range bug
+    c1: introduce boundary bug
 
-    r1: rebase bug onto main
+    c2: fix boundary bug
 
-    r2: regenerate derived range metadata during rebase
+    c3: revert c2 and reintroduce boundary bug
 
-    c3: fix source range bug'
+    c4: fix boundary bug again'
 commits:
 - id: c0
   branch: main
@@ -40,102 +40,104 @@ commits:
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
-- id: f1
-  branch: feature
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    boolean\
+      \ aboveMin = value >= min;\n    boolean belowMax = value <= max;\n    return aboveMin && belowMax;\n  }\n}\n"
+- id: c1
+  branch: main
   parents:
   - c0
-  message: 'f1: introduce range bug'
+  message: 'c1: introduce boundary bug'
   role: origin_bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
-- id: r1
+    old: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
+    new: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
+- id: c2
   branch: main
   parents:
-  - c0
-  message: 'r1: rebase bug onto main'
-  role: bug_introducing
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
-  rebase_of: f1
-- id: r2
-  branch: main
-  parents:
-  - r1
-  message: 'r2: regenerate derived range metadata during rebase'
-  role: intermediate
-  operations:
-  - type: write_file
-    path: generated/range.properties
-    content: 'minInclusive=false
-
-      maxInclusive=false
-
-      '
-  generated_files: true
-- id: c3
-  branch: main
-  parents:
-  - r2
-  message: 'c3: fix source range bug'
+  - c1
+  message: 'c2: fix boundary bug'
   role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    old: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
+    new: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'c3: revert c2 and reintroduce boundary bug'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
+    new: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
+  reverts: c2
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: 'c4: fix boundary bug again'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
+    new: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
 bugs:
 - id: B001
-  title: Source bug with generated file noise after rebase
+  title: Boundary bug reintroduced by reverting the fix
   bug_introducing_commits:
-  - commit: r1
+  - commit: c3
     role: direct
-  - commit: f1
+  - commit: c1
     role: origin
   bug_fixing_commits:
-  - commit: c3
+  - commit: c4
     role: complete_fix
   faults:
   - id: F001
-    commit: r1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
-    change_type: line_modification
-  fixes:
-  - id: X001
     commit: c3
     file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
-    fix_type: line_modification
-  origin_faults:
-  - id: OF001
-    commit: f1
+    statement: boolean belowMax = value < max;
+    change_type: reintroduced_upper_boundary
+  - id: F002
+    commit: c3
     file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
-    change_type: origin_line_modification
+    statement: boolean aboveMin = value > min;
+    change_type: reintroduced_lower_boundary
+  fixes:
+  - id: X001
+    commit: c4
+    file: src/main/java/example/Range.java
+    statement: boolean belowMax = value <= max;
+    fix_type: line_modification
+  - id: X002
+    commit: c4
+    file: src/main/java/example/Range.java
+    statement: boolean aboveMin = value >= min;
+    fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - r1
+    - c3
     related_but_not_correct:
-    - f1
-    - r2
+    - c1
+    - c2
+    notes: c3 is the direct re-BIC for c4; c1 is the older origin BIC and c2 is the reverted prior fix.
 scenario_design:
-  purpose: Evaluate generated-file noise during rebase.
-  key_property: r2 updates generated metadata only.
-  difference_from_SZZG_0073: SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
-    adds a distinct rebase-related complication.
+  purpose: Evaluate whether SZZ returns the revert commit that reintroduced the bug rather than the original historical BIC.
+  key_property: The bug was fixed once, but reverting that fix creates the direct BIC for the later BFC.
+  difference_from_existing_revert_scenarios: This scenario isolates a double-revert or revert-derived complication beyond
+    the existing partial revert and reintroduction scenarios.
   evaluation_points:
-  - Report r1.
-  - Ignore r2.
+  - Whether SZZ reports c3.
+  - Whether c1 is treated as origin rather than the direct answer.
+  - Whether the prior fix c2 is not reported as BIC.
 notes:
-- This scenario models a rebase-related development history for SZZ evaluation.
-- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.
+- This scenario models revert-related development history for SZZ evaluation.
+- The direct BIC is the commit that reintroduces the bug in the history observed from the BFC.

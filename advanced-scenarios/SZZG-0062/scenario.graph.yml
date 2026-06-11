@@ -1,159 +1,123 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0062
-  title: Rebase with non-BIC intermediate commit
-  slug: rebase-with-non-bic-intermediate-commit
-  description: A rebased BIC is followed by a rebased intermediate commit that should not be selected as the BIC.
-  category: Branch, merge, cherry-pick, and backport scenarios
-  category_code: G
+  title: Backported fix on maintenance branch traces to original mainline BIC
+  slug: backported-fix-maintenance-branch
+  description: Evaluates backported fix on maintenance branch traces to original mainline bic and checks whether SZZ identifies
+    the expected bug-introducing commit set.
+  category: "Branch, merge, cherry-pick, backport, and release branches"
+  category_code: "G4"
   factors:
-  - branch
-  - rebase
-  - rebased_bic
-  - intermediate_commit
-  - direct_bic
-  - origin_bic
+  - backport
+  - maintenance_branch
+  - cross_branch_bic
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0062-rebase-with-non-bic-intermediate-commit
+  name: SZZG-0062-backported-fix-maintenance-branch
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial correct implementation
+  history_summary: 'c0: c0: create lock timeout
 
-    f1: introduce range boundary bug on feature
+    c1: c1: introduce too-short timeout on main
 
-    f2: add feature helper using buggy range check
+    c2: c2: release branch cut from buggy main
 
-    r1: rebase feature BIC onto main
+    c3: c3: fix timeout on main
 
-    r2: rebase feature helper onto main
-
-    c3: fix range boundary bug after rebase'
+    c4: c4: backport timeout fix to release branch'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial correct implementation'
+  message: 'c0: create lock timeout'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
-- id: f1
-  branch: feature
-  parents:
-  - c0
-  message: 'f1: introduce range boundary bug on feature'
-  role: origin_bug_introducing
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
-- id: f2
-  branch: feature
-  parents:
-  - f1
-  message: 'f2: add feature helper using buggy range check'
-  role: intermediate
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n}\n"
-    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
-      \ min, max);\n  }\n}\n"
-- id: r1
+    path: src/main/java/example/LockPolicy.java
+    content: "package example;\npublic class LockPolicy {\n  public int timeoutSeconds() {\n    return 30;\n  }\n\n}\n"
+- id: c1
   branch: main
   parents:
   - c0
-  message: 'r1: rebase feature BIC onto main'
+  message: 'c1: introduce too-short timeout on main'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
-  rebase_of: f1
-- id: r2
-  branch: main
+    path: src/main/java/example/LockPolicy.java
+    old: return 30;
+    new: return 3;
+- id: c2
+  branch: release
   parents:
-  - r1
-  message: 'r2: rebase feature helper onto main'
-  role: intermediate
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n}\n"
-    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
-      \ min, max);\n  }\n}\n"
-  rebase_of: f2
+  - c1
+  message: 'c2: release branch cut from buggy main'
+  role: other
+  allow_empty: true
+  operations: []
 - id: c3
   branch: main
   parents:
-  - r2
-  message: 'c3: fix range boundary bug after rebase'
+  - c1
+  message: 'c3: fix timeout on main'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/LockPolicy.java
+    old: return 3;
+    new: return 30;
+- id: c4
+  branch: release
+  parents:
+  - c2
+  message: 'c4: backport timeout fix to release branch'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/LockPolicy.java
+    old: return 3;
+    new: return 30;
 bugs:
 - id: B001
-  title: Range bug with rebased non-BIC intermediate
+  title: Synthetic graph scenario bug
   bug_introducing_commits:
-  - commit: r1
+  - commit: c1
     role: direct
-  - commit: f1
-    role: origin
   bug_fixing_commits:
-  - commit: c3
+  - commit: c4
     role: complete_fix
   faults:
   - id: F001
-    commit: r1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    commit: c1
+    file: src/main/java/example/LockPolicy.java
+    statement: return 3;
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c3
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
+    commit: c4
+    file: src/main/java/example/LockPolicy.java
+    statement: return 30;
     fix_type: line_modification
-  origin_faults:
-  - id: OF001
-    commit: f1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
-    change_type: origin_line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - r1
-    related_but_not_correct:
-    - f1
-    - r2
-    notes: r2 is a rebased intermediate commit, not the BIC.
+    - c1
 scenario_design:
-  purpose: Evaluate whether SZZ distinguishes a rebased BIC from a later rebased intermediate commit.
-  key_property: r1 is the direct BIC; r2 is non-BIC intermediate.
-  difference_from_SZZG_0073: SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
-    adds a distinct rebase-related complication.
+  purpose: Evaluate backported fix on maintenance branch traces to original mainline bic and whether SZZ identifies the expected
+    bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: backport, maintenance_branch, cross_branch_bic; operations:
+    replace, write_file.'
   evaluation_points:
-  - Report r1.
-  - Avoid r2.
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- This scenario models a rebase-related development history for SZZ evaluation.
-- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

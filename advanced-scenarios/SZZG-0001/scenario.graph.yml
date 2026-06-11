@@ -5,8 +5,8 @@ meta:
   slug: bfc-rename-fix
   description: Evaluates bfc performs rename and fix in the same commit and checks whether SZZ identifies the expected bug-introducing
     commit set.
-  category: BFC shape scenarios
-  category_code: A
+  category: "Refactoring, move, rename, and semantic rewrite"
+  category_code: "G1"
   factors:
   - rename_file
   difficulty: advanced

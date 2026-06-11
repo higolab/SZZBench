@@ -1,124 +1,117 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0026
-  title: BIC on feature branch, BFC on main
-  slug: bic-on-feature-branch-bfc-on-main
-  description: A feature branch introduces a bug, extends feature code that depends on the buggy method, is merged into main,
-    and is then fixed by a normal main-branch commit.
-  category: Branch, merge, cherry-pick, and backport scenarios
-  category_code: G
+  title: Copy followed by bug introduction only in the copied code
+  slug: copy-then-copied-bic
+  description: Evaluates copy followed by bug introduction only in the copied code and checks whether SZZ identifies the expected
+    bug-introducing commit set.
+  category: "Clone, copy propagation, and origin-vs-direct BIC"
+  category_code: "G2"
   factors:
-  - branch
-  - merge
-  - feature_branch_bic
-  - main_branch_bfc
+  - copy_file
+  - clone_divergence
+  - direct_bic_in_copy
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0026-bic-on-feature-branch-bfc-on-main
+  name: SZZG-0026-copy-then-copied-bic
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial correct implementation on main
+  history_summary: 'c0: c0: create original formatter
 
-    c1: introduce bug on feature branch
+    c1: c1: copy formatter to report formatter
 
-    c2: extend feature branch code that uses the buggy method
+    c2: c2: introduce copied-code null handling bug
 
-    c3: merge feature branch into main
-
-    c4: fix bug on main after merge'
+    c3: c3: fix copied formatter null handling'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial correct implementation'
+  message: 'c0: create original formatter'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
+    path: src/main/java/example/Formatter.java
+    content: "package example;\npublic class Formatter {\n  public String format(String s) {\n    return s == null ? \"\"\
+      \ : s.trim();\n  }\n\n}\n"
 - id: c1
-  branch: feature
+  branch: main
   parents:
   - c0
-  message: 'c1: introduce range boundary bug on feature'
+  message: 'c1: copy formatter to report formatter'
+  role: other
+  operations:
+  - type: copy_file
+    from: src/main/java/example/Formatter.java
+    to: src/main/java/example/ReportFormatter.java
+  - type: replace
+    path: src/main/java/example/ReportFormatter.java
+    old: public class Formatter
+    new: public class ReportFormatter
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'c2: introduce copied-code null handling bug'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
-- id: c2
-  branch: feature
-  parents:
-  - c1
-  message: 'c2: extend feature branch code using range check'
-  role: intermediate
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n}\n"
-    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
-      \ min, max);\n  }\n}\n"
+    path: src/main/java/example/ReportFormatter.java
+    old: 'return s == null ? "" : s.trim();'
+    new: return s.trim();
 - id: c3
   branch: main
   parents:
-  - c0
   - c2
-  message: 'c3: merge feature branch into main'
-  role: merge
-  operations: []
-- id: c4
-  branch: main
-  parents:
-  - c3
-  message: 'c4: fix range boundary bug on main'
+  message: 'c3: fix copied formatter null handling'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/ReportFormatter.java
+    old: return s.trim();
+    new: 'return s == null ? "" : s.trim();'
 bugs:
 - id: B001
-  title: Feature branch BIC fixed on main
+  title: Synthetic graph scenario bug
   bug_introducing_commits:
-  - commit: c1
+  - commit: c2
     role: direct
   bug_fixing_commits:
-  - commit: c4
+  - commit: c3
     role: complete_fix
   faults:
   - id: F001
-    commit: c1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    commit: c2
+    file: src/main/java/example/ReportFormatter.java
+    statement: return s.trim();
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c4
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
+    commit: c3
+    file: src/main/java/example/ReportFormatter.java
+    statement: 'return s == null ? "" : s.trim();'
     fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - c1
+    - c2
 scenario_design:
-  purpose: Evaluate whether SZZ can identify a BIC located on a feature branch when the BFC is a normal commit on main after
-    the feature branch has been merged.
-  key_property: The BIC occurs on feature, while the BFC occurs on main after merge.
+  purpose: Evaluate copy followed by bug introduction only in the copied code and whether SZZ identifies the expected bug-introducing
+    commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: copy_file, clone_divergence, direct_bic_in_copy; operations:
+    copy_file, replace, write_file.'
   evaluation_points:
-  - Feature-branch BIC
-  - Normal main-branch BFC
-  - Intermediate feature code uses the buggy method before merge.
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- This scenario is intentionally distinct from SZZG-0029 and SZZG-0005 because the BFC is not a merge commit.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

@@ -1,8 +1,8 @@
-# SZZ-0016: Arithmetic sign error
+# SZZ-0016: Min max swapped
 
 ## Purpose
 
-This scenario introduces a bug by changing `return value + 1;` to `return value - 1;` and later restores the correct implementation.
+This scenario introduces a bug by changing `return Math.max(left, right);` to `return Math.min(left, right);` and later restores the correct implementation.
 
 ## Commit structure
 
@@ -19,4 +19,4 @@ The expected BFC is `c2` and the expected BIC is `c1`.
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `arithmetic-error`
+- `wrong-variable`

@@ -1,15 +1,15 @@
-# SZZ-0168: Multiple overloaded methods
+# SZZ-0168: Cause can be inferred from test failure
 
 ## Summary
 
-Evaluates multiple overloaded methods and checks whether SZZ identifies the expected bug-introducing commit set.
+Evaluates a case where the BFC is a small parser change and the specific cause is clarified by a failing test message.
 
 ## Expected SZZ Behavior
 
 - Bug-introducing commit(s): c1
-- Bug-fixing commit: c2
+- Bug-fixing commit: c3
 
 ## Notes
 
-- Moved from SZZG-0052 after applying the scenario.yml / scenario.graph.yml boundary policy.
+- Moved from SZZG-0114 after applying the scenario.yml / scenario.graph.yml boundary policy.
 - This scenario uses a linear main-branch history and a commit-level exact-set oracle.

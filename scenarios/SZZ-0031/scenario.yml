@@ -1,19 +1,20 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0031
-  title: Wrong threshold constant
-  slug: wrong-threshold-constant
-  description: This scenario introduces a bug by changing `return score >= 80;` to `return score >= 90;` and later restores the correct implementation.
-  category: basic
+  title: BFC changes default branch in conditional
+  slug: bfc-default-branch-change
+  description: 'This scenario evaluates SZZ behavior when the bug-fixing commit has the shape: BFC changes default branch in conditional.'
+  category: "Basic semantic line changes"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - wrong-constant
-  difficulty: easy
+  - conditional-default
+  difficulty: medium
   status: active
+  category_code: "S1"
 repository:
-  name: SZZ-0031-wrong-threshold-constant
+  name: SZZ-0031-bfc-default-branch-change
   default_branch: main
   language: java
   build_system: none
@@ -26,13 +27,13 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0031.java
+    path: src/main/java/example/Scenario0062.java
     content: |
       package example;
 
-      public class Scenario0031 {
-          public boolean passes(int score) {
-              return score >= 80;
+      public class Scenario0062 {
+          public String display(String value) {
+              return value == null ? "N/A" : value;
           }
       }
 - id: c1
@@ -42,21 +43,21 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0031.java
+    path: src/main/java/example/Scenario0062.java
     old: |
       package example;
 
-      public class Scenario0031 {
-          public boolean passes(int score) {
-              return score >= 80;
+      public class Scenario0062 {
+          public String display(String value) {
+              return value == null ? "N/A" : value;
           }
       }
     new: |
       package example;
 
-      public class Scenario0031 {
-          public boolean passes(int score) {
-              return score >= 90;
+      public class Scenario0062 {
+          public String display(String value) {
+              return value == null ? "" : value;
           }
       }
     labels:
@@ -64,26 +65,26 @@ commits:
     - fault
 - id: c2
   message: Fix bug
-  author: Alice <alice@example.com>
+  author: Carol <carol@example.com>
   date: '2024-01-03T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0031.java
+    path: src/main/java/example/Scenario0062.java
     old: |
       package example;
 
-      public class Scenario0031 {
-          public boolean passes(int score) {
-              return score >= 90;
+      public class Scenario0062 {
+          public String display(String value) {
+              return value == null ? "" : value;
           }
       }
     new: |
       package example;
 
-      public class Scenario0031 {
-          public boolean passes(int score) {
-              return score >= 80;
+      public class Scenario0062 {
+          public String display(String value) {
+              return value == null ? "N/A" : value;
           }
       }
     labels:
@@ -91,27 +92,27 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Wrong threshold constant
+  title: BFC changes default branch in conditional
   bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0031.java
+    file: src/main/java/example/Scenario0062.java
     entity:
       type: method
-      name: passes
-      signature: boolean passes(int score)
-    statement: return score >= 90;
+      name: display
+      signature: String display(String value)
+    statement: 'return value == null ? "" : value;'
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0031.java
+    file: src/main/java/example/Scenario0062.java
     entity:
       type: method
-      name: passes
-      signature: boolean passes(int score)
-    statement: return score >= 80;
+      name: display
+      signature: String display(String value)
+    statement: 'return value == null ? "N/A" : value;'
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -120,7 +121,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return score >= 90;
+      - 'return value == null ? "" : value;'
 checks:
 - type: git_history_contains
   commits:

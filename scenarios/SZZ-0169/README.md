@@ -1,8 +1,8 @@
-# SZZ-0169: Patch context required
+# SZZ-0169: Root cause not in changed lines
 
 ## Summary
 
-Evaluates a boundary fix where the caller method provides the context needed to interpret the patched line.
+Evaluates a fix that changes a caller-side guard while the root-cause bug was introduced earlier in a callee method that the BFC does not edit.
 
 ## Expected SZZ Behavior
 
@@ -11,5 +11,5 @@ Evaluates a boundary fix where the caller method provides the context needed to 
 
 ## Notes
 
-- Moved from SZZG-0054 after applying the scenario.yml / scenario.graph.yml boundary policy.
+- Moved from SZZG-0116 after applying the scenario.yml / scenario.graph.yml boundary policy.
 - This scenario uses a linear main-branch history and a commit-level exact-set oracle.

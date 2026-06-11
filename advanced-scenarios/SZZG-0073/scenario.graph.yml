@@ -1,22 +1,22 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0073
-  title: Release branch change rebased onto main
-  slug: release-branch-change-rebased-onto-main
-  description: A release-branch bug is replayed onto main by rebase.
-  category: Branch, merge, cherry-pick, and backport scenarios
-  category_code: G
+  title: Interactive rebase reorders commits before BIC
+  slug: interactive-rebase-reorders-commits-before-bic
+  description: Interactive rebase changes order while preserving the bug commit.
+  category: "Rebase-specific history rewriting"
+  category_code: "G5"
   factors:
   - branch
   - rebase
-  - release_branch
-  - release_to_main
+  - interactive_rebase
+  - reorder
   - direct_bic
   - origin_bic
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0073-release-branch-change-rebased-onto-main
+  name: SZZG-0073-interactive-rebase-reorders-commits-before-bic
   default_branch: main
   language: java
   build_system: none
@@ -25,13 +25,15 @@ graph:
   model: commit_dag
   history_summary: 'c0: create initial correct implementation
 
-    rel1: introduce release-specific range bug
+    f1: add feature docs
 
-    m1: continue main development
+    f2: introduce range bug
 
-    r1: rebase release change onto main
+    r1: replay docs before reordered BIC
 
-    c2: fix release-origin bug on main'
+    r2: replay bug commit after reorder
+
+    c3: fix reordered bug'
 commits:
 - id: c0
   branch: main
@@ -43,46 +45,61 @@ commits:
     path: src/main/java/example/Range.java
     content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
       \ value >= min && value <= max;\n  }\n}\n"
-- id: rel1
-  branch: release
+- id: f1
+  branch: feature
   parents:
   - c0
-  message: 'rel1: introduce release-specific range bug'
+  message: 'f1: add feature docs'
+  role: intermediate
+  operations:
+  - type: write_file
+    path: docs/feature.md
+    content: 'note
+
+      '
+- id: f2
+  branch: feature
+  parents:
+  - f1
+  message: 'f2: introduce range bug'
   role: origin_bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
     new: return value > min && value < max;
-- id: m1
-  branch: main
-  parents:
-  - c0
-  message: 'm1: continue main development'
-  role: intermediate
-  operations:
-  - type: write_file
-    path: docs/main.md
-    content: 'main dev
-
-      '
 - id: r1
   branch: main
   parents:
-  - m1
-  message: 'r1: rebase release change onto main'
+  - c0
+  message: 'r1: replay docs before reordered BIC'
+  role: intermediate
+  operations:
+  - type: write_file
+    path: docs/feature.md
+    content: 'note after reorder
+
+      '
+  rebase_of: f1
+  interactive_rebase: reorder
+- id: r2
+  branch: main
+  parents:
+  - r1
+  message: 'r2: replay bug commit after reorder'
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
     new: return value > min && value < max;
-  rebase_of: rel1
-- id: c2
+  rebase_of: f2
+  interactive_rebase: reorder
+- id: c3
   branch: main
   parents:
-  - r1
-  message: 'c2: fix release-origin bug on main'
+  - r2
+  message: 'c3: fix reordered bug'
   role: bug_fixing
   operations:
   - type: replace
@@ -91,30 +108,30 @@ commits:
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Release-origin bug rebased onto main
+  title: Bug after reordered rebase
   bug_introducing_commits:
-  - commit: r1
+  - commit: r2
     role: direct
-  - commit: rel1
+  - commit: f2
     role: origin
   bug_fixing_commits:
-  - commit: c2
+  - commit: c3
     role: complete_fix
   faults:
   - id: F001
-    commit: r1
+    commit: r2
     file: src/main/java/example/Range.java
     statement: return value > min && value < max;
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c2
+    commit: c3
     file: src/main/java/example/Range.java
     statement: return value >= min && value <= max;
     fix_type: line_modification
   origin_faults:
   - id: OF001
-    commit: rel1
+    commit: f2
     file: src/main/java/example/Range.java
     statement: return value > min && value < max;
     change_type: origin_line_modification
@@ -122,16 +139,18 @@ expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - r1
+    - r2
     related_but_not_correct:
-    - rel1
+    - f2
+    - r1
 scenario_design:
-  purpose: Evaluate rebase from release branch to main.
-  key_property: rel1 is origin, r1 is direct on main.
-  difference_from_SZZG_0073: SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
+  purpose: Evaluate commit reordering during rebase.
+  key_property: Only r2 introduces the bug after reorder.
+  difference_from_SZZG_0073: SZZG-0063 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
     adds a distinct rebase-related complication.
   evaluation_points:
-  - Report r1.
+  - Report r2.
+  - Avoid r1.
 notes:
 - This scenario models a rebase-related development history for SZZ evaluation.
 - Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

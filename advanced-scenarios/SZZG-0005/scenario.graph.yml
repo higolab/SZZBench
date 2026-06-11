@@ -1,49 +1,47 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0005
-  title: BFC is a merge commit
-  slug: bfc-merge-commit
-  description: A bug is introduced on a feature branch, and the merge commit itself resolves the bug while merging the feature
-    branch into main.
-  category: BFC shape scenarios
-  category_code: B
+  title: Method move between classes
+  slug: method-move-between-classes
+  description: Evaluates method move between classes and checks whether SZZ identifies the expected bug-introducing commit
+    set.
+  category: "Refactoring, move, rename, and semantic rewrite"
+  category_code: "G1"
   factors:
-  - merge_commit
-  - bug_fixing_commit
-  - branch
+  - move_entity
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0005-bfc-merge-commit
+  name: SZZG-0005-method-move-between-classes
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial correct implementation on main
+  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
 
-    c1: introduce bug on feature branch
+    c1: introduce bug (replace src/main/java/example/Range.java)
 
-    c2: unrelated main-branch change
+    c2: apply intermediate change (move_entity)
 
-    c3: merge feature into main and fix bug in the merge commit'
+    c3: fix bug (replace src/main/java/example/Range.java)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial correct implementation'
+  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
       \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
-  branch: feature
+  branch: main
   parents:
   - c0
-  message: 'c1: introduce range boundary bug on feature'
+  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
   role: bug_introducing
   operations:
   - type: replace
@@ -53,21 +51,22 @@ commits:
 - id: c2
   branch: main
   parents:
-  - c0
-  message: 'c2: add unrelated main branch note'
+  - c1
+  message: 'c2: apply intermediate change (move_entity)'
   role: intermediate
   operations:
-  - type: write_file
-    path: docs/main-note.md
-    content: 'This note is unrelated to the range boundary bug.
-
-      '
+  - type: move_entity
+    entity:
+      type: method
+      name: contains
+      signature: boolean contains(int value, int min, int max)
+    from_file: src/main/java/example/Range.java
+    to_file: src/main/java/example/RangeUtils.java
 - id: c3
   branch: main
   parents:
   - c2
-  - c1
-  message: 'c3: merge feature and fix range boundary bug'
+  message: 'c3: fix bug (replace src/main/java/example/Range.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -76,19 +75,22 @@ commits:
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Range boundary bug fixed by merge commit
+  title: Synthetic graph scenario bug
   bug_introducing_commits:
   - commit: c1
     role: direct
   bug_fixing_commits:
   - commit: c3
-    role: merge_fix
+    role: complete_fix
   faults:
   - id: F001
     commit: c1
     file: src/main/java/example/Range.java
     statement: return value > min && value < max;
     change_type: line_modification
+    entity:
+      type: method
+      signature: boolean contains(int value, int min, int max)
   fixes:
   - id: X001
     commit: c3
@@ -101,14 +103,14 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: Evaluate whether an SZZ method can identify a feature-branch BIC when the BFC is itself a merge commit.
-  key_property: The merge commit c3 has two parents and also contains the bug-fixing edit.
+  purpose: Evaluate Method move between classes and whether SZZ identifies the expected bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: move_entity; operations: write_file, replace, move_entity.'
   evaluation_points:
-  - BFC is a merge commit rather than a normal linear commit.
-  - The BIC is on the merged feature branch.
-  - An unrelated main-branch change exists before the merge.
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- This scenario intentionally makes c3 both a merge commit and the bug-fixing commit.
-- If generate-graph cannot apply operations on merge commits, graph_generator.py must be updated to support merge commits
-  with operations.
-- This revision differentiates SZZG-0005 from SZZG-0026, where the BFC should be a normal main-branch commit after a merge.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

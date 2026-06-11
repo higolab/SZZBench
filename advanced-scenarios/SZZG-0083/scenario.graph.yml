@@ -1,21 +1,22 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0083
-  title: Misleading rebase commit message
-  slug: misleading-rebase-commit-message
-  description: A rebased BIC has a misleading cleanup-like commit message.
-  category: Branch, merge, cherry-pick, and backport scenarios
-  category_code: G
+  title: Huge noisy rebased commit
+  slug: huge-noisy-rebased-commit
+  description: A rebased BIC contains the relevant source change plus many unrelated files.
+  category: "Rebase-specific history rewriting"
+  category_code: "G5"
   factors:
   - branch
   - rebase
-  - commit_messages
-  - misleading_commit_message
+  - large_noisy_commit
+  - multi_file
+  - robustness
   - direct_bic
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0083-misleading-rebase-commit-message
+  name: SZZG-0083-huge-noisy-rebased-commit
   default_branch: main
   language: java
   build_system: none
@@ -24,15 +25,11 @@ graph:
   model: commit_dag
   history_summary: 'c0: create initial correct implementation
 
-    f1: introduce range boundary bug on feature
+    f1: introduce bug and noisy feature files
 
-    f2: add feature helper using buggy range check
+    r1: rebase huge noisy feature commit
 
-    r1: cleanup after rebase
-
-    r2: rebase feature helper onto main
-
-    c3: fix range boundary bug after rebase'
+    c2: fix bug from huge noisy commit'
 commits:
 - id: c0
   branch: main
@@ -48,59 +45,131 @@ commits:
   branch: feature
   parents:
   - c0
-  message: 'f1: introduce range boundary bug on feature'
+  message: 'f1: introduce bug and noisy feature files'
   role: origin_bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
     new: return value > min && value < max;
-- id: f2
-  branch: feature
-  parents:
-  - f1
-  message: 'f2: add feature helper using buggy range check'
-  role: intermediate
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n}\n"
-    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
-      \ min, max);\n  }\n}\n"
+  - type: write_file
+    path: docs/noise-1.md
+    content: 'noise 1
+
+      '
+  - type: write_file
+    path: docs/noise-2.md
+    content: 'noise 2
+
+      '
+  - type: write_file
+    path: docs/noise-3.md
+    content: 'noise 3
+
+      '
+  - type: write_file
+    path: docs/noise-4.md
+    content: 'noise 4
+
+      '
+  - type: write_file
+    path: docs/noise-5.md
+    content: 'noise 5
+
+      '
+  - type: write_file
+    path: docs/noise-6.md
+    content: 'noise 6
+
+      '
+  - type: write_file
+    path: docs/noise-7.md
+    content: 'noise 7
+
+      '
+  - type: write_file
+    path: docs/noise-8.md
+    content: 'noise 8
+
+      '
+  - type: write_file
+    path: docs/noise-9.md
+    content: 'noise 9
+
+      '
+  - type: write_file
+    path: docs/noise-10.md
+    content: 'noise 10
+
+      '
 - id: r1
   branch: main
   parents:
   - c0
-  message: 'r1: cleanup after rebase'
+  message: 'r1: rebase huge noisy feature commit'
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
     new: return value > min && value < max;
+  - type: write_file
+    path: docs/noise-1.md
+    content: 'noise 1
+
+      '
+  - type: write_file
+    path: docs/noise-2.md
+    content: 'noise 2
+
+      '
+  - type: write_file
+    path: docs/noise-3.md
+    content: 'noise 3
+
+      '
+  - type: write_file
+    path: docs/noise-4.md
+    content: 'noise 4
+
+      '
+  - type: write_file
+    path: docs/noise-5.md
+    content: 'noise 5
+
+      '
+  - type: write_file
+    path: docs/noise-6.md
+    content: 'noise 6
+
+      '
+  - type: write_file
+    path: docs/noise-7.md
+    content: 'noise 7
+
+      '
+  - type: write_file
+    path: docs/noise-8.md
+    content: 'noise 8
+
+      '
+  - type: write_file
+    path: docs/noise-9.md
+    content: 'noise 9
+
+      '
+  - type: write_file
+    path: docs/noise-10.md
+    content: 'noise 10
+
+      '
   rebase_of: f1
-- id: r2
+  large_noisy_rebased_commit: true
+- id: c2
   branch: main
   parents:
   - r1
-  message: 'r2: rebase feature helper onto main'
-  role: intermediate
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n}\n"
-    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
-      \ min, max);\n  }\n}\n"
-  rebase_of: f2
-- id: c3
-  branch: main
-  parents:
-  - r2
-  message: 'c3: fix range boundary bug after rebase'
+  message: 'c2: fix bug from huge noisy commit'
   role: bug_fixing
   operations:
   - type: replace
@@ -109,14 +178,14 @@ commits:
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Range bug with rebase message context
+  title: Bug introduced inside huge noisy rebased commit
   bug_introducing_commits:
   - commit: r1
     role: direct
   - commit: f1
     role: origin
   bug_fixing_commits:
-  - commit: c3
+  - commit: c2
     role: complete_fix
   faults:
   - id: F001
@@ -126,7 +195,7 @@ bugs:
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c3
+    commit: c2
     file: src/main/java/example/Range.java
     statement: return value >= min && value <= max;
     fix_type: line_modification
@@ -144,12 +213,13 @@ expected_szz:
     related_but_not_correct:
     - f1
 scenario_design:
-  purpose: Evaluate whether message context helps or misleads SZZ in a rebase scenario.
-  key_property: The direct BIC remains r1 despite message context.
-  difference_from_SZZG_0073: SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
+  purpose: Evaluate SZZ behavior on a large noisy rebased commit.
+  key_property: r1 contains one relevant source change and many unrelated files.
+  difference_from_SZZG_0073: SZZG-0063 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
     adds a distinct rebase-related complication.
   evaluation_points:
   - Report r1.
+  - Remain robust.
 notes:
 - This scenario models a rebase-related development history for SZZ evaluation.
 - Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

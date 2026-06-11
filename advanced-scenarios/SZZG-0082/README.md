@@ -1,18 +1,17 @@
-# SZZG-0082: Rebase commit message reveals origin
+# SZZG-0082: Rebase with generated file update
 
 ## Purpose
 
-Evaluate whether message context helps or misleads SZZ in a rebase scenario.
+Evaluate generated-file noise during rebase.
 
 ## Commit history
 
 ```text
 c0: c0: create initial correct implementation
-f1: f1: introduce range boundary bug on feature
-f2: f2: add feature helper using buggy range check
-r1: r1: rebase f1 onto main and preserve origin reference
-r2: r2: rebase feature helper onto main
-c3: c3: fix range boundary bug after rebase
+f1: f1: introduce range bug
+r1: r1: rebase bug onto main
+r2: r2: regenerate derived range metadata during rebase
+c3: c3: fix source range bug
 ```
 
 ## Commit table
@@ -20,30 +19,30 @@ c3: c3: fix range boundary bug after rebase
 | Commit | Branch | Parents | Role | Description |
 |---|---|---|---|---|
 | `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `f1` | `feature` | c0 | `origin_bug_introducing` | f1: introduce range boundary bug on feature |
-| `f2` | `feature` | f1 | `intermediate` | f2: add feature helper using buggy range check |
-| `r1` | `main` | c0 | `bug_introducing` | r1: rebase f1 onto main and preserve origin reference |
-| `r2` | `main` | r1 | `intermediate` | r2: rebase feature helper onto main |
-| `c3` | `main` | r2 | `bug_fixing` | c3: fix range boundary bug after rebase |
+| `f1` | `feature` | c0 | `origin_bug_introducing` | f1: introduce range bug |
+| `r1` | `main` | c0 | `bug_introducing` | r1: rebase bug onto main |
+| `r2` | `main` | r1 | `intermediate` | r2: regenerate derived range metadata during rebase |
+| `c3` | `main` | r2 | `bug_fixing` | c3: fix source range bug |
 
 ## Expected SZZ result
 
 ```text
 Expected BIC(s): r1
-Related but not correct: f1
+Related but not correct: f1, r2
 ```
 
 ## Key property
 
-The direct BIC remains r1 despite message context.
+r2 updates generated metadata only.
 
-## Difference from SZZG-0061
+## Difference from SZZG-0063
 
-SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
+SZZG-0063 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
 
 ## Evaluation points
 
 - Report r1.
+- Ignore r2.
 
 ## Notes
 

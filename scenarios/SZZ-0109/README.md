@@ -1,22 +1,24 @@
-# SZZ-0109: Refactoring introduces comparison bug
+# SZZ-0109: Comment-only intermediate before fix
 
 ## Purpose
 
-This scenario evaluates a bug-introducing commit shape: Refactoring introduces comparison bug.
+This scenario is intended to stress implementation robustness under noisy or repetitive code conditions.
 
 ## Commit structure
 
-- `c0`: initial correct implementation
-- `c1`: introduces the bug
-- `c2`: fixes the bug
+- `c0`: Initial implementation
+- `c1`: Introduce bug
+- `c2`: Add comment-only context
+- `c3`: Fix bug
 
 ## Expected behavior
 
-The expected BFC is `c2` and the expected BIC is `c1`.
+The expected BFC is `c3` and the expected BIC is `c1`.
 
 ## Factors
 
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `refactoring-bic`
+- `robustness`
+- `comment-only-intermediate`

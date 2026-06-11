@@ -1,42 +1,37 @@
-# SZZG-0102: BFC performs method extraction and bug fix in the same commit
+# SZZG-0102: Issue description required
 
 ## Source
 
-- Category: Refactoring scenarios
+- Category: Context-aware and LLM-based SZZ scenarios
 
 ## Purpose
 
-Evaluate bfc performs method extraction and bug fix in the same commit and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate whether SZZ can use issue text to choose the middle-name normalization BIC instead of a nearby importer cleanup commit.
 
 ## Expected history
 
 ```text
-c0: c0: create tax calculator
-c1: c1: introduce tax rounding bug
-c2: c2: extract tax rate helper and fix rounding
+c0: create CSV contact importer
+c1: introduce null handling for blank middle names
+c2: change postal-code whitespace cleanup
+c3: fix blank middle-name import using issue description
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal `scenario.yml` schema.
+The code history contains more than one plausible importer cleanup, so the linked issue description is needed to identify the relevant symptom.
 
 ## Required graph-schema features
 
-- Factors: bfc_refactoring, extract_method, mixed_bfc
-- Operation types: insert_after, replace, write_file
-- Expected SZZ policy is defined in `expected_szz`.
-
-## Expected BICs
-
-```text
-c1
-```
+- Factors: issues, context
+- Operation types: write_file, replace
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
-- Whether the expected_szz evaluation policy is applied correctly.
+- Whether SZZ identifies c1 as the BIC.
+- Whether the issue description rules out the postal-code cleanup c2.
+- Whether the BFC is interpreted as restoring an empty-string contract for optional middle names.
 
 ---
 

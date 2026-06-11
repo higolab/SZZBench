@@ -1,24 +1,22 @@
-# SZZ-0159: Comment-only intermediate before fix
+# SZZ-0159: Bug reason only in commit message
 
 ## Purpose
 
-This scenario is intended to stress implementation robustness under noisy or repetitive code conditions.
+This scenario is intended for evaluating SZZ variants that use commit messages or broader patch context.
 
 ## Commit structure
 
-- `c0`: Initial implementation
-- `c1`: Introduce bug
-- `c2`: Add comment-only context
-- `c3`: Fix bug
+- `c0`: initial implementation
+- `c1`: introduces the bug
+- `c2`: BFC with message: Fix exclusive boundary from previous change
 
 ## Expected behavior
 
-The expected BFC is `c3` and the expected BIC is `c1`.
+The expected BFC is `c2` and the expected BIC is `c1`.
 
 ## Factors
 
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `robustness`
-- `comment-only-intermediate`
+- `context-aware`

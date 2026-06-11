@@ -1,22 +1,22 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0070
-  title: Interactive rebase drops original BIC but bug remains
-  slug: interactive-rebase-drops-original-bic-but-bug-remains
-  description: The original BIC is dropped, but a later replayed commit still introduces the buggy code.
-  category: Branch, merge, cherry-pick, and backport scenarios
-  category_code: G
+  title: Rebase combines multiple BICs into one commit
+  slug: rebase-combines-multiple-bics-into-one-commit
+  description: Two origin BICs are combined into one direct BIC during interactive rebase.
+  category: "Rebase-specific history rewriting"
+  category_code: "G5"
   factors:
   - branch
   - rebase
   - interactive_rebase
-  - drop
-  - dropped_origin_bic
+  - squash
+  - multiple_origin_bic
   - direct_bic
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0070-interactive-rebase-drops-original-bic-but-bug-remains
+  name: SZZG-0070-rebase-combines-multiple-bics-into-one-commit
   default_branch: main
   language: java
   build_system: none
@@ -25,13 +25,13 @@ graph:
   model: commit_dag
   history_summary: 'c0: create initial correct implementation
 
-    f1: introduce bug that will be dropped
+    f1: introduce lower-bound bug
 
-    f2: add helper retaining buggy logic
+    f2: introduce upper-bound bug
 
-    r2: replay helper after dropping original BIC
+    r1: rebase combined boundary bugs as one commit
 
-    c3: fix bug retained by helper'
+    c2: fix combined rebased bug'
 commits:
 - id: c0
   branch: main
@@ -47,48 +47,44 @@ commits:
   branch: feature
   parents:
   - c0
-  message: 'f1: introduce bug that will be dropped'
+  message: 'f1: introduce lower-bound bug'
   role: origin_bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
-    new: return value > min && value < max;
+    new: return value > min && value <= max;
 - id: f2
   branch: feature
   parents:
   - f1
-  message: 'f2: add helper retaining buggy logic'
-  role: intermediate
+  message: 'f2: introduce upper-bound bug'
+  role: origin_bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
-    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n}\n"
-    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
-      \ min, max);\n  }\n}\n"
-- id: r2
+    old: return value > min && value <= max;
+    new: return value > min && value < max;
+- id: r1
   branch: main
   parents:
   - c0
-  message: 'r2: replay helper after dropping original BIC'
+  message: 'r1: rebase combined boundary bugs as one commit'
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
-    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ >= min && value <= max;\n  }\n}\n"
-    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
-      \ min, max);\n  }\n}\n"
-  rebase_of: f2
-  interactive_rebase: drop_f1
-- id: c3
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+  rebase_of:
+  - f1
+  - f2
+  interactive_rebase: squash
+- id: c2
   branch: main
   parents:
-  - r2
-  message: 'c3: fix bug retained by helper'
+  - r1
+  message: 'c2: fix combined rebased bug'
   role: bug_fixing
   operations:
   - type: replace
@@ -97,24 +93,26 @@ commits:
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Bug retained after dropping origin BIC
+  title: Combined rebased boundary bug
   bug_introducing_commits:
-  - commit: r2
+  - commit: r1
     role: direct
   - commit: f1
     role: origin
+  - commit: f2
+    role: origin
   bug_fixing_commits:
-  - commit: c3
+  - commit: c2
     role: complete_fix
   faults:
   - id: F001
-    commit: r2
+    commit: r1
     file: src/main/java/example/Range.java
     statement: return value > min && value < max;
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c3
+    commit: c2
     file: src/main/java/example/Range.java
     statement: return value >= min && value <= max;
     fix_type: line_modification
@@ -122,22 +120,29 @@ bugs:
   - id: OF001
     commit: f1
     file: src/main/java/example/Range.java
+    statement: return value > min && value <= max;
+    change_type: origin_line_modification
+  - id: OF002
+    commit: f2
+    file: src/main/java/example/Range.java
     statement: return value > min && value < max;
     change_type: origin_line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - r2
+    - r1
     related_but_not_correct:
     - f1
+    - f2
+    notes: The direct answer is combined commit r1.
 scenario_design:
-  purpose: Evaluate dropped origin BIC with surviving buggy change.
-  key_property: f1 is dropped; r2 is reachable direct BIC.
-  difference_from_SZZG_0073: SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
+  purpose: Evaluate multiple-origin-to-one-direct BIC mapping after interactive rebase.
+  key_property: f1 and f2 become one direct commit r1.
+  difference_from_SZZG_0073: SZZG-0063 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
     adds a distinct rebase-related complication.
   evaluation_points:
-  - Report r2.
+  - Report r1.
 notes:
 - This scenario models a rebase-related development history for SZZ evaluation.
 - Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

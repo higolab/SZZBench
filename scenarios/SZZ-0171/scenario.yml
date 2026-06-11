@@ -1,93 +1,83 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0171
-  title: Cause can be inferred from test failure
-  slug: test-failure
-  description: Evaluates a case where the BFC is a small parser change and the specific cause is clarified by a failing test
-    message.
-  category: Context-aware and LLM-based SZZ scenarios
-  factors:
-  - test_context
-  - context
+  title: Dependency update as BIC
+  slug: bic-dependency-update
+  description: Evaluates dependency update as bic and checks whether SZZ identifies the expected bug-introducing commit set.
+  category: "Non-source, configuration, test-only, and file-level edge cases"
+  factors: []
   difficulty: hard
   status: active
+  category_code: "S8"
 repository:
-  name: SZZ-0171-test-failure
+  name: SZZ-0171-bic-dependency-update
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 commits:
 - id: c0
-  message: 'c0: create ISO event date parser'
+  message: 'c0: create initial state (write_file pom.xml; write_file src/main/java/example/RangeAdapter.java)'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/EventDateParser.java
+    path: pom.xml
+    content: |
+      <project>
+        <modelVersion>4.0.0</modelVersion>
+        <groupId>example</groupId>
+        <artifactId>dependency-bic</artifactId>
+        <version>1.0-SNAPSHOT</version>
+        <dependencies>
+          <dependency>
+            <groupId>org.example</groupId>
+            <artifactId>range-lib</artifactId>
+            <version>1.0.0</version>
+          </dependency>
+        </dependencies>
+      </project>
+  - type: write_file
+    path: src/main/java/example/RangeAdapter.java
     content: |
       package example;
 
-      import java.time.LocalDate;
-      import java.time.format.DateTimeFormatter;
-
-      public class EventDateParser {
-        private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
-
-        public LocalDate parseWebhookDate(String value) {
-          return LocalDate.parse(value, FORMATTER);
+      public class RangeAdapter {
+        public boolean contains(int value, int min, int max) {
+          return RangeLib.includes(value, min, max);
         }
       }
 - id: c1
-  message: 'c1: parse dates with local slash format'
+  message: 'c1: introduce bug (replace pom.xml)'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/EventDateParser.java
-    old: private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
-    new: private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("MM/dd/yyyy");
+    path: pom.xml
+    old: "<version>1.0.0</version>"
+    new: "<version>2.0.0</version>"
 - id: c2
-  message: 'c2: add webhook ISO date regression test'
-  role: test_change
-  operations:
-  - type: write_file
-    path: src/test/java/example/EventDateParserTest.java
-    content: |
-      package example;
-
-      import java.time.LocalDate;
-      import org.junit.jupiter.api.Test;
-      import static org.junit.jupiter.api.Assertions.assertEquals;
-
-      public class EventDateParserTest {
-        @Test
-        public void parsesIsoWebhookDate() {
-          assertEquals(LocalDate.of(2024, 3, 5), new EventDateParser().parseWebhookDate("2024-03-05"));
-        }
-      }
-- id: c3
-  message: 'c3: restore ISO webhook date parsing'
+  message: 'c2: fix bug (replace src/main/java/example/RangeAdapter.java)'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/EventDateParser.java
-    old: private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("MM/dd/yyyy");
-    new: private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
+    path: src/main/java/example/RangeAdapter.java
+    old: return RangeLib.includes(value, min, max);
+    new: return RangeLib.containsInclusive(value, min, max);
 bugs:
 - id: B001
-  title: Webhook ISO dates fail under slash-based parser pattern
-  bug_fixing_commit: c3
+  title: Dependency update changes range semantics
+  bug_fixing_commit: c2
   bug_introducing_commits:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/EventDateParser.java
-    statement: private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("MM/dd/yyyy");
-    change_type: line_modification
+    file: pom.xml
+    statement: "<version>2.0.0</version>"
+    change_type: dependency_update
   fix:
-    commit: c3
-    file: src/main/java/example/EventDateParser.java
-    statement: private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
-    fix_type: line_modification
+    commit: c2
+    file: src/main/java/example/RangeAdapter.java
+    statement: return RangeLib.containsInclusive(value, min, max);
+    fix_type: api_adaptation
   expected_szz:
     commit_level:
       true_positives:
@@ -96,11 +86,10 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("MM/dd/yyyy");
+      - "<version>2.0.0</version>"
 checks:
 - type: git_history_contains
   commits:
   - c0
   - c1
   - c2
-  - c3

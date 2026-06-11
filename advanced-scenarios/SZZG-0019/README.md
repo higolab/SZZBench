@@ -1,4 +1,4 @@
-# SZZG-0019: Clone diverges before fix
+# SZZG-0019: Bug propagates into generated code
 
 ## Source
 
@@ -6,15 +6,14 @@
 
 ## Purpose
 
-Evaluate Clone diverges before fix and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate Bug propagates into generated code and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: introduce origin bug (write_file src/main/java/example/A.java)
-c1: introduce bug (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)
-c2: diverge clone (replace src/main/java/example/B.java; replace src/main/java/example/B.java)
-c3: fix bug (replace src/main/java/example/B.java)
+c0: introduce origin bug (write_file templates/Range.tpl)
+c1: introduce bug (write_file src/generated/java/generated/GeneratedRange.java)
+c2: fix bug (replace src/generated/java/generated/GeneratedRange.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
@@ -23,8 +22,7 @@ This history requires graph-aware scenario semantics that are difficult to expre
 
 ## Required graph-schema features
 
-- Factors: clone_relationships
-- Operation types: write_file, copy_file, replace
+- Operation types: write_file, replace
 - Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points

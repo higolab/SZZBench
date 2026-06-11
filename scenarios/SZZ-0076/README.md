@@ -1,14 +1,14 @@
-# SZZ-0076: Token validation omission
+# SZZ-0076: Path traversal check omission
 
 ## Purpose
 
-This scenario represents an omission bug: the method is introduced without a necessary token validation, and the bug-fixing commit adds the missing statement.
+This scenario represents an omission bug: the method is introduced without a necessary path traversal check, and the bug-fixing commit adds the missing statement.
 
 ## Commit structure
 
 - `c0`: initial class
-- `c1`: introduces the method without the token validation
-- `c2`: adds the missing token validation
+- `c1`: introduces the method without the path traversal check
+- `c2`: adds the missing path traversal check
 
 ## Expected behavior
 

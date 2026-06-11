@@ -1,14 +1,14 @@
-# SZZ-0119: Tiny one-token bug
+# SZZ-0119: BFC with logging addition
 
 ## Purpose
 
-This scenario evaluates a bug-introducing commit shape: Tiny one-token bug.
+This scenario evaluates SZZ behavior when the bug-fixing commit has the shape: BFC with logging addition.
 
 ## Commit structure
 
-- `c0`: initial correct implementation
-- `c1`: introduces the bug
-- `c2`: fixes the bug
+- `c0`: Initial correct implementation
+- `c1`: Introduce bug
+- `c2`: Fix bug
 
 ## Expected behavior
 
@@ -19,4 +19,4 @@ The expected BFC is `c2` and the expected BIC is `c1`.
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `small-bic`
+- `bfc-logging`

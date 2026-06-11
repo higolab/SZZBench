@@ -1,8 +1,8 @@
-# SZZ-0019: Minimum comparison error
+# SZZ-0019: Wrong default string
 
 ## Purpose
 
-This scenario introduces a bug by changing `return value >= minimum;` to `return value > minimum;` and later restores the correct implementation.
+This scenario introduces a bug by changing `return "unknown";` to `return "";` and later restores the correct implementation.
 
 ## Commit structure
 
@@ -19,4 +19,4 @@ The expected BFC is `c2` and the expected BIC is `c1`.
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `comparison-error`
+- `wrong-constant`

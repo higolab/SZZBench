@@ -4,7 +4,7 @@ meta:
   title: Try block rewrite after BIC
   slug: try-block-rewrite-after-bic
   description: This scenario inserts an intermediate language-specific change between the BIC and BFC.
-  category: language-specific
+  category: "Intermediate noise and history noise"
   factors:
   - single-bic
   - single-bfc
@@ -12,6 +12,7 @@ meta:
   - try-block-after-bic
   difficulty: medium
   status: active
+  category_code: "S3"
 repository:
   name: SZZ-0100-try-block-rewrite-after-bic
   default_branch: main

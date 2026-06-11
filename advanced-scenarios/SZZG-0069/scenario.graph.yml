@@ -1,23 +1,22 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0069
-  title: Interactive rebase edits BIC commit
-  slug: interactive-rebase-edits-bic-commit
-  description: Interactive rebase edits the original BIC before replaying it.
-  category: Branch, merge, cherry-pick, and backport scenarios
-  category_code: G
+  title: Rebase splits original BIC into multiple commits
+  slug: rebase-splits-original-bic-into-multiple-commits
+  description: One origin BIC is split into two direct BICs during rebase.
+  category: "Rebase-specific history rewriting"
+  category_code: "G5"
   factors:
   - branch
   - rebase
-  - interactive_rebase
-  - edit
-  - patch_modified_during_rebase
-  - direct_bic
+  - split_bic
+  - multiple_bic
   - origin_bic
+  - direct_bic
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0069-interactive-rebase-edits-bic-commit
+  name: SZZG-0069-rebase-splits-original-bic-into-multiple-commits
   default_branch: main
   language: java
   build_system: none
@@ -26,11 +25,13 @@ graph:
   model: commit_dag
   history_summary: 'c0: create initial correct implementation
 
-    f1: introduce exclusive range bug
+    f1: introduce both boundary bugs
 
-    r1: edit feature bug during interactive rebase
+    r1: rebase lower-bound part
 
-    c2: fix edited rebased bug'
+    r2: rebase upper-bound part
+
+    c3: fix both boundary bugs'
 commits:
 - id: c0
   branch: main
@@ -46,7 +47,7 @@ commits:
   branch: feature
   parents:
   - c0
-  message: 'f1: introduce exclusive range bug'
+  message: 'f1: introduce both boundary bugs'
   role: origin_bug_introducing
   operations:
   - type: replace
@@ -57,46 +58,61 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'r1: edit feature bug during interactive rebase'
+  message: 'r1: rebase lower-bound part'
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
-    new: return value >= min && value < max;
+    new: return value > min && value <= max;
   rebase_of: f1
-  interactive_rebase: edit
-- id: c2
+  rebase_split_part: lower_bound
+- id: r2
   branch: main
   parents:
   - r1
-  message: 'c2: fix edited rebased bug'
+  message: 'r2: rebase upper-bound part'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min && value <= max;
+    new: return value > min && value < max;
+  rebase_of: f1
+  rebase_split_part: upper_bound
+- id: c3
+  branch: main
+  parents:
+  - r2
+  message: 'c3: fix both boundary bugs'
   role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
-    old: return value >= min && value < max;
+    old: return value > min && value < max;
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Upper-bound bug after interactive rebase edit
+  title: Bug split across two rebased commits
   bug_introducing_commits:
   - commit: r1
+    role: direct
+  - commit: r2
     role: direct
   - commit: f1
     role: origin
   bug_fixing_commits:
-  - commit: c2
+  - commit: c3
     role: complete_fix
   faults:
   - id: F001
-    commit: r1
+    commit: r2
     file: src/main/java/example/Range.java
-    statement: return value >= min && value < max;
+    statement: return value > min && value < max;
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c2
+    commit: c3
     file: src/main/java/example/Range.java
     statement: return value >= min && value <= max;
     fix_type: line_modification
@@ -111,15 +127,17 @@ expected_szz:
     evaluation_policy: exact_set
     required:
     - r1
+    - r2
     related_but_not_correct:
     - f1
+    notes: The direct BIC set is r1 and r2.
 scenario_design:
-  purpose: Evaluate interactive rebase edit of a BIC.
-  key_property: r1 is an edited replay of f1.
-  difference_from_SZZG_0073: SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
+  purpose: Evaluate one-origin-to-multiple-direct BIC mapping after rebase.
+  key_property: f1 is split into r1 and r2.
+  difference_from_SZZG_0073: SZZG-0063 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
     adds a distinct rebase-related complication.
   evaluation_points:
-  - Report r1.
+  - Return r1 and r2.
 notes:
 - This scenario models a rebase-related development history for SZZ evaluation.
 - Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

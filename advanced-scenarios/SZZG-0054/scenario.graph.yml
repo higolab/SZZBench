@@ -1,93 +1,104 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0054
-  title: Chmod-only intermediate
-  slug: chmod-only-intermediate
-  description: Evaluates a chmod-only intermediate commit between the BIC and BFC and checks whether SZZ ignores it as a cause.
-  category: Robustness and implementation-quality scenarios
-  category_code: K
+  title: Fixed on main but unfixed on release
+  slug: fixed-on-main-unfixed-on-release
+  description: A bug is introduced before a release branch is cut; main fixes the bug, but the release branch continues without
+    the fix.
+  category: "Branch, merge, cherry-pick, backport, and release branches"
+  category_code: "G4"
   factors:
-  - chmod
+  - release_branch
+  - partial_fix_propagation
+  - unfixed_release
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0054-chmod-only-intermediate
+  name: SZZG-0054-fixed-on-main-unfixed-on-release
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial state (write_file scripts/run.sh; write_file src/main/java/example/Range.java)
+  history_summary: 'c0: create initial correct implementation on main
 
-    c1: apply intermediate change (chmod scripts/run.sh)
+    c1: introduce bug on main before release branch
 
-    c2: introduce bug (replace src/main/java/example/Range.java)
+    c2: create release branch from buggy state and add release note
 
-    c3: fix bug (replace src/main/java/example/Range.java)'
+    c3: fix bug on main
+
+    c4: release branch continues with bug unfixed'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_file scripts/run.sh; write_file src/main/java/example/Range.java)'
+  message: 'c0: create initial correct implementation'
   role: initial
   operations:
   - type: write_file
-    path: scripts/run.sh
-    content: '#!/bin/sh
-
-      python -m example.Range
-
-      '
-  - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
       \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: apply intermediate change (chmod scripts/run.sh)'
-  role: intermediate
-  allow_empty: true
-  operations:
-  - type: chmod
-    path: scripts/run.sh
-    mode: '755'
-- id: c2
-  branch: main
-  parents:
-  - c1
-  message: 'c2: introduce bug (replace src/main/java/example/Range.java)'
+  message: 'c1: introduce range boundary bug before release branch'
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
     new: return value > min && value < max;
+- id: c2
+  branch: release
+  parents:
+  - c1
+  message: 'c2: cut release branch from buggy state'
+  role: intermediate
+  operations:
+  - type: write_file
+    path: docs/release-note.md
+    content: 'Release branch is cut while the range bug is still present.
+
+      '
 - id: c3
   branch: main
   parents:
-  - c2
-  message: 'c3: fix bug (replace src/main/java/example/Range.java)'
+  - c1
+  message: 'c3: fix range boundary bug on main'
   role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value > min && value < max;
     new: return value >= min && value <= max;
+- id: c4
+  branch: release
+  parents:
+  - c2
+  message: 'c4: release branch continues without main fix'
+  role: unfixed_release
+  operations:
+  - type: write_file
+    path: docs/release-followup.md
+    content: 'Release branch follow-up. The code is still unfixed on this branch.
+
+      '
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Bug fixed on main but still present on release
   bug_introducing_commits:
-  - commit: c2
+  - commit: c1
     role: direct
   bug_fixing_commits:
   - commit: c3
-    role: complete_fix
+    role: main_fix
   faults:
   - id: F001
-    commit: c2
+    commit: c1
     file: src/main/java/example/Range.java
     statement: return value > min && value < max;
     change_type: line_modification
@@ -97,20 +108,25 @@ bugs:
     file: src/main/java/example/Range.java
     statement: return value >= min && value <= max;
     fix_type: line_modification
+  bug_instances:
+  - branch: main
+    status: fixed
+    fix_commit: c3
+  - branch: release
+    status: unfixed
+    last_commit: c4
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - c2
+    - c1
 scenario_design:
-  purpose: Evaluate whether SZZ identifies the real BIC when a chmod-only commit appears in the intermediate history.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: chmod; operations: write_file, chmod, replace.'
+  purpose: Evaluate whether SZZ can identify the original BIC when a fix exists on main but has not been propagated to a release
+    branch.
+  key_property: The same BIC affects both branches, but only main contains a BFC.
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether the chmod-only intermediate commit c1 is not reported as the BIC.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Main fixed
+  - Release unfixed
+  - Bug instance remains active on release.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
+- The release branch intentionally remains buggy at c4.

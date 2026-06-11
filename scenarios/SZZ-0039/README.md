@@ -1,8 +1,8 @@
-# SZZ-0039: Wrong substring end
+# SZZ-0039: Wrong parameter used in new feature
 
 ## Purpose
 
-This scenario introduces a bug by changing `return value.substring(0, Math.min(3, value.length()));` to `return value.substring(0, 3);` and later restores the correct implementation.
+This scenario evaluates a bug-introducing commit shape: Wrong parameter used in new feature.
 
 ## Commit structure
 
@@ -19,4 +19,5 @@ The expected BFC is `c2` and the expected BIC is `c1`.
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `api-misuse`
+- `feature-addition-bic`
+- `wrong-variable`

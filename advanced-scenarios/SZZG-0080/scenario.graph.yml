@@ -1,22 +1,22 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0080
-  title: Rebase with copy propagation
-  slug: rebase-with-copy-propagation
-  description: Buggy code is copied on feature and introduced into main by rebase.
-  category: Branch, merge, cherry-pick, and backport scenarios
-  category_code: G
+  title: BFC message identifies rebase regression
+  slug: bfc-message-identifies-rebase-regression
+  description: The BFC message explicitly says the bug was introduced during rebase.
+  category: "Rebase-specific history rewriting"
+  category_code: "G5"
   factors:
   - branch
   - rebase
-  - copy_propagation
-  - copy_file
+  - commit_messages
+  - bfc_message
+  - context
   - direct_bic
-  - origin_bic
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0080-rebase-with-copy-propagation
+  name: SZZG-0080-bfc-message-identifies-rebase-regression
   default_branch: main
   language: java
   build_system: none
@@ -25,15 +25,15 @@ graph:
   model: commit_dag
   history_summary: 'c0: create initial correct implementation
 
-    f1: introduce range bug on feature
+    f1: introduce range boundary bug on feature
 
-    f2: copy buggy range logic
+    f2: add feature helper using buggy range check
 
-    r1: rebase original bug
+    r1: rebase feature BIC onto main
 
-    r2: rebase copied buggy logic
+    r2: rebase feature helper onto main
 
-    c3: fix copied range logic'
+    c3: fix boundary regression introduced during rebase'
 commits:
 - id: c0
   branch: main
@@ -49,7 +49,7 @@ commits:
   branch: feature
   parents:
   - c0
-  message: 'f1: introduce range bug on feature'
+  message: 'f1: introduce range boundary bug on feature'
   role: origin_bug_introducing
   operations:
   - type: replace
@@ -60,18 +60,21 @@ commits:
   branch: feature
   parents:
   - f1
-  message: 'f2: copy buggy range logic'
-  role: origin_bug_propagating
+  message: 'f2: add feature helper using buggy range check'
+  role: intermediate
   operations:
-  - type: write_file
-    path: src/main/java/example/RangeCopy.java
-    content: "package example;\n\npublic class RangeCopy {\n  public boolean containsCopy(int value, int min, int max) {\n\
-      \    return value > min && value < max;\n  }\n}\n"
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n}\n"
+    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
+      \ min, max);\n  }\n}\n"
 - id: r1
   branch: main
   parents:
   - c0
-  message: 'r1: rebase original bug'
+  message: 'r1: rebase feature BIC onto main'
   role: bug_introducing
   operations:
   - type: replace
@@ -83,50 +86,49 @@ commits:
   branch: main
   parents:
   - r1
-  message: 'r2: rebase copied buggy logic'
-  role: bug_introducing
+  message: 'r2: rebase feature helper onto main'
+  role: intermediate
   operations:
-  - type: write_file
-    path: src/main/java/example/RangeCopy.java
-    content: "package example;\n\npublic class RangeCopy {\n  public boolean containsCopy(int value, int min, int max) {\n\
-      \    return value > min && value < max;\n  }\n}\n"
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n}\n"
+    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
+      \ min, max);\n  }\n}\n"
   rebase_of: f2
 - id: c3
   branch: main
   parents:
   - r2
-  message: 'c3: fix copied range logic'
+  message: 'c3: fix boundary regression introduced during rebase'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/RangeCopy.java
+    path: src/main/java/example/Range.java
     old: return value > min && value < max;
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Copied range bug introduced by rebased copy commit
+  title: Range bug with rebase message context
   bug_introducing_commits:
-  - commit: r2
-    role: direct
   - commit: r1
-    role: origin
+    role: direct
   - commit: f1
-    role: origin
-  - commit: f2
     role: origin
   bug_fixing_commits:
   - commit: c3
     role: complete_fix
   faults:
   - id: F001
-    commit: r2
-    file: src/main/java/example/RangeCopy.java
+    commit: r1
+    file: src/main/java/example/Range.java
     statement: return value > min && value < max;
     change_type: line_modification
   fixes:
   - id: X001
     commit: c3
-    file: src/main/java/example/RangeCopy.java
+    file: src/main/java/example/Range.java
     statement: return value >= min && value <= max;
     fix_type: line_modification
   origin_faults:
@@ -135,27 +137,20 @@ bugs:
     file: src/main/java/example/Range.java
     statement: return value > min && value < max;
     change_type: origin_line_modification
-  - id: OF002
-    commit: f2
-    file: src/main/java/example/RangeCopy.java
-    statement: return value > min && value < max;
-    change_type: origin_line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - r2
-    related_but_not_correct:
     - r1
+    related_but_not_correct:
     - f1
-    - f2
 scenario_design:
-  purpose: Evaluate copy propagation through rebase.
-  key_property: The fixed instance is in the copied file introduced by r2.
-  difference_from_SZZG_0073: SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
+  purpose: Evaluate whether message context helps or misleads SZZ in a rebase scenario.
+  key_property: The direct BIC remains r1 despite message context.
+  difference_from_SZZG_0073: SZZG-0063 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
     adds a distinct rebase-related complication.
   evaluation_points:
-  - Report r2.
+  - Report r1.
 notes:
 - This scenario models a rebase-related development history for SZZ evaluation.
 - Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

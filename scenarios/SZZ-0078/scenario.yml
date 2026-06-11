@@ -1,108 +1,92 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0078
-  title: Overflow check omission
-  slug: overflow-check-omission
-  description: 'This scenario represents an omission bug: the method is introduced without a necessary overflow check, and the bug-fixing commit adds the missing statement.'
-  category: omission
+  title: Guard deletion introduces bug
+  slug: guard-deletion-bic
+  description: 'This scenario evaluates a bug-introducing commit shape: Guard deletion introduces bug.'
+  category: "Omission and deletion bugs"
   factors:
   - single-bic
   - single-bfc
-  - omission-bug
-  - line-addition-fix
+  - line-modification
+  - line-deletion-bic
   difficulty: medium
   status: active
+  category_code: "S2"
 repository:
-  name: SZZ-0078-overflow-check-omission
+  name: SZZ-0078-guard-deletion-bic
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 commits:
 - id: c0
-  message: Initial class
+  message: Initial correct implementation
   author: Alice <alice@example.com>
-  date: '2024-02-01T10:00:00Z'
+  date: '2024-01-01T10:00:00Z'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0078.java
-    content: 'package example;
-
-
-      public class Scenario0078 {
-
-      }
-
-      '
+    path: src/main/java/example/Scenario0111.java
+    content: "package example;\n\npublic class Scenario0111 {\n    public boolean valid(int value) {\n        if (value < 0) {\n                return false;\n            }\n            return true;\n    }\n}\n"
 - id: c1
-  message: Add canAccumulate without overflow check
+  message: Introduce bug
   author: Bob <bob@example.com>
-  date: '2024-02-02T10:00:00Z'
+  date: '2024-01-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0078.java
-    old: 'package example;
-
-
-      public class Scenario0078 {
-
-      }
-
-      '
-    new: "package example;\n\npublic class Scenario0078 {\n    public boolean canAccumulate(int value) {\n        return true;\n    }\n}\n"
+    path: src/main/java/example/Scenario0111.java
+    old: "package example;\n\npublic class Scenario0111 {\n    public boolean valid(int value) {\n        if (value < 0) {\n                return false;\n            }\n            return true;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0111 {\n    public boolean valid(int value) {\n        return true;\n    }\n}\n"
     labels:
     - B001
     - fault
 - id: c2
-  message: Add missing overflow check
+  message: Fix bug
   author: Alice <alice@example.com>
-  date: '2024-02-03T10:00:00Z'
+  date: '2024-01-03T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0078.java
-    old: "package example;\n\npublic class Scenario0078 {\n    public boolean canAccumulate(int value) {\n        return true;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0078 {\n    public boolean canAccumulate(int value) {\n        if (value > 1000) {\n                return false;\n            }\n            return true;\n    }\n}\n"
+    path: src/main/java/example/Scenario0111.java
+    old: "package example;\n\npublic class Scenario0111 {\n    public boolean valid(int value) {\n        return true;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0111 {\n    public boolean valid(int value) {\n        if (value < 0) {\n                return false;\n            }\n            return true;\n    }\n}\n"
     labels:
     - B001
     - fix
 bugs:
 - id: B001
-  title: Overflow check omission
+  title: Guard deletion introduces bug
   bug_fixing_commit: c2
-  bug_introducing_commits:
+  bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0078.java
+    file: src/main/java/example/Scenario0111.java
     entity:
       type: method
-      name: canAccumulate
-      signature: boolean canAccumulate(int value)
-    change_type: omission
-    missing_statement: "if (value > 1000) {\n            return false;\n        }\n"
+      name: valid
+      signature: boolean valid(int value)
+    statement: return true;
+    change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0078.java
+    file: src/main/java/example/Scenario0111.java
     entity:
       type: method
-      name: canAccumulate
-      signature: boolean canAccumulate(int value)
-    added_statement: |
-      if (value > 1000) {
-                      return false;
-                  }
-    fix_type: line_addition
+      name: valid
+      signature: boolean valid(int value)
+    statement: if (value < 0) {
+    fix_type: line_modification
   expected_szz:
     commit_level:
-      true_positives:
-      - c1
+      true_positives: *id001
       false_positives_allowed: []
     line_level:
-      available: false
-      reason: The fault is an omitted statement, so no faulty deleted line exists.
+      available: true
+      faulty_statements:
+      - return true;
 checks:
 - type: git_history_contains
   commits:

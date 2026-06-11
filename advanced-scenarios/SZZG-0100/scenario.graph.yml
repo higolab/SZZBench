@@ -1,114 +1,139 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0100
-  title: Intermediate file move and package rename between BIC and BFC
-  slug: intermediate-file-move-package-rename
-  description: Evaluates intermediate file move and package rename between bic and bfc and checks whether SZZ identifies the
-    expected bug-introducing commit set.
-  category: Refactoring scenarios
-  category_code: A
+  title: Unrelated commits mixed in the same issue
+  slug: issue-commit
+  description: Evaluates unrelated commits mixed in the same issue and checks whether SZZ identifies the expected bug-introducing
+    commit set.
+  category: "Issue, message, context, and non-local evidence"
+  category_code: "G7"
   factors:
-  - rename_file
-  - move_file
-  - package_rename
-  - intermediate_refactoring
+  - work_items
+  - issues
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0100-intermediate-file-move-package-rename
+  name: SZZG-0100-issue-commit
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: c0: create legacy parser
+  history_summary: 'c0: create initial state (write_file src/main/java/example/RangeService.java)
 
-    c1: c1: introduce parser trimming bug
+    c1: introduce bug (replace src/main/java/example/RangeService.java)
 
-    c2: c2: move parser to core package
+    c2: add unrelated change (replace src/main/java/example/RangeService.java)
 
-    c3: c3: fix parser whitespace handling'
+    c3: add unrelated change (write_file docs/issue-10-note.md)
+
+    c4: fix bug (replace src/main/java/example/RangeService.java)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create legacy parser'
+  message: 'c0: create initial state (write_file src/main/java/example/RangeService.java)'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/legacy/Parser.java
-    content: "package example.legacy;\npublic class Parser {\n  public int parseCount(String text) {\n    return Integer.parseInt(text.trim());\n\
-      \  }\n}\n"
+    path: src/main/java/example/RangeService.java
+    content: "package example;\n\npublic class RangeService {\n  public boolean isEnabled() { return true; }\n  public boolean\
+      \ contains(int value, int min, int max) { return value >= min && value <= max; }\n  public int normalize(int value)\
+      \ { return value; }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce parser trimming bug'
+  message: 'c1: introduce bug (replace src/main/java/example/RangeService.java)'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/legacy/Parser.java
-    old: return Integer.parseInt(text.trim());
-    new: return Integer.parseInt(text);
+    path: src/main/java/example/RangeService.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: move parser to core package'
-  role: refactoring
+  message: 'c2: add unrelated change (replace src/main/java/example/RangeService.java)'
+  role: unrelated
   operations:
-  - type: rename_file
-    from: src/main/java/example/legacy/Parser.java
-    to: src/main/java/example/core/Parser.java
   - type: replace
-    path: src/main/java/example/core/Parser.java
-    old: package example.legacy;
-    new: package example.core;
+    path: src/main/java/example/RangeService.java
+    old: public int normalize(int value) { return value; }
+    new: public int normalize(int rawValue) { return rawValue; }
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'c3: fix parser whitespace handling'
+  message: 'c3: add unrelated change (write_file docs/issue-10-note.md)'
+  role: unrelated
+  operations:
+  - type: write_file
+    path: docs/issue-10-note.md
+    content: 'This note is unrelated to the boundary defect.
+
+      '
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: 'c4: fix bug (replace src/main/java/example/RangeService.java)'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/core/Parser.java
-    old: return Integer.parseInt(text);
-    new: return Integer.parseInt(text.trim());
+    path: src/main/java/example/RangeService.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Issue contains unrelated commits around true BIC
   bug_introducing_commits:
   - commit: c1
     role: direct
   bug_fixing_commits:
-  - commit: c3
+  - commit: c4
     role: complete_fix
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/legacy/Parser.java
-    statement: return Integer.parseInt(text);
-    change_type: line_modification
+    file: src/main/java/example/RangeService.java
+    statement: return value > min && value < max;
   fixes:
   - id: X001
-    commit: c3
-    file: src/main/java/example/core/Parser.java
-    statement: return Integer.parseInt(text.trim());
-    fix_type: line_modification
+    commit: c4
+    file: src/main/java/example/RangeService.java
+    statement: return value >= min && value <= max;
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
     - c1
+work_items:
+- id: ISSUE-10
+  title: Range validation issue with unrelated commits
+  commits:
+  - commit: c1
+    relevance: bug_introducing
+  - commit: c2
+    relevance: unrelated
+  - commit: c3
+    relevance: unrelated
+  - commit: c4
+    relevance: bug_fixing
+issues:
+- id: ISSUE-10
+  title: Range validation fails on boundaries
+  description: The issue thread also contains cleanup and documentation commits.
+  linked_bugs:
+  - B001
 scenario_design:
-  purpose: Evaluate intermediate file move and package rename between bic and bfc and whether SZZ identifies the expected
-    bug-introducing commit set.
+  purpose: Evaluate Unrelated commits mixed in the same issue and whether SZZ identifies the expected bug-introducing commit
+    set.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: rename_file, move_file, package_rename, intermediate_refactoring;
-    operations: rename_file, replace, write_file.'
+  required_extensions_from_source: 'This scenario uses factors: work_items, issues; operations: write_file, replace.'
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
   - Whether structural or contextual history is handled according to the scenario factors.

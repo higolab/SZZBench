@@ -1,18 +1,18 @@
-# SZZG-0078: Multiple BICs replayed by rebase
+# SZZG-0078: Rebase commit message reveals origin
 
 ## Purpose
 
-Evaluate multiple-BIC handling when BICs are introduced by rebase replay.
+Evaluate whether message context helps or misleads SZZ in a rebase scenario.
 
 ## Commit history
 
 ```text
 c0: c0: create initial correct implementation
-f1: f1: introduce lower-bound bug
-f2: f2: introduce upper-bound bug
-r1: r1: rebase lower-bound BIC
-r2: r2: rebase upper-bound BIC
-c3: c3: fix both rebased BICs
+f1: f1: introduce range boundary bug on feature
+f2: f2: add feature helper using buggy range check
+r1: r1: rebase f1 onto main and preserve origin reference
+r2: r2: rebase feature helper onto main
+c3: c3: fix range boundary bug after rebase
 ```
 
 ## Commit table
@@ -20,30 +20,30 @@ c3: c3: fix both rebased BICs
 | Commit | Branch | Parents | Role | Description |
 |---|---|---|---|---|
 | `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `f1` | `feature` | c0 | `origin_bug_introducing` | f1: introduce lower-bound bug |
-| `f2` | `feature` | f1 | `origin_bug_introducing` | f2: introduce upper-bound bug |
-| `r1` | `main` | c0 | `bug_introducing` | r1: rebase lower-bound BIC |
-| `r2` | `main` | r1 | `bug_introducing` | r2: rebase upper-bound BIC |
-| `c3` | `main` | r2 | `bug_fixing` | c3: fix both rebased BICs |
+| `f1` | `feature` | c0 | `origin_bug_introducing` | f1: introduce range boundary bug on feature |
+| `f2` | `feature` | f1 | `intermediate` | f2: add feature helper using buggy range check |
+| `r1` | `main` | c0 | `bug_introducing` | r1: rebase f1 onto main and preserve origin reference |
+| `r2` | `main` | r1 | `intermediate` | r2: rebase feature helper onto main |
+| `c3` | `main` | r2 | `bug_fixing` | c3: fix range boundary bug after rebase |
 
 ## Expected SZZ result
 
 ```text
-Expected BIC(s): r1, r2
-Related but not correct: f1, f2
+Expected BIC(s): r1
+Related but not correct: f1
 ```
 
 ## Key property
 
-Origin BIC set maps to direct BIC set.
+The direct BIC remains r1 despite message context.
 
-## Difference from SZZG-0061
+## Difference from SZZG-0063
 
-SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
+SZZG-0063 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
 
 ## Evaluation points
 
-- Return r1 and r2.
+- Report r1.
 
 ## Notes
 

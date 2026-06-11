@@ -1,23 +1,23 @@
-# SZZ-0107: Constant extraction after BIC
+# SZZ-0107: Large commit with small bug
 
 ## Purpose
 
-This scenario inserts an intermediate refactoring change between the BIC and BFC.
+This scenario evaluates a bug-introducing commit shape: Large commit with small bug.
 
 ## Commit structure
 
-- `c0`: Initial correct implementation
-- `c1`: Introduce bug
-- `c2`: Apply intermediate rewrite
-- `c3`: Fix bug
+- `c0`: initial correct implementation
+- `c1`: large cleanup commit that introduces a small bug
+- `c2`: fixes the bug
 
 ## Expected behavior
 
-The expected BFC is `c3` and the expected BIC is `c1`.
+The expected BFC is `c2` and the expected BIC is `c1`.
 
 ## Factors
 
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `constant-extraction-after-bic`
+- `large-bic`
+- `tangled-bic`

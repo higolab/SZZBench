@@ -1,83 +1,79 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0113
-  title: Exception handling deletion introduces bug
-  slug: exception-handling-deletion-bic
-  description: 'This scenario evaluates a bug-introducing commit shape: Exception handling deletion introduces bug.'
-  category: bic-shape
+  source_graph_id: SZZG-0071
+  title: Malformed commit message
+  slug: malformed-commit-message
+  description: A malformed but text-safe bug-fixing commit message is used. The repository history itself is a simple two-commit
+    normal scenario, so this case is represented as a normal scenario under scenarios.
+  category: "Intermediate noise and history noise"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - line-deletion-bic
-  - exception-handling
+  - robustness
+  - malformed-commit-message
+  - message-robustness
+  - bfc-message
   difficulty: medium
   status: active
+  category_code: "S3"
 repository:
-  name: SZZ-0113-exception-handling-deletion-bic
+  name: SZZ-0113-malformed-commit-message
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 commits:
-- id: c0
-  message: Initial correct implementation
-  author: Alice <alice@example.com>
-  date: '2024-01-01T10:00:00Z'
-  role: initial
-  operations:
-  - type: write_file
-    path: src/main/java/example/Scenario0113.java
-    content: "package example;\n\npublic class Scenario0113 {\n    public int divide(int total, int denominator) {\n        if (denominator == 0) {\n                return 0;\n            }\n            return total / denominator;\n    }\n}\n"
 - id: c1
-  message: Introduce bug
+  message: Introduce boundary bug
   author: Bob <bob@example.com>
-  date: '2024-01-02T10:00:00Z'
+  date: '2024-06-04T10:00:00Z'
   role: bug_introducing
   operations:
-  - type: replace
-    path: src/main/java/example/Scenario0113.java
-    old: "package example;\n\npublic class Scenario0113 {\n    public int divide(int total, int denominator) {\n        if (denominator == 0) {\n                return 0;\n            }\n            return total / denominator;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0113 {\n    public int divide(int total, int denominator) {\n        return total / denominator;\n    }\n}\n"
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value > min && value < max;\n  }\n}\n"
     labels:
     - B001
     - fault
 - id: c2
-  message: Fix bug
+  message: 'FIX:::: boundary regression ??? refs=[[[unknown]]] introduced-by=<missing>'
   author: Alice <alice@example.com>
-  date: '2024-01-03T10:00:00Z'
+  date: '2024-06-05T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0113.java
-    old: "package example;\n\npublic class Scenario0113 {\n    public int divide(int total, int denominator) {\n        return total / denominator;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0113 {\n    public int divide(int total, int denominator) {\n        if (denominator == 0) {\n                return 0;\n            }\n            return total / denominator;\n    }\n}\n"
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
     labels:
     - B001
     - fix
 bugs:
 - id: B001
-  title: Exception handling deletion introduces bug
+  title: Range boundary bug fixed by a commit with malformed message
   bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0113.java
+    file: src/main/java/example/Range.java
     entity:
       type: method
-      name: divide
-      signature: int divide(int total, int denominator)
-    statement: return total / denominator;
+      name: contains
+      signature: boolean contains(int value, int min, int max)
+    statement: return value > min && value < max;
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0113.java
+    file: src/main/java/example/Range.java
     entity:
       type: method
-      name: divide
-      signature: int divide(int total, int denominator)
-    statement: if (denominator == 0) {
+      name: contains
+      signature: boolean contains(int value, int min, int max)
+    statement: return value >= min && value <= max;
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -86,10 +82,24 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return total / denominator;
+      - return value > min && value < max;
+scenario_design:
+  purpose: Evaluate robustness when the BFC message has an unusual malformed-looking structure rather than a conventional
+    issue or fix message.
+  key_property: The BFC message intentionally contains repeated punctuation, unknown reference brackets, and a missing introduced-by
+    field, but it avoids control characters so that it remains safe for YAML and Git tooling.
+  moved_from: SZZG-0071
+  reason_for_normal_scenario: The scenario requires only a linear two-commit history and does not require the graph schema.
+  evaluation_points:
+  - Whether tools tolerate malformed-looking commit messages.
+  - Whether message parsing failures do not break BIC identification.
+  - Whether the expected BIC remains c1 despite the unusual BFC message.
+notes:
+- Moved from SZZG-0071 to SZZ-0113 because the history does not need scenario.graph.yml.
+- The BFC message is deliberately malformed-looking but text-safe.
+- No control characters or invalid Git commit message bytes are used.
 checks:
 - type: git_history_contains
   commits:
-  - c0
   - c1
   - c2

@@ -1,19 +1,20 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0124
-  title: Incorrect cache invalidation condition
-  slug: cache-invalidation-bic
-  description: 'This scenario evaluates a bug-introducing commit shape: Incorrect cache invalidation condition.'
-  category: bic-shape
+  title: Variable rename after BIC
+  slug: variable-rename-after-bic
+  description: This scenario introduces a bug by changing `return value >= min && value <= max;` to `return value > min && value < max;` and later restores the correct implementation.
+  category: "Refactoring, move, and rename after BIC"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - state-bug
+  - variable-rename-after-bic
   difficulty: medium
   status: active
+  category_code: "S5"
 repository:
-  name: SZZ-0124-cache-invalidation-bic
+  name: SZZ-0124-variable-rename-after-bic
   default_branch: main
   language: java
   build_system: none
@@ -26,13 +27,13 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0124.java
+    path: src/main/java/example/Scenario0045.java
     content: |
       package example;
 
-      public class Scenario0124 {
-          public boolean needsRefresh(boolean dirty, boolean expired) {
-              return dirty || expired;
+      public class Scenario0045 {
+          public boolean check(int value, int min, int max) {
+              return value >= min && value <= max;
           }
       }
 - id: c1
@@ -42,48 +43,72 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0124.java
+    path: src/main/java/example/Scenario0045.java
     old: |
       package example;
 
-      public class Scenario0124 {
-          public boolean needsRefresh(boolean dirty, boolean expired) {
-              return dirty || expired;
+      public class Scenario0045 {
+          public boolean check(int value, int min, int max) {
+              return value >= min && value <= max;
           }
       }
     new: |
       package example;
 
-      public class Scenario0124 {
-          public boolean needsRefresh(boolean dirty, boolean expired) {
-              return dirty && expired;
+      public class Scenario0045 {
+          public boolean check(int value, int min, int max) {
+              return value > min && value < max;
           }
       }
     labels:
     - B001
     - fault
 - id: c2
-  message: Fix bug
-  author: Alice <alice@example.com>
+  message: Rename method parameter after bug introduction
+  author: Carol <carol@example.com>
   date: '2024-01-03T10:00:00Z'
-  role: bug_fixing
+  role: refactoring
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0124.java
+    path: src/main/java/example/Scenario0045.java
     old: |
       package example;
 
-      public class Scenario0124 {
-          public boolean needsRefresh(boolean dirty, boolean expired) {
-              return dirty && expired;
+      public class Scenario0045 {
+          public boolean check(int value, int min, int max) {
+              return value > min && value < max;
           }
       }
     new: |
       package example;
 
-      public class Scenario0124 {
-          public boolean needsRefresh(boolean dirty, boolean expired) {
-              return dirty || expired;
+      public class Scenario0045 {
+          public boolean check(int candidate, int min, int max) {
+              return candidate > min && candidate < max;
+          }
+      }
+- id: c3
+  message: Fix bug
+  author: Alice <alice@example.com>
+  date: '2024-01-04T10:00:00Z'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Scenario0045.java
+    old: |
+      package example;
+
+      public class Scenario0045 {
+          public boolean check(int candidate, int min, int max) {
+              return candidate > min && candidate < max;
+          }
+      }
+    new: |
+      package example;
+
+      public class Scenario0045 {
+          public boolean check(int value, int min, int max) {
+              return value >= min && value <= max;
           }
       }
     labels:
@@ -91,39 +116,42 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Incorrect cache invalidation condition
-  bug_fixing_commit: c2
+  title: Variable rename after BIC
+  bug_fixing_commit: c3
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0124.java
+    file: src/main/java/example/Scenario0045.java
     entity:
       type: method
-      name: needsRefresh
-      signature: boolean needsRefresh(boolean dirty, boolean expired)
-    statement: return dirty && expired;
+      name: check
+      signature: boolean check(int value, int min, int max)
+    statement: return value > min && value < max;
     change_type: line_modification
   fix:
-    commit: c2
-    file: src/main/java/example/Scenario0124.java
+    commit: c3
+    file: src/main/java/example/Scenario0045.java
     entity:
       type: method
-      name: needsRefresh
-      signature: boolean needsRefresh(boolean dirty, boolean expired)
-    statement: return dirty || expired;
+      name: check
+      signature: boolean check(int value, int min, int max)
+    statement: return value >= min && value <= max;
     fix_type: line_modification
   expected_szz:
     commit_level:
       true_positives: *id001
       false_positives_allowed: []
+      known_distractors:
+      - c2
     line_level:
       available: true
       faulty_statements:
-      - return dirty && expired;
+      - return value > min && value < max;
 checks:
 - type: git_history_contains
   commits:
   - c0
   - c1
   - c2
+  - c3

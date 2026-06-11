@@ -1,185 +1,144 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0033
-  title: Backport fix
-  slug: backport-fix
-  description: A bug is introduced on main before a release branch is cut. Main fixes the bug, continues with unrelated development,
-    and the release branch receives release-specific changes. The main fix is then backported to release.
-  category: Branch, merge, cherry-pick, and backport scenarios
-  category_code: G
+  title: Partial credit when only some BICs are returned
+  slug: bic-partial-credit
+  description: Evaluates a single checkout defect whose complete cause is split across two independent BICs, allowing partial
+    credit when an SZZ result returns only one of them.
+  category: "Multiple BICs, multiple BFCs, and partial fixes"
+  category_code: "G3"
   factors:
-  - branch
-  - backport_of
-  - release_branch
-  - release_specific_changes
-  - bug_instances
+  - multiple_bic
+  - partial_credit
+  - expected_szz
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0033-backport-fix
+  name: SZZG-0033-bic-partial-credit
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial correct implementation on main
-
-    c1: introduce bug on main before release branch is cut
-
-    r0: create release branch from the buggy state and add release metadata
-
-    c2: fix bug on main
-
-    c3: continue main development after the fix
-
-    r1: add release-specific configuration while bug is still present on release
-
-    r2: backport main fix c2 onto release'
+  history_summary: |
+    c0: create checkout policy classes
+    c1: introduce loyalty-discount threshold bug
+    c2: introduce tax-exemption logic bug
+    c3: fix both checkout policy faults
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial correct implementation'
+  message: 'c0: create checkout policy classes'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
+    path: src/main/java/example/PricePolicy.java
+    content: |
+      package example;
+
+      public class PricePolicy {
+        public int loyaltyDiscountCents(int subtotalCents) {
+          return subtotalCents >= 10000 ? 1000 : 0;
+        }
+      }
+  - type: write_file
+    path: src/main/java/example/TaxPolicy.java
+    content: |
+      package example;
+
+      public class TaxPolicy {
+        public boolean isTaxExempt(String stateCode) {
+          return stateCode.equals("OR") || stateCode.equals("MT");
+        }
+      }
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce range boundary bug before release branch'
+  message: 'c1: require totals above the loyalty threshold'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
-- id: r0
-  branch: release
-  parents:
-  - c1
-  message: 'r0: cut release branch from buggy state'
-  role: release_branch_point
-  operations:
-  - type: write_file
-    path: release/version.txt
-    content: '1.0.0
-
-      '
+    path: src/main/java/example/PricePolicy.java
+    old: 'return subtotalCents >= 10000 ? 1000 : 0;'
+    new: 'return subtotalCents > 10000 ? 1000 : 0;'
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: fix range boundary bug on main'
-  role: bug_fixing
+  message: 'c2: tighten tax-exempt state matching'
+  role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/TaxPolicy.java
+    old: return stateCode.equals("OR") || stateCode.equals("MT");
+    new: return stateCode.equals("OR") && stateCode.equals("MT");
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'c3: continue main development after fix'
-  role: intermediate
-  operations:
-  - type: write_file
-    path: docs/main-after-fix.md
-    content: 'Main branch continues after the range bug fix.
-
-      '
-- id: r1
-  branch: release
-  parents:
-  - r0
-  message: 'r1: add release-specific configuration before backport'
-  role: intermediate
-  operations:
-  - type: write_file
-    path: release/config.properties
-    content: 'range.mode=compat
-
-      '
-- id: r2
-  branch: release
-  parents:
-  - r1
-  message: 'r2: backport range boundary fix from main'
+  message: 'c3: fix checkout totals at discount and tax boundaries'
   role: bug_fixing
-  backport_of: c2
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/PricePolicy.java
+    old: 'return subtotalCents > 10000 ? 1000 : 0;'
+    new: 'return subtotalCents >= 10000 ? 1000 : 0;'
+  - type: replace
+    path: src/main/java/example/TaxPolicy.java
+    old: return stateCode.equals("OR") && stateCode.equals("MT");
+    new: return stateCode.equals("OR") || stateCode.equals("MT");
 bugs:
 - id: B001
-  title: Range boundary bug fixed on main and backported to release
+  title: Checkout total bug caused by two independent policy regressions
   bug_introducing_commits:
   - commit: c1
-    role: direct
-  bug_fixing_commits:
+    role: contributing
   - commit: c2
-    role: main_fix
-  - commit: r2
-    role: backport_fix
-    backport_of: c2
+    role: contributing
+  bug_fixing_commits:
+  - commit: c3
+    role: complete_fix
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/PricePolicy.java
+    statement: 'return subtotalCents > 10000 ? 1000 : 0;'
+    change_type: line_modification
+  - id: F002
+    commit: c2
+    file: src/main/java/example/TaxPolicy.java
+    statement: return stateCode.equals("OR") && stateCode.equals("MT");
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c2
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
-    fix_type: main_line_fix
+    commit: c3
+    file: src/main/java/example/PricePolicy.java
+    statement: 'return subtotalCents >= 10000 ? 1000 : 0;'
+    fix_type: line_modification
   - id: X002
-    commit: r2
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
-    fix_type: backport_fix
-  bug_instances:
-  - branch: main
-    status: fixed
-    fix_commit: c2
-  - branch: release
-    status: fixed
-    fix_commit: r2
-    backport_of: c2
+    commit: c3
+    file: src/main/java/example/TaxPolicy.java
+    statement: return stateCode.equals("OR") || stateCode.equals("MT");
+    fix_type: line_modification
 expected_szz:
   commit_level:
-    evaluation_policy: exact_set
+    evaluation_policy: partial_credit
     required:
     - c1
-    notes: Both the main fix c2 and the release backport r2 should trace back to the original BIC c1.
-  branch_level:
-    main:
-      bfc: c2
-      required:
-      - c1
-    release:
-      bfc: r2
-      required:
-      - c1
+    - c2
+    minimum_required: 1
 scenario_design:
-  purpose: Evaluate whether SZZ can identify the original BIC when a main-line fix is backported to a release branch.
-  key_property: The release branch has release-specific changes before the backport, so the history is not just a linear correct-buggy-fixed
-    sequence.
-  difference_from_SZZG_0028_0029: SZZG-0024 and SZZG-0025 are revert/reintroduction scenarios. SZZG-0033 is a branch scenario
-    where the release fix is a backport of the main-line BFC.
+  purpose: Evaluate scoring behavior when a complete answer contains two BICs but an SZZ implementation returns only one
+    of them.
+  current_schema_limitation: Partial-credit evaluation is represented as graph-specific expected_szz metadata.
+  required_extensions_from_source: 'This scenario uses factors: multiple_bic, partial_credit, expected_szz; operations: write_file, replace.'
   evaluation_points:
-  - Whether SZZ traces the release backport r2 to c1.
-  - Whether backport metadata is handled without treating c2 as the BIC.
-  - Whether release-specific changes before the backport do not hide the original BIC.
+  - Whether SZZ can identify both checkout-policy BICs for one bug.
+  - Whether returning only c1 or only c2 receives partial credit rather than full exact-set credit.
+  - Whether the BFC that edits two files is evaluated against both required BICs.
 notes:
-- This revision adds release-specific changes to avoid collapsing the source history into a simple correct-buggy-fixed sequence.
-- r2 is an explicit backport of c2.
-- The expected BIC remains c1 for both main and release fixes.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

@@ -1,14 +1,14 @@
-# SZZ-0029: Wrong default string
+# SZZ-0029: BFC restores division guard condition
 
 ## Purpose
 
-This scenario introduces a bug by changing `return "unknown";` to `return "";` and later restores the correct implementation.
+This scenario evaluates SZZ behavior when the bug-fixing commit restores a boolean guard condition for a division denominator check.
 
 ## Commit structure
 
-- `c0`: initial correct implementation
-- `c1`: introduces the bug
-- `c2`: fixes the bug
+- `c0`: Initial correct implementation
+- `c1`: Introduce bug
+- `c2`: Fix bug
 
 ## Expected behavior
 
@@ -19,4 +19,4 @@ The expected BFC is `c2` and the expected BIC is `c1`.
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `wrong-constant`
+- `comparison-error`

@@ -1,49 +1,39 @@
-# SZZG-0047: Line moved and duplicated
-
-## Source
-
-- Category: Ambiguous blame and duplicate-code scenarios
+# SZZG-0047: Squash merge
 
 ## Purpose
 
-Evaluate a bug whose faulty line is introduced in `Range.java`, then moved and duplicated into `RangeUtils.java` before the fix.
+Feature branch commits introduce and extend a bug, but main receives them through a single-parent squash-merge commit.
 
-The required BIC remains `c1`. Commit `c2` is propagation history only: it moves and duplicates an already buggy line and should not replace the original BIC.
-
-## Expected history
+## Commit history
 
 ```text
-c1: create initial buggy range implementation (write_file src/main/java/example/Range.java)
-c2: move and duplicate the existing buggy range check (move_entity; copy_entity)
-c3: fix moved duplicated bug (replace src/main/java/example/RangeUtils.java)
+c0: create initial correct implementation on main
+c1: feature branch introduces bug
+c2: feature branch extends code using the buggy method
+c3: squash-merge feature branch into main as a single-parent commit
+c4: fix bug on main after squash merge
 ```
 
-## Why this needs `scenario.graph.yml`
+## Commit table
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
+| Commit | Branch | Parents | Role | Description |
+|---|---|---|---|---|
+| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
+| `c1` | `feature` | c0 | `source_bug_introducing` | c1: introduce range boundary bug on feature |
+| `c2` | `feature` | c1 | `intermediate` | c2: extend feature branch code using range check |
+| `c3` | `main` | c0 | `bug_introducing` | c3: squash merge feature branch into main |
+| `c4` | `main` | c3 | `bug_fixing` | c4: fix squashed range boundary bug |
 
-## Required graph-schema features
-
-- Factors: move_entity, copy_entity, bug_instances
-- Operation types: write_file, move_entity, copy_entity, replace
-- Expected SZZ policy is defined in expected_szz.
-
-## Evaluation points
-
-- Whether SZZ identifies `c1` as the original BIC despite the move and duplicate in `c2`.
-- Whether SZZ does not treat the move/copy commit `c2` as the direct BIC.
-- Whether the expected_szz evaluation policy is applied correctly.
-
----
-
-## Draft status
-
-This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
-
-## Files
+## Expected SZZ result
 
 ```text
-SZZG-0047/
-|-- scenario.graph.yml
-`-- README.md
+Expected BIC: c3
 ```
+
+## Scenario purpose
+
+Evaluate how SZZ handles a squash merge where the main-line BIC is the squash commit, even though the origin of the faulty change is on the feature branch.
+
+## Notes
+
+- The direct BIC for the generated main history is c3; c1 is recorded as origin metadata.

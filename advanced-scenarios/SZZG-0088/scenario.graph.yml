@@ -1,21 +1,21 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0088
-  title: Revert of fix reintroduces bug
-  slug: revert-of-fix-reintroduces-bug
-  description: A bug is fixed, the fix is reverted and the bug is reintroduced, then the bug is fixed again.
-  category: Revert and reintroduction scenarios
-  category_code: G
+  title: Partial revert of fix reintroduces one fault
+  slug: partial-revert-of-fix-reintroduces-one-fault
+  description: A prior fix corrected two faults, but a later partial revert reintroduces only one of them.
+  category: "Revert-specific reintroduction"
+  category_code: "G6"
   factors:
   - revert
-  - revert_of_fix
+  - partial_revert
   - reintroduced_bug
+  - single_fault_reintroduced
   - re_bic
-  - origin_bic
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0088-revert-of-fix-reintroduces-bug
+  name: SZZG-0088-partial-revert-of-fix-reintroduces-one-fault
   default_branch: main
   language: java
   build_system: none
@@ -24,13 +24,13 @@ graph:
   model: commit_dag
   history_summary: 'c0: create initial correct implementation
 
-    c1: introduce boundary bug
+    c1: introduce two boundary bugs
 
-    c2: fix boundary bug
+    c2: fix both boundary bugs
 
-    c3: revert c2 and reintroduce boundary bug
+    c3: partially revert upper-bound fix
 
-    c4: fix boundary bug again'
+    c4: fix reintroduced upper-bound bug'
 commits:
 - id: c0
   branch: main
@@ -46,7 +46,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: introduce boundary bug'
+  message: 'c1: introduce two boundary bugs'
   role: origin_bug_introducing
   operations:
   - type: replace
@@ -57,8 +57,8 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: fix boundary bug'
-  role: bug_fixing
+  message: 'c2: fix both boundary bugs'
+  role: prior_fix
   operations:
   - type: replace
     path: src/main/java/example/Range.java
@@ -68,28 +68,28 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: revert c2 and reintroduce boundary bug'
+  message: 'c3: partially revert upper-bound fix'
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
-    old: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
-    new: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
-  reverts: c2
+    old: boolean belowMax = value <= max;
+    new: boolean belowMax = value < max;
+  reverts: part_of_c2
 - id: c4
   branch: main
   parents:
   - c3
-  message: 'c4: fix boundary bug again'
+  message: 'c4: fix reintroduced upper-bound bug'
   role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
-    old: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
-    new: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
+    old: boolean belowMax = value < max;
+    new: boolean belowMax = value <= max;
 bugs:
 - id: B001
-  title: Boundary bug reintroduced by reverting the fix
+  title: Upper-bound bug reintroduced by partial revert
   bug_introducing_commits:
   - commit: c3
     role: direct
@@ -103,22 +103,12 @@ bugs:
     commit: c3
     file: src/main/java/example/Range.java
     statement: boolean belowMax = value < max;
-    change_type: reintroduced_upper_boundary
-  - id: F002
-    commit: c3
-    file: src/main/java/example/Range.java
-    statement: boolean aboveMin = value > min;
-    change_type: reintroduced_lower_boundary
+    change_type: partial_revert_upper_boundary
   fixes:
   - id: X001
     commit: c4
     file: src/main/java/example/Range.java
     statement: boolean belowMax = value <= max;
-    fix_type: line_modification
-  - id: X002
-    commit: c4
-    file: src/main/java/example/Range.java
-    statement: boolean aboveMin = value >= min;
     fix_type: line_modification
 expected_szz:
   commit_level:
@@ -128,16 +118,15 @@ expected_szz:
     related_but_not_correct:
     - c1
     - c2
-    notes: c3 is the direct re-BIC for c4; c1 is the older origin BIC and c2 is the reverted prior fix.
+    notes: Only the partial revert c3 is the direct BIC for the later upper-bound fix.
 scenario_design:
-  purpose: Evaluate whether SZZ returns the revert commit that reintroduced the bug rather than the original historical BIC.
-  key_property: The bug was fixed once, but reverting that fix creates the direct BIC for the later BFC.
+  purpose: Evaluate a partial revert where only part of a previous fix is undone.
+  key_property: The direct BIC reintroduces only one of the previously fixed faults.
   difference_from_existing_revert_scenarios: This scenario isolates a double-revert or revert-derived complication beyond
     the existing partial revert and reintroduction scenarios.
   evaluation_points:
   - Whether SZZ reports c3.
-  - Whether c1 is treated as origin rather than the direct answer.
-  - Whether the prior fix c2 is not reported as BIC.
+  - Whether SZZ does not require c1 as the direct BIC.
 notes:
 - This scenario models revert-related development history for SZZ evaluation.
 - The direct BIC is the commit that reintroduces the bug in the history observed from the BFC.

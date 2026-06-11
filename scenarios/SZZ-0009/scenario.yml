@@ -1,118 +1,130 @@
-schema_version: "1.0"
-
+schema_version: '1.0'
 meta:
-  id: "SZZ-0009"
-  title: "Whitespace-only rewrite after bug introduction"
-  slug: "whitespace-only-rewrite-after-bic"
-  description: >
-    A bug is introduced in a boundary condition. A later whitespace-only commit
-    rewrites the same faulty line without changing its semantics. The fixing
-    commit then repairs the condition.
-  category: "formatting"
+  id: SZZ-0009
+  title: Minimum comparison error
+  slug: minimum-comparison-error
+  description: This scenario introduces a bug by changing `return value >= minimum;` to `return value > minimum;` and later restores the correct implementation.
+  category: "Basic semantic line changes"
   factors:
-    - "single-bic"
-    - "single-bfc"
-    - "line-modification"
-    - "whitespace-only-after-bic"
-    - "basic-blame-distractor"
-  difficulty: "medium"
-  status: "active"
-
+  - single-bic
+  - single-bfc
+  - line-modification
+  - comparison-error
+  difficulty: easy
+  status: active
+  category_code: "S1"
 repository:
-  name: "SZZ-0009-whitespace-only-rewrite-after-bic"
-  default_branch: "main"
-  language: "java"
-  build_system: "none"
-  source_root: "src/main/java"
-
+  name: SZZ-0009-minimum-comparison-error
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
 commits:
-  - id: "c0"
-    message: "Initial range filter"
-    author: "Alice <alice@example.com>"
-    date: "2024-01-01T10:00:00Z"
-    role: "initial"
-    operations:
-      - type: "write_file"
-        path: "src/main/java/example/RangeFilter.java"
-        content: |
-          package example;
+- id: c0
+  message: Initial correct implementation
+  author: Alice <alice@example.com>
+  date: '2024-01-01T10:00:00Z'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Scenario0019.java
+    content: |
+      package example;
 
-          public class RangeFilter {
-              public boolean matches(int value, int min, int max) {
-                  return value >= min && value <= max;
-              }
+      public class Scenario0019 {
+          public boolean isAtLeast(int value, int minimum) {
+              return value >= minimum;
           }
+      }
+- id: c1
+  message: Introduce bug
+  author: Bob <bob@example.com>
+  date: '2024-01-02T10:00:00Z'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Scenario0019.java
+    old: |
+      package example;
 
-  - id: "c1"
-    message: "Introduce strict range bug"
-    author: "Bob <bob@example.com>"
-    date: "2024-01-02T10:00:00Z"
-    role: "bug_introducing"
-    operations:
-      - type: "replace"
-        path: "src/main/java/example/RangeFilter.java"
-        old: "return value >= min && value <= max;"
-        new: "return value > min && value < max;"
-        labels: ["B001", "fault"]
+      public class Scenario0019 {
+          public boolean isAtLeast(int value, int minimum) {
+              return value >= minimum;
+          }
+      }
+    new: |
+      package example;
 
-  - id: "c2"
-    message: "Adjust whitespace in range check"
-    author: "Carol <carol@example.com>"
-    date: "2024-01-03T10:00:00Z"
-    role: "formatting"
-    operations:
-      - type: "replace"
-        path: "src/main/java/example/RangeFilter.java"
-        old: "return value > min && value < max;"
-        new: "return  value > min  &&  value < max;"
-        labels: ["whitespace_only", "non_bug_introducing_change"]
+      public class Scenario0019 {
+          public boolean isAtLeast(int value, int minimum) {
+              return value > minimum;
+          }
+      }
+    labels:
+    - B001
+    - fault
+- id: c2
+  message: Fix bug
+  author: Alice <alice@example.com>
+  date: '2024-01-03T10:00:00Z'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Scenario0019.java
+    old: |
+      package example;
 
-  - id: "c3"
-    message: "Fix strict range bug"
-    author: "Alice <alice@example.com>"
-    date: "2024-01-04T10:00:00Z"
-    role: "bug_fixing"
-    operations:
-      - type: "replace"
-        path: "src/main/java/example/RangeFilter.java"
-        old: "return  value > min  &&  value < max;"
-        new: "return  value >= min  &&  value <= max;"
-        labels: ["B001", "fix"]
+      public class Scenario0019 {
+          public boolean isAtLeast(int value, int minimum) {
+              return value > minimum;
+          }
+      }
+    new: |
+      package example;
 
+      public class Scenario0019 {
+          public boolean isAtLeast(int value, int minimum) {
+              return value >= minimum;
+          }
+      }
+    labels:
+    - B001
+    - fix
 bugs:
-  - id: "B001"
-    title: "Boundary values are excluded after whitespace rewrite"
-    bug_fixing_commit: "c3"
-    bug_introducing_commits: ["c1"]
-    fault:
-      commit: "c1"
-      file: "src/main/java/example/RangeFilter.java"
-      entity:
-        type: "method"
-        name: "matches"
-        signature: "boolean matches(int value, int min, int max)"
-      statement: "return value > min && value < max;"
-      change_type: "line_modification"
-    fix:
-      commit: "c3"
-      file: "src/main/java/example/RangeFilter.java"
-      entity:
-        type: "method"
-        name: "matches"
-        signature: "boolean matches(int value, int min, int max)"
-      statement: "return  value >= min  &&  value <= max;"
-      fix_type: "line_modification"
-    expected_szz:
-      commit_level:
-        true_positives: ["c1"]
-        known_distractors: ["c2"]
-        false_positives_allowed: []
-      line_level:
-        available: true
-        faulty_statements:
-          - "return value > min && value < max;"
-        note: "Whitespace-only rewrite may cause basic blame to point to c2."
-
+- id: B001
+  title: Minimum comparison error
+  bug_fixing_commit: c2
+  bug_introducing_commits: &id001
+  - c1
+  fault:
+    commit: c1
+    file: src/main/java/example/Scenario0019.java
+    entity:
+      type: method
+      name: isAtLeast
+      signature: boolean isAtLeast(int value, int minimum)
+    statement: return value > minimum;
+    change_type: line_modification
+  fix:
+    commit: c2
+    file: src/main/java/example/Scenario0019.java
+    entity:
+      type: method
+      name: isAtLeast
+      signature: boolean isAtLeast(int value, int minimum)
+    statement: return value >= minimum;
+    fix_type: line_modification
+  expected_szz:
+    commit_level:
+      true_positives: *id001
+      false_positives_allowed: []
+    line_level:
+      available: true
+      faulty_statements:
+      - return value > minimum;
 checks:
-  - type: "git_history_contains"
-    commits: ["c0", "c1", "c2", "c3"]
+- type: git_history_contains
+  commits:
+  - c0
+  - c1
+  - c2

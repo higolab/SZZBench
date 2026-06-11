@@ -1,14 +1,14 @@
-# SZZ-0051: Multiple-hunk bug-fixing commit
+# SZZ-0051: Index upper bound error
 
 ## Purpose
 
-This scenario evaluates SZZ behavior when the bug-fixing commit has the shape: Multiple-hunk bug-fixing commit.
+This scenario introduces a bug by changing `return index < size;` to `return index <= size;` and later restores the correct implementation.
 
 ## Commit structure
 
-- `c0`: Initial correct implementation
-- `c1`: Introduce bug
-- `c2`: Fix bug
+- `c0`: initial correct implementation
+- `c1`: introduces the bug
+- `c2`: fixes the bug
 
 ## Expected behavior
 
@@ -19,4 +19,4 @@ The expected BFC is `c2` and the expected BIC is `c1`.
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `multiple-hunk-bfc`
+- `comparison-error`

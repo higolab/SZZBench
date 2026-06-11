@@ -1,31 +1,36 @@
-# SZZG-0011: One BIC fixed by multiple BFCs
+# SZZG-0011: Bug introduced inside a refactoring commit
 
 ## Source
 
-- Category: Multiple BIC and BFC scenarios
+- Category: Refactoring scenarios
 
 ## Purpose
 
-Evaluate One BIC fixed by multiple BFCs and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate bug introduced inside a refactoring commit and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: create initial state (write_file src/main/java/example/Range.java)
-c1: introduce bug (replace src/main/java/example/Range.java; replace src/main/java/example/Range.java)
-c2: fix bug (replace src/main/java/example/Range.java)
-c3: fix bug (replace src/main/java/example/Range.java)
+c0: c0: create normalizer
+c1: c1: rename method and accidentally remove lower-case conversion
+c2: c2: fix normalization after refactoring
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
+This history requires graph-aware scenario semantics that are difficult to express with the normal `scenario.yml` schema.
 
 ## Required graph-schema features
 
-- Factors: bug_fixing_commits
-- Operation types: write_file, replace
-- Expected SZZ policy is defined in expected_szz.
+- Factors: bug_introducing_refactoring, mixed_change, rename_method
+- Operation types: replace, write_file
+- Expected SZZ policy is defined in `expected_szz`.
+
+## Expected BICs
+
+```text
+c1
+```
 
 ## Evaluation points
 

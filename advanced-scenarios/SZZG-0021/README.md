@@ -1,4 +1,4 @@
-# SZZG-0021: Bug propagates into generated code
+# SZZG-0021: Clone removal as fix
 
 ## Source
 
@@ -6,14 +6,14 @@
 
 ## Purpose
 
-Evaluate Bug propagates into generated code and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate Clone removal as fix and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: introduce origin bug (write_file templates/Range.tpl)
-c1: introduce bug (write_file src/generated/java/generated/GeneratedRange.java)
-c2: fix bug (replace src/generated/java/generated/GeneratedRange.java)
+c0: create initial state (write_file src/main/java/example/A.java)
+c1: introduce bug (write_file src/main/java/example/B.java)
+c2: fix bug (delete_file src/main/java/example/B.java; write_file docs/clone-removal.md)
 ```
 
 ## Why this needs `scenario.graph.yml`
@@ -22,7 +22,8 @@ This history requires graph-aware scenario semantics that are difficult to expre
 
 ## Required graph-schema features
 
-- Operation types: write_file, replace
+- Factors: clone_relationships
+- Operation types: write_file, delete_file
 - Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points

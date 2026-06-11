@@ -1,22 +1,24 @@
-# SZZ-0110: Formatting and bug introduced together
+# SZZ-0110: Large noisy intermediate history
 
 ## Purpose
 
-This scenario evaluates a bug-introducing commit shape: Formatting and bug introduced together.
+This scenario is intended to stress implementation robustness under noisy or repetitive code conditions.
 
 ## Commit structure
 
-- `c0`: initial correct implementation
-- `c1`: introduces the bug
-- `c2`: fixes the bug
+- `c0`: Initial implementation
+- `c1`: Introduce bug
+- `c2`: Add noisy helper methods
+- `c3`: Fix bug
 
 ## Expected behavior
 
-The expected BFC is `c2` and the expected BIC is `c1`.
+The expected BFC is `c3` and the expected BIC is `c1`.
 
 ## Factors
 
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `formatting-and-bug-bic`
+- `robustness`
+- `large-noisy-intermediate`

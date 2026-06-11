@@ -1,77 +1,69 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0104
-  title: Ambiguous blame with duplicate faulty lines
-  slug: ambiguous-duplicate-faulty-line
-  description: Evaluates ambiguous blame with duplicate faulty lines and checks whether SZZ identifies the expected bug-introducing
-    commit set.
-  category: Ambiguous blame scenarios
-  category_code: A
+  title: Configuration BIC is fixed by code-side normalization
+  slug: config-bic-fixed-in-code
+  description: Evaluates configuration bic is fixed by code-side normalization and checks whether SZZ identifies the expected
+    bug-introducing commit set.
+  category: "Issue, message, context, and non-local evidence"
+  category_code: "G7"
   factors:
-  - ambiguous_blame
-  - duplicate_code
-  - same_statement_multiple_locations
+  - configuration_change
+  - cross_artifact_fix
+  - context_dependent
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0104-ambiguous-duplicate-faulty-line
+  name: SZZG-0104-config-bic-fixed-in-code
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: c0: create duplicate limit checks
+  history_summary: 'c0: c0: create endpoint resolver and config
 
-    c1: c1: introduce user limit bug
+    c1: c1: introduce trailing slash in configuration
 
-    c2: c2: introduce syntactically identical admin limit bug
-
-    c3: c3: fix only user limit boundary'
+    c2: c2: fix endpoint construction in code'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create duplicate limit checks'
+  message: 'c0: create endpoint resolver and config'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Limits.java
-    content: "package example;\npublic class Limits {\n  public boolean userLimit(int value) {\n    return value <= 100;\n\
-      \  }\n  public boolean adminLimit(int value) {\n    return value <= 1000;\n  }\n\n}\n"
+    path: src/main/java/example/Endpoint.java
+    content: "package example;\npublic class Endpoint {\n  public String url(String host) {\n    return host + \"/api\";\n\
+      \  }\n\n}\n"
+  - type: write_file
+    path: src/main/resources/app.properties
+    content: 'api.host=https://example.com
+
+      '
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce user limit bug'
+  message: 'c1: introduce trailing slash in configuration'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Limits.java
-    old: return value <= 100;
-    new: return value < 100;
+    path: src/main/resources/app.properties
+    old: api.host=https://example.com
+    new: api.host=https://example.com/
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: introduce syntactically identical admin limit bug'
-  role: other
-  operations:
-  - type: replace
-    path: src/main/java/example/Limits.java
-    old: return value <= 1000;
-    new: return value < 1000;
-- id: c3
-  branch: main
-  parents:
-  - c2
-  message: 'c3: fix only user limit boundary'
+  message: 'c2: fix endpoint construction in code'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Limits.java
-    old: return value < 100;
-    new: return value <= 100;
+    path: src/main/java/example/Endpoint.java
+    old: return host + "/api";
+    new: return host.replaceAll("/+$", "") + "/api";
 bugs:
 - id: B001
   title: Synthetic graph scenario bug
@@ -79,19 +71,19 @@ bugs:
   - commit: c1
     role: direct
   bug_fixing_commits:
-  - commit: c3
+  - commit: c2
     role: complete_fix
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/Limits.java
-    statement: return value < 100;
+    file: src/main/resources/app.properties
+    statement: api.host=https://example.com/
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c3
-    file: src/main/java/example/Limits.java
-    statement: return value <= 100;
+    commit: c2
+    file: src/main/java/example/Endpoint.java
+    statement: return host.replaceAll("/+$", "") + "/api";
     fix_type: line_modification
 expected_szz:
   commit_level:
@@ -99,11 +91,11 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: Evaluate ambiguous blame with duplicate faulty lines and whether SZZ identifies the expected bug-introducing commit
-    set.
+  purpose: Evaluate configuration bic is fixed by code-side normalization and whether SZZ identifies the expected bug-introducing
+    commit set.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: ambiguous_blame, duplicate_code, same_statement_multiple_locations;
+  required_extensions_from_source: 'This scenario uses factors: configuration_change, cross_artifact_fix, context_dependent;
     operations: replace, write_file.'
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.

@@ -1,93 +1,39 @@
-# SZZG-0043: Work item inference without issue ID
+# SZZG-0043: BIC on feature branch, BFC on main
 
 ## Purpose
 
-This scenario represents a work-item inference case where commit messages do not contain explicit issue IDs.
-
-The commits `c1`, `c2`, and `c3` are part of the same inferred work item, but only `c2` is the BIC. The neighboring commits are related context and should not be reported as the bug-introducing commit.
+A feature branch introduces a bug, extends feature code that depends on the buggy method, is merged into main, and is then fixed by a normal main-branch commit.
 
 ## Commit history
 
 ```text
-c0: create initial range filter
-c1: start range filter cleanup without issue ID
-c2: tighten boundary behavior during the same inferred work item and introduce bug
-c3: wire range filter into request path without issue ID
-c4: fix boundary regression from range filter work
+c0: create initial correct implementation on main
+c1: introduce bug on feature branch
+c2: extend feature branch code that uses the buggy method
+c3: merge feature branch into main
+c4: fix bug on main after merge
 ```
 
 ## Commit table
 
-| Commit | Branch | Parents | Role | Work item | Message |
-|---|---|---|---|---|---|
-| `c0` | `main` | none | initial | none | `c0: create initial range filter` |
-| `c1` | `main` | `c0` | work_item_context | `INFERRED-WI-001` | `Start range filter cleanup` |
-| `c2` | `main` | `c1` | bug_introducing | `INFERRED-WI-001` | `Tighten boundary behavior in range filter` |
-| `c3` | `main` | `c2` | work_item_context | `INFERRED-WI-001` | `Wire range filter into request path` |
-| `c4` | `main` | `c3` | bug_fixing | none | `Fix boundary regression from range filter work` |
+| Commit | Branch | Parents | Role | Description |
+|---|---|---|---|---|
+| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
+| `c1` | `feature` | c0 | `bug_introducing` | c1: introduce range boundary bug on feature |
+| `c2` | `feature` | c1 | `intermediate` | c2: extend feature branch code using range check |
+| `c3` | `main` | c0, c2 | `merge` | c3: merge feature branch into main |
+| `c4` | `main` | c3 | `bug_fixing` | c4: fix range boundary bug on main |
 
-## Inference signals
-
-The intended work item is not given by an issue ID in the commit messages. It should be inferred from:
+## Expected SZZ result
 
 ```text
-- related range-filter terminology in commit messages
-- consecutive commits in a short series
-- changes to the same file or related behavior
-- the fix message referring to a boundary regression from range filter work
+Expected BIC: c1
 ```
 
-## Code states
+## Scenario purpose
 
-Correct condition before the BIC:
+Evaluate whether SZZ can identify a BIC located on a feature branch when the BFC is a normal commit on main after the feature branch has been merged.
 
-```java
-return normalized >= min && normalized <= max;
-```
+## Notes
 
-Bug introduced in `c2`:
-
-```java
-return normalized > min && normalized < max;
-```
-
-Related but non-BIC context added in `c3`:
-
-```java
-public boolean acceptsRequestValue(int value) {
-  return contains(value, 0, 100);
-}
-```
-
-Fix in `c4`:
-
-```java
-return normalized >= min && normalized <= max;
-```
-
-## Oracle
-
-Expected BIC:
-
-```text
-c2
-```
-
-Related but not correct BICs:
-
-```text
-c1
-c3
-```
-
-Bug-fixing commit:
-
-```text
-c4
-```
-
-## Difference from SZZG-0042
-
-`SZZG-0042` assumes an explicit work item with multiple candidate BICs.
-
-`SZZG-0043` represents the case where the work item has to be inferred because no explicit issue ID appears in the commit messages.
+- This scenario is intentionally distinct from SZZG-0046 and SZZG-0042 because the BFC is not a merge commit.

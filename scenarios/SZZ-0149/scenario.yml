@@ -1,89 +1,111 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0149
-  title: BFC message has misleading reference
-  slug: bfc-message-misleading-reference
-  description: This scenario is intended for evaluating SZZ variants that use commit messages or broader patch context.
-  category: context-aware
+  title: Duplicate size checks
+  slug: duplicate-size-checks
+  description: This scenario contains duplicate or similar statements so that line-level oracle interpretation is intentionally harder.
+  category: "Multiple BICs, duplicate faults, and composite faults"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - context-aware
+  - ambiguous-blame
+  - duplicate-statement
   difficulty: medium
   status: active
+  category_code: "S6"
 repository:
-  name: SZZ-0149-bfc-message-misleading-reference
+  name: SZZ-0149-duplicate-size-checks
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 commits:
 - id: c0
-  message: Initial implementation
+  message: Initial implementation with duplicate-looking statement
   author: Alice <alice@example.com>
-  date: '2024-05-01T10:00:00Z'
+  date: '2024-04-01T10:00:00Z'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0149.java
+    path: src/main/java/example/Scenario0143.java
     content: |
       package example;
 
-      public class Scenario0149 {
-          public boolean check(int value, int min, int max) {
-              return value <= max;
+      public class Scenario0143 {
+          public boolean hasItems(int size) {
+              return size > 0;
+          }
+
+          public boolean otherMethod(int size) {
+              return size >= 0;
           }
       }
 - id: c1
-  message: Introduce context-sensitive bug
+  message: Introduce ambiguous faulty statement
   author: Bob <bob@example.com>
-  date: '2024-05-02T10:00:00Z'
+  date: '2024-04-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0149.java
+    path: src/main/java/example/Scenario0143.java
     old: |
       package example;
 
-      public class Scenario0149 {
-          public boolean check(int value, int min, int max) {
-              return value <= max;
+      public class Scenario0143 {
+          public boolean hasItems(int size) {
+              return size > 0;
+          }
+
+          public boolean otherMethod(int size) {
+              return size >= 0;
           }
       }
     new: |
       package example;
 
-      public class Scenario0149 {
-          public boolean check(int value, int min, int max) {
-              return value < max;
+      public class Scenario0143 {
+          public boolean hasItems(int size) {
+              return size >= 0;
+          }
+
+          public boolean otherMethod(int size) {
+              return size >= 0;
           }
       }
     labels:
     - B001
     - fault
 - id: c2
-  message: Fix bug; suspected c0
+  message: Fix ambiguous faulty statement
   author: Alice <alice@example.com>
-  date: '2024-05-03T10:00:00Z'
+  date: '2024-04-03T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0149.java
+    path: src/main/java/example/Scenario0143.java
     old: |
       package example;
 
-      public class Scenario0149 {
-          public boolean check(int value, int min, int max) {
-              return value < max;
+      public class Scenario0143 {
+          public boolean hasItems(int size) {
+              return size >= 0;
+          }
+
+          public boolean otherMethod(int size) {
+              return size >= 0;
           }
       }
     new: |
       package example;
 
-      public class Scenario0149 {
-          public boolean check(int value, int min, int max) {
-              return value <= max;
+      public class Scenario0143 {
+          public boolean hasItems(int size) {
+              return size > 0;
+          }
+
+          public boolean otherMethod(int size) {
+              return size >= 0;
           }
       }
     labels:
@@ -91,27 +113,27 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: BFC message has misleading reference
+  title: Duplicate size checks
   bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0149.java
+    file: src/main/java/example/Scenario0143.java
     entity:
       type: method
-      name: check
-      signature: boolean check(int value, int min, int max)
-    statement: return value < max;
+      name: hasItems
+      signature: boolean hasItems(int size)
+    statement: return size >= 0;
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0149.java
+    file: src/main/java/example/Scenario0143.java
     entity:
       type: method
-      name: check
-      signature: boolean check(int value, int min, int max)
-    statement: return value <= max;
+      name: hasItems
+      signature: boolean hasItems(int size)
+    statement: return size > 0;
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -120,7 +142,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return value < max;
+      - return size >= 0;
 checks:
 - type: git_history_contains
   commits:

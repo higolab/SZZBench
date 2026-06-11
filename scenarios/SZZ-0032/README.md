@@ -1,8 +1,8 @@
-# SZZ-0032: Null predicate reversed
+# SZZ-0032: Feature addition introduces boundary bug
 
 ## Purpose
 
-This scenario introduces a bug by changing `return value != null;` to `return value == null;` and later restores the correct implementation.
+This scenario evaluates a bug-introducing commit shape: Feature addition introduces boundary bug.
 
 ## Commit structure
 
@@ -19,4 +19,4 @@ The expected BFC is `c2` and the expected BIC is `c1`.
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `boolean-negation`
+- `feature-addition-bic`

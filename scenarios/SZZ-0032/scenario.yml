@@ -1,19 +1,20 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0032
-  title: Null predicate reversed
-  slug: null-predicate-reversed
-  description: This scenario introduces a bug by changing `return value != null;` to `return value == null;` and later restores the correct implementation.
-  category: basic
+  title: Feature addition introduces boundary bug
+  slug: feature-addition-bic
+  description: 'This scenario evaluates a bug-introducing commit shape: Feature addition introduces boundary bug.'
+  category: "Basic semantic line changes"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - boolean-negation
-  difficulty: easy
+  - feature-addition-bic
+  difficulty: medium
   status: active
+  category_code: "S1"
 repository:
-  name: SZZ-0032-null-predicate-reversed
+  name: SZZ-0032-feature-addition-bic
   default_branch: main
   language: java
   build_system: none
@@ -26,13 +27,13 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0032.java
+    path: src/main/java/example/Scenario0108.java
     content: |
       package example;
 
-      public class Scenario0032 {
-          public boolean hasValue(String value) {
-              return value != null;
+      public class Scenario0108 {
+          public boolean valid(int value) {
+              return value >= 0;
           }
       }
 - id: c1
@@ -42,21 +43,21 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0032.java
+    path: src/main/java/example/Scenario0108.java
     old: |
       package example;
 
-      public class Scenario0032 {
-          public boolean hasValue(String value) {
-              return value != null;
+      public class Scenario0108 {
+          public boolean valid(int value) {
+              return value >= 0;
           }
       }
     new: |
       package example;
 
-      public class Scenario0032 {
-          public boolean hasValue(String value) {
-              return value == null;
+      public class Scenario0108 {
+          public boolean valid(int value) {
+              return value > 0;
           }
       }
     labels:
@@ -69,21 +70,21 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0032.java
+    path: src/main/java/example/Scenario0108.java
     old: |
       package example;
 
-      public class Scenario0032 {
-          public boolean hasValue(String value) {
-              return value == null;
+      public class Scenario0108 {
+          public boolean valid(int value) {
+              return value > 0;
           }
       }
     new: |
       package example;
 
-      public class Scenario0032 {
-          public boolean hasValue(String value) {
-              return value != null;
+      public class Scenario0108 {
+          public boolean valid(int value) {
+              return value >= 0;
           }
       }
     labels:
@@ -91,27 +92,27 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Null predicate reversed
+  title: Feature addition introduces boundary bug
   bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0032.java
+    file: src/main/java/example/Scenario0108.java
     entity:
       type: method
-      name: hasValue
-      signature: boolean hasValue(String value)
-    statement: return value == null;
+      name: valid
+      signature: boolean valid(int value)
+    statement: return value > 0;
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0032.java
+    file: src/main/java/example/Scenario0108.java
     entity:
       type: method
-      name: hasValue
-      signature: boolean hasValue(String value)
-    statement: return value != null;
+      name: valid
+      signature: boolean valid(int value)
+    statement: return value >= 0;
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -120,7 +121,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return value == null;
+      - return value > 0;
 checks:
 - type: git_history_contains
   commits:

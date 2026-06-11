@@ -2,24 +2,23 @@ schema_version: "1.0"
 
 meta:
   id: "SZZ-0002"
-  title: "Simple omission bug"
-  slug: "simple-omission-bug"
+  title: "Boolean return value modification"
+  slug: "boolean-return-value-modification"
   description: >
-    A method is introduced without a necessary null check. The bug is later
-    fixed by adding the missing null check. This scenario represents an
-    omission bug, where there is no faulty deleted line corresponding to the
-    missing statement.
-  category: "basic"
+    A bug is introduced by changing a predicate method to always return true.
+    The bug is later fixed by restoring the original predicate expression.
+  category: "Basic semantic line changes"
   factors:
     - "single-bic"
     - "single-bfc"
-    - "omission-bug"
-    - "line-addition-fix"
-  difficulty: "medium"
+    - "line-modification"
+    - "boolean-return-change"
+  difficulty: "easy"
   status: "active"
+  category_code: "S1"
 
 repository:
-  name: "SZZ-0002-simple-omission-bug"
+  name: "SZZ-0002-boolean-return-value-modification"
   default_branch: "main"
   language: "java"
   build_system: "none"
@@ -27,98 +26,77 @@ repository:
 
 commits:
   - id: "c0"
-    message: "Initial utility class"
+    message: "Initial account predicate"
     author: "Alice <alice@example.com>"
     date: "2024-01-01T10:00:00Z"
     role: "initial"
     operations:
       - type: "write_file"
-        path: "src/main/java/example/Normalizer.java"
-        content: |2
+        path: "src/main/java/example/AccountPolicy.java"
+        content: |
           package example;
 
-          public class Normalizer {
+          public class AccountPolicy {
+              public boolean canWithdraw(boolean active, int balance) {
+                  return active && balance > 0;
+              }
           }
 
   - id: "c1"
-    message: "Add normalize method without null handling"
+    message: "Allow withdrawals unconditionally"
     author: "Bob <bob@example.com>"
     date: "2024-01-02T10:00:00Z"
     role: "bug_introducing"
     operations:
       - type: "replace"
-        path: "src/main/java/example/Normalizer.java"
-        old: |2
-          public class Normalizer {
-          }
-        new: |2
-          public class Normalizer {
-              public String normalize(String s) {
-                  return s.trim();
-              }
-          }
+        path: "src/main/java/example/AccountPolicy.java"
+        old: "return active && balance > 0;"
+        new: "return true;"
         labels: ["B001", "fault"]
 
   - id: "c2"
-    message: "Add null handling to normalize"
+    message: "Restore withdrawal predicate"
     author: "Alice <alice@example.com>"
     date: "2024-01-03T10:00:00Z"
     role: "bug_fixing"
     operations:
       - type: "replace"
-        path: "src/main/java/example/Normalizer.java"
-        old: |2
-              public String normalize(String s) {
-                  return s.trim();
-              }
-        new: |2
-              public String normalize(String s) {
-                  if (s == null) {
-                      return "";
-                  }
-                  return s.trim();
-              }
+        path: "src/main/java/example/AccountPolicy.java"
+        old: "return true;"
+        new: "return active && balance > 0;"
         labels: ["B001", "fix"]
 
 bugs:
   - id: "B001"
-    title: "Missing null check in normalize"
+    title: "Inactive accounts can withdraw"
     bug_fixing_commit: "c2"
     bug_introducing_commits: ["c1"]
-
     fault:
       commit: "c1"
-      file: "src/main/java/example/Normalizer.java"
+      file: "src/main/java/example/AccountPolicy.java"
       entity:
         type: "method"
-        name: "normalize"
-        signature: "String normalize(String s)"
-      change_type: "omission"
-      missing_statement: |2
-        if (s == null) {
-            return "";
-        }
-
+        name: "canWithdraw"
+        signature: "boolean canWithdraw(boolean active, int balance)"
+      statement: "return true;"
+      change_type: "line_modification"
     fix:
       commit: "c2"
-      file: "src/main/java/example/Normalizer.java"
+      file: "src/main/java/example/AccountPolicy.java"
       entity:
         type: "method"
-        name: "normalize"
-        signature: "String normalize(String s)"
-      added_statement: |2
-                if (s == null) {
-                    return "";
-                }
-      fix_type: "line_addition"
-
+        name: "canWithdraw"
+        signature: "boolean canWithdraw(boolean active, int balance)"
+      statement: "return active && balance > 0;"
+      fix_type: "line_modification"
     expected_szz:
       commit_level:
         true_positives: ["c1"]
         false_positives_allowed: []
       line_level:
-        available: false
-        reason: "The fault is an omitted statement, so no faulty deleted line exists."
+        available: true
+        faulty_statements:
+          - "return true;"
 
 checks:
   - type: "git_history_contains"

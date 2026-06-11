@@ -1,4 +1,4 @@
-# SZZ-0134: Config and runtime checks combined
+# SZZ-0134: Validation weakening plus caller acceptance
 
 ## Purpose
 
@@ -7,9 +7,9 @@ This scenario requires treating two bug-introducing commits as contributing to t
 ## Commit structure
 
 - `c0`: initial implementation
-- `c1`: first contributing BIC
-- `c2`: second contributing BIC
-- `c3`: BFC
+- `c1`: weakens the validator
+- `c2`: makes the caller accept an additional invalid value
+- `c3`: fixes both contributing changes
 
 ## Expected behavior
 

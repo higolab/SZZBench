@@ -1,109 +1,93 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0021
-  title: Bug propagates into generated code
-  slug: generated-code
-  description: Evaluates bug propagates into generated code and checks whether SZZ identifies the expected bug-introducing
-    commit set.
-  category: Copy, clone, and propagation scenarios
-  category_code: E
-  factors: []
+  title: Clone removal as fix
+  slug: clone-removal-as-fix
+  description: Evaluates clone removal as fix and checks whether SZZ identifies the expected bug-introducing commit set.
+  category: "Clone, copy propagation, and origin-vs-direct BIC"
+  category_code: "G2"
+  factors:
+  - clone_relationships
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0021-generated-code
+  name: SZZG-0021-clone-removal-as-fix
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: introduce origin bug (write_file templates/Range.tpl)
+  history_summary: 'c0: create initial state (write_file src/main/java/example/A.java)
 
-    c1: introduce bug (write_file src/generated/java/generated/GeneratedRange.java)
+    c1: introduce bug (write_file src/main/java/example/B.java)
 
-    c2: fix bug (replace src/generated/java/generated/GeneratedRange.java)'
+    c2: fix bug (delete_file src/main/java/example/B.java; write_file docs/clone-removal.md)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: introduce origin bug (write_file templates/Range.tpl)'
-  role: origin_bug_introducing
+  message: 'c0: create initial state (write_file src/main/java/example/A.java)'
+  role: initial
   operations:
   - type: write_file
-    path: templates/Range.tpl
-    content: '// Template for generated range code
-
-      return value > min && value < max;
-
-      '
+    path: src/main/java/example/A.java
+    content: "package example;\n\npublic class A {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ >= min && value <= max;\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce bug (write_file src/generated/java/generated/GeneratedRange.java)'
+  message: 'c1: introduce bug (write_file src/main/java/example/B.java)'
   role: bug_introducing
   operations:
   - type: write_file
-    path: src/generated/java/generated/GeneratedRange.java
-    content: "package generated;\n\npublic class GeneratedRange {\n  public boolean contains(int value, int min, int max)\
-      \ {\n    return value > min && value < max;\n  }\n}\n"
+    path: src/main/java/example/B.java
+    content: "package example;\n\npublic class B {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n}\n"
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: fix bug (replace src/generated/java/generated/GeneratedRange.java)'
+  message: 'c2: fix bug (delete_file src/main/java/example/B.java; write_file docs/clone-removal.md)'
   role: bug_fixing
   operations:
-  - type: replace
-    path: src/generated/java/generated/GeneratedRange.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+  - type: delete_file
+    path: src/main/java/example/B.java
+  - type: write_file
+    path: docs/clone-removal.md
+    content: 'Buggy clone B.java was removed; callers should use A.java.
+
+      '
 bugs:
 - id: B001
-  title: Bug propagated into generated code
+  title: Buggy clone removed as fix
   bug_introducing_commits:
   - commit: c1
     role: direct
-  - commit: c0
-    role: origin
   bug_fixing_commits:
   - commit: c2
     role: complete_fix
   faults:
   - id: F001
     commit: c1
-    file: src/generated/java/generated/GeneratedRange.java
+    file: src/main/java/example/B.java
     statement: return value > min && value < max;
-    role: direct
-  - id: F002
-    commit: c0
-    file: templates/Range.tpl
-    statement: return value > min && value < max;
-    role: origin
   fixes:
   - id: X001
     commit: c2
-    file: src/generated/java/generated/GeneratedRange.java
-    statement: return value >= min && value <= max;
+    file: src/main/java/example/B.java
+    fix_type: file_deletion
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
     - c1
-    related_origins:
-    - c0
-files:
-- path: templates/Range.tpl
-  kind: template
-- path: src/generated/java/generated/GeneratedRange.java
-  kind: generated
-  generated_from: templates/Range.tpl
 scenario_design:
-  purpose: Evaluate Bug propagates into generated code and whether SZZ identifies the expected bug-introducing commit set.
+  purpose: Evaluate Clone removal as fix and whether SZZ identifies the expected bug-introducing commit set.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses operations: write_file, replace.'
+  required_extensions_from_source: 'This scenario uses factors: clone_relationships; operations: write_file, delete_file.'
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
   - Whether structural or contextual history is handled according to the scenario factors.

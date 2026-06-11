@@ -1,19 +1,20 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0043
-  title: Logging insertion after BIC
-  slug: logging-insertion-after-bic
-  description: This scenario introduces a bug by changing `return value >= min && value <= max;` to `return value > min && value < max;` and later restores the correct implementation.
-  category: intermediate-history
+  title: Incorrect cache invalidation condition
+  slug: cache-invalidation-bic
+  description: 'This scenario evaluates a bug-introducing commit shape: Incorrect cache invalidation condition.'
+  category: "Basic semantic line changes"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - logging-insertion-after-bic
+  - state-bug
   difficulty: medium
   status: active
+  category_code: "S1"
 repository:
-  name: SZZ-0043-logging-insertion-after-bic
+  name: SZZ-0043-cache-invalidation-bic
   default_branch: main
   language: java
   build_system: none
@@ -26,13 +27,13 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0043.java
+    path: src/main/java/example/Scenario0124.java
     content: |
       package example;
 
-      public class Scenario0043 {
-          public boolean check(int value, int min, int max) {
-              return value >= min && value <= max;
+      public class Scenario0124 {
+          public boolean needsRefresh(boolean dirty, boolean expired) {
+              return dirty || expired;
           }
       }
 - id: c1
@@ -42,74 +43,48 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0043.java
+    path: src/main/java/example/Scenario0124.java
     old: |
       package example;
 
-      public class Scenario0043 {
-          public boolean check(int value, int min, int max) {
-              return value >= min && value <= max;
+      public class Scenario0124 {
+          public boolean needsRefresh(boolean dirty, boolean expired) {
+              return dirty || expired;
           }
       }
     new: |
       package example;
 
-      public class Scenario0043 {
-          public boolean check(int value, int min, int max) {
-              return value > min && value < max;
+      public class Scenario0124 {
+          public boolean needsRefresh(boolean dirty, boolean expired) {
+              return dirty && expired;
           }
       }
     labels:
     - B001
     - fault
 - id: c2
-  message: Add logging before faulty logic
-  author: Carol <carol@example.com>
-  date: '2024-01-03T10:00:00Z'
-  role: distractor
-  operations:
-  - type: replace
-    path: src/main/java/example/Scenario0043.java
-    old: |
-      package example;
-
-      public class Scenario0043 {
-          public boolean check(int value, int min, int max) {
-              return value > min && value < max;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0043 {
-          public boolean check(int value, int min, int max) {
-              System.out.println(value);
-              return value > min && value < max;
-          }
-      }
-- id: c3
   message: Fix bug
   author: Alice <alice@example.com>
-  date: '2024-01-04T10:00:00Z'
+  date: '2024-01-03T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0043.java
+    path: src/main/java/example/Scenario0124.java
     old: |
       package example;
 
-      public class Scenario0043 {
-          public boolean check(int value, int min, int max) {
-              System.out.println(value);
-              return value > min && value < max;
+      public class Scenario0124 {
+          public boolean needsRefresh(boolean dirty, boolean expired) {
+              return dirty && expired;
           }
       }
     new: |
       package example;
 
-      public class Scenario0043 {
-          public boolean check(int value, int min, int max) {
-              return value >= min && value <= max;
+      public class Scenario0124 {
+          public boolean needsRefresh(boolean dirty, boolean expired) {
+              return dirty || expired;
           }
       }
     labels:
@@ -117,42 +92,39 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Logging insertion after BIC
-  bug_fixing_commit: c3
+  title: Incorrect cache invalidation condition
+  bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0043.java
+    file: src/main/java/example/Scenario0124.java
     entity:
       type: method
-      name: check
-      signature: boolean check(int value, int min, int max)
-    statement: return value > min && value < max;
+      name: needsRefresh
+      signature: boolean needsRefresh(boolean dirty, boolean expired)
+    statement: return dirty && expired;
     change_type: line_modification
   fix:
-    commit: c3
-    file: src/main/java/example/Scenario0043.java
+    commit: c2
+    file: src/main/java/example/Scenario0124.java
     entity:
       type: method
-      name: check
-      signature: boolean check(int value, int min, int max)
-    statement: return value >= min && value <= max;
+      name: needsRefresh
+      signature: boolean needsRefresh(boolean dirty, boolean expired)
+    statement: return dirty || expired;
     fix_type: line_modification
   expected_szz:
     commit_level:
       true_positives: *id001
       false_positives_allowed: []
-      known_distractors:
-      - c2
     line_level:
       available: true
       faulty_statements:
-      - return value > min && value < max;
+      - return dirty && expired;
 checks:
 - type: git_history_contains
   commits:
   - c0
   - c1
   - c2
-  - c3

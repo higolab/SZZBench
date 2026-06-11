@@ -1,10 +1,10 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0017
-  title: Multiplication factor error
-  slug: multiplication-factor-error
-  description: This scenario introduces a bug by changing `return value * 2;` to `return value * 3;` and later restores the correct implementation.
-  category: basic
+  title: Absolute value omitted
+  slug: absolute-value-omitted
+  description: This scenario introduces a bug by changing `return Math.abs(value);` to `return value;` and later restores the correct implementation.
+  category: "Basic semantic line changes"
   factors:
   - single-bic
   - single-bfc
@@ -12,8 +12,9 @@ meta:
   - arithmetic-error
   difficulty: easy
   status: active
+  category_code: "S1"
 repository:
-  name: SZZ-0017-multiplication-factor-error
+  name: SZZ-0017-absolute-value-omitted
   default_branch: main
   language: java
   build_system: none
@@ -26,13 +27,13 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0017.java
+    path: src/main/java/example/Scenario0027.java
     content: |
       package example;
 
-      public class Scenario0017 {
-          public int scale(int value) {
-              return value * 2;
+      public class Scenario0027 {
+          public int magnitude(int value) {
+              return Math.abs(value);
           }
       }
 - id: c1
@@ -42,21 +43,21 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0017.java
+    path: src/main/java/example/Scenario0027.java
     old: |
       package example;
 
-      public class Scenario0017 {
-          public int scale(int value) {
-              return value * 2;
+      public class Scenario0027 {
+          public int magnitude(int value) {
+              return Math.abs(value);
           }
       }
     new: |
       package example;
 
-      public class Scenario0017 {
-          public int scale(int value) {
-              return value * 3;
+      public class Scenario0027 {
+          public int magnitude(int value) {
+              return value;
           }
       }
     labels:
@@ -69,21 +70,21 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0017.java
+    path: src/main/java/example/Scenario0027.java
     old: |
       package example;
 
-      public class Scenario0017 {
-          public int scale(int value) {
-              return value * 3;
+      public class Scenario0027 {
+          public int magnitude(int value) {
+              return value;
           }
       }
     new: |
       package example;
 
-      public class Scenario0017 {
-          public int scale(int value) {
-              return value * 2;
+      public class Scenario0027 {
+          public int magnitude(int value) {
+              return Math.abs(value);
           }
       }
     labels:
@@ -91,27 +92,27 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Multiplication factor error
+  title: Absolute value omitted
   bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0017.java
+    file: src/main/java/example/Scenario0027.java
     entity:
       type: method
-      name: scale
-      signature: int scale(int value)
-    statement: return value * 3;
+      name: magnitude
+      signature: int magnitude(int value)
+    statement: return value;
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0017.java
+    file: src/main/java/example/Scenario0027.java
     entity:
       type: method
-      name: scale
-      signature: int scale(int value)
-    statement: return value * 2;
+      name: magnitude
+      signature: int magnitude(int value)
+    statement: return Math.abs(value);
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -120,7 +121,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return value * 3;
+      - return value;
 checks:
 - type: git_history_contains
   commits:

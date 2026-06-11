@@ -1,83 +1,53 @@
-# SZZG-0012: Multiple BFCs progressively fix the same bug
+# SZZG-0012: BFC performs method extraction and bug fix in the same commit
+
+## Source
+
+- Category: Refactoring scenarios
 
 ## Purpose
 
-This scenario represents a single bug that is repaired progressively by multiple bug-fixing commits.
+Evaluate bfc performs method extraction and bug fix in the same commit and whether SZZ identifies the expected bug-introducing commit set.
 
-The implementation uses two helper methods:
-
-```text
-aboveMin(value, min)
-belowMax(value, max)
-```
-
-The BIC `c1` breaks both helper methods. The first BFC `c2` fixes only the lower-bound helper. The second BFC `c3` fixes the upper-bound helper and completes the repair.
-
-## Commit history
+## Expected history
 
 ```text
-c0: create range check with separate lower-bound and upper-bound helpers
-c1: introduce the same boundary bug in both helper methods
-c2: first BFC fixes only the lower-bound helper
-c3: second BFC fixes the upper-bound helper and completes the repair
+c0: c0: create tax calculator
+c1: c1: introduce tax rounding bug
+c2: c2: extract tax rate helper and fix rounding
 ```
 
-## Commit table
+## Why this needs `scenario.graph.yml`
 
-| Commit | Branch | Parents | Role | Description |
-|---|---|---|---|---|
-| `c0` | `main` | none | initial | Creates the correct helper-method based implementation. |
-| `c1` | `main` | `c0` | bug_introducing | Changes both boundary helpers from inclusive to exclusive checks. |
-| `c2` | `main` | `c1` | bug_fixing | Partially fixes the bug by repairing the lower-bound helper. |
-| `c3` | `main` | `c2` | bug_fixing | Completes the fix by repairing the upper-bound helper. |
+This history requires graph-aware scenario semantics that are difficult to express with the normal `scenario.yml` schema.
 
-## Code states
+## Required graph-schema features
 
-Correct state in `c0`:
+- Factors: bfc_refactoring, extract_method, mixed_bfc
+- Operation types: insert_after, replace, write_file
+- Expected SZZ policy is defined in `expected_szz`.
 
-```java
-return value >= min;
-return value <= max;
-```
-
-Bug introduced in `c1`:
-
-```java
-return value > min;
-return value < max;
-```
-
-Partial fix in `c2`:
-
-```java
-return value >= min;
-return value < max;
-```
-
-Complete fix in `c3`:
-
-```java
-return value >= min;
-return value <= max;
-```
-
-## Oracle
-
-Expected BIC:
+## Expected BICs
 
 ```text
 c1
 ```
 
-Bug-fixing commits:
+## Evaluation points
+
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
+
+---
+
+## Draft status
+
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
+
+## Files
 
 ```text
-c2: partial fix for the lower-bound helper
-c3: complete fix for the upper-bound helper
+SZZG-0012/
+|-- scenario.graph.yml
+`-- README.md
 ```
-
-## Difference from SZZG-0003
-
-`SZZG-0003` represents a partial-fix sequence on one condition expression.
-
-`SZZG-0012` represents multiple BFCs for the same bug, with two separate faulty helper methods and two separate fixing commits.

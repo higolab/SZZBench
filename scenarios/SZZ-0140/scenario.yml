@@ -1,110 +1,74 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0140
-  title: Duplicate boundary checks
-  slug: duplicate-boundary-checks
-  description: This scenario contains duplicate or similar statements so that line-level oracle interpretation is intentionally harder.
-  category: ambiguous-blame
+  title: Config and runtime checks combined
+  slug: config-runtime-multi-bic
+  description: This scenario requires treating two bug-introducing commits as contributing to the same later fix.
+  category: "Multiple BICs, duplicate faults, and composite faults"
   factors:
-  - single-bic
+  - multi-bic
   - single-bfc
   - line-modification
-  - ambiguous-blame
-  - duplicate-statement
   difficulty: medium
   status: active
+  category_code: "S6"
 repository:
-  name: SZZ-0140-duplicate-boundary-checks
+  name: SZZ-0140-config-runtime-multi-bic
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 commits:
 - id: c0
-  message: Initial implementation with duplicate-looking statement
+  message: Initial implementation
   author: Alice <alice@example.com>
-  date: '2024-04-01T10:00:00Z'
+  date: '2024-03-01T10:00:00Z'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0140.java
-    content: |
-      package example;
-
-      public class Scenario0140 {
-          public boolean withinLower(int value, int min) {
-              return value >= min;
-          }
-
-          public boolean otherMethod(int value, int min) {
-              return value > min;
-          }
-      }
+    path: src/main/java/example/Scenario0134.java
+    content: "package example;\n\npublic class Scenario0134 {\n    public boolean enabled(boolean configured, boolean runtimeReady) {\n        return true;\n    }\n}\n"
 - id: c1
-  message: Introduce ambiguous faulty statement
+  message: Introduce first contributing change
   author: Bob <bob@example.com>
-  date: '2024-04-02T10:00:00Z'
+  date: '2024-03-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0140.java
-    old: |
-      package example;
-
-      public class Scenario0140 {
-          public boolean withinLower(int value, int min) {
-              return value >= min;
-          }
-
-          public boolean otherMethod(int value, int min) {
-              return value > min;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0140 {
-          public boolean withinLower(int value, int min) {
-              return value > min;
-          }
-
-          public boolean otherMethod(int value, int min) {
-              return value > min;
-          }
-      }
+    path: src/main/java/example/Scenario0134.java
+    old: "package example;\n\npublic class Scenario0134 {\n    public boolean enabled(boolean configured, boolean runtimeReady) {\n        return true;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0134 {\n    public boolean enabled(boolean configured, boolean runtimeReady) {\n        return configured;\n    }\n}\n"
     labels:
     - B001
     - fault
 - id: c2
-  message: Fix ambiguous faulty statement
+  message: Introduce second contributing change
+  author: Carol <carol@example.com>
+  date: '2024-03-03T10:00:00Z'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Scenario0134.java
+    old: "package example;\n\npublic class Scenario0134 {\n    public boolean enabled(boolean configured, boolean runtimeReady) {\n        return configured;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0134 {\n    public boolean enabled(boolean configured, boolean runtimeReady) {\n        return configured && runtimeReady;\n    }\n}\n"
+    labels:
+    - B001
+    - fault
+- id: c3
+  message: Fix combined bug
   author: Alice <alice@example.com>
-  date: '2024-04-03T10:00:00Z'
+  date: '2024-03-04T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0140.java
-    old: |
-      package example;
-
-      public class Scenario0140 {
-          public boolean withinLower(int value, int min) {
-              return value > min;
-          }
-
-          public boolean otherMethod(int value, int min) {
-              return value > min;
-          }
-      }
+    path: src/main/java/example/Scenario0134.java
+    old: "package example;\n\npublic class Scenario0134 {\n    public boolean enabled(boolean configured, boolean runtimeReady) {\n        return configured && runtimeReady;\n    }\n}\n"
     new: |
       package example;
 
-      public class Scenario0140 {
-          public boolean withinLower(int value, int min) {
-              return value >= min;
-          }
-
-          public boolean otherMethod(int value, int min) {
-              return value > min;
+      public class Scenario0134 {
+          public boolean enabled(boolean configured, boolean runtimeReady) {
+              return true;
           }
       }
     labels:
@@ -112,27 +76,28 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Duplicate boundary checks
-  bug_fixing_commit: c2
+  title: Config and runtime checks combined
+  bug_fixing_commit: c3
   bug_introducing_commits: &id001
   - c1
+  - c2
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0140.java
+    file: src/main/java/example/Scenario0134.java
     entity:
       type: method
-      name: withinLower
-      signature: boolean withinLower(int value, int min)
-    statement: return value > min;
+      name: enabled
+      signature: boolean enabled(boolean configured, boolean runtimeReady)
+    statement: return configured;
     change_type: line_modification
   fix:
-    commit: c2
-    file: src/main/java/example/Scenario0140.java
+    commit: c3
+    file: src/main/java/example/Scenario0134.java
     entity:
       type: method
-      name: withinLower
-      signature: boolean withinLower(int value, int min)
-    statement: return value >= min;
+      name: enabled
+      signature: boolean enabled(boolean configured, boolean runtimeReady)
+    statement: return true;
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -141,10 +106,11 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return value > min;
+      - return configured;
 checks:
 - type: git_history_contains
   commits:
   - c0
   - c1
   - c2
+  - c3

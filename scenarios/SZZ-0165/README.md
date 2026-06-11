@@ -1,15 +1,22 @@
-# SZZ-0165: Dependency update as BIC
+# SZZ-0165: Security context in message
 
-## Summary
+## Purpose
 
-Evaluates dependency update as bic and checks whether SZZ identifies the expected bug-introducing commit set.
+This scenario is intended for evaluating SZZ variants that use commit messages or broader patch context.
 
-## Expected SZZ Behavior
+## Commit structure
 
-- Bug-introducing commit(s): c1
-- Bug-fixing commit: c2
+- `c0`: initial implementation
+- `c1`: introduces the bug
+- `c2`: BFC with message: Fix authorization bypass
 
-## Notes
+## Expected behavior
 
-- Moved from SZZG-0008 after applying the scenario.yml / scenario.graph.yml boundary policy.
-- This scenario uses a linear main-branch history and a commit-level exact-set oracle.
+The expected BFC is `c2` and the expected BIC is `c1`.
+
+## Factors
+
+- `single-bic`
+- `single-bfc`
+- `line-modification`
+- `context-aware`

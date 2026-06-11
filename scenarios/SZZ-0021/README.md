@@ -1,8 +1,8 @@
-# SZZ-0021: Equality comparison error
+# SZZ-0021: Wrong threshold constant
 
 ## Purpose
 
-This scenario introduces a bug by changing `return status == expected;` to `return status != expected;` and later restores the correct implementation.
+This scenario introduces a bug by changing `return score >= 80;` to `return score >= 90;` and later restores the correct implementation.
 
 ## Commit structure
 
@@ -19,4 +19,4 @@ The expected BFC is `c2` and the expected BIC is `c1`.
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `comparison-error`
+- `wrong-constant`

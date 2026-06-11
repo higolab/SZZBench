@@ -1,19 +1,20 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0091
-  title: Inline helper after BIC
-  slug: inline-helper-after-bic
-  description: This scenario inserts an intermediate refactoring change between the BIC and BFC.
-  category: refactoring
+  title: Dead code removal after BIC
+  slug: dead-code-removal-after-bic
+  description: This scenario introduces a bug by changing `return value >= min && value <= max;` to `return value > min && value < max;` and later restores the correct implementation.
+  category: "Intermediate noise and history noise"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - inline-method-after-bic
+  - dead-code-removal-after-bic
   difficulty: medium
   status: active
+  category_code: "S3"
 repository:
-  name: SZZ-0091-inline-helper-after-bic
+  name: SZZ-0091-dead-code-removal-after-bic
   default_branch: main
   language: java
   build_system: none
@@ -26,19 +27,8 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0091.java
-    content: |
-      package example;
-
-      public class Scenario0091 {
-          public boolean valid(int value, int min) {
-              return atLeastMin(value, min);
-          }
-
-          private boolean atLeastMin(int value, int min) {
-              return value >= min;
-          }
-      }
+    path: src/main/java/example/Scenario0050.java
+    content: "package example;\n\npublic class Scenario0050 {\n    public boolean check(int value, int min, int max) {\n        return value >= min && value <= max;\n    }\n}\n"
 - id: c1
   message: Introduce bug
   author: Bob <bob@example.com>
@@ -46,114 +36,74 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0091.java
-    old: |
-      package example;
-
-      public class Scenario0091 {
-          public boolean valid(int value, int min) {
-              return atLeastMin(value, min);
-          }
-
-          private boolean atLeastMin(int value, int min) {
-              return value >= min;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0091 {
-          public boolean valid(int value, int min) {
-              return atLeastMin(value, min);
-          }
-
-          private boolean atLeastMin(int value, int min) {
-              return value > min;
-          }
-      }
+    path: src/main/java/example/Scenario0050.java
+    old: "package example;\n\npublic class Scenario0050 {\n    public boolean check(int value, int min, int max) {\n        return value >= min && value <= max;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0050 {\n    public boolean check(int value, int min, int max) {\n        return value > min && value < max;\n    }\n}\n"
     labels:
     - B001
     - fault
 - id: c2
-  message: Inline helper after bug introduction
+  message: Remove dead code after bug introduction
   author: Carol <carol@example.com>
   date: '2024-01-03T10:00:00Z'
-  role: refactoring
+  role: cleanup
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0091.java
-    old: |
-      package example;
-
-      public class Scenario0091 {
-          public boolean valid(int value, int min) {
-              return atLeastMin(value, min);
-          }
-
-          private boolean atLeastMin(int value, int min) {
-              return value > min;
-          }
-      }
+    path: src/main/java/example/Scenario0050.java
+    old: "package example;\n\npublic class Scenario0050 {\n    public boolean check(int value, int min, int max) {\n        return value > min && value < max;\n    }\n}\n"
     new: |
       package example;
 
-      public class Scenario0091 {
-          public boolean valid(int value, int min) {
-              return value > min;
+      public class Scenario0050 {
+          public boolean check(int value, int min, int max) {
+              // dead code removed; boundary remains faulty
+              return value > min && value < max;
           }
       }
-    labels:
-    - non_bug_introducing_change
 - id: c3
   message: Fix bug
-  author: Dave <dave@example.com>
+  author: Alice <alice@example.com>
   date: '2024-01-04T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0091.java
+    path: src/main/java/example/Scenario0050.java
     old: |
       package example;
 
-      public class Scenario0091 {
-          public boolean valid(int value, int min) {
-              return value > min;
+      public class Scenario0050 {
+          public boolean check(int value, int min, int max) {
+              // dead code removed; boundary remains faulty
+              return value > min && value < max;
           }
       }
-    new: |
-      package example;
-
-      public class Scenario0091 {
-          public boolean valid(int value, int min) {
-              return value >= min;
-          }
-      }
+    new: "package example;\n\npublic class Scenario0050 {\n    public boolean check(int value, int min, int max) {\n        return value >= min && value <= max;\n    }\n}\n"
     labels:
     - B001
     - fix
 bugs:
 - id: B001
-  title: Inline helper after BIC
+  title: Dead code removal after BIC
   bug_fixing_commit: c3
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0091.java
+    file: src/main/java/example/Scenario0050.java
     entity:
       type: method
-      name: atLeastMin
-      signature: boolean atLeastMin(int value, int min)
-    statement: return value > min;
+      name: check
+      signature: boolean check(int value, int min, int max)
+    statement: return value > min && value < max;
     change_type: line_modification
   fix:
     commit: c3
-    file: src/main/java/example/Scenario0091.java
+    file: src/main/java/example/Scenario0050.java
     entity:
       type: method
-      name: valid
-      signature: boolean valid(int value, int min)
-    statement: return value >= min;
+      name: check
+      signature: boolean check(int value, int min, int max)
+    statement: return value >= min && value <= max;
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -164,7 +114,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return value > min;
+      - return value > min && value < max;
 checks:
 - type: git_history_contains
   commits:

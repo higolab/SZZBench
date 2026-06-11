@@ -1,22 +1,23 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0071
-  title: Interactive rebase reorders commits before BIC
-  slug: interactive-rebase-reorders-commits-before-bic
-  description: Interactive rebase changes order while preserving the bug commit.
-  category: Branch, merge, cherry-pick, and backport scenarios
-  category_code: G
+  title: Interactive rebase edits BIC commit
+  slug: interactive-rebase-edits-bic-commit
+  description: Interactive rebase edits the original BIC before replaying it.
+  category: "Rebase-specific history rewriting"
+  category_code: "G5"
   factors:
   - branch
   - rebase
   - interactive_rebase
-  - reorder
+  - edit
+  - patch_modified_during_rebase
   - direct_bic
   - origin_bic
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0071-interactive-rebase-reorders-commits-before-bic
+  name: SZZG-0071-interactive-rebase-edits-bic-commit
   default_branch: main
   language: java
   build_system: none
@@ -25,15 +26,11 @@ graph:
   model: commit_dag
   history_summary: 'c0: create initial correct implementation
 
-    f1: add feature docs
+    f1: introduce exclusive range bug
 
-    f2: introduce range bug
+    r1: edit feature bug during interactive rebase
 
-    r1: replay docs before reordered BIC
-
-    r2: replay bug commit after reorder
-
-    c3: fix reordered bug'
+    c2: fix edited rebased bug'
 commits:
 - id: c0
   branch: main
@@ -49,19 +46,7 @@ commits:
   branch: feature
   parents:
   - c0
-  message: 'f1: add feature docs'
-  role: intermediate
-  operations:
-  - type: write_file
-    path: docs/feature.md
-    content: 'note
-
-      '
-- id: f2
-  branch: feature
-  parents:
-  - f1
-  message: 'f2: introduce range bug'
+  message: 'f1: introduce exclusive range bug'
   role: origin_bug_introducing
   operations:
   - type: replace
@@ -72,66 +57,52 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'r1: replay docs before reordered BIC'
-  role: intermediate
-  operations:
-  - type: write_file
-    path: docs/feature.md
-    content: 'note after reorder
-
-      '
-  rebase_of: f1
-  interactive_rebase: reorder
-- id: r2
-  branch: main
-  parents:
-  - r1
-  message: 'r2: replay bug commit after reorder'
+  message: 'r1: edit feature bug during interactive rebase'
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
-    new: return value > min && value < max;
-  rebase_of: f2
-  interactive_rebase: reorder
-- id: c3
+    new: return value >= min && value < max;
+  rebase_of: f1
+  interactive_rebase: edit
+- id: c2
   branch: main
   parents:
-  - r2
-  message: 'c3: fix reordered bug'
+  - r1
+  message: 'c2: fix edited rebased bug'
   role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
-    old: return value > min && value < max;
+    old: return value >= min && value < max;
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Bug after reordered rebase
+  title: Upper-bound bug after interactive rebase edit
   bug_introducing_commits:
-  - commit: r2
+  - commit: r1
     role: direct
-  - commit: f2
+  - commit: f1
     role: origin
   bug_fixing_commits:
-  - commit: c3
+  - commit: c2
     role: complete_fix
   faults:
   - id: F001
-    commit: r2
+    commit: r1
     file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    statement: return value >= min && value < max;
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c3
+    commit: c2
     file: src/main/java/example/Range.java
     statement: return value >= min && value <= max;
     fix_type: line_modification
   origin_faults:
   - id: OF001
-    commit: f2
+    commit: f1
     file: src/main/java/example/Range.java
     statement: return value > min && value < max;
     change_type: origin_line_modification
@@ -139,18 +110,16 @@ expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - r2
-    related_but_not_correct:
-    - f2
     - r1
+    related_but_not_correct:
+    - f1
 scenario_design:
-  purpose: Evaluate commit reordering during rebase.
-  key_property: Only r2 introduces the bug after reorder.
-  difference_from_SZZG_0073: SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
+  purpose: Evaluate interactive rebase edit of a BIC.
+  key_property: r1 is an edited replay of f1.
+  difference_from_SZZG_0073: SZZG-0063 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
     adds a distinct rebase-related complication.
   evaluation_points:
-  - Report r2.
-  - Avoid r1.
+  - Report r1.
 notes:
 - This scenario models a rebase-related development history for SZZ evaluation.
 - Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

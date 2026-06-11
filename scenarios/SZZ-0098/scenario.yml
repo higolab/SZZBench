@@ -4,7 +4,7 @@ meta:
   title: Enum case addition after BIC
   slug: enum-case-after-bic
   description: This scenario inserts an intermediate language-specific change between the BIC and BFC.
-  category: language-specific
+  category: "Intermediate noise and history noise"
   factors:
   - single-bic
   - single-bfc
@@ -12,6 +12,7 @@ meta:
   - enum-change-after-bic
   difficulty: medium
   status: active
+  category_code: "S3"
 repository:
   name: SZZ-0098-enum-case-after-bic
   default_branch: main

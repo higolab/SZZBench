@@ -1,134 +1,128 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0039
-  title: Fix split across multiple commits
-  slug: fix-commit
-  description: Evaluates fix split across multiple commits and checks whether SZZ identifies the expected bug-introducing
+  title: Prerequisite BIC and symptom BIC fixed together
+  slug: multi-bic-prerequisite-symptom
+  description: Evaluates prerequisite bic and symptom bic fixed together and checks whether SZZ identifies the expected bug-introducing
     commit set.
-  category: Work-item and commit-series scenarios
-  category_code: H
+  category: "Multiple BICs, multiple BFCs, and partial fixes"
+  category_code: "G3"
   factors:
-  - bug_fixing_commits
+  - multiple_bic
+  - causal_chain
+  - single_bfc
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0039-fix-commit
+  name: SZZG-0039-multi-bic-prerequisite-symptom
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
+  history_summary: 'c0: c0: create token verifier
 
-    c1: introduce bug (replace src/main/java/example/Range.java)
+    c1: c1: weaken token trust predicate
 
-    c2: add test context (write_file src/test/java/example/RangeTest.java)
+    c2: c2: weaken access control condition
 
-    c3: fix bug (replace src/main/java/example/Range.java)
-
-    c4: fix bug (replace src/main/java/example/Range.java)'
+    c3: c3: fix access control vulnerability'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
+  message: 'c0: create token verifier'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
+    path: src/main/java/example/TokenVerifier.java
+    content: "package example;\npublic class TokenVerifier {\n  public boolean isTrusted(String token) {\n    return token\
+      \ != null && token.startsWith(\"T-\");\n  }\n  public boolean canAccess(String token, boolean admin) {\n    return admin\
+      \ && isTrusted(token);\n  }\n\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
+  message: 'c1: weaken token trust predicate'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
+    path: src/main/java/example/TokenVerifier.java
+    old: return token != null && token.startsWith("T-");
+    new: return token != null;
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: add test context (write_file src/test/java/example/RangeTest.java)'
-  role: test_added
+  message: 'c2: weaken access control condition'
+  role: bug_introducing
   operations:
-  - type: write_file
-    path: src/test/java/example/RangeTest.java
-    content: 'package example;
-
-      // expected: boundary values must be accepted
-
-      '
+  - type: replace
+    path: src/main/java/example/TokenVerifier.java
+    old: return admin && isTrusted(token);
+    new: return admin || isTrusted(token);
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'c3: fix bug (replace src/main/java/example/Range.java)'
+  message: 'c3: fix access control vulnerability'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value < max;
-- id: c4
-  branch: main
-  parents:
-  - c3
-  message: 'c4: fix bug (replace src/main/java/example/Range.java)'
-  role: bug_fixing
-  operations:
+    path: src/main/java/example/TokenVerifier.java
+    old: return token != null;
+    new: return token != null && token.startsWith("T-");
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/TokenVerifier.java
+    old: return admin || isTrusted(token);
+    new: return admin && isTrusted(token);
 bugs:
 - id: B001
-  title: Fix series split across test, partial fix, final fix
+  title: Synthetic graph scenario bug
   bug_introducing_commits:
   - commit: c1
     role: direct
+  - commit: c2
+    role: direct
   bug_fixing_commits:
   - commit: c3
-    role: partial_fix
-  - commit: c4
     role: complete_fix
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/TokenVerifier.java
+    statement: return token != null;
+    change_type: line_modification
+  - id: F002
+    commit: c2
+    file: src/main/java/example/TokenVerifier.java
+    statement: return admin || isTrusted(token);
+    change_type: line_modification
   fixes:
   - id: X001
     commit: c3
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value < max;
-    fix_type: partial_fix
+    file: src/main/java/example/TokenVerifier.java
+    statement: return token != null && token.startsWith("T-");
+    fix_type: line_modification
   - id: X002
-    commit: c4
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
-    fix_type: complete_fix
+    commit: c3
+    file: src/main/java/example/TokenVerifier.java
+    statement: return admin && isTrusted(token);
+    fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
     - c1
-fix_series:
-- id: FIX-B001
-  commits:
-  - c2
-  - c3
-  - c4
+    - c2
 scenario_design:
-  purpose: Evaluate Fix split across multiple commits and whether SZZ identifies the expected bug-introducing commit set.
+  purpose: Evaluate prerequisite bic and symptom bic fixed together and whether SZZ identifies the expected bug-introducing
+    commit set.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: bug_fixing_commits; operations: write_file, replace.'
+  required_extensions_from_source: 'This scenario uses factors: multiple_bic, causal_chain, single_bfc; operations: replace,
+    write_file.'
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
   - Whether structural or contextual history is handled according to the scenario factors.

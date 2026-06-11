@@ -1,19 +1,20 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0036
-  title: Cache enabled flag error
-  slug: cache-enabled-flag-error
-  description: This scenario introduces a bug by changing `return enabled && !expired;` to `return enabled || !expired;` and later restores the correct implementation.
-  category: basic
+  title: Configuration-like constant change introduces bug
+  slug: configuration-constant-bic
+  description: 'This scenario evaluates a bug-introducing commit shape: Configuration-like constant change introduces bug.'
+  category: "Basic semantic line changes"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - boolean-negation
-  difficulty: easy
+  - configuration-bic
+  difficulty: medium
   status: active
+  category_code: "S1"
 repository:
-  name: SZZ-0036-cache-enabled-flag-error
+  name: SZZ-0036-configuration-constant-bic
   default_branch: main
   language: java
   build_system: none
@@ -26,13 +27,13 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0036.java
+    path: src/main/java/example/Scenario0116.java
     content: |
       package example;
 
-      public class Scenario0036 {
-          public boolean useCache(boolean enabled, boolean expired) {
-              return enabled && !expired;
+      public class Scenario0116 {
+          public boolean validTimeout(int timeout) {
+              return timeout <= 30;
           }
       }
 - id: c1
@@ -42,21 +43,21 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0036.java
+    path: src/main/java/example/Scenario0116.java
     old: |
       package example;
 
-      public class Scenario0036 {
-          public boolean useCache(boolean enabled, boolean expired) {
-              return enabled && !expired;
+      public class Scenario0116 {
+          public boolean validTimeout(int timeout) {
+              return timeout <= 30;
           }
       }
     new: |
       package example;
 
-      public class Scenario0036 {
-          public boolean useCache(boolean enabled, boolean expired) {
-              return enabled || !expired;
+      public class Scenario0116 {
+          public boolean validTimeout(int timeout) {
+              return timeout <= 300;
           }
       }
     labels:
@@ -69,21 +70,21 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0036.java
+    path: src/main/java/example/Scenario0116.java
     old: |
       package example;
 
-      public class Scenario0036 {
-          public boolean useCache(boolean enabled, boolean expired) {
-              return enabled || !expired;
+      public class Scenario0116 {
+          public boolean validTimeout(int timeout) {
+              return timeout <= 300;
           }
       }
     new: |
       package example;
 
-      public class Scenario0036 {
-          public boolean useCache(boolean enabled, boolean expired) {
-              return enabled && !expired;
+      public class Scenario0116 {
+          public boolean validTimeout(int timeout) {
+              return timeout <= 30;
           }
       }
     labels:
@@ -91,27 +92,27 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Cache enabled flag error
+  title: Configuration-like constant change introduces bug
   bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0036.java
+    file: src/main/java/example/Scenario0116.java
     entity:
       type: method
-      name: useCache
-      signature: boolean useCache(boolean enabled, boolean expired)
-    statement: return enabled || !expired;
+      name: validTimeout
+      signature: boolean validTimeout(int timeout)
+    statement: return timeout <= 300;
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0036.java
+    file: src/main/java/example/Scenario0116.java
     entity:
       type: method
-      name: useCache
-      signature: boolean useCache(boolean enabled, boolean expired)
-    statement: return enabled && !expired;
+      name: validTimeout
+      signature: boolean validTimeout(int timeout)
+    statement: return timeout <= 30;
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -120,7 +121,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return enabled || !expired;
+      - return timeout <= 300;
 checks:
 - type: git_history_contains
   commits:

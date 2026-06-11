@@ -1,16 +1,17 @@
-# SZZG-0065: Rebase conflict resolution fixes bug
+# SZZG-0065: Rebase conflict resolution introduces bug
 
 ## Purpose
 
-Evaluate whether SZZ can handle a BFC that is itself a rebase conflict resolution commit.
+Evaluate a bug introduced by conflict resolution during rebase.
 
 ## Commit history
 
 ```text
 c0: c0: create initial correct implementation
-r1: r1: rebase feature bug commit onto main
-m1: m1: main change before conflict-resolution fix
-r2: r2: resolve rebase conflict and fix range bug
+m1: m1: add main-line documentation
+f1: f1: add feature documentation
+r1: r1: resolve rebase conflict and introduce range bug
+c2: c2: fix range bug from conflict resolution
 ```
 
 ## Commit table
@@ -18,9 +19,10 @@ r2: r2: resolve rebase conflict and fix range bug
 | Commit | Branch | Parents | Role | Description |
 |---|---|---|---|---|
 | `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `r1` | `main` | c0 | `bug_introducing` | r1: rebase feature bug commit onto main |
-| `m1` | `main` | r1 | `intermediate` | m1: main change before conflict-resolution fix |
-| `r2` | `main` | m1 | `bug_fixing` | r2: resolve rebase conflict and fix range bug |
+| `m1` | `main` | c0 | `intermediate` | m1: add main-line documentation |
+| `f1` | `feature` | c0 | `intermediate` | f1: add feature documentation |
+| `r1` | `main` | m1 | `bug_introducing` | r1: resolve rebase conflict and introduce range bug |
+| `c2` | `main` | r1 | `bug_fixing` | c2: fix range bug from conflict resolution |
 
 ## Expected SZZ result
 
@@ -30,16 +32,15 @@ Expected BIC(s): r1
 
 ## Key property
 
-The fix is introduced by r2 during rebase conflict resolution.
+The feature commit is not the BIC; the conflict resolution commit is.
 
-## Difference from SZZG-0061
+## Difference from SZZG-0063
 
-SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
+SZZG-0063 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
 
 ## Evaluation points
 
-- Start from r2.
-- Return r1.
+- Report r1.
 
 ## Notes
 

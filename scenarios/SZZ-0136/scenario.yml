@@ -1,18 +1,19 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0136
-  title: Authentication and token checks introduced separately
-  slug: auth-token-multi-bic
+  title: Range minimum and maximum changed separately
+  slug: range-min-max-changed-separately
   description: This scenario requires treating two bug-introducing commits as contributing to the same later fix.
-  category: multiple-bic
+  category: "Multiple BICs, duplicate faults, and composite faults"
   factors:
   - multi-bic
   - single-bfc
   - line-modification
   difficulty: medium
   status: active
+  category_code: "S6"
 repository:
-  name: SZZ-0136-auth-token-multi-bic
+  name: SZZ-0136-range-min-max-changed-separately
   default_branch: main
   language: java
   build_system: none
@@ -25,8 +26,15 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0136.java
-    content: "package example;\n\npublic class Scenario0136 {\n    public boolean authorized(boolean authenticated, boolean tokenValid) {\n        return true;\n    }\n}\n"
+    path: src/main/java/example/Scenario0130.java
+    content: |
+      package example;
+
+      public class Scenario0130 {
+          public boolean contains(int value, int min, int max) {
+              return true;
+          }
+      }
 - id: c1
   message: Introduce first contributing change
   author: Bob <bob@example.com>
@@ -34,9 +42,23 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0136.java
-    old: "package example;\n\npublic class Scenario0136 {\n    public boolean authorized(boolean authenticated, boolean tokenValid) {\n        return true;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0136 {\n    public boolean authorized(boolean authenticated, boolean tokenValid) {\n        return authenticated;\n    }\n}\n"
+    path: src/main/java/example/Scenario0130.java
+    old: |
+      package example;
+
+      public class Scenario0130 {
+          public boolean contains(int value, int min, int max) {
+              return true;
+          }
+      }
+    new: |
+      package example;
+
+      public class Scenario0130 {
+          public boolean contains(int value, int min, int max) {
+              return value > min;
+          }
+      }
     labels:
     - B001
     - fault
@@ -47,9 +69,23 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0136.java
-    old: "package example;\n\npublic class Scenario0136 {\n    public boolean authorized(boolean authenticated, boolean tokenValid) {\n        return authenticated;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0136 {\n    public boolean authorized(boolean authenticated, boolean tokenValid) {\n        return authenticated && tokenValid;\n    }\n}\n"
+    path: src/main/java/example/Scenario0130.java
+    old: |
+      package example;
+
+      public class Scenario0130 {
+          public boolean contains(int value, int min, int max) {
+              return value > min;
+          }
+      }
+    new: |
+      package example;
+
+      public class Scenario0130 {
+          public boolean contains(int value, int min, int max) {
+              return value > min && value < max;
+          }
+      }
     labels:
     - B001
     - fault
@@ -60,14 +96,21 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0136.java
-    old: "package example;\n\npublic class Scenario0136 {\n    public boolean authorized(boolean authenticated, boolean tokenValid) {\n        return authenticated && tokenValid;\n    }\n}\n"
+    path: src/main/java/example/Scenario0130.java
+    old: |
+      package example;
+
+      public class Scenario0130 {
+          public boolean contains(int value, int min, int max) {
+              return value > min && value < max;
+          }
+      }
     new: |
       package example;
 
-      public class Scenario0136 {
-          public boolean authorized(boolean authenticated, boolean tokenValid) {
-              return true;
+      public class Scenario0130 {
+          public boolean contains(int value, int min, int max) {
+              return value >= min && value <= max;
           }
       }
     labels:
@@ -75,28 +118,28 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Authentication and token checks introduced separately
+  title: Range minimum and maximum changed separately
   bug_fixing_commit: c3
   bug_introducing_commits: &id001
   - c1
   - c2
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0136.java
+    file: src/main/java/example/Scenario0130.java
     entity:
       type: method
-      name: authorized
-      signature: boolean authorized(boolean authenticated, boolean tokenValid)
-    statement: return authenticated;
+      name: contains
+      signature: boolean contains(int value, int min, int max)
+    statement: return value > min;
     change_type: line_modification
   fix:
     commit: c3
-    file: src/main/java/example/Scenario0136.java
+    file: src/main/java/example/Scenario0130.java
     entity:
       type: method
-      name: authorized
-      signature: boolean authorized(boolean authenticated, boolean tokenValid)
-    statement: return true;
+      name: contains
+      signature: boolean contains(int value, int min, int max)
+    statement: return value >= min && value <= max;
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -105,7 +148,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return authenticated;
+      - return value > min;
 checks:
 - type: git_history_contains
   commits:

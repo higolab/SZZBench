@@ -1,52 +1,49 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0035
-  title: Criss-cross merge
-  slug: criss-cross-merge
-  description: Two long-lived branches merge each other in both directions before a bug introduced on one branch is fixed.
-  category: Branch, merge, cherry-pick, and backport scenarios
-  category_code: G
+  title: One BIC causes multiple bug symptoms
+  slug: bic-bug
+  description: Evaluates one bic causes multiple bug symptoms and checks whether SZZ identifies the expected bug-introducing
+    commit set.
+  category: "Multiple BICs, multiple BFCs, and partial fixes"
+  category_code: "G3"
   factors:
-  - branch
-  - merge
-  - criss_cross_merge
+  - root_cause
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0035-criss-cross-merge
+  name: SZZG-0035-bic-bug
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial correct implementation
+  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
 
-    c1: branchA introduces bug
+    c1: introduce bug (replace src/main/java/example/Range.java)
 
-    c2: branchB adds unrelated work
+    c2: fix bug (replace src/main/java/example/Range.java)
 
-    c3: branchA merges branchB
-
-    c4: branchB merges branchA
-
-    c5: branchB fixes the bug after criss-cross merges'
+    c3: fix bug (replace src/main/java/example/Range.java)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial correct implementation'
+  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
+    content: "package example;\n\npublic class Range {\n  private boolean within(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n\n  public boolean acceptImport(int value, int min, int max) {\n    return within(value,\
+      \ min, max);\n  }\n\n  public boolean acceptSearch(int value, int min, int max) {\n    return within(value, min, max);\n\
+      \  }\n}\n"
 - id: c1
-  branch: branchA
+  branch: main
   parents:
   - c0
-  message: 'c1: introduce range boundary bug on branchA'
+  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
   role: bug_introducing
   operations:
   - type: replace
@@ -54,74 +51,90 @@ commits:
     old: return value >= min && value <= max;
     new: return value > min && value < max;
 - id: c2
-  branch: branchB
-  parents:
-  - c0
-  message: 'c2: add branchB reporter'
-  role: intermediate
-  operations:
-  - type: write_file
-    path: src/main/java/example/BranchBReporter.java
-    content: "package example;\n\npublic class BranchBReporter {\n  public String branch() {\n    return \"B\";\n  }\n}\n"
-- id: c3
-  branch: branchA
+  branch: main
   parents:
   - c1
-  - c2
-  message: 'c3: merge branchB into branchA'
-  role: merge
-  operations: []
-- id: c4
-  branch: branchB
-  parents:
-  - c2
-  - c3
-  message: 'c4: merge branchA back into branchB'
-  role: merge
-  operations: []
-- id: c5
-  branch: branchB
-  parents:
-  - c4
-  message: 'c5: fix range boundary bug after criss-cross merge'
+  message: 'c2: fix bug (replace src/main/java/example/Range.java)'
   role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
-    old: return value > min && value < max;
+    old: return within(value, min, max);
     new: return value >= min && value <= max;
+    occurrence: 1
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'c3: fix bug (replace src/main/java/example/Range.java)'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return within(value, min, max);
+    new: return value >= min && value <= max;
+    occurrence: 1
 bugs:
 - id: B001
-  title: Range boundary bug through criss-cross merge
+  title: Import symptom caused by shared helper BIC
   bug_introducing_commits:
   - commit: c1
     role: direct
   bug_fixing_commits:
-  - commit: c5
-    role: complete_fix
+  - commit: c2
+    role: symptom_fix
   faults:
   - id: F001
     commit: c1
     file: src/main/java/example/Range.java
     statement: return value > min && value < max;
-    change_type: line_modification
+    location: within
   fixes:
   - id: X001
-    commit: c5
+    commit: c2
     file: src/main/java/example/Range.java
     statement: return value >= min && value <= max;
-    fix_type: line_modification
+    location: acceptImport
+- id: B002
+  title: Search symptom caused by same shared helper BIC
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  bug_fixing_commits:
+  - commit: c3
+    role: symptom_fix
+  faults:
+  - id: F002
+    commit: c1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    location: within
+  fixes:
+  - id: X002
+    commit: c3
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+    location: acceptSearch
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
     - c1
+bug_groups:
+- id: BG001
+  root_cause: c1
+  bugs:
+  - B001
+  - B002
 scenario_design:
-  purpose: Evaluate whether SZZ can identify a BIC when branch history includes reciprocal merges.
-  key_property: The history contains merges in both directions between branchA and branchB before the BFC.
+  purpose: Evaluate One BIC causes multiple bug symptoms and whether SZZ identifies the expected bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: root_cause; operations: write_file, replace.'
   evaluation_points:
-  - Criss-cross-like reciprocal merge structure
-  - BIC on branchA
-  - BFC after the bug has propagated to branchB.
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- This scenario uses a simplified criss-cross-like DAG that current graph_generator should be able to create.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

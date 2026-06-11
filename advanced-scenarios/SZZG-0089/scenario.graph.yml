@@ -1,21 +1,21 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0089
-  title: Revert of revert fixes reintroduced bug
-  slug: revert-of-revert-fixes-reintroduced-bug
-  description: A fix is reverted, reintroducing the bug, and then the revert is reverted to restore the fix.
-  category: Revert and reintroduction scenarios
-  category_code: G
+  title: Revert of revert with conflict resolution
+  slug: revert-of-revert-with-conflict-resolution
+  description: A revert-of-revert fixes a reintroduced bug while resolving conflicts caused by intervening changes.
+  category: "Revert-specific reintroduction"
+  category_code: "G6"
   factors:
   - revert
-  - revert_of_fix
   - revert_of_revert
-  - reintroduced_bug
+  - conflict_resolution
+  - intermediate_change
   - re_bic
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0089-revert-of-revert-fixes-reintroduced-bug
+  name: SZZG-0089-revert-of-revert-with-conflict-resolution
   default_branch: main
   language: java
   build_system: none
@@ -30,7 +30,9 @@ graph:
 
     c3: revert c2 and reintroduce boundary bug
 
-    c4: revert c3 and restore boundary fix'
+    c4: add description before resolving revert conflict
+
+    c5: revert c3 with conflict resolution and restore boundary fix'
 commits:
 - id: c0
   branch: main
@@ -80,7 +82,21 @@ commits:
   branch: main
   parents:
   - c3
-  message: 'c4: revert c3 and restore boundary fix'
+  message: 'c4: add description before resolving revert conflict'
+  role: intermediate
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    boolean\
+      \ aboveMin = value > min;\n    boolean belowMax = value < max;\n    return aboveMin && belowMax;\n  }\n}\n"
+    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    boolean\
+      \ aboveMin = value > min;\n    boolean belowMax = value < max;\n    return aboveMin && belowMax;\n  }\n\n  public String\
+      \ description() {\n    return \"exclusive range after revert\";\n  }\n}\n"
+- id: c5
+  branch: main
+  parents:
+  - c4
+  message: 'c5: revert c3 with conflict resolution and restore boundary fix'
   role: bug_fixing
   operations:
   - type: replace
@@ -88,16 +104,17 @@ commits:
     old: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
     new: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
   reverts: c3
+  revert_conflict_resolution: true
 bugs:
 - id: B001
-  title: Boundary bug fixed by revert of revert
+  title: Boundary bug fixed by conflict-resolved revert of revert
   bug_introducing_commits:
   - commit: c3
     role: direct
   - commit: c1
     role: origin
   bug_fixing_commits:
-  - commit: c4
+  - commit: c5
     role: complete_fix
   faults:
   - id: F001
@@ -112,15 +129,15 @@ bugs:
     change_type: reintroduced_lower_boundary
   fixes:
   - id: X001
-    commit: c4
+    commit: c5
     file: src/main/java/example/Range.java
     statement: boolean belowMax = value <= max;
-    fix_type: revert_of_revert_fix
+    fix_type: conflict_resolved_revert_fix
   - id: X002
-    commit: c4
+    commit: c5
     file: src/main/java/example/Range.java
     statement: boolean aboveMin = value >= min;
-    fix_type: revert_of_revert_fix
+    fix_type: conflict_resolved_revert_fix
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
@@ -129,15 +146,16 @@ expected_szz:
     related_but_not_correct:
     - c1
     - c2
-    notes: The BFC c4 is a revert-of-revert; the direct BIC is c3.
+    - c4
+    notes: The direct BIC is c3 even though the BFC c5 is a conflict-resolved revert-of-revert.
 scenario_design:
-  purpose: Evaluate whether SZZ can handle a BFC that is itself a revert-of-revert commit.
-  key_property: The fix in c4 is produced by reverting the reintroducing revert c3.
+  purpose: Evaluate a revert-of-revert BFC that includes conflict resolution after intervening code changes.
+  key_property: The BFC restores the earlier fix while preserving unrelated intervening changes.
   difference_from_existing_revert_scenarios: This scenario isolates a double-revert or revert-derived complication beyond
     the existing partial revert and reintroduction scenarios.
   evaluation_points:
   - Whether SZZ reports c3.
-  - Whether the prior origin c1 and prior fix c2 are not treated as direct BICs.
+  - Whether the intermediate c4 is not selected.
 notes:
 - This scenario models revert-related development history for SZZ evaluation.
 - The direct BIC is the commit that reintroduces the bug in the history observed from the BFC.

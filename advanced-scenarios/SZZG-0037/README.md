@@ -1,39 +1,54 @@
-# SZZG-0037: Fixed on main but unfixed on release
+# SZZG-0037: One BFC fixes multiple BICs across multiple files
+
+## Source
+
+- Category: Multiple-BIC scenarios
 
 ## Purpose
 
-A bug is introduced before a release branch is cut; main fixes the bug, but the release branch continues without the fix.
+Evaluate one bfc fixes multiple bics across multiple files and whether SZZ identifies the expected bug-introducing commit set.
 
-## Commit history
-
-```text
-c0: create initial correct implementation on main
-c1: introduce bug on main before release branch
-c2: create release branch from buggy state and add release note
-c3: fix bug on main
-c4: release branch continues with bug unfixed
-```
-
-## Commit table
-
-| Commit | Branch | Parents | Role | Description |
-|---|---|---|---|---|
-| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `c1` | `main` | c0 | `bug_introducing` | c1: introduce range boundary bug before release branch |
-| `c2` | `release` | c1 | `intermediate` | c2: cut release branch from buggy state |
-| `c3` | `main` | c1 | `bug_fixing` | c3: fix range boundary bug on main |
-| `c4` | `release` | c2 | `unfixed_release` | c4: release branch continues without main fix |
-
-## Expected SZZ result
+## Expected history
 
 ```text
-Expected BIC: c1
+c0: c0: create initial calculator and validator
+c1: c1: introduce rounding bug in calculator
+c2: c2: introduce zero-quantity validation bug
+c3: c3: fix both pricing and validation bugs
 ```
 
-## Scenario purpose
+## Why this needs `scenario.graph.yml`
 
-Evaluate whether SZZ can identify the original BIC when a fix exists on main but has not been propagated to a release branch.
+This history requires graph-aware scenario semantics that are difficult to express with the normal `scenario.yml` schema.
 
-## Notes
+## Required graph-schema features
 
-- The release branch intentionally remains buggy at c4.
+- Factors: multiple_bic, multiple_file, single_bfc
+- Operation types: replace, write_file
+- Expected SZZ policy is defined in `expected_szz`.
+
+## Expected BICs
+
+```text
+c1, c2
+```
+
+## Evaluation points
+
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
+
+---
+
+## Draft status
+
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
+
+## Files
+
+```text
+SZZG-0037/
+|-- scenario.graph.yml
+`-- README.md
+```

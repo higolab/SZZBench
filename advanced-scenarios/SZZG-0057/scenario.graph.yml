@@ -1,130 +1,154 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0057
-  title: Huge history
-  slug: huge-history
-  description: Evaluates huge history and checks whether SZZ identifies the expected bug-introducing commit set.
-  category: Robustness and implementation-quality scenarios
-  category_code: K
+  title: Rebase old feature branch after unrelated main changes
+  slug: rebase-old-feature-branch-after-unrelated-main-changes
+  description: A feature branch from an old base is rebased after unrelated main changes.
+  category: "Branch, merge, cherry-pick, backport, and release branches"
+  category_code: "G4"
   factors:
-  - commit_generators
+  - branch
+  - rebase
+  - old_base
+  - unrelated_main_changes
+  - direct_bic
+  - origin_bic
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0057-huge-history
+  name: SZZG-0057-rebase-old-feature-branch-after-unrelated-main-changes
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial state (write_generated_text_file src/main/java/example/LargeRange.java)
+  history_summary: 'c0: create initial correct implementation
 
-    c1: introduce bug (replace src/main/java/example/LargeRange.java)
+    f1: introduce bug on old feature base
 
-    c2: apply intermediate change (commit_generator)
+    m1: unrelated main change
 
-    c3: apply intermediate change (commit_generator)
+    m2: second unrelated main change
 
-    c4: fix bug (replace src/main/java/example/LargeRange.java)'
+    r1: rebase old feature BIC onto latest main
+
+    c3: fix bug after rebase onto latest main'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_generated_text_file src/main/java/example/LargeRange.java)'
+  message: 'c0: create initial correct implementation'
   role: initial
   operations:
-  - type: write_generated_text_file
-    path: src/main/java/example/LargeRange.java
-    lines: 10000
-    template: public int value_${line} = ${line};
-- id: c1
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n}\n"
+- id: f1
+  branch: feature
+  parents:
+  - c0
+  message: 'f1: introduce bug on old feature base'
+  role: origin_bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+- id: m1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce bug (replace src/main/java/example/LargeRange.java)'
+  message: 'm1: unrelated main change'
+  role: intermediate
+  operations:
+  - type: write_file
+    path: docs/main1.md
+    content: 'main 1
+
+      '
+- id: m2
+  branch: main
+  parents:
+  - m1
+  message: 'm2: second unrelated main change'
+  role: intermediate
+  operations:
+  - type: write_file
+    path: docs/main2.md
+    content: 'main 2
+
+      '
+- id: r1
+  branch: main
+  parents:
+  - m2
+  message: 'r1: rebase old feature BIC onto latest main'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/LargeRange.java
-    old: public int value_5000 = 5000;
-    new: public int value_5000 = -1;
-- id: c2
-  branch: main
-  parents:
-  - c1
-  message: 'c2: apply intermediate change (commit_generator)'
-  role: intermediate
-  operations:
-  - type: commit_generator
-    generator: unrelated_changes
-    count: 500
-    files: 10
-    path: generated/unrelated-batch-1.txt
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+  rebase_of: f1
 - id: c3
   branch: main
   parents:
-  - c2
-  message: 'c3: apply intermediate change (commit_generator)'
-  role: intermediate
-  operations:
-  - type: commit_generator
-    generator: unrelated_changes
-    count: 500
-    files: 10
-    path: generated/unrelated-batch-2.txt
-- id: c4
-  branch: main
-  parents:
-  - c3
-  message: 'c4: fix bug (replace src/main/java/example/LargeRange.java)'
+  - r1
+  message: 'c3: fix bug after rebase onto latest main'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/LargeRange.java
-    old: public int value_5000 = -1;
-    new: public int value_5000 = 5000;
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Huge history with large file one-line bug
+  title: Bug rebased after unrelated main changes
   bug_introducing_commits:
-  - commit: c1
+  - commit: r1
     role: direct
+  - commit: f1
+    role: origin
   bug_fixing_commits:
-  - commit: c4
+  - commit: c3
     role: complete_fix
   faults:
   - id: F001
-    commit: c1
-    file: src/main/java/example/LargeRange.java
-    statement: public int value_5000 = -1;
+    commit: r1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: line_modification
   fixes:
   - id: X001
-    commit: c4
-    file: src/main/java/example/LargeRange.java
-    statement: public int value_5000 = 5000;
+    commit: c3
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+    fix_type: line_modification
+  origin_faults:
+  - id: OF001
+    commit: f1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: origin_line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - c1
-commit_generators:
-- type: unrelated_changes
-  count: 1000
-  files: 10
-  materialized_as:
-  - c2
-  - c3
+    - r1
+    related_but_not_correct:
+    - f1
+    - m1
+    - m2
 scenario_design:
-  purpose: Evaluate Huge history and whether SZZ identifies the expected bug-introducing commit set.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: commit_generators; operations: write_generated_text_file,
-    replace, commit_generator.'
+  purpose: Evaluate rebase after unrelated main-line changes.
+  key_property: m1/m2 are distractors; r1 is direct BIC.
+  difference_from_SZZG_0073: SZZG-0063 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
+    adds a distinct rebase-related complication.
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Report r1.
+  - Avoid m1/m2.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
+- This scenario models a rebase-related development history for SZZ evaluation.
+- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

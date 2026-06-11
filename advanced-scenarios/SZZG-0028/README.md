@@ -1,39 +1,55 @@
-# SZZG-0028: BIC in merge commit
+# SZZG-0028: Origin BIC and direct copied-code BIC are both required
+
+## Source
+
+- Category: Clone propagation scenarios
 
 ## Purpose
 
-The merge commit itself introduces the bug during merge resolution; a later normal commit fixes it.
+Evaluate origin bic and direct copied-code bic are both required and whether SZZ identifies the expected bug-introducing commit set.
 
-## Commit history
-
-```text
-c0: create initial correct implementation on main
-c1: add feature branch helper without changing the range logic
-c2: add unrelated main branch note
-c3: merge feature into main and introduce bug in the merge commit
-c4: fix the merge-introduced bug
-```
-
-## Commit table
-
-| Commit | Branch | Parents | Role | Description |
-|---|---|---|---|---|
-| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `c1` | `feature` | c0 | `intermediate` | c1: add feature helper without bug |
-| `c2` | `main` | c0 | `intermediate` | c2: add unrelated main branch note |
-| `c3` | `main` | c2, c1 | `bug_introducing` | c3: merge feature and introduce boundary bug |
-| `c4` | `main` | c3 | `bug_fixing` | c4: fix merge-introduced range boundary bug |
-
-## Expected SZZ result
+## Expected history
 
 ```text
-Expected BIC: c3
+c0: c0: create amount parser
+c1: c1: introduce original parser trim bug
+c2: c2: copy amount parser to invoice parser
+c3: c3: introduce copied parser sign bug
+c4: c4: fix invoice parsing behavior
 ```
 
-## Scenario purpose
+## Why this needs `scenario.graph.yml`
 
-Evaluate whether SZZ can identify a merge commit as the BIC when the merge resolution itself introduces the bug.
+This history requires graph-aware scenario semantics that are difficult to express with the normal `scenario.yml` schema.
 
-## Notes
+## Required graph-schema features
 
-- This scenario requires support for operations on merge commits.
+- Factors: clone, multiple_bic, origin_and_direct_bic
+- Operation types: copy_file, replace, write_file
+- Expected SZZ policy is defined in `expected_szz`.
+
+## Expected BICs
+
+```text
+c1, c3
+```
+
+## Evaluation points
+
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
+
+---
+
+## Draft status
+
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
+
+## Files
+
+```text
+SZZG-0028/
+|-- scenario.graph.yml
+`-- README.md
+```

@@ -1,22 +1,23 @@
-# SZZ-0084: Null collection check omission
+# SZZ-0084: Whitespace-only rewrite after BIC with preserved line
 
 ## Purpose
 
-This scenario represents an omission bug: the method is introduced without a necessary null collection check, and the bug-fixing commit adds the missing statement.
+This scenario introduces a bug by changing `return value >= min && value <= max;` to `return value > min && value < max;` and later restores the correct implementation.
 
 ## Commit structure
 
-- `c0`: initial class
-- `c1`: introduces the method without the null collection check
-- `c2`: adds the missing null collection check
+- `c0`: initial correct implementation
+- `c1`: introduces the bug
+- `c2`: Adjust whitespace without changing semantics
+- `c3`: fixes the bug
 
 ## Expected behavior
 
-The expected BFC is `c2` and the expected BIC is `c1`. Line-level evaluation is unavailable because this is an omission bug.
+The expected BFC is `c3` and the expected BIC is `c1`.
 
 ## Factors
 
 - `single-bic`
 - `single-bfc`
-- `omission-bug`
-- `line-addition-fix`
+- `line-modification`
+- `whitespace-preserved-after-bic`

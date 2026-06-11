@@ -1,22 +1,22 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0075
-  title: Rebase old feature branch after unrelated main changes
-  slug: rebase-old-feature-branch-after-unrelated-main-changes
-  description: A feature branch from an old base is rebased after unrelated main changes.
-  category: Branch, merge, cherry-pick, and backport scenarios
-  category_code: G
+  title: Interactive rebase squashes BIC and BFC into neutral commit
+  slug: interactive-rebase-squashes-bic-and-bfc-into-neutral-commit
+  description: A transient feature bug is fixed before rebase and does not survive into main.
+  category: "Rebase-specific history rewriting"
+  category_code: "G5"
   factors:
   - branch
   - rebase
-  - old_base
-  - unrelated_main_changes
-  - direct_bic
-  - origin_bic
+  - interactive_rebase
+  - squash
+  - transient_bug
+  - scope_boundary
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0075-rebase-old-feature-branch-after-unrelated-main-changes
+  name: SZZG-0075-interactive-rebase-squashes-bic-and-bfc-into-neutral-commit
   default_branch: main
   language: java
   build_system: none
@@ -25,15 +25,11 @@ graph:
   model: commit_dag
   history_summary: 'c0: create initial correct implementation
 
-    f1: introduce bug on old feature base
+    f1: introduce transient bug on feature
 
-    m1: unrelated main change
+    f2: fix transient bug on feature
 
-    m2: second unrelated main change
-
-    r1: rebase old feature BIC onto latest main
-
-    c3: fix bug after rebase onto latest main'
+    r1: squash transient bug and fix into neutral commit'
 commits:
 - id: c0
   branch: main
@@ -49,106 +45,75 @@ commits:
   branch: feature
   parents:
   - c0
-  message: 'f1: introduce bug on old feature base'
-  role: origin_bug_introducing
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
-- id: m1
-  branch: main
-  parents:
-  - c0
-  message: 'm1: unrelated main change'
-  role: intermediate
-  operations:
-  - type: write_file
-    path: docs/main1.md
-    content: 'main 1
-
-      '
-- id: m2
-  branch: main
-  parents:
-  - m1
-  message: 'm2: second unrelated main change'
-  role: intermediate
-  operations:
-  - type: write_file
-    path: docs/main2.md
-    content: 'main 2
-
-      '
-- id: r1
-  branch: main
-  parents:
-  - m2
-  message: 'r1: rebase old feature BIC onto latest main'
+  message: 'f1: introduce transient bug on feature'
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
     new: return value > min && value < max;
-  rebase_of: f1
-- id: c3
-  branch: main
+- id: f2
+  branch: feature
   parents:
-  - r1
-  message: 'c3: fix bug after rebase onto latest main'
+  - f1
+  message: 'f2: fix transient bug on feature'
   role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value > min && value < max;
     new: return value >= min && value <= max;
+- id: r1
+  branch: main
+  parents:
+  - c0
+  message: 'r1: squash transient bug and fix into neutral commit'
+  role: intermediate
+  operations:
+  - type: write_file
+    path: docs/rebase-note.md
+    content: 'transient bug squashed out
+
+      '
+  rebase_of:
+  - f1
+  - f2
+  interactive_rebase: squash_transient_bug_fix
 bugs:
 - id: B001
-  title: Bug rebased after unrelated main changes
+  title: Transient feature bug squashed out before main
   bug_introducing_commits:
-  - commit: r1
-    role: direct
   - commit: f1
-    role: origin
+    role: direct
   bug_fixing_commits:
-  - commit: c3
+  - commit: f2
     role: complete_fix
   faults:
   - id: F001
-    commit: r1
+    commit: f1
     file: src/main/java/example/Range.java
     statement: return value > min && value < max;
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c3
+    commit: f2
     file: src/main/java/example/Range.java
     statement: return value >= min && value <= max;
     fix_type: line_modification
-  origin_faults:
-  - id: OF001
-    commit: f1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
-    change_type: origin_line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - r1
-    related_but_not_correct:
     - f1
-    - m1
-    - m2
+    notes: This records the pre-rebase transient BIC/BFC pair; r1 is not a main-line SZZ target.
 scenario_design:
-  purpose: Evaluate rebase after unrelated main-line changes.
-  key_property: m1/m2 are distractors; r1 is direct BIC.
-  difference_from_SZZG_0073: SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
+  purpose: Clarify a scope boundary for bugs that do not survive into final main history.
+  key_property: The final main history has no main-line BIC for this transient bug.
+  difference_from_SZZG_0073: SZZG-0063 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
     adds a distinct rebase-related complication.
   evaluation_points:
-  - Report r1.
-  - Avoid m1/m2.
+  - Record transient pair.
+  - Treat as special scope-boundary case.
 notes:
 - This scenario models a rebase-related development history for SZZ evaluation.
 - Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

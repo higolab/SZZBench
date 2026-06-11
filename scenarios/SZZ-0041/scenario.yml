@@ -1,19 +1,20 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0041
-  title: Whitespace-only rewrite after BIC with preserved line
-  slug: whitespace-preserved-after-bic
-  description: This scenario introduces a bug by changing `return value >= min && value <= max;` to `return value > min && value < max;` and later restores the correct implementation.
-  category: intermediate-history
+  title: Incorrect default in new method
+  slug: incorrect-default-bic
+  description: 'This scenario evaluates a bug-introducing commit shape: Incorrect default in new method.'
+  category: "Basic semantic line changes"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - whitespace-preserved-after-bic
+  - wrong-constant
   difficulty: medium
   status: active
+  category_code: "S1"
 repository:
-  name: SZZ-0041-whitespace-preserved-after-bic
+  name: SZZ-0041-incorrect-default-bic
   default_branch: main
   language: java
   build_system: none
@@ -26,13 +27,13 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0041.java
+    path: src/main/java/example/Scenario0122.java
     content: |
       package example;
 
-      public class Scenario0041 {
-          public boolean check(int value, int min, int max) {
-              return value >= min && value <= max;
+      public class Scenario0122 {
+          public String display(String value) {
+              return value == null ? "unknown" : value;
           }
       }
 - id: c1
@@ -42,58 +43,48 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0041.java
+    path: src/main/java/example/Scenario0122.java
     old: |
       package example;
 
-      public class Scenario0041 {
-          public boolean check(int value, int min, int max) {
-              return value >= min && value <= max;
+      public class Scenario0122 {
+          public String display(String value) {
+              return value == null ? "unknown" : value;
           }
       }
     new: |
       package example;
 
-      public class Scenario0041 {
-          public boolean check(int value, int min, int max) {
-              return value > min && value < max;
+      public class Scenario0122 {
+          public String display(String value) {
+              return value == null ? "" : value;
           }
       }
     labels:
     - B001
     - fault
 - id: c2
-  message: Adjust whitespace without changing semantics
-  author: Carol <carol@example.com>
-  date: '2024-01-03T10:00:00Z'
-  role: formatting
-  operations:
-  - type: replace
-    path: src/main/java/example/Scenario0041.java
-    old: |
-      package example;
-
-      public class Scenario0041 {
-          public boolean check(int value, int min, int max) {
-              return value > min && value < max;
-          }
-      }
-    new: "package example;\n\npublic class Scenario0041 {\n    public boolean check(int value, int min, int max) {  \n        return value > min && value < max;\n    }\n}\n"
-- id: c3
   message: Fix bug
   author: Alice <alice@example.com>
-  date: '2024-01-04T10:00:00Z'
+  date: '2024-01-03T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0041.java
-    old: "package example;\n\npublic class Scenario0041 {\n    public boolean check(int value, int min, int max) {  \n        return value > min && value < max;\n    }\n}\n"
+    path: src/main/java/example/Scenario0122.java
+    old: |
+      package example;
+
+      public class Scenario0122 {
+          public String display(String value) {
+              return value == null ? "" : value;
+          }
+      }
     new: |
       package example;
 
-      public class Scenario0041 {
-          public boolean check(int value, int min, int max) {
-              return value >= min && value <= max;
+      public class Scenario0122 {
+          public String display(String value) {
+              return value == null ? "unknown" : value;
           }
       }
     labels:
@@ -101,42 +92,39 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Whitespace-only rewrite after BIC with preserved line
-  bug_fixing_commit: c3
+  title: Incorrect default in new method
+  bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0041.java
+    file: src/main/java/example/Scenario0122.java
     entity:
       type: method
-      name: check
-      signature: boolean check(int value, int min, int max)
-    statement: return value > min && value < max;
+      name: display
+      signature: String display(String value)
+    statement: 'return value == null ? "" : value;'
     change_type: line_modification
   fix:
-    commit: c3
-    file: src/main/java/example/Scenario0041.java
+    commit: c2
+    file: src/main/java/example/Scenario0122.java
     entity:
       type: method
-      name: check
-      signature: boolean check(int value, int min, int max)
-    statement: return value >= min && value <= max;
+      name: display
+      signature: String display(String value)
+    statement: 'return value == null ? "unknown" : value;'
     fix_type: line_modification
   expected_szz:
     commit_level:
       true_positives: *id001
       false_positives_allowed: []
-      known_distractors:
-      - c2
     line_level:
       available: true
       faulty_statements:
-      - return value > min && value < max;
+      - 'return value == null ? "" : value;'
 checks:
 - type: git_history_contains
   commits:
   - c0
   - c1
   - c2
-  - c3

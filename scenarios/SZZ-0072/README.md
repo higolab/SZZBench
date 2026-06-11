@@ -1,14 +1,14 @@
-# SZZ-0072: Default case omission
+# SZZ-0072: Role check omission
 
 ## Purpose
 
-This scenario represents an omission bug: the method is introduced without a necessary default case, and the bug-fixing commit adds the missing statement.
+This scenario represents an omission bug: the method is introduced without a necessary role check, and the bug-fixing commit adds the missing statement.
 
 ## Commit structure
 
 - `c0`: initial class
-- `c1`: introduces the method without the default case
-- `c2`: adds the missing default case
+- `c1`: introduces the method without the role check
+- `c2`: adds the missing role check
 
 ## Expected behavior
 
@@ -20,3 +20,4 @@ The expected BFC is `c2` and the expected BIC is `c1`. Line-level evaluation is 
 - `single-bfc`
 - `omission-bug`
 - `line-addition-fix`
+- `security`

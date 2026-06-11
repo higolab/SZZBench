@@ -1,10 +1,10 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0074
-  title: Early return omission
-  slug: early-return-omission
-  description: 'This scenario represents an omission bug: the method is introduced without a necessary early return, and the bug-fixing commit adds the missing statement.'
-  category: omission
+  title: Null collection check omission
+  slug: null-collection-check-omission
+  description: 'This scenario represents an omission bug: the method is introduced without a necessary null collection check, and the bug-fixing commit adds the missing statement.'
+  category: "Omission and deletion bugs"
   factors:
   - single-bic
   - single-bfc
@@ -12,8 +12,9 @@ meta:
   - line-addition-fix
   difficulty: medium
   status: active
+  category_code: "S2"
 repository:
-  name: SZZ-0074-early-return-omission
+  name: SZZ-0074-null-collection-check-omission
   default_branch: main
   language: java
   build_system: none
@@ -26,73 +27,73 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0074.java
+    path: src/main/java/example/Scenario0084.java
     content: 'package example;
 
 
-      public class Scenario0074 {
+      public class Scenario0084 {
 
       }
 
       '
 - id: c1
-  message: Add shouldRun without early return
+  message: Add size without null collection check
   author: Bob <bob@example.com>
   date: '2024-02-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0074.java
+    path: src/main/java/example/Scenario0084.java
     old: 'package example;
 
 
-      public class Scenario0074 {
+      public class Scenario0084 {
 
       }
 
       '
-    new: "package example;\n\npublic class Scenario0074 {\n    public boolean shouldRun(boolean cancelled) {\n        return true;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0084 {\n    public int size(String[] items) {\n        return items.length;\n    }\n}\n"
     labels:
     - B001
     - fault
 - id: c2
-  message: Add missing early return
+  message: Add missing null collection check
   author: Alice <alice@example.com>
   date: '2024-02-03T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0074.java
-    old: "package example;\n\npublic class Scenario0074 {\n    public boolean shouldRun(boolean cancelled) {\n        return true;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0074 {\n    public boolean shouldRun(boolean cancelled) {\n        if (cancelled) {\n                return false;\n            }\n            return true;\n    }\n}\n"
+    path: src/main/java/example/Scenario0084.java
+    old: "package example;\n\npublic class Scenario0084 {\n    public int size(String[] items) {\n        return items.length;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0084 {\n    public int size(String[] items) {\n        if (items == null) {\n                return 0;\n            }\n            return items.length;\n    }\n}\n"
     labels:
     - B001
     - fix
 bugs:
 - id: B001
-  title: Early return omission
+  title: Null collection check omission
   bug_fixing_commit: c2
   bug_introducing_commits:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0074.java
+    file: src/main/java/example/Scenario0084.java
     entity:
       type: method
-      name: shouldRun
-      signature: boolean shouldRun(boolean cancelled)
+      name: size
+      signature: int size(String[] items)
     change_type: omission
-    missing_statement: "if (cancelled) {\n            return false;\n        }\n"
+    missing_statement: "if (items == null) {\n            return 0;\n        }\n"
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0074.java
+    file: src/main/java/example/Scenario0084.java
     entity:
       type: method
-      name: shouldRun
-      signature: boolean shouldRun(boolean cancelled)
+      name: size
+      signature: int size(String[] items)
     added_statement: |
-      if (cancelled) {
-                      return false;
+      if (items == null) {
+                      return 0;
                   }
     fix_type: line_addition
   expected_szz:

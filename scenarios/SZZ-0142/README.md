@@ -1,23 +1,22 @@
-# SZZ-0142: Duplicate empty string checks
+# SZZ-0142: Authentication and token checks introduced separately
 
 ## Purpose
 
-This scenario contains duplicate or similar statements so that line-level oracle interpretation is intentionally harder.
+This scenario requires treating two bug-introducing commits as contributing to the same later fix.
 
 ## Commit structure
 
-- `c0`: initial implementation with duplicate-looking statement
-- `c1`: introduces the fault
-- `c2`: fixes the fault
+- `c0`: initial implementation
+- `c1`: first contributing BIC
+- `c2`: second contributing BIC
+- `c3`: BFC
 
 ## Expected behavior
 
-The expected BFC is `c2` and the expected BIC is `c1`; duplicate statements may trigger warning-level ambiguity.
+The expected BFC is `c3`; the expected BIC set is `{c1, c2}`.
 
 ## Factors
 
-- `single-bic`
+- `multi-bic`
 - `single-bfc`
 - `line-modification`
-- `ambiguous-blame`
-- `duplicate-statement`

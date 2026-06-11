@@ -1,20 +1,20 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0159
-  title: Comment-only intermediate before fix
-  slug: comment-only-intermediate
-  description: This scenario is intended to stress implementation robustness under noisy or repetitive code conditions.
-  category: robustness
+  title: Bug reason only in commit message
+  slug: bug-reason-in-message
+  description: This scenario is intended for evaluating SZZ variants that use commit messages or broader patch context.
+  category: "Context, message, and non-local evidence"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - robustness
-  - comment-only-intermediate
+  - context-aware
   difficulty: medium
   status: active
+  category_code: "S7"
 repository:
-  name: SZZ-0159-comment-only-intermediate
+  name: SZZ-0159-bug-reason-in-message
   default_branch: main
   language: java
   build_system: none
@@ -23,96 +23,68 @@ commits:
 - id: c0
   message: Initial implementation
   author: Alice <alice@example.com>
-  date: '2024-06-01T10:00:00Z'
+  date: '2024-05-01T10:00:00Z'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0159.java
+    path: src/main/java/example/Scenario0150.java
     content: |
       package example;
 
-      public class Scenario0159 {
-          public boolean check(int value, int max) {
-              return value <= max;
+      public class Scenario0150 {
+          public boolean check(int value, int min, int max) {
+              return value >= min;
           }
       }
 - id: c1
-  message: Introduce bug
+  message: Introduce context-sensitive bug
   author: Bob <bob@example.com>
-  date: '2024-06-02T10:00:00Z'
+  date: '2024-05-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0159.java
+    path: src/main/java/example/Scenario0150.java
     old: |
       package example;
 
-      public class Scenario0159 {
-          public boolean check(int value, int max) {
-              return value <= max;
+      public class Scenario0150 {
+          public boolean check(int value, int min, int max) {
+              return value >= min;
           }
       }
     new: |
       package example;
 
-      public class Scenario0159 {
-          public boolean check(int value, int max) {
-              return value < max;
+      public class Scenario0150 {
+          public boolean check(int value, int min, int max) {
+              return value > min;
           }
       }
     labels:
     - B001
     - fault
 - id: c2
-  message: Add comment-only context
-  author: Carol <carol@example.com>
-  date: '2024-06-03T10:00:00Z'
-  role: distractor
-  operations:
-  - type: replace
-    path: src/main/java/example/Scenario0159.java
-    old: |
-      package example;
-
-      public class Scenario0159 {
-          public boolean check(int value, int max) {
-              return value < max;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0159 {
-          public boolean check(int value, int max) {
-              // intentionally checking upper boundary
-              return value < max;
-          }
-      }
-    labels:
-    - non_bug_introducing_change
-- id: c3
-  message: Fix bug
+  message: Fix exclusive boundary from previous change
   author: Alice <alice@example.com>
-  date: '2024-06-04T10:00:00Z'
+  date: '2024-05-03T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0159.java
+    path: src/main/java/example/Scenario0150.java
     old: |
       package example;
 
-      public class Scenario0159 {
-          public boolean check(int value, int max) {
-              // intentionally checking upper boundary
-              return value < max;
+      public class Scenario0150 {
+          public boolean check(int value, int min, int max) {
+              return value > min;
           }
       }
     new: |
       package example;
 
-      public class Scenario0159 {
-          public boolean check(int value, int max) {
-              return value <= max;
+      public class Scenario0150 {
+          public boolean check(int value, int min, int max) {
+              return value >= min;
           }
       }
     labels:
@@ -120,42 +92,39 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Comment-only intermediate before fix
-  bug_fixing_commit: c3
+  title: Bug reason only in commit message
+  bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0159.java
+    file: src/main/java/example/Scenario0150.java
     entity:
       type: method
       name: check
-      signature: boolean check(int value, int max)
-    statement: return value < max;
+      signature: boolean check(int value, int min, int max)
+    statement: return value > min;
     change_type: line_modification
   fix:
-    commit: c3
-    file: src/main/java/example/Scenario0159.java
+    commit: c2
+    file: src/main/java/example/Scenario0150.java
     entity:
       type: method
       name: check
-      signature: boolean check(int value, int max)
-    statement: return value <= max;
+      signature: boolean check(int value, int min, int max)
+    statement: return value >= min;
     fix_type: line_modification
   expected_szz:
     commit_level:
       true_positives: *id001
       false_positives_allowed: []
-      known_distractors:
-      - c2
     line_level:
       available: true
       faulty_statements:
-      - return value < max;
+      - return value > min;
 checks:
 - type: git_history_contains
   commits:
   - c0
   - c1
   - c2
-  - c3

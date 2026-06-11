@@ -8,13 +8,14 @@ meta:
     A boundary-check bug is introduced by modifying one return statement
     and later fixed by restoring the correct condition. This is intended
     as the simplest sanity-check scenario for line-based SZZ.
-  category: "basic"
+  category: "Basic semantic line changes"
   factors:
     - "single-bic"
     - "single-bfc"
     - "line-modification"
   difficulty: "easy"
   status: "active"
+  category_code: "S1"
 
 repository:
   name: "SZZ-0001-simple-line-modification"

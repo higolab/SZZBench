@@ -1,48 +1,39 @@
-# SZZG-0044: Only commit message provides the clue
-
-## Source
-
-- Category: Work-item and commit-series scenarios
+# SZZG-0044: BIC before merge, BFC after merge
 
 ## Purpose
 
-Evaluate whether a context-aware SZZ method can use commit-message evidence when the changed code itself contains only a generic boolean gate.
+A bug is introduced on main before a feature branch is merged, and the bug is fixed on main after the merge.
 
-## Expected history
-
-```text
-c0: create regional checkout challenge gate
-c1: disable the EU checkout challenge with the only explicit message clue
-c2: change an unrelated Canada rollout gate
-c3: restore the EU checkout challenge
-```
-
-## Why this needs `scenario.graph.yml`
-
-The scenario needs commit-message context because the relevant domain clue is not carried by the edited line alone.
-
-## Required graph-schema features
-
-- Factors: context, commit_messages
-- Operation types: write_file, replace
-- Expected SZZ policy is defined in expected_szz.
-
-## Evaluation points
-
-- Whether SZZ identifies c1 as the BIC using the PAY-314 EU clue in the commit message.
-- Whether the unrelated Canada gate change c2 is not selected just because it is nearby and similar.
-- Whether the BFC can be linked to the correct regional intent without relying only on line text.
-
----
-
-## Draft status
-
-This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
-
-## Files
+## Commit history
 
 ```text
-SZZG-0044/
-|-- scenario.graph.yml
-`-- README.md
+c0: create initial correct implementation on main
+c1: introduce bug on main before merge
+c2: perform unrelated feature branch work
+c3: merge feature branch into main
+c4: fix the pre-merge bug on main after merge
 ```
+
+## Commit table
+
+| Commit | Branch | Parents | Role | Description |
+|---|---|---|---|---|
+| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
+| `c1` | `main` | c0 | `bug_introducing` | c1: introduce range boundary bug on main before merge |
+| `c2` | `feature` | c0 | `intermediate` | c2: add unrelated feature helper |
+| `c3` | `main` | c1, c2 | `merge` | c3: merge feature branch after bug introduction |
+| `c4` | `main` | c3 | `bug_fixing` | c4: fix pre-merge range boundary bug |
+
+## Expected SZZ result
+
+```text
+Expected BIC: c1
+```
+
+## Scenario purpose
+
+Evaluate a BIC that exists before a merge and a BFC that appears after that merge.
+
+## Notes
+
+- This scenario separates pre-merge main-line bug introduction from feature-branch bug introduction.

@@ -1,18 +1,16 @@
-# SZZG-0083: Misleading rebase commit message
+# SZZG-0083: Huge noisy rebased commit
 
 ## Purpose
 
-Evaluate whether message context helps or misleads SZZ in a rebase scenario.
+Evaluate SZZ behavior on a large noisy rebased commit.
 
 ## Commit history
 
 ```text
 c0: c0: create initial correct implementation
-f1: f1: introduce range boundary bug on feature
-f2: f2: add feature helper using buggy range check
-r1: r1: cleanup after rebase
-r2: r2: rebase feature helper onto main
-c3: c3: fix range boundary bug after rebase
+f1: f1: introduce bug and noisy feature files
+r1: r1: rebase huge noisy feature commit
+c2: c2: fix bug from huge noisy commit
 ```
 
 ## Commit table
@@ -20,11 +18,9 @@ c3: c3: fix range boundary bug after rebase
 | Commit | Branch | Parents | Role | Description |
 |---|---|---|---|---|
 | `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `f1` | `feature` | c0 | `origin_bug_introducing` | f1: introduce range boundary bug on feature |
-| `f2` | `feature` | f1 | `intermediate` | f2: add feature helper using buggy range check |
-| `r1` | `main` | c0 | `bug_introducing` | r1: cleanup after rebase |
-| `r2` | `main` | r1 | `intermediate` | r2: rebase feature helper onto main |
-| `c3` | `main` | r2 | `bug_fixing` | c3: fix range boundary bug after rebase |
+| `f1` | `feature` | c0 | `origin_bug_introducing` | f1: introduce bug and noisy feature files |
+| `r1` | `main` | c0 | `bug_introducing` | r1: rebase huge noisy feature commit |
+| `c2` | `main` | r1 | `bug_fixing` | c2: fix bug from huge noisy commit |
 
 ## Expected SZZ result
 
@@ -35,15 +31,16 @@ Related but not correct: f1
 
 ## Key property
 
-The direct BIC remains r1 despite message context.
+r1 contains one relevant source change and many unrelated files.
 
-## Difference from SZZG-0061
+## Difference from SZZG-0063
 
-SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
+SZZG-0063 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
 
 ## Evaluation points
 
 - Report r1.
+- Remain robust.
 
 ## Notes
 

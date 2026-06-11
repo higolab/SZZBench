@@ -1,15 +1,22 @@
-# SZZ-0164: BIC is a test-only commit
+# SZZ-0164: Test failure described in BFC message
 
-## Summary
+## Purpose
 
-Evaluates a bug where the bug-introducing commit changes only a test oracle, not production code.
+This scenario is intended for evaluating SZZ variants that use commit messages or broader patch context.
 
-## Expected SZZ Behavior
+## Commit structure
 
-- Bug-introducing commit(s): c1
-- Bug-fixing commit: c2
+- `c0`: initial implementation
+- `c1`: introduces the bug
+- `c2`: BFC with message: Fix failing boundary test
 
-## Notes
+## Expected behavior
 
-- Moved from SZZG-0007 after applying the scenario.yml / scenario.graph.yml boundary policy.
-- This scenario uses a linear main-branch history and a commit-level exact-set oracle.
+The expected BFC is `c2` and the expected BIC is `c1`.
+
+## Factors
+
+- `single-bic`
+- `single-bfc`
+- `line-modification`
+- `context-aware`

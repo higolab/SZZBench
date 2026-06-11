@@ -1,107 +1,85 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0084
-  title: BFC message identifies rebase regression
-  slug: bfc-message-identifies-rebase-regression
-  description: The BFC message explicitly says the bug was introduced during rebase.
-  category: Branch, merge, cherry-pick, and backport scenarios
-  category_code: G
-  factors:
-  - branch
-  - rebase
-  - commit_messages
-  - bfc_message
-  - context
-  - direct_bic
+  title: Partial revert reintroduces bug
+  slug: partial-revert
+  description: Evaluates partial revert reintroduces bug and checks whether SZZ identifies the expected bug-introducing commit
+    set.
+  category: "Revert-specific reintroduction"
+  category_code: "G6"
+  factors: []
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0084-bfc-message-identifies-rebase-regression
+  name: SZZG-0084-partial-revert
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial correct implementation
+  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
 
-    f1: introduce range boundary bug on feature
+    c1: introduce bug (replace src/main/java/example/Range.java)
 
-    f2: add feature helper using buggy range check
+    c2: fix bug (replace src/main/java/example/Range.java)
 
-    r1: rebase feature BIC onto main
+    c3: partially revert c2 and reintroduce bug (replace src/main/java/example/Range.java)
 
-    r2: rebase feature helper onto main
-
-    c3: fix boundary regression introduced during rebase'
+    c4: fix bug (replace src/main/java/example/Range.java)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial correct implementation'
+  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
     content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
       \ value >= min && value <= max;\n  }\n}\n"
-- id: f1
-  branch: feature
-  parents:
-  - c0
-  message: 'f1: introduce range boundary bug on feature'
-  role: origin_bug_introducing
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
-- id: f2
-  branch: feature
-  parents:
-  - f1
-  message: 'f2: add feature helper using buggy range check'
-  role: intermediate
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n}\n"
-    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
-      \ min, max);\n  }\n}\n"
-- id: r1
+- id: c1
   branch: main
   parents:
   - c0
-  message: 'r1: rebase feature BIC onto main'
+  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
     new: return value > min && value < max;
-  rebase_of: f1
-- id: r2
+- id: c2
   branch: main
   parents:
-  - r1
-  message: 'r2: rebase feature helper onto main'
-  role: intermediate
+  - c1
+  message: 'c2: fix bug (replace src/main/java/example/Range.java)'
+  role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
-    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n}\n"
-    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
-      \ min, max);\n  }\n}\n"
-  rebase_of: f2
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
 - id: c3
   branch: main
   parents:
-  - r2
-  message: 'c3: fix boundary regression introduced during rebase'
+  - c2
+  message: 'c3: partially revert c2 and reintroduce bug (replace src/main/java/example/Range.java)'
+  role: bug_reintroducing
+  revert_of: c2
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+  reverts:
+  - commit: c2
+    mode: partial
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: 'c4: fix bug (replace src/main/java/example/Range.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -110,47 +88,44 @@ commits:
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Range bug with rebase message context
+  title: Partial revert reintroduces boundary bug
   bug_introducing_commits:
-  - commit: r1
-    role: direct
-  - commit: f1
+  - commit: c3
+    role: reintroducing
+  - commit: c1
     role: origin
   bug_fixing_commits:
-  - commit: c3
+  - commit: c4
     role: complete_fix
   faults:
   - id: F001
-    commit: r1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
-    change_type: line_modification
-  fixes:
-  - id: X001
     commit: c3
     file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
-    fix_type: line_modification
-  origin_faults:
-  - id: OF001
-    commit: f1
-    file: src/main/java/example/Range.java
     statement: return value > min && value < max;
-    change_type: origin_line_modification
+    change_type: partial_revert
+  fixes:
+  - id: X001
+    commit: c4
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
 expected_szz:
   commit_level:
-    evaluation_policy: exact_set
+    evaluation_policy: reintroduction_direct
     required:
-    - r1
+    - c3
     related_but_not_correct:
-    - f1
+    - c1
 scenario_design:
-  purpose: Evaluate whether message context helps or misleads SZZ in a rebase scenario.
-  key_property: The direct BIC remains r1 despite message context.
-  difference_from_SZZG_0073: SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
-    adds a distinct rebase-related complication.
+  purpose: Evaluate a partial revert where c3 reintroduces the boundary bug and is the expected direct BIC for the final
+    fix.
+  key_property: Commit c1 is the original BIC, but c3 is the reintroducing BIC required by the reintroduction_direct policy.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses operations: write_file, replace.'
   evaluation_points:
-  - Report r1.
+  - Whether SZZ identifies c3 as the reintroducing BIC for the final fix.
+  - Whether SZZ treats the original BIC c1 as related history, not the required direct answer.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- This scenario models a rebase-related development history for SZZ evaluation.
-- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

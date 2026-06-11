@@ -1,22 +1,21 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0079
-  title: Rebased BIC fixed by multiple BFCs
-  slug: rebased-bic-fixed-by-multiple-bfcs
-  description: A rebased BIC is repaired by a partial fix followed by a complete fix.
-  category: Branch, merge, cherry-pick, and backport scenarios
-  category_code: G
+  title: Misleading rebase commit message
+  slug: misleading-rebase-commit-message
+  description: A rebased BIC has a misleading cleanup-like commit message.
+  category: "Rebase-specific history rewriting"
+  category_code: "G5"
   factors:
   - branch
   - rebase
-  - rebased_bic
-  - multiple_bfc
-  - partial_fix
-  - complete_fix
+  - commit_messages
+  - misleading_commit_message
+  - direct_bic
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0079-rebased-bic-fixed-by-multiple-bfcs
+  name: SZZG-0079-misleading-rebase-commit-message
   default_branch: main
   language: java
   build_system: none
@@ -25,13 +24,15 @@ graph:
   model: commit_dag
   history_summary: 'c0: create initial correct implementation
 
-    f1: introduce both boundary bugs
+    f1: introduce range boundary bug on feature
 
-    r1: rebase feature BIC onto main
+    f2: add feature helper using buggy range check
 
-    c3: partially fix lower boundary
+    r1: cleanup after rebase
 
-    c4: complete boundary fix'
+    r2: rebase feature helper onto main
+
+    c3: fix range boundary bug after rebase'
 commits:
 - id: c0
   branch: main
@@ -41,64 +42,74 @@ commits:
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: |
-      package example;
-
-      public class Range {
-        public boolean contains(int value, int min, int max) {
-          boolean aboveMin = value >= min;
-          boolean belowMax = value <= max;
-          return aboveMin && belowMax;
-        }
-      }
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n}\n"
 - id: f1
   branch: feature
   parents:
   - c0
-  message: 'f1: introduce both boundary bugs'
+  message: 'f1: introduce range boundary bug on feature'
   role: origin_bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
-    old: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
-    new: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+- id: f2
+  branch: feature
+  parents:
+  - f1
+  message: 'f2: add feature helper using buggy range check'
+  role: intermediate
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n}\n"
+    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
+      \ min, max);\n  }\n}\n"
 - id: r1
   branch: main
   parents:
   - c0
-  message: 'r1: rebase feature BIC onto main'
+  message: 'r1: cleanup after rebase'
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
-    old: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
-    new: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
   rebase_of: f1
-- id: c3
+- id: r2
   branch: main
   parents:
   - r1
-  message: 'c3: partially fix lower boundary'
-  role: bug_fixing
+  message: 'r2: rebase feature helper onto main'
+  role: intermediate
   operations:
   - type: replace
     path: src/main/java/example/Range.java
-    old: boolean aboveMin = value > min;
-    new: boolean aboveMin = value >= min;
-- id: c4
+    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n}\n"
+    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
+      \ min, max);\n  }\n}\n"
+  rebase_of: f2
+- id: c3
   branch: main
   parents:
-  - c3
-  message: 'c4: complete boundary fix'
+  - r2
+  message: 'c3: fix range boundary bug after rebase'
   role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
-    old: boolean belowMax = value < max;
-    new: boolean belowMax = value <= max;
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Rebased bug fixed progressively
+  title: Range bug with rebase message context
   bug_introducing_commits:
   - commit: r1
     role: direct
@@ -106,42 +117,25 @@ bugs:
     role: origin
   bug_fixing_commits:
   - commit: c3
-    role: partial_fix
-  - commit: c4
     role: complete_fix
   faults:
   - id: F001
     commit: r1
     file: src/main/java/example/Range.java
-    statement: boolean belowMax = value < max;
-    change_type: upper_boundary_line_modification
-  - id: F002
-    commit: r1
-    file: src/main/java/example/Range.java
-    statement: boolean aboveMin = value > min;
-    change_type: lower_boundary_line_modification
+    statement: return value > min && value < max;
+    change_type: line_modification
   fixes:
   - id: X001
     commit: c3
     file: src/main/java/example/Range.java
-    statement: boolean aboveMin = value >= min;
-    fix_type: partial_line_modification
-  - id: X002
-    commit: c4
-    file: src/main/java/example/Range.java
-    statement: boolean belowMax = value <= max;
-    fix_type: complete_line_modification
+    statement: return value >= min && value <= max;
+    fix_type: line_modification
   origin_faults:
   - id: OF001
     commit: f1
     file: src/main/java/example/Range.java
-    statement: boolean belowMax = value < max;
-    change_type: origin_upper_boundary_line_modification
-  - id: OF002
-    commit: f1
-    file: src/main/java/example/Range.java
-    statement: boolean aboveMin = value > min;
-    change_type: origin_lower_boundary_line_modification
+    statement: return value > min && value < max;
+    change_type: origin_line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
@@ -150,13 +144,12 @@ expected_szz:
     related_but_not_correct:
     - f1
 scenario_design:
-  purpose: Evaluate progressive repair of a rebased BIC.
-  key_property: The rebased BIC introduces separate lower-bound and upper-bound faults. The partial fix repairs only the lower
-    bound, leaving the upper-bound fault present until the complete fix.
-  difference_from_SZZG_0073: SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
+  purpose: Evaluate whether message context helps or misleads SZZ in a rebase scenario.
+  key_property: The direct BIC remains r1 despite message context.
+  difference_from_SZZG_0073: SZZG-0063 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
     adds a distinct rebase-related complication.
   evaluation_points:
-  - Return r1 from final fix.
+  - Report r1.
 notes:
 - This scenario models a rebase-related development history for SZZ evaluation.
 - Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

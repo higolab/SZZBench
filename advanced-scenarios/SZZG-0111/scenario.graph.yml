@@ -1,100 +1,115 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0111
-  title: Defensive check BFC masks an earlier root-cause BIC
-  slug: defensive-check-masks-root-cause
-  description: Evaluates defensive check bfc masks an earlier root-cause bic and checks whether SZZ identifies the expected
-    bug-introducing commit set.
-  category: Context-dependent scenarios
-  category_code: A
+  title: Chmod-only intermediate
+  slug: chmod-only-intermediate
+  description: Evaluates a chmod-only intermediate commit between the BIC and BFC and checks whether SZZ ignores it as a cause.
+  category: "Non-source, binary, generated, and scalability edge cases"
+  category_code: "G8"
   factors:
-  - defensive_fix
-  - root_cause_not_touched
-  - context_dependent
+  - chmod
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0111-defensive-check-masks-root-cause
+  name: SZZG-0111-chmod-only-intermediate
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: c0: create profile renderer
+  history_summary: 'c0: create initial state (write_file scripts/run.sh; write_file src/main/java/example/Range.java)
 
-    c1: c1: introduce null-producing root cause
+    c1: apply intermediate change (chmod scripts/run.sh)
 
-    c2: c2: fix crash with defensive null checks'
+    c2: introduce bug (replace src/main/java/example/Range.java)
+
+    c3: fix bug (replace src/main/java/example/Range.java)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create profile renderer'
+  message: 'c0: create initial state (write_file scripts/run.sh; write_file src/main/java/example/Range.java)'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Profile.java
-    content: "package example;\npublic class Profile {\n  public String displayName(String first, String last) {\n    return\
-      \ first + \" \" + last;\n  }\n\n}\n"
+    path: scripts/run.sh
+    content: '#!/bin/sh
+
+      python -m example.Range
+
+      '
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce null-producing root cause'
-  role: bug_introducing
+  message: 'c1: apply intermediate change (chmod scripts/run.sh)'
+  role: intermediate
+  allow_empty: true
   operations:
-  - type: replace
-    path: src/main/java/example/Profile.java
-    old: return first + " " + last;
-    new: return first.trim() + " " + last.trim();
+  - type: chmod
+    path: scripts/run.sh
+    mode: '755'
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: fix crash with defensive null checks'
+  message: 'c2: introduce bug (replace src/main/java/example/Range.java)'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'c3: fix bug (replace src/main/java/example/Range.java)'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Profile.java
-    old: return first.trim() + " " + last.trim();
-    new: 'return (first == null ? "" : first.trim()) + " " + (last == null ? "" : last.trim());'
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
 bugs:
 - id: B001
   title: Synthetic graph scenario bug
   bug_introducing_commits:
-  - commit: c1
+  - commit: c2
     role: direct
   bug_fixing_commits:
-  - commit: c2
+  - commit: c3
     role: complete_fix
   faults:
   - id: F001
-    commit: c1
-    file: src/main/java/example/Profile.java
-    statement: return first.trim() + " " + last.trim();
+    commit: c2
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c2
-    file: src/main/java/example/Profile.java
-    statement: 'return (first == null ? "" : first.trim()) + " " + (last == null ? "" : last.trim());'
+    commit: c3
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
     fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - c1
+    - c2
 scenario_design:
-  purpose: Evaluate defensive check bfc masks an earlier root-cause bic and whether SZZ identifies the expected bug-introducing
-    commit set.
+  purpose: Evaluate whether SZZ identifies the real BIC when a chmod-only commit appears in the intermediate history.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: defensive_fix, root_cause_not_touched, context_dependent;
-    operations: replace, write_file.'
+  required_extensions_from_source: 'This scenario uses factors: chmod; operations: write_file, chmod, replace.'
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the chmod-only intermediate commit c1 is not reported as the BIC.
   - Whether the expected_szz evaluation policy is applied correctly.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.

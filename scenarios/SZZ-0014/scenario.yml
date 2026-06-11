@@ -1,104 +1,130 @@
-schema_version: "1.0"
-
+schema_version: '1.0'
 meta:
-  id: "SZZ-0014"
-  title: "Java annotation syntax change"
-  slug: "java-annotation-syntax-change"
-  description: >
-    A bug is introduced by modifying a Java annotation argument. The fixing
-    commit restores the correct annotation value. This represents a
-    language-specific syntax change rather than a conventional statement body
-    change.
-  category: "language-specific"
+  id: SZZ-0014
+  title: Negated boolean condition
+  slug: negated-boolean-condition
+  description: This scenario introduces a bug by changing `return !locked;` to `return locked;` and later restores the correct implementation.
+  category: "Basic semantic line changes"
   factors:
-    - "single-bic"
-    - "single-bfc"
-    - "line-modification"
-    - "language-specific-syntax-change"
-    - "annotation-change"
-  difficulty: "medium"
-  status: "active"
-
+  - single-bic
+  - single-bfc
+  - line-modification
+  - boolean-negation
+  difficulty: easy
+  status: active
+  category_code: "S1"
 repository:
-  name: "SZZ-0014-java-annotation-syntax-change"
-  default_branch: "main"
-  language: "java"
-  build_system: "none"
-  source_root: "src/main/java"
-
+  name: SZZ-0014-negated-boolean-condition
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
 commits:
-  - id: "c0"
-    message: "Initial required field annotation"
-    author: "Alice <alice@example.com>"
-    date: "2024-01-01T10:00:00Z"
-    role: "initial"
-    operations:
-      - type: "write_file"
-        path: "src/main/java/example/UserRequest.java"
-        content: |
-          package example;
+- id: c0
+  message: Initial correct implementation
+  author: Alice <alice@example.com>
+  date: '2024-01-01T10:00:00Z'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Scenario0024.java
+    content: |
+      package example;
 
-          public class UserRequest {
-              @Required(true)
-              private String userId;
+      public class Scenario0024 {
+          public boolean canProceed(boolean locked) {
+              return !locked;
           }
+      }
+- id: c1
+  message: Introduce bug
+  author: Bob <bob@example.com>
+  date: '2024-01-02T10:00:00Z'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Scenario0024.java
+    old: |
+      package example;
 
-  - id: "c1"
-    message: "Make user id annotation optional"
-    author: "Bob <bob@example.com>"
-    date: "2024-01-02T10:00:00Z"
-    role: "bug_introducing"
-    operations:
-      - type: "replace"
-        path: "src/main/java/example/UserRequest.java"
-        old: "@Required(true)"
-        new: "@Required(false)"
-        labels: ["B001", "fault"]
+      public class Scenario0024 {
+          public boolean canProceed(boolean locked) {
+              return !locked;
+          }
+      }
+    new: |
+      package example;
 
-  - id: "c2"
-    message: "Require user id annotation"
-    author: "Alice <alice@example.com>"
-    date: "2024-01-03T10:00:00Z"
-    role: "bug_fixing"
-    operations:
-      - type: "replace"
-        path: "src/main/java/example/UserRequest.java"
-        old: "@Required(false)"
-        new: "@Required(true)"
-        labels: ["B001", "fix"]
+      public class Scenario0024 {
+          public boolean canProceed(boolean locked) {
+              return locked;
+          }
+      }
+    labels:
+    - B001
+    - fault
+- id: c2
+  message: Fix bug
+  author: Alice <alice@example.com>
+  date: '2024-01-03T10:00:00Z'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Scenario0024.java
+    old: |
+      package example;
 
+      public class Scenario0024 {
+          public boolean canProceed(boolean locked) {
+              return locked;
+          }
+      }
+    new: |
+      package example;
+
+      public class Scenario0024 {
+          public boolean canProceed(boolean locked) {
+              return !locked;
+          }
+      }
+    labels:
+    - B001
+    - fix
 bugs:
-  - id: "B001"
-    title: "User ID is no longer required"
-    bug_fixing_commit: "c2"
-    bug_introducing_commits: ["c1"]
-    fault:
-      commit: "c1"
-      file: "src/main/java/example/UserRequest.java"
-      entity:
-        type: "field"
-        name: "userId"
-        signature: "String userId"
-      statement: "@Required(false)"
-      change_type: "line_modification"
-    fix:
-      commit: "c2"
-      file: "src/main/java/example/UserRequest.java"
-      entity:
-        type: "field"
-        name: "userId"
-        signature: "String userId"
-      statement: "@Required(true)"
-      fix_type: "line_modification"
-    expected_szz:
-      commit_level:
-        true_positives: ["c1"]
-        false_positives_allowed: []
-      line_level:
-        available: true
-        faulty_statements:
-          - "@Required(false)"
-
+- id: B001
+  title: Negated boolean condition
+  bug_fixing_commit: c2
+  bug_introducing_commits: &id001
+  - c1
+  fault:
+    commit: c1
+    file: src/main/java/example/Scenario0024.java
+    entity:
+      type: method
+      name: canProceed
+      signature: boolean canProceed(boolean locked)
+    statement: return locked;
+    change_type: line_modification
+  fix:
+    commit: c2
+    file: src/main/java/example/Scenario0024.java
+    entity:
+      type: method
+      name: canProceed
+      signature: boolean canProceed(boolean locked)
+    statement: return !locked;
+    fix_type: line_modification
+  expected_szz:
+    commit_level:
+      true_positives: *id001
+      false_positives_allowed: []
+    line_level:
+      available: true
+      faulty_statements:
+      - return locked;
 checks:
-  - type: "git_history_contains"
-    commits: ["c0", "c1", "c2"]
+- type: git_history_contains
+  commits:
+  - c0
+  - c1
+  - c2

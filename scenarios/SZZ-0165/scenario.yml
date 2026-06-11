@@ -1,91 +1,127 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0165
-  title: Dependency update as BIC
-  slug: bic-dependency-update
-  description: Evaluates dependency update as bic and checks whether SZZ identifies the expected bug-introducing commit set.
-  category: BIC property scenarios
-  factors: []
-  difficulty: hard
+  title: Security context in message
+  slug: security-context-in-message
+  description: This scenario is intended for evaluating SZZ variants that use commit messages or broader patch context.
+  category: "Context, message, and non-local evidence"
+  factors:
+  - single-bic
+  - single-bfc
+  - line-modification
+  - context-aware
+  difficulty: medium
   status: active
+  category_code: "S7"
 repository:
-  name: SZZ-0165-bic-dependency-update
+  name: SZZ-0165-security-context-in-message
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 commits:
 - id: c0
-  message: 'c0: create initial state (write_file pom.xml; write_file src/main/java/example/RangeAdapter.java)'
+  message: Initial implementation
+  author: Alice <alice@example.com>
+  date: '2024-05-01T10:00:00Z'
   role: initial
   operations:
   - type: write_file
-    path: pom.xml
-    content: |
-      <project>
-        <modelVersion>4.0.0</modelVersion>
-        <groupId>example</groupId>
-        <artifactId>dependency-bic</artifactId>
-        <version>1.0-SNAPSHOT</version>
-        <dependencies>
-          <dependency>
-            <groupId>org.example</groupId>
-            <artifactId>range-lib</artifactId>
-            <version>1.0.0</version>
-          </dependency>
-        </dependencies>
-      </project>
-  - type: write_file
-    path: src/main/java/example/RangeAdapter.java
+    path: src/main/java/example/Scenario0156.java
     content: |
       package example;
 
-      public class RangeAdapter {
-        public boolean contains(int value, int min, int max) {
-          return RangeLib.includes(value, min, max);
-        }
+      public class Scenario0156 {
+          public boolean check(boolean authenticated, boolean admin) {
+              return authenticated && admin;
+          }
       }
 - id: c1
-  message: 'c1: introduce bug (replace pom.xml)'
+  message: Introduce context-sensitive bug
+  author: Bob <bob@example.com>
+  date: '2024-05-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: pom.xml
-    old: "<version>1.0.0</version>"
-    new: "<version>2.0.0</version>"
+    path: src/main/java/example/Scenario0156.java
+    old: |
+      package example;
+
+      public class Scenario0156 {
+          public boolean check(boolean authenticated, boolean admin) {
+              return authenticated && admin;
+          }
+      }
+    new: |
+      package example;
+
+      public class Scenario0156 {
+          public boolean check(boolean authenticated, boolean admin) {
+              return authenticated || admin;
+          }
+      }
+    labels:
+    - B001
+    - fault
 - id: c2
-  message: 'c2: fix bug (replace src/main/java/example/RangeAdapter.java)'
+  message: Fix authorization bypass
+  author: Alice <alice@example.com>
+  date: '2024-05-03T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/RangeAdapter.java
-    old: return RangeLib.includes(value, min, max);
-    new: return RangeLib.containsInclusive(value, min, max);
+    path: src/main/java/example/Scenario0156.java
+    old: |
+      package example;
+
+      public class Scenario0156 {
+          public boolean check(boolean authenticated, boolean admin) {
+              return authenticated || admin;
+          }
+      }
+    new: |
+      package example;
+
+      public class Scenario0156 {
+          public boolean check(boolean authenticated, boolean admin) {
+              return authenticated && admin;
+          }
+      }
+    labels:
+    - B001
+    - fix
 bugs:
 - id: B001
-  title: Dependency update changes range semantics
+  title: Security context in message
   bug_fixing_commit: c2
-  bug_introducing_commits:
+  bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: pom.xml
-    statement: "<version>2.0.0</version>"
-    change_type: dependency_update
+    file: src/main/java/example/Scenario0156.java
+    entity:
+      type: method
+      name: check
+      signature: boolean check(boolean authenticated, boolean admin)
+    statement: return authenticated || admin;
+    change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/RangeAdapter.java
-    statement: return RangeLib.containsInclusive(value, min, max);
-    fix_type: api_adaptation
+    file: src/main/java/example/Scenario0156.java
+    entity:
+      type: method
+      name: check
+      signature: boolean check(boolean authenticated, boolean admin)
+    statement: return authenticated && admin;
+    fix_type: line_modification
   expected_szz:
     commit_level:
-      true_positives:
-      - c1
+      true_positives: *id001
       false_positives_allowed: []
     line_level:
       available: true
       faulty_statements:
-      - "<version>2.0.0</version>"
+      - return authenticated || admin;
 checks:
 - type: git_history_contains
   commits:

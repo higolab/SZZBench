@@ -1,14 +1,14 @@
-# SZZ-0073: Else branch omission
+# SZZ-0073: Rate limit check omission
 
 ## Purpose
 
-This scenario represents an omission bug: the method is introduced without a necessary else branch, and the bug-fixing commit adds the missing statement.
+This scenario represents an omission bug: the method is introduced without a necessary rate limit check, and the bug-fixing commit adds the missing statement.
 
 ## Commit structure
 
 - `c0`: initial class
-- `c1`: introduces the method without the else branch
-- `c2`: adds the missing else branch
+- `c1`: introduces the method without the rate limit check
+- `c2`: adds the missing rate limit check
 
 ## Expected behavior
 

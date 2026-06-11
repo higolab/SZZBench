@@ -1,17 +1,22 @@
-# SZZ-0007: Bounds check omission bug
+# SZZ-0007: Multiplication factor error
 
 ## Purpose
 
-This scenario checks an omission bug where a bounds check is missing from an
-array access method.
+This scenario introduces a bug by changing `return value * 2;` to `return value * 3;` and later restores the correct implementation.
 
 ## Commit structure
 
-- `c0`: Introduces an empty class.
-- `c1`: Adds an array access method without a bounds check. This is the BIC.
-- `c2`: Adds the missing bounds check. This is the BFC.
+- `c0`: initial correct implementation
+- `c1`: introduces the bug
+- `c2`: fixes the bug
 
 ## Expected behavior
 
-The expected BIC is `c1`, but line-level deleted-line SZZ is not directly
-applicable because the fix is primarily an added guard.
+The expected BFC is `c2` and the expected BIC is `c1`.
+
+## Factors
+
+- `single-bic`
+- `single-bfc`
+- `line-modification`
+- `arithmetic-error`

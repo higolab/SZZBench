@@ -1,21 +1,21 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0066
-  title: Rebase changes patch content during replay
-  slug: rebase-changes-patch-content-during-replay
-  description: The rebased BIC has different patch content from the original feature BIC.
-  category: Branch, merge, cherry-pick, and backport scenarios
-  category_code: G
+  title: Rebase conflict resolution propagates existing bug
+  slug: rebase-conflict-resolution-propagates-existing-bug
+  description: A feature BIC is propagated to main by a rebase conflict resolution commit.
+  category: "Rebase-specific history rewriting"
+  category_code: "G5"
   factors:
   - branch
   - rebase
-  - patch_modified_during_rebase
+  - rebase_conflict_resolution
   - origin_bic
   - direct_bic
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0066-rebase-changes-patch-content-during-replay
+  name: SZZG-0066-rebase-conflict-resolution-propagates-existing-bug
   default_branch: main
   language: java
   build_system: none
@@ -24,13 +24,13 @@ graph:
   model: commit_dag
   history_summary: 'c0: create initial correct implementation
 
-    f1: introduce exclusive bug on feature
+    f1: introduce range bug on feature
 
-    m1: add main note
+    m1: add main-line documentation
 
-    r1: rebase feature bug with adjusted patch content
+    r1: resolve rebase conflict by taking buggy feature logic
 
-    c2: fix adjusted lower-bound bug'
+    c2: fix propagated rebase bug'
 commits:
 - id: c0
   branch: main
@@ -46,7 +46,7 @@ commits:
   branch: feature
   parents:
   - c0
-  message: 'f1: introduce exclusive bug on feature'
+  message: 'f1: introduce range bug on feature'
   role: origin_bug_introducing
   operations:
   - type: replace
@@ -57,41 +57,41 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'm1: add main note'
+  message: 'm1: add main-line documentation'
   role: intermediate
   operations:
   - type: write_file
     path: docs/main.md
-    content: 'note
+    content: 'main note
 
       '
 - id: r1
   branch: main
   parents:
   - m1
-  message: 'r1: rebase feature bug with adjusted patch content'
+  message: 'r1: resolve rebase conflict by taking buggy feature logic'
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
-    new: return value > min && value <= max;
+    new: return value > min && value < max;
   rebase_of: f1
-  rebase_patch_modified: true
+  rebase_conflict_resolution: true
 - id: c2
   branch: main
   parents:
   - r1
-  message: 'c2: fix adjusted lower-bound bug'
+  message: 'c2: fix propagated rebase bug'
   role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
-    old: return value > min && value <= max;
+    old: return value > min && value < max;
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Adjusted lower-bound bug during rebase
+  title: Bug propagated by rebase conflict resolution
   bug_introducing_commits:
   - commit: r1
     role: direct
@@ -104,7 +104,7 @@ bugs:
   - id: F001
     commit: r1
     file: src/main/java/example/Range.java
-    statement: return value > min && value <= max;
+    statement: return value > min && value < max;
     change_type: line_modification
   fixes:
   - id: X001
@@ -125,11 +125,11 @@ expected_szz:
     - r1
     related_but_not_correct:
     - f1
-    notes: r1 differs from origin patch f1.
+    notes: r1 is direct; f1 is origin.
 scenario_design:
-  purpose: Evaluate direct/origin handling when rebase changes patch content.
-  key_property: Patch equality alone is insufficient.
-  difference_from_SZZG_0073: SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
+  purpose: Evaluate direct-vs-origin BIC behavior when conflict resolution propagates an existing bug.
+  key_property: The same buggy logic exists in f1, but main-line direct BIC is r1.
+  difference_from_SZZG_0073: SZZG-0063 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
     adds a distinct rebase-related complication.
   evaluation_points:
   - Report r1.

@@ -1,136 +1,104 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0012
-  title: Multiple BFCs progressively fix the same bug
-  slug: bfc-bug
-  description: 'A single bug affects two helper methods that together implement a range check. Two bug-fixing commits progressively
-    repair the same bug: the first BFC fixes the lower-bound helper, and the second BFC fixes the upper-bound helper and completes
-    the repair.'
-  category: Multiple BIC and BFC scenarios
-  category_code: D
+  title: BFC performs method extraction and bug fix in the same commit
+  slug: bfc-extract-method-and-fix
+  description: Evaluates bfc performs method extraction and bug fix in the same commit and checks whether SZZ identifies the
+    expected bug-introducing commit set.
+  category: "Refactoring, move, rename, and semantic rewrite"
+  category_code: "G1"
   factors:
-  - multiple_bfc
-  - progressive_fix
-  - same_bug
-  - partial_fix
-  - complete_fix
+  - bfc_refactoring
+  - extract_method
+  - mixed_bfc
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0012-bfc-bug
+  name: SZZG-0012-bfc-extract-method-and-fix
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create range check with separate lower-bound and upper-bound helpers
+  history_summary: 'c0: c0: create tax calculator
 
-    c1: introduce the same boundary bug in both helper methods
+    c1: c1: introduce tax rounding bug
 
-    c2: first BFC fixes only the lower-bound helper
-
-    c3: second BFC fixes the upper-bound helper and completes the repair'
+    c2: c2: extract tax rate helper and fix rounding'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create range helper methods'
+  message: 'c0: create tax calculator'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean aboveMin(int value, int min) {\n    return value\
-      \ >= min;\n  }\n\n  public boolean belowMax(int value, int max) {\n    return value <= max;\n  }\n\n  public boolean\
-      \ contains(int value, int min, int max) {\n    return aboveMin(value, min) && belowMax(value, max);\n  }\n}\n"
+    path: src/main/java/example/Tax.java
+    content: "package example;\npublic class Tax {\n  public int tax(int price) {\n    return price / 10;\n  }\n\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce lower and upper boundary bugs'
+  message: 'c1: introduce tax rounding bug'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min;
-    new: return value > min;
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: return value <= max;
-    new: return value < max;
+    path: src/main/java/example/Tax.java
+    old: return price / 10;
+    new: return (price + 9) / 10;
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: partially fix lower boundary'
+  message: 'c2: extract tax rate helper and fix rounding'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min;
-    new: return value >= min;
-- id: c3
-  branch: main
-  parents:
-  - c2
-  message: 'c3: complete fix by repairing upper boundary'
-  role: bug_fixing
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: return value < max;
-    new: return value <= max;
+    path: src/main/java/example/Tax.java
+    old: return (price + 9) / 10;
+    new: return rate(price);
+  - type: insert_after
+    path: src/main/java/example/Tax.java
+    anchor: "    return rate(price);\n  }\n\n"
+    content: "  private int rate(int price) {\n    return price / 10;\n  }\n"
 bugs:
 - id: B001
-  title: Boundary bug progressively fixed by multiple BFCs
+  title: Synthetic graph scenario bug
   bug_introducing_commits:
   - commit: c1
     role: direct
   bug_fixing_commits:
   - commit: c2
-    role: partial_fix_lower_bound
-  - commit: c3
-    role: complete_fix_upper_bound
+    role: complete_fix
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/Range.java
-    statement: return value > min;
-    change_type: line_modification
-  - id: F002
-    commit: c1
-    file: src/main/java/example/Range.java
-    statement: return value < max;
+    file: src/main/java/example/Tax.java
+    statement: return (price + 9) / 10;
     change_type: line_modification
   fixes:
   - id: X001
     commit: c2
-    file: src/main/java/example/Range.java
-    statement: return value >= min;
-    fix_type: partial_fix_lower_bound
-  - id: X002
-    commit: c3
-    file: src/main/java/example/Range.java
-    statement: return value <= max;
-    fix_type: complete_fix_upper_bound
+    file: src/main/java/example/Tax.java
+    statement: return price / 10;
+    fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
     - c1
-    notes: The same BIC c1 introduced both faulty helper conditions. Both c2 and c3 are BFCs for the same bug, but the expected
-      BIC remains c1.
 scenario_design:
-  purpose: Evaluate whether SZZ identifies the original BIC when the same bug is repaired progressively by multiple BFCs.
-  key_property: 'Two BFCs are required to fully repair the same bug: c2 fixes the lower-bound helper, and c3 fixes the upper-bound
-    helper.'
-  difference_from_SZZG_0003: SZZG-0003 represents a single partial-fix sequence on one condition expression. SZZG-0012 represents
-    multiple BFCs for one bug with two distinct faulty helper methods.
+  purpose: Evaluate bfc performs method extraction and bug fix in the same commit and whether SZZ identifies the expected
+    bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: bfc_refactoring, extract_method, mixed_bfc; operations: insert_after,
+    replace, write_file.'
   evaluation_points:
-  - Whether SZZ identifies c1 rather than either fixing commit.
-  - Whether multiple BFCs for the same bug are represented and evaluated consistently.
-  - Whether partial and complete repairs of separate fault locations are handled.
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- This revision makes c2 and c3 both meaningful bug-fixing commits.
-- The bug is introduced once in c1, but it affects two helper methods.
-- c2 fixes only the lower-bound helper; c3 completes the fix by repairing the upper-bound helper.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

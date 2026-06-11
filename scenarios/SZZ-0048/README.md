@@ -1,23 +1,17 @@
-# SZZ-0048: Import addition after BIC
+# SZZ-0048: Bounds check omission bug
 
 ## Purpose
 
-This scenario introduces a bug by changing `return value >= min && value <= max;` to `return value > min && value < max;` and later restores the correct implementation.
+This scenario checks an omission bug where a bounds check is missing from an
+array access method.
 
 ## Commit structure
 
-- `c0`: initial correct implementation
-- `c1`: introduces the bug
-- `c2`: Add unused import after bug introduction
-- `c3`: fixes the bug
+- `c0`: Introduces an empty class.
+- `c1`: Adds an array access method without a bounds check. This is the BIC.
+- `c2`: Adds the missing bounds check. This is the BFC.
 
 ## Expected behavior
 
-The expected BFC is `c3` and the expected BIC is `c1`.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `import-addition-after-bic`
+The expected BIC is `c1`, but line-level deleted-line SZZ is not directly
+applicable because the fix is primarily an added guard.

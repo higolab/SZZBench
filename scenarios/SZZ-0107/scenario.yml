@@ -1,19 +1,21 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0107
-  title: Constant extraction after BIC
-  slug: constant-extraction-after-bic
-  description: This scenario inserts an intermediate refactoring change between the BIC and BFC.
-  category: refactoring
+  title: Large commit with small bug
+  slug: large-commit-small-bug
+  description: 'This scenario evaluates a bug-introducing commit shape: Large commit with small bug.'
+  category: "Intermediate noise and history noise"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - constant-extraction-after-bic
+  - large-bic
+  - tangled-bic
   difficulty: medium
   status: active
+  category_code: "S3"
 repository:
-  name: SZZ-0107-constant-extraction-after-bic
+  name: SZZ-0107-large-commit-small-bug
   default_branch: main
   language: java
   build_system: none
@@ -26,94 +28,112 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0107.java
+    path: src/main/java/example/Scenario0118.java
     content: |
       package example;
 
-      public class Scenario0107 {
+      public class Scenario0118 {
           public boolean valid(int value) {
-              return value <= 10;
+              return value >= 0;
           }
       }
 - id: c1
-  message: Introduce bug
+  message: Introduce bug inside large validation cleanup
   author: Bob <bob@example.com>
   date: '2024-01-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0107.java
+    path: src/main/java/example/Scenario0118.java
     old: |
       package example;
 
-      public class Scenario0107 {
+      public class Scenario0118 {
           public boolean valid(int value) {
-              return value <= 10;
+              return value >= 0;
           }
       }
     new: |
       package example;
 
-      public class Scenario0107 {
+      public class Scenario0118 {
           public boolean valid(int value) {
-              return value < 10;
+              return value > 0;
+          }
+
+          public int normalize(int value) {
+              return Math.max(value, 0);
+          }
+
+          public boolean belowLimit(int value, int limit) {
+              return value < limit;
+          }
+
+          public String label(int value) {
+              return "value=" + value;
+          }
+
+          public boolean hasValue(String value) {
+              return value != null && !value.isEmpty();
           }
       }
     labels:
     - B001
     - fault
 - id: c2
-  message: Apply intermediate rewrite
-  author: Carol <carol@example.com>
-  date: '2024-01-03T10:00:00Z'
-  role: refactoring
-  operations:
-  - type: replace
-    path: src/main/java/example/Scenario0107.java
-    old: |
-      package example;
-
-      public class Scenario0107 {
-          public boolean valid(int value) {
-              return value < 10;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0107 {
-          private static final int LIMIT = 10;
-
-          public boolean valid(int value) {
-              return value < LIMIT;
-          }
-      }
-    labels:
-    - non_bug_introducing_change
-- id: c3
   message: Fix bug
-  author: Dave <dave@example.com>
-  date: '2024-01-04T10:00:00Z'
+  author: Alice <alice@example.com>
+  date: '2024-01-03T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0107.java
+    path: src/main/java/example/Scenario0118.java
     old: |
       package example;
 
-      public class Scenario0107 {
-          private static final int LIMIT = 10;
-
+      public class Scenario0118 {
           public boolean valid(int value) {
-              return value < LIMIT;
+              return value > 0;
+          }
+
+          public int normalize(int value) {
+              return Math.max(value, 0);
+          }
+
+          public boolean belowLimit(int value, int limit) {
+              return value < limit;
+          }
+
+          public String label(int value) {
+              return "value=" + value;
+          }
+
+          public boolean hasValue(String value) {
+              return value != null && !value.isEmpty();
           }
       }
     new: |
       package example;
 
-      public class Scenario0107 {
+      public class Scenario0118 {
           public boolean valid(int value) {
-              return value <= 10;
+              return value >= 0;
+          }
+
+          public int normalize(int value) {
+              return Math.max(value, 0);
+          }
+
+          public boolean belowLimit(int value, int limit) {
+              return value < limit;
+          }
+
+          public String label(int value) {
+              return "value=" + value;
+          }
+
+          public boolean hasValue(String value) {
+              return value != null && !value.isEmpty();
           }
       }
     labels:
@@ -121,42 +141,39 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Constant extraction after BIC
-  bug_fixing_commit: c3
+  title: Large commit with small bug
+  bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0107.java
+    file: src/main/java/example/Scenario0118.java
     entity:
       type: method
       name: valid
       signature: boolean valid(int value)
-    statement: return value < 10;
+    statement: return value > 0;
     change_type: line_modification
   fix:
-    commit: c3
-    file: src/main/java/example/Scenario0107.java
+    commit: c2
+    file: src/main/java/example/Scenario0118.java
     entity:
       type: method
       name: valid
       signature: boolean valid(int value)
-    statement: return value <= 10;
+    statement: return value >= 0;
     fix_type: line_modification
   expected_szz:
     commit_level:
       true_positives: *id001
       false_positives_allowed: []
-      known_distractors:
-      - c2
     line_level:
       available: true
       faulty_statements:
-      - return value < 10;
+      - return value > 0;
 checks:
 - type: git_history_contains
   commits:
   - c0
   - c1
   - c2
-  - c3

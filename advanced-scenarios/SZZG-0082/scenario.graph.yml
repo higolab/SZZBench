@@ -1,22 +1,21 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0082
-  title: Rebase commit message reveals origin
-  slug: rebase-commit-message-reveals-origin
-  description: The rebased direct BIC message explicitly points to its origin commit.
-  category: Branch, merge, cherry-pick, and backport scenarios
-  category_code: G
+  title: Rebase with generated file update
+  slug: rebase-with-generated-file-update
+  description: A generated file is updated during rebase after the source BIC.
+  category: "Rebase-specific history rewriting"
+  category_code: "G5"
   factors:
   - branch
   - rebase
-  - commit_messages
-  - developer_hints
-  - origin_bic
+  - generated_files
+  - generated_code_noise
   - direct_bic
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0082-rebase-commit-message-reveals-origin
+  name: SZZG-0082-rebase-with-generated-file-update
   default_branch: main
   language: java
   build_system: none
@@ -25,15 +24,13 @@ graph:
   model: commit_dag
   history_summary: 'c0: create initial correct implementation
 
-    f1: introduce range boundary bug on feature
+    f1: introduce range bug
 
-    f2: add feature helper using buggy range check
+    r1: rebase bug onto main
 
-    r1: rebase f1 onto main and preserve origin reference
+    r2: regenerate derived range metadata during rebase
 
-    r2: rebase feature helper onto main
-
-    c3: fix range boundary bug after rebase'
+    c3: fix source range bug'
 commits:
 - id: c0
   branch: main
@@ -49,32 +46,18 @@ commits:
   branch: feature
   parents:
   - c0
-  message: 'f1: introduce range boundary bug on feature'
+  message: 'f1: introduce range bug'
   role: origin_bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
     new: return value > min && value < max;
-- id: f2
-  branch: feature
-  parents:
-  - f1
-  message: 'f2: add feature helper using buggy range check'
-  role: intermediate
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n}\n"
-    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
-      \ min, max);\n  }\n}\n"
 - id: r1
   branch: main
   parents:
   - c0
-  message: 'r1: rebase f1 onto main and preserve origin reference'
+  message: 'r1: rebase bug onto main'
   role: bug_introducing
   operations:
   - type: replace
@@ -86,22 +69,22 @@ commits:
   branch: main
   parents:
   - r1
-  message: 'r2: rebase feature helper onto main'
+  message: 'r2: regenerate derived range metadata during rebase'
   role: intermediate
   operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n}\n"
-    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
-      \ min, max);\n  }\n}\n"
-  rebase_of: f2
+  - type: write_file
+    path: generated/range.properties
+    content: 'minInclusive=false
+
+      maxInclusive=false
+
+      '
+  generated_files: true
 - id: c3
   branch: main
   parents:
   - r2
-  message: 'c3: fix range boundary bug after rebase'
+  message: 'c3: fix source range bug'
   role: bug_fixing
   operations:
   - type: replace
@@ -110,7 +93,7 @@ commits:
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Range bug with rebase message context
+  title: Source bug with generated file noise after rebase
   bug_introducing_commits:
   - commit: r1
     role: direct
@@ -144,17 +127,15 @@ expected_szz:
     - r1
     related_but_not_correct:
     - f1
+    - r2
 scenario_design:
-  purpose: Evaluate whether message context helps or misleads SZZ in a rebase scenario.
-  key_property: The direct BIC remains r1 despite message context.
-  difference_from_SZZG_0073: SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
+  purpose: Evaluate generated-file noise during rebase.
+  key_property: r2 updates generated metadata only.
+  difference_from_SZZG_0073: SZZG-0063 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
     adds a distinct rebase-related complication.
   evaluation_points:
   - Report r1.
+  - Ignore r2.
 notes:
 - This scenario models a rebase-related development history for SZZ evaluation.
 - Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.
-developer_hints:
-- commit: r1
-  kind: rebase_origin
-  text: 'Rebased-from: f1'

@@ -1,4 +1,4 @@
-# SZZ-0137: Feature flag and limit checks introduced separately
+# SZZ-0137: Null handling and empty handling changed separately
 
 ## Purpose
 

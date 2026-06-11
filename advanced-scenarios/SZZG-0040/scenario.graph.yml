@@ -1,70 +1,83 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0040
-  title: BIC and BFC belong to the same issue commit series
-  slug: bic-bfc-issue-commit
-  description: Evaluates a bug-introducing commit and a bug-fixing commit that are both linked to the same issue series.
-  category: Work-item and commit-series scenarios
-  category_code: H
+  title: Multiple BICs where one true BIC is not directly touched by the BFC
+  slug: multi-bic-untouched-root-cause
+  description: Evaluates multiple bics where one true bic is not directly touched by the bfc and checks whether SZZ identifies
+    the expected bug-introducing commit set.
+  category: "Multiple BICs, multiple BFCs, and partial fixes"
+  category_code: "G3"
   factors:
-  - issues
+  - multiple_bic
+  - not_directly_touched_by_fix
+  - context_dependent
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0040-bic-bfc-issue-commit
+  name: SZZG-0040-multi-bic-untouched-root-cause
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c1: create initial range implementation
+  history_summary: 'c0: c0: create retry policy
 
-    c2: ISSUE-101 implement boundary optimization but introduce bug
+    c1: c1: introduce excessive retry limit
 
-    c3: ISSUE-101 fix inclusive boundary regression'
+    c2: c2: introduce retry on client errors
+
+    c3: c3: fix retry condition without touching retry limit'
 commits:
-- id: c1
+- id: c0
   branch: main
   parents: []
-  message: 'c1: create initial range implementation'
+  message: 'c0: create retry policy'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: |
-      package example;
-      public class Range {
-        public boolean contains(int value, int min, int max) {
-          return value >= min && value <= max;
-        }
-      }
+    path: src/main/java/example/RetryPolicy.java
+    content: "package example;\npublic class RetryPolicy {\n  private int maxRetries() {\n    return 3;\n  }\n  public boolean\
+      \ shouldRetry(int attempts, int status) {\n    return status >= 500 && attempts < maxRetries();\n  }\n\n}\n"
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'c1: introduce excessive retry limit'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/RetryPolicy.java
+    old: return 3;
+    new: return 10;
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'ISSUE-101: implement boundary optimization'
+  message: 'c2: introduce retry on client errors'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
+    path: src/main/java/example/RetryPolicy.java
+    old: return status >= 500 && attempts < maxRetries();
+    new: return status >= 400 && attempts < maxRetries();
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'ISSUE-101: fix inclusive boundary regression'
+  message: 'c3: fix retry condition without touching retry limit'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/RetryPolicy.java
+    old: return status >= 400 && attempts < maxRetries();
+    new: return status >= 500 && attempts < 3;
 bugs:
 - id: B001
-  title: Boundary regression introduced and fixed in the same issue series
+  title: Synthetic graph scenario bug
   bug_introducing_commits:
+  - commit: c1
+    role: direct
   - commit: c2
     role: direct
   bug_fixing_commits:
@@ -72,39 +85,38 @@ bugs:
     role: complete_fix
   faults:
   - id: F001
+    commit: c1
+    file: src/main/java/example/RetryPolicy.java
+    statement: return 10;
+    change_type: line_modification
+  - id: F002
     commit: c2
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/RetryPolicy.java
+    statement: return status >= 400 && attempts < maxRetries();
     change_type: line_modification
   fixes:
   - id: X001
     commit: c3
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
+    file: src/main/java/example/RetryPolicy.java
+    statement: return status >= 500 && attempts < 3;
     fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
+    - c1
     - c2
 scenario_design:
-  purpose: Evaluate whether issue-series context is preserved when the BIC and BFC both reference the same issue.
-  current_schema_limitation: Issue membership and linked commits require graph-aware contextual metadata.
-  required_extensions_from_source: 'This scenario uses factors: issues; operations: write_file, replace.'
+  purpose: Evaluate multiple bics where one true bic is not directly touched by the bfc and whether SZZ identifies the expected
+    bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: multiple_bic, not_directly_touched_by_fix, context_dependent;
+    operations: replace, write_file.'
   evaluation_points:
-  - Whether SZZ identifies c2 as the BIC rather than the initial commit.
-  - Whether both the BIC and BFC are represented as part of ISSUE-101.
-  - Whether the expected_szz exact-set policy is applied correctly.
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- This scenario intentionally keeps the source change simple while making issue membership explicit.
-issues:
-- id: ISSUE-101
-  title: Boundary handling issue series
-  description: The same issue contains the optimization that introduced the boundary bug and the follow-up fix.
-  linked_bugs:
-  - B001
-  commits:
-  - commit: c2
-    relevance: bug_introducing
-  - commit: c3
-    relevance: bug_fixing
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

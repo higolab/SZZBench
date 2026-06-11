@@ -1,105 +1,105 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0110
-  title: Configuration BIC is fixed by code-side normalization
-  slug: config-bic-fixed-in-code
-  description: Evaluates configuration bic is fixed by code-side normalization and checks whether SZZ identifies the expected
-    bug-introducing commit set.
-  category: Context-dependent scenarios
-  category_code: A
+  title: Empty intermediate commit
+  slug: empty-intermediate-commit
+  description: Evaluates an empty intermediate commit between the BIC and BFC and checks whether SZZ ignores it as a cause.
+  category: "Non-source, binary, generated, and scalability edge cases"
+  category_code: "G8"
   factors:
-  - configuration_change
-  - cross_artifact_fix
-  - context_dependent
+  - allow_empty
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0110-config-bic-fixed-in-code
+  name: SZZG-0110-empty-intermediate-commit
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: c0: create endpoint resolver and config
+  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
 
-    c1: c1: introduce trailing slash in configuration
+    c1: apply empty intermediate change
 
-    c2: c2: fix endpoint construction in code'
+    c2: introduce bug (replace src/main/java/example/Range.java)
+
+    c3: fix bug (replace src/main/java/example/Range.java)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create endpoint resolver and config'
+  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Endpoint.java
-    content: "package example;\npublic class Endpoint {\n  public String url(String host) {\n    return host + \"/api\";\n\
-      \  }\n\n}\n"
-  - type: write_file
-    path: src/main/resources/app.properties
-    content: 'api.host=https://example.com
-
-      '
+    path: src/main/java/example/Range.java
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce trailing slash in configuration'
-  role: bug_introducing
-  operations:
-  - type: replace
-    path: src/main/resources/app.properties
-    old: api.host=https://example.com
-    new: api.host=https://example.com/
+  message: 'c1: apply empty intermediate change'
+  role: intermediate
+  operations: []
+  allow_empty: true
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: fix endpoint construction in code'
+  message: 'c2: introduce bug (replace src/main/java/example/Range.java)'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'c3: fix bug (replace src/main/java/example/Range.java)'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Endpoint.java
-    old: return host + "/api";
-    new: return host.replaceAll("/+$", "") + "/api";
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
 bugs:
 - id: B001
   title: Synthetic graph scenario bug
   bug_introducing_commits:
-  - commit: c1
+  - commit: c2
     role: direct
   bug_fixing_commits:
-  - commit: c2
+  - commit: c3
     role: complete_fix
   faults:
   - id: F001
-    commit: c1
-    file: src/main/resources/app.properties
-    statement: api.host=https://example.com/
+    commit: c2
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c2
-    file: src/main/java/example/Endpoint.java
-    statement: return host.replaceAll("/+$", "") + "/api";
+    commit: c3
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
     fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - c1
+    - c2
 scenario_design:
-  purpose: Evaluate configuration bic is fixed by code-side normalization and whether SZZ identifies the expected bug-introducing
-    commit set.
+  purpose: Evaluate whether SZZ identifies the real BIC when an empty commit appears in the intermediate history.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: configuration_change, cross_artifact_fix, context_dependent;
-    operations: replace, write_file.'
+  required_extensions_from_source: 'This scenario uses factors: allow_empty; operations: write_file, replace.'
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the empty intermediate commit c1 is not reported as the BIC.
   - Whether the expected_szz evaluation policy is applied correctly.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.

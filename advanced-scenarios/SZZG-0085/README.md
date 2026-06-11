@@ -1,50 +1,84 @@
-# SZZG-0085: Rebase with formatting rewrite noise
+# SZZG-0085: Old BIC and re-BIC are both plausible
 
 ## Purpose
 
-Evaluate formatting rewrite noise after rebase.
+This scenario represents a bug that is introduced, fixed, reintroduced by a partial revert, and fixed again.
+
+The direct BIC for the final fix is the reintroducing commit `c3`. However, the original old BIC `c1` is also a plausible origin-related answer under an origin-aware evaluation policy.
 
 ## Commit history
 
 ```text
-c0: c0: create initial correct implementation
-f1: f1: introduce range bug
-r1: r1: rebase bug onto main
-r2: r2: formatting rewrite during rebase cleanup
-c3: c3: fix bug after formatting rewrite
+c0: create initial correct implementation
+c1: introduce original range boundary bug
+c2: fix original bug and perform a small refactoring
+c3: partially revert c2 and reintroduce the boundary bug while keeping the refactoring
+c4: fix the reintroduced bug
 ```
 
-## Commit table
+## Code states
 
-| Commit | Branch | Parents | Role | Description |
-|---|---|---|---|---|
-| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `f1` | `feature` | c0 | `origin_bug_introducing` | f1: introduce range bug |
-| `r1` | `main` | c0 | `bug_introducing` | r1: rebase bug onto main |
-| `r2` | `main` | r1 | `formatting` | r2: formatting rewrite during rebase cleanup |
-| `c3` | `main` | r2 | `bug_fixing` | c3: fix bug after formatting rewrite |
+Correct state in `c0`:
 
-## Expected SZZ result
+```java
+return value >= min && value <= max;
+return "main";
+```
+
+Original bug in `c1`:
+
+```java
+return value > min && value < max;
+return "main";
+```
+
+Fix and unrelated refactoring in `c2`:
+
+```java
+return value >= min && value <= max;
+return "range-service";
+```
+
+Partial revert / reintroduction in `c3`:
+
+```java
+return value > min && value < max;
+return "range-service";
+```
+
+Final fix in `c4`:
+
+```java
+return value >= min && value <= max;
+return "range-service";
+```
+
+## Oracle
+
+Default expected BIC:
 
 ```text
-Expected BIC(s): r1
-Related but not correct: f1, r2
+c3
 ```
 
-## Key property
+Related old origin BIC:
 
-r2 is formatting noise; r1 is the true BIC.
+```text
+c1
+```
 
-## Difference from SZZG-0061
+## Evaluation variants
 
-SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
+### reintroduction-direct
 
-## Evaluation points
+Only `c3` is considered correct for the final fix.
 
-- Report r1.
-- Avoid r2.
+### origin-aware
 
-## Notes
+`c3` is required, while `c1` is accepted as an origin-related BIC with partial credit.
 
-- This scenario models a rebase-related development history for SZZ evaluation.
-- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.
+## Difference from SZZG-0084
+
+`SZZG-0084` should focus on the direct reintroduction case.
+
+`SZZG-0085` explicitly models the evaluation question where both the reintroducing BIC and the old origin BIC may be considered plausible depending on evaluation policy.

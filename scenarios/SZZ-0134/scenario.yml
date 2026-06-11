@@ -1,18 +1,19 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0134
-  title: Config and runtime checks combined
-  slug: config-runtime-multi-bic
+  title: Validation weakening plus caller acceptance
+  slug: validation-weakening-plus-caller
   description: This scenario requires treating two bug-introducing commits as contributing to the same later fix.
-  category: multiple-bic
+  category: "Multiple BICs, duplicate faults, and composite faults"
   factors:
   - multi-bic
   - single-bfc
   - line-modification
   difficulty: medium
   status: active
+  category_code: "S6"
 repository:
-  name: SZZ-0134-config-runtime-multi-bic
+  name: SZZ-0134-validation-weakening-plus-caller
   default_branch: main
   language: java
   build_system: none
@@ -25,78 +26,86 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0134.java
-    content: "package example;\n\npublic class Scenario0134 {\n    public boolean enabled(boolean configured, boolean runtimeReady) {\n        return true;\n    }\n}\n"
+    path: src/main/java/example/Scenario0128.java
+    content: |
+      package example;
+
+      public class Scenario0128 {
+          public boolean validate(int value) {
+              return value >= 0 && value <= 10;
+          }
+
+          public boolean callerAccepts(int value) {
+              return validate(value);
+          }
+      }
 - id: c1
-  message: Introduce first contributing change
+  message: Weaken validator upper bound
   author: Bob <bob@example.com>
   date: '2024-03-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0134.java
-    old: "package example;\n\npublic class Scenario0134 {\n    public boolean enabled(boolean configured, boolean runtimeReady) {\n        return true;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0134 {\n    public boolean enabled(boolean configured, boolean runtimeReady) {\n        return configured;\n    }\n}\n"
+    path: src/main/java/example/Scenario0128.java
+    old: return value >= 0 && value <= 10;
+    new: return value >= 0;
     labels:
     - B001
     - fault
 - id: c2
-  message: Introduce second contributing change
+  message: Let caller accept a migration sentinel
   author: Carol <carol@example.com>
   date: '2024-03-03T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0134.java
-    old: "package example;\n\npublic class Scenario0134 {\n    public boolean enabled(boolean configured, boolean runtimeReady) {\n        return configured;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0134 {\n    public boolean enabled(boolean configured, boolean runtimeReady) {\n        return configured && runtimeReady;\n    }\n}\n"
+    path: src/main/java/example/Scenario0128.java
+    old: return validate(value);
+    new: return validate(value) || value == 99;
     labels:
     - B001
     - fault
 - id: c3
-  message: Fix combined bug
+  message: Fix combined validation and caller acceptance bug
   author: Alice <alice@example.com>
   date: '2024-03-04T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0134.java
-    old: "package example;\n\npublic class Scenario0134 {\n    public boolean enabled(boolean configured, boolean runtimeReady) {\n        return configured && runtimeReady;\n    }\n}\n"
-    new: |
-      package example;
-
-      public class Scenario0134 {
-          public boolean enabled(boolean configured, boolean runtimeReady) {
-              return true;
-          }
-      }
+    path: src/main/java/example/Scenario0128.java
+    old: return value >= 0;
+    new: return value >= 0 && value <= 10;
+  - type: replace
+    path: src/main/java/example/Scenario0128.java
+    old: return validate(value) || value == 99;
+    new: return validate(value);
     labels:
     - B001
     - fix
 bugs:
 - id: B001
-  title: Config and runtime checks combined
+  title: Validation weakening plus caller acceptance
   bug_fixing_commit: c3
   bug_introducing_commits: &id001
   - c1
   - c2
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0134.java
+    file: src/main/java/example/Scenario0128.java
     entity:
       type: method
-      name: enabled
-      signature: boolean enabled(boolean configured, boolean runtimeReady)
-    statement: return configured;
+      name: validate
+      signature: boolean validate(int value)
+    statement: return value >= 0;
     change_type: line_modification
   fix:
     commit: c3
-    file: src/main/java/example/Scenario0134.java
+    file: src/main/java/example/Scenario0128.java
     entity:
       type: method
-      name: enabled
-      signature: boolean enabled(boolean configured, boolean runtimeReady)
-    statement: return true;
+      name: validate
+      signature: boolean validate(int value)
+    statement: return value >= 0 && value <= 10;
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -105,7 +114,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return configured;
+      - return value >= 0;
 checks:
 - type: git_history_contains
   commits:

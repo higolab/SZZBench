@@ -1,23 +1,22 @@
-# SZZ-0043: Logging insertion after BIC
+# SZZ-0043: Incorrect cache invalidation condition
 
 ## Purpose
 
-This scenario introduces a bug by changing `return value >= min && value <= max;` to `return value > min && value < max;` and later restores the correct implementation.
+This scenario evaluates a bug-introducing commit shape: Incorrect cache invalidation condition.
 
 ## Commit structure
 
 - `c0`: initial correct implementation
 - `c1`: introduces the bug
-- `c2`: Add logging before faulty logic
-- `c3`: fixes the bug
+- `c2`: fixes the bug
 
 ## Expected behavior
 
-The expected BFC is `c3` and the expected BIC is `c1`.
+The expected BFC is `c2` and the expected BIC is `c1`.
 
 ## Factors
 
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `logging-insertion-after-bic`
+- `state-bug`

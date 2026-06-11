@@ -1,54 +1,93 @@
-# SZZG-0097: Prerequisite BIC and symptom BIC fixed together
-
-## Source
-
-- Category: Multiple-BIC scenarios
+# SZZG-0097: Work item inference without issue ID
 
 ## Purpose
 
-Evaluate prerequisite bic and symptom bic fixed together and whether SZZ identifies the expected bug-introducing commit set.
+This scenario represents a work-item inference case where commit messages do not contain explicit issue IDs.
 
-## Expected history
+The commits `c1`, `c2`, and `c3` are part of the same inferred work item, but only `c2` is the BIC. The neighboring commits are related context and should not be reported as the bug-introducing commit.
 
-```text
-c0: c0: create token verifier
-c1: c1: weaken token trust predicate
-c2: c2: weaken access control condition
-c3: c3: fix access control vulnerability
-```
-
-## Why this needs `scenario.graph.yml`
-
-This history requires graph-aware scenario semantics that are difficult to express with the normal `scenario.yml` schema.
-
-## Required graph-schema features
-
-- Factors: multiple_bic, causal_chain, single_bfc
-- Operation types: replace, write_file
-- Expected SZZ policy is defined in `expected_szz`.
-
-## Expected BICs
+## Commit history
 
 ```text
-c1, c2
+c0: create initial range filter
+c1: start range filter cleanup without issue ID
+c2: tighten boundary behavior during the same inferred work item and introduce bug
+c3: wire range filter into request path without issue ID
+c4: fix boundary regression from range filter work
 ```
 
-## Evaluation points
+## Commit table
 
-- Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
-- Whether the expected_szz evaluation policy is applied correctly.
+| Commit | Branch | Parents | Role | Work item | Message |
+|---|---|---|---|---|---|
+| `c0` | `main` | none | initial | none | `c0: create initial range filter` |
+| `c1` | `main` | `c0` | work_item_context | `INFERRED-WI-001` | `Start range filter cleanup` |
+| `c2` | `main` | `c1` | bug_introducing | `INFERRED-WI-001` | `Tighten boundary behavior in range filter` |
+| `c3` | `main` | `c2` | work_item_context | `INFERRED-WI-001` | `Wire range filter into request path` |
+| `c4` | `main` | `c3` | bug_fixing | none | `Fix boundary regression from range filter work` |
 
----
+## Inference signals
 
-## Draft status
-
-This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
-
-## Files
+The intended work item is not given by an issue ID in the commit messages. It should be inferred from:
 
 ```text
-SZZG-0097/
-|-- scenario.graph.yml
-`-- README.md
+- related range-filter terminology in commit messages
+- consecutive commits in a short series
+- changes to the same file or related behavior
+- the fix message referring to a boundary regression from range filter work
 ```
+
+## Code states
+
+Correct condition before the BIC:
+
+```java
+return normalized >= min && normalized <= max;
+```
+
+Bug introduced in `c2`:
+
+```java
+return normalized > min && normalized < max;
+```
+
+Related but non-BIC context added in `c3`:
+
+```java
+public boolean acceptsRequestValue(int value) {
+  return contains(value, 0, 100);
+}
+```
+
+Fix in `c4`:
+
+```java
+return normalized >= min && normalized <= max;
+```
+
+## Oracle
+
+Expected BIC:
+
+```text
+c2
+```
+
+Related but not correct BICs:
+
+```text
+c1
+c3
+```
+
+Bug-fixing commit:
+
+```text
+c4
+```
+
+## Difference from SZZG-0096
+
+`SZZG-0096` assumes an explicit work item with multiple candidate BICs.
+
+`SZZG-0097` represents the case where the work item has to be inferred because no explicit issue ID appears in the commit messages.

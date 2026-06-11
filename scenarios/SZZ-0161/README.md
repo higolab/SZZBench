@@ -1,14 +1,14 @@
-# SZZ-0161: Generated-looking repetitive code
+# SZZ-0161: Issue-like message in BFC
 
 ## Purpose
 
-This scenario is intended to stress implementation robustness under noisy or repetitive code conditions.
+This scenario is intended for evaluating SZZ variants that use commit messages or broader patch context.
 
 ## Commit structure
 
-- `c0`: Initial generated-looking implementation
-- `c1`: Introduce bug in repetitive code
-- `c2`: Fix repetitive-code bug
+- `c0`: initial implementation
+- `c1`: introduces the bug
+- `c2`: BFC with message: ISSUE-1 fix missing inclusive boundary
 
 ## Expected behavior
 
@@ -19,6 +19,4 @@ The expected BFC is `c2` and the expected BIC is `c1`.
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `robustness`
-- `generated-code`
-- `duplicate-statement`
+- `context-aware`

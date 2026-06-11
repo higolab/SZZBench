@@ -1,19 +1,20 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0044
-  title: Unrelated method addition after BIC
-  slug: unrelated-method-after-bic
-  description: This scenario introduces a bug by changing `return value >= min && value <= max;` to `return value > min && value < max;` and later restores the correct implementation.
-  category: intermediate-history
+  title: Incorrect status transition condition
+  slug: status-transition-bic
+  description: 'This scenario evaluates a bug-introducing commit shape: Incorrect status transition condition.'
+  category: "Basic semantic line changes"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - unrelated-method-after-bic
+  - state-bug
   difficulty: medium
   status: active
+  category_code: "S1"
 repository:
-  name: SZZ-0044-unrelated-method-after-bic
+  name: SZZ-0044-status-transition-bic
   default_branch: main
   language: java
   build_system: none
@@ -26,13 +27,13 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0044.java
+    path: src/main/java/example/Scenario0125.java
     content: |
       package example;
 
-      public class Scenario0044 {
-          public boolean check(int value, int min, int max) {
-              return value >= min && value <= max;
+      public class Scenario0125 {
+          public boolean canTransition(int current, int next) {
+              return current == 1 && next == 2;
           }
       }
 - id: c1
@@ -42,84 +43,48 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0044.java
+    path: src/main/java/example/Scenario0125.java
     old: |
       package example;
 
-      public class Scenario0044 {
-          public boolean check(int value, int min, int max) {
-              return value >= min && value <= max;
+      public class Scenario0125 {
+          public boolean canTransition(int current, int next) {
+              return current == 1 && next == 2;
           }
       }
     new: |
       package example;
 
-      public class Scenario0044 {
-          public boolean check(int value, int min, int max) {
-              return value > min && value < max;
+      public class Scenario0125 {
+          public boolean canTransition(int current, int next) {
+              return current == 1 || next == 2;
           }
       }
     labels:
     - B001
     - fault
 - id: c2
-  message: Add unrelated helper method
-  author: Carol <carol@example.com>
-  date: '2024-01-03T10:00:00Z'
-  role: distractor
-  operations:
-  - type: replace
-    path: src/main/java/example/Scenario0044.java
-    old: |
-      package example;
-
-      public class Scenario0044 {
-          public boolean check(int value, int min, int max) {
-              return value > min && value < max;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0044 {
-          public boolean check(int value, int min, int max) {
-              return value > min && value < max;
-              public int width(int min, int max) {
-              return max - min;
-          }
-      }
-          public int width(int min, int max) {
-              return max - min;
-          }
-      }
-- id: c3
   message: Fix bug
   author: Alice <alice@example.com>
-  date: '2024-01-04T10:00:00Z'
+  date: '2024-01-03T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0044.java
+    path: src/main/java/example/Scenario0125.java
     old: |
       package example;
 
-      public class Scenario0044 {
-          public boolean check(int value, int min, int max) {
-              return value > min && value < max;
-              public int width(int min, int max) {
-              return max - min;
-          }
-      }
-          public int width(int min, int max) {
-              return max - min;
+      public class Scenario0125 {
+          public boolean canTransition(int current, int next) {
+              return current == 1 || next == 2;
           }
       }
     new: |
       package example;
 
-      public class Scenario0044 {
-          public boolean check(int value, int min, int max) {
-              return value >= min && value <= max;
+      public class Scenario0125 {
+          public boolean canTransition(int current, int next) {
+              return current == 1 && next == 2;
           }
       }
     labels:
@@ -127,42 +92,39 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Unrelated method addition after BIC
-  bug_fixing_commit: c3
+  title: Incorrect status transition condition
+  bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0044.java
+    file: src/main/java/example/Scenario0125.java
     entity:
       type: method
-      name: check
-      signature: boolean check(int value, int min, int max)
-    statement: return value > min && value < max;
+      name: canTransition
+      signature: boolean canTransition(int current, int next)
+    statement: return current == 1 || next == 2;
     change_type: line_modification
   fix:
-    commit: c3
-    file: src/main/java/example/Scenario0044.java
+    commit: c2
+    file: src/main/java/example/Scenario0125.java
     entity:
       type: method
-      name: check
-      signature: boolean check(int value, int min, int max)
-    statement: return value >= min && value <= max;
+      name: canTransition
+      signature: boolean canTransition(int current, int next)
+    statement: return current == 1 && next == 2;
     fix_type: line_modification
   expected_szz:
     commit_level:
       true_positives: *id001
       false_positives_allowed: []
-      known_distractors:
-      - c2
     line_level:
       available: true
       faulty_statements:
-      - return value > min && value < max;
+      - return current == 1 || next == 2;
 checks:
 - type: git_history_contains
   commits:
   - c0
   - c1
   - c2
-  - c3

@@ -1,50 +1,51 @@
-# SZZG-0024: Partial revert reintroduces bug
-
-## Source
-
-- Category: Revert and reintroduction scenarios
+# SZZG-0024: Clone diverges before rebase
 
 ## Purpose
 
-Evaluate a partial revert where `c3` reintroduces the boundary bug and is the expected direct BIC for the final fix.
+Evaluate rebase combined with clone divergence.
 
-The original BIC `c1` is related history, but the `reintroduction_direct` oracle requires the reintroducing commit `c3`.
-
-## Expected history
+## Commit history
 
 ```text
-c0: create initial state (write_file src/main/java/example/Range.java)
-c1: introduce bug (replace src/main/java/example/Range.java)
-c2: fix bug (replace src/main/java/example/Range.java)
-c3: partially revert c2 and reintroduce bug (replace src/main/java/example/Range.java)
-c4: fix bug (replace src/main/java/example/Range.java)
+c0: c0: create initial correct implementation
+f1: f1: create buggy clone
+f2: f2: diverge cloned buggy logic
+r1: r1: rebase buggy clone creation
+r2: r2: rebase clone divergence
+c4: c4: fix diverged clone
 ```
 
-## Why this needs `scenario.graph.yml`
+## Commit table
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
+| Commit | Branch | Parents | Role | Description |
+|---|---|---|---|---|
+| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
+| `f1` | `feature` | c0 | `origin_bug_introducing` | f1: create buggy clone |
+| `f2` | `feature` | f1 | `origin_bug_introducing` | f2: diverge cloned buggy logic |
+| `r1` | `main` | c0 | `intermediate` | r1: rebase buggy clone creation |
+| `r2` | `main` | r1 | `bug_introducing` | r2: rebase clone divergence |
+| `c4` | `main` | r2 | `bug_fixing` | c4: fix diverged clone |
 
-## Required graph-schema features
+## Expected SZZ result
 
-- Operation types: write_file, replace
-- Expected SZZ policy is defined in expected_szz.
+```text
+Expected BIC(s): r2
+Related but not correct: r1, f1, f2
+```
+
+## Key property
+
+The fixed instance is the diverged clone line introduced by r2.
+
+## Difference from SZZG-0063
+
+SZZG-0063 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
 
 ## Evaluation points
 
-- Whether SZZ identifies `c3` as the reintroducing BIC for the final fix.
-- Whether SZZ treats the original BIC `c1` as related history, not the required direct answer.
-- Whether the expected_szz evaluation policy is applied correctly.
+- Report r2.
 
----
+## Notes
 
-## Draft status
-
-This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
-
-## Files
-
-```text
-SZZG-0024/
-|-- scenario.graph.yml
-`-- README.md
-```
+- This scenario models a rebase-related development history for SZZ evaluation.
+- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

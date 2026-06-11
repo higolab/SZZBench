@@ -1,19 +1,20 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0023
-  title: Logical disjunction error
-  slug: logical-disjunction-error
-  description: This scenario introduces a bug by changing `return isAdmin || isOwner;` to `return isAdmin && isOwner;` and later restores the correct implementation.
-  category: basic
+  title: Empty string predicate reversed
+  slug: empty-string-predicate-reversed
+  description: This scenario introduces a bug by changing `return !value.isEmpty();` to `return value.isEmpty();` and later restores the correct implementation.
+  category: "Basic semantic line changes"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - logical-operator-error
+  - boolean-negation
   difficulty: easy
   status: active
+  category_code: "S1"
 repository:
-  name: SZZ-0023-logical-disjunction-error
+  name: SZZ-0023-empty-string-predicate-reversed
   default_branch: main
   language: java
   build_system: none
@@ -26,13 +27,13 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0023.java
+    path: src/main/java/example/Scenario0033.java
     content: |
       package example;
 
-      public class Scenario0023 {
-          public boolean canEdit(boolean isAdmin, boolean isOwner) {
-              return isAdmin || isOwner;
+      public class Scenario0033 {
+          public boolean hasText(String value) {
+              return !value.isEmpty();
           }
       }
 - id: c1
@@ -42,21 +43,21 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0023.java
+    path: src/main/java/example/Scenario0033.java
     old: |
       package example;
 
-      public class Scenario0023 {
-          public boolean canEdit(boolean isAdmin, boolean isOwner) {
-              return isAdmin || isOwner;
+      public class Scenario0033 {
+          public boolean hasText(String value) {
+              return !value.isEmpty();
           }
       }
     new: |
       package example;
 
-      public class Scenario0023 {
-          public boolean canEdit(boolean isAdmin, boolean isOwner) {
-              return isAdmin && isOwner;
+      public class Scenario0033 {
+          public boolean hasText(String value) {
+              return value.isEmpty();
           }
       }
     labels:
@@ -69,21 +70,21 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0023.java
+    path: src/main/java/example/Scenario0033.java
     old: |
       package example;
 
-      public class Scenario0023 {
-          public boolean canEdit(boolean isAdmin, boolean isOwner) {
-              return isAdmin && isOwner;
+      public class Scenario0033 {
+          public boolean hasText(String value) {
+              return value.isEmpty();
           }
       }
     new: |
       package example;
 
-      public class Scenario0023 {
-          public boolean canEdit(boolean isAdmin, boolean isOwner) {
-              return isAdmin || isOwner;
+      public class Scenario0033 {
+          public boolean hasText(String value) {
+              return !value.isEmpty();
           }
       }
     labels:
@@ -91,27 +92,27 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Logical disjunction error
+  title: Empty string predicate reversed
   bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0023.java
+    file: src/main/java/example/Scenario0033.java
     entity:
       type: method
-      name: canEdit
-      signature: boolean canEdit(boolean isAdmin, boolean isOwner)
-    statement: return isAdmin && isOwner;
+      name: hasText
+      signature: boolean hasText(String value)
+    statement: return value.isEmpty();
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0023.java
+    file: src/main/java/example/Scenario0033.java
     entity:
       type: method
-      name: canEdit
-      signature: boolean canEdit(boolean isAdmin, boolean isOwner)
-    statement: return isAdmin || isOwner;
+      name: hasText
+      signature: boolean hasText(String value)
+    statement: return !value.isEmpty();
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -120,7 +121,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return isAdmin && isOwner;
+      - return value.isEmpty();
 checks:
 - type: git_history_contains
   commits:

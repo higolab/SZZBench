@@ -1,129 +1,120 @@
-schema_version: '1.0'
+schema_version: "1.0"
+
 meta:
-  id: SZZ-0114
-  title: API call change introduces bug
-  slug: api-call-change-bic
-  description: 'This scenario evaluates a bug-introducing commit shape: API call change introduces bug.'
-  category: bic-shape
+  id: "SZZ-0114"
+  title: "Tangled bug-introducing commit"
+  slug: "tangled-bug-introducing-commit"
+  description: >
+    The bug-introducing commit contains both a faulty change and an unrelated
+    feature addition. This scenario checks whether SZZ can identify the correct
+    BIC even when the BIC is tangled.
+  category: "BFC-side noise and tangled commits"
   factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - api-misuse-bic
-  difficulty: medium
-  status: active
+    - "single-bic"
+    - "single-bfc"
+    - "line-modification"
+    - "tangled-bic"
+  difficulty: "medium"
+  status: "active"
+  category_code: "S4"
+
 repository:
-  name: SZZ-0114-api-call-change-bic
-  default_branch: main
-  language: java
-  build_system: none
-  source_root: src/main/java
+  name: "SZZ-0114-tangled-bug-introducing-commit"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
 commits:
-- id: c0
-  message: Initial correct implementation
-  author: Alice <alice@example.com>
-  date: '2024-01-01T10:00:00Z'
-  role: initial
-  operations:
-  - type: write_file
-    path: src/main/java/example/Scenario0114.java
-    content: |
-      package example;
+  - id: "c0"
+    message: "Initial range implementation"
+    author: "Alice <alice@example.com>"
+    date: "2024-01-01T10:00:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/example/RangeBox.java"
+        content: |
+          package example;
 
-      public class Scenario0114 {
-          public String clean(String value) {
-              return value.trim();
+          public class RangeBox {
+              public boolean contains(int value, int min, int max) {
+                  return value >= min && value <= max;
+              }
           }
-      }
-- id: c1
-  message: Introduce bug
-  author: Bob <bob@example.com>
-  date: '2024-01-02T10:00:00Z'
-  role: bug_introducing
-  operations:
-  - type: replace
-    path: src/main/java/example/Scenario0114.java
-    old: |
-      package example;
 
-      public class Scenario0114 {
-          public String clean(String value) {
-              return value.trim();
-          }
-      }
-    new: |
-      package example;
+  - id: "c1"
+    message: "Update range logic and add width helper"
+    author: "Bob <bob@example.com>"
+    date: "2024-01-02T10:00:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/RangeBox.java"
+        old: "return value >= min && value <= max;"
+        new: "return value > min && value < max;"
+        labels: ["B001", "fault"]
+      - type: "replace"
+        path: "src/main/java/example/RangeBox.java"
+        old: |
+          public boolean contains(int value, int min, int max) {
+                  return value > min && value < max;
+              }
+        new: |
+          public boolean contains(int value, int min, int max) {
+                  return value > min && value < max;
+              }
 
-      public class Scenario0114 {
-          public String clean(String value) {
-              return value.stripTrailing();
-          }
-      }
-    labels:
-    - B001
-    - fault
-- id: c2
-  message: Fix bug
-  author: Alice <alice@example.com>
-  date: '2024-01-03T10:00:00Z'
-  role: bug_fixing
-  operations:
-  - type: replace
-    path: src/main/java/example/Scenario0114.java
-    old: |
-      package example;
+              public int width(int min, int max) {
+                  return max - min;
+              }
+        labels: ["non_bug_introducing_change"]
 
-      public class Scenario0114 {
-          public String clean(String value) {
-              return value.stripTrailing();
-          }
-      }
-    new: |
-      package example;
+  - id: "c2"
+    message: "Fix range inclusiveness"
+    author: "Alice <alice@example.com>"
+    date: "2024-01-03T10:00:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/RangeBox.java"
+        old: "return value > min && value < max;"
+        new: "return value >= min && value <= max;"
+        labels: ["B001", "fix"]
 
-      public class Scenario0114 {
-          public String clean(String value) {
-              return value.trim();
-          }
-      }
-    labels:
-    - B001
-    - fix
 bugs:
-- id: B001
-  title: API call change introduces bug
-  bug_fixing_commit: c2
-  bug_introducing_commits: &id001
-  - c1
-  fault:
-    commit: c1
-    file: src/main/java/example/Scenario0114.java
-    entity:
-      type: method
-      name: clean
-      signature: String clean(String value)
-    statement: return value.stripTrailing();
-    change_type: line_modification
-  fix:
-    commit: c2
-    file: src/main/java/example/Scenario0114.java
-    entity:
-      type: method
-      name: clean
-      signature: String clean(String value)
-    statement: return value.trim();
-    fix_type: line_modification
-  expected_szz:
-    commit_level:
-      true_positives: *id001
-      false_positives_allowed: []
-    line_level:
-      available: true
-      faulty_statements:
-      - return value.stripTrailing();
+  - id: "B001"
+    title: "Boundary values are excluded in tangled BIC"
+    bug_fixing_commit: "c2"
+    bug_introducing_commits: ["c1"]
+    fault:
+      commit: "c1"
+      file: "src/main/java/example/RangeBox.java"
+      entity:
+        type: "method"
+        name: "contains"
+        signature: "boolean contains(int value, int min, int max)"
+      statement: "return value > min && value < max;"
+      change_type: "line_modification"
+    fix:
+      commit: "c2"
+      file: "src/main/java/example/RangeBox.java"
+      entity:
+        type: "method"
+        name: "contains"
+        signature: "boolean contains(int value, int min, int max)"
+      statement: "return value >= min && value <= max;"
+      fix_type: "line_modification"
+    expected_szz:
+      commit_level:
+        true_positives: ["c1"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "return value > min && value < max;"
+        note: "The BIC includes an unrelated helper method addition."
+
 checks:
-- type: git_history_contains
-  commits:
-  - c0
-  - c1
-  - c2
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2"]

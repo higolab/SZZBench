@@ -1,105 +1,146 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0101
-  title: Bug introduced inside a refactoring commit
-  slug: bug-introduced-inside-refactoring
-  description: Evaluates bug introduced inside a refactoring commit and checks whether SZZ identifies the expected bug-introducing
-    commit set.
-  category: Refactoring scenarios
-  category_code: A
+  title: Caller/callee interaction bug
+  slug: caller-callee
+  description: Evaluates a bug that appears only when a caller stops handling an empty result returned by a callee.
+  category: "Issue, message, context, and non-local evidence"
+  category_code: "G7"
   factors:
-  - bug_introducing_refactoring
-  - mixed_change
-  - rename_method
+  - caller_callee
+  - context
+  - faults
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0101-bug-introduced-inside-refactoring
+  name: SZZG-0101-caller-callee
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: c0: create normalizer
-
-    c1: c1: rename method and accidentally remove lower-case conversion
-
-    c2: c2: fix normalization after refactoring'
+  history_summary: |
+    c0: create account directory and welcome mailer
+    c1: allow the callee to return an empty guest name
+    c2: introduce caller bug by assuming the callee always returns a value
+    c3: fix caller fallback for empty guest names
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create normalizer'
+  message: 'c0: create account directory and welcome mailer'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Normalizer.java
-    content: "package example;\npublic class Normalizer {\n  public String normalize(String value) {\n    return value ==\
-      \ null ? \"\" : value.trim().toLowerCase();\n  }\n\n}\n"
+    path: src/main/java/example/AccountDirectory.java
+    content: |
+      package example;
+
+      import java.util.Optional;
+
+      public class AccountDirectory {
+        public Optional<String> findPreferredName(String accountId) {
+          return Optional.of("Customer");
+        }
+      }
+  - type: write_file
+    path: src/main/java/example/WelcomeMailer.java
+    content: |
+      package example;
+
+      public class WelcomeMailer {
+        private final AccountDirectory directory = new AccountDirectory();
+
+        public String greetingFor(String accountId) {
+          String name = directory.findPreferredName(accountId).orElse("customer");
+          return "Hello " + name + "!";
+        }
+      }
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: rename method and accidentally remove lower-case conversion'
-  role: bug_introducing
+  message: 'c1: let guest accounts have no preferred display name'
+  role: intermediate
   operations:
   - type: replace
-    path: src/main/java/example/Normalizer.java
-    old: public String normalize(String value) {
-    new: public String clean(String value) {
-  - type: replace
-    path: src/main/java/example/Normalizer.java
-    old: 'return value == null ? "" : value.trim().toLowerCase();'
-    new: 'return value == null ? "" : value.trim();'
+    path: src/main/java/example/AccountDirectory.java
+    old: return Optional.of("Customer");
+    new: |-
+      if (accountId.startsWith("guest-")) {
+            return Optional.empty();
+          }
+          return Optional.of("Customer");
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: fix normalization after refactoring'
+  message: 'c2: simplify welcome-mailer name lookup'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/WelcomeMailer.java
+    old: String name = directory.findPreferredName(accountId).orElse("customer");
+    new: String name = directory.findPreferredName(accountId).get();
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'c3: restore fallback greeting for guest accounts'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Normalizer.java
-    old: 'return value == null ? "" : value.trim();'
-    new: 'return value == null ? "" : value.trim().toLowerCase();'
+    path: src/main/java/example/WelcomeMailer.java
+    old: String name = directory.findPreferredName(accountId).get();
+    new: String name = directory.findPreferredName(accountId).orElse("guest");
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Welcome mailer throws when the callee returns an empty guest name
   bug_introducing_commits:
-  - commit: c1
+  - commit: c2
     role: direct
   bug_fixing_commits:
-  - commit: c2
+  - commit: c3
     role: complete_fix
   faults:
   - id: F001
-    commit: c1
-    file: src/main/java/example/Normalizer.java
-    statement: 'return value == null ? "" : value.trim();'
+    commit: c2
+    file: src/main/java/example/WelcomeMailer.java
+    statement: String name = directory.findPreferredName(accountId).get();
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c2
-    file: src/main/java/example/Normalizer.java
-    statement: 'return value == null ? "" : value.trim().toLowerCase();'
+    commit: c3
+    file: src/main/java/example/WelcomeMailer.java
+    statement: String name = directory.findPreferredName(accountId).orElse("guest");
     fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
+    - c2
+    related_but_not_correct:
     - c1
 scenario_design:
-  purpose: Evaluate bug introduced inside a refactoring commit and whether SZZ identifies the expected bug-introducing commit
-    set.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: bug_introducing_refactoring, mixed_change, rename_method;
-    operations: replace, write_file.'
+  purpose: Evaluate whether context-aware SZZ can distinguish a valid callee behavior change from the caller commit that
+    mishandled that behavior.
+  current_schema_limitation: The caller/callee relationship is represented through context metadata and fault locations.
+  required_extensions_from_source: 'This scenario uses factors: caller_callee, context, faults; operations: write_file, replace.'
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Whether SZZ identifies c2 as the direct BIC in the caller.
+  - Whether c1 is treated as required context but not as the faulty commit.
+  - Whether the analysis can connect the BFC line to the callee contract.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.
+context:
+  required_files:
+  - src/main/java/example/AccountDirectory.java
+  - src/main/java/example/WelcomeMailer.java
+  required_entities:
+  - type: method
+    name: findPreferredName
+  - type: method
+    name: greetingFor
+  interaction: WelcomeMailer must handle Optional.empty returned by AccountDirectory for guest accounts.

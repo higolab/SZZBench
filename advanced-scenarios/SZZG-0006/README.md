@@ -1,47 +1,94 @@
-# SZZG-0006: BFC includes generated files
-
-## Source
-
-- Category: BFC shape scenarios
+# SZZG-0006: Extract class after BIC
 
 ## Purpose
 
-Evaluate whether SZZ identifies the source BIC when the BFC contains both the real source fix and generated-file noise.
+This scenario represents an extract-class refactoring after a bug-introducing commit.
 
-## Expected history
+The bug is first introduced in `RangeService.java`. After that, a new `RangeValidator.java` class is extracted, and the buggy validation logic is moved into the extracted class. The bug is then fixed in the extracted class.
 
-```text
-c0: create correct range implementation
-c1: introduce exclusive-boundary bug
-c2: fix range bug and update generated boundary table
-```
+This distinguishes `SZZG-0006` from `SZZG-0005`, which represents a method move between classes. In this scenario, a new class is created and responsibility is split after the BIC.
 
-## Why this needs `scenario.graph.yml`
-
-The BFC combines a normal source-code fix with a generated artifact update, which is represented explicitly with graph operations.
-
-## Required graph-schema features
-
-- Factors: generated_files
-- Operation types: write_file, replace, write_generated_text_file
-- Expected SZZ policy is defined in expected_szz.
-
-## Evaluation points
-
-- Whether SZZ identifies c1 as the BIC.
-- Whether generated files added or refreshed in the BFC are ignored as blame targets.
-- Whether the expected_szz exact-set policy is applied correctly.
-
----
-
-## Draft status
-
-This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
-
-## Files
+## Commit history
 
 ```text
-SZZG-0006/
-|-- scenario.graph.yml
-`-- README.md
+c0: create RangeService with validation and reporting responsibilities
+c1: introduce boundary bug in RangeService.contains
+c2: extract RangeValidator class after the BIC and move the buggy validation logic there
+c3: fix the boundary bug in the extracted RangeValidator class
 ```
+
+## Commit table
+
+| Commit | Branch | Parents | Role | Description |
+|---|---|---|---|---|
+| `c0` | `main` | none | initial | Creates `RangeService` with validation and reporting responsibilities. |
+| `c1` | `main` | `c0` | bug_introducing | Introduces a boundary bug in `RangeService.contains`. |
+| `c2` | `main` | `c1` | intermediate | Extracts `RangeValidator` and moves the buggy validation logic there. |
+| `c3` | `main` | `c2` | bug_fixing | Fixes the boundary bug in `RangeValidator`. |
+
+## Code states
+
+Correct validation in `c0`:
+
+```java
+return value >= min && value <= max;
+```
+
+Bug introduced in `c1`:
+
+```java
+return value > min && value < max;
+```
+
+After `c2`, the buggy logic is moved from:
+
+```text
+src/main/java/example/RangeService.java
+```
+
+to:
+
+```text
+src/main/java/example/RangeValidator.java
+```
+
+The follow-up fix in `c3` restores the correct condition in `RangeValidator.java`:
+
+```java
+return value >= min && value <= max;
+```
+
+## Oracle
+
+Expected BIC:
+
+```text
+c1
+```
+
+Bug-fixing commit:
+
+```text
+c3
+```
+
+The extraction commit `c2` is not the BIC. It moves the buggy logic to a new class after the bug has already been introduced.
+
+## Difference from SZZG-0005
+
+`SZZG-0005` is intended to represent a method move between classes.
+
+`SZZG-0006` is intended to represent extract class after BIC:
+
+```text
+RangeService.java
+  validation + reporting responsibilities
+        ↓
+RangeService.java
+  reporting / orchestration
+
+RangeValidator.java
+  extracted validation responsibility
+```
+
+The BIC and BFC occur in different files because the buggy code is moved by the extract-class refactoring.

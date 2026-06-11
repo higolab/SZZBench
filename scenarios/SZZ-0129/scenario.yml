@@ -1,73 +1,132 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0129
-  title: Threshold change plus flag change
-  slug: threshold-and-flag-change
-  description: This scenario requires treating two bug-introducing commits as contributing to the same later fix.
-  category: multiple-bic
+  title: Inline helper after BIC
+  slug: inline-helper-after-bic
+  description: This scenario inserts an intermediate refactoring change between the BIC and BFC.
+  category: "Refactoring, move, and rename after BIC"
   factors:
-  - multi-bic
+  - single-bic
   - single-bfc
   - line-modification
+  - inline-method-after-bic
   difficulty: medium
   status: active
+  category_code: "S5"
 repository:
-  name: SZZ-0129-threshold-and-flag-change
+  name: SZZ-0129-inline-helper-after-bic
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 commits:
 - id: c0
-  message: Initial implementation
+  message: Initial correct implementation
   author: Alice <alice@example.com>
-  date: '2024-03-01T10:00:00Z'
+  date: '2024-01-01T10:00:00Z'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0129.java
-    content: "package example;\n\npublic class Scenario0129 {\n    public boolean allowed(int value, boolean enabled) {\n        return true;\n    }\n}\n"
+    path: src/main/java/example/Scenario0091.java
+    content: |
+      package example;
+
+      public class Scenario0091 {
+          public boolean valid(int value, int min) {
+              return atLeastMin(value, min);
+          }
+
+          private boolean atLeastMin(int value, int min) {
+              return value >= min;
+          }
+      }
 - id: c1
-  message: Introduce first contributing change
+  message: Introduce bug
   author: Bob <bob@example.com>
-  date: '2024-03-02T10:00:00Z'
+  date: '2024-01-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0129.java
-    old: "package example;\n\npublic class Scenario0129 {\n    public boolean allowed(int value, boolean enabled) {\n        return true;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0129 {\n    public boolean allowed(int value, boolean enabled) {\n        return value < 100;\n    }\n}\n"
+    path: src/main/java/example/Scenario0091.java
+    old: |
+      package example;
+
+      public class Scenario0091 {
+          public boolean valid(int value, int min) {
+              return atLeastMin(value, min);
+          }
+
+          private boolean atLeastMin(int value, int min) {
+              return value >= min;
+          }
+      }
+    new: |
+      package example;
+
+      public class Scenario0091 {
+          public boolean valid(int value, int min) {
+              return atLeastMin(value, min);
+          }
+
+          private boolean atLeastMin(int value, int min) {
+              return value > min;
+          }
+      }
     labels:
     - B001
     - fault
 - id: c2
-  message: Introduce second contributing change
+  message: Inline helper after bug introduction
   author: Carol <carol@example.com>
-  date: '2024-03-03T10:00:00Z'
-  role: bug_introducing
+  date: '2024-01-03T10:00:00Z'
+  role: refactoring
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0129.java
-    old: "package example;\n\npublic class Scenario0129 {\n    public boolean allowed(int value, boolean enabled) {\n        return value < 100;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0129 {\n    public boolean allowed(int value, boolean enabled) {\n        return value < 100 && enabled;\n    }\n}\n"
-    labels:
-    - B001
-    - fault
-- id: c3
-  message: Fix combined bug
-  author: Alice <alice@example.com>
-  date: '2024-03-04T10:00:00Z'
-  role: bug_fixing
-  operations:
-  - type: replace
-    path: src/main/java/example/Scenario0129.java
-    old: "package example;\n\npublic class Scenario0129 {\n    public boolean allowed(int value, boolean enabled) {\n        return value < 100 && enabled;\n    }\n}\n"
+    path: src/main/java/example/Scenario0091.java
+    old: |
+      package example;
+
+      public class Scenario0091 {
+          public boolean valid(int value, int min) {
+              return atLeastMin(value, min);
+          }
+
+          private boolean atLeastMin(int value, int min) {
+              return value > min;
+          }
+      }
     new: |
       package example;
 
-      public class Scenario0129 {
-          public boolean allowed(int value, boolean enabled) {
-              return true;
+      public class Scenario0091 {
+          public boolean valid(int value, int min) {
+              return value > min;
+          }
+      }
+    labels:
+    - non_bug_introducing_change
+- id: c3
+  message: Fix bug
+  author: Dave <dave@example.com>
+  date: '2024-01-04T10:00:00Z'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Scenario0091.java
+    old: |
+      package example;
+
+      public class Scenario0091 {
+          public boolean valid(int value, int min) {
+              return value > min;
+          }
+      }
+    new: |
+      package example;
+
+      public class Scenario0091 {
+          public boolean valid(int value, int min) {
+              return value >= min;
           }
       }
     labels:
@@ -75,37 +134,38 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Threshold change plus flag change
+  title: Inline helper after BIC
   bug_fixing_commit: c3
   bug_introducing_commits: &id001
   - c1
-  - c2
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0129.java
+    file: src/main/java/example/Scenario0091.java
     entity:
       type: method
-      name: allowed
-      signature: boolean allowed(int value, boolean enabled)
-    statement: return value < 100;
+      name: atLeastMin
+      signature: boolean atLeastMin(int value, int min)
+    statement: return value > min;
     change_type: line_modification
   fix:
     commit: c3
-    file: src/main/java/example/Scenario0129.java
+    file: src/main/java/example/Scenario0091.java
     entity:
       type: method
-      name: allowed
-      signature: boolean allowed(int value, boolean enabled)
-    statement: return true;
+      name: valid
+      signature: boolean valid(int value, int min)
+    statement: return value >= min;
     fix_type: line_modification
   expected_szz:
     commit_level:
       true_positives: *id001
       false_positives_allowed: []
+      known_distractors:
+      - c2
     line_level:
       available: true
       faulty_statements:
-      - return value < 100;
+      - return value > min;
 checks:
 - type: git_history_contains
   commits:

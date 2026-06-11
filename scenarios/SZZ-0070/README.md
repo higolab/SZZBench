@@ -1,14 +1,14 @@
-# SZZ-0070: Transaction rollback omission
+# SZZ-0070: State transition check omission
 
 ## Purpose
 
-This scenario represents an omission bug: the method is introduced without a necessary rollback guard, and the bug-fixing commit adds the missing statement.
+This scenario represents an omission bug: the method is introduced without a necessary state transition check, and the bug-fixing commit adds the missing statement.
 
 ## Commit structure
 
 - `c0`: initial class
-- `c1`: introduces the method without the rollback guard
-- `c2`: adds the missing rollback guard
+- `c1`: introduces the method without the state transition check
+- `c2`: adds the missing state transition check
 
 ## Expected behavior
 

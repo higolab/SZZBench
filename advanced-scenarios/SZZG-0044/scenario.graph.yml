@@ -1,150 +1,118 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0044
-  title: Only commit message provides the clue
-  slug: commit-message
-  description: Evaluates a case where the code diff is generic and the only domain clue connecting the BFC to the true BIC
-    is in the BIC commit message.
-  category: Work-item and commit-series scenarios
-  category_code: H
+  title: BIC before merge, BFC after merge
+  slug: bic-before-merge-bfc-after-merge
+  description: A bug is introduced on main before a feature branch is merged, and the bug is fixed on main after the merge.
+  category: "Branch, merge, cherry-pick, backport, and release branches"
+  category_code: "G4"
   factors:
-  - context
-  - commit_messages
+  - branch
+  - merge
+  - pre_merge_bic
+  - post_merge_bfc
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0044-commit-message
+  name: SZZG-0044-bic-before-merge-bfc-after-merge
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: |
-    c0: create regional checkout challenge gate
-    c1: disable the EU checkout challenge with the only explicit message clue
-    c2: change an unrelated Canada rollout gate
-    c3: restore the EU checkout challenge
+  history_summary: 'c0: create initial correct implementation on main
+
+    c1: introduce bug on main before merge
+
+    c2: perform unrelated feature branch work
+
+    c3: merge feature branch into main
+
+    c4: fix the pre-merge bug on main after merge'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create regional checkout challenge gate'
+  message: 'c0: create initial correct implementation'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/CheckoutChallengeGate.java
-    content: |
-      package example;
-
-      public class CheckoutChallengeGate {
-        public boolean requiresChallenge(String region, boolean merchantRiskFlag) {
-          if (region.equals("EU")) {
-            return true;
-          }
-          if (region.equals("CA")) {
-            return merchantRiskFlag;
-          }
-          return merchantRiskFlag;
-        }
-      }
+    path: src/main/java/example/Range.java
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'PAY-314 temporary EU checkout challenge bypass during consent-copy rollout'
+  message: 'c1: introduce range boundary bug on main before merge'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/CheckoutChallengeGate.java
-    old: |-
-      if (region.equals("EU")) {
-            return true;
-          }
-    new: |-
-      if (region.equals("EU")) {
-            return merchantRiskFlag;
-          }
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
 - id: c2
-  branch: main
+  branch: feature
   parents:
-  - c1
-  message: 'PAY-299 tune Canada challenge rollout percentage'
+  - c0
+  message: 'c2: add unrelated feature helper'
   role: intermediate
   operations:
-  - type: replace
-    path: src/main/java/example/CheckoutChallengeGate.java
-    old: |-
-      if (region.equals("CA")) {
-            return merchantRiskFlag;
-          }
-    new: |-
-      if (region.equals("CA")) {
-            return merchantRiskFlag && region.length() == 2;
-          }
+  - type: write_file
+    path: src/main/java/example/FeatureFlag.java
+    content: "package example;\n\npublic class FeatureFlag {\n  public boolean enabled() {\n    return true;\n  }\n}\n"
 - id: c3
   branch: main
   parents:
+  - c1
   - c2
-  message: 'c3: restore mandatory regional checkout challenge'
+  message: 'c3: merge feature branch after bug introduction'
+  role: merge
+  operations: []
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: 'c4: fix pre-merge range boundary bug'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/CheckoutChallengeGate.java
-    old: |-
-      if (region.equals("EU")) {
-            return merchantRiskFlag;
-          }
-    new: |-
-      if (region.equals("EU")) {
-            return true;
-          }
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: EU checkout challenge was accidentally left conditional
+  title: Pre-merge main-branch bug fixed after merge
   bug_introducing_commits:
   - commit: c1
     role: direct
   bug_fixing_commits:
-  - commit: c3
+  - commit: c4
     role: complete_fix
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/CheckoutChallengeGate.java
-    statement: return merchantRiskFlag;
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c3
-    file: src/main/java/example/CheckoutChallengeGate.java
-    statement: return true;
+    commit: c4
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
     fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
     - c1
-    related_but_not_correct:
-    - c2
 scenario_design:
-  purpose: Evaluate whether a context-aware SZZ method can use commit-message evidence when the changed code itself contains
-    only a generic boolean gate.
-  current_schema_limitation: Commit-message clues are represented as contextual metadata rather than as first-class graph
-    edges.
-  required_extensions_from_source: 'This scenario uses factors: context, commit_messages; operations: write_file, replace.'
+  purpose: Evaluate a BIC that exists before a merge and a BFC that appears after that merge.
+  key_property: Unlike SZZG-0043, the BIC is on main before the merge, not on the feature branch.
   evaluation_points:
-  - Whether SZZ identifies c1 as the BIC using the PAY-314 EU clue in the commit message.
-  - Whether the unrelated Canada gate change c2 is not selected just because it is nearby and similar.
-  - Whether the BFC can be linked to the correct regional intent without relying only on line text.
+  - Pre-merge main BIC
+  - Unrelated feature merge between BIC and BFC
+  - Post-merge main BFC.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
-context:
-  required_files:
-  - src/main/java/example/CheckoutChallengeGate.java
-  required_commit_messages:
-  - commit: c1
-    clue: PAY-314 identifies the EU checkout challenge bypass that the BFC restores.
-  ambiguous_code_context: The same method contains multiple regional boolean gates, but only c1's message names the restored
-    EU behavior.
+- This scenario separates pre-merge main-line bug introduction from feature-branch bug introduction.

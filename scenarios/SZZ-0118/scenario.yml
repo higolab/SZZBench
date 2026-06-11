@@ -1,20 +1,20 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0118
-  title: Large commit with small bug
-  slug: large-commit-small-bug
-  description: 'This scenario evaluates a bug-introducing commit shape: Large commit with small bug.'
-  category: bic-shape
+  title: BFC with comment update
+  slug: bfc-with-comment-update
+  description: 'This scenario evaluates SZZ behavior when the bug-fixing commit has the shape: BFC with comment update.'
+  category: "BFC-side noise and tangled commits"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - large-bic
-  - tangled-bic
+  - bfc-comment-change
   difficulty: medium
   status: active
+  category_code: "S4"
 repository:
-  name: SZZ-0118-large-commit-small-bug
+  name: SZZ-0118-bfc-with-comment-update
   default_branch: main
   language: java
   build_system: none
@@ -27,53 +27,37 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0118.java
+    path: src/main/java/example/Scenario0053.java
     content: |
       package example;
 
-      public class Scenario0118 {
-          public boolean valid(int value) {
-              return value >= 0;
+      public class Scenario0053 {
+          public boolean within(int value) {
+              return value <= 10;
           }
       }
 - id: c1
-  message: Introduce bug inside large validation cleanup
+  message: Introduce bug
   author: Bob <bob@example.com>
   date: '2024-01-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0118.java
+    path: src/main/java/example/Scenario0053.java
     old: |
       package example;
 
-      public class Scenario0118 {
-          public boolean valid(int value) {
-              return value >= 0;
+      public class Scenario0053 {
+          public boolean within(int value) {
+              return value <= 10;
           }
       }
     new: |
       package example;
 
-      public class Scenario0118 {
-          public boolean valid(int value) {
-              return value > 0;
-          }
-
-          public int normalize(int value) {
-              return Math.max(value, 0);
-          }
-
-          public boolean belowLimit(int value, int limit) {
-              return value < limit;
-          }
-
-          public String label(int value) {
-              return "value=" + value;
-          }
-
-          public boolean hasValue(String value) {
-              return value != null && !value.isEmpty();
+      public class Scenario0053 {
+          public boolean within(int value) {
+              return value < 10;
           }
       }
     labels:
@@ -81,58 +65,27 @@ commits:
     - fault
 - id: c2
   message: Fix bug
-  author: Alice <alice@example.com>
+  author: Carol <carol@example.com>
   date: '2024-01-03T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0118.java
+    path: src/main/java/example/Scenario0053.java
     old: |
       package example;
 
-      public class Scenario0118 {
-          public boolean valid(int value) {
-              return value > 0;
-          }
-
-          public int normalize(int value) {
-              return Math.max(value, 0);
-          }
-
-          public boolean belowLimit(int value, int limit) {
-              return value < limit;
-          }
-
-          public String label(int value) {
-              return "value=" + value;
-          }
-
-          public boolean hasValue(String value) {
-              return value != null && !value.isEmpty();
+      public class Scenario0053 {
+          public boolean within(int value) {
+              return value < 10;
           }
       }
     new: |
       package example;
 
-      public class Scenario0118 {
-          public boolean valid(int value) {
-              return value >= 0;
-          }
-
-          public int normalize(int value) {
-              return Math.max(value, 0);
-          }
-
-          public boolean belowLimit(int value, int limit) {
-              return value < limit;
-          }
-
-          public String label(int value) {
-              return "value=" + value;
-          }
-
-          public boolean hasValue(String value) {
-              return value != null && !value.isEmpty();
+      public class Scenario0053 {
+          public boolean within(int value) {
+              // allow the upper bound
+              return value <= 10;
           }
       }
     labels:
@@ -140,27 +93,27 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Large commit with small bug
+  title: BFC with comment update
   bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0118.java
+    file: src/main/java/example/Scenario0053.java
     entity:
       type: method
-      name: valid
-      signature: boolean valid(int value)
-    statement: return value > 0;
+      name: within
+      signature: boolean within(int value)
+    statement: return value < 10;
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0118.java
+    file: src/main/java/example/Scenario0053.java
     entity:
       type: method
-      name: valid
-      signature: boolean valid(int value)
-    statement: return value >= 0;
+      name: within
+      signature: boolean within(int value)
+    statement: return value <= 10;
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -169,7 +122,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return value > 0;
+      - return value < 10;
 checks:
 - type: git_history_contains
   commits:

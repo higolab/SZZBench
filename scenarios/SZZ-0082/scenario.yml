@@ -1,112 +1,128 @@
-schema_version: '1.0'
+schema_version: "1.0"
+
 meta:
-  id: SZZ-0082
-  title: Role check omission
-  slug: role-check-omission
-  description: 'This scenario represents an omission bug: the method is introduced without a necessary role check, and the bug-fixing commit adds the missing statement.'
-  category: security
+  id: "SZZ-0082"
+  title: "Formatting-only rewrite after bug introduction"
+  slug: "formatting-only-rewrite-after-bic"
+  description: >
+    A boundary-check bug is introduced, then a formatting-only commit rewrites
+    the faulty statement as a multi-line expression. The fixing commit repairs
+    the formatted expression.
+  category: "Intermediate noise and history noise"
   factors:
-  - single-bic
-  - single-bfc
-  - omission-bug
-  - line-addition-fix
-  - security
-  difficulty: medium
-  status: active
+    - "single-bic"
+    - "single-bfc"
+    - "line-modification"
+    - "formatting-after-bic"
+    - "line-number-shift"
+    - "basic-blame-distractor"
+  difficulty: "medium"
+  status: "active"
+  category_code: "S3"
+
 repository:
-  name: SZZ-0082-role-check-omission
-  default_branch: main
-  language: java
-  build_system: none
-  source_root: src/main/java
+  name: "SZZ-0082-formatting-only-rewrite-after-bic"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
 commits:
-- id: c0
-  message: Initial class
-  author: Alice <alice@example.com>
-  date: '2024-02-01T10:00:00Z'
-  role: initial
-  operations:
-  - type: write_file
-    path: src/main/java/example/Scenario0082.java
-    content: 'package example;
+  - id: "c0"
+    message: "Initial score threshold"
+    author: "Alice <alice@example.com>"
+    date: "2024-01-01T10:00:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/example/ScoreGate.java"
+        content: |
+          package example;
 
+          public class ScoreGate {
+              public boolean accepts(int score, int min, int max) {
+                  return score >= min && score <= max;
+              }
+          }
 
-      public class Scenario0082 {
+  - id: "c1"
+    message: "Introduce threshold bug"
+    author: "Bob <bob@example.com>"
+    date: "2024-01-02T10:00:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/ScoreGate.java"
+        old: "return score >= min && score <= max;"
+        new: "return score > min && score < max;"
+        labels: ["B001", "fault"]
 
-      }
+  - id: "c2"
+    message: "Format score gate"
+    author: "Carol <carol@example.com>"
+    date: "2024-01-03T10:00:00Z"
+    role: "formatting"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/ScoreGate.java"
+        old: "return score > min && score < max;"
+        new: |
+          return score > min
+                          && score < max;
+        labels: ["formatting_only", "non_bug_introducing_change"]
 
-      '
-- id: c1
-  message: Add canDelete without role check
-  author: Bob <bob@example.com>
-  date: '2024-02-02T10:00:00Z'
-  role: bug_introducing
-  operations:
-  - type: replace
-    path: src/main/java/example/Scenario0082.java
-    old: 'package example;
+  - id: "c3"
+    message: "Fix threshold inclusiveness"
+    author: "Alice <alice@example.com>"
+    date: "2024-01-04T10:00:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/ScoreGate.java"
+        old: |
+          return score > min
+                          && score < max;
+        new: |
+          return score >= min
+                          && score <= max;
+        labels: ["B001", "fix"]
 
-
-      public class Scenario0082 {
-
-      }
-
-      '
-    new: "package example;\n\npublic class Scenario0082 {\n    public boolean canDelete(boolean admin) {\n        return true;\n    }\n}\n"
-    labels:
-    - B001
-    - fault
-- id: c2
-  message: Add missing role check
-  author: Alice <alice@example.com>
-  date: '2024-02-03T10:00:00Z'
-  role: bug_fixing
-  operations:
-  - type: replace
-    path: src/main/java/example/Scenario0082.java
-    old: "package example;\n\npublic class Scenario0082 {\n    public boolean canDelete(boolean admin) {\n        return true;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0082 {\n    public boolean canDelete(boolean admin) {\n        if (!admin) {\n                return false;\n            }\n            return true;\n    }\n}\n"
-    labels:
-    - B001
-    - fix
 bugs:
-- id: B001
-  title: Role check omission
-  bug_fixing_commit: c2
-  bug_introducing_commits:
-  - c1
-  fault:
-    commit: c1
-    file: src/main/java/example/Scenario0082.java
-    entity:
-      type: method
-      name: canDelete
-      signature: boolean canDelete(boolean admin)
-    change_type: omission
-    missing_statement: "if (!admin) {\n            return false;\n        }\n"
-  fix:
-    commit: c2
-    file: src/main/java/example/Scenario0082.java
-    entity:
-      type: method
-      name: canDelete
-      signature: boolean canDelete(boolean admin)
-    added_statement: |
-      if (!admin) {
-                      return false;
-                  }
-    fix_type: line_addition
-  expected_szz:
-    commit_level:
-      true_positives:
-      - c1
-      false_positives_allowed: []
-    line_level:
-      available: false
-      reason: The fault is an omitted statement, so no faulty deleted line exists.
+  - id: "B001"
+    title: "Boundary scores are excluded"
+    bug_fixing_commit: "c3"
+    bug_introducing_commits: ["c1"]
+    fault:
+      commit: "c1"
+      file: "src/main/java/example/ScoreGate.java"
+      entity:
+        type: "method"
+        name: "accepts"
+        signature: "boolean accepts(int score, int min, int max)"
+      statement: "return score > min && score < max;"
+      change_type: "line_modification"
+    fix:
+      commit: "c3"
+      file: "src/main/java/example/ScoreGate.java"
+      entity:
+        type: "method"
+        name: "accepts"
+        signature: "boolean accepts(int score, int min, int max)"
+      statement: |
+        return score >= min
+                        && score <= max;
+      fix_type: "line_modification"
+    expected_szz:
+      commit_level:
+        true_positives: ["c1"]
+        known_distractors: ["c2"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "return score > min && score < max;"
+        note: "The faulty statement is rewritten by a formatting-only commit before the BFC."
+
 checks:
-- type: git_history_contains
-  commits:
-  - c0
-  - c1
-  - c2
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3"]

@@ -1,8 +1,8 @@
-# SZZ-0040: Wrong collection size check
+# SZZ-0040: Wrong field assignment represented as return
 
 ## Purpose
 
-This scenario introduces a bug by changing `return size > 0;` to `return size >= 0;` and later restores the correct implementation.
+This scenario evaluates a bug-introducing commit shape: Wrong field assignment represented as return.
 
 ## Commit structure
 
@@ -19,4 +19,4 @@ The expected BFC is `c2` and the expected BIC is `c1`.
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `comparison-error`
+- `wrong-variable`

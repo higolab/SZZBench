@@ -1,20 +1,19 @@
-# SZZG-0105: Clone origin versus copied direct BIC
+# SZZG-0105: Defensive check BFC masks an earlier root-cause BIC
 
 ## Source
 
-- Category: Clone propagation scenarios
+- Category: Context-dependent scenarios
 
 ## Purpose
 
-Evaluate clone origin versus copied direct bic and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate defensive check bfc masks an earlier root-cause bic and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: c0: create original sanitizer
-c1: c1: introduce bug in original sanitizer
-c2: c2: copy sanitizer into admin module
-c3: c3: fix copied sanitizer only
+c0: c0: create profile renderer
+c1: c1: introduce null-producing root cause
+c2: c2: fix crash with defensive null checks
 ```
 
 ## Why this needs `scenario.graph.yml`
@@ -23,8 +22,8 @@ This history requires graph-aware scenario semantics that are difficult to expre
 
 ## Required graph-schema features
 
-- Factors: clone, copy_file, origin_bic_policy
-- Operation types: copy_file, replace, write_file
+- Factors: defensive_fix, root_cause_not_touched, context_dependent
+- Operation types: replace, write_file
 - Expected SZZ policy is defined in `expected_szz`.
 
 ## Expected BICs

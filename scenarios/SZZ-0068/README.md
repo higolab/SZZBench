@@ -1,14 +1,14 @@
-# SZZ-0068: Resource close omission
+# SZZ-0068: Overflow check omission
 
 ## Purpose
 
-This scenario represents an omission bug: the method is introduced without a necessary resource close, and the bug-fixing commit adds the missing statement.
+This scenario represents an omission bug: the method is introduced without a necessary overflow check, and the bug-fixing commit adds the missing statement.
 
 ## Commit structure
 
 - `c0`: initial class
-- `c1`: introduces the method without the resource close
-- `c2`: adds the missing resource close
+- `c1`: introduces the method without the overflow check
+- `c2`: adds the missing overflow check
 
 ## Expected behavior
 

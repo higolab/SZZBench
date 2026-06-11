@@ -1,31 +1,37 @@
-# SZZG-0009: Method move between classes
+# SZZG-0009: Intermediate method extraction between BIC and BFC
 
 ## Source
 
-- Category: Intermediate-history scenarios
+- Category: Refactoring scenarios
 
 ## Purpose
 
-Evaluate Method move between classes and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate intermediate method extraction between bic and bfc and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: create initial state (write_file src/main/java/example/Range.java)
-c1: introduce bug (replace src/main/java/example/Range.java)
-c2: apply intermediate change (move_entity)
-c3: fix bug (replace src/main/java/example/Range.java)
+c0: c0: create shipping fee calculation
+c1: c1: introduce free-shipping threshold bug
+c2: c2: extract free-shipping predicate
+c3: c3: fix extracted threshold predicate
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
+This history requires graph-aware scenario semantics that are difficult to express with the normal `scenario.yml` schema.
 
 ## Required graph-schema features
 
-- Factors: move_entity
-- Operation types: write_file, replace, move_entity
-- Expected SZZ policy is defined in expected_szz.
+- Factors: intermediate_refactoring, extract_method, line_history_break
+- Operation types: insert_after, replace, write_file
+- Expected SZZ policy is defined in `expected_szz`.
+
+## Expected BICs
+
+```text
+c1
+```
 
 ## Evaluation points
 

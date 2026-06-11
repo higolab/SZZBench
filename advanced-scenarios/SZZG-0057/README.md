@@ -1,49 +1,52 @@
-# SZZG-0057: Huge history
-
-## Source
-
-- Category: Robustness and implementation-quality scenarios
+# SZZG-0057: Rebase old feature branch after unrelated main changes
 
 ## Purpose
 
-Evaluate Huge history and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate rebase after unrelated main-line changes.
 
-## Expected history
+## Commit history
 
 ```text
-c0: create initial state (write_generated_text_file src/main/java/example/LargeRange.java)
-c1: introduce bug (replace src/main/java/example/LargeRange.java)
-c2: apply intermediate change (commit_generator)
-c3: apply intermediate change (commit_generator)
-c4: fix bug (replace src/main/java/example/LargeRange.java)
+c0: c0: create initial correct implementation
+f1: f1: introduce bug on old feature base
+m1: m1: unrelated main change
+m2: m2: second unrelated main change
+r1: r1: rebase old feature BIC onto latest main
+c3: c3: fix bug after rebase onto latest main
 ```
 
-## Why this needs `scenario.graph.yml`
+## Commit table
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
+| Commit | Branch | Parents | Role | Description |
+|---|---|---|---|---|
+| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
+| `f1` | `feature` | c0 | `origin_bug_introducing` | f1: introduce bug on old feature base |
+| `m1` | `main` | c0 | `intermediate` | m1: unrelated main change |
+| `m2` | `main` | m1 | `intermediate` | m2: second unrelated main change |
+| `r1` | `main` | m2 | `bug_introducing` | r1: rebase old feature BIC onto latest main |
+| `c3` | `main` | r1 | `bug_fixing` | c3: fix bug after rebase onto latest main |
 
-## Required graph-schema features
+## Expected SZZ result
 
-- Factors: commit_generators
-- Operation types: write_generated_text_file, replace, commit_generator
-- Expected SZZ policy is defined in expected_szz.
+```text
+Expected BIC(s): r1
+Related but not correct: f1, m1, m2
+```
+
+## Key property
+
+m1/m2 are distractors; r1 is direct BIC.
+
+## Difference from SZZG-0063
+
+SZZG-0063 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
 
 ## Evaluation points
 
-- Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
-- Whether the expected_szz evaluation policy is applied correctly.
+- Report r1.
+- Avoid m1/m2.
 
----
+## Notes
 
-## Draft status
-
-This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
-
-## Files
-
-```text
-SZZG-0057/
-|-- scenario.graph.yml
-`-- README.md
-```
+- This scenario models a rebase-related development history for SZZ evaluation.
+- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

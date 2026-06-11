@@ -1,20 +1,20 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0120
-  title: Wrong parameter used in new feature
-  slug: wrong-parameter-bic
-  description: 'This scenario evaluates a bug-introducing commit shape: Wrong parameter used in new feature.'
-  category: bic-shape
+  title: BFC with unrelated helper addition
+  slug: bfc-with-unrelated-helper
+  description: 'This scenario evaluates SZZ behavior when the bug-fixing commit has the shape: BFC with unrelated helper addition.'
+  category: "BFC-side noise and tangled commits"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - feature-addition-bic
-  - wrong-variable
+  - tangled-bfc
   difficulty: medium
   status: active
+  category_code: "S4"
 repository:
-  name: SZZ-0120-wrong-parameter-bic
+  name: SZZ-0120-bfc-with-unrelated-helper
   default_branch: main
   language: java
   build_system: none
@@ -27,13 +27,13 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0120.java
+    path: src/main/java/example/Scenario0055.java
     content: |
       package example;
 
-      public class Scenario0120 {
-          public boolean validRange(int start, int end) {
-              return start <= end;
+      public class Scenario0055 {
+          public boolean passed(int score) {
+              return score >= 60;
           }
       }
 - id: c1
@@ -43,21 +43,21 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0120.java
+    path: src/main/java/example/Scenario0055.java
     old: |
       package example;
 
-      public class Scenario0120 {
-          public boolean validRange(int start, int end) {
-              return start <= end;
+      public class Scenario0055 {
+          public boolean passed(int score) {
+              return score >= 60;
           }
       }
     new: |
       package example;
 
-      public class Scenario0120 {
-          public boolean validRange(int start, int end) {
-              return start <= start;
+      public class Scenario0055 {
+          public boolean passed(int score) {
+              return score > 60;
           }
       }
     labels:
@@ -65,26 +65,30 @@ commits:
     - fault
 - id: c2
   message: Fix bug
-  author: Alice <alice@example.com>
+  author: Carol <carol@example.com>
   date: '2024-01-03T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0120.java
+    path: src/main/java/example/Scenario0055.java
     old: |
       package example;
 
-      public class Scenario0120 {
-          public boolean validRange(int start, int end) {
-              return start <= start;
+      public class Scenario0055 {
+          public boolean passed(int score) {
+              return score > 60;
           }
       }
     new: |
       package example;
 
-      public class Scenario0120 {
-          public boolean validRange(int start, int end) {
-              return start <= end;
+      public class Scenario0055 {
+          public boolean passed(int score) {
+              return score >= 60;
+          }
+
+          public int bucket(int score) {
+              return score / 10;
           }
       }
     labels:
@@ -92,27 +96,27 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Wrong parameter used in new feature
+  title: BFC with unrelated helper addition
   bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0120.java
+    file: src/main/java/example/Scenario0055.java
     entity:
       type: method
-      name: validRange
-      signature: boolean validRange(int start, int end)
-    statement: return start <= start;
+      name: passed
+      signature: boolean passed(int score)
+    statement: return score > 60;
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0120.java
+    file: src/main/java/example/Scenario0055.java
     entity:
       type: method
-      name: validRange
-      signature: boolean validRange(int start, int end)
-    statement: return start <= end;
+      name: passed
+      signature: boolean passed(int score)
+    statement: return score >= 60;
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -121,7 +125,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return start <= start;
+      - return score > 60;
 checks:
 - type: git_history_contains
   commits:

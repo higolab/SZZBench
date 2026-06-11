@@ -1,20 +1,19 @@
-# SZZG-0103: Semantic-preserving rewrite between BIC and BFC
+# SZZG-0103: Caller-side context is needed to identify the BIC
 
 ## Source
 
-- Category: Intermediate-history scenarios
+- Category: Context-dependent scenarios
 
 ## Purpose
 
-Evaluate semantic-preserving rewrite between bic and bfc and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate caller-side context is needed to identify the bic and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: c0: create age gate
-c1: c1: introduce boundary bug
-c2: c2: rewrite condition into explicit if statement
-c3: c3: fix adult boundary after rewrite
+c0: c0: create account service and caller
+c1: c1: introduce caller-side inversion bug
+c2: c2: fix login behavior by changing callee condition
 ```
 
 ## Why this needs `scenario.graph.yml`
@@ -23,7 +22,7 @@ This history requires graph-aware scenario semantics that are difficult to expre
 
 ## Required graph-schema features
 
-- Factors: intermediate_rewrite, formatting, line_history_break
+- Factors: context_dependent, caller_callee, not_directly_local
 - Operation types: replace, write_file
 - Expected SZZ policy is defined in `expected_szz`.
 

@@ -1,22 +1,22 @@
-# SZZ-0062: BFC changes default branch in conditional
+# SZZ-0062: Default case omission
 
 ## Purpose
 
-This scenario evaluates SZZ behavior when the bug-fixing commit has the shape: BFC changes default branch in conditional.
+This scenario represents an omission bug: the method is introduced without a necessary default case, and the bug-fixing commit adds the missing statement.
 
 ## Commit structure
 
-- `c0`: Initial correct implementation
-- `c1`: Introduce bug
-- `c2`: Fix bug
+- `c0`: initial class
+- `c1`: introduces the method without the default case
+- `c2`: adds the missing default case
 
 ## Expected behavior
 
-The expected BFC is `c2` and the expected BIC is `c1`.
+The expected BFC is `c2` and the expected BIC is `c1`. Line-level evaluation is unavailable because this is an omission bug.
 
 ## Factors
 
 - `single-bic`
 - `single-bfc`
-- `line-modification`
-- `conditional-default`
+- `omission-bug`
+- `line-addition-fix`

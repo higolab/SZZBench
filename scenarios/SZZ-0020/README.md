@@ -1,8 +1,8 @@
-# SZZ-0020: Maximum comparison error
+# SZZ-0020: Wrong fallback number
 
 ## Purpose
 
-This scenario introduces a bug by changing `return value <= maximum;` to `return value < maximum;` and later restores the correct implementation.
+This scenario introduces a bug by changing `return value < 0 ? 0 : value;` to `return value < 0 ? -1 : value;` and later restores the correct implementation.
 
 ## Commit structure
 
@@ -19,4 +19,4 @@ The expected BFC is `c2` and the expected BIC is `c1`.
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `comparison-error`
+- `wrong-constant`

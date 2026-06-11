@@ -1,17 +1,18 @@
-# SZZG-0073: Release branch change rebased onto main
+# SZZG-0073: Interactive rebase reorders commits before BIC
 
 ## Purpose
 
-Evaluate rebase from release branch to main.
+Evaluate commit reordering during rebase.
 
 ## Commit history
 
 ```text
 c0: c0: create initial correct implementation
-rel1: rel1: introduce release-specific range bug
-m1: m1: continue main development
-r1: r1: rebase release change onto main
-c2: c2: fix release-origin bug on main
+f1: f1: add feature docs
+f2: f2: introduce range bug
+r1: r1: replay docs before reordered BIC
+r2: r2: replay bug commit after reorder
+c3: c3: fix reordered bug
 ```
 
 ## Commit table
@@ -19,29 +20,31 @@ c2: c2: fix release-origin bug on main
 | Commit | Branch | Parents | Role | Description |
 |---|---|---|---|---|
 | `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `rel1` | `release` | c0 | `origin_bug_introducing` | rel1: introduce release-specific range bug |
-| `m1` | `main` | c0 | `intermediate` | m1: continue main development |
-| `r1` | `main` | m1 | `bug_introducing` | r1: rebase release change onto main |
-| `c2` | `main` | r1 | `bug_fixing` | c2: fix release-origin bug on main |
+| `f1` | `feature` | c0 | `intermediate` | f1: add feature docs |
+| `f2` | `feature` | f1 | `origin_bug_introducing` | f2: introduce range bug |
+| `r1` | `main` | c0 | `intermediate` | r1: replay docs before reordered BIC |
+| `r2` | `main` | r1 | `bug_introducing` | r2: replay bug commit after reorder |
+| `c3` | `main` | r2 | `bug_fixing` | c3: fix reordered bug |
 
 ## Expected SZZ result
 
 ```text
-Expected BIC(s): r1
-Related but not correct: rel1
+Expected BIC(s): r2
+Related but not correct: f2, r1
 ```
 
 ## Key property
 
-rel1 is origin, r1 is direct on main.
+Only r2 introduces the bug after reorder.
 
-## Difference from SZZG-0061
+## Difference from SZZG-0063
 
-SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
+SZZG-0063 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
 
 ## Evaluation points
 
-- Report r1.
+- Report r2.
+- Avoid r1.
 
 ## Notes
 

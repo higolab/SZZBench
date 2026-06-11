@@ -1,14 +1,14 @@
-# SZZ-0052: BFC with test file addition
+# SZZ-0052: Cache enabled flag error
 
 ## Purpose
 
-This scenario evaluates SZZ behavior when the bug-fixing commit fixes production code and adds a regression test file in the same BFC.
+This scenario introduces a bug by changing `return enabled && !expired;` to `return enabled || !expired;` and later restores the correct implementation.
 
 ## Commit structure
 
-- `c0`: Initial correct implementation
-- `c1`: Introduce bug
-- `c2`: Fix bug and add regression test file
+- `c0`: initial correct implementation
+- `c1`: introduces the bug
+- `c2`: fixes the bug
 
 ## Expected behavior
 
@@ -19,4 +19,4 @@ The expected BFC is `c2` and the expected BIC is `c1`.
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `bfc-test-addition`
+- `boolean-negation`

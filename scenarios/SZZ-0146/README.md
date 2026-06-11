@@ -1,4 +1,4 @@
-# SZZ-0146: Duplicate arithmetic statements
+# SZZ-0146: Duplicate boundary checks
 
 ## Purpose
 

@@ -1,22 +1,23 @@
-# SZZ-0128: Validation weakening plus caller acceptance
+# SZZ-0128: Extract helper after BIC
 
 ## Purpose
 
-This scenario requires treating two bug-introducing commits as contributing to the same later fix.
+This scenario inserts an intermediate refactoring change between the BIC and BFC.
 
 ## Commit structure
 
-- `c0`: initial implementation
-- `c1`: weakens the validator
-- `c2`: makes the caller accept an additional invalid value
-- `c3`: fixes both contributing changes
+- `c0`: Initial correct implementation
+- `c1`: Introduce bug
+- `c2`: Apply intermediate rewrite
+- `c3`: Fix bug
 
 ## Expected behavior
 
-The expected BFC is `c3`; the expected BIC set is `{c1, c2}`.
+The expected BFC is `c3` and the expected BIC is `c1`.
 
 ## Factors
 
-- `multi-bic`
+- `single-bic`
 - `single-bfc`
 - `line-modification`
+- `extract-method-after-bic`

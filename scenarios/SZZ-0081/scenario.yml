@@ -1,111 +1,152 @@
-schema_version: '1.0'
+schema_version: "1.0"
+
 meta:
-  id: SZZ-0081
-  title: Feature flag check omission
-  slug: feature-flag-check-omission
-  description: 'This scenario represents an omission bug: the method is introduced without a necessary feature flag check, and the bug-fixing commit adds the missing statement.'
-  category: omission
+  id: "SZZ-0081"
+  title: "Formatting after bug introduction"
+  slug: "formatting-after-bic"
+  description: >
+    A boundary-check bug is introduced, then a later formatting-only commit
+    rewrites the faulty line before the bug is fixed. This scenario is designed
+    to check whether SZZ implementations incorrectly identify the formatting
+    commit as the bug-introducing commit.
+  category: "Intermediate noise and history noise"
   factors:
-  - single-bic
-  - single-bfc
-  - omission-bug
-  - line-addition-fix
-  difficulty: medium
-  status: active
+    - "single-bic"
+    - "single-bfc"
+    - "line-modification"
+    - "formatting-after-bic"
+    - "line-number-shift"
+    - "basic-blame-distractor"
+  difficulty: "medium"
+  status: "active"
+  category_code: "S3"
+
 repository:
-  name: SZZ-0081-feature-flag-check-omission
-  default_branch: main
-  language: java
-  build_system: none
-  source_root: src/main/java
+  name: "SZZ-0081-formatting-after-bic"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
 commits:
-- id: c0
-  message: Initial class
-  author: Alice <alice@example.com>
-  date: '2024-02-01T10:00:00Z'
-  role: initial
-  operations:
-  - type: write_file
-    path: src/main/java/example/Scenario0081.java
-    content: 'package example;
+  - id: "c0"
+    message: "Initial correct implementation"
+    author: "Alice <alice@example.com>"
+    date: "2024-01-01T10:00:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/example/Range.java"
+        content: |
+          package example;
 
+          public class Range {
+              public boolean contains(int value, int min, int max) {
+                  return value >= min && value <= max;
+              }
+          }
 
-      public class Scenario0081 {
+  - id: "c1"
+    message: "Introduce boundary bug"
+    author: "Bob <bob@example.com>"
+    date: "2024-01-02T10:00:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/Range.java"
+        old: "return value >= min && value <= max;"
+        new: "return value > min && value < max;"
+        labels: ["B001", "fault"]
 
-      }
+  - id: "c2"
+    message: "Reformat Range"
+    author: "Carol <carol@example.com>"
+    date: "2024-01-03T10:00:00Z"
+    role: "formatting"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/Range.java"
+        old: |
+          package example;
 
-      '
-- id: c1
-  message: Add canUseFeature without feature flag check
-  author: Bob <bob@example.com>
-  date: '2024-02-02T10:00:00Z'
-  role: bug_introducing
-  operations:
-  - type: replace
-    path: src/main/java/example/Scenario0081.java
-    old: 'package example;
+          public class Range {
+              public boolean contains(int value, int min, int max) {
+                  return value > min && value < max;
+              }
+          }
+        new: |
+          package example;
 
+          public class Range
+          {
+              public boolean contains(
+                      int value,
+                      int min,
+                      int max)
+              {
+                  return value > min
+                          && value < max;
+              }
+          }
+        labels: ["formatting_only", "non_bug_introducing_change"]
 
-      public class Scenario0081 {
+  - id: "c3"
+    message: "Fix boundary bug"
+    author: "Alice <alice@example.com>"
+    date: "2024-01-04T10:00:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/Range.java"
+        old: |
+          return value > min
+                          && value < max;
+        new: |
+          return value >= min
+                          && value <= max;
+        labels: ["B001", "fix"]
 
-      }
-
-      '
-    new: "package example;\n\npublic class Scenario0081 {\n    public boolean canUseFeature(boolean enabled) {\n        return true;\n    }\n}\n"
-    labels:
-    - B001
-    - fault
-- id: c2
-  message: Add missing feature flag check
-  author: Alice <alice@example.com>
-  date: '2024-02-03T10:00:00Z'
-  role: bug_fixing
-  operations:
-  - type: replace
-    path: src/main/java/example/Scenario0081.java
-    old: "package example;\n\npublic class Scenario0081 {\n    public boolean canUseFeature(boolean enabled) {\n        return true;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0081 {\n    public boolean canUseFeature(boolean enabled) {\n        if (!enabled) {\n                return false;\n            }\n            return true;\n    }\n}\n"
-    labels:
-    - B001
-    - fix
 bugs:
-- id: B001
-  title: Feature flag check omission
-  bug_fixing_commit: c2
-  bug_introducing_commits:
-  - c1
-  fault:
-    commit: c1
-    file: src/main/java/example/Scenario0081.java
-    entity:
-      type: method
-      name: canUseFeature
-      signature: boolean canUseFeature(boolean enabled)
-    change_type: omission
-    missing_statement: "if (!enabled) {\n            return false;\n        }\n"
-  fix:
-    commit: c2
-    file: src/main/java/example/Scenario0081.java
-    entity:
-      type: method
-      name: canUseFeature
-      signature: boolean canUseFeature(boolean enabled)
-    added_statement: |
-      if (!enabled) {
-                      return false;
-                  }
-    fix_type: line_addition
-  expected_szz:
-    commit_level:
-      true_positives:
-      - c1
-      false_positives_allowed: []
-    line_level:
-      available: false
-      reason: The fault is an omitted statement, so no faulty deleted line exists.
+  - id: "B001"
+    title: "Boundary values are excluded"
+    bug_fixing_commit: "c3"
+    bug_introducing_commits: ["c1"]
+
+    fault:
+      commit: "c1"
+      file: "src/main/java/example/Range.java"
+      entity:
+        type: "method"
+        name: "contains"
+        signature: "boolean contains(int value, int min, int max)"
+      statement: "return value > min && value < max;"
+      change_type: "line_modification"
+
+    fix:
+      commit: "c3"
+      file: "src/main/java/example/Range.java"
+      entity:
+        type: "method"
+        name: "contains"
+        signature: "boolean contains(int value, int min, int max)"
+      statement: |
+        return value >= min
+                        && value <= max;
+      fix_type: "line_modification"
+
+    expected_szz:
+      commit_level:
+        true_positives: ["c1"]
+        known_distractors: ["c2"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "return value > min && value < max;"
+        note: >
+          The original faulty statement is rewritten by the formatting commit.
+          Basic line-based blame may point to c2 instead of c1.
+
 checks:
-- type: git_history_contains
-  commits:
-  - c0
-  - c1
-  - c2
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3"]

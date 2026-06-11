@@ -1,10 +1,10 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0147
-  title: Duplicate normalization statements
-  slug: duplicate-normalization-statements
+  title: Duplicate constant comparisons
+  slug: duplicate-constant-comparisons
   description: This scenario contains duplicate or similar statements so that line-level oracle interpretation is intentionally harder.
-  category: ambiguous-blame
+  category: "Multiple BICs, duplicate faults, and composite faults"
   factors:
   - single-bic
   - single-bfc
@@ -13,8 +13,9 @@ meta:
   - duplicate-statement
   difficulty: medium
   status: active
+  category_code: "S6"
 repository:
-  name: SZZ-0147-duplicate-normalization-statements
+  name: SZZ-0147-duplicate-constant-comparisons
   default_branch: main
   language: java
   build_system: none
@@ -27,17 +28,17 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0147.java
+    path: src/main/java/example/Scenario0141.java
     content: |
       package example;
 
-      public class Scenario0147 {
-          public String normalize(String value) {
-              return value.strip();
+      public class Scenario0141 {
+          public boolean nonZero(int code) {
+              return code != 0;
           }
 
-          public String otherMethod(String value) {
-              return value.trim();
+          public boolean otherMethod(int code) {
+              return code == 0;
           }
       }
 - id: c1
@@ -47,29 +48,29 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0147.java
+    path: src/main/java/example/Scenario0141.java
     old: |
       package example;
 
-      public class Scenario0147 {
-          public String normalize(String value) {
-              return value.strip();
+      public class Scenario0141 {
+          public boolean nonZero(int code) {
+              return code != 0;
           }
 
-          public String otherMethod(String value) {
-              return value.trim();
+          public boolean otherMethod(int code) {
+              return code == 0;
           }
       }
     new: |
       package example;
 
-      public class Scenario0147 {
-          public String normalize(String value) {
-              return value.trim();
+      public class Scenario0141 {
+          public boolean nonZero(int code) {
+              return code == 0;
           }
 
-          public String otherMethod(String value) {
-              return value.trim();
+          public boolean otherMethod(int code) {
+              return code == 0;
           }
       }
     labels:
@@ -82,29 +83,29 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0147.java
+    path: src/main/java/example/Scenario0141.java
     old: |
       package example;
 
-      public class Scenario0147 {
-          public String normalize(String value) {
-              return value.trim();
+      public class Scenario0141 {
+          public boolean nonZero(int code) {
+              return code == 0;
           }
 
-          public String otherMethod(String value) {
-              return value.trim();
+          public boolean otherMethod(int code) {
+              return code == 0;
           }
       }
     new: |
       package example;
 
-      public class Scenario0147 {
-          public String normalize(String value) {
-              return value.strip();
+      public class Scenario0141 {
+          public boolean nonZero(int code) {
+              return code != 0;
           }
 
-          public String otherMethod(String value) {
-              return value.trim();
+          public boolean otherMethod(int code) {
+              return code == 0;
           }
       }
     labels:
@@ -112,27 +113,27 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Duplicate normalization statements
+  title: Duplicate constant comparisons
   bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0147.java
+    file: src/main/java/example/Scenario0141.java
     entity:
       type: method
-      name: normalize
-      signature: String normalize(String value)
-    statement: return value.trim();
+      name: nonZero
+      signature: boolean nonZero(int code)
+    statement: return code == 0;
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0147.java
+    file: src/main/java/example/Scenario0141.java
     entity:
       type: method
-      name: normalize
-      signature: String normalize(String value)
-    statement: return value.strip();
+      name: nonZero
+      signature: boolean nonZero(int code)
+    statement: return code != 0;
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -141,7 +142,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return value.trim();
+      - return code == 0;
 checks:
 - type: git_history_contains
   commits:

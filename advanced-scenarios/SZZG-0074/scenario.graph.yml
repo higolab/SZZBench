@@ -1,22 +1,23 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0074
-  title: Main fix rebased onto release branch
-  slug: main-fix-rebased-onto-release-branch
-  description: A main-line fix is replayed onto release by rebase.
-  category: Branch, merge, cherry-pick, and backport scenarios
-  category_code: G
+  title: Interactive rebase fixup combines buggy commits
+  slug: interactive-rebase-fixup-combines-buggy-commits
+  description: Interactive rebase fixup combines origin commits into one direct BIC.
+  category: "Rebase-specific history rewriting"
+  category_code: "G5"
   factors:
   - branch
   - rebase
-  - release_branch
-  - main_fix_to_release
-  - rebased_bfc
-  - bug_fixing_commits
+  - interactive_rebase
+  - fixup
+  - squash
+  - direct_bic
+  - origin_bic
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0074-main-fix-rebased-onto-release-branch
+  name: SZZG-0074-interactive-rebase-fixup-combines-buggy-commits
   default_branch: main
   language: java
   build_system: none
@@ -25,13 +26,13 @@ graph:
   model: commit_dag
   history_summary: 'c0: create initial correct implementation
 
-    c1: introduce range bug on main
+    f1: introduce range bug
 
-    rel1: cut release branch with bug
+    f2: fixup helper using buggy logic
 
-    c2: fix bug on main
+    r1: interactive rebase fixup combines feature commits
 
-    r2: rebase main fix onto release'
+    c2: fix bug from fixup commit'
 commits:
 - id: c0
   branch: main
@@ -43,90 +44,106 @@ commits:
     path: src/main/java/example/Range.java
     content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
       \ value >= min && value <= max;\n  }\n}\n"
-- id: c1
-  branch: main
+- id: f1
+  branch: feature
   parents:
   - c0
-  message: 'c1: introduce range bug on main'
-  role: bug_introducing
+  message: 'f1: introduce range bug'
+  role: origin_bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
     new: return value > min && value < max;
-- id: rel1
-  branch: release
+- id: f2
+  branch: feature
   parents:
-  - c1
-  message: 'rel1: cut release branch with bug'
-  role: release_branch_point
+  - f1
+  message: 'f2: fixup helper using buggy logic'
+  role: intermediate
   operations:
-  - type: write_file
-    path: release/version.txt
-    content: '1.0
-
-      '
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n}\n"
+    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
+      \ min, max);\n  }\n}\n"
+- id: r1
+  branch: main
+  parents:
+  - c0
+  message: 'r1: interactive rebase fixup combines feature commits'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ >= min && value <= max;\n  }\n}\n"
+    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
+      \ min, max);\n  }\n}\n"
+  rebase_of:
+  - f1
+  - f2
+  interactive_rebase: fixup
 - id: c2
   branch: main
   parents:
-  - c1
-  message: 'c2: fix bug on main'
+  - r1
+  message: 'c2: fix bug from fixup commit'
   role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value > min && value < max;
     new: return value >= min && value <= max;
-- id: r2
-  branch: release
-  parents:
-  - rel1
-  message: 'r2: rebase main fix onto release'
-  role: bug_fixing
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
-  rebase_of: c2
 bugs:
 - id: B001
-  title: Bug fixed by rebased main fix
+  title: Bug introduced by fixup rebased commit
   bug_introducing_commits:
-  - commit: c1
+  - commit: r1
     role: direct
+  - commit: f1
+    role: origin
+  - commit: f2
+    role: origin
   bug_fixing_commits:
   - commit: c2
     role: complete_fix
-  - commit: r2
-    role: complete_fix
   faults:
   - id: F001
-    commit: c1
+    commit: r1
     file: src/main/java/example/Range.java
     statement: return value > min && value < max;
     change_type: line_modification
   fixes:
   - id: X001
-    commit: r2
+    commit: c2
     file: src/main/java/example/Range.java
     statement: return value >= min && value <= max;
     fix_type: line_modification
+  origin_faults:
+  - id: OF001
+    commit: f1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: origin_line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - c1
+    - r1
     related_but_not_correct:
-    - c2
+    - f1
+    - f2
 scenario_design:
-  purpose: Evaluate a release BFC that is a rebased copy of a main fix.
-  key_property: r2 is the release BFC replaying c2.
-  difference_from_SZZG_0073: SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
+  purpose: Evaluate fixup/squash inside interactive rebase.
+  key_property: f1 and f2 collapse into r1.
+  difference_from_SZZG_0073: SZZG-0063 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
     adds a distinct rebase-related complication.
   evaluation_points:
-  - Start from r2.
-  - Return c1.
+  - Report r1.
 notes:
 - This scenario models a rebase-related development history for SZZ evaluation.
 - Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

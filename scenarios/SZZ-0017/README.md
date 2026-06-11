@@ -1,8 +1,8 @@
-# SZZ-0017: Multiplication factor error
+# SZZ-0017: Absolute value omitted
 
 ## Purpose
 
-This scenario introduces a bug by changing `return value * 2;` to `return value * 3;` and later restores the correct implementation.
+This scenario introduces a bug by changing `return Math.abs(value);` to `return value;` and later restores the correct implementation.
 
 ## Commit structure
 

@@ -1,51 +1,50 @@
-# SZZG-0084: BFC message identifies rebase regression
+# SZZG-0084: Partial revert reintroduces bug
+
+## Source
+
+- Category: Revert and reintroduction scenarios
 
 ## Purpose
 
-Evaluate whether message context helps or misleads SZZ in a rebase scenario.
+Evaluate a partial revert where `c3` reintroduces the boundary bug and is the expected direct BIC for the final fix.
 
-## Commit history
+The original BIC `c1` is related history, but the `reintroduction_direct` oracle requires the reintroducing commit `c3`.
 
-```text
-c0: c0: create initial correct implementation
-f1: f1: introduce range boundary bug on feature
-f2: f2: add feature helper using buggy range check
-r1: r1: rebase feature BIC onto main
-r2: r2: rebase feature helper onto main
-c3: c3: fix boundary regression introduced during rebase
-```
-
-## Commit table
-
-| Commit | Branch | Parents | Role | Description |
-|---|---|---|---|---|
-| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `f1` | `feature` | c0 | `origin_bug_introducing` | f1: introduce range boundary bug on feature |
-| `f2` | `feature` | f1 | `intermediate` | f2: add feature helper using buggy range check |
-| `r1` | `main` | c0 | `bug_introducing` | r1: rebase feature BIC onto main |
-| `r2` | `main` | r1 | `intermediate` | r2: rebase feature helper onto main |
-| `c3` | `main` | r2 | `bug_fixing` | c3: fix boundary regression introduced during rebase |
-
-## Expected SZZ result
+## Expected history
 
 ```text
-Expected BIC(s): r1
-Related but not correct: f1
+c0: create initial state (write_file src/main/java/example/Range.java)
+c1: introduce bug (replace src/main/java/example/Range.java)
+c2: fix bug (replace src/main/java/example/Range.java)
+c3: partially revert c2 and reintroduce bug (replace src/main/java/example/Range.java)
+c4: fix bug (replace src/main/java/example/Range.java)
 ```
 
-## Key property
+## Why this needs `scenario.graph.yml`
 
-The direct BIC remains r1 despite message context.
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
-## Difference from SZZG-0061
+## Required graph-schema features
 
-SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
+- Operation types: write_file, replace
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- Report r1.
+- Whether SZZ identifies `c3` as the reintroducing BIC for the final fix.
+- Whether SZZ treats the original BIC `c1` as related history, not the required direct answer.
+- Whether the expected_szz evaluation policy is applied correctly.
 
-## Notes
+---
 
-- This scenario models a rebase-related development history for SZZ evaluation.
-- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.
+## Draft status
+
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
+
+## Files
+
+```text
+SZZG-0084/
+|-- scenario.graph.yml
+`-- README.md
+```

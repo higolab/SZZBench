@@ -1,19 +1,20 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0050
-  title: Dead code removal after BIC
-  slug: dead-code-removal-after-bic
-  description: This scenario introduces a bug by changing `return value >= min && value <= max;` to `return value > min && value < max;` and later restores the correct implementation.
-  category: intermediate-history
+  title: Index lower bound error
+  slug: index-lower-bound-error
+  description: This scenario introduces a bug by changing `return index >= 0;` to `return index > 0;` and later restores the correct implementation.
+  category: "Omission and deletion bugs"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - dead-code-removal-after-bic
-  difficulty: medium
+  - comparison-error
+  difficulty: easy
   status: active
+  category_code: "S2"
 repository:
-  name: SZZ-0050-dead-code-removal-after-bic
+  name: SZZ-0050-index-lower-bound-error
   default_branch: main
   language: java
   build_system: none
@@ -26,8 +27,15 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0050.java
-    content: "package example;\n\npublic class Scenario0050 {\n    public boolean check(int value, int min, int max) {\n        return value >= min && value <= max;\n    }\n}\n"
+    path: src/main/java/example/Scenario0034.java
+    content: |
+      package example;
+
+      public class Scenario0034 {
+          public boolean validLowerBound(int index) {
+              return index >= 0;
+          }
+      }
 - id: c1
   message: Introduce bug
   author: Bob <bob@example.com>
@@ -35,89 +43,88 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0050.java
-    old: "package example;\n\npublic class Scenario0050 {\n    public boolean check(int value, int min, int max) {\n        return value >= min && value <= max;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0050 {\n    public boolean check(int value, int min, int max) {\n        return value > min && value < max;\n    }\n}\n"
+    path: src/main/java/example/Scenario0034.java
+    old: |
+      package example;
+
+      public class Scenario0034 {
+          public boolean validLowerBound(int index) {
+              return index >= 0;
+          }
+      }
+    new: |
+      package example;
+
+      public class Scenario0034 {
+          public boolean validLowerBound(int index) {
+              return index > 0;
+          }
+      }
     labels:
     - B001
     - fault
 - id: c2
-  message: Remove dead code after bug introduction
-  author: Carol <carol@example.com>
-  date: '2024-01-03T10:00:00Z'
-  role: cleanup
-  operations:
-  - type: replace
-    path: src/main/java/example/Scenario0050.java
-    old: "package example;\n\npublic class Scenario0050 {\n    public boolean check(int value, int min, int max) {\n        return value > min && value < max;\n    }\n}\n"
-    new: |
-      package example;
-
-      public class Scenario0050 {
-          public boolean check(int value, int min, int max) {
-              // dead code removed; boundary remains faulty
-              return value > min && value < max;
-          }
-      }
-- id: c3
   message: Fix bug
   author: Alice <alice@example.com>
-  date: '2024-01-04T10:00:00Z'
+  date: '2024-01-03T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0050.java
+    path: src/main/java/example/Scenario0034.java
     old: |
       package example;
 
-      public class Scenario0050 {
-          public boolean check(int value, int min, int max) {
-              // dead code removed; boundary remains faulty
-              return value > min && value < max;
+      public class Scenario0034 {
+          public boolean validLowerBound(int index) {
+              return index > 0;
           }
       }
-    new: "package example;\n\npublic class Scenario0050 {\n    public boolean check(int value, int min, int max) {\n        return value >= min && value <= max;\n    }\n}\n"
+    new: |
+      package example;
+
+      public class Scenario0034 {
+          public boolean validLowerBound(int index) {
+              return index >= 0;
+          }
+      }
     labels:
     - B001
     - fix
 bugs:
 - id: B001
-  title: Dead code removal after BIC
-  bug_fixing_commit: c3
+  title: Index lower bound error
+  bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0050.java
+    file: src/main/java/example/Scenario0034.java
     entity:
       type: method
-      name: check
-      signature: boolean check(int value, int min, int max)
-    statement: return value > min && value < max;
+      name: validLowerBound
+      signature: boolean validLowerBound(int index)
+    statement: return index > 0;
     change_type: line_modification
   fix:
-    commit: c3
-    file: src/main/java/example/Scenario0050.java
+    commit: c2
+    file: src/main/java/example/Scenario0034.java
     entity:
       type: method
-      name: check
-      signature: boolean check(int value, int min, int max)
-    statement: return value >= min && value <= max;
+      name: validLowerBound
+      signature: boolean validLowerBound(int index)
+    statement: return index >= 0;
     fix_type: line_modification
   expected_szz:
     commit_level:
       true_positives: *id001
       false_positives_allowed: []
-      known_distractors:
-      - c2
     line_level:
       available: true
       faulty_statements:
-      - return value > min && value < max;
+      - return index > 0;
 checks:
 - type: git_history_contains
   commits:
   - c0
   - c1
   - c2
-  - c3

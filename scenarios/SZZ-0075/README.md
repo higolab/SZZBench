@@ -1,14 +1,14 @@
-# SZZ-0075: Empty string check omission
+# SZZ-0075: Negative amount check omission
 
 ## Purpose
 
-This scenario represents an omission bug: the method is introduced without a necessary empty string check, and the bug-fixing commit adds the missing statement.
+This scenario represents an omission bug: the method is introduced without a necessary negative amount check, and the bug-fixing commit adds the missing statement.
 
 ## Commit structure
 
 - `c0`: initial class
-- `c1`: introduces the method without the empty string check
-- `c2`: adds the missing empty string check
+- `c1`: introduces the method without the negative amount check
+- `c2`: adds the missing negative amount check
 
 ## Expected behavior
 

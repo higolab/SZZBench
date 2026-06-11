@@ -1,23 +1,22 @@
-# SZZ-0106: Field extraction after BIC
+# SZZ-0106: Formatting and bug introduced together
 
 ## Purpose
 
-This scenario inserts an intermediate refactoring change between the BIC and BFC.
+This scenario evaluates a bug-introducing commit shape: Formatting and bug introduced together.
 
 ## Commit structure
 
-- `c0`: Initial correct implementation
-- `c1`: Introduce bug
-- `c2`: Apply intermediate rewrite
-- `c3`: Fix bug
+- `c0`: initial correct implementation
+- `c1`: introduces the bug
+- `c2`: fixes the bug
 
 ## Expected behavior
 
-The expected BFC is `c3` and the expected BIC is `c1`.
+The expected BFC is `c2` and the expected BIC is `c1`.
 
 ## Factors
 
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `field-extraction-after-bic`
+- `formatting-and-bug-bic`

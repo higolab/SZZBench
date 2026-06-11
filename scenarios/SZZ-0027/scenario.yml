@@ -1,19 +1,20 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0027
-  title: Absolute value omitted
-  slug: absolute-value-omitted
-  description: This scenario introduces a bug by changing `return Math.abs(value);` to `return value;` and later restores the correct implementation.
-  category: basic
+  title: Wrong collection size check
+  slug: wrong-collection-size-check
+  description: This scenario introduces a bug by changing `return size > 0;` to `return size >= 0;` and later restores the correct implementation.
+  category: "Basic semantic line changes"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - arithmetic-error
+  - comparison-error
   difficulty: easy
   status: active
+  category_code: "S1"
 repository:
-  name: SZZ-0027-absolute-value-omitted
+  name: SZZ-0027-wrong-collection-size-check
   default_branch: main
   language: java
   build_system: none
@@ -26,13 +27,13 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0027.java
+    path: src/main/java/example/Scenario0040.java
     content: |
       package example;
 
-      public class Scenario0027 {
-          public int magnitude(int value) {
-              return Math.abs(value);
+      public class Scenario0040 {
+          public boolean hasItems(int size) {
+              return size > 0;
           }
       }
 - id: c1
@@ -42,21 +43,21 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0027.java
+    path: src/main/java/example/Scenario0040.java
     old: |
       package example;
 
-      public class Scenario0027 {
-          public int magnitude(int value) {
-              return Math.abs(value);
+      public class Scenario0040 {
+          public boolean hasItems(int size) {
+              return size > 0;
           }
       }
     new: |
       package example;
 
-      public class Scenario0027 {
-          public int magnitude(int value) {
-              return value;
+      public class Scenario0040 {
+          public boolean hasItems(int size) {
+              return size >= 0;
           }
       }
     labels:
@@ -69,21 +70,21 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0027.java
+    path: src/main/java/example/Scenario0040.java
     old: |
       package example;
 
-      public class Scenario0027 {
-          public int magnitude(int value) {
-              return value;
+      public class Scenario0040 {
+          public boolean hasItems(int size) {
+              return size >= 0;
           }
       }
     new: |
       package example;
 
-      public class Scenario0027 {
-          public int magnitude(int value) {
-              return Math.abs(value);
+      public class Scenario0040 {
+          public boolean hasItems(int size) {
+              return size > 0;
           }
       }
     labels:
@@ -91,27 +92,27 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Absolute value omitted
+  title: Wrong collection size check
   bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0027.java
+    file: src/main/java/example/Scenario0040.java
     entity:
       type: method
-      name: magnitude
-      signature: int magnitude(int value)
-    statement: return value;
+      name: hasItems
+      signature: boolean hasItems(int size)
+    statement: return size >= 0;
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0027.java
+    file: src/main/java/example/Scenario0040.java
     entity:
       type: method
-      name: magnitude
-      signature: int magnitude(int value)
-    statement: return Math.abs(value);
+      name: hasItems
+      signature: boolean hasItems(int size)
+    statement: return size > 0;
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -120,7 +121,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return value;
+      - return size >= 0;
 checks:
 - type: git_history_contains
   commits:

@@ -1,61 +1,63 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0109
-  title: Refactoring introduces comparison bug
-  slug: refactoring-bic
-  description: 'This scenario evaluates a bug-introducing commit shape: Refactoring introduces comparison bug.'
-  category: bic-shape
+  title: Comment-only intermediate before fix
+  slug: comment-only-intermediate
+  description: This scenario is intended to stress implementation robustness under noisy or repetitive code conditions.
+  category: "Intermediate noise and history noise"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - refactoring-bic
+  - robustness
+  - comment-only-intermediate
   difficulty: medium
   status: active
+  category_code: "S3"
 repository:
-  name: SZZ-0109-refactoring-bic
+  name: SZZ-0109-comment-only-intermediate
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 commits:
 - id: c0
-  message: Initial correct implementation
+  message: Initial implementation
   author: Alice <alice@example.com>
-  date: '2024-01-01T10:00:00Z'
+  date: '2024-06-01T10:00:00Z'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0109.java
+    path: src/main/java/example/Scenario0159.java
     content: |
       package example;
 
-      public class Scenario0109 {
-          public boolean within(int value, int max) {
+      public class Scenario0159 {
+          public boolean check(int value, int max) {
               return value <= max;
           }
       }
 - id: c1
   message: Introduce bug
   author: Bob <bob@example.com>
-  date: '2024-01-02T10:00:00Z'
+  date: '2024-06-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0109.java
+    path: src/main/java/example/Scenario0159.java
     old: |
       package example;
 
-      public class Scenario0109 {
-          public boolean within(int value, int max) {
+      public class Scenario0159 {
+          public boolean check(int value, int max) {
               return value <= max;
           }
       }
     new: |
       package example;
 
-      public class Scenario0109 {
-          public boolean within(int value, int max) {
+      public class Scenario0159 {
+          public boolean check(int value, int max) {
               return value < max;
           }
       }
@@ -63,26 +65,54 @@ commits:
     - B001
     - fault
 - id: c2
-  message: Fix bug
-  author: Alice <alice@example.com>
-  date: '2024-01-03T10:00:00Z'
-  role: bug_fixing
+  message: Add comment-only context
+  author: Carol <carol@example.com>
+  date: '2024-06-03T10:00:00Z'
+  role: distractor
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0109.java
+    path: src/main/java/example/Scenario0159.java
     old: |
       package example;
 
-      public class Scenario0109 {
-          public boolean within(int value, int max) {
+      public class Scenario0159 {
+          public boolean check(int value, int max) {
               return value < max;
           }
       }
     new: |
       package example;
 
-      public class Scenario0109 {
-          public boolean within(int value, int max) {
+      public class Scenario0159 {
+          public boolean check(int value, int max) {
+              // intentionally checking upper boundary
+              return value < max;
+          }
+      }
+    labels:
+    - non_bug_introducing_change
+- id: c3
+  message: Fix bug
+  author: Alice <alice@example.com>
+  date: '2024-06-04T10:00:00Z'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Scenario0159.java
+    old: |
+      package example;
+
+      public class Scenario0159 {
+          public boolean check(int value, int max) {
+              // intentionally checking upper boundary
+              return value < max;
+          }
+      }
+    new: |
+      package example;
+
+      public class Scenario0159 {
+          public boolean check(int value, int max) {
               return value <= max;
           }
       }
@@ -91,32 +121,34 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Refactoring introduces comparison bug
-  bug_fixing_commit: c2
+  title: Comment-only intermediate before fix
+  bug_fixing_commit: c3
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0109.java
+    file: src/main/java/example/Scenario0159.java
     entity:
       type: method
-      name: within
-      signature: boolean within(int value, int max)
+      name: check
+      signature: boolean check(int value, int max)
     statement: return value < max;
     change_type: line_modification
   fix:
-    commit: c2
-    file: src/main/java/example/Scenario0109.java
+    commit: c3
+    file: src/main/java/example/Scenario0159.java
     entity:
       type: method
-      name: within
-      signature: boolean within(int value, int max)
+      name: check
+      signature: boolean check(int value, int max)
     statement: return value <= max;
     fix_type: line_modification
   expected_szz:
     commit_level:
       true_positives: *id001
       false_positives_allowed: []
+      known_distractors:
+      - c2
     line_level:
       available: true
       faulty_statements:
@@ -127,3 +159,4 @@ checks:
   - c0
   - c1
   - c2
+  - c3

@@ -1,8 +1,8 @@
-# SZZ-0033: Empty string predicate reversed
+# SZZ-0033: Refactoring introduces comparison bug
 
 ## Purpose
 
-This scenario introduces a bug by changing `return !value.isEmpty();` to `return value.isEmpty();` and later restores the correct implementation.
+This scenario evaluates a bug-introducing commit shape: Refactoring introduces comparison bug.
 
 ## Commit structure
 
@@ -19,4 +19,4 @@ The expected BFC is `c2` and the expected BIC is `c1`.
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `boolean-negation`
+- `refactoring-bic`

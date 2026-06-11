@@ -1,19 +1,20 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0106
-  title: Field extraction after BIC
-  slug: field-extraction-after-bic
-  description: This scenario inserts an intermediate refactoring change between the BIC and BFC.
-  category: refactoring
+  title: Formatting and bug introduced together
+  slug: formatting-and-bug-bic
+  description: 'This scenario evaluates a bug-introducing commit shape: Formatting and bug introduced together.'
+  category: "Intermediate noise and history noise"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - field-extraction-after-bic
+  - formatting-and-bug-bic
   difficulty: medium
   status: active
+  category_code: "S3"
 repository:
-  name: SZZ-0106-field-extraction-after-bic
+  name: SZZ-0106-formatting-and-bug-bic
   default_branch: main
   language: java
   build_system: none
@@ -26,13 +27,13 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0106.java
+    path: src/main/java/example/Scenario0110.java
     content: |
       package example;
 
-      public class Scenario0106 {
-          public boolean valid(int value) {
-              return value <= limit;
+      public class Scenario0110 {
+          public boolean contains(int value, int min, int max) {
+              return value >= min && value <= max;
           }
       }
 - id: c1
@@ -42,78 +43,48 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0106.java
+    path: src/main/java/example/Scenario0110.java
     old: |
       package example;
 
-      public class Scenario0106 {
-          public boolean valid(int value) {
-              return value <= limit;
+      public class Scenario0110 {
+          public boolean contains(int value, int min, int max) {
+              return value >= min && value <= max;
           }
       }
     new: |
       package example;
 
-      public class Scenario0106 {
-          public boolean valid(int value) {
-              return value < limit;
+      public class Scenario0110 {
+          public boolean contains(int value, int min, int max) {
+              return value > min && value < max;
           }
       }
     labels:
     - B001
     - fault
 - id: c2
-  message: Apply intermediate rewrite
-  author: Carol <carol@example.com>
-  date: '2024-01-03T10:00:00Z'
-  role: refactoring
-  operations:
-  - type: replace
-    path: src/main/java/example/Scenario0106.java
-    old: |
-      package example;
-
-      public class Scenario0106 {
-          public boolean valid(int value) {
-              return value < limit;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0106 {
-          private static final int DEFAULT_LIMIT = 10;
-
-          public boolean valid(int value) {
-              return value < DEFAULT_LIMIT;
-          }
-      }
-    labels:
-    - non_bug_introducing_change
-- id: c3
   message: Fix bug
-  author: Dave <dave@example.com>
-  date: '2024-01-04T10:00:00Z'
+  author: Alice <alice@example.com>
+  date: '2024-01-03T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0106.java
+    path: src/main/java/example/Scenario0110.java
     old: |
       package example;
 
-      public class Scenario0106 {
-          private static final int DEFAULT_LIMIT = 10;
-
-          public boolean valid(int value) {
-              return value < DEFAULT_LIMIT;
+      public class Scenario0110 {
+          public boolean contains(int value, int min, int max) {
+              return value > min && value < max;
           }
       }
     new: |
       package example;
 
-      public class Scenario0106 {
-          public boolean valid(int value) {
-              return value <= limit;
+      public class Scenario0110 {
+          public boolean contains(int value, int min, int max) {
+              return value >= min && value <= max;
           }
       }
     labels:
@@ -121,42 +92,39 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Field extraction after BIC
-  bug_fixing_commit: c3
+  title: Formatting and bug introduced together
+  bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0106.java
+    file: src/main/java/example/Scenario0110.java
     entity:
       type: method
-      name: valid
-      signature: boolean valid(int value)
-    statement: return value < limit;
+      name: contains
+      signature: boolean contains(int value, int min, int max)
+    statement: return value > min && value < max;
     change_type: line_modification
   fix:
-    commit: c3
-    file: src/main/java/example/Scenario0106.java
+    commit: c2
+    file: src/main/java/example/Scenario0110.java
     entity:
       type: method
-      name: valid
-      signature: boolean valid(int value)
-    statement: return value <= limit;
+      name: contains
+      signature: boolean contains(int value, int min, int max)
+    statement: return value >= min && value <= max;
     fix_type: line_modification
   expected_szz:
     commit_level:
       true_positives: *id001
       false_positives_allowed: []
-      known_distractors:
-      - c2
     line_level:
       available: true
       faulty_statements:
-      - return value < limit;
+      - return value > min && value < max;
 checks:
 - type: git_history_contains
   commits:
   - c0
   - c1
   - c2
-  - c3

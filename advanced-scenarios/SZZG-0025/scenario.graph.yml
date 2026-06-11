@@ -1,161 +1,116 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0025
-  title: Old BIC and re-BIC are both plausible
-  slug: old-bic-re-bic-plausible
-  description: A bug is introduced, fixed, reintroduced by a partial revert, and fixed again. The direct BIC for the final
-    fix is the reintroducing commit, but the old original BIC is also a plausible origin-related answer under an origin-aware
-    evaluation policy.
-  category: Revert and reintroduction scenarios
-  category_code: F
+  title: Clone origin versus copied direct BIC
+  slug: clone-origin-versus-direct-bic
+  description: Evaluates clone origin versus copied direct bic and checks whether SZZ identifies the expected bug-introducing
+    commit set.
+  category: "Clone, copy propagation, and origin-vs-direct BIC"
+  category_code: "G2"
   factors:
-  - reintroduction
-  - partial_revert
-  - origin_bic
-  - evaluation_variants
+  - clone
+  - copy_file
+  - origin_bic_policy
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0025-old-bic-and-re-bic-plausible
+  name: SZZG-0025-clone-origin-versus-direct-bic
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial correct implementation
+  history_summary: 'c0: c0: create original sanitizer
 
-    c1: introduce original range boundary bug
+    c1: c1: introduce bug in original sanitizer
 
-    c2: fix original bug and perform a small refactoring
+    c2: c2: copy sanitizer into admin module
 
-    c3: partially revert c2 and reintroduce the boundary bug while keeping the refactoring
-
-    c4: fix the reintroduced bug'
+    c3: c3: fix copied sanitizer only'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial correct implementation'
+  message: 'c0: create original sanitizer'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n\n  public String source() {\n    return \"main\";\n  }\n}\n"
+    path: src/main/java/example/Sanitizer.java
+    content: "package example;\npublic class Sanitizer {\n  public String clean(String s) {\n    return s.replace(\"<\", \"\
+      &lt;\");\n  }\n\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce original range boundary bug'
+  message: 'c1: introduce bug in original sanitizer'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
+    path: src/main/java/example/Sanitizer.java
+    old: return s.replace("<", "&lt;");
+    new: return s;
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: fix range boundary bug and rename source label'
-  role: bug_fixing
+  message: 'c2: copy sanitizer into admin module'
+  role: other
   operations:
+  - type: copy_file
+    from: src/main/java/example/Sanitizer.java
+    to: src/main/java/example/AdminSanitizer.java
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: return "main";
-    new: return "range-service";
+    path: src/main/java/example/AdminSanitizer.java
+    old: public class Sanitizer
+    new: public class AdminSanitizer
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'c3: partially revert boundary fix and reintroduce bug'
-  role: bug_reintroducing
-  revert_of: c2
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
-- id: c4
-  branch: main
-  parents:
-  - c3
-  message: 'c4: fix reintroduced range boundary bug'
+  message: 'c3: fix copied sanitizer only'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/AdminSanitizer.java
+    old: return s;
+    new: return s.replace("<", "&lt;");
 bugs:
 - id: B001
-  title: Reintroduced range boundary bug with old and new plausible BICs
+  title: Synthetic graph scenario bug
   bug_introducing_commits:
-  - commit: c3
-    role: direct_reintroduction
-    description: Direct BIC for the final bug instance fixed by c4.
-    reverts: c2
   - commit: c1
-    role: old_origin_bic
-    description: Original BIC where the same faulty logic first appeared.
+    role: direct
   bug_fixing_commits:
-  - commit: c4
-    role: final_fix
+  - commit: c3
+    role: complete_fix
   faults:
   - id: F001
-    commit: c3
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
-    change_type: reintroduced_line_modification
-  origin_faults:
-  - id: OF001
     commit: c1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
-    change_type: origin_line_modification
+    file: src/main/java/example/Sanitizer.java
+    statement: return s;
+    change_type: line_modification
   fixes:
   - id: X001
-    commit: c4
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
+    commit: c3
+    file: src/main/java/example/AdminSanitizer.java
+    statement: return s.replace("<", "&lt;");
     fix_type: line_modification
 expected_szz:
-  default_variant: reintroduction-direct
-  evaluation_variants:
-  - name: reintroduction-direct
-    description: Only the reintroducing commit is considered the correct BIC for the final fix.
-    commit_level:
-      evaluation_policy: exact_set
-      required:
-      - c3
-      related_but_not_correct:
-      - c1
-  - name: origin-aware
-    description: The reintroducing commit is required, and the old origin BIC is accepted as related context.
-    commit_level:
-      evaluation_policy: relaxed_with_related
-      required:
-      - c3
-      acceptable_related:
-      - commit: c1
-        reason: old_origin_bic
-        credit: 0.5
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
 scenario_design:
-  purpose: Evaluate a reintroduced bug where the direct re-BIC and the old origin BIC are both plausible depending on the
-    evaluation policy.
-  key_property: c3 partially reverts c2 by restoring only the faulty boundary condition, while keeping c2's unrelated refactoring.
-  difference_from_SZZG_0028: SZZG-0024 should focus on direct reintroduction. SZZG-0025 keeps the same reintroduction theme
-    but adds explicit evaluation variants for old-origin-aware evaluation.
+  purpose: Evaluate clone origin versus copied direct bic and whether SZZ identifies the expected bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: clone, copy_file, origin_bic_policy; operations: copy_file,
+    replace, write_file.'
   evaluation_points:
-  - Whether SZZ identifies c3 as the direct reintroducing BIC for c4.
-  - Whether c1 can be treated as an origin-related answer under an alternative evaluation policy.
-  - Whether a partial revert is distinguished from the old original BIC.
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- This revision makes SZZG-0025 an evaluation-variant scenario for old BIC versus re-BIC.
-- c3 partially reverts c2 only for the boundary condition; it keeps the source-label refactoring from c2.
-- The default expected BIC is c3.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

@@ -1,41 +1,36 @@
-# SZZG-0109: Caller-side context is needed to identify the BIC
+# SZZG-0109: File deletion
 
 ## Source
 
-- Category: Context-dependent scenarios
+- Category: Robustness and implementation-quality scenarios
 
 ## Purpose
 
-Evaluate caller-side context is needed to identify the bic and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate a deletion-based fix where `c0` creates a buggy file and `c1` fixes the bug by deleting that file.
+
+The required BIC is `c0`, because the initial commit introduced both `Buggy.java` and the faulty return statement.
 
 ## Expected history
 
 ```text
-c0: c0: create account service and caller
-c1: c1: introduce caller-side inversion bug
-c2: c2: fix login behavior by changing callee condition
+c0: create initial buggy file (write_file src/main/java/example/Buggy.java)
+c1: fix bug (delete_file src/main/java/example/Buggy.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal `scenario.yml` schema.
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-- Factors: context_dependent, caller_callee, not_directly_local
-- Operation types: replace, write_file
-- Expected SZZ policy is defined in `expected_szz`.
-
-## Expected BICs
-
-```text
-c1
-```
+- Factors: delete_file
+- Operation types: write_file, delete_file
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
+- Whether SZZ identifies `c0` as the BIC for the deleted buggy file.
+- Whether SZZ handles file deletion as the complete fix.
 - Whether the expected_szz evaluation policy is applied correctly.
 
 ---

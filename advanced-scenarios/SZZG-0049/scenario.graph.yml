@@ -1,136 +1,165 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0049
-  title: Issue description required
-  slug: issue-description
-  description: Evaluates a case where the issue description is needed to distinguish the true BIC from nearby data-cleanup
-    commits.
-  category: Context-aware and LLM-based SZZ scenarios
-  category_code: J
+  title: Cherry-pick BFC
+  slug: cherry-pick-bfc
+  description: A bug exists on both main and release branches. The bug is fixed on main, and the BFC is then cherry-picked
+    onto the release branch to fix the release instance.
+  category: "Branch, merge, cherry-pick, backport, and release branches"
+  category_code: "G4"
   factors:
-  - issues
-  - context
+  - branch
+  - cherry_pick_of
+  - bug_fixing_commits
+  - bug_instances
+  - backport_like_fix
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0049-issue-description
+  name: SZZG-0049-cherry-pick-bfc
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: |
-    c0: create CSV contact importer
-    c1: introduce null handling for blank middle names
-    c2: change postal-code whitespace cleanup
-    c3: fix blank middle-name import using issue description
+  history_summary: 'c0: create initial correct implementation on main
+
+    c1: introduce bug on main before the release branch is cut
+
+    r1: create release branch from the buggy state
+
+    c2: fix bug on main
+
+    r2: cherry-pick the main BFC onto release'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create CSV contact importer'
+  message: 'c0: create initial correct implementation'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/CsvContactImporter.java
-    content: |
-      package example;
-
-      public class CsvContactImporter {
-        public String middleName(String[] row) {
-          return normalizeOptional(row[1]);
-        }
-
-        public String postalCode(String[] row) {
-          return row[2].trim();
-        }
-
-        private String normalizeOptional(String value) {
-          return value == null ? "" : value.trim();
-        }
-      }
+    path: src/main/java/example/Range.java
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: normalize blank optional contact fields as null'
+  message: 'c1: introduce range boundary bug'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/CsvContactImporter.java
-    old: 'return value == null ? "" : value.trim();'
-    new: 'return value == null || value.trim().isEmpty() ? null : value.trim();'
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+- id: r1
+  branch: release
+  parents:
+  - c1
+  message: 'r1: create release branch from buggy state'
+  role: release_branch_point
+  operations:
+  - type: write_file
+    path: docs/release-note.md
+    content: 'Release branch is cut while the range boundary bug is still present.
+
+      '
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: strip spaces from imported postal codes'
-  role: intermediate
-  operations:
-  - type: replace
-    path: src/main/java/example/CsvContactImporter.java
-    old: return row[2].trim();
-    new: return row[2].replace(" ", "").trim();
-- id: c3
-  branch: main
-  parents:
-  - c2
-  message: 'c3: keep blank middle names as empty strings'
+  message: 'c2: fix range boundary bug on main'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/CsvContactImporter.java
-    old: 'return value == null || value.trim().isEmpty() ? null : value.trim();'
-    new: 'return value == null ? "" : value.trim();'
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+- id: r2
+  branch: release
+  parents:
+  - r1
+  message: 'r2: cherry-pick main range boundary fix onto release'
+  role: bug_fixing
+  cherry_pick_of: c2
+  operations:
+  - type: apply_patch_from
+    commit: c2
 bugs:
 - id: B001
-  title: Blank middle names are imported as null instead of empty strings
+  title: Range boundary bug fixed on main and cherry-picked to release
   bug_introducing_commits:
   - commit: c1
     role: direct
   bug_fixing_commits:
-  - commit: c3
-    role: complete_fix
+  - commit: c2
+    role: main_fix
+  - commit: r2
+    role: cherry_picked_release_fix
+    cherry_pick_of: c2
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/CsvContactImporter.java
-    statement: 'return value == null || value.trim().isEmpty() ? null : value.trim();'
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c3
-    file: src/main/java/example/CsvContactImporter.java
-    statement: 'return value == null ? "" : value.trim();'
-    fix_type: line_modification
+    commit: c2
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+    fix_type: main_line_fix
+  - id: X002
+    commit: r2
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+    fix_type: cherry_picked_fix
+  bug_instances:
+  - branch: main
+    status: fixed
+    fix_commit: c2
+  - branch: release
+    status: fixed
+    fix_commit: r2
+    cherry_pick_of: c2
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
     - c1
-    related_but_not_correct:
-    - c2
+    notes: The original BIC is c1. Both c2 and r2 are BFCs. r2 is a cherry-picked instance of the main-line BFC c2.
+  branch_level:
+    main:
+      bfc: c2
+      required:
+      - c1
+    release:
+      bfc: r2
+      required:
+      - c1
 scenario_design:
-  purpose: Evaluate whether SZZ can use issue text to choose the middle-name normalization BIC instead of a nearby importer
-    cleanup commit.
-  current_schema_limitation: Issue descriptions are represented as graph metadata linked to bugs.
-  required_extensions_from_source: 'This scenario uses factors: issues, context; operations: write_file, replace.'
+  purpose: Evaluate whether SZZ can identify the original BIC when a bug-fixing commit is cherry-picked from main to a release
+    branch.
+  key_property: The cherry-picked commit r2 is a BFC, not a BIC. This distinguishes SZZG-0049 from SZZG-0048, where the cherry-picked
+    commit is a BIC.
+  difference_from_SZZG_0035: SZZG-0048 is about cherry-picking the BIC onto another branch. SZZG-0049 is about cherry-picking
+    the BFC onto another branch.
   evaluation_points:
-  - Whether SZZ identifies c1 as the BIC.
-  - Whether the issue description rules out the postal-code cleanup c2.
-  - Whether the BFC is interpreted as restoring an empty-string contract for optional middle names.
+  - Whether SZZ treats the release BFC r2 as a fixing commit.
+  - Whether SZZ traces from r2 back to the original BIC c1 rather than to the main-line BFC c2.
+  - Whether a cherry-picked fix is handled as a branch-specific bug-fixing instance.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
-issues:
-- id: ISSUE-482
-  title: Blank middle names are exported as null after CSV import
-  description: Contacts imported from CSV should preserve a blank middle_name column as an empty string. Postal-code whitespace
-    cleanup is unrelated; the regression is specifically in optional-name normalization.
-  linked_bugs:
-  - B001
-  referenced_commits:
-  - c1
-  excludes_commits:
-  - c2
+- This revision changes the cherry-picked commit from the BIC to the BFC.
+- The release branch is created from the buggy state at c1.
+- The main fix c2 is cherry-picked onto release as r2.
+- If apply_patch_from cannot be validated by the current verifier, r2 can be represented with an explicit replace operation
+  equivalent to c2.
+bug_instances:
+- id: B001-main
+  branch: main
+  status: fixed
+- id: B001-release
+  branch: release
+  status: open

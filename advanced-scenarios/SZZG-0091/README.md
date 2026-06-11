@@ -1,18 +1,18 @@
-# SZZG-0091: Revert of revert with conflict resolution
+# SZZG-0091: Multiple BICs with partial revert reintroducing one fault
 
 ## Purpose
 
-Evaluate a revert-of-revert BFC that includes conflict resolution after intervening code changes.
+Evaluate multiple original BICs when a later partial revert reintroduces only one of them.
 
 ## Commit history
 
 ```text
 c0: create initial correct implementation
-c1: introduce boundary bug
-c2: fix boundary bug
-c3: revert c2 and reintroduce boundary bug
-c4: add description before resolving revert conflict
-c5: revert c3 with conflict resolution and restore boundary fix
+c1: introduce lower-bound bug
+c2: introduce upper-bound bug
+c3: fix both boundary bugs
+c4: partially revert fix for upper boundary only
+c5: fix reintroduced upper-bound bug
 ```
 
 ## Commit table
@@ -20,22 +20,22 @@ c5: revert c3 with conflict resolution and restore boundary fix
 | Commit | Branch | Parents | Role | Description |
 |---|---|---|---|---|
 | `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `c1` | `main` | c0 | `origin_bug_introducing` | c1: introduce boundary bug |
-| `c2` | `main` | c1 | `prior_fix` | c2: fix boundary bug |
-| `c3` | `main` | c2 | `bug_introducing` | c3: revert c2 and reintroduce boundary bug |
-| `c4` | `main` | c3 | `intermediate` | c4: add description before resolving revert conflict |
-| `c5` | `main` | c4 | `bug_fixing` | c5: revert c3 with conflict resolution and restore boundary fix |
+| `c1` | `main` | c0 | `origin_bug_introducing` | c1: introduce lower-bound bug |
+| `c2` | `main` | c1 | `origin_bug_introducing` | c2: introduce upper-bound bug |
+| `c3` | `main` | c2 | `prior_fix` | c3: fix both boundary bugs |
+| `c4` | `main` | c3 | `bug_introducing` | c4: partially revert fix for upper boundary only |
+| `c5` | `main` | c4 | `bug_fixing` | c5: fix reintroduced upper-bound bug |
 
 ## Expected SZZ result
 
 ```text
-Expected BIC(s): c3
-Related but not correct: c1, c2, c4
+Expected BIC(s): c4
+Related but not correct: c1, c2, c3
 ```
 
 ## Key property
 
-The BFC restores the earlier fix while preserving unrelated intervening changes.
+The direct BIC for the final fix is the partial revert, not the older original BIC set.
 
 ## Difference from existing revert scenarios
 
@@ -43,8 +43,8 @@ This scenario isolates a double-revert or revert-derived complication beyond the
 
 ## Evaluation points
 
-- Whether SZZ reports c3.
-- Whether the intermediate c4 is not selected.
+- Whether SZZ reports c4.
+- Whether SZZ avoids reporting both old BICs as exact direct answers.
 
 ## Notes
 

@@ -1,37 +1,32 @@
-# SZZG-0096: One directly blamed BIC and one context-only BIC
+# SZZG-0096: Multiple candidate BICs inside a work item
 
 ## Source
 
-- Category: Multiple-BIC scenarios
+- Category: Work-item and commit-series scenarios
 
 ## Purpose
 
-Evaluate one directly blamed bic and one context-only bic and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate Multiple candidate BICs inside a work item and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: c0: create discount service
-c1: c1: introduce wrong threshold
-c2: c2: introduce wrong base discount
-c3: c3: fix customer discount behavior by restoring threshold only
+c0: create initial state (write_file src/main/java/example/RangeService.java)
+c1: add candidate change (replace src/main/java/example/RangeService.java)
+c2: introduce bug (replace src/main/java/example/RangeService.java)
+c3: add candidate change (replace src/main/java/example/RangeService.java)
+c4: fix bug (replace src/main/java/example/RangeService.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal `scenario.yml` schema.
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-- Factors: multiple_bic, context_dependent, partial_observability
-- Operation types: replace, write_file
-- Expected SZZ policy is defined in `expected_szz`.
-
-## Expected BICs
-
-```text
-c1, c2
-```
+- Factors: work_items, expected_szz
+- Operation types: write_file, replace
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 

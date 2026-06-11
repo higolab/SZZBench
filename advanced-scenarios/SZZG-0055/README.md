@@ -1,47 +1,49 @@
-# SZZG-0055: Non-UTF-8 file
-
-## Source
-
-- Category: Robustness and implementation-quality scenarios
+# SZZG-0055: Release branch change rebased onto main
 
 ## Purpose
 
-Evaluate whether SZZBench tooling handles non-UTF-8 files without assuming all changed files are UTF-8 text.
+Evaluate rebase from release branch to main.
 
-## Expected history
+## Commit history
 
 ```text
-c0: create CP1252-encoded boundary configuration
-c1: introduce boundary bug in the non-UTF-8 config
-c2: fix the non-UTF-8 config
+c0: c0: create initial correct implementation
+rel1: rel1: introduce release-specific range bug
+m1: m1: continue main development
+r1: r1: rebase release change onto main
+c2: c2: fix release-origin bug on main
 ```
 
-## Why this needs `scenario.graph.yml`
+## Commit table
 
-The non-UTF-8 file is modeled with `write_binary_file` so that invalid UTF-8 bytes can be represented safely.
+| Commit | Branch | Parents | Role | Description |
+|---|---|---|---|---|
+| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
+| `rel1` | `release` | c0 | `origin_bug_introducing` | rel1: introduce release-specific range bug |
+| `m1` | `main` | c0 | `intermediate` | m1: continue main development |
+| `r1` | `main` | m1 | `bug_introducing` | r1: rebase release change onto main |
+| `c2` | `main` | r1 | `bug_fixing` | c2: fix release-origin bug on main |
 
-## Required graph-schema features
+## Expected SZZ result
 
-- Factors: encoding, non_utf8_file, write_binary_file
-- Operation types: write_file, write_binary_file
-- Expected SZZ policy is defined in expected_szz.
+```text
+Expected BIC(s): r1
+Related but not correct: rel1
+```
+
+## Key property
+
+rel1 is origin, r1 is direct on main.
+
+## Difference from SZZG-0063
+
+SZZG-0063 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
 
 ## Evaluation points
 
-- Whether SZZ identifies c1 as the BIC for the encoded configuration change.
-- Whether non-UTF-8 file content does not break parsing, generation, or verification.
-- Whether the expected_szz exact-set policy is applied correctly.
+- Report r1.
 
----
+## Notes
 
-## Draft status
-
-This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
-
-## Files
-
-```text
-SZZG-0055/
-|-- scenario.graph.yml
-`-- README.md
-```
+- This scenario models a rebase-related development history for SZZ evaluation.
+- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

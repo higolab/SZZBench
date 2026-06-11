@@ -1,15 +1,23 @@
-# SZZ-0166: One BFC fixes multiple BICs for one composite bug
+# SZZ-0166: Performance cleanup distractor with message
 
-## Summary
+## Purpose
 
-A single composite range-check bug is created by two separate BICs. The first BIC breaks the lower-bound helper and the second BIC breaks the upper-bound helper. A single BFC fixes both faults together.
+This scenario is intended for evaluating SZZ variants that use commit messages or broader patch context.
 
-## Expected SZZ Behavior
+## Commit structure
 
-- Bug-introducing commit(s): c1, c2
-- Bug-fixing commit: c3
+- `c0`: initial implementation
+- `c1`: introduces the bug
+- `c2`: performance cleanup distractor
+- `c3`: BFC with message: Fix retry condition after performance cleanup
 
-## Notes
+## Expected behavior
 
-- Moved from SZZG-0015 after applying the scenario.yml / scenario.graph.yml boundary policy.
-- This scenario uses a linear main-branch history and a commit-level exact-set oracle.
+The expected BFC is `c3` and the expected BIC is `c1`.
+
+## Factors
+
+- `single-bic`
+- `single-bfc`
+- `line-modification`
+- `context-aware`

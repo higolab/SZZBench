@@ -1,43 +1,37 @@
-# SZZG-0095: One BFC fixes multiple BICs across multiple files
+# SZZG-0095: BIC separated from BFC by an intermediate work-item commit
 
 ## Source
 
-- Category: Multiple-BIC scenarios
+- Category: Work-item and commit-series scenarios
 
 ## Purpose
 
-Evaluate one bfc fixes multiple bics across multiple files and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate whether SZZ identifies the original BIC when a related but non-faulty work-item commit sits immediately between the BIC and BFC.
 
 ## Expected history
 
 ```text
-c0: c0: create initial calculator and validator
-c1: c1: introduce rounding bug in calculator
-c2: c2: introduce zero-quantity validation bug
-c3: c3: fix both pricing and validation bugs
+c0: create inventory reservation logic
+c1: introduce exact-stock reservation bug
+c2: add unrelated audit event in the same work item
+c3: fix exact-stock reservation bug
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal `scenario.yml` schema.
+Work-item membership and related-but-not-correct candidates require metadata beyond the normal linear scenario schema.
 
 ## Required graph-schema features
 
-- Factors: multiple_bic, multiple_file, single_bfc
-- Operation types: replace, write_file
-- Expected SZZ policy is defined in `expected_szz`.
-
-## Expected BICs
-
-```text
-c1, c2
-```
+- Factors: work_items, intermediate_commit, related_but_not_correct
+- Operation types: write_file, replace
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
-- Whether the expected_szz evaluation policy is applied correctly.
+- Whether SZZ identifies c1 as the BIC.
+- Whether the intermediate audit commit c2 is not mistaken for the BIC.
+- Whether work-item membership is represented without collapsing all commits in the work item into one cause.
 
 ---
 

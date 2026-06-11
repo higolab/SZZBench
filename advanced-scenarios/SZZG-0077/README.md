@@ -1,16 +1,17 @@
-# SZZG-0077: Interactive rebase squashes BIC and BFC into neutral commit
+# SZZG-0077: Rebased BIC fixed by multiple BFCs
 
 ## Purpose
 
-Clarify a scope boundary for bugs that do not survive into final main history.
+Evaluate progressive repair of a rebased BIC.
 
 ## Commit history
 
 ```text
-c0: c0: create initial correct implementation
-f1: f1: introduce transient bug on feature
-f2: f2: fix transient bug on feature
-r1: r1: squash transient bug and fix into neutral commit
+c0: create initial correct implementation
+f1: introduce both boundary bugs
+r1: rebase feature BIC onto main
+c3: partially fix lower boundary
+c4: complete boundary fix
 ```
 
 ## Commit table
@@ -18,28 +19,63 @@ r1: r1: squash transient bug and fix into neutral commit
 | Commit | Branch | Parents | Role | Description |
 |---|---|---|---|---|
 | `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `f1` | `feature` | c0 | `bug_introducing` | f1: introduce transient bug on feature |
-| `f2` | `feature` | f1 | `bug_fixing` | f2: fix transient bug on feature |
-| `r1` | `main` | c0 | `intermediate` | r1: squash transient bug and fix into neutral commit |
+| `f1` | `feature` | c0 | `origin_bug_introducing` | f1: introduce both boundary bugs |
+| `r1` | `main` | c0 | `bug_introducing` | r1: rebase feature BIC onto main |
+| `c3` | `main` | r1 | `bug_fixing` | c3: partially fix lower boundary |
+| `c4` | `main` | c3 | `bug_fixing` | c4: complete boundary fix |
 
 ## Expected SZZ result
 
 ```text
-Expected BIC(s): f1
+Expected BIC(s): r1
+Related but not correct: f1
 ```
 
 ## Key property
 
-The final main history has no main-line BIC for this transient bug.
+The rebased BIC introduces separate lower-bound and upper-bound faults. The partial fix repairs only the lower-bound fault, while the upper-bound fault remains until the complete fix.
 
-## Difference from SZZG-0061
+## Code states
 
-SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
+Correct implementation in `c0`:
+
+```java
+boolean aboveMin = value >= min;
+boolean belowMax = value <= max;
+return aboveMin && belowMax;
+```
+
+Rebased bug in `r1`:
+
+```java
+boolean aboveMin = value > min;
+boolean belowMax = value < max;
+return aboveMin && belowMax;
+```
+
+Partial fix in `c3`:
+
+```java
+boolean aboveMin = value >= min;
+boolean belowMax = value < max;
+return aboveMin && belowMax;
+```
+
+Complete fix in `c4`:
+
+```java
+boolean aboveMin = value >= min;
+boolean belowMax = value <= max;
+return aboveMin && belowMax;
+```
+
+## Difference from SZZG-0063
+
+SZZG-0063 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
 
 ## Evaluation points
 
-- Record transient pair.
-- Treat as special scope-boundary case.
+- Return r1 from final fix.
 
 ## Notes
 

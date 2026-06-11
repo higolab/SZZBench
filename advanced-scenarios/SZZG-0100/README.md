@@ -1,37 +1,32 @@
-# SZZG-0100: Intermediate file move and package rename between BIC and BFC
+# SZZG-0100: Unrelated commits mixed in the same issue
 
 ## Source
 
-- Category: Refactoring scenarios
+- Category: Work-item and commit-series scenarios
 
 ## Purpose
 
-Evaluate intermediate file move and package rename between bic and bfc and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate Unrelated commits mixed in the same issue and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: c0: create legacy parser
-c1: c1: introduce parser trimming bug
-c2: c2: move parser to core package
-c3: c3: fix parser whitespace handling
+c0: create initial state (write_file src/main/java/example/RangeService.java)
+c1: introduce bug (replace src/main/java/example/RangeService.java)
+c2: add unrelated change (replace src/main/java/example/RangeService.java)
+c3: add unrelated change (write_file docs/issue-10-note.md)
+c4: fix bug (replace src/main/java/example/RangeService.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal `scenario.yml` schema.
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-- Factors: rename_file, move_file, package_rename, intermediate_refactoring
-- Operation types: rename_file, replace, write_file
-- Expected SZZ policy is defined in `expected_szz`.
-
-## Expected BICs
-
-```text
-c1
-```
+- Factors: work_items, issues
+- Operation types: write_file, replace
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 

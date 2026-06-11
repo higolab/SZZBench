@@ -1,106 +1,143 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0166
-  title: One BFC fixes multiple BICs for one composite bug
-  slug: 1-bfc-bic-bic
-  description: >-
-    A single composite range-check bug is created by two separate BICs. The first BIC breaks the lower-bound helper and the
-    second BIC breaks the upper-bound helper. A single BFC fixes both faults together.
-  category: Multiple BIC and BFC scenarios
+  title: Performance cleanup distractor with message
+  slug: context-with-cleanup-distractor
+  description: This scenario is intended for evaluating SZZ variants that use commit messages or broader patch context.
+  category: "Context, message, and non-local evidence"
   factors:
-  - multiple_bic
-  - single_bfc
-  - composite_bug
-  - same_bug
-  - multiple_fault_locations
-  difficulty: hard
+  - single-bic
+  - single-bfc
+  - line-modification
+  - context-aware
+  difficulty: medium
   status: active
+  category_code: "S7"
 repository:
-  name: SZZ-0166-1-bfc-bic-bic
+  name: SZZ-0166-context-with-cleanup-distractor
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 commits:
 - id: c0
-  message: 'c0: create composite range check'
+  message: Initial implementation
+  author: Alice <alice@example.com>
+  date: '2024-05-01T10:00:00Z'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
+    path: src/main/java/example/Scenario0157.java
     content: |
       package example;
 
-      public class Range {
-        public boolean lowerOk(int value, int min) {
-          return value >= min;
-        }
-
-        public boolean upperOk(int value, int max) {
-          return value <= max;
-        }
-
-        public boolean contains(int value, int min, int max) {
-          return lowerOk(value, min) && upperOk(value, max);
-        }
+      public class Scenario0157 {
+          public boolean check(int attempts, int limit) {
+              return attempts < limit;
+          }
       }
 - id: c1
-  message: 'c1: introduce lower-bound part of composite bug'
+  message: Introduce context-sensitive bug
+  author: Bob <bob@example.com>
+  date: '2024-05-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min;
-    new: return value > min;
+    path: src/main/java/example/Scenario0157.java
+    old: |
+      package example;
+
+      public class Scenario0157 {
+          public boolean check(int attempts, int limit) {
+              return attempts < limit;
+          }
+      }
+    new: |
+      package example;
+
+      public class Scenario0157 {
+          public boolean check(int attempts, int limit) {
+              return attempts <= limit;
+          }
+      }
+    labels:
+    - B001
+    - fault
 - id: c2
-  message: 'c2: introduce upper-bound part of composite bug'
-  role: bug_introducing
+  message: Performance cleanup before retry-condition fix
+  author: Carol <carol@example.com>
+  date: '2024-05-03T10:00:00Z'
+  role: cleanup
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value <= max;
-    new: return value < max;
+    path: src/main/java/example/Scenario0157.java
+    old: |
+      package example;
+
+      public class Scenario0157 {
+          public boolean check(int attempts, int limit) {
+              return attempts <= limit;
+          }
+      }
+    new: |
+      package example;
+
+      public class Scenario0157 {
+          public boolean check(int attempts, int limit) {
+              return attempts <= limit;
+          }
+
+          public int cachedLimit(int limit) {
+              return limit;
+          }
+      }
 - id: c3
-  message: 'c3: fix both parts of composite range bug'
+  message: Fix retry condition after performance cleanup
+  author: Alice <alice@example.com>
+  date: '2024-05-04T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min;
-    new: return value >= min;
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: return value < max;
-    new: return value <= max;
+    path: src/main/java/example/Scenario0157.java
+    old: return attempts <= limit;
+    new: return attempts < limit;
+    labels:
+    - B001
+    - fix
 bugs:
 - id: B001
-  title: Composite range boundary bug created by two BICs
+  title: Performance cleanup distractor with message
   bug_fixing_commit: c3
-  bug_introducing_commits:
+  bug_introducing_commits: &id001
   - c1
-  - c2
   fault:
     commit: c1
-    file: src/main/java/example/Range.java
-    statement: return value > min;
+    file: src/main/java/example/Scenario0157.java
+    entity:
+      type: method
+      name: check
+      signature: boolean check(int attempts, int limit)
+    statement: return attempts <= limit;
     change_type: line_modification
   fix:
     commit: c3
-    file: src/main/java/example/Range.java
-    statement: return value >= min;
+    file: src/main/java/example/Scenario0157.java
+    entity:
+      type: method
+      name: check
+      signature: boolean check(int attempts, int limit)
+    statement: return attempts < limit;
     fix_type: line_modification
   expected_szz:
     commit_level:
-      true_positives:
-      - c1
-      - c2
+      true_positives: *id001
       false_positives_allowed: []
-      notes: Both c1 and c2 are required because they jointly create one composite bug fixed by c3.
+      known_distractors:
+      - c2
     line_level:
       available: true
       faulty_statements:
-      - return value > min;
-      - return value < max;
+      - return attempts <= limit;
 checks:
 - type: git_history_contains
   commits:

@@ -2,22 +2,24 @@ schema_version: "1.0"
 
 meta:
   id: "SZZ-0004"
-  title: "Boolean return value modification"
-  slug: "boolean-return-value-modification"
+  title: "Conditional expression change"
+  slug: "conditional-expression-change"
   description: >
-    A bug is introduced by changing a predicate method to always return true.
-    The bug is later fixed by restoring the original predicate expression.
-  category: "basic"
+    A bug is introduced by changing an inclusive comparison to a strict
+    comparison inside a conditional expression. The fixing commit restores the
+    inclusive comparison.
+  category: "Basic semantic line changes"
   factors:
     - "single-bic"
     - "single-bfc"
     - "line-modification"
-    - "boolean-return-change"
+    - "conditional-expression-change"
   difficulty: "easy"
   status: "active"
+  category_code: "S1"
 
 repository:
-  name: "SZZ-0004-boolean-return-value-modification"
+  name: "SZZ-0004-conditional-expression-change"
   default_branch: "main"
   language: "java"
   build_system: "none"
@@ -25,68 +27,68 @@ repository:
 
 commits:
   - id: "c0"
-    message: "Initial account predicate"
+    message: "Initial payment validator"
     author: "Alice <alice@example.com>"
     date: "2024-01-01T10:00:00Z"
     role: "initial"
     operations:
       - type: "write_file"
-        path: "src/main/java/example/AccountPolicy.java"
+        path: "src/main/java/example/PaymentValidator.java"
         content: |
           package example;
 
-          public class AccountPolicy {
-              public boolean canWithdraw(boolean active, int balance) {
-                  return active && balance > 0;
+          public class PaymentValidator {
+              public boolean canPay(int amount, int balance) {
+                  return amount <= balance;
               }
           }
 
   - id: "c1"
-    message: "Allow withdrawals unconditionally"
+    message: "Reject exact balance payments"
     author: "Bob <bob@example.com>"
     date: "2024-01-02T10:00:00Z"
     role: "bug_introducing"
     operations:
       - type: "replace"
-        path: "src/main/java/example/AccountPolicy.java"
-        old: "return active && balance > 0;"
-        new: "return true;"
+        path: "src/main/java/example/PaymentValidator.java"
+        old: "return amount <= balance;"
+        new: "return amount < balance;"
         labels: ["B001", "fault"]
 
   - id: "c2"
-    message: "Restore withdrawal predicate"
+    message: "Allow exact balance payments"
     author: "Alice <alice@example.com>"
     date: "2024-01-03T10:00:00Z"
     role: "bug_fixing"
     operations:
       - type: "replace"
-        path: "src/main/java/example/AccountPolicy.java"
-        old: "return true;"
-        new: "return active && balance > 0;"
+        path: "src/main/java/example/PaymentValidator.java"
+        old: "return amount < balance;"
+        new: "return amount <= balance;"
         labels: ["B001", "fix"]
 
 bugs:
   - id: "B001"
-    title: "Inactive accounts can withdraw"
+    title: "Exact balance payments are rejected"
     bug_fixing_commit: "c2"
     bug_introducing_commits: ["c1"]
     fault:
       commit: "c1"
-      file: "src/main/java/example/AccountPolicy.java"
+      file: "src/main/java/example/PaymentValidator.java"
       entity:
         type: "method"
-        name: "canWithdraw"
-        signature: "boolean canWithdraw(boolean active, int balance)"
-      statement: "return true;"
+        name: "canPay"
+        signature: "boolean canPay(int amount, int balance)"
+      statement: "return amount < balance;"
       change_type: "line_modification"
     fix:
       commit: "c2"
-      file: "src/main/java/example/AccountPolicy.java"
+      file: "src/main/java/example/PaymentValidator.java"
       entity:
         type: "method"
-        name: "canWithdraw"
-        signature: "boolean canWithdraw(boolean active, int balance)"
-      statement: "return active && balance > 0;"
+        name: "canPay"
+        signature: "boolean canPay(int amount, int balance)"
+      statement: "return amount <= balance;"
       fix_type: "line_modification"
     expected_szz:
       commit_level:
@@ -95,7 +97,7 @@ bugs:
       line_level:
         available: true
         faulty_statements:
-          - "return true;"
+          - "return amount < balance;"
 
 checks:
   - type: "git_history_contains"

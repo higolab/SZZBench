@@ -1,20 +1,16 @@
-# SZZ-0002: Simple omission bug
+# SZZ-0002: Boolean return value modification
 
 ## Purpose
 
-This scenario checks how SZZ implementations behave when the bug is caused by
-a missing statement rather than by an incorrect existing line.
+This scenario checks a simple single-line semantic bug where a predicate method
+is changed to always return `true`.
 
 ## Commit structure
 
-- `c0`: Introduces an empty utility class.
-- `c1`: Adds `normalize(String s)` without null handling. This is the BIC.
-- `c2`: Adds the missing null check. This is the BFC.
+- `c0`: Introduces the correct predicate.
+- `c1`: Replaces the predicate with `return true;`. This is the BIC.
+- `c2`: Restores the original predicate. This is the BFC.
 
 ## Expected behavior
 
-The bug-fixing commit is `c2`.
-The expected bug-introducing commit is `c1`.
-
-Line-level SZZ evaluation is not directly available because the fault is an
-omission. A conventional deleted-line-based SZZ may fail on this scenario.
+SZZ should report `c1` as the bug-introducing commit for bug `B001`.

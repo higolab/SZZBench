@@ -1,22 +1,22 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0085
-  title: Rebase with formatting rewrite noise
-  slug: rebase-with-formatting-rewrite-noise
-  description: A formatting rewrite occurs after a rebased BIC and before the fix.
-  category: Branch, merge, cherry-pick, and backport scenarios
-  category_code: G
+  title: Old BIC and re-BIC are both plausible
+  slug: old-bic-re-bic-plausible
+  description: A bug is introduced, fixed, reintroduced by a partial revert, and fixed again. The direct BIC for the final
+    fix is the reintroducing commit, but the old original BIC is also a plausible origin-related answer under an origin-aware
+    evaluation policy.
+  category: "Revert-specific reintroduction"
+  category_code: "G6"
   factors:
-  - branch
-  - rebase
-  - formatting_rewrite
-  - formatting
-  - robustness
-  - direct_bic
+  - reintroduction
+  - partial_revert
+  - origin_bic
+  - evaluation_variants
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0085-rebase-with-formatting-rewrite-noise
+  name: SZZG-0085-old-bic-and-re-bic-plausible
   default_branch: main
   language: java
   build_system: none
@@ -25,13 +25,13 @@ graph:
   model: commit_dag
   history_summary: 'c0: create initial correct implementation
 
-    f1: introduce range bug
+    c1: introduce original range boundary bug
 
-    r1: rebase bug onto main
+    c2: fix original bug and perform a small refactoring
 
-    r2: line ending rewrite during rebase cleanup
+    c3: partially revert c2 and reintroduce the boundary bug while keeping the refactoring
 
-    c3: fix bug after line ending rewrite'
+    c4: fix the reintroduced bug'
 commits:
 - id: c0
   branch: main
@@ -42,49 +42,50 @@ commits:
   - type: write_file
     path: src/main/java/example/Range.java
     content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
-- id: f1
-  branch: feature
-  parents:
-  - c0
-  message: 'f1: introduce range bug'
-  role: origin_bug_introducing
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
-- id: r1
+      \ value >= min && value <= max;\n  }\n\n  public String source() {\n    return \"main\";\n  }\n}\n"
+- id: c1
   branch: main
   parents:
   - c0
-  message: 'r1: rebase bug onto main'
+  message: 'c1: introduce original range boundary bug'
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
     new: return value > min && value < max;
-  rebase_of: f1
-- id: r2
+- id: c2
   branch: main
   parents:
-  - r1
-  message: 'r2: formatting rewrite during rebase cleanup'
-  role: formatting
+  - c1
+  message: 'c2: fix range boundary bug and rename source label'
+  role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
-    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n}\n"
-    new: "package example;\n\npublic class Range {\n  // Rebase cleanup normalized formatting around this method.\n  public\
-      \ boolean contains(int value, int min, int max) {\n    return value > min && value < max;\n  }\n}\n"
-  rebase_cleanup: formatting_rewrite
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return "main";
+    new: return "range-service";
 - id: c3
   branch: main
   parents:
-  - r2
-  message: 'c3: fix bug after formatting rewrite'
+  - c2
+  message: 'c3: partially revert boundary fix and reintroduce bug'
+  role: bug_reintroducing
+  revert_of: c2
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: 'c4: fix reintroduced range boundary bug'
   role: bug_fixing
   operations:
   - type: replace
@@ -93,50 +94,68 @@ commits:
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Range bug obscured by formatting rewrite after rebase
+  title: Reintroduced range boundary bug with old and new plausible BICs
   bug_introducing_commits:
-  - commit: r1
-    role: direct
-  - commit: f1
-    role: origin
-  bug_fixing_commits:
   - commit: c3
-    role: complete_fix
+    role: direct_reintroduction
+    description: Direct BIC for the final bug instance fixed by c4.
+    reverts: c2
+  - commit: c1
+    role: old_origin_bic
+    description: Original BIC where the same faulty logic first appeared.
+  bug_fixing_commits:
+  - commit: c4
+    role: final_fix
   faults:
   - id: F001
-    commit: r1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
-    change_type: line_modification
-  fixes:
-  - id: X001
     commit: c3
     file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
-    fix_type: line_modification
+    statement: return value > min && value < max;
+    change_type: reintroduced_line_modification
   origin_faults:
   - id: OF001
-    commit: f1
+    commit: c1
     file: src/main/java/example/Range.java
     statement: return value > min && value < max;
     change_type: origin_line_modification
+  fixes:
+  - id: X001
+    commit: c4
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+    fix_type: line_modification
 expected_szz:
-  commit_level:
-    evaluation_policy: exact_set
-    required:
-    - r1
-    related_but_not_correct:
-    - f1
-    - r2
-    notes: r2 is formatting noise and should not be the BIC.
+  default_variant: reintroduction-direct
+  evaluation_variants:
+  - name: reintroduction-direct
+    description: Only the reintroducing commit is considered the correct BIC for the final fix.
+    commit_level:
+      evaluation_policy: exact_set
+      required:
+      - c3
+      related_but_not_correct:
+      - c1
+  - name: origin-aware
+    description: The reintroducing commit is required, and the old origin BIC is accepted as related context.
+    commit_level:
+      evaluation_policy: relaxed_with_related
+      required:
+      - c3
+      acceptable_related:
+      - commit: c1
+        reason: old_origin_bic
+        credit: 0.5
 scenario_design:
-  purpose: Evaluate rebase plus formatting rewrite noise.
-  key_property: The expected BIC is r1, while r2 is a formatting-only cleanup.
-  difference_from_SZZG_0073: SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
-    adds a distinct rebase-related complication.
+  purpose: Evaluate a reintroduced bug where the direct re-BIC and the old origin BIC are both plausible depending on the
+    evaluation policy.
+  key_property: c3 partially reverts c2 by restoring only the faulty boundary condition, while keeping c2's unrelated refactoring.
+  difference_from_SZZG_0028: SZZG-0084 should focus on direct reintroduction. SZZG-0085 keeps the same reintroduction theme
+    but adds explicit evaluation variants for old-origin-aware evaluation.
   evaluation_points:
-  - Report r1.
-  - Avoid r2.
+  - Whether SZZ identifies c3 as the direct reintroducing BIC for c4.
+  - Whether c1 can be treated as an origin-related answer under an alternative evaluation policy.
+  - Whether a partial revert is distinguished from the old original BIC.
 notes:
-- This scenario models a rebase-related development history for SZZ evaluation.
-- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.
+- This revision makes SZZG-0085 an evaluation-variant scenario for old BIC versus re-BIC.
+- c3 partially reverts c2 only for the boundary condition; it keeps the source-label refactoring from c2.
+- The default expected BIC is c3.

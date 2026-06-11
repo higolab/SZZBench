@@ -1,10 +1,10 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0145
-  title: Duplicate permission checks
-  slug: duplicate-permission-checks
+  title: Duplicate null checks
+  slug: duplicate-null-checks
   description: This scenario contains duplicate or similar statements so that line-level oracle interpretation is intentionally harder.
-  category: ambiguous-blame
+  category: "Multiple BICs, duplicate faults, and composite faults"
   factors:
   - single-bic
   - single-bfc
@@ -13,8 +13,9 @@ meta:
   - duplicate-statement
   difficulty: medium
   status: active
+  category_code: "S6"
 repository:
-  name: SZZ-0145-duplicate-permission-checks
+  name: SZZ-0145-duplicate-null-checks
   default_branch: main
   language: java
   build_system: none
@@ -27,17 +28,17 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0145.java
+    path: src/main/java/example/Scenario0139.java
     content: |
       package example;
 
-      public class Scenario0145 {
-          public boolean denied(boolean allowed) {
-              return !allowed;
+      public class Scenario0139 {
+          public boolean hasValue(String value) {
+              return value != null;
           }
 
-          public boolean otherMethod(boolean allowed) {
-              return allowed;
+          public boolean otherMethod(String value) {
+              return other == null;
           }
       }
 - id: c1
@@ -47,29 +48,29 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0145.java
+    path: src/main/java/example/Scenario0139.java
     old: |
       package example;
 
-      public class Scenario0145 {
-          public boolean denied(boolean allowed) {
-              return !allowed;
+      public class Scenario0139 {
+          public boolean hasValue(String value) {
+              return value != null;
           }
 
-          public boolean otherMethod(boolean allowed) {
-              return allowed;
+          public boolean otherMethod(String value) {
+              return other == null;
           }
       }
     new: |
       package example;
 
-      public class Scenario0145 {
-          public boolean denied(boolean allowed) {
-              return allowed;
+      public class Scenario0139 {
+          public boolean hasValue(String value) {
+              return value == null;
           }
 
-          public boolean otherMethod(boolean allowed) {
-              return allowed;
+          public boolean otherMethod(String value) {
+              return other == null;
           }
       }
     labels:
@@ -82,29 +83,29 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0145.java
+    path: src/main/java/example/Scenario0139.java
     old: |
       package example;
 
-      public class Scenario0145 {
-          public boolean denied(boolean allowed) {
-              return allowed;
+      public class Scenario0139 {
+          public boolean hasValue(String value) {
+              return value == null;
           }
 
-          public boolean otherMethod(boolean allowed) {
-              return allowed;
+          public boolean otherMethod(String value) {
+              return other == null;
           }
       }
     new: |
       package example;
 
-      public class Scenario0145 {
-          public boolean denied(boolean allowed) {
-              return !allowed;
+      public class Scenario0139 {
+          public boolean hasValue(String value) {
+              return value != null;
           }
 
-          public boolean otherMethod(boolean allowed) {
-              return allowed;
+          public boolean otherMethod(String value) {
+              return other == null;
           }
       }
     labels:
@@ -112,27 +113,27 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Duplicate permission checks
+  title: Duplicate null checks
   bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0145.java
+    file: src/main/java/example/Scenario0139.java
     entity:
       type: method
-      name: denied
-      signature: boolean denied(boolean allowed)
-    statement: return allowed;
+      name: hasValue
+      signature: boolean hasValue(String value)
+    statement: return value == null;
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0145.java
+    file: src/main/java/example/Scenario0139.java
     entity:
       type: method
-      name: denied
-      signature: boolean denied(boolean allowed)
-    statement: return !allowed;
+      name: hasValue
+      signature: boolean hasValue(String value)
+    statement: return value != null;
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -141,7 +142,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return allowed;
+      - return value == null;
 checks:
 - type: git_history_contains
   commits:

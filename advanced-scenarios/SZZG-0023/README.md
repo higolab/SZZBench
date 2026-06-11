@@ -1,47 +1,51 @@
-# SZZG-0023: Clone removal as fix
-
-## Source
-
-- Category: Copy, clone, and propagation scenarios
+# SZZG-0023: Rebase with copy propagation
 
 ## Purpose
 
-Evaluate Clone removal as fix and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate copy propagation through rebase.
 
-## Expected history
+## Commit history
 
 ```text
-c0: create initial state (write_file src/main/java/example/A.java)
-c1: introduce bug (write_file src/main/java/example/B.java)
-c2: fix bug (delete_file src/main/java/example/B.java; write_file docs/clone-removal.md)
+c0: c0: create initial correct implementation
+f1: f1: introduce range bug on feature
+f2: f2: copy buggy range logic
+r1: r1: rebase original bug
+r2: r2: rebase copied buggy logic
+c3: c3: fix copied range logic
 ```
 
-## Why this needs `scenario.graph.yml`
+## Commit table
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
+| Commit | Branch | Parents | Role | Description |
+|---|---|---|---|---|
+| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
+| `f1` | `feature` | c0 | `origin_bug_introducing` | f1: introduce range bug on feature |
+| `f2` | `feature` | f1 | `origin_bug_propagating` | f2: copy buggy range logic |
+| `r1` | `main` | c0 | `bug_introducing` | r1: rebase original bug |
+| `r2` | `main` | r1 | `bug_introducing` | r2: rebase copied buggy logic |
+| `c3` | `main` | r2 | `bug_fixing` | c3: fix copied range logic |
 
-## Required graph-schema features
+## Expected SZZ result
 
-- Factors: clone_relationships
-- Operation types: write_file, delete_file
-- Expected SZZ policy is defined in expected_szz.
+```text
+Expected BIC(s): r2
+Related but not correct: r1, f1, f2
+```
+
+## Key property
+
+The fixed instance is in the copied file introduced by r2.
+
+## Difference from SZZG-0063
+
+SZZG-0063 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
 
 ## Evaluation points
 
-- Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
-- Whether the expected_szz evaluation policy is applied correctly.
+- Report r2.
 
----
+## Notes
 
-## Draft status
-
-This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
-
-## Files
-
-```text
-SZZG-0023/
-|-- scenario.graph.yml
-`-- README.md
-```
+- This scenario models a rebase-related development history for SZZ evaluation.
+- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

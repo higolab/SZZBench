@@ -1,19 +1,20 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0042
-  title: Comment insertion after BIC
-  slug: comment-insertion-after-bic
-  description: This scenario introduces a bug by changing `return value >= min && value <= max;` to `return value > min && value < max;` and later restores the correct implementation.
-  category: intermediate-history
+  title: Off-by-one in new loop boundary
+  slug: loop-boundary-bic
+  description: 'This scenario evaluates a bug-introducing commit shape: Off-by-one in new loop boundary.'
+  category: "Basic semantic line changes"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - comment-insertion-after-bic
+  - off-by-one
   difficulty: medium
   status: active
+  category_code: "S1"
 repository:
-  name: SZZ-0042-comment-insertion-after-bic
+  name: SZZ-0042-loop-boundary-bic
   default_branch: main
   language: java
   build_system: none
@@ -26,13 +27,13 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0042.java
+    path: src/main/java/example/Scenario0123.java
     content: |
       package example;
 
-      public class Scenario0042 {
-          public boolean check(int value, int min, int max) {
-              return value >= min && value <= max;
+      public class Scenario0123 {
+          public boolean canRead(int index, int size) {
+              return index < size;
           }
       }
 - id: c1
@@ -42,74 +43,48 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0042.java
+    path: src/main/java/example/Scenario0123.java
     old: |
       package example;
 
-      public class Scenario0042 {
-          public boolean check(int value, int min, int max) {
-              return value >= min && value <= max;
+      public class Scenario0123 {
+          public boolean canRead(int index, int size) {
+              return index < size;
           }
       }
     new: |
       package example;
 
-      public class Scenario0042 {
-          public boolean check(int value, int min, int max) {
-              return value > min && value < max;
+      public class Scenario0123 {
+          public boolean canRead(int index, int size) {
+              return index <= size;
           }
       }
     labels:
     - B001
     - fault
 - id: c2
-  message: Add comment near faulty logic
-  author: Carol <carol@example.com>
-  date: '2024-01-03T10:00:00Z'
-  role: distractor
-  operations:
-  - type: replace
-    path: src/main/java/example/Scenario0042.java
-    old: |
-      package example;
-
-      public class Scenario0042 {
-          public boolean check(int value, int min, int max) {
-              return value > min && value < max;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0042 {
-          public boolean check(int value, int min, int max) {
-              // boundary check
-              return value > min && value < max;
-          }
-      }
-- id: c3
   message: Fix bug
   author: Alice <alice@example.com>
-  date: '2024-01-04T10:00:00Z'
+  date: '2024-01-03T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0042.java
+    path: src/main/java/example/Scenario0123.java
     old: |
       package example;
 
-      public class Scenario0042 {
-          public boolean check(int value, int min, int max) {
-              // boundary check
-              return value > min && value < max;
+      public class Scenario0123 {
+          public boolean canRead(int index, int size) {
+              return index <= size;
           }
       }
     new: |
       package example;
 
-      public class Scenario0042 {
-          public boolean check(int value, int min, int max) {
-              return value >= min && value <= max;
+      public class Scenario0123 {
+          public boolean canRead(int index, int size) {
+              return index < size;
           }
       }
     labels:
@@ -117,42 +92,39 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Comment insertion after BIC
-  bug_fixing_commit: c3
+  title: Off-by-one in new loop boundary
+  bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0042.java
+    file: src/main/java/example/Scenario0123.java
     entity:
       type: method
-      name: check
-      signature: boolean check(int value, int min, int max)
-    statement: return value > min && value < max;
+      name: canRead
+      signature: boolean canRead(int index, int size)
+    statement: return index <= size;
     change_type: line_modification
   fix:
-    commit: c3
-    file: src/main/java/example/Scenario0042.java
+    commit: c2
+    file: src/main/java/example/Scenario0123.java
     entity:
       type: method
-      name: check
-      signature: boolean check(int value, int min, int max)
-    statement: return value >= min && value <= max;
+      name: canRead
+      signature: boolean canRead(int index, int size)
+    statement: return index < size;
     fix_type: line_modification
   expected_szz:
     commit_level:
       true_positives: *id001
       false_positives_allowed: []
-      known_distractors:
-      - c2
     line_level:
       available: true
       faulty_statements:
-      - return value > min && value < max;
+      - return index <= size;
 checks:
 - type: git_history_contains
   commits:
   - c0
   - c1
   - c2
-  - c3

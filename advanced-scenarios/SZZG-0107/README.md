@@ -1,44 +1,36 @@
-# SZZG-0107: Clone divergence before fixing one clone
+# SZZG-0107: BFC includes generated files
 
 ## Source
 
-- Category: Clone propagation scenarios
+- Category: BFC shape scenarios
 
 ## Purpose
 
-Evaluate clone divergence before fixing one clone and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate whether SZZ identifies the source BIC when the BFC contains both the real source fix and generated-file noise.
 
 ## Expected history
 
 ```text
-c0: c0: create base permission check
-c1: c1: introduce permissive delete check
-c2: c2: clone policy to group policy
-c3: c3: diverge copied clone by renaming parameters
-c4: c4: fix copied clone after divergence
+c0: create correct range implementation
+c1: introduce exclusive-boundary bug
+c2: fix range bug and update generated boundary table
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal `scenario.yml` schema.
+The BFC combines a normal source-code fix with a generated artifact update, which is represented explicitly with graph operations.
 
 ## Required graph-schema features
 
-- Factors: clone, clone_divergence, ambiguous_blame
-- Operation types: copy_file, replace, write_file
-- Expected SZZ policy is defined in `expected_szz`.
-
-## Expected BICs
-
-```text
-c1
-```
+- Factors: generated_files
+- Operation types: write_file, replace, write_generated_text_file
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
-- Whether the expected_szz evaluation policy is applied correctly.
+- Whether SZZ identifies c1 as the BIC.
+- Whether generated files added or refreshed in the BFC are ignored as blame targets.
+- Whether the expected_szz exact-set policy is applied correctly.
 
 ---
 

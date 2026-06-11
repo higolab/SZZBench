@@ -1,38 +1,32 @@
-# SZZG-0114: BFC on main after feature-branch BIC is merged
+# SZZG-0114: Huge history
 
 ## Source
 
-- Category: Branch and merge scenarios
+- Category: Robustness and implementation-quality scenarios
 
 ## Purpose
 
-Evaluate bfc on main after feature-branch bic is merged and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate Huge history and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: c0: create quota checker
-c1: c1: feature branch introduces quota boundary bug
-c2: c2: main branch updates comments only
-c3: c3: merge feature branch
-c4: c4: fix quota boundary on main
+c0: create initial state (write_generated_text_file src/main/java/example/LargeRange.java)
+c1: introduce bug (replace src/main/java/example/LargeRange.java)
+c2: apply intermediate change (commit_generator)
+c3: apply intermediate change (commit_generator)
+c4: fix bug (replace src/main/java/example/LargeRange.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal `scenario.yml` schema.
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-- Factors: feature_branch, merge_commit, bfc_after_merge
-- Operation types: replace, write_file
-- Expected SZZ policy is defined in `expected_szz`.
-
-## Expected BICs
-
-```text
-c1
-```
+- Factors: commit_generators
+- Operation types: write_generated_text_file, replace, commit_generator
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 

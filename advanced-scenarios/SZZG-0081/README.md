@@ -1,18 +1,17 @@
-# SZZG-0081: Clone diverges before rebase
+# SZZG-0081: Rebase with formatting rewrite noise
 
 ## Purpose
 
-Evaluate rebase combined with clone divergence.
+Evaluate formatting rewrite noise after rebase.
 
 ## Commit history
 
 ```text
 c0: c0: create initial correct implementation
-f1: f1: create buggy clone
-f2: f2: diverge cloned buggy logic
-r1: r1: rebase buggy clone creation
-r2: r2: rebase clone divergence
-c4: c4: fix diverged clone
+f1: f1: introduce range bug
+r1: r1: rebase bug onto main
+r2: r2: formatting rewrite during rebase cleanup
+c3: c3: fix bug after formatting rewrite
 ```
 
 ## Commit table
@@ -20,30 +19,30 @@ c4: c4: fix diverged clone
 | Commit | Branch | Parents | Role | Description |
 |---|---|---|---|---|
 | `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `f1` | `feature` | c0 | `origin_bug_introducing` | f1: create buggy clone |
-| `f2` | `feature` | f1 | `origin_bug_introducing` | f2: diverge cloned buggy logic |
-| `r1` | `main` | c0 | `intermediate` | r1: rebase buggy clone creation |
-| `r2` | `main` | r1 | `bug_introducing` | r2: rebase clone divergence |
-| `c4` | `main` | r2 | `bug_fixing` | c4: fix diverged clone |
+| `f1` | `feature` | c0 | `origin_bug_introducing` | f1: introduce range bug |
+| `r1` | `main` | c0 | `bug_introducing` | r1: rebase bug onto main |
+| `r2` | `main` | r1 | `formatting` | r2: formatting rewrite during rebase cleanup |
+| `c3` | `main` | r2 | `bug_fixing` | c3: fix bug after formatting rewrite |
 
 ## Expected SZZ result
 
 ```text
-Expected BIC(s): r2
-Related but not correct: r1, f1, f2
+Expected BIC(s): r1
+Related but not correct: f1, r2
 ```
 
 ## Key property
 
-The fixed instance is the diverged clone line introduced by r2.
+r2 is formatting noise; r1 is the true BIC.
 
-## Difference from SZZG-0061
+## Difference from SZZG-0063
 
-SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
+SZZG-0063 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
 
 ## Evaluation points
 
-- Report r2.
+- Report r1.
+- Avoid r2.
 
 ## Notes
 

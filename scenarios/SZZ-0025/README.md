@@ -1,8 +1,8 @@
-# SZZ-0025: Wrong return variable
+# SZZ-0025: Incorrect string normalization
 
 ## Purpose
 
-This scenario introduces a bug by changing `return width;` to `return height;` and later restores the correct implementation.
+This scenario introduces a bug by changing `return value.trim().toLowerCase();` to `return value.toLowerCase();` and later restores the correct implementation.
 
 ## Commit structure
 
@@ -19,4 +19,4 @@ The expected BFC is `c2` and the expected BIC is `c1`.
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `wrong-variable`
+- `api-misuse`

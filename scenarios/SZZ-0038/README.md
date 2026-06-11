@@ -1,8 +1,8 @@
-# SZZ-0038: Incorrect string normalization
+# SZZ-0038: Tiny one-token bug
 
 ## Purpose
 
-This scenario introduces a bug by changing `return value.trim().toLowerCase();` to `return value.toLowerCase();` and later restores the correct implementation.
+This scenario evaluates a bug-introducing commit shape: Tiny one-token bug.
 
 ## Commit structure
 
@@ -19,4 +19,4 @@ The expected BFC is `c2` and the expected BIC is `c1`.
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `api-misuse`
+- `small-bic`

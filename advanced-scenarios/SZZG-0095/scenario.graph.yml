@@ -1,92 +1,92 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0095
-  title: One BFC fixes multiple BICs across multiple files
-  slug: multi-bic-multi-file-fix
-  description: Evaluates one bfc fixes multiple bics across multiple files and checks whether SZZ identifies the expected
-    bug-introducing commit set.
-  category: Multiple-BIC scenarios
-  category_code: A
+  title: BIC separated from BFC by an intermediate work-item commit
+  slug: bic-bfc-intermediate-work-item
+  description: Evaluates a work-item series where an unrelated commit from the same work item appears between the BIC and
+    the BFC.
+  category: "Issue, message, context, and non-local evidence"
+  category_code: "G7"
   factors:
-  - multiple_bic
-  - multiple_file
-  - single_bfc
+  - work_items
+  - intermediate_commit
+  - related_but_not_correct
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0095-multi-bic-multi-file-fix
+  name: SZZG-0095-bic-bfc-intermediate-work-item
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: c0: create initial calculator and validator
-
-    c1: c1: introduce rounding bug in calculator
-
-    c2: c2: introduce zero-quantity validation bug
-
-    c3: c3: fix both pricing and validation bugs'
+  history_summary: |
+    c0: create inventory reservation logic
+    c1: introduce exact-stock reservation bug
+    c2: add unrelated audit event in the same work item
+    c3: fix exact-stock reservation bug
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial calculator and validator'
+  message: 'WI-418 c0: create inventory reservation logic'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Calculator.java
-    content: "package example;\npublic class Calculator {\n  public int addTax(int price) {\n    return price + price / 10;\n\
-      \  }\n\n}\n"
-  - type: write_file
-    path: src/main/java/example/Validator.java
-    content: "package example;\npublic class Validator {\n  public boolean validQuantity(int quantity) {\n    return quantity\
-      \ >= 1;\n  }\n\n}\n"
+    path: src/main/java/example/InventoryReservation.java
+    content: |
+      package example;
+
+      public class InventoryReservation {
+        public boolean canReserve(int available, int alreadyReserved, int requested) {
+          return available - alreadyReserved >= requested;
+        }
+      }
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce rounding bug in calculator'
+  message: 'WI-418 c1: reject oversold reservations'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Calculator.java
-    old: return price + price / 10;
-    new: return price + (price + 9) / 10;
+    path: src/main/java/example/InventoryReservation.java
+    old: return available - alreadyReserved >= requested;
+    new: return available - alreadyReserved > requested;
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: introduce zero-quantity validation bug'
-  role: bug_introducing
+  message: 'WI-418 c2: add inventory audit event names'
+  role: intermediate
   operations:
-  - type: replace
-    path: src/main/java/example/Validator.java
-    old: return quantity >= 1;
-    new: return quantity >= 0;
+  - type: write_file
+    path: src/main/java/example/InventoryAudit.java
+    content: |
+      package example;
+
+      public class InventoryAudit {
+        public String reservationEvent() {
+          return "inventory.reservation.requested";
+        }
+      }
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'c3: fix both pricing and validation bugs'
+  message: 'WI-418 c3: allow reservation when stock exactly matches request'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Calculator.java
-    old: return price + (price + 9) / 10;
-    new: return price + price / 10;
-  - type: replace
-    path: src/main/java/example/Validator.java
-    old: return quantity >= 0;
-    new: return quantity >= 1;
+    path: src/main/java/example/InventoryReservation.java
+    old: return available - alreadyReserved > requested;
+    new: return available - alreadyReserved >= requested;
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Exact-stock reservations are rejected after a work-item change
   bug_introducing_commits:
   - commit: c1
-    role: direct
-  - commit: c2
     role: direct
   bug_fixing_commits:
   - commit: c3
@@ -94,42 +94,43 @@ bugs:
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/Calculator.java
-    statement: return price + (price + 9) / 10;
-    change_type: line_modification
-  - id: F002
-    commit: c2
-    file: src/main/java/example/Validator.java
-    statement: return quantity >= 0;
+    file: src/main/java/example/InventoryReservation.java
+    statement: return available - alreadyReserved > requested;
     change_type: line_modification
   fixes:
   - id: X001
     commit: c3
-    file: src/main/java/example/Calculator.java
-    statement: return price + price / 10;
-    fix_type: line_modification
-  - id: X002
-    commit: c3
-    file: src/main/java/example/Validator.java
-    statement: return quantity >= 1;
+    file: src/main/java/example/InventoryReservation.java
+    statement: return available - alreadyReserved >= requested;
     fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
     - c1
+    related_but_not_correct:
     - c2
 scenario_design:
-  purpose: Evaluate one bfc fixes multiple bics across multiple files and whether SZZ identifies the expected bug-introducing
-    commit set.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: multiple_bic, multiple_file, single_bfc; operations: replace,
-    write_file.'
+  purpose: Evaluate whether SZZ identifies the original BIC when a related but non-faulty work-item commit sits immediately
+    between the BIC and BFC.
+  current_schema_limitation: Work-item membership and related-but-not-correct candidates are graph-specific metadata.
+  required_extensions_from_source: 'This scenario uses factors: work_items, intermediate_commit, related_but_not_correct; operations: write_file, replace.'
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Whether SZZ identifies c1 as the BIC.
+  - Whether the intermediate audit commit c2 is not mistaken for the BIC.
+  - Whether work-item membership is represented without collapsing all commits in the work item into one cause.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.
+work_items:
+- id: WI-418
+  title: Inventory reservation reliability work
+  commits:
+  - commit: c0
+    relevance: setup
+  - commit: c1
+    relevance: bug_introducing
+  - commit: c2
+    relevance: related_but_not_correct
+  - commit: c3
+    relevance: bug_fixing

@@ -1,10 +1,10 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0068
-  title: Resource close omission
-  slug: resource-close-omission
-  description: 'This scenario represents an omission bug: the method is introduced without a necessary resource close, and the bug-fixing commit adds the missing statement.'
-  category: omission
+  title: Overflow check omission
+  slug: overflow-check-omission
+  description: 'This scenario represents an omission bug: the method is introduced without a necessary overflow check, and the bug-fixing commit adds the missing statement.'
+  category: "Omission and deletion bugs"
   factors:
   - single-bic
   - single-bfc
@@ -12,8 +12,9 @@ meta:
   - line-addition-fix
   difficulty: medium
   status: active
+  category_code: "S2"
 repository:
-  name: SZZ-0068-resource-close-omission
+  name: SZZ-0068-overflow-check-omission
   default_branch: main
   language: java
   build_system: none
@@ -26,72 +27,72 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0068.java
+    path: src/main/java/example/Scenario0078.java
     content: 'package example;
 
 
-      public class Scenario0068 {
+      public class Scenario0078 {
 
       }
 
       '
 - id: c1
-  message: Add canOpen without resource close
+  message: Add canAccumulate without overflow check
   author: Bob <bob@example.com>
   date: '2024-02-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0068.java
+    path: src/main/java/example/Scenario0078.java
     old: 'package example;
 
 
-      public class Scenario0068 {
+      public class Scenario0078 {
 
       }
 
       '
-    new: "package example;\n\npublic class Scenario0068 {\n    public boolean canOpen(boolean opened) {\n        return true;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0078 {\n    public boolean canAccumulate(int value) {\n        return true;\n    }\n}\n"
     labels:
     - B001
     - fault
 - id: c2
-  message: Add missing resource close
+  message: Add missing overflow check
   author: Alice <alice@example.com>
   date: '2024-02-03T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0068.java
-    old: "package example;\n\npublic class Scenario0068 {\n    public boolean canOpen(boolean opened) {\n        return true;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0068 {\n    public boolean canOpen(boolean opened) {\n        if (opened) {\n                return false;\n            }\n            return true;\n    }\n}\n"
+    path: src/main/java/example/Scenario0078.java
+    old: "package example;\n\npublic class Scenario0078 {\n    public boolean canAccumulate(int value) {\n        return true;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0078 {\n    public boolean canAccumulate(int value) {\n        if (value > 1000) {\n                return false;\n            }\n            return true;\n    }\n}\n"
     labels:
     - B001
     - fix
 bugs:
 - id: B001
-  title: Resource close omission
+  title: Overflow check omission
   bug_fixing_commit: c2
   bug_introducing_commits:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0068.java
+    file: src/main/java/example/Scenario0078.java
     entity:
       type: method
-      name: canOpen
-      signature: boolean canOpen(boolean opened)
+      name: canAccumulate
+      signature: boolean canAccumulate(int value)
     change_type: omission
-    missing_statement: "if (opened) {\n            return false;\n        }\n"
+    missing_statement: "if (value > 1000) {\n            return false;\n        }\n"
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0068.java
+    file: src/main/java/example/Scenario0078.java
     entity:
       type: method
-      name: canOpen
-      signature: boolean canOpen(boolean opened)
+      name: canAccumulate
+      signature: boolean canAccumulate(int value)
     added_statement: |
-      if (opened) {
+      if (value > 1000) {
                       return false;
                   }
     fix_type: line_addition

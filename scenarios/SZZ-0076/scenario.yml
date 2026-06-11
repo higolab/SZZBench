@@ -1,10 +1,10 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0076
-  title: Token validation omission
-  slug: token-validation-omission
-  description: 'This scenario represents an omission bug: the method is introduced without a necessary token validation, and the bug-fixing commit adds the missing statement.'
-  category: security
+  title: Path traversal check omission
+  slug: path-traversal-check-omission
+  description: 'This scenario represents an omission bug: the method is introduced without a necessary path traversal check, and the bug-fixing commit adds the missing statement.'
+  category: "Omission and deletion bugs"
   factors:
   - single-bic
   - single-bfc
@@ -13,8 +13,9 @@ meta:
   - security
   difficulty: medium
   status: active
+  category_code: "S2"
 repository:
-  name: SZZ-0076-token-validation-omission
+  name: SZZ-0076-path-traversal-check-omission
   default_branch: main
   language: java
   build_system: none
@@ -27,72 +28,72 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0076.java
+    path: src/main/java/example/Scenario0086.java
     content: 'package example;
 
 
-      public class Scenario0076 {
+      public class Scenario0086 {
 
       }
 
       '
 - id: c1
-  message: Add validToken without token validation
+  message: Add safePath without path traversal check
   author: Bob <bob@example.com>
   date: '2024-02-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0076.java
+    path: src/main/java/example/Scenario0086.java
     old: 'package example;
 
 
-      public class Scenario0076 {
+      public class Scenario0086 {
 
       }
 
       '
-    new: "package example;\n\npublic class Scenario0076 {\n    public boolean validToken(String token) {\n        return true;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0086 {\n    public boolean safePath(String path) {\n        return true;\n    }\n}\n"
     labels:
     - B001
     - fault
 - id: c2
-  message: Add missing token validation
+  message: Add missing path traversal check
   author: Alice <alice@example.com>
   date: '2024-02-03T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0076.java
-    old: "package example;\n\npublic class Scenario0076 {\n    public boolean validToken(String token) {\n        return true;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0076 {\n    public boolean validToken(String token) {\n        if (token == null || token.isEmpty()) {\n                return false;\n            }\n            return true;\n    }\n}\n"
+    path: src/main/java/example/Scenario0086.java
+    old: "package example;\n\npublic class Scenario0086 {\n    public boolean safePath(String path) {\n        return true;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0086 {\n    public boolean safePath(String path) {\n        if (path.contains(\"..\")) {\n                return false;\n            }\n            return true;\n    }\n}\n"
     labels:
     - B001
     - fix
 bugs:
 - id: B001
-  title: Token validation omission
+  title: Path traversal check omission
   bug_fixing_commit: c2
   bug_introducing_commits:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0076.java
+    file: src/main/java/example/Scenario0086.java
     entity:
       type: method
-      name: validToken
-      signature: boolean validToken(String token)
+      name: safePath
+      signature: boolean safePath(String path)
     change_type: omission
-    missing_statement: "if (token == null || token.isEmpty()) {\n            return false;\n        }\n"
+    missing_statement: "if (path.contains(\"..\")) {\n            return false;\n        }\n"
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0076.java
+    file: src/main/java/example/Scenario0086.java
     entity:
       type: method
-      name: validToken
-      signature: boolean validToken(String token)
+      name: safePath
+      signature: boolean safePath(String path)
     added_statement: |
-      if (token == null || token.isEmpty()) {
+      if (path.contains("..")) {
                       return false;
                   }
     fix_type: line_addition

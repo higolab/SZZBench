@@ -1,123 +1,138 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0028
-  title: BIC in merge commit
-  slug: bic-in-merge-commit
-  description: The merge commit itself introduces the bug during merge resolution; a later normal commit fixes it.
-  category: Branch, merge, cherry-pick, and backport scenarios
-  category_code: G
+  title: Origin BIC and direct copied-code BIC are both required
+  slug: origin-and-direct-clone-bics
+  description: Evaluates origin bic and direct copied-code bic are both required and checks whether SZZ identifies the expected
+    bug-introducing commit set.
+  category: "Clone, copy propagation, and origin-vs-direct BIC"
+  category_code: "G2"
   factors:
-  - branch
-  - merge
-  - merge_commit_bic
+  - clone
+  - multiple_bic
+  - origin_and_direct_bic
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0028-bic-in-merge-commit
+  name: SZZG-0028-origin-and-direct-clone-bics
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial correct implementation on main
+  history_summary: 'c0: c0: create amount parser
 
-    c1: add feature branch helper without changing the range logic
+    c1: c1: introduce original parser trim bug
 
-    c2: add unrelated main branch note
+    c2: c2: copy amount parser to invoice parser
 
-    c3: merge feature into main and introduce bug in the merge commit
+    c3: c3: introduce copied parser sign bug
 
-    c4: fix the merge-introduced bug'
+    c4: c4: fix invoice parsing behavior'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial correct implementation'
+  message: 'c0: create amount parser'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
+    path: src/main/java/example/AmountParser.java
+    content: "package example;\npublic class AmountParser {\n  public int parse(String s) {\n    return Integer.parseInt(s.trim());\n\
+      \  }\n\n}\n"
 - id: c1
-  branch: feature
-  parents:
-  - c0
-  message: 'c1: add feature helper without bug'
-  role: intermediate
-  operations:
-  - type: write_file
-    path: src/main/java/example/FeatureReporter.java
-    content: "package example;\n\npublic class FeatureReporter {\n  public String name() {\n    return \"feature\";\n  }\n\
-      }\n"
-- id: c2
   branch: main
   parents:
   - c0
-  message: 'c2: add unrelated main branch note'
-  role: intermediate
+  message: 'c1: introduce original parser trim bug'
+  role: bug_introducing
   operations:
-  - type: write_file
-    path: docs/main-note.md
-    content: 'Main branch note before merge.
-
-      '
+  - type: replace
+    path: src/main/java/example/AmountParser.java
+    old: return Integer.parseInt(s.trim());
+    new: return Integer.parseInt(s);
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'c2: copy amount parser to invoice parser'
+  role: other
+  operations:
+  - type: copy_file
+    from: src/main/java/example/AmountParser.java
+    to: src/main/java/example/InvoiceParser.java
+  - type: replace
+    path: src/main/java/example/InvoiceParser.java
+    old: public class AmountParser
+    new: public class InvoiceParser
 - id: c3
   branch: main
   parents:
   - c2
-  - c1
-  message: 'c3: merge feature and introduce boundary bug'
+  message: 'c3: introduce copied parser sign bug'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
+    path: src/main/java/example/InvoiceParser.java
+    old: return Integer.parseInt(s);
+    new: return Math.abs(Integer.parseInt(s));
 - id: c4
   branch: main
   parents:
   - c3
-  message: 'c4: fix merge-introduced range boundary bug'
+  message: 'c4: fix invoice parsing behavior'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/InvoiceParser.java
+    old: return Math.abs(Integer.parseInt(s));
+    new: return Integer.parseInt(s.trim());
 bugs:
 - id: B001
-  title: Range boundary bug introduced by merge commit
+  title: Synthetic graph scenario bug
   bug_introducing_commits:
+  - commit: c1
+    role: direct
   - commit: c3
-    role: merge_introducing
+    role: direct
   bug_fixing_commits:
   - commit: c4
     role: complete_fix
   faults:
   - id: F001
+    commit: c1
+    file: src/main/java/example/AmountParser.java
+    statement: return Integer.parseInt(s);
+    change_type: line_modification
+  - id: F002
     commit: c3
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/InvoiceParser.java
+    statement: return Math.abs(Integer.parseInt(s));
     change_type: line_modification
   fixes:
   - id: X001
     commit: c4
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
+    file: src/main/java/example/InvoiceParser.java
+    statement: return Integer.parseInt(s.trim());
     fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
+    - c1
     - c3
 scenario_design:
-  purpose: Evaluate whether SZZ can identify a merge commit as the BIC when the merge resolution itself introduces the bug.
-  key_property: The BIC is the two-parent merge commit c3.
+  purpose: Evaluate origin bic and direct copied-code bic are both required and whether SZZ identifies the expected bug-introducing
+    commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: clone, multiple_bic, origin_and_direct_bic; operations: copy_file,
+    replace, write_file.'
   evaluation_points:
-  - Merge commit as BIC
-  - Later normal BFC
-  - No parent contains the buggy range condition before the merge.
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- This scenario requires support for operations on merge commits.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

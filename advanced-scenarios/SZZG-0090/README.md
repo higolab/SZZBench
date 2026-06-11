@@ -1,17 +1,19 @@
-# SZZG-0090: Partial revert of fix reintroduces one fault
+# SZZG-0090: Repeated revert toggling before final fix
 
 ## Purpose
 
-Evaluate a partial revert where only part of a previous fix is undone.
+Evaluate repeated toggling where the latest reintroducing revert should be identified as the direct BIC.
 
 ## Commit history
 
 ```text
 c0: create initial correct implementation
-c1: introduce two boundary bugs
-c2: fix both boundary bugs
-c3: partially revert upper-bound fix
-c4: fix reintroduced upper-bound bug
+c1: introduce boundary bug
+c2: fix boundary bug
+c3: revert c2 and reintroduce bug
+c4: revert c3 and restore fix
+c5: revert c4 and reintroduce bug again
+c6: final explicit fix after repeated toggling
 ```
 
 ## Commit table
@@ -19,21 +21,23 @@ c4: fix reintroduced upper-bound bug
 | Commit | Branch | Parents | Role | Description |
 |---|---|---|---|---|
 | `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `c1` | `main` | c0 | `origin_bug_introducing` | c1: introduce two boundary bugs |
-| `c2` | `main` | c1 | `prior_fix` | c2: fix both boundary bugs |
-| `c3` | `main` | c2 | `bug_introducing` | c3: partially revert upper-bound fix |
-| `c4` | `main` | c3 | `bug_fixing` | c4: fix reintroduced upper-bound bug |
+| `c1` | `main` | c0 | `origin_bug_introducing` | c1: introduce boundary bug |
+| `c2` | `main` | c1 | `bug_fixing` | c2: fix boundary bug |
+| `c3` | `main` | c2 | `bug_introducing` | c3: revert c2 and reintroduce bug |
+| `c4` | `main` | c3 | `bug_fixing` | c4: revert c3 and restore fix |
+| `c5` | `main` | c4 | `bug_introducing` | c5: revert c4 and reintroduce bug again |
+| `c6` | `main` | c5 | `bug_fixing` | c6: final explicit fix after repeated toggling |
 
 ## Expected SZZ result
 
 ```text
-Expected BIC(s): c3
-Related but not correct: c1, c2
+Expected BIC(s): c5
+Related but not correct: c1, c3, c2, c4
 ```
 
 ## Key property
 
-The direct BIC reintroduces only one of the previously fixed faults.
+Multiple earlier BIC-like and fix-like commits exist, but the final fix should blame the latest re-BIC.
 
 ## Difference from existing revert scenarios
 
@@ -41,8 +45,8 @@ This scenario isolates a double-revert or revert-derived complication beyond the
 
 ## Evaluation points
 
-- Whether SZZ reports c3.
-- Whether SZZ does not require c1 as the direct BIC.
+- Whether SZZ reports c5.
+- Whether older origin/reintroducing commits are not counted as exact direct answers.
 
 ## Notes
 

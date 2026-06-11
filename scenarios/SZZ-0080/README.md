@@ -1,22 +1,23 @@
-# SZZ-0080: State transition check omission
+# SZZ-0080: Exception handling deletion introduces bug
 
 ## Purpose
 
-This scenario represents an omission bug: the method is introduced without a necessary state transition check, and the bug-fixing commit adds the missing statement.
+This scenario evaluates a bug-introducing commit shape: Exception handling deletion introduces bug.
 
 ## Commit structure
 
-- `c0`: initial class
-- `c1`: introduces the method without the state transition check
-- `c2`: adds the missing state transition check
+- `c0`: initial correct implementation
+- `c1`: introduces the bug
+- `c2`: fixes the bug
 
 ## Expected behavior
 
-The expected BFC is `c2` and the expected BIC is `c1`. Line-level evaluation is unavailable because this is an omission bug.
+The expected BFC is `c2` and the expected BIC is `c1`.
 
 ## Factors
 
 - `single-bic`
 - `single-bfc`
-- `omission-bug`
-- `line-addition-fix`
+- `line-modification`
+- `line-deletion-bic`
+- `exception-handling`

@@ -1,19 +1,20 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0127
-  title: Incorrect normalization API
-  slug: normalization-api-bic
-  description: 'This scenario evaluates a bug-introducing commit shape: Incorrect normalization API.'
-  category: bic-shape
+  title: Method signature extension after BIC
+  slug: method-signature-extension-after-bic
+  description: This scenario inserts an intermediate refactoring change between the BIC and BFC.
+  category: "Refactoring, move, and rename after BIC"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - api-misuse-bic
+  - method-signature-change-after-bic
   difficulty: medium
   status: active
+  category_code: "S5"
 repository:
-  name: SZZ-0127-normalization-api-bic
+  name: SZZ-0127-method-signature-extension-after-bic
   default_branch: main
   language: java
   build_system: none
@@ -26,13 +27,13 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0127.java
+    path: src/main/java/example/Scenario0089.java
     content: |
       package example;
 
-      public class Scenario0127 {
-          public String normalize(String value) {
-              return value.trim().toLowerCase();
+      public class Scenario0089 {
+          public boolean valid(int value) {
+              return value >= min;
           }
       }
 - id: c1
@@ -42,48 +43,74 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0127.java
+    path: src/main/java/example/Scenario0089.java
     old: |
       package example;
 
-      public class Scenario0127 {
-          public String normalize(String value) {
-              return value.trim().toLowerCase();
+      public class Scenario0089 {
+          public boolean valid(int value) {
+              return value >= min;
           }
       }
     new: |
       package example;
 
-      public class Scenario0127 {
-          public String normalize(String value) {
-              return value.toLowerCase();
+      public class Scenario0089 {
+          public boolean valid(int value) {
+              return value > min;
           }
       }
     labels:
     - B001
     - fault
 - id: c2
-  message: Fix bug
-  author: Alice <alice@example.com>
+  message: Apply intermediate rewrite
+  author: Carol <carol@example.com>
   date: '2024-01-03T10:00:00Z'
-  role: bug_fixing
+  role: refactoring
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0127.java
+    path: src/main/java/example/Scenario0089.java
     old: |
       package example;
 
-      public class Scenario0127 {
-          public String normalize(String value) {
-              return value.toLowerCase();
+      public class Scenario0089 {
+          public boolean valid(int value) {
+              return value > min;
           }
       }
     new: |
       package example;
 
-      public class Scenario0127 {
-          public String normalize(String value) {
-              return value.trim().toLowerCase();
+      public class Scenario0089 {
+          public boolean check(int value, int min, boolean inclusive) {
+              return value > min;
+          }
+      }
+    labels:
+    - non_bug_introducing_change
+- id: c3
+  message: Fix bug
+  author: Dave <dave@example.com>
+  date: '2024-01-04T10:00:00Z'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Scenario0089.java
+    old: |
+      package example;
+
+      public class Scenario0089 {
+          public boolean check(int value, int min, boolean inclusive) {
+              return value > min;
+          }
+      }
+    new: |
+      package example;
+
+      public class Scenario0089 {
+          public boolean valid(int value) {
+              return value >= min;
           }
       }
     labels:
@@ -91,39 +118,42 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Incorrect normalization API
-  bug_fixing_commit: c2
+  title: Method signature extension after BIC
+  bug_fixing_commit: c3
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0127.java
+    file: src/main/java/example/Scenario0089.java
     entity:
       type: method
-      name: normalize
-      signature: String normalize(String value)
-    statement: return value.toLowerCase();
+      name: valid
+      signature: boolean valid(int value)
+    statement: return value > min;
     change_type: line_modification
   fix:
-    commit: c2
-    file: src/main/java/example/Scenario0127.java
+    commit: c3
+    file: src/main/java/example/Scenario0089.java
     entity:
       type: method
-      name: normalize
-      signature: String normalize(String value)
-    statement: return value.trim().toLowerCase();
+      name: valid
+      signature: boolean valid(int value)
+    statement: return value >= min;
     fix_type: line_modification
   expected_szz:
     commit_level:
       true_positives: *id001
       false_positives_allowed: []
+      known_distractors:
+      - c2
     line_level:
       available: true
       faulty_statements:
-      - return value.toLowerCase();
+      - return value > min;
 checks:
 - type: git_history_contains
   commits:
   - c0
   - c1
   - c2
+  - c3

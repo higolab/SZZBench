@@ -4,7 +4,7 @@ meta:
   title: If-else to guard clause after BIC
   slug: if-else-to-guard-after-bic
   description: This scenario inserts an intermediate refactoring change between the BIC and BFC.
-  category: refactoring
+  category: "Intermediate noise and history noise"
   factors:
   - single-bic
   - single-bfc
@@ -12,6 +12,7 @@ meta:
   - guard-clause-after-bic
   difficulty: medium
   status: active
+  category_code: "S3"
 repository:
   name: SZZ-0093-if-else-to-guard-after-bic
   default_branch: main

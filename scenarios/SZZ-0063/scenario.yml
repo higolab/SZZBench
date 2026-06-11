@@ -1,10 +1,10 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0063
-  title: Bounds check omission
-  slug: bounds-check-omission
-  description: 'This scenario represents an omission bug: the method is introduced without a necessary bounds check, and the bug-fixing commit adds the missing statement.'
-  category: omission
+  title: Else branch omission
+  slug: else-branch-omission
+  description: 'This scenario represents an omission bug: the method is introduced without a necessary else branch, and the bug-fixing commit adds the missing statement.'
+  category: "Omission and deletion bugs"
   factors:
   - single-bic
   - single-bfc
@@ -12,8 +12,9 @@ meta:
   - line-addition-fix
   difficulty: medium
   status: active
+  category_code: "S2"
 repository:
-  name: SZZ-0063-bounds-check-omission
+  name: SZZ-0063-else-branch-omission
   default_branch: main
   language: java
   build_system: none
@@ -26,73 +27,73 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0063.java
+    path: src/main/java/example/Scenario0073.java
     content: 'package example;
 
 
-      public class Scenario0063 {
+      public class Scenario0073 {
 
       }
 
       '
 - id: c1
-  message: Add isValidIndex without bounds check
+  message: Add status without else branch
   author: Bob <bob@example.com>
   date: '2024-02-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0063.java
+    path: src/main/java/example/Scenario0073.java
     old: 'package example;
 
 
-      public class Scenario0063 {
+      public class Scenario0073 {
 
       }
 
       '
-    new: "package example;\n\npublic class Scenario0063 {\n    public boolean isValidIndex(int index, int size) {\n        return true;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0073 {\n    public String status(boolean enabled) {\n        return \"enabled\";\n    }\n}\n"
     labels:
     - B001
     - fault
 - id: c2
-  message: Add missing bounds check
+  message: Add missing else branch
   author: Alice <alice@example.com>
   date: '2024-02-03T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0063.java
-    old: "package example;\n\npublic class Scenario0063 {\n    public boolean isValidIndex(int index, int size) {\n        return true;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0063 {\n    public boolean isValidIndex(int index, int size) {\n        if (index < 0 || index >= size) {\n                return false;\n            }\n            return true;\n    }\n}\n"
+    path: src/main/java/example/Scenario0073.java
+    old: "package example;\n\npublic class Scenario0073 {\n    public String status(boolean enabled) {\n        return \"enabled\";\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0073 {\n    public String status(boolean enabled) {\n        if (!enabled) {\n                return \"disabled\";\n            }\n            return \"enabled\";\n    }\n}\n"
     labels:
     - B001
     - fix
 bugs:
 - id: B001
-  title: Bounds check omission
+  title: Else branch omission
   bug_fixing_commit: c2
   bug_introducing_commits:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0063.java
+    file: src/main/java/example/Scenario0073.java
     entity:
       type: method
-      name: isValidIndex
-      signature: boolean isValidIndex(int index, int size)
+      name: status
+      signature: String status(boolean enabled)
     change_type: omission
-    missing_statement: "if (index < 0 || index >= size) {\n            return false;\n        }\n"
+    missing_statement: "if (!enabled) {\n            return \"disabled\";\n        }\n"
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0063.java
+    file: src/main/java/example/Scenario0073.java
     entity:
       type: method
-      name: isValidIndex
-      signature: boolean isValidIndex(int index, int size)
+      name: status
+      signature: String status(boolean enabled)
     added_statement: |
-      if (index < 0 || index >= size) {
-                      return false;
+      if (!enabled) {
+                      return "disabled";
                   }
     fix_type: line_addition
   expected_szz:

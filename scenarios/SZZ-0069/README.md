@@ -1,14 +1,14 @@
-# SZZ-0069: Synchronization guard omission
+# SZZ-0069: Duplicate detection omission
 
 ## Purpose
 
-This scenario represents an omission bug: the method is introduced without a necessary synchronization guard, and the bug-fixing commit adds the missing statement.
+This scenario represents an omission bug: the method is introduced without a necessary duplicate detection, and the bug-fixing commit adds the missing statement.
 
 ## Commit structure
 
 - `c0`: initial class
-- `c1`: introduces the method without the synchronization guard
-- `c2`: adds the missing synchronization guard
+- `c1`: introduces the method without the duplicate detection
+- `c2`: adds the missing duplicate detection
 
 ## Expected behavior
 

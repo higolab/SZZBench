@@ -1,14 +1,14 @@
-# SZZ-0067: Exception handling omission
+# SZZ-0067: Range validation omission
 
 ## Purpose
 
-This scenario represents an omission bug: the method is introduced without a necessary exception handling, and the bug-fixing commit adds the missing statement.
+This scenario represents an omission bug: the method is introduced without a necessary range validation, and the bug-fixing commit adds the missing statement.
 
 ## Commit structure
 
 - `c0`: initial class
-- `c1`: introduces the method without the exception handling
-- `c2`: adds the missing exception handling
+- `c1`: introduces the method without the range validation
+- `c2`: adds the missing range validation
 
 ## Expected behavior
 

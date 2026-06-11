@@ -1,23 +1,22 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0072
-  title: Interactive rebase fixup combines buggy commits
-  slug: interactive-rebase-fixup-combines-buggy-commits
-  description: Interactive rebase fixup combines origin commits into one direct BIC.
-  category: Branch, merge, cherry-pick, and backport scenarios
-  category_code: G
+  title: Interactive rebase drops original BIC but bug remains
+  slug: interactive-rebase-drops-original-bic-but-bug-remains
+  description: The original BIC is dropped, but a later replayed commit still introduces the buggy code.
+  category: "Rebase-specific history rewriting"
+  category_code: "G5"
   factors:
   - branch
   - rebase
   - interactive_rebase
-  - fixup
-  - squash
+  - drop
+  - dropped_origin_bic
   - direct_bic
-  - origin_bic
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0072-interactive-rebase-fixup-combines-buggy-commits
+  name: SZZG-0072-interactive-rebase-drops-original-bic-but-bug-remains
   default_branch: main
   language: java
   build_system: none
@@ -26,13 +25,13 @@ graph:
   model: commit_dag
   history_summary: 'c0: create initial correct implementation
 
-    f1: introduce range bug
+    f1: introduce bug that will be dropped
 
-    f2: fixup helper using buggy logic
+    f2: add helper retaining buggy logic
 
-    r1: interactive rebase fixup combines feature commits
+    r2: replay helper after dropping original BIC
 
-    c2: fix bug from fixup commit'
+    c3: fix bug retained by helper'
 commits:
 - id: c0
   branch: main
@@ -48,7 +47,7 @@ commits:
   branch: feature
   parents:
   - c0
-  message: 'f1: introduce range bug'
+  message: 'f1: introduce bug that will be dropped'
   role: origin_bug_introducing
   operations:
   - type: replace
@@ -59,7 +58,7 @@ commits:
   branch: feature
   parents:
   - f1
-  message: 'f2: fixup helper using buggy logic'
+  message: 'f2: add helper retaining buggy logic'
   role: intermediate
   operations:
   - type: replace
@@ -69,11 +68,11 @@ commits:
     new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
       \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
       \ min, max);\n  }\n}\n"
-- id: r1
+- id: r2
   branch: main
   parents:
   - c0
-  message: 'r1: interactive rebase fixup combines feature commits'
+  message: 'r2: replay helper after dropping original BIC'
   role: bug_introducing
   operations:
   - type: replace
@@ -83,15 +82,13 @@ commits:
     new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
       \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
       \ min, max);\n  }\n}\n"
-  rebase_of:
-  - f1
-  - f2
-  interactive_rebase: fixup
-- id: c2
+  rebase_of: f2
+  interactive_rebase: drop_f1
+- id: c3
   branch: main
   parents:
-  - r1
-  message: 'c2: fix bug from fixup commit'
+  - r2
+  message: 'c3: fix bug retained by helper'
   role: bug_fixing
   operations:
   - type: replace
@@ -100,26 +97,24 @@ commits:
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Bug introduced by fixup rebased commit
+  title: Bug retained after dropping origin BIC
   bug_introducing_commits:
-  - commit: r1
+  - commit: r2
     role: direct
   - commit: f1
     role: origin
-  - commit: f2
-    role: origin
   bug_fixing_commits:
-  - commit: c2
+  - commit: c3
     role: complete_fix
   faults:
   - id: F001
-    commit: r1
+    commit: r2
     file: src/main/java/example/Range.java
     statement: return value > min && value < max;
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c2
+    commit: c3
     file: src/main/java/example/Range.java
     statement: return value >= min && value <= max;
     fix_type: line_modification
@@ -133,17 +128,16 @@ expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - r1
+    - r2
     related_but_not_correct:
     - f1
-    - f2
 scenario_design:
-  purpose: Evaluate fixup/squash inside interactive rebase.
-  key_property: f1 and f2 collapse into r1.
-  difference_from_SZZG_0073: SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
+  purpose: Evaluate dropped origin BIC with surviving buggy change.
+  key_property: f1 is dropped; r2 is reachable direct BIC.
+  difference_from_SZZG_0073: SZZG-0063 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
     adds a distinct rebase-related complication.
   evaluation_points:
-  - Report r1.
+  - Report r2.
 notes:
 - This scenario models a rebase-related development history for SZZ evaluation.
 - Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

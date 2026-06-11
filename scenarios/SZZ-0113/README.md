@@ -1,23 +1,63 @@
-# SZZ-0113: Exception handling deletion introduces bug
+# SZZ-0113: Malformed commit message
 
 ## Purpose
 
-This scenario evaluates a bug-introducing commit shape: Exception handling deletion introduces bug.
+This scenario checks robustness against a malformed-looking bug-fixing commit message.
 
-## Commit structure
+The history is intentionally simple and linear, so this scenario is represented as a normal `scenario.yml` under `scenarios/` rather than as `scenario.graph.yml` under `advanced-scenarios/`.
 
-- `c0`: initial correct implementation
-- `c1`: introduces the bug
-- `c2`: fixes the bug
+## Commit history
 
-## Expected behavior
+```text
+c1: Introduce boundary bug
+c2: fix boundary bug with malformed-looking commit message
+```
 
-The expected BFC is `c2` and the expected BIC is `c1`.
+## Commit table
 
-## Factors
+| Commit | Role | Message | Description |
+|---|---|---|---|
+| `c1` | bug_introducing | `Introduce boundary bug` | Creates `Range.java` with a boundary bug. |
+| `c2` | bug_fixing | `FIX:::: boundary regression ??? refs=[[[unknown]]] introduced-by=<missing>` | Fixes the bug with an intentionally malformed-looking message. |
 
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `line-deletion-bic`
-- `exception-handling`
+## Code states
+
+Buggy code in `c1`:
+
+```java
+return value > min && value < max;
+```
+
+Fixed code in `c2`:
+
+```java
+return value >= min && value <= max;
+```
+
+## Oracle
+
+Expected BIC:
+
+```text
+c1
+```
+
+Bug-fixing commit:
+
+```text
+c2
+```
+
+## Evaluation purpose
+
+This scenario checks whether SZZ tools and SZZBench tooling remain robust when the BFC message does not follow a normal format.
+
+The message is malformed-looking but safe for YAML and Git tooling. It avoids null bytes and control characters.
+
+## Why this is a normal scenario
+
+This scenario does not require branch, merge, cherry-pick, backport, multiple BFCs, or evaluation variants. Therefore, it is represented as a normal scenario:
+
+```text
+scenarios/SZZ-0113/scenario.yml
+```

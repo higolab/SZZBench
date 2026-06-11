@@ -11,5 +11,5 @@ Evaluates file creation only as fix and checks whether SZZ identifies the expect
 
 ## Notes
 
-- Moved from SZZG-0063 after applying the scenario.yml / scenario.graph.yml boundary policy.
+- Moved from SZZG-0065 after applying the scenario.yml / scenario.graph.yml boundary policy.
 - This scenario uses a linear main-branch history and a commit-level exact-set oracle.

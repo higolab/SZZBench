@@ -1,14 +1,14 @@
-# SZZ-0112: Null check deletion introduces bug
+# SZZ-0112: Huge method surrounding small bug
 
 ## Purpose
 
-This scenario evaluates a bug-introducing commit shape: Null check deletion introduces bug.
+This scenario is intended to stress implementation robustness under noisy or repetitive code conditions.
 
 ## Commit structure
 
-- `c0`: initial correct implementation
-- `c1`: introduces the bug
-- `c2`: fixes the bug
+- `c0`: Initial large method
+- `c1`: Introduce small bug in large method
+- `c2`: Fix small bug in large method
 
 ## Expected behavior
 
@@ -19,5 +19,6 @@ The expected BFC is `c2` and the expected BIC is `c1`.
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `line-deletion-bic`
-- `null-check`
+- `robustness`
+- `large-method`
+- `small-fault`

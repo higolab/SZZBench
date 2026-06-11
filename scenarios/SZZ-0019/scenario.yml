@@ -1,19 +1,20 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0019
-  title: Minimum comparison error
-  slug: minimum-comparison-error
-  description: This scenario introduces a bug by changing `return value >= minimum;` to `return value > minimum;` and later restores the correct implementation.
-  category: basic
+  title: Wrong default string
+  slug: wrong-default-string
+  description: This scenario introduces a bug by changing `return "unknown";` to `return "";` and later restores the correct implementation.
+  category: "Basic semantic line changes"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - comparison-error
+  - wrong-constant
   difficulty: easy
   status: active
+  category_code: "S1"
 repository:
-  name: SZZ-0019-minimum-comparison-error
+  name: SZZ-0019-wrong-default-string
   default_branch: main
   language: java
   build_system: none
@@ -26,13 +27,13 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0019.java
+    path: src/main/java/example/Scenario0029.java
     content: |
       package example;
 
-      public class Scenario0019 {
-          public boolean isAtLeast(int value, int minimum) {
-              return value >= minimum;
+      public class Scenario0029 {
+          public String label(String value) {
+              return "unknown";
           }
       }
 - id: c1
@@ -42,21 +43,21 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0019.java
+    path: src/main/java/example/Scenario0029.java
     old: |
       package example;
 
-      public class Scenario0019 {
-          public boolean isAtLeast(int value, int minimum) {
-              return value >= minimum;
+      public class Scenario0029 {
+          public String label(String value) {
+              return "unknown";
           }
       }
     new: |
       package example;
 
-      public class Scenario0019 {
-          public boolean isAtLeast(int value, int minimum) {
-              return value > minimum;
+      public class Scenario0029 {
+          public String label(String value) {
+              return "";
           }
       }
     labels:
@@ -69,21 +70,21 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0019.java
+    path: src/main/java/example/Scenario0029.java
     old: |
       package example;
 
-      public class Scenario0019 {
-          public boolean isAtLeast(int value, int minimum) {
-              return value > minimum;
+      public class Scenario0029 {
+          public String label(String value) {
+              return "";
           }
       }
     new: |
       package example;
 
-      public class Scenario0019 {
-          public boolean isAtLeast(int value, int minimum) {
-              return value >= minimum;
+      public class Scenario0029 {
+          public String label(String value) {
+              return "unknown";
           }
       }
     labels:
@@ -91,27 +92,27 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Minimum comparison error
+  title: Wrong default string
   bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0019.java
+    file: src/main/java/example/Scenario0029.java
     entity:
       type: method
-      name: isAtLeast
-      signature: boolean isAtLeast(int value, int minimum)
-    statement: return value > minimum;
+      name: label
+      signature: String label(String value)
+    statement: return "";
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0019.java
+    file: src/main/java/example/Scenario0029.java
     entity:
       type: method
-      name: isAtLeast
-      signature: boolean isAtLeast(int value, int minimum)
-    statement: return value >= minimum;
+      name: label
+      signature: String label(String value)
+    statement: return "unknown";
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -120,7 +121,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return value > minimum;
+      - return "";
 checks:
 - type: git_history_contains
   commits:

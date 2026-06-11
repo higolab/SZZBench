@@ -1,14 +1,14 @@
-# SZZ-0074: Early return omission
+# SZZ-0074: Null collection check omission
 
 ## Purpose
 
-This scenario represents an omission bug: the method is introduced without a necessary early return, and the bug-fixing commit adds the missing statement.
+This scenario represents an omission bug: the method is introduced without a necessary null collection check, and the bug-fixing commit adds the missing statement.
 
 ## Commit structure
 
 - `c0`: initial class
-- `c1`: introduces the method without the early return
-- `c2`: adds the missing early return
+- `c1`: introduces the method without the null collection check
+- `c2`: adds the missing null collection check
 
 ## Expected behavior
 

@@ -1,43 +1,37 @@
-# SZZG-0099: Intermediate method extraction between BIC and BFC
+# SZZG-0099: BFC message references the wrong commit
 
 ## Source
 
-- Category: Refactoring scenarios
+- Category: Work-item and commit-series scenarios
 
 ## Purpose
 
-Evaluate intermediate method extraction between bic and bfc and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate whether SZZ resists an incorrect BFC-message hint and still identifies the true code-level BIC.
 
 ## Expected history
 
 ```text
-c0: c0: create shipping fee calculation
-c1: c1: introduce free-shipping threshold bug
-c2: c2: extract free-shipping predicate
-c3: c3: fix extracted threshold predicate
+c0: create currency rounding helper
+c1: introduce truncating cents normalization
+c2: add invoice label helper mentioned by mistake
+c3: fix rounding while incorrectly blaming c2 in the message
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal `scenario.yml` schema.
+The BFC contains a misleading developer hint that must be represented separately from the code-level fault metadata.
 
 ## Required graph-schema features
 
-- Factors: intermediate_refactoring, extract_method, line_history_break
-- Operation types: insert_after, replace, write_file
-- Expected SZZ policy is defined in `expected_szz`.
-
-## Expected BICs
-
-```text
-c1
-```
+- Factors: developer_hints, misleading_commit_message
+- Operation types: write_file, replace
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
-- Whether the expected_szz evaluation policy is applied correctly.
+- Whether SZZ identifies c1 as the true rounding BIC.
+- Whether c2 is treated as an incorrect message reference rather than the expected BIC.
+- Whether developer hints are distinguished from trustworthy blame evidence.
 
 ---
 

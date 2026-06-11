@@ -1,19 +1,20 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0022
-  title: Logical conjunction error
-  slug: logical-conjunction-error
-  description: This scenario introduces a bug by changing `return hasName && hasEmail;` to `return hasName || hasEmail;` and later restores the correct implementation.
-  category: basic
+  title: Null predicate reversed
+  slug: null-predicate-reversed
+  description: This scenario introduces a bug by changing `return value != null;` to `return value == null;` and later restores the correct implementation.
+  category: "Basic semantic line changes"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - logical-operator-error
+  - boolean-negation
   difficulty: easy
   status: active
+  category_code: "S1"
 repository:
-  name: SZZ-0022-logical-conjunction-error
+  name: SZZ-0022-null-predicate-reversed
   default_branch: main
   language: java
   build_system: none
@@ -26,13 +27,13 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0022.java
+    path: src/main/java/example/Scenario0032.java
     content: |
       package example;
 
-      public class Scenario0022 {
-          public boolean isComplete(boolean hasName, boolean hasEmail) {
-              return hasName && hasEmail;
+      public class Scenario0032 {
+          public boolean hasValue(String value) {
+              return value != null;
           }
       }
 - id: c1
@@ -42,21 +43,21 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0022.java
+    path: src/main/java/example/Scenario0032.java
     old: |
       package example;
 
-      public class Scenario0022 {
-          public boolean isComplete(boolean hasName, boolean hasEmail) {
-              return hasName && hasEmail;
+      public class Scenario0032 {
+          public boolean hasValue(String value) {
+              return value != null;
           }
       }
     new: |
       package example;
 
-      public class Scenario0022 {
-          public boolean isComplete(boolean hasName, boolean hasEmail) {
-              return hasName || hasEmail;
+      public class Scenario0032 {
+          public boolean hasValue(String value) {
+              return value == null;
           }
       }
     labels:
@@ -69,21 +70,21 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0022.java
+    path: src/main/java/example/Scenario0032.java
     old: |
       package example;
 
-      public class Scenario0022 {
-          public boolean isComplete(boolean hasName, boolean hasEmail) {
-              return hasName || hasEmail;
+      public class Scenario0032 {
+          public boolean hasValue(String value) {
+              return value == null;
           }
       }
     new: |
       package example;
 
-      public class Scenario0022 {
-          public boolean isComplete(boolean hasName, boolean hasEmail) {
-              return hasName && hasEmail;
+      public class Scenario0032 {
+          public boolean hasValue(String value) {
+              return value != null;
           }
       }
     labels:
@@ -91,27 +92,27 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Logical conjunction error
+  title: Null predicate reversed
   bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0022.java
+    file: src/main/java/example/Scenario0032.java
     entity:
       type: method
-      name: isComplete
-      signature: boolean isComplete(boolean hasName, boolean hasEmail)
-    statement: return hasName || hasEmail;
+      name: hasValue
+      signature: boolean hasValue(String value)
+    statement: return value == null;
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0022.java
+    file: src/main/java/example/Scenario0032.java
     entity:
       type: method
-      name: isComplete
-      signature: boolean isComplete(boolean hasName, boolean hasEmail)
-    statement: return hasName && hasEmail;
+      name: hasValue
+      signature: boolean hasValue(String value)
+    statement: return value != null;
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -120,7 +121,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return hasName || hasEmail;
+      - return value == null;
 checks:
 - type: git_history_contains
   commits:

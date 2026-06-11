@@ -1,8 +1,8 @@
-# SZZ-0036: Cache enabled flag error
+# SZZ-0036: Configuration-like constant change introduces bug
 
 ## Purpose
 
-This scenario introduces a bug by changing `return enabled && !expired;` to `return enabled || !expired;` and later restores the correct implementation.
+This scenario evaluates a bug-introducing commit shape: Configuration-like constant change introduces bug.
 
 ## Commit structure
 
@@ -19,4 +19,4 @@ The expected BFC is `c2` and the expected BIC is `c1`.
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `boolean-negation`
+- `configuration-bic`

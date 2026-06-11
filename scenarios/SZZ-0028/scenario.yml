@@ -1,19 +1,19 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0028
-  title: Rounding direction error
-  slug: rounding-direction-error
-  description: This scenario introduces a bug by changing `return (value + 9) / 10;` to `return value / 10;` and later restores the correct implementation.
-  category: basic
+  title: BFC removes an erroneous guard
+  slug: bfc-removes-erroneous-guard
+  description: 'This scenario evaluates SZZ behavior when the bug-fixing commit has the shape: BFC removes an erroneous guard.'
+  category: "Basic semantic line changes"
   factors:
   - single-bic
   - single-bfc
-  - line-modification
-  - arithmetic-error
-  difficulty: easy
+  - line-deletion-fix
+  difficulty: medium
   status: active
+  category_code: "S1"
 repository:
-  name: SZZ-0028-rounding-direction-error
+  name: SZZ-0028-bfc-removes-erroneous-guard
   default_branch: main
   language: java
   build_system: none
@@ -26,13 +26,13 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0028.java
+    path: src/main/java/example/Scenario0059.java
     content: |
       package example;
 
-      public class Scenario0028 {
-          public int ceilDiv10(int value) {
-              return (value + 9) / 10;
+      public class Scenario0059 {
+          public boolean valid(int value) {
+              return value >= 0;
           }
       }
 - id: c1
@@ -42,21 +42,24 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0028.java
+    path: src/main/java/example/Scenario0059.java
     old: |
       package example;
 
-      public class Scenario0028 {
-          public int ceilDiv10(int value) {
-              return (value + 9) / 10;
+      public class Scenario0059 {
+          public boolean valid(int value) {
+              return value >= 0;
           }
       }
     new: |
       package example;
 
-      public class Scenario0028 {
-          public int ceilDiv10(int value) {
-              return value / 10;
+      public class Scenario0059 {
+          public boolean valid(int value) {
+              if (value == 0) {
+                      return false;
+                  }
+                  return value >= 0;
           }
       }
     labels:
@@ -64,26 +67,29 @@ commits:
     - fault
 - id: c2
   message: Fix bug
-  author: Alice <alice@example.com>
+  author: Carol <carol@example.com>
   date: '2024-01-03T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0028.java
+    path: src/main/java/example/Scenario0059.java
     old: |
       package example;
 
-      public class Scenario0028 {
-          public int ceilDiv10(int value) {
-              return value / 10;
+      public class Scenario0059 {
+          public boolean valid(int value) {
+              if (value == 0) {
+                      return false;
+                  }
+                  return value >= 0;
           }
       }
     new: |
       package example;
 
-      public class Scenario0028 {
-          public int ceilDiv10(int value) {
-              return (value + 9) / 10;
+      public class Scenario0059 {
+          public boolean valid(int value) {
+              return value >= 0;
           }
       }
     labels:
@@ -91,27 +97,27 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Rounding direction error
+  title: BFC removes an erroneous guard
   bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0028.java
+    file: src/main/java/example/Scenario0059.java
     entity:
       type: method
-      name: ceilDiv10
-      signature: int ceilDiv10(int value)
-    statement: return value / 10;
+      name: valid
+      signature: boolean valid(int value)
+    statement: return false;
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0028.java
+    file: src/main/java/example/Scenario0059.java
     entity:
       type: method
-      name: ceilDiv10
-      signature: int ceilDiv10(int value)
-    statement: return (value + 9) / 10;
+      name: valid
+      signature: boolean valid(int value)
+    statement: return value >= 0;
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -120,7 +126,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return value / 10;
+      - return false;
 checks:
 - type: git_history_contains
   commits:

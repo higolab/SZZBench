@@ -1,115 +1,150 @@
-schema_version: '1.0'
-meta:
-  id: SZZ-0132
-  title: Retry limit and state condition changed separately
-  slug: retry-and-state-condition
-  description: This scenario requires treating two bug-introducing commits as contributing to the same later fix.
-  category: multiple-bic
-  factors:
-  - multi-bic
-  - single-bfc
-  - line-modification
-  difficulty: medium
-  status: active
-repository:
-  name: SZZ-0132-retry-and-state-condition
-  default_branch: main
-  language: java
-  build_system: none
-  source_root: src/main/java
-commits:
-- id: c0
-  message: Initial implementation
-  author: Alice <alice@example.com>
-  date: '2024-03-01T10:00:00Z'
-  role: initial
-  operations:
-  - type: write_file
-    path: src/main/java/example/Scenario0132.java
-    content: "package example;\n\npublic class Scenario0132 {\n    public boolean canRetry(int attempts, int limit, boolean ready) {\n        return true;\n    }\n}\n"
-- id: c1
-  message: Introduce first contributing change
-  author: Bob <bob@example.com>
-  date: '2024-03-02T10:00:00Z'
-  role: bug_introducing
-  operations:
-  - type: replace
-    path: src/main/java/example/Scenario0132.java
-    old: "package example;\n\npublic class Scenario0132 {\n    public boolean canRetry(int attempts, int limit, boolean ready) {\n        return true;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0132 {\n    public boolean canRetry(int attempts, int limit, boolean ready) {\n        return attempts < limit;\n    }\n}\n"
-    labels:
-    - B001
-    - fault
-- id: c2
-  message: Introduce second contributing change
-  author: Carol <carol@example.com>
-  date: '2024-03-03T10:00:00Z'
-  role: bug_introducing
-  operations:
-  - type: replace
-    path: src/main/java/example/Scenario0132.java
-    old: "package example;\n\npublic class Scenario0132 {\n    public boolean canRetry(int attempts, int limit, boolean ready) {\n        return attempts < limit;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0132 {\n    public boolean canRetry(int attempts, int limit, boolean ready) {\n        return attempts < limit && ready;\n    }\n}\n"
-    labels:
-    - B001
-    - fault
-- id: c3
-  message: Fix combined bug
-  author: Alice <alice@example.com>
-  date: '2024-03-04T10:00:00Z'
-  role: bug_fixing
-  operations:
-  - type: replace
-    path: src/main/java/example/Scenario0132.java
-    old: "package example;\n\npublic class Scenario0132 {\n    public boolean canRetry(int attempts, int limit, boolean ready) {\n        return attempts < limit && ready;\n    }\n}\n"
-    new: |
-      package example;
+schema_version: "1.0"
 
-      public class Scenario0132 {
-          public boolean canRetry(int attempts, int limit, boolean ready) {
-              return true;
+meta:
+  id: "SZZ-0132"
+  title: "Basic multiple bug-introducing commits"
+  slug: "basic-multiple-bic"
+  description: >
+    A bug becomes observable only after two contributing commits: one commit
+    weakens the callee-side contract and a later commit uses the weakened mode
+    at a call site. The fixing commit repairs the call site.
+  category: "Multiple BICs, duplicate faults, and composite faults"
+  factors:
+    - "multi-bic"
+    - "single-bfc"
+    - "line-modification"
+    - "caller-callee-interaction"
+  difficulty: "hard"
+  status: "active"
+  category_code: "S6"
+
+repository:
+  name: "SZZ-0132-basic-multiple-bic"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Initial safe average calculator"
+    author: "Alice <alice@example.com>"
+    date: "2024-01-01T10:00:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/example/AverageCalculator.java"
+        content: |
+          package example;
+
+          public class AverageCalculator {
+              public int divide(int total, int count) {
+                  if (count == 0) {
+                      return 0;
+                  }
+                  return total / count;
+              }
           }
-      }
-    labels:
-    - B001
-    - fix
+
+  - id: "c1"
+    message: "Add unsafe divide mode"
+    author: "Bob <bob@example.com>"
+    date: "2024-01-02T10:00:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/AverageCalculator.java"
+        old: |
+          public int divide(int total, int count) {
+                  if (count == 0) {
+                      return 0;
+                  }
+                  return total / count;
+              }
+        new: |
+          public int divide(int total, int count, boolean allowZero) {
+                  if (count == 0 && !allowZero) {
+                      return 0;
+                  }
+                  return total / count;
+              }
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Use unsafe divide mode in average"
+    author: "Carol <carol@example.com>"
+    date: "2024-01-03T10:00:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/AverageCalculator.java"
+        old: |
+          public int divide(int total, int count, boolean allowZero) {
+                  if (count == 0 && !allowZero) {
+                      return 0;
+                  }
+                  return total / count;
+              }
+        new: |
+          public int divide(int total, int count, boolean allowZero) {
+                  if (count == 0 && !allowZero) {
+                      return 0;
+                  }
+                  return total / count;
+              }
+
+              public int average(int total, int count) {
+                  return divide(total, count, true);
+              }
+        labels: ["B001", "fault"]
+
+  - id: "c3"
+    message: "Use safe divide mode in average"
+    author: "Alice <alice@example.com>"
+    date: "2024-01-04T10:00:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/AverageCalculator.java"
+        old: "return divide(total, count, true);"
+        new: "return divide(total, count, false);"
+        labels: ["B001", "fix"]
+
 bugs:
-- id: B001
-  title: Retry limit and state condition changed separately
-  bug_fixing_commit: c3
-  bug_introducing_commits: &id001
-  - c1
-  - c2
-  fault:
-    commit: c1
-    file: src/main/java/example/Scenario0132.java
-    entity:
-      type: method
-      name: canRetry
-      signature: boolean canRetry(int attempts, int limit, boolean ready)
-    statement: return attempts < limit;
-    change_type: line_modification
-  fix:
-    commit: c3
-    file: src/main/java/example/Scenario0132.java
-    entity:
-      type: method
-      name: canRetry
-      signature: boolean canRetry(int attempts, int limit, boolean ready)
-    statement: return true;
-    fix_type: line_modification
-  expected_szz:
-    commit_level:
-      true_positives: *id001
-      false_positives_allowed: []
-    line_level:
-      available: true
-      faulty_statements:
-      - return attempts < limit;
+  - id: "B001"
+    title: "Average can divide by zero"
+    bug_fixing_commit: "c3"
+    bug_introducing_commits: ["c1", "c2"]
+    fault:
+      commit: "c2"
+      file: "src/main/java/example/AverageCalculator.java"
+      entity:
+        type: "method"
+        name: "average"
+        signature: "int average(int total, int count)"
+      statement: "return divide(total, count, true);"
+      change_type: "line_modification"
+    fix:
+      commit: "c3"
+      file: "src/main/java/example/AverageCalculator.java"
+      entity:
+        type: "method"
+        name: "average"
+        signature: "int average(int total, int count)"
+      statement: "return divide(total, count, false);"
+      fix_type: "line_modification"
+    expected_szz:
+      commit_level:
+        true_positives: ["c1", "c2"]
+        primary_observable_bic: "c2"
+        contributing_bics: ["c1"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "return divide(total, count, true);"
+        note: "The bug has multiple contributing commits, but the BFC directly modifies a line introduced in c2."
+
 checks:
-- type: git_history_contains
-  commits:
-  - c0
-  - c1
-  - c2
-  - c3
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3"]

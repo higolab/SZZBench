@@ -1,16 +1,22 @@
-# SZZ-0014: Java annotation syntax change
+# SZZ-0014: Negated boolean condition
 
 ## Purpose
 
-This scenario checks a language-specific syntax change: the fault is in a Java
-annotation argument rather than in an ordinary method-body statement.
+This scenario introduces a bug by changing `return !locked;` to `return locked;` and later restores the correct implementation.
 
 ## Commit structure
 
-- `c0`: Marks `userId` as required.
-- `c1`: Changes the annotation to optional. This is the BIC.
-- `c2`: Restores the required annotation. This is the BFC.
+- `c0`: initial correct implementation
+- `c1`: introduces the bug
+- `c2`: fixes the bug
 
 ## Expected behavior
 
-SZZ should report `c1` as the bug-introducing commit for `B001`.
+The expected BFC is `c2` and the expected BIC is `c1`.
+
+## Factors
+
+- `single-bic`
+- `single-bfc`
+- `line-modification`
+- `boolean-negation`

@@ -1,22 +1,23 @@
-# SZZ-0125: Incorrect status transition condition
+# SZZ-0125: Method rename after BIC
 
 ## Purpose
 
-This scenario evaluates a bug-introducing commit shape: Incorrect status transition condition.
+This scenario introduces a bug by changing `return value >= min && value <= max;` to `return value > min && value < max;` and later restores the correct implementation.
 
 ## Commit structure
 
 - `c0`: initial correct implementation
 - `c1`: introduces the bug
-- `c2`: fixes the bug
+- `c2`: Rename method after bug introduction
+- `c3`: fixes the bug
 
 ## Expected behavior
 
-The expected BFC is `c2` and the expected BIC is `c1`.
+The expected BFC is `c3` and the expected BIC is `c1`.
 
 ## Factors
 
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `state-bug`
+- `method-rename-after-bic`

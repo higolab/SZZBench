@@ -393,14 +393,14 @@ szzbench evaluate \
 `--predictions` accepts JSON or JSONL. The common prediction format can be one record per scenario, including scenarios with no predictions:
 
 ```jsonl
-{"scenario_id":"SZZ-0002","predictions":[]}
-{"scenario_id":"SZZ-0004","predictions":[{"fix_commit":"<actual hash>","inducing_commit":"<actual hash>"}]}
+{"scenario_id":"SZZ-0047","predictions":[]}
+{"scenario_id":"SZZ-0002","predictions":[{"fix_commit":"<actual hash>","inducing_commit":"<actual hash>"}]}
 ```
 
 It can also be one record per predicted BIC:
 
 ```jsonl
-{"scenario_id":"SZZ-0004","fix_commit":"<actual hash>","inducing_commit":"<actual hash>"}
+{"scenario_id":"SZZ-0002","fix_commit":"<actual hash>","inducing_commit":"<actual hash>"}
 ```
 
 `fix_commit` is optional for evaluation. `inducing_commit` may be an actual Git hash, a unique hash prefix, or a logical commit id from `commit-map.json`.
@@ -990,14 +990,14 @@ szzbench evaluate \
 `--predictions` は JSON または JSONL を受け取ります。共通 prediction 形式は、予測が空のシナリオも表現できるように、シナリオ単位のレコードを書けます。
 
 ```jsonl
-{"scenario_id":"SZZ-0002","predictions":[]}
-{"scenario_id":"SZZ-0004","predictions":[{"fix_commit":"<actual hash>","inducing_commit":"<actual hash>"}]}
+{"scenario_id":"SZZ-0047","predictions":[]}
+{"scenario_id":"SZZ-0002","predictions":[{"fix_commit":"<actual hash>","inducing_commit":"<actual hash>"}]}
 ```
 
 予測 BIC ごとに 1 レコードを書く形式も使えます。
 
 ```jsonl
-{"scenario_id":"SZZ-0004","fix_commit":"<actual hash>","inducing_commit":"<actual hash>"}
+{"scenario_id":"SZZ-0002","fix_commit":"<actual hash>","inducing_commit":"<actual hash>"}
 ```
 
 評価に必須なのは `scenario_id` と `inducing_commit` です。`fix_commit` は任意です。`inducing_commit` には実 Git hash、ユニークな hash prefix、または `commit-map.json` の論理 commit id を指定できます。

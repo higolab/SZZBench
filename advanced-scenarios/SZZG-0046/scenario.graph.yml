@@ -1,143 +1,129 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0046
-  title: Unrelated commits mixed in the same issue
-  slug: issue-commit
-  description: Evaluates unrelated commits mixed in the same issue and checks whether SZZ identifies the expected bug-introducing
-    commit set.
-  category: Work-item and commit-series scenarios
-  category_code: H
+  title: BFC in merge commit
+  slug: bfc-in-merge-commit
+  description: A bug is introduced before branches diverge; main and feature apply complementary partial changes, and the
+    merge commit performs the final fix.
+  category: "Branch, merge, cherry-pick, backport, and release branches"
+  category_code: "G4"
   factors:
-  - work_items
-  - issues
+  - branch
+  - merge
+  - merge_commit_bfc
+  - partial_fix
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0046-issue-commit
+  name: SZZG-0046-bfc-in-merge-commit
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial state (write_file src/main/java/example/RangeService.java)
+  history_summary: 'c0: create initial correct implementation on main
 
-    c1: introduce bug (replace src/main/java/example/RangeService.java)
+    c1: introduce bug before branch divergence
 
-    c2: add unrelated change (replace src/main/java/example/RangeService.java)
+    c2: main branch adds tests but does not fix the bug
 
-    c3: add unrelated change (write_file docs/issue-10-note.md)
+    c3: feature branch adds a helper that still uses the buggy method
 
-    c4: fix bug (replace src/main/java/example/RangeService.java)'
+    c4: merge main and feature and fix the bug in the merge commit'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_file src/main/java/example/RangeService.java)'
+  message: 'c0: create initial correct implementation'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/RangeService.java
-    content: "package example;\n\npublic class RangeService {\n  public boolean isEnabled() { return true; }\n  public boolean\
-      \ contains(int value, int min, int max) { return value >= min && value <= max; }\n  public int normalize(int value)\
-      \ { return value; }\n}\n"
+    path: src/main/java/example/Range.java
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce bug (replace src/main/java/example/RangeService.java)'
+  message: 'c1: introduce shared range boundary bug'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/RangeService.java
+    path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
     new: return value > min && value < max;
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: add unrelated change (replace src/main/java/example/RangeService.java)'
-  role: unrelated
-  operations:
-  - type: replace
-    path: src/main/java/example/RangeService.java
-    old: public int normalize(int value) { return value; }
-    new: public int normalize(int rawValue) { return rawValue; }
-- id: c3
-  branch: main
-  parents:
-  - c2
-  message: 'c3: add unrelated change (write_file docs/issue-10-note.md)'
-  role: unrelated
+  message: 'c2: add boundary test documentation without fixing code'
+  role: intermediate
   operations:
   - type: write_file
-    path: docs/issue-10-note.md
-    content: 'This note is unrelated to the boundary defect.
+    path: docs/boundary-test-note.md
+    content: 'Boundary cases should be covered by tests, but the implementation is still buggy here.
 
       '
+- id: c3
+  branch: feature
+  parents:
+  - c1
+  message: 'c3: add feature helper that depends on buggy range check'
+  role: intermediate
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n}\n"
+    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
+      \ min, max);\n  }\n}\n"
 - id: c4
   branch: main
   parents:
+  - c2
   - c3
-  message: 'c4: fix bug (replace src/main/java/example/RangeService.java)'
+  message: 'c4: merge feature and complete range boundary fix'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/RangeService.java
+    path: src/main/java/example/Range.java
     old: return value > min && value < max;
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Issue contains unrelated commits around true BIC
+  title: Shared range boundary bug fixed by merge commit
   bug_introducing_commits:
   - commit: c1
     role: direct
   bug_fixing_commits:
   - commit: c4
-    role: complete_fix
+    role: merge_fix
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/RangeService.java
+    file: src/main/java/example/Range.java
     statement: return value > min && value < max;
+    change_type: line_modification
   fixes:
   - id: X001
     commit: c4
-    file: src/main/java/example/RangeService.java
+    file: src/main/java/example/Range.java
     statement: return value >= min && value <= max;
+    fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
     - c1
-work_items:
-- id: ISSUE-10
-  title: Range validation issue with unrelated commits
-  commits:
-  - commit: c1
-    relevance: bug_introducing
-  - commit: c2
-    relevance: unrelated
-  - commit: c3
-    relevance: unrelated
-  - commit: c4
-    relevance: bug_fixing
-issues:
-- id: ISSUE-10
-  title: Range validation fails on boundaries
-  description: The issue thread also contains cleanup and documentation commits.
-  linked_bugs:
-  - B001
 scenario_design:
-  purpose: Evaluate Unrelated commits mixed in the same issue and whether SZZ identifies the expected bug-introducing commit
-    set.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: work_items, issues; operations: write_file, replace.'
+  purpose: 'Evaluate a BFC that is a merge commit, but with a different shape from SZZG-0042: the bug predates branch divergence
+    and the merge completes the fix after partial contextual changes on both branches.'
+  key_property: The BFC is merge commit c4, and both parents still contain the bug before c4 applies the final fix.
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Merge commit as BFC
+  - Bug introduced before branch divergence
+  - Both branches contain relevant intermediate context before the merge.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
+- This is案B for distinguishing SZZG-0046 from SZZG-0042.

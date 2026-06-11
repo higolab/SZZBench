@@ -1,8 +1,8 @@
-# SZZ-0022: Logical conjunction error
+# SZZ-0022: Null predicate reversed
 
 ## Purpose
 
-This scenario introduces a bug by changing `return hasName && hasEmail;` to `return hasName || hasEmail;` and later restores the correct implementation.
+This scenario introduces a bug by changing `return value != null;` to `return value == null;` and later restores the correct implementation.
 
 ## Commit structure
 
@@ -19,4 +19,4 @@ The expected BFC is `c2` and the expected BIC is `c1`.
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `logical-operator-error`
+- `boolean-negation`

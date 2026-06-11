@@ -1,126 +1,151 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0034
-  title: Backport introduces release-specific bug
-  slug: backport-introduces-bug
-  description: Evaluates a release-specific regression introduced while adapting a main-line source change onto a release
-    branch.
-  category: Branch, merge, cherry-pick, and backport scenarios
-  category_code: G
+  title: One BFC fixes multiple independent bugs
+  slug: 1-bfc-bug
+  description: Two independent bugs are introduced in different files and different functional areas. One later BFC fixes
+    both bugs in the same commit.
+  category: "Multiple BICs, multiple BFCs, and partial fixes"
+  category_code: "G3"
   factors:
-  - branch
-  - backport_of
+  - multiple_bug
+  - single_bfc
+  - independent_faults
+  - different_files
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0034-backport-introduces-bug
+  name: SZZG-0034-1-bfc-bug
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
+  history_summary: 'c0: create correct Range and DiscountCalculator implementations
 
-    c1: add main range policy source change (write_file src/main/java/example/RangePolicy.java)
+    c1: introduce a range boundary bug in Range.java
 
-    r1: backport range policy to release and introduce boundary bug (replace src/main/java/example/Range.java; write_file src/main/java/example/RangePolicy.java)
+    c2: introduce an independent discount calculation bug in DiscountCalculator.java
 
-    r2: fix bug (replace src/main/java/example/Range.java)'
+    c3: one BFC fixes both independent bugs'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
+  message: 'c0: create correct range and discount implementations'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
     content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
       \ value >= min && value <= max;\n  }\n}\n"
+  - type: write_file
+    path: src/main/java/example/DiscountCalculator.java
+    content: "package example;\n\npublic class DiscountCalculator {\n  public int applyDiscount(int price, int discount) {\n\
+      \    return price - discount;\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: add main range policy source change (write_file src/main/java/example/RangePolicy.java)'
-  role: source_change
-  operations:
-  - type: write_file
-    path: src/main/java/example/RangePolicy.java
-    content: 'package example;
-
-      public class RangePolicy { public String mode() { return "main"; } }
-
-      '
-- id: r1
-  branch: release
-  parents:
-  - c0
-  message: 'r1: backport range policy to release and introduce boundary bug (replace src/main/java/example/Range.java; write_file src/main/java/example/RangePolicy.java)'
+  message: 'c1: introduce range boundary bug'
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
     new: return value > min && value < max;
-  - type: write_file
-    path: src/main/java/example/RangePolicy.java
-    content: 'package example;
-
-      public class RangePolicy { public String mode() { return "release"; } }
-
-      '
-  backport_of: c1
-- id: r2
-  branch: release
+- id: c2
+  branch: main
   parents:
-  - r1
-  message: 'r2: fix bug (replace src/main/java/example/Range.java)'
+  - c1
+  message: 'c2: introduce discount calculation bug'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/DiscountCalculator.java
+    old: return price - discount;
+    new: return price + discount;
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'c3: fix range and discount bugs together'
   role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value > min && value < max;
     new: return value >= min && value <= max;
+  - type: replace
+    path: src/main/java/example/DiscountCalculator.java
+    old: return price + discount;
+    new: return price - discount;
 bugs:
 - id: B001
-  title: Backport introduces release-specific bug
+  title: Range boundary bug fixed in shared BFC
   bug_introducing_commits:
-  - commit: r1
+  - commit: c1
     role: direct
-    backport_of: c1
-    description: Direct release-specific BIC introduced while adapting the main-line source change c1.
   bug_fixing_commits:
-  - commit: r2
-    role: complete_fix
+  - commit: c3
+    role: shared_bfc
   faults:
   - id: F001
-    commit: r1
+    commit: c1
     file: src/main/java/example/Range.java
     statement: return value > min && value < max;
-    change_type: backport_regression
+    change_type: line_modification
   fixes:
   - id: X001
-    commit: r2
+    commit: c3
     file: src/main/java/example/Range.java
     statement: return value >= min && value <= max;
+    fix_type: line_modification
+- id: B002
+  title: Discount calculation bug fixed in shared BFC
+  bug_introducing_commits:
+  - commit: c2
+    role: direct
+  bug_fixing_commits:
+  - commit: c3
+    role: shared_bfc
+  faults:
+  - id: F002
+    commit: c2
+    file: src/main/java/example/DiscountCalculator.java
+    statement: return price + discount;
+    change_type: line_modification
+  fixes:
+  - id: X002
+    commit: c3
+    file: src/main/java/example/DiscountCalculator.java
+    statement: return price - discount;
+    fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - r1
+    - c1
+    - c2
+    notes: The shared BFC c3 fixes two independent bugs, so both BICs are expected at commit level.
+  bug_level:
+    B001:
+      required:
+      - c1
+    B002:
+      required:
+      - c2
 scenario_design:
-  purpose: Evaluate whether SZZ identifies the release-branch adaptation r1 as the BIC when a backport-like change introduces
-    a release-specific regression.
-  key_property: Commit c1 is a main-line source change, not a BFC. Commit r1 is marked backport_of c1 because it adapts that
-    source change onto release, but r1 also changes Range.contains and introduces the release-specific bug fixed by r2.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: branch, backport_of; operations: write_file, replace.'
+  purpose: Evaluate a BFC that fixes multiple independent bugs in one commit.
+  key_property: 'The two bugs are in different files and different functional areas: range checking and discount calculation.'
+  difference_from_SZZ_0166: SZZ-0154 is one composite bug with multiple BICs. SZZG-0034 is two independent bugs with a shared
+    BFC.
   evaluation_points:
-  - Whether SZZ identifies r1 as the release-specific BIC.
-  - Whether backport_of metadata does not cause SZZ to blame the main-line source change c1.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Whether SZZ can return both BICs for a shared BFC.
+  - Whether bug-level evaluation can associate c1 with B001 and c2 with B002.
+  - Whether independent faults in different files are distinguished from a composite single bug.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
+- This revision changes SZZG-0034 from a same-file composite range scenario to two independent bugs in two files.
+- c3 is a single BFC that fixes both bugs.
+- At commit level, both c1 and c2 are expected BICs.

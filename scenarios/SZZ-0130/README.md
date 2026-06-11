@@ -1,22 +1,23 @@
-# SZZ-0130: Range minimum and maximum changed separately
+# SZZ-0130: Field extraction after BIC
 
 ## Purpose
 
-This scenario requires treating two bug-introducing commits as contributing to the same later fix.
+This scenario inserts an intermediate refactoring change between the BIC and BFC.
 
 ## Commit structure
 
-- `c0`: initial implementation
-- `c1`: first contributing BIC
-- `c2`: second contributing BIC
-- `c3`: BFC
+- `c0`: Initial correct implementation
+- `c1`: Introduce bug
+- `c2`: Apply intermediate rewrite
+- `c3`: Fix bug
 
 ## Expected behavior
 
-The expected BFC is `c3`; the expected BIC set is `{c1, c2}`.
+The expected BFC is `c3` and the expected BIC is `c1`.
 
 ## Factors
 
-- `multi-bic`
+- `single-bic`
 - `single-bfc`
 - `line-modification`
+- `field-extraction-after-bic`

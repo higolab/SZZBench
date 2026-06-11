@@ -1,48 +1,109 @@
-# SZZG-0022: Explicit evaluation of direct BIC vs origin BIC
-
-## Source
-
-- Category: Copy, clone, and propagation scenarios
+# SZZG-0022: Copy propagation with direct and origin BIC evaluation variants
 
 ## Purpose
 
-Evaluate direct-BIC versus origin-BIC accounting for copied buggy code.
+This scenario represents a copy-propagated bug.
 
-## Expected history
+A bug is first introduced in the original file `A.java`. Later, the buggy logic is copied into `B.java`. The fix is applied to `B.java`.
+
+For the fix in `B.java`, there are two meaningful BIC notions:
 
 ```text
-c0: create correct original range implementation
-c1: introduce bug in original Range
-c2: copy buggy Range into CopiedRange
-c3: fix CopiedRange only
+direct BIC: c2
+origin BIC: c1
 ```
 
-## Why this needs `scenario.graph.yml`
+The direct BIC is the commit that copied the faulty logic into the fixed file. The origin BIC is the commit where the faulty logic first appeared.
 
-Direct and origin BIC roles require graph-aware bug metadata and evaluation policy.
-
-## Required graph-schema features
-
-- Factors: copy_file, expected_szz, direct_bic, origin_bic
-- Operation types: write_file, replace, copy_file
-- Expected SZZ policy distinguishes direct-only and origin-aware variants.
-
-## Evaluation points
-
-- Whether SZZ identifies c2 as the direct BIC for `CopiedRange`.
-- Whether c1 is tracked as the origin BIC without being required under direct-only scoring.
-- Whether evaluation variants can distinguish direct-only and origin-aware policies.
-
----
-
-## Draft status
-
-This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
-
-## Files
+## Commit history
 
 ```text
-SZZG-0022/
-|-- scenario.graph.yml
-`-- README.md
+c0: create original correct implementation in A.java
+c1: introduce boundary bug in original A.java
+c2: copy buggy implementation from A.java to B.java, creating the direct BIC for B.java
+c3: fix the copied bug in B.java
+```
+
+## Commit table
+
+| Commit | Branch | Parents | Role | Description |
+|---|---|---|---|---|
+| `c0` | `main` | none | initial | Creates correct `A.java`. |
+| `c1` | `main` | `c0` | origin_bug_introducing | Introduces the bug in `A.java`. |
+| `c2` | `main` | `c1` | bug_introducing | Copies the buggy logic into `B.java`. |
+| `c3` | `main` | `c2` | bug_fixing | Fixes the copied bug in `B.java`. |
+
+## Code states
+
+Correct original code in `c0`:
+
+```java
+return value >= min && value <= max;
+```
+
+Origin bug introduced in `c1`:
+
+```java
+return value > min && value < max;
+```
+
+Copied bug in `c2`:
+
+```text
+A.java contains the buggy logic.
+B.java is created with the same buggy logic.
+```
+
+Fix in `c3`:
+
+```java
+return value >= min && value <= max;
+```
+
+## Oracle
+
+Bug-fixing commit:
+
+```text
+c3
+```
+
+Direct BIC:
+
+```text
+c2
+```
+
+Origin BIC:
+
+```text
+c1
+```
+
+## Evaluation variants
+
+### direct-only
+
+Only the direct BIC is accepted.
+
+```text
+required: c2
+```
+
+### origin-aware
+
+The direct BIC is required, and the origin BIC is accepted as related context.
+
+```text
+required: c2
+acceptable_related: c1
+```
+
+### relaxed-with-credit
+
+Compatibility variant equivalent to the former `SZZG-0022` policy.
+
+```text
+required: c2
+acceptable_related: c1, credit 0.5
 ```

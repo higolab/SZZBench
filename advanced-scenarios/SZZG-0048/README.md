@@ -1,37 +1,39 @@
-# SZZG-0048: Caller/callee interaction bug
+# SZZG-0048: Cherry-pick BIC
 
 ## Source
 
-- Category: Context-aware and LLM-based SZZ scenarios
+- Category: Branch, merge, cherry-pick, and backport scenarios
 
 ## Purpose
 
-Evaluate whether context-aware SZZ can distinguish a valid callee behavior change from the caller commit that mishandled that behavior.
+Evaluate Cherry-pick BIC and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: create account directory and welcome mailer
-c1: allow the callee to return an empty guest name
-c2: introduce caller bug by assuming the callee always returns a value
-c3: fix caller fallback for empty guest names
+c0: create initial state (write_file src/main/java/example/Range.java)
+c1: introduce bug (replace src/main/java/example/Range.java)
+c2: apply intermediate change (write_file docs/feature-note.md)
+c3: merge branch
+c4: fix bug (replace src/main/java/example/Range.java)
+r1: cherry-pick change (apply_patch_from c1)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-The relevant fault depends on the relationship between caller and callee rather than on an isolated changed line.
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-- Factors: caller_callee, context, faults
-- Operation types: write_file, replace
+- Factors: branch, cherry_pick_of
+- Operation types: write_file, replace, apply_patch_from
 - Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- Whether SZZ identifies c2 as the direct BIC in the caller.
-- Whether c1 is treated as required context but not as the faulty commit.
-- Whether the analysis can connect the BFC line to the callee contract.
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
 ---
 

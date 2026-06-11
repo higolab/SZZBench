@@ -77,7 +77,7 @@ function addDaysIso(dayOffset: number): string {
 
 function initialState(): AppState {
   return {
-    scenarioId: 'SZZ-0004',
+    scenarioId: 'SZZ-0002',
     title: 'New SZZ scenario',
     slug: 'new-szz-scenario',
     description: 'Describe the scenario purpose and the SZZ difficulty factor here.',
@@ -85,7 +85,7 @@ function initialState(): AppState {
     difficulty: 'easy',
     status: 'draft',
     factors: ['single-bic', 'single-bfc', 'line-modification'],
-    repositoryName: 'SZZ-0004-new-szz-scenario',
+    repositoryName: 'SZZ-0002-new-szz-scenario',
     defaultBranch: 'main',
     language: 'java',
     buildSystem: 'none',

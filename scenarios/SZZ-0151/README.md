@@ -1,22 +1,23 @@
-# SZZ-0151: Patch context required around caller
+# SZZ-0151: Duplicate permission checks
 
 ## Purpose
 
-This scenario is intended for evaluating SZZ variants that need caller context around a patched helper method.
+This scenario contains duplicate or similar statements so that line-level oracle interpretation is intentionally harder.
 
 ## Commit structure
 
-- `c0`: initial implementation
-- `c1`: introduces the bug
-- `c2`: BFC with message: Fix caller-visible boundary failure
+- `c0`: initial implementation with duplicate-looking statement
+- `c1`: introduces the fault
+- `c2`: fixes the fault
 
 ## Expected behavior
 
-The expected BFC is `c2` and the expected BIC is `c1`.
+The expected BFC is `c2` and the expected BIC is `c1`; duplicate statements may trigger warning-level ambiguity.
 
 ## Factors
 
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `context-aware`
+- `ambiguous-blame`
+- `duplicate-statement`

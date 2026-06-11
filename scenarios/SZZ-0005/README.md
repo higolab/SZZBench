@@ -1,16 +1,16 @@
-# SZZ-0005: Constant value change
+# SZZ-0005: Java annotation syntax change
 
 ## Purpose
 
-This scenario checks whether SZZ can identify a bug introduced by changing a
-constant-like return value.
+This scenario checks a language-specific syntax change: the fault is in a Java
+annotation argument rather than in an ordinary method-body statement.
 
 ## Commit structure
 
-- `c0`: Returns the correct retry attempt count.
-- `c1`: Changes the count from `3` to `2`. This is the BIC.
-- `c2`: Restores the count to `3`. This is the BFC.
+- `c0`: Marks `userId` as required.
+- `c1`: Changes the annotation to optional. This is the BIC.
+- `c2`: Restores the required annotation. This is the BFC.
 
 ## Expected behavior
 
-SZZ should report `c1` as the bug-introducing commit for bug `B001`.
+SZZ should report `c1` as the bug-introducing commit for `B001`.

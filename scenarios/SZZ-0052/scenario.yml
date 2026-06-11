@@ -1,19 +1,20 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0052
-  title: BFC with test file addition
-  slug: bfc-with-test-addition
-  description: 'This scenario evaluates SZZ behavior when the bug-fixing commit has the shape: BFC with test file addition.'
-  category: bfc-shape
+  title: Cache enabled flag error
+  slug: cache-enabled-flag-error
+  description: This scenario introduces a bug by changing `return enabled && !expired;` to `return enabled || !expired;` and later restores the correct implementation.
+  category: "Omission and deletion bugs"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - bfc-test-addition
-  difficulty: medium
+  - boolean-negation
+  difficulty: easy
   status: active
+  category_code: "S2"
 repository:
-  name: SZZ-0052-bfc-with-test-addition
+  name: SZZ-0052-cache-enabled-flag-error
   default_branch: main
   language: java
   build_system: none
@@ -26,13 +27,13 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0052.java
+    path: src/main/java/example/Scenario0036.java
     content: |
       package example;
 
-      public class Scenario0052 {
-          public boolean valid(int value) {
-              return value >= 0;
+      public class Scenario0036 {
+          public boolean useCache(boolean enabled, boolean expired) {
+              return enabled && !expired;
           }
       }
 - id: c1
@@ -42,21 +43,21 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0052.java
+    path: src/main/java/example/Scenario0036.java
     old: |
       package example;
 
-      public class Scenario0052 {
-          public boolean valid(int value) {
-              return value >= 0;
+      public class Scenario0036 {
+          public boolean useCache(boolean enabled, boolean expired) {
+              return enabled && !expired;
           }
       }
     new: |
       package example;
 
-      public class Scenario0052 {
-          public boolean valid(int value) {
-              return value > 0;
+      public class Scenario0036 {
+          public boolean useCache(boolean enabled, boolean expired) {
+              return enabled || !expired;
           }
       }
     labels:
@@ -64,66 +65,54 @@ commits:
     - fault
 - id: c2
   message: Fix bug
-  author: Carol <carol@example.com>
+  author: Alice <alice@example.com>
   date: '2024-01-03T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0052.java
+    path: src/main/java/example/Scenario0036.java
     old: |
       package example;
 
-      public class Scenario0052 {
-          public boolean valid(int value) {
-              return value > 0;
+      public class Scenario0036 {
+          public boolean useCache(boolean enabled, boolean expired) {
+              return enabled || !expired;
           }
       }
     new: |
       package example;
 
-      public class Scenario0052 {
-          public boolean valid(int value) {
-              return value >= 0;
+      public class Scenario0036 {
+          public boolean useCache(boolean enabled, boolean expired) {
+              return enabled && !expired;
           }
       }
     labels:
     - B001
     - fix
-  - type: write_file
-    path: src/test/java/example/Scenario0052Test.java
-    content: |
-      package example;
-
-      public class Scenario0052Test {
-          public void zeroIsValid() {
-              if (!new Scenario0052().valid(0)) {
-                  throw new AssertionError("zero should be valid");
-              }
-          }
-      }
 bugs:
 - id: B001
-  title: BFC with test file addition
+  title: Cache enabled flag error
   bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0052.java
+    file: src/main/java/example/Scenario0036.java
     entity:
       type: method
-      name: valid
-      signature: boolean valid(int value)
-    statement: return value > 0;
+      name: useCache
+      signature: boolean useCache(boolean enabled, boolean expired)
+    statement: return enabled || !expired;
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0052.java
+    file: src/main/java/example/Scenario0036.java
     entity:
       type: method
-      name: valid
-      signature: boolean valid(int value)
-    statement: return value >= 0;
+      name: useCache
+      signature: boolean useCache(boolean enabled, boolean expired)
+    statement: return enabled && !expired;
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -132,7 +121,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return value > 0;
+      - return enabled || !expired;
 checks:
 - type: git_history_contains
   commits:

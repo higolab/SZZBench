@@ -1,70 +1,64 @@
-# SZZG-0032: Cherry-pick BFC
+# SZZG-0032: Multiple BFCs progressively fix the same bug
 
 ## Purpose
 
-This scenario represents a bug-fixing commit that is cherry-picked from `main` to a `release` branch.
+This scenario represents a single bug that is repaired progressively by multiple bug-fixing commits.
 
-The bug is introduced on `main` before the release branch is cut. The release branch is created from the buggy state. The bug is then fixed on `main`, and that BFC is cherry-picked onto `release`.
-
-This distinguishes `SZZG-0032` from `SZZG-0031`.
+The implementation uses two helper methods:
 
 ```text
-SZZG-0031: cherry-pick BIC
-SZZG-0032: cherry-pick BFC
+aboveMin(value, min)
+belowMax(value, max)
 ```
 
-## Commit graph
-
-```text
-main:     c0 ---- c1(BIC) ---- c2(BFC)
-                    \
-release:             r1 ---- r2(BFC, cherry-pick of c2)
-```
+The BIC `c1` breaks both helper methods. The first BFC `c2` fixes only the lower-bound helper. The second BFC `c3` fixes the upper-bound helper and completes the repair.
 
 ## Commit history
 
 ```text
-c0: create initial correct implementation on main
-c1: introduce bug on main before the release branch is cut
-r1: create release branch from the buggy state
-c2: fix bug on main
-r2: cherry-pick the main BFC onto release
+c0: create range check with separate lower-bound and upper-bound helpers
+c1: introduce the same boundary bug in both helper methods
+c2: first BFC fixes only the lower-bound helper
+c3: second BFC fixes the upper-bound helper and completes the repair
 ```
 
 ## Commit table
 
 | Commit | Branch | Parents | Role | Description |
 |---|---|---|---|---|
-| `c0` | `main` | none | initial | Creates the correct range check. |
-| `c1` | `main` | `c0` | bug_introducing | Introduces the range boundary bug. |
-| `r1` | `release` | `c1` | release_branch_point | Creates the release branch from the buggy state. |
-| `c2` | `main` | `c1` | bug_fixing | Fixes the bug on main. |
-| `r2` | `release` | `r1` | bug_fixing | Cherry-picks the main-line fix `c2` onto release. |
+| `c0` | `main` | none | initial | Creates the correct helper-method based implementation. |
+| `c1` | `main` | `c0` | bug_introducing | Changes both boundary helpers from inclusive to exclusive checks. |
+| `c2` | `main` | `c1` | bug_fixing | Partially fixes the bug by repairing the lower-bound helper. |
+| `c3` | `main` | `c2` | bug_fixing | Completes the fix by repairing the upper-bound helper. |
 
 ## Code states
 
-Correct range check in `c0`:
+Correct state in `c0`:
 
 ```java
-return value >= min && value <= max;
+return value >= min;
+return value <= max;
 ```
 
 Bug introduced in `c1`:
 
 ```java
-return value > min && value < max;
+return value > min;
+return value < max;
 ```
 
-Main-line fix in `c2`:
+Partial fix in `c2`:
 
 ```java
-return value >= min && value <= max;
+return value >= min;
+return value < max;
 ```
 
-Release fix in `r2`:
+Complete fix in `c3`:
 
-```text
-r2 cherry-picks the fixing patch from c2.
+```java
+return value >= min;
+return value <= max;
 ```
 
 ## Oracle
@@ -78,25 +72,12 @@ c1
 Bug-fixing commits:
 
 ```text
-c2: main-line fix
-r2: release-branch cherry-picked fix
+c2: partial fix for the lower-bound helper
+c3: complete fix for the upper-bound helper
 ```
 
-## Evaluation purpose
+## Difference from SZZG-0029
 
-This scenario checks whether SZZ can handle a BFC that is cherry-picked onto another branch.
+`SZZG-0029` represents a partial-fix sequence on one condition expression.
 
-When SZZ starts from the release-branch BFC `r2`, the expected BIC is still `c1`. A tool should not report `c2` as the BIC merely because `r2` is derived from `c2`.
-
-## Notes for generator / verifier
-
-`r2` uses:
-
-```yaml
-cherry_pick_of: c2
-operations:
-  - type: apply_patch_from
-    commit: c2
-```
-
-If the current verifier has limited support for `apply_patch_from`, `r2` can be rewritten as an explicit `replace` operation equivalent to the patch in `c2`.
+`SZZG-0032` represents multiple BFCs for the same bug, with two separate faulty helper methods and two separate fixing commits.

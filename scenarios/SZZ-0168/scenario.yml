@@ -1,78 +1,94 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0168
-  title: Multiple overloaded methods
-  slug: multiple-overloaded-methods
-  description: Evaluates multiple overloaded methods and checks whether SZZ identifies the expected bug-introducing commit
-    set.
-  category: Ambiguous blame and duplicate-code scenarios
-  factors: []
+  title: Cause can be inferred from test failure
+  slug: test-failure
+  description: Evaluates a case where the BFC is a small parser change and the specific cause is clarified by a failing test
+    message.
+  category: "Context, message, and non-local evidence"
+  factors:
+  - test_context
+  - context
   difficulty: hard
   status: active
+  category_code: "S7"
 repository:
-  name: SZZ-0168-multiple-overloaded-methods
+  name: SZZ-0168-test-failure
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 commits:
 - id: c0
-  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
+  message: 'c0: create ISO event date parser'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
+    path: src/main/java/example/EventDateParser.java
     content: |
       package example;
 
-      public class Range {
-        public boolean contains(int value, int min, int max) {
-          return value >= min && value <= max;
-        }
+      import java.time.LocalDate;
+      import java.time.format.DateTimeFormatter;
 
-        public boolean contains(double value, double min, double max) {
-          return value >= min && value <= max;
+      public class EventDateParser {
+        private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
+
+        public LocalDate parseWebhookDate(String value) {
+          return LocalDate.parse(value, FORMATTER);
         }
       }
 - id: c1
-  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
+  message: 'c1: parse dates with local slash format'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
-    occurrence: 1
+    path: src/main/java/example/EventDateParser.java
+    old: private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
+    new: private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("MM/dd/yyyy");
 - id: c2
-  message: 'c2: fix bug (replace src/main/java/example/Range.java)'
+  message: 'c2: add webhook ISO date regression test'
+  role: test_change
+  operations:
+  - type: write_file
+    path: src/test/java/example/EventDateParserTest.java
+    content: |
+      package example;
+
+      import java.time.LocalDate;
+      import org.junit.jupiter.api.Test;
+      import static org.junit.jupiter.api.Assertions.assertEquals;
+
+      public class EventDateParserTest {
+        @Test
+        public void parsesIsoWebhookDate() {
+          assertEquals(LocalDate.of(2024, 3, 5), new EventDateParser().parseWebhookDate("2024-03-05"));
+        }
+      }
+- id: c3
+  message: 'c3: restore ISO webhook date parsing'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/EventDateParser.java
+    old: private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("MM/dd/yyyy");
+    new: private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
 bugs:
 - id: B001
-  title: Only int overload is faulty
-  bug_fixing_commit: c2
+  title: Webhook ISO dates fail under slash-based parser pattern
+  bug_fixing_commit: c3
   bug_introducing_commits:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Range.java
-    entity:
-      type: method
-      name: contains
-      signature: boolean contains(int value, int min, int max)
-    statement: return value > min && value < max;
+    file: src/main/java/example/EventDateParser.java
+    statement: private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("MM/dd/yyyy");
+    change_type: line_modification
   fix:
-    commit: c2
-    file: src/main/java/example/Range.java
-    entity:
-      type: method
-      name: contains
-      signature: boolean contains(int value, int min, int max)
-    statement: return value >= min && value <= max;
+    commit: c3
+    file: src/main/java/example/EventDateParser.java
+    statement: private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
+    fix_type: line_modification
   expected_szz:
     commit_level:
       true_positives:
@@ -81,10 +97,11 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return value > min && value < max;
+      - private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("MM/dd/yyyy");
 checks:
 - type: git_history_contains
   commits:
   - c0
   - c1
   - c2
+  - c3

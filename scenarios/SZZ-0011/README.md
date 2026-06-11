@@ -1,16 +1,22 @@
-# SZZ-0011: Tangled bug-fixing commit
+# SZZ-0011: Equality comparison error
 
 ## Purpose
 
-This scenario checks a tangled BFC: the fixing commit contains both the real fix
-and an unrelated helper-method addition.
+This scenario introduces a bug by changing `return status == expected;` to `return status != expected;` and later restores the correct implementation.
 
 ## Commit structure
 
-- `c0`: Correct implementation.
-- `c1`: Introduces the strict boundary bug. This is the BIC.
-- `c2`: Fixes the bug and adds an unrelated helper method. This is the BFC.
+- `c0`: initial correct implementation
+- `c1`: introduces the bug
+- `c2`: fixes the bug
 
 ## Expected behavior
 
-SZZ should use the actual fix hunk and report `c1` as the bug-introducing commit.
+The expected BFC is `c2` and the expected BIC is `c1`.
+
+## Factors
+
+- `single-bic`
+- `single-bfc`
+- `line-modification`
+- `comparison-error`

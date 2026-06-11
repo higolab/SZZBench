@@ -1,17 +1,19 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0051
-  title: Binary file change
-  slug: binary-file
-  description: Evaluates binary file change and checks whether SZZ identifies the expected bug-introducing commit set.
-  category: Robustness and implementation-quality scenarios
-  category_code: K
+  title: Backport introduces release-specific bug
+  slug: backport-introduces-bug
+  description: Evaluates a release-specific regression introduced while adapting a main-line source change onto a release
+    branch.
+  category: "Branch, merge, cherry-pick, backport, and release branches"
+  category_code: "G4"
   factors:
-  - write_binary_file
+  - branch
+  - backport_of
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0051-binary-file
+  name: SZZG-0051-backport-introduces-bug
   default_branch: main
   language: java
   build_system: none
@@ -20,9 +22,11 @@ graph:
   model: commit_dag
   history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
 
-    c1: introduce bug (replace src/main/java/example/Range.java)
+    c1: add main range policy source change (write_file src/main/java/example/RangePolicy.java)
 
-    c2: fix bug (write_binary_file assets/data.bin; replace src/main/java/example/Range.java)'
+    r1: backport range policy to release and introduce boundary bug (replace src/main/java/example/Range.java; write_file src/main/java/example/RangePolicy.java)
+
+    r2: fix bug (replace src/main/java/example/Range.java)'
 commits:
 - id: c0
   branch: main
@@ -32,67 +36,90 @@ commits:
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
       \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
+  message: 'c1: add main range policy source change (write_file src/main/java/example/RangePolicy.java)'
+  role: source_change
+  operations:
+  - type: write_file
+    path: src/main/java/example/RangePolicy.java
+    content: 'package example;
+
+      public class RangePolicy { public String mode() { return "main"; } }
+
+      '
+- id: r1
+  branch: release
+  parents:
+  - c0
+  message: 'r1: backport range policy to release and introduce boundary bug (replace src/main/java/example/Range.java; write_file src/main/java/example/RangePolicy.java)'
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
     new: return value > min && value < max;
-- id: c2
-  branch: main
+  - type: write_file
+    path: src/main/java/example/RangePolicy.java
+    content: 'package example;
+
+      public class RangePolicy { public String mode() { return "release"; } }
+
+      '
+  backport_of: c1
+- id: r2
+  branch: release
   parents:
-  - c1
-  message: 'c2: fix bug (write_binary_file assets/data.bin; replace src/main/java/example/Range.java)'
+  - r1
+  message: 'r2: fix bug (replace src/main/java/example/Range.java)'
   role: bug_fixing
   operations:
-  - type: write_binary_file
-    path: assets/data.bin
-    content_base64: AAECAwQF
   - type: replace
     path: src/main/java/example/Range.java
     old: return value > min && value < max;
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Backport introduces release-specific bug
   bug_introducing_commits:
-  - commit: c1
+  - commit: r1
     role: direct
+    backport_of: c1
+    description: Direct release-specific BIC introduced while adapting the main-line source change c1.
   bug_fixing_commits:
-  - commit: c2
+  - commit: r2
     role: complete_fix
   faults:
   - id: F001
-    commit: c1
+    commit: r1
     file: src/main/java/example/Range.java
     statement: return value > min && value < max;
-    change_type: line_modification
+    change_type: backport_regression
   fixes:
   - id: X001
-    commit: c2
+    commit: r2
     file: src/main/java/example/Range.java
     statement: return value >= min && value <= max;
-    fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - c1
+    - r1
 scenario_design:
-  purpose: Evaluate Binary file change and whether SZZ identifies the expected bug-introducing commit set.
+  purpose: Evaluate whether SZZ identifies the release-branch adaptation r1 as the BIC when a backport-like change introduces
+    a release-specific regression.
+  key_property: Commit c1 is a main-line source change, not a BFC. Commit r1 is marked backport_of c1 because it adapts that
+    source change onto release, but r1 also changes Range.contains and introduces the release-specific bug fixed by r2.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: write_binary_file; operations: write_file, replace, write_binary_file.'
+  required_extensions_from_source: 'This scenario uses factors: branch, backport_of; operations: write_file, replace.'
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether SZZ identifies r1 as the release-specific BIC.
+  - Whether backport_of metadata does not cause SZZ to blame the main-line source change c1.
   - Whether the expected_szz evaluation policy is applied correctly.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.

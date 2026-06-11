@@ -1,148 +1,132 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0038
-  title: BIC occurs during feature work
-  slug: feature-bic
-  description: A feature work item consists of multiple commits. The feature starts correctly, the BIC occurs in the middle
-    of the work item, and a later commit in the same work item expands code that depends on the buggy method.
-  category: Work-item and commit-series scenarios
-  category_code: H
+  title: One directly blamed BIC and one context-only BIC
+  slug: multi-bic-context-only
+  description: Evaluates one directly blamed bic and one context-only bic and checks whether SZZ identifies the expected bug-introducing
+    commit set.
+  category: "Multiple BICs, multiple BFCs, and partial fixes"
+  category_code: "G3"
   factors:
-  - work_items
-  - feature_work
-  - bic_inside_work_item
-  - commit_series
+  - multiple_bic
+  - context_dependent
+  - partial_observability
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0038-feature-bic
+  name: SZZG-0038-multi-bic-context-only
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create base range filter
+  history_summary: 'c0: c0: create discount service
 
-    c1: start feature work by adding feature metadata without introducing a bug
+    c1: c1: introduce wrong threshold
 
-    c2: implement feature logic and introduce boundary bug during the work item
+    c2: c2: introduce wrong base discount
 
-    c3: continue the same feature work by adding a caller that uses the buggy logic
-
-    c4: fix the boundary bug after the feature work'
+    c3: c3: fix customer discount behavior by restoring threshold only'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create base range filter'
+  message: 'c0: create discount service'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/RangeFilter.java
-    content: "package example;\n\npublic class RangeFilter {\n  public boolean contains(int value, int min, int max) {\n \
-      \   return value >= min && value <= max;\n  }\n}\n"
+    path: src/main/java/example/DiscountService.java
+    content: "package example;\npublic class DiscountService {\n  private int baseDiscount() {\n    return 10;\n  }\n  public\
+      \ int discountFor(int purchases) {\n    if (purchases > 5) {\n      return baseDiscount();\n    }\n    return 0;\n \
+      \ }\n\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'WI-001 c1: start range filtering feature'
-  role: feature_work
-  work_item: WI-001
+  message: 'c1: introduce wrong threshold'
+  role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/RangeFilter.java
-    old: "package example;\n\npublic class RangeFilter {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
-    new: "package example;\n\npublic class RangeFilter {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n\n  public String featureName() {\n    return \"range-filter\";\n  }\n}\n"
+    path: src/main/java/example/DiscountService.java
+    old: if (purchases > 5) {
+    new: if (purchases >= 5) {
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'WI-001 c2: implement range feature with boundary bug'
+  message: 'c2: introduce wrong base discount'
   role: bug_introducing
-  work_item: WI-001
   operations:
   - type: replace
-    path: src/main/java/example/RangeFilter.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
+    path: src/main/java/example/DiscountService.java
+    old: return 10;
+    new: return 15;
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'WI-001 c3: add caller for range filtering feature'
-  role: feature_work
-  work_item: WI-001
-  operations:
-  - type: replace
-    path: src/main/java/example/RangeFilter.java
-    old: "package example;\n\npublic class RangeFilter {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value > min && value < max;\n  }\n\n  public String featureName() {\n    return \"range-filter\";\n  }\n}\n"
-    new: "package example;\n\npublic class RangeFilter {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value > min && value < max;\n  }\n\n  public String featureName() {\n    return \"range-filter\";\n  }\n\n  public\
-      \ boolean acceptsUserInput(int value) {\n    return contains(value, 0, 100);\n  }\n}\n"
-- id: c4
-  branch: main
-  parents:
-  - c3
-  message: 'c4: fix boundary bug after feature work'
+  message: 'c3: fix customer discount behavior by restoring threshold only'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/RangeFilter.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/DiscountService.java
+    old: if (purchases >= 5) {
+    new: if (purchases > 5) {
+  - type: replace
+    path: src/main/java/example/DiscountService.java
+    old: return baseDiscount();
+    new: return 10;
 bugs:
 - id: B001
-  title: Boundary bug introduced during feature work
+  title: Synthetic graph scenario bug
   bug_introducing_commits:
+  - commit: c1
+    role: direct
   - commit: c2
     role: direct
   bug_fixing_commits:
-  - commit: c4
+  - commit: c3
     role: complete_fix
   faults:
   - id: F001
+    commit: c1
+    file: src/main/java/example/DiscountService.java
+    statement: if (purchases >= 5) {
+    change_type: line_modification
+  - id: F002
     commit: c2
-    file: src/main/java/example/RangeFilter.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/DiscountService.java
+    statement: return 15;
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c4
-    file: src/main/java/example/RangeFilter.java
-    statement: return value >= min && value <= max;
+    commit: c3
+    file: src/main/java/example/DiscountService.java
+    statement: if (purchases > 5) {
     fix_type: line_modification
-  work_item: WI-001
+  - id: X002
+    commit: c3
+    file: src/main/java/example/DiscountService.java
+    statement: return 10;
+    fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - c2
-    related_but_not_correct:
     - c1
-    - c3
-    notes: The BIC occurs in the middle of WI-001. c1 starts the feature and c3 continues it, but neither is the BIC.
+    - c2
 scenario_design:
-  purpose: Evaluate whether SZZ identifies the specific BIC inside a multi-commit feature work item rather than blaming the
-    whole work item or a neighboring commit.
-  key_property: c1, c2, and c3 belong to the same feature work item, but only c2 introduces the bug.
+  purpose: Evaluate one directly blamed bic and one context-only bic and whether SZZ identifies the expected bug-introducing
+    commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: multiple_bic, context_dependent, partial_observability; operations:
+    replace, write_file.'
   evaluation_points:
-  - Whether SZZ identifies c2 as the BIC.
-  - Whether neighboring work-item commits c1 and c3 are avoided as false positives.
-  - Whether work-item metadata can be used without collapsing all commits in the work item into one cause.
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- This revision makes the work-item structure explicit through the top-level work_items section and per-commit work_item fields.
-- c1 and c3 are related feature-work commits but are not the BIC.
-- The expected BIC is c2.
-work_items:
-- id: WI-001
-  title: Add range filtering feature
-  commits:
-  - c1
-  - c2
-  - c3
-  bug_introducing_commit: c2
-  description: The BIC occurs in the middle of a multi-commit feature work item.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

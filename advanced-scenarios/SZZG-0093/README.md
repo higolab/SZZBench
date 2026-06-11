@@ -1,52 +1,88 @@
-# SZZG-0093: Multiple BICs with partial revert reintroducing one fault
+# SZZG-0093: BIC occurs during feature work
 
 ## Purpose
 
-Evaluate multiple original BICs when a later partial revert reintroduces only one of them.
+This scenario represents a bug-introducing commit that occurs in the middle of a multi-commit feature work item.
+
+The feature work item `WI-001` consists of three commits:
+
+```text
+c1: start feature work
+c2: introduce bug during feature implementation
+c3: continue feature work using the buggy method
+```
+
+Only `c2` is the BIC. Commits `c1` and `c3` are related to the same work item, but they are not the bug-introducing commit.
 
 ## Commit history
 
 ```text
-c0: create initial correct implementation
-c1: introduce lower-bound bug
-c2: introduce upper-bound bug
-c3: fix both boundary bugs
-c4: partially revert fix for upper boundary only
-c5: fix reintroduced upper-bound bug
+c0: create base range filter
+c1: start feature work by adding feature metadata without introducing a bug
+c2: implement feature logic and introduce boundary bug during the work item
+c3: continue the same feature work by adding a caller that uses the buggy logic
+c4: fix the boundary bug after the feature work
 ```
 
 ## Commit table
 
-| Commit | Branch | Parents | Role | Description |
-|---|---|---|---|---|
-| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `c1` | `main` | c0 | `origin_bug_introducing` | c1: introduce lower-bound bug |
-| `c2` | `main` | c1 | `origin_bug_introducing` | c2: introduce upper-bound bug |
-| `c3` | `main` | c2 | `prior_fix` | c3: fix both boundary bugs |
-| `c4` | `main` | c3 | `bug_introducing` | c4: partially revert fix for upper boundary only |
-| `c5` | `main` | c4 | `bug_fixing` | c5: fix reintroduced upper-bound bug |
+| Commit | Branch | Parents | Role | Work item | Description |
+|---|---|---|---|---|---|
+| `c0` | `main` | none | initial | none | Creates the base range filter. |
+| `c1` | `main` | `c0` | feature_work | `WI-001` | Starts the range filtering feature without introducing a bug. |
+| `c2` | `main` | `c1` | bug_introducing | `WI-001` | Introduces the boundary bug during feature implementation. |
+| `c3` | `main` | `c2` | feature_work | `WI-001` | Adds a caller that uses the buggy method. |
+| `c4` | `main` | `c3` | bug_fixing | none | Fixes the boundary bug. |
 
-## Expected SZZ result
+## Code states
 
-```text
-Expected BIC(s): c4
-Related but not correct: c1, c2, c3
+Correct range check in `c0` and `c1`:
+
+```java
+return value >= min && value <= max;
 ```
 
-## Key property
+Bug introduced in `c2`:
 
-The direct BIC for the final fix is the partial revert, not the older original BIC set.
+```java
+return value > min && value < max;
+```
 
-## Difference from existing revert scenarios
+Feature work continues in `c3` by adding:
 
-This scenario isolates a double-revert or revert-derived complication beyond the existing partial revert and reintroduction scenarios.
+```java
+public boolean acceptsUserInput(int value) {
+  return contains(value, 0, 100);
+}
+```
 
-## Evaluation points
+Fix in `c4`:
 
-- Whether SZZ reports c4.
-- Whether SZZ avoids reporting both old BICs as exact direct answers.
+```java
+return value >= min && value <= max;
+```
 
-## Notes
+## Oracle
 
-- This scenario models revert-related development history for SZZ evaluation.
-- The direct BIC is the commit that reintroduces the bug in the history observed from the BFC.
+Expected BIC:
+
+```text
+c2
+```
+
+Related but not correct:
+
+```text
+c1
+c3
+```
+
+Bug-fixing commit:
+
+```text
+c4
+```
+
+## Evaluation purpose
+
+This scenario checks whether SZZ identifies the specific BIC inside a feature work item. A work-item-aware method should not simply blame all commits in the work item, and a line-based method may be affected by the later caller added in `c3`.

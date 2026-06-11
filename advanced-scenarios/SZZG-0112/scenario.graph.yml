@@ -1,67 +1,72 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0112
-  title: Misleading commit message with code-only BIC evidence
-  slug: misleading-commit-message
-  description: Evaluates misleading commit message with code-only bic evidence and checks whether SZZ identifies the expected
-    bug-introducing commit set.
-  category: Context-dependent scenarios
-  category_code: A
+  title: Non-UTF-8 file
+  slug: non-utf-8-file
+  description: Evaluates a bug introduced and fixed in a non-UTF-8 encoded configuration file.
+  category: "Non-source, binary, generated, and scalability edge cases"
+  category_code: "G8"
   factors:
-  - commit_message
-  - misleading_metadata
-  - code_evidence
+  - encoding
+  - non_utf8_file
+  - write_binary_file
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0112-misleading-commit-message
+  name: SZZG-0112-non-utf-8-file
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: c0: create payment guard
+  history_summary: 'c0: create CP1252-encoded boundary configuration
 
-    c1: c1: documentation-only cleanup
+    c1: introduce boundary bug in the non-UTF-8 config
 
-    c2: c2: fix zero-value payment acceptance'
+    c2: fix the non-UTF-8 config'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create payment guard'
+  message: 'c0: create CP1252-encoded boundary configuration'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/PaymentGuard.java
-    content: "package example;\npublic class PaymentGuard {\n  public boolean allow(int cents) {\n    return cents > 0;\n\
-      \  }\n\n}\n"
+    path: src/main/java/example/ConfigBackedRange.java
+    content: |
+      package example;
+      public class ConfigBackedRange {
+        public boolean contains(int value, int min, int max) {
+          return value >= min && value <= max;
+        }
+      }
+  - type: write_binary_file
+    path: config/range-limits.properties
+    content_base64: bWluPTAKbWF4PTEwCmxhYmVsPWNhZukK
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: documentation-only cleanup'
+  message: 'c1: introduce boundary bug in CP1252 config'
   role: bug_introducing
   operations:
-  - type: replace
-    path: src/main/java/example/PaymentGuard.java
-    old: return cents > 0;
-    new: return cents >= 0;
+  - type: write_binary_file
+    path: config/range-limits.properties
+    content_base64: bWluPTEKbWF4PTkKbGFiZWw9Y2Fm6Qo=
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: fix zero-value payment acceptance'
+  message: 'c2: fix CP1252 boundary config'
   role: bug_fixing
   operations:
-  - type: replace
-    path: src/main/java/example/PaymentGuard.java
-    old: return cents >= 0;
-    new: return cents > 0;
+  - type: write_binary_file
+    path: config/range-limits.properties
+    content_base64: bWluPTAKbWF4PTEwCmxhYmVsPWNhZukK
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Boundary values are narrowed in a non-UTF-8 configuration file
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -71,31 +76,35 @@ bugs:
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/PaymentGuard.java
-    statement: return cents >= 0;
-    change_type: line_modification
+    file: config/range-limits.properties
+    change_type: non_utf8_binary_update
+    encoding: windows-1252
+    description: The CP1252 file changes min=0/max=10 to min=1/max=9, excluding the boundary values.
   fixes:
   - id: X001
     commit: c2
-    file: src/main/java/example/PaymentGuard.java
-    statement: return cents > 0;
-    fix_type: line_modification
+    file: config/range-limits.properties
+    fix_type: non_utf8_binary_update
+    encoding: windows-1252
+    description: The CP1252 file restores min=0/max=10.
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
     - c1
 scenario_design:
-  purpose: Evaluate misleading commit message with code-only bic evidence and whether SZZ identifies the expected bug-introducing
-    commit set.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: commit_message, misleading_metadata, code_evidence; operations:
-    replace, write_file.'
+  purpose: Evaluate whether SZZBench tooling handles non-UTF-8 files without assuming all changed files are UTF-8 text.
+  current_schema_limitation: The non-UTF-8 file is modeled with write_binary_file so that invalid UTF-8 bytes can be represented safely.
+  required_extensions_from_source: 'This scenario uses factors: encoding, non_utf8_file, write_binary_file; operations: write_file, write_binary_file.'
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Whether SZZ identifies c1 as the BIC for the encoded configuration change.
+  - Whether non-UTF-8 file content does not break parsing, generation, or verification.
+  - Whether the expected_szz exact-set policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
+- The properties file contains the byte 0xE9 in the word cafe encoded as CP1252, which is not valid standalone UTF-8.
+- Fault and fix descriptions avoid relying on text-line lookup inside the binary file.
+encoding:
+  files:
+  - path: config/range-limits.properties
+    encoding: windows-1252
+    contains_invalid_utf8: true

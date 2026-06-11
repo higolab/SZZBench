@@ -1,84 +1,54 @@
-# SZZG-0025: Old BIC and re-BIC are both plausible
+# SZZG-0025: Clone origin versus copied direct BIC
+
+## Source
+
+- Category: Clone propagation scenarios
 
 ## Purpose
 
-This scenario represents a bug that is introduced, fixed, reintroduced by a partial revert, and fixed again.
+Evaluate clone origin versus copied direct bic and whether SZZ identifies the expected bug-introducing commit set.
 
-The direct BIC for the final fix is the reintroducing commit `c3`. However, the original old BIC `c1` is also a plausible origin-related answer under an origin-aware evaluation policy.
-
-## Commit history
+## Expected history
 
 ```text
-c0: create initial correct implementation
-c1: introduce original range boundary bug
-c2: fix original bug and perform a small refactoring
-c3: partially revert c2 and reintroduce the boundary bug while keeping the refactoring
-c4: fix the reintroduced bug
+c0: c0: create original sanitizer
+c1: c1: introduce bug in original sanitizer
+c2: c2: copy sanitizer into admin module
+c3: c3: fix copied sanitizer only
 ```
 
-## Code states
+## Why this needs `scenario.graph.yml`
 
-Correct state in `c0`:
+This history requires graph-aware scenario semantics that are difficult to express with the normal `scenario.yml` schema.
 
-```java
-return value >= min && value <= max;
-return "main";
-```
+## Required graph-schema features
 
-Original bug in `c1`:
+- Factors: clone, copy_file, origin_bic_policy
+- Operation types: copy_file, replace, write_file
+- Expected SZZ policy is defined in `expected_szz`.
 
-```java
-return value > min && value < max;
-return "main";
-```
-
-Fix and unrelated refactoring in `c2`:
-
-```java
-return value >= min && value <= max;
-return "range-service";
-```
-
-Partial revert / reintroduction in `c3`:
-
-```java
-return value > min && value < max;
-return "range-service";
-```
-
-Final fix in `c4`:
-
-```java
-return value >= min && value <= max;
-return "range-service";
-```
-
-## Oracle
-
-Default expected BIC:
-
-```text
-c3
-```
-
-Related old origin BIC:
+## Expected BICs
 
 ```text
 c1
 ```
 
-## Evaluation variants
+## Evaluation points
 
-### reintroduction-direct
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
-Only `c3` is considered correct for the final fix.
+---
 
-### origin-aware
+## Draft status
 
-`c3` is required, while `c1` is accepted as an origin-related BIC with partial credit.
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
 
-## Difference from SZZG-0024
+## Files
 
-`SZZG-0024` should focus on the direct reintroduction case.
-
-`SZZG-0025` explicitly models the evaluation question where both the reintroducing BIC and the old origin BIC may be considered plausible depending on evaluation policy.
+```text
+SZZG-0025/
+|-- scenario.graph.yml
+`-- README.md
+```

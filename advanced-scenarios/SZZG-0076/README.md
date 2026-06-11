@@ -1,17 +1,18 @@
-# SZZG-0076: Bug-fixing commit is rebased onto main
+# SZZG-0076: Multiple BICs replayed by rebase
 
 ## Purpose
 
-Evaluate a BFC that is itself a rebased feature fix.
+Evaluate multiple-BIC handling when BICs are introduced by rebase replay.
 
 ## Commit history
 
 ```text
 c0: c0: create initial correct implementation
-f1: f1: introduce bug on feature
-f2: f2: fix bug on feature
-r1: r1: rebase feature bug commit onto main
-r2: r2: rebase feature fix commit onto main
+f1: f1: introduce lower-bound bug
+f2: f2: introduce upper-bound bug
+r1: r1: rebase lower-bound BIC
+r2: r2: rebase upper-bound BIC
+c3: c3: fix both rebased BICs
 ```
 
 ## Commit table
@@ -19,30 +20,30 @@ r2: r2: rebase feature fix commit onto main
 | Commit | Branch | Parents | Role | Description |
 |---|---|---|---|---|
 | `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `f1` | `feature` | c0 | `origin_bug_introducing` | f1: introduce bug on feature |
-| `f2` | `feature` | f1 | `origin_bug_fixing` | f2: fix bug on feature |
-| `r1` | `main` | c0 | `bug_introducing` | r1: rebase feature bug commit onto main |
-| `r2` | `main` | r1 | `bug_fixing` | r2: rebase feature fix commit onto main |
+| `f1` | `feature` | c0 | `origin_bug_introducing` | f1: introduce lower-bound bug |
+| `f2` | `feature` | f1 | `origin_bug_introducing` | f2: introduce upper-bound bug |
+| `r1` | `main` | c0 | `bug_introducing` | r1: rebase lower-bound BIC |
+| `r2` | `main` | r1 | `bug_introducing` | r2: rebase upper-bound BIC |
+| `c3` | `main` | r2 | `bug_fixing` | c3: fix both rebased BICs |
 
 ## Expected SZZ result
 
 ```text
-Expected BIC(s): r1
+Expected BIC(s): r1, r2
 Related but not correct: f1, f2
 ```
 
 ## Key property
 
-r2 is the main-line BFC.
+Origin BIC set maps to direct BIC set.
 
-## Difference from SZZG-0061
+## Difference from SZZG-0063
 
-SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
+SZZG-0063 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
 
 ## Evaluation points
 
-- Start from r2.
-- Return r1.
+- Return r1 and r2.
 
 ## Notes
 

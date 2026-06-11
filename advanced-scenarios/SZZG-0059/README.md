@@ -1,109 +1,55 @@
-# SZZG-0059: Copy propagation with direct and origin BIC evaluation variants
+# SZZG-0059: Merge commit itself is the BIC
+
+## Source
+
+- Category: Branch and merge scenarios
 
 ## Purpose
 
-This scenario represents a copy-propagated bug.
+Evaluate merge commit itself is the bic and whether SZZ identifies the expected bug-introducing commit set.
 
-A bug is first introduced in the original file `A.java`. Later, the buggy logic is copied into `B.java`. The fix is applied to `B.java`.
-
-For the fix in `B.java`, there are two meaningful BIC notions:
+## Expected history
 
 ```text
-direct BIC: c2
-origin BIC: c1
+c0: c0: create feature flag
+c1: c1: main branch hardens feature flag
+c2: c2: feature branch keeps simple flag
+c3: c3: merge feature branch and accidentally drop safety check
+c4: c4: fix dropped safety check
 ```
 
-The direct BIC is the commit that copied the faulty logic into the fixed file. The origin BIC is the commit where the faulty logic first appeared.
+## Why this needs `scenario.graph.yml`
 
-## Commit history
+This history requires graph-aware scenario semantics that are difficult to express with the normal `scenario.yml` schema.
 
-```text
-c0: create original correct implementation in A.java
-c1: introduce boundary bug in original A.java
-c2: copy buggy implementation from A.java to B.java, creating the direct BIC for B.java
-c3: fix the copied bug in B.java
-```
+## Required graph-schema features
 
-## Commit table
+- Factors: merge_commit, bug_introducing_merge, non_linear_history
+- Operation types: replace, write_file
+- Expected SZZ policy is defined in `expected_szz`.
 
-| Commit | Branch | Parents | Role | Description |
-|---|---|---|---|---|
-| `c0` | `main` | none | initial | Creates correct `A.java`. |
-| `c1` | `main` | `c0` | origin_bug_introducing | Introduces the bug in `A.java`. |
-| `c2` | `main` | `c1` | bug_introducing | Copies the buggy logic into `B.java`. |
-| `c3` | `main` | `c2` | bug_fixing | Fixes the copied bug in `B.java`. |
-
-## Code states
-
-Correct original code in `c0`:
-
-```java
-return value >= min && value <= max;
-```
-
-Origin bug introduced in `c1`:
-
-```java
-return value > min && value < max;
-```
-
-Copied bug in `c2`:
-
-```text
-A.java contains the buggy logic.
-B.java is created with the same buggy logic.
-```
-
-Fix in `c3`:
-
-```java
-return value >= min && value <= max;
-```
-
-## Oracle
-
-Bug-fixing commit:
+## Expected BICs
 
 ```text
 c3
 ```
 
-Direct BIC:
+## Evaluation points
+
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
+
+---
+
+## Draft status
+
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
+
+## Files
 
 ```text
-c2
-```
-
-Origin BIC:
-
-```text
-c1
-```
-
-## Evaluation variants
-
-### direct-only
-
-Only the direct BIC is accepted.
-
-```text
-required: c2
-```
-
-### origin-aware
-
-The direct BIC is required, and the origin BIC is accepted as related context.
-
-```text
-required: c2
-acceptable_related: c1
-```
-
-### relaxed-with-credit
-
-Compatibility variant equivalent to the former `SZZG-0059` policy.
-
-```text
-required: c2
-acceptable_related: c1, credit 0.5
+SZZG-0059/
+|-- scenario.graph.yml
+`-- README.md
 ```

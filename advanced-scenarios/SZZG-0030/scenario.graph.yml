@@ -1,38 +1,34 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0030
-  title: Squash merge
-  slug: squash-merge
-  description: A feature branch introduces a bug and adds feature-specific code. The feature branch is then squash-merged
-    into main as a single-parent commit. The squash commit is the direct BIC on main, while the original feature-branch BIC
-    is kept as origin metadata.
-  category: Branch, merge, cherry-pick, and backport scenarios
-  category_code: G
+  title: Attempted fix followed by follow-up fix
+  slug: follow-up-fix-bfc
+  description: A bug is introduced by excluding boundary values. A later attempted fix changes the condition but uses the
+    wrong boolean operator, so the code is still incorrect. A follow-up fix then applies the correct condition.
+  category: "Multiple BICs, multiple BFCs, and partial fixes"
+  category_code: "G3"
   factors:
-  - branch
-  - squash_merge
-  - squashed_bic
-  - direct_bic
-  - origin_bic
+  - bug_fixing_commits
+  - attempted_fix
+  - follow_up_fix
+  - incorrect_fix
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0030-squash-merge
+  name: SZZG-0030-follow-up-fix-bfc
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial correct implementation on main
+  history_summary: 'c0: create initial correct implementation
 
-    c1: feature branch introduces range boundary bug
+    c1: introduce boundary exclusion bug
 
-    c2: feature branch adds code that uses the buggy range check
+    c2: attempt to fix the bug but introduce wrong boolean logic
 
-    c3: squash-merge feature branch into main as a single-parent commit
-
-    c4: fix the squashed range boundary bug on main'
+    c3: apply follow-up fix with the correct boundary condition'
 commits:
 - id: c0
   branch: main
@@ -45,110 +41,84 @@ commits:
     content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
       \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
-  branch: feature
+  branch: main
   parents:
   - c0
-  message: 'c1: introduce range boundary bug on feature'
-  role: origin_bug_introducing
+  message: 'c1: introduce boundary exclusion bug'
+  role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
     new: return value > min && value < max;
 - id: c2
-  branch: feature
-  parents:
-  - c1
-  message: 'c2: add feature helper using buggy range check'
-  role: intermediate
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n}\n"
-    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
-      \ min, max);\n  }\n}\n"
-- id: c3
   branch: main
   parents:
-  - c0
-  message: 'c3: squash merge feature branch into main'
-  role: bug_introducing
-  squashes:
   - c1
-  - c2
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ >= min && value <= max;\n  }\n}\n"
-    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
-      \ min, max);\n  }\n}\n"
-- id: c4
-  branch: main
-  parents:
-  - c3
-  message: 'c4: fix squashed range boundary bug'
-  role: bug_fixing
+  message: 'c2: attempt fix but use wrong boolean operator'
+  role: attempted_fix
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value > min && value < max;
+    new: return value >= min || value <= max;
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'c3: follow-up fix with correct boolean operator'
+  role: follow_up_fix
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min || value <= max;
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Range boundary bug introduced through squash merge
+  title: Attempted boundary fix needs follow-up
   bug_introducing_commits:
-  - commit: c3
-    role: direct_squash_bic
-    description: Direct BIC on main because the squash commit introduces the faulty code into main.
   - commit: c1
-    role: origin_bic
-    description: Origin BIC on the feature branch before squash merge.
+    role: direct
   bug_fixing_commits:
-  - commit: c4
-    role: complete_fix
+  - commit: c2
+    role: attempted_fix
+  - commit: c3
+    role: follow_up_fix
   faults:
   - id: F001
-    commit: c3
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
-    change_type: squash_propagated_line_modification
-  origin_faults:
-  - id: OF001
     commit: c1
     file: src/main/java/example/Range.java
     statement: return value > min && value < max;
-    change_type: origin_line_modification
+    change_type: line_modification
   fixes:
   - id: X001
-    commit: c4
+    commit: c2
+    file: src/main/java/example/Range.java
+    statement: return value >= min || value <= max;
+    fix_type: attempted_fix_wrong_boolean_operator
+  - id: X002
+    commit: c3
     file: src/main/java/example/Range.java
     statement: return value >= min && value <= max;
-    fix_type: line_modification
+    fix_type: follow_up_fix
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - c3
-    related_but_not_correct:
     - c1
-    notes: The direct BIC on main is c3 because the feature branch is squash-merged as a single-parent commit. c1 is the origin
-      BIC on the feature branch, but it is not an ancestor of the main-line BFC through a normal merge.
+    notes: c2 is an attempted fix, not the original BIC. It may be considered a misleading candidate, but the expected BIC
+      remains c1.
 scenario_design:
-  purpose: Evaluate how SZZ handles a squash merge where the main-line direct BIC is the squash commit, while the faulty logic
-    originated earlier on a feature branch.
-  key_property: Unlike a normal merge, c3 has one parent only. The feature commits c1 and c2 are recorded in `squashes` metadata,
-    but they are not parents of c3.
-  difference_from_SZZG_0030: SZZG-0026 uses a normal merge where the feature branch is merged into main with a two-parent
-    merge commit. SZZG-0030 uses a single-parent squash commit on main.
+  purpose: Evaluate an attempted fix followed by a follow-up fix. Unlike a partial fix, the attempted fix in c2 uses an incorrect
+    boolean operator and is therefore a failed repair attempt rather than a correct partial repair.
+  key_property: c2 changes the code in a fix-like direction but leaves the behavior wrong by using || instead of &&.
+  difference_from_SZZG_0003: SZZG-0029 represents a partial fix where one side of the boundary condition is correctly repaired.
+    This scenario represents an attempted fix that introduces wrong boolean logic and requires a follow-up fix.
   evaluation_points:
-  - Whether SZZ reports the direct main-line BIC c3.
-  - Whether the origin BIC c1 is distinguished from the direct squash BIC.
-  - Whether the benchmark can represent squash merge history without making the squash commit a two-parent merge.
+  - Whether SZZ identifies c1 as the original BIC rather than c2.
+  - Whether a failed attempted fix is distinguished from a true partial fix.
+  - Whether the follow-up fix c3 is treated as the effective bug-fixing commit.
 notes:
-- This revision makes the squash merge explicit by giving c3 a single parent c0.
-- The feature branch commits c1 and c2 are retained as source commits and referenced by c3.squashes.
-- The expected direct BIC is c3; c1 is related origin metadata but not the direct BIC for the main-line fix.
+- This revision changes c2 from the same partial-fix state as SZZG-0029 to an attempted fix with incorrect boolean logic.
+- The attempted fix `value >= min || value <= max` is intentionally wrong because it accepts almost all integer values.
+- The expected BIC remains c1.

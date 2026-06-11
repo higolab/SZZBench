@@ -1,39 +1,54 @@
-# SZZG-0026: BIC on feature branch, BFC on main
+# SZZG-0026: Copy followed by bug introduction only in the copied code
+
+## Source
+
+- Category: Clone propagation scenarios
 
 ## Purpose
 
-A feature branch introduces a bug, extends feature code that depends on the buggy method, is merged into main, and is then fixed by a normal main-branch commit.
+Evaluate copy followed by bug introduction only in the copied code and whether SZZ identifies the expected bug-introducing commit set.
 
-## Commit history
-
-```text
-c0: create initial correct implementation on main
-c1: introduce bug on feature branch
-c2: extend feature branch code that uses the buggy method
-c3: merge feature branch into main
-c4: fix bug on main after merge
-```
-
-## Commit table
-
-| Commit | Branch | Parents | Role | Description |
-|---|---|---|---|---|
-| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `c1` | `feature` | c0 | `bug_introducing` | c1: introduce range boundary bug on feature |
-| `c2` | `feature` | c1 | `intermediate` | c2: extend feature branch code using range check |
-| `c3` | `main` | c0, c2 | `merge` | c3: merge feature branch into main |
-| `c4` | `main` | c3 | `bug_fixing` | c4: fix range boundary bug on main |
-
-## Expected SZZ result
+## Expected history
 
 ```text
-Expected BIC: c1
+c0: c0: create original formatter
+c1: c1: copy formatter to report formatter
+c2: c2: introduce copied-code null handling bug
+c3: c3: fix copied formatter null handling
 ```
 
-## Scenario purpose
+## Why this needs `scenario.graph.yml`
 
-Evaluate whether SZZ can identify a BIC located on a feature branch when the BFC is a normal commit on main after the feature branch has been merged.
+This history requires graph-aware scenario semantics that are difficult to express with the normal `scenario.yml` schema.
 
-## Notes
+## Required graph-schema features
 
-- This scenario is intentionally distinct from SZZG-0029 and SZZG-0005 because the BFC is not a merge commit.
+- Factors: copy_file, clone_divergence, direct_bic_in_copy
+- Operation types: copy_file, replace, write_file
+- Expected SZZ policy is defined in `expected_szz`.
+
+## Expected BICs
+
+```text
+c2
+```
+
+## Evaluation points
+
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
+
+---
+
+## Draft status
+
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
+
+## Files
+
+```text
+SZZG-0026/
+|-- scenario.graph.yml
+`-- README.md
+```

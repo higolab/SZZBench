@@ -1,47 +1,50 @@
-# SZZG-0056: Huge file
-
-## Source
-
-- Category: Robustness and implementation-quality scenarios
+# SZZG-0056: Main fix rebased onto release branch
 
 ## Purpose
 
-Evaluate Huge file and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate a release BFC that is a rebased copy of a main fix.
 
-## Expected history
+## Commit history
 
 ```text
-c0: create initial state (write_file src/main/java/example/Range.java)
-c1: introduce bug (replace src/main/java/example/Range.java)
-c2: fix bug (write_generated_text_file src/main/java/example/LargeRange.java; replace src/main/java/example/Range.java)
+c0: c0: create initial correct implementation
+c1: c1: introduce range bug on main
+rel1: rel1: cut release branch with bug
+c2: c2: fix bug on main
+r2: r2: rebase main fix onto release
 ```
 
-## Why this needs `scenario.graph.yml`
+## Commit table
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
+| Commit | Branch | Parents | Role | Description |
+|---|---|---|---|---|
+| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
+| `c1` | `main` | c0 | `bug_introducing` | c1: introduce range bug on main |
+| `rel1` | `release` | c1 | `release_branch_point` | rel1: cut release branch with bug |
+| `c2` | `main` | c1 | `bug_fixing` | c2: fix bug on main |
+| `r2` | `release` | rel1 | `bug_fixing` | r2: rebase main fix onto release |
 
-## Required graph-schema features
+## Expected SZZ result
 
-- Factors: write_generated_text_file
-- Operation types: write_file, replace, write_generated_text_file
-- Expected SZZ policy is defined in expected_szz.
+```text
+Expected BIC(s): c1
+Related but not correct: c2
+```
+
+## Key property
+
+r2 is the release BFC replaying c2.
+
+## Difference from SZZG-0063
+
+SZZG-0063 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
 
 ## Evaluation points
 
-- Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
-- Whether the expected_szz evaluation policy is applied correctly.
+- Start from r2.
+- Return c1.
 
----
+## Notes
 
-## Draft status
-
-This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
-
-## Files
-
-```text
-SZZG-0056/
-|-- scenario.graph.yml
-`-- README.md
-```
+- This scenario models a rebase-related development history for SZZ evaluation.
+- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

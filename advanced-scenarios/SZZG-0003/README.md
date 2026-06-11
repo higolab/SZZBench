@@ -1,19 +1,19 @@
-# SZZG-0003: Partial fix followed by complete fix
+# SZZG-0003: File rename between BIC and BFC
 
 ## Source
 
-- Category: BFC shape scenarios
+- Category: Intermediate-history scenarios
 
 ## Purpose
 
-Evaluate Partial fix followed by complete fix and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate File rename between BIC and BFC and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: create initial state (write_file src/main/java/example/Range.java)
-c1: introduce bug (replace src/main/java/example/Range.java)
-c2: fix bug (replace src/main/java/example/Range.java)
+c0: create initial state (write_file src/main/java/example/OldRange.java)
+c1: introduce bug (replace src/main/java/example/OldRange.java)
+c2: apply intermediate change (rename_file src/main/java/example/OldRange.java -> src/main/java/example/Range.java)
 c3: fix bug (replace src/main/java/example/Range.java)
 ```
 
@@ -23,8 +23,8 @@ This history requires graph-aware scenario semantics that are difficult to expre
 
 ## Required graph-schema features
 
-- Factors: bug_fixing_commits
-- Operation types: write_file, replace
+- Factors: rename_file
+- Operation types: write_file, replace, rename_file
 - Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points

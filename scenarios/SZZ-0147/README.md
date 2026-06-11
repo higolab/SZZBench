@@ -1,4 +1,4 @@
-# SZZ-0147: Duplicate normalization statements
+# SZZ-0147: Duplicate constant comparisons
 
 ## Purpose
 

@@ -1,14 +1,14 @@
-# SZZ-0031: Wrong threshold constant
+# SZZ-0031: BFC changes default branch in conditional
 
 ## Purpose
 
-This scenario introduces a bug by changing `return score >= 80;` to `return score >= 90;` and later restores the correct implementation.
+This scenario evaluates SZZ behavior when the bug-fixing commit has the shape: BFC changes default branch in conditional.
 
 ## Commit structure
 
-- `c0`: initial correct implementation
-- `c1`: introduces the bug
-- `c2`: fixes the bug
+- `c0`: Initial correct implementation
+- `c1`: Introduce bug
+- `c2`: Fix bug
 
 ## Expected behavior
 
@@ -19,4 +19,4 @@ The expected BFC is `c2` and the expected BIC is `c1`.
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `wrong-constant`
+- `conditional-default`

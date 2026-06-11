@@ -1,10 +1,10 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0157
-  title: Performance cleanup distractor with message
-  slug: context-with-cleanup-distractor
+  title: BFC message explicitly references BIC
+  slug: bfc-message-references-bic
   description: This scenario is intended for evaluating SZZ variants that use commit messages or broader patch context.
-  category: context-aware
+  category: "Context, message, and non-local evidence"
   factors:
   - single-bic
   - single-bfc
@@ -12,8 +12,9 @@ meta:
   - context-aware
   difficulty: medium
   status: active
+  category_code: "S7"
 repository:
-  name: SZZ-0157-context-with-cleanup-distractor
+  name: SZZ-0157-bfc-message-references-bic
   default_branch: main
   language: java
   build_system: none
@@ -26,13 +27,13 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0157.java
+    path: src/main/java/example/Scenario0148.java
     content: |
       package example;
 
-      public class Scenario0157 {
-          public boolean check(int attempts, int limit) {
-              return attempts < limit;
+      public class Scenario0148 {
+          public boolean check(int value, int min, int max) {
+              return value >= 0;
           }
       }
 - id: c1
@@ -42,105 +43,88 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0157.java
+    path: src/main/java/example/Scenario0148.java
     old: |
       package example;
 
-      public class Scenario0157 {
-          public boolean check(int attempts, int limit) {
-              return attempts < limit;
+      public class Scenario0148 {
+          public boolean check(int value, int min, int max) {
+              return value >= 0;
           }
       }
     new: |
       package example;
 
-      public class Scenario0157 {
-          public boolean check(int attempts, int limit) {
-              return attempts <= limit;
+      public class Scenario0148 {
+          public boolean check(int value, int min, int max) {
+              return value > 0;
           }
       }
     labels:
     - B001
     - fault
 - id: c2
-  message: Performance cleanup before retry-condition fix
-  author: Carol <carol@example.com>
+  message: Fix bug introduced by c1
+  author: Alice <alice@example.com>
   date: '2024-05-03T10:00:00Z'
-  role: cleanup
+  role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0157.java
+    path: src/main/java/example/Scenario0148.java
     old: |
       package example;
 
-      public class Scenario0157 {
-          public boolean check(int attempts, int limit) {
-              return attempts <= limit;
+      public class Scenario0148 {
+          public boolean check(int value, int min, int max) {
+              return value > 0;
           }
       }
     new: |
       package example;
 
-      public class Scenario0157 {
-          public boolean check(int attempts, int limit) {
-              return attempts <= limit;
-          }
-
-          public int cachedLimit(int limit) {
-              return limit;
+      public class Scenario0148 {
+          public boolean check(int value, int min, int max) {
+              return value >= 0;
           }
       }
-- id: c3
-  message: Fix retry condition after performance cleanup
-  author: Alice <alice@example.com>
-  date: '2024-05-04T10:00:00Z'
-  role: bug_fixing
-  operations:
-  - type: replace
-    path: src/main/java/example/Scenario0157.java
-    old: return attempts <= limit;
-    new: return attempts < limit;
     labels:
     - B001
     - fix
 bugs:
 - id: B001
-  title: Performance cleanup distractor with message
-  bug_fixing_commit: c3
+  title: BFC message explicitly references BIC
+  bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0157.java
+    file: src/main/java/example/Scenario0148.java
     entity:
       type: method
       name: check
-      signature: boolean check(int attempts, int limit)
-    statement: return attempts <= limit;
+      signature: boolean check(int value, int min, int max)
+    statement: return value > 0;
     change_type: line_modification
   fix:
-    commit: c3
-    file: src/main/java/example/Scenario0157.java
+    commit: c2
+    file: src/main/java/example/Scenario0148.java
     entity:
       type: method
       name: check
-      signature: boolean check(int attempts, int limit)
-    statement: return attempts < limit;
+      signature: boolean check(int value, int min, int max)
+    statement: return value >= 0;
     fix_type: line_modification
   expected_szz:
     commit_level:
       true_positives: *id001
       false_positives_allowed: []
-      known_distractors:
-      - c2
     line_level:
       available: true
       faulty_statements:
-      - return attempts <= limit;
+      - return value > 0;
 checks:
 - type: git_history_contains
   commits:
   - c0
   - c1
   - c2
-  - c3

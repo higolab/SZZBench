@@ -1,127 +1,130 @@
-schema_version: "1.0"
-
+schema_version: '1.0'
 meta:
-  id: "SZZ-0008"
-  title: "Formatting-only rewrite after bug introduction"
-  slug: "formatting-only-rewrite-after-bic"
-  description: >
-    A boundary-check bug is introduced, then a formatting-only commit rewrites
-    the faulty statement as a multi-line expression. The fixing commit repairs
-    the formatted expression.
-  category: "formatting"
+  id: SZZ-0008
+  title: Division denominator error
+  slug: division-denominator-error
+  description: This scenario introduces a bug by changing `return total / count;` to `return total / (count - 1);` and later restores the correct implementation.
+  category: "Basic semantic line changes"
   factors:
-    - "single-bic"
-    - "single-bfc"
-    - "line-modification"
-    - "formatting-after-bic"
-    - "line-number-shift"
-    - "basic-blame-distractor"
-  difficulty: "medium"
-  status: "active"
-
+  - single-bic
+  - single-bfc
+  - line-modification
+  - arithmetic-error
+  difficulty: easy
+  status: active
+  category_code: "S1"
 repository:
-  name: "SZZ-0008-formatting-only-rewrite-after-bic"
-  default_branch: "main"
-  language: "java"
-  build_system: "none"
-  source_root: "src/main/java"
-
+  name: SZZ-0008-division-denominator-error
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
 commits:
-  - id: "c0"
-    message: "Initial score threshold"
-    author: "Alice <alice@example.com>"
-    date: "2024-01-01T10:00:00Z"
-    role: "initial"
-    operations:
-      - type: "write_file"
-        path: "src/main/java/example/ScoreGate.java"
-        content: |
-          package example;
+- id: c0
+  message: Initial correct implementation
+  author: Alice <alice@example.com>
+  date: '2024-01-01T10:00:00Z'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Scenario0018.java
+    content: |
+      package example;
 
-          public class ScoreGate {
-              public boolean accepts(int score, int min, int max) {
-                  return score >= min && score <= max;
-              }
+      public class Scenario0018 {
+          public int average(int total, int count) {
+              return total / count;
           }
+      }
+- id: c1
+  message: Introduce bug
+  author: Bob <bob@example.com>
+  date: '2024-01-02T10:00:00Z'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Scenario0018.java
+    old: |
+      package example;
 
-  - id: "c1"
-    message: "Introduce threshold bug"
-    author: "Bob <bob@example.com>"
-    date: "2024-01-02T10:00:00Z"
-    role: "bug_introducing"
-    operations:
-      - type: "replace"
-        path: "src/main/java/example/ScoreGate.java"
-        old: "return score >= min && score <= max;"
-        new: "return score > min && score < max;"
-        labels: ["B001", "fault"]
+      public class Scenario0018 {
+          public int average(int total, int count) {
+              return total / count;
+          }
+      }
+    new: |
+      package example;
 
-  - id: "c2"
-    message: "Format score gate"
-    author: "Carol <carol@example.com>"
-    date: "2024-01-03T10:00:00Z"
-    role: "formatting"
-    operations:
-      - type: "replace"
-        path: "src/main/java/example/ScoreGate.java"
-        old: "return score > min && score < max;"
-        new: |
-          return score > min
-                          && score < max;
-        labels: ["formatting_only", "non_bug_introducing_change"]
+      public class Scenario0018 {
+          public int average(int total, int count) {
+              return total / (count - 1);
+          }
+      }
+    labels:
+    - B001
+    - fault
+- id: c2
+  message: Fix bug
+  author: Alice <alice@example.com>
+  date: '2024-01-03T10:00:00Z'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Scenario0018.java
+    old: |
+      package example;
 
-  - id: "c3"
-    message: "Fix threshold inclusiveness"
-    author: "Alice <alice@example.com>"
-    date: "2024-01-04T10:00:00Z"
-    role: "bug_fixing"
-    operations:
-      - type: "replace"
-        path: "src/main/java/example/ScoreGate.java"
-        old: |
-          return score > min
-                          && score < max;
-        new: |
-          return score >= min
-                          && score <= max;
-        labels: ["B001", "fix"]
+      public class Scenario0018 {
+          public int average(int total, int count) {
+              return total / (count - 1);
+          }
+      }
+    new: |
+      package example;
 
+      public class Scenario0018 {
+          public int average(int total, int count) {
+              return total / count;
+          }
+      }
+    labels:
+    - B001
+    - fix
 bugs:
-  - id: "B001"
-    title: "Boundary scores are excluded"
-    bug_fixing_commit: "c3"
-    bug_introducing_commits: ["c1"]
-    fault:
-      commit: "c1"
-      file: "src/main/java/example/ScoreGate.java"
-      entity:
-        type: "method"
-        name: "accepts"
-        signature: "boolean accepts(int score, int min, int max)"
-      statement: "return score > min && score < max;"
-      change_type: "line_modification"
-    fix:
-      commit: "c3"
-      file: "src/main/java/example/ScoreGate.java"
-      entity:
-        type: "method"
-        name: "accepts"
-        signature: "boolean accepts(int score, int min, int max)"
-      statement: |
-        return score >= min
-                        && score <= max;
-      fix_type: "line_modification"
-    expected_szz:
-      commit_level:
-        true_positives: ["c1"]
-        known_distractors: ["c2"]
-        false_positives_allowed: []
-      line_level:
-        available: true
-        faulty_statements:
-          - "return score > min && score < max;"
-        note: "The faulty statement is rewritten by a formatting-only commit before the BFC."
-
+- id: B001
+  title: Division denominator error
+  bug_fixing_commit: c2
+  bug_introducing_commits: &id001
+  - c1
+  fault:
+    commit: c1
+    file: src/main/java/example/Scenario0018.java
+    entity:
+      type: method
+      name: average
+      signature: int average(int total, int count)
+    statement: return total / (count - 1);
+    change_type: line_modification
+  fix:
+    commit: c2
+    file: src/main/java/example/Scenario0018.java
+    entity:
+      type: method
+      name: average
+      signature: int average(int total, int count)
+    statement: return total / count;
+    fix_type: line_modification
+  expected_szz:
+    commit_level:
+      true_positives: *id001
+      false_positives_allowed: []
+    line_level:
+      available: true
+      faulty_statements:
+      - return total / (count - 1);
 checks:
-  - type: "git_history_contains"
-    commits: ["c0", "c1", "c2", "c3"]
+- type: git_history_contains
+  commits:
+  - c0
+  - c1
+  - c2

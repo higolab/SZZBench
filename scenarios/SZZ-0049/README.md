@@ -1,23 +1,17 @@
-# SZZ-0049: Guard clause addition after BIC
+# SZZ-0049: Security validation omission
 
 ## Purpose
 
-This scenario introduces a bug by changing `return value >= min && value <= max;` to `return value > min && value < max;` and later restores the correct implementation.
+This scenario checks a security-related omission bug where a path validation
+method lacks a guard against path traversal.
 
 ## Commit structure
 
-- `c0`: initial correct implementation
-- `c1`: introduces the bug
-- `c2`: Add guard clause after bug introduction
-- `c3`: fixes the bug
+- `c0`: Introduces an empty path policy class.
+- `c1`: Adds a permissive `isSafe` method. This is the BIC.
+- `c2`: Adds the missing path traversal guard. This is the BFC.
 
 ## Expected behavior
 
-The expected BFC is `c3` and the expected BIC is `c1`.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `guard-clause-after-bic`
+The expected BIC is `c1`, but line-level deleted-line SZZ is not directly
+applicable because the fix adds a missing security guard.

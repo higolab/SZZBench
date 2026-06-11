@@ -1,22 +1,15 @@
-# SZZ-0156: Security context in message
+# SZZ-0156: Multiple overloaded methods
 
-## Purpose
+## Summary
 
-This scenario is intended for evaluating SZZ variants that use commit messages or broader patch context.
+Evaluates multiple overloaded methods and checks whether SZZ identifies the expected bug-introducing commit set.
 
-## Commit structure
+## Expected SZZ Behavior
 
-- `c0`: initial implementation
-- `c1`: introduces the bug
-- `c2`: BFC with message: Fix authorization bypass
+- Bug-introducing commit(s): c1
+- Bug-fixing commit: c2
 
-## Expected behavior
+## Notes
 
-The expected BFC is `c2` and the expected BIC is `c1`.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `context-aware`
+- Moved from SZZG-0109 after applying the scenario.yml / scenario.graph.yml boundary policy.
+- This scenario uses a linear main-branch history and a commit-level exact-set oracle.

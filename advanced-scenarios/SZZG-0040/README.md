@@ -1,36 +1,43 @@
-# SZZG-0040: BIC and BFC belong to the same issue commit series
+# SZZG-0040: Multiple BICs where one true BIC is not directly touched by the BFC
 
 ## Source
 
-- Category: Work-item and commit-series scenarios
+- Category: Multiple-BIC scenarios
 
 ## Purpose
 
-Evaluate whether issue-series context is preserved when the BIC and BFC both reference the same issue.
+Evaluate multiple bics where one true bic is not directly touched by the bfc and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c1: create initial range implementation
-c2: ISSUE-101 implement boundary optimization but introduce bug
-c3: ISSUE-101 fix inclusive boundary regression
+c0: c0: create retry policy
+c1: c1: introduce excessive retry limit
+c2: c2: introduce retry on client errors
+c3: c3: fix retry condition without touching retry limit
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-Issue membership and linked commits require graph-aware contextual metadata.
+This history requires graph-aware scenario semantics that are difficult to express with the normal `scenario.yml` schema.
 
 ## Required graph-schema features
 
-- Factors: issues
-- Operation types: write_file, replace
-- Expected SZZ policy is defined in expected_szz.
+- Factors: multiple_bic, not_directly_touched_by_fix, context_dependent
+- Operation types: replace, write_file
+- Expected SZZ policy is defined in `expected_szz`.
+
+## Expected BICs
+
+```text
+c1, c2
+```
 
 ## Evaluation points
 
-- Whether SZZ identifies c2 as the BIC rather than the initial commit.
-- Whether both the BIC and BFC are represented as part of ISSUE-101.
-- Whether the expected_szz exact-set policy is applied correctly.
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
 ---
 

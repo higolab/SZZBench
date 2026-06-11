@@ -1,4 +1,4 @@
-# SZZG-0018: Original and clone fixed together
+# SZZG-0018: Only one clone instance is fixed first
 
 ## Source
 
@@ -6,14 +6,15 @@
 
 ## Purpose
 
-Evaluate Original and clone fixed together and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate Only one clone instance is fixed first and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
 c0: introduce origin bug (write_file src/main/java/example/A.java)
 c1: introduce bug (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)
-c2: fix bug (replace src/main/java/example/A.java; replace src/main/java/example/B.java)
+c2: fix bug (replace src/main/java/example/A.java)
+c3: fix bug (replace src/main/java/example/B.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
@@ -22,7 +23,7 @@ This history requires graph-aware scenario semantics that are difficult to expre
 
 ## Required graph-schema features
 
-- Factors: faults, clone_relationships
+- Factors: clone_relationships, bug_instances
 - Operation types: write_file, copy_file, replace
 - Expected SZZ policy is defined in expected_szz.
 

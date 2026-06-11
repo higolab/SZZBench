@@ -1,19 +1,20 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0020
-  title: Maximum comparison error
-  slug: maximum-comparison-error
-  description: This scenario introduces a bug by changing `return value <= maximum;` to `return value < maximum;` and later restores the correct implementation.
-  category: basic
+  title: Wrong fallback number
+  slug: wrong-fallback-number
+  description: 'This scenario introduces a bug by changing `return value < 0 ? 0 : value;` to `return value < 0 ? -1 : value;` and later restores the correct implementation.'
+  category: "Basic semantic line changes"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - comparison-error
+  - wrong-constant
   difficulty: easy
   status: active
+  category_code: "S1"
 repository:
-  name: SZZ-0020-maximum-comparison-error
+  name: SZZ-0020-wrong-fallback-number
   default_branch: main
   language: java
   build_system: none
@@ -26,13 +27,13 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0020.java
+    path: src/main/java/example/Scenario0030.java
     content: |
       package example;
 
-      public class Scenario0020 {
-          public boolean isAtMost(int value, int maximum) {
-              return value <= maximum;
+      public class Scenario0030 {
+          public int nonNegative(int value) {
+              return value < 0 ? 0 : value;
           }
       }
 - id: c1
@@ -42,21 +43,21 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0020.java
+    path: src/main/java/example/Scenario0030.java
     old: |
       package example;
 
-      public class Scenario0020 {
-          public boolean isAtMost(int value, int maximum) {
-              return value <= maximum;
+      public class Scenario0030 {
+          public int nonNegative(int value) {
+              return value < 0 ? 0 : value;
           }
       }
     new: |
       package example;
 
-      public class Scenario0020 {
-          public boolean isAtMost(int value, int maximum) {
-              return value < maximum;
+      public class Scenario0030 {
+          public int nonNegative(int value) {
+              return value < 0 ? -1 : value;
           }
       }
     labels:
@@ -69,21 +70,21 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0020.java
+    path: src/main/java/example/Scenario0030.java
     old: |
       package example;
 
-      public class Scenario0020 {
-          public boolean isAtMost(int value, int maximum) {
-              return value < maximum;
+      public class Scenario0030 {
+          public int nonNegative(int value) {
+              return value < 0 ? -1 : value;
           }
       }
     new: |
       package example;
 
-      public class Scenario0020 {
-          public boolean isAtMost(int value, int maximum) {
-              return value <= maximum;
+      public class Scenario0030 {
+          public int nonNegative(int value) {
+              return value < 0 ? 0 : value;
           }
       }
     labels:
@@ -91,27 +92,27 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Maximum comparison error
+  title: Wrong fallback number
   bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0020.java
+    file: src/main/java/example/Scenario0030.java
     entity:
       type: method
-      name: isAtMost
-      signature: boolean isAtMost(int value, int maximum)
-    statement: return value < maximum;
+      name: nonNegative
+      signature: int nonNegative(int value)
+    statement: 'return value < 0 ? -1 : value;'
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0020.java
+    file: src/main/java/example/Scenario0030.java
     entity:
       type: method
-      name: isAtMost
-      signature: boolean isAtMost(int value, int maximum)
-    statement: return value <= maximum;
+      name: nonNegative
+      signature: int nonNegative(int value)
+    statement: 'return value < 0 ? 0 : value;'
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -120,7 +121,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return value < maximum;
+      - 'return value < 0 ? -1 : value;'
 checks:
 - type: git_history_contains
   commits:

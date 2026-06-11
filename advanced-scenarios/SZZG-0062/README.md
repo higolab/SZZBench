@@ -1,52 +1,55 @@
-# SZZG-0062: Rebase with non-BIC intermediate commit
+# SZZG-0062: Backported fix on maintenance branch traces to original mainline BIC
+
+## Source
+
+- Category: Branch and merge scenarios
 
 ## Purpose
 
-Evaluate whether SZZ distinguishes a rebased BIC from a later rebased intermediate commit.
+Evaluate backported fix on maintenance branch traces to original mainline bic and whether SZZ identifies the expected bug-introducing commit set.
 
-## Commit history
-
-```text
-c0: c0: create initial correct implementation
-f1: f1: introduce range boundary bug on feature
-f2: f2: add feature helper using buggy range check
-r1: r1: rebase feature BIC onto main
-r2: r2: rebase feature helper onto main
-c3: c3: fix range boundary bug after rebase
-```
-
-## Commit table
-
-| Commit | Branch | Parents | Role | Description |
-|---|---|---|---|---|
-| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `f1` | `feature` | c0 | `origin_bug_introducing` | f1: introduce range boundary bug on feature |
-| `f2` | `feature` | f1 | `intermediate` | f2: add feature helper using buggy range check |
-| `r1` | `main` | c0 | `bug_introducing` | r1: rebase feature BIC onto main |
-| `r2` | `main` | r1 | `intermediate` | r2: rebase feature helper onto main |
-| `c3` | `main` | r2 | `bug_fixing` | c3: fix range boundary bug after rebase |
-
-## Expected SZZ result
+## Expected history
 
 ```text
-Expected BIC(s): r1
-Related but not correct: f1, r2
+c0: c0: create lock timeout
+c1: c1: introduce too-short timeout on main
+c2: c2: release branch cut from buggy main
+c3: c3: fix timeout on main
+c4: c4: backport timeout fix to release branch
 ```
 
-## Key property
+## Why this needs `scenario.graph.yml`
 
-r1 is the direct BIC; r2 is non-BIC intermediate.
+This history requires graph-aware scenario semantics that are difficult to express with the normal `scenario.yml` schema.
 
-## Difference from SZZG-0061
+## Required graph-schema features
 
-SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
+- Factors: backport, maintenance_branch, cross_branch_bic
+- Operation types: replace, write_file
+- Expected SZZ policy is defined in `expected_szz`.
+
+## Expected BICs
+
+```text
+c1
+```
 
 ## Evaluation points
 
-- Report r1.
-- Avoid r2.
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
-## Notes
+---
 
-- This scenario models a rebase-related development history for SZZ evaluation.
-- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.
+## Draft status
+
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
+
+## Files
+
+```text
+SZZG-0062/
+|-- scenario.graph.yml
+`-- README.md
+```

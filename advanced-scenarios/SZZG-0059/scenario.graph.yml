@@ -1,167 +1,128 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0059
-  title: Copy propagation with direct and origin BIC evaluation variants
-  slug: copy-propagation-direct-origin-evaluation-variants
-  description: A bug is introduced in an original file and then propagated to a copied file. The copied file is fixed later.
-    The direct BIC for the fixed copied file is the copy commit, while the original BIC is kept as a related origin BIC. This
-    scenario provides multiple evaluation variants, including direct-only and origin-aware policies.
-  category: Schema and evaluation-policy scenarios
-  category_code: L
+  title: Merge commit itself is the BIC
+  slug: merge-commit-as-bic
+  description: Evaluates merge commit itself is the bic and checks whether SZZ identifies the expected bug-introducing commit
+    set.
+  category: "Branch, merge, cherry-pick, backport, and release branches"
+  category_code: "G4"
   factors:
-  - copy_propagation
-  - direct_bic
-  - origin_bic
-  - evaluation_variants
-  - relaxed_with_credit
+  - merge_commit
+  - bug_introducing_merge
+  - non_linear_history
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0059-copy-propagation-direct-origin-evaluation-variants
+  name: SZZG-0059-merge-commit-as-bic
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create original correct implementation in A.java
+  history_summary: 'c0: c0: create feature flag
 
-    c1: introduce boundary bug in original A.java
+    c1: c1: main branch hardens feature flag
 
-    c2: copy buggy implementation from A.java to B.java, creating the direct BIC for B.java
+    c2: c2: feature branch keeps simple flag
 
-    c3: fix the copied bug in B.java'
+    c3: c3: merge feature branch and accidentally drop safety check
+
+    c4: c4: fix dropped safety check'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create original correct implementation'
+  message: 'c0: create feature flag'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/A.java
-    content: "package example;\n\npublic class A {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ >= min && value <= max;\n  }\n}\n"
+    path: src/main/java/example/Flags.java
+    content: "package example;\npublic class Flags {\n  public boolean enabled(boolean configured) {\n    return configured;\n\
+      \  }\n\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce boundary bug in original implementation'
-  role: origin_bug_introducing
+  message: 'c1: main branch hardens feature flag'
+  role: other
   operations:
   - type: replace
-    path: src/main/java/example/A.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
+    path: src/main/java/example/Flags.java
+    old: return configured;
+    new: return configured && System.getProperty("safe") != null;
 - id: c2
-  branch: main
+  branch: feature
   parents:
-  - c1
-  message: 'c2: copy buggy range logic into B'
-  role: bug_introducing
+  - c0
+  message: 'c2: feature branch keeps simple flag'
+  role: other
+  allow_empty: true
   operations:
-  - type: write_file
-    path: src/main/java/example/B.java
-    content: "package example;\n\npublic class B {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n}\n"
+  - type: replace
+    path: src/main/java/example/Flags.java
+    old: return configured;
+    new: return configured;
 - id: c3
   branch: main
   parents:
+  - c1
   - c2
-  message: 'c3: fix copied boundary bug in B'
+  message: 'c3: merge feature branch and accidentally drop safety check'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Flags.java
+    old: return configured && System.getProperty("safe") != null;
+    new: return configured;
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: 'c4: fix dropped safety check'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/B.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
-clone_relationships:
-- origin_file: src/main/java/example/A.java
-  copied_file: src/main/java/example/B.java
-  copy_commit: c2
-  origin_commit: c1
-  relationship: buggy_code_copy
+    path: src/main/java/example/Flags.java
+    old: return configured;
+    new: return configured && System.getProperty("safe") != null;
 bugs:
 - id: B001
-  title: Copied range boundary bug in B.java
+  title: Synthetic graph scenario bug
   bug_introducing_commits:
-  - commit: c2
-    role: direct
-    description: Direct BIC for the fixed file B.java.
-  - commit: c1
-    role: origin
-    description: Origin BIC where the copied faulty logic first appeared in A.java.
-  bug_fixing_commits:
   - commit: c3
+    role: direct
+  bug_fixing_commits:
+  - commit: c4
     role: complete_fix
   faults:
   - id: F001
-    commit: c2
-    file: src/main/java/example/B.java
-    statement: return value > min && value < max;
-    change_type: copy_propagated_line_modification
-  origin_faults:
-  - id: OF001
-    commit: c1
-    file: src/main/java/example/A.java
-    statement: return value > min && value < max;
-    change_type: origin_line_modification
+    commit: c3
+    file: src/main/java/example/Flags.java
+    statement: return configured;
+    change_type: line_modification
   fixes:
   - id: X001
-    commit: c3
-    file: src/main/java/example/B.java
-    statement: return value >= min && value <= max;
+    commit: c4
+    file: src/main/java/example/Flags.java
+    statement: return configured && System.getProperty("safe") != null;
     fix_type: line_modification
 expected_szz:
-  evaluation_variants:
-  - name: direct-only
-    description: Only the direct BIC in the copied file is accepted.
-    commit_level:
-      evaluation_policy: exact_set
-      required:
-      - c2
-  - name: origin-aware
-    description: The direct BIC is required, while the origin BIC is accepted as related context.
-    commit_level:
-      evaluation_policy: relaxed_with_related
-      required:
-      - c2
-      acceptable_related:
-      - commit: c1
-        reason: origin_bic
-        credit: 0.5
-  - name: relaxed-with-credit
-    description: Compatibility variant that absorbs the former SZZG-0059 relaxed-with-credit policy.
-    commit_level:
-      evaluation_policy: relaxed_with_credit
-      required:
-      - c2
-      acceptable_related:
-      - commit: c1
-        reason: origin_bic
-        credit: 0.5
-  default_variant: direct-only
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c3
 scenario_design:
-  purpose: Evaluate copy-propagated bugs where the direct BIC for the fixed copied file differs from the origin BIC where
-    the faulty logic first appeared.
-  key_property: For the BFC c3 in B.java, c2 is the direct BIC because it copies the faulty logic into B.java. Commit c1 is
-    the origin BIC in A.java and can be treated as related depending on the evaluation policy.
-  merged_from:
-  - old_id: SZZG-0059
-    reason: Former relaxed-with-credit copy-propagation scenario.
+  purpose: Evaluate merge commit itself is the bic and whether SZZ identifies the expected bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: merge_commit, bug_introducing_merge, non_linear_history; operations:
+    replace, write_file.'
   evaluation_points:
-  - Whether SZZ identifies the direct BIC c2 for the copied file B.java.
-  - Whether the origin BIC c1 can be treated as related without replacing the direct BIC.
-  - Whether multiple evaluation policies can be applied to the same repository history.
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- This scenario absorbs the relaxed-with-credit evaluation policy from the old SZZG-0059.
-- The default evaluation variant is direct-only; origin-aware and relaxed-with-credit variants are provided for alternative
-  evaluation settings.
-copy_relationships:
-- id: COPY-001
-  source_file: src/main/java/example/A.java
-  target_file: src/main/java/example/B.java
-  copy_commit: c2
-  origin_bic: c1
-  direct_bic: c2
-  description: B.java receives the buggy range check copied from A.java.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

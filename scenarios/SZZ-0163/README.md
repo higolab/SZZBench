@@ -1,63 +1,22 @@
-# SZZ-0163: Malformed commit message
+# SZZ-0163: Root cause described in BIC message
 
 ## Purpose
 
-This scenario checks robustness against a malformed-looking bug-fixing commit message.
+This scenario is intended for evaluating SZZ variants that use commit messages or broader patch context.
 
-The history is intentionally simple and linear, so this scenario is represented as a normal `scenario.yml` under `scenarios/` rather than as `scenario.graph.yml` under `advanced-scenarios/`.
+## Commit structure
 
-## Commit history
+- `c0`: initial implementation
+- `c1`: introduces the bug with a message that describes the root cause
+- `c2`: BFC with message: Fix normalization regression
 
-```text
-c1: Introduce boundary bug
-c2: fix boundary bug with malformed-looking commit message
-```
+## Expected behavior
 
-## Commit table
+The expected BFC is `c2` and the expected BIC is `c1`.
 
-| Commit | Role | Message | Description |
-|---|---|---|---|
-| `c1` | bug_introducing | `Introduce boundary bug` | Creates `Range.java` with a boundary bug. |
-| `c2` | bug_fixing | `FIX:::: boundary regression ??? refs=[[[unknown]]] introduced-by=<missing>` | Fixes the bug with an intentionally malformed-looking message. |
+## Factors
 
-## Code states
-
-Buggy code in `c1`:
-
-```java
-return value > min && value < max;
-```
-
-Fixed code in `c2`:
-
-```java
-return value >= min && value <= max;
-```
-
-## Oracle
-
-Expected BIC:
-
-```text
-c1
-```
-
-Bug-fixing commit:
-
-```text
-c2
-```
-
-## Evaluation purpose
-
-This scenario checks whether SZZ tools and SZZBench tooling remain robust when the BFC message does not follow a normal format.
-
-The message is malformed-looking but safe for YAML and Git tooling. It avoids null bytes and control characters.
-
-## Why this is a normal scenario
-
-This scenario does not require branch, merge, cherry-pick, backport, multiple BFCs, or evaluation variants. Therefore, it is represented as a normal scenario:
-
-```text
-scenarios/SZZ-0163/scenario.yml
-```
+- `single-bic`
+- `single-bfc`
+- `line-modification`
+- `context-aware`

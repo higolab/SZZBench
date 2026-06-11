@@ -1,134 +1,95 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0108
-  title: Origin BIC and direct copied-code BIC are both required
-  slug: origin-and-direct-clone-bics
-  description: Evaluates origin bic and direct copied-code bic are both required and checks whether SZZ identifies the expected
-    bug-introducing commit set.
-  category: Clone propagation scenarios
-  category_code: A
+  title: Binary file change
+  slug: binary-file
+  description: Evaluates binary file change and checks whether SZZ identifies the expected bug-introducing commit set.
+  category: "Non-source, binary, generated, and scalability edge cases"
+  category_code: "G8"
   factors:
-  - clone
-  - multiple_bic
-  - origin_and_direct_bic
+  - write_binary_file
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0108-origin-and-direct-clone-bics
+  name: SZZG-0108-binary-file
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: c0: create amount parser
+  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
 
-    c1: c1: introduce original parser trim bug
+    c1: introduce bug (replace src/main/java/example/Range.java)
 
-    c2: c2: copy amount parser to invoice parser
-
-    c3: c3: introduce copied parser sign bug
-
-    c4: c4: fix invoice parsing behavior'
+    c2: fix bug (write_binary_file assets/data.bin; replace src/main/java/example/Range.java)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create amount parser'
+  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/AmountParser.java
-    content: "package example;\npublic class AmountParser {\n  public int parse(String s) {\n    return Integer.parseInt(s.trim());\n\
-      \  }\n\n}\n"
+    path: src/main/java/example/Range.java
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce original parser trim bug'
+  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/AmountParser.java
-    old: return Integer.parseInt(s.trim());
-    new: return Integer.parseInt(s);
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: copy amount parser to invoice parser'
-  role: other
-  operations:
-  - type: copy_file
-    from: src/main/java/example/AmountParser.java
-    to: src/main/java/example/InvoiceParser.java
-  - type: replace
-    path: src/main/java/example/InvoiceParser.java
-    old: public class AmountParser
-    new: public class InvoiceParser
-- id: c3
-  branch: main
-  parents:
-  - c2
-  message: 'c3: introduce copied parser sign bug'
-  role: bug_introducing
-  operations:
-  - type: replace
-    path: src/main/java/example/InvoiceParser.java
-    old: return Integer.parseInt(s);
-    new: return Math.abs(Integer.parseInt(s));
-- id: c4
-  branch: main
-  parents:
-  - c3
-  message: 'c4: fix invoice parsing behavior'
+  message: 'c2: fix bug (write_binary_file assets/data.bin; replace src/main/java/example/Range.java)'
   role: bug_fixing
   operations:
+  - type: write_binary_file
+    path: assets/data.bin
+    content_base64: AAECAwQF
   - type: replace
-    path: src/main/java/example/InvoiceParser.java
-    old: return Math.abs(Integer.parseInt(s));
-    new: return Integer.parseInt(s.trim());
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
 bugs:
 - id: B001
   title: Synthetic graph scenario bug
   bug_introducing_commits:
   - commit: c1
     role: direct
-  - commit: c3
-    role: direct
   bug_fixing_commits:
-  - commit: c4
+  - commit: c2
     role: complete_fix
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/AmountParser.java
-    statement: return Integer.parseInt(s);
-    change_type: line_modification
-  - id: F002
-    commit: c3
-    file: src/main/java/example/InvoiceParser.java
-    statement: return Math.abs(Integer.parseInt(s));
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c4
-    file: src/main/java/example/InvoiceParser.java
-    statement: return Integer.parseInt(s.trim());
+    commit: c2
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
     fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
     - c1
-    - c3
 scenario_design:
-  purpose: Evaluate origin bic and direct copied-code bic are both required and whether SZZ identifies the expected bug-introducing
-    commit set.
+  purpose: Evaluate Binary file change and whether SZZ identifies the expected bug-introducing commit set.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: clone, multiple_bic, origin_and_direct_bic; operations: copy_file,
-    replace, write_file.'
+  required_extensions_from_source: 'This scenario uses factors: write_binary_file; operations: write_file, replace, write_binary_file.'
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
   - Whether structural or contextual history is handled according to the scenario factors.

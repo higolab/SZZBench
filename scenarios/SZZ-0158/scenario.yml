@@ -1,20 +1,20 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0158
-  title: CRLF-like full file rewrite
-  slug: crlf-like-full-file-rewrite
-  description: This scenario is intended to stress implementation robustness under noisy or repetitive code conditions.
-  category: robustness
+  title: BFC message has misleading reference
+  slug: bfc-message-misleading-reference
+  description: This scenario is intended for evaluating SZZ variants that use commit messages or broader patch context.
+  category: "Context, message, and non-local evidence"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - robustness
-  - line-ending-noise
+  - context-aware
   difficulty: medium
   status: active
+  category_code: "S7"
 repository:
-  name: SZZ-0158-crlf-like-full-file-rewrite
+  name: SZZ-0158-bfc-message-misleading-reference
   default_branch: main
   language: java
   build_system: none
@@ -23,68 +23,68 @@ commits:
 - id: c0
   message: Initial implementation
   author: Alice <alice@example.com>
-  date: '2024-06-01T10:00:00Z'
+  date: '2024-05-01T10:00:00Z'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0158.java
+    path: src/main/java/example/Scenario0149.java
     content: |
       package example;
 
-      public class Scenario0158 {
-          public boolean check(int value) {
-              return value >= 0;
+      public class Scenario0149 {
+          public boolean check(int value, int min, int max) {
+              return value <= max;
           }
       }
 - id: c1
-  message: Introduce bug
+  message: Introduce context-sensitive bug
   author: Bob <bob@example.com>
-  date: '2024-06-02T10:00:00Z'
+  date: '2024-05-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0158.java
+    path: src/main/java/example/Scenario0149.java
     old: |
       package example;
 
-      public class Scenario0158 {
-          public boolean check(int value) {
-              return value >= 0;
+      public class Scenario0149 {
+          public boolean check(int value, int min, int max) {
+              return value <= max;
           }
       }
     new: |
       package example;
 
-      public class Scenario0158 {
-          public boolean check(int value) {
-              return value > 0;
+      public class Scenario0149 {
+          public boolean check(int value, int min, int max) {
+              return value < max;
           }
       }
     labels:
     - B001
     - fault
 - id: c2
-  message: Fix bug after line-ending-like rewrite
+  message: Fix bug; suspected c0
   author: Alice <alice@example.com>
-  date: '2024-06-03T10:00:00Z'
+  date: '2024-05-03T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0158.java
+    path: src/main/java/example/Scenario0149.java
     old: |
       package example;
 
-      public class Scenario0158 {
-          public boolean check(int value) {
-              return value > 0;
+      public class Scenario0149 {
+          public boolean check(int value, int min, int max) {
+              return value < max;
           }
       }
     new: |
       package example;
 
-      public class Scenario0158 {
-          public boolean check(int value) {
-              return value >= 0;
+      public class Scenario0149 {
+          public boolean check(int value, int min, int max) {
+              return value <= max;
           }
       }
     labels:
@@ -92,27 +92,27 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: CRLF-like full file rewrite
+  title: BFC message has misleading reference
   bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0158.java
+    file: src/main/java/example/Scenario0149.java
     entity:
       type: method
       name: check
-      signature: boolean check(int value)
-    statement: return value > 0;
+      signature: boolean check(int value, int min, int max)
+    statement: return value < max;
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0158.java
+    file: src/main/java/example/Scenario0149.java
     entity:
       type: method
       name: check
-      signature: boolean check(int value)
-    statement: return value >= 0;
+      signature: boolean check(int value, int min, int max)
+    statement: return value <= max;
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -121,7 +121,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return value > 0;
+      - return value < max;
 checks:
 - type: git_history_contains
   commits:

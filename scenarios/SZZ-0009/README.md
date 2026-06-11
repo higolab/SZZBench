@@ -1,17 +1,22 @@
-# SZZ-0009: Whitespace-only rewrite after bug introduction
+# SZZ-0009: Minimum comparison error
 
 ## Purpose
 
-This scenario checks whether SZZ implementations incorrectly identify a
-whitespace-only rewrite as the BIC.
+This scenario introduces a bug by changing `return value >= minimum;` to `return value > minimum;` and later restores the correct implementation.
 
 ## Commit structure
 
-- `c0`: Correct inclusive range check.
-- `c1`: Introduces the strict range bug. This is the expected BIC.
-- `c2`: Changes whitespace in the faulty line only. This is a distractor.
-- `c3`: Fixes the condition. This is the BFC.
+- `c0`: initial correct implementation
+- `c1`: introduces the bug
+- `c2`: fixes the bug
 
 ## Expected behavior
 
-SZZ should report `c1`, not the whitespace-only commit `c2`.
+The expected BFC is `c2` and the expected BIC is `c1`.
+
+## Factors
+
+- `single-bic`
+- `single-bfc`
+- `line-modification`
+- `comparison-error`

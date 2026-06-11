@@ -1,111 +1,159 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0085
-  title: Negative amount check omission
-  slug: negative-amount-check-omission
-  description: 'This scenario represents an omission bug: the method is introduced without a necessary negative amount check, and the bug-fixing commit adds the missing statement.'
-  category: omission
+  title: Comment insertion after BIC
+  slug: comment-insertion-after-bic
+  description: This scenario introduces a bug by changing `return value >= min && value <= max;` to `return value > min && value < max;` and later restores the correct implementation.
+  category: "Intermediate noise and history noise"
   factors:
   - single-bic
   - single-bfc
-  - omission-bug
-  - line-addition-fix
+  - line-modification
+  - comment-insertion-after-bic
   difficulty: medium
   status: active
+  category_code: "S3"
 repository:
-  name: SZZ-0085-negative-amount-check-omission
+  name: SZZ-0085-comment-insertion-after-bic
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 commits:
 - id: c0
-  message: Initial class
+  message: Initial correct implementation
   author: Alice <alice@example.com>
-  date: '2024-02-01T10:00:00Z'
+  date: '2024-01-01T10:00:00Z'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0085.java
-    content: 'package example;
+    path: src/main/java/example/Scenario0042.java
+    content: |
+      package example;
 
-
-      public class Scenario0085 {
-
+      public class Scenario0042 {
+          public boolean check(int value, int min, int max) {
+              return value >= min && value <= max;
+          }
       }
-
-      '
 - id: c1
-  message: Add validAmount without negative amount check
+  message: Introduce bug
   author: Bob <bob@example.com>
-  date: '2024-02-02T10:00:00Z'
+  date: '2024-01-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0085.java
-    old: 'package example;
+    path: src/main/java/example/Scenario0042.java
+    old: |
+      package example;
 
-
-      public class Scenario0085 {
-
+      public class Scenario0042 {
+          public boolean check(int value, int min, int max) {
+              return value >= min && value <= max;
+          }
       }
+    new: |
+      package example;
 
-      '
-    new: "package example;\n\npublic class Scenario0085 {\n    public boolean validAmount(int amount) {\n        return true;\n    }\n}\n"
+      public class Scenario0042 {
+          public boolean check(int value, int min, int max) {
+              return value > min && value < max;
+          }
+      }
     labels:
     - B001
     - fault
 - id: c2
-  message: Add missing negative amount check
+  message: Add comment near faulty logic
+  author: Carol <carol@example.com>
+  date: '2024-01-03T10:00:00Z'
+  role: distractor
+  operations:
+  - type: replace
+    path: src/main/java/example/Scenario0042.java
+    old: |
+      package example;
+
+      public class Scenario0042 {
+          public boolean check(int value, int min, int max) {
+              return value > min && value < max;
+          }
+      }
+    new: |
+      package example;
+
+      public class Scenario0042 {
+          public boolean check(int value, int min, int max) {
+              // boundary check
+              return value > min && value < max;
+          }
+      }
+- id: c3
+  message: Fix bug
   author: Alice <alice@example.com>
-  date: '2024-02-03T10:00:00Z'
+  date: '2024-01-04T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0085.java
-    old: "package example;\n\npublic class Scenario0085 {\n    public boolean validAmount(int amount) {\n        return true;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0085 {\n    public boolean validAmount(int amount) {\n        if (amount < 0) {\n                return false;\n            }\n            return true;\n    }\n}\n"
+    path: src/main/java/example/Scenario0042.java
+    old: |
+      package example;
+
+      public class Scenario0042 {
+          public boolean check(int value, int min, int max) {
+              // boundary check
+              return value > min && value < max;
+          }
+      }
+    new: |
+      package example;
+
+      public class Scenario0042 {
+          public boolean check(int value, int min, int max) {
+              return value >= min && value <= max;
+          }
+      }
     labels:
     - B001
     - fix
 bugs:
 - id: B001
-  title: Negative amount check omission
-  bug_fixing_commit: c2
-  bug_introducing_commits:
+  title: Comment insertion after BIC
+  bug_fixing_commit: c3
+  bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0085.java
+    file: src/main/java/example/Scenario0042.java
     entity:
       type: method
-      name: validAmount
-      signature: boolean validAmount(int amount)
-    change_type: omission
-    missing_statement: "if (amount < 0) {\n            return false;\n        }\n"
+      name: check
+      signature: boolean check(int value, int min, int max)
+    statement: return value > min && value < max;
+    change_type: line_modification
   fix:
-    commit: c2
-    file: src/main/java/example/Scenario0085.java
+    commit: c3
+    file: src/main/java/example/Scenario0042.java
     entity:
       type: method
-      name: validAmount
-      signature: boolean validAmount(int amount)
-    added_statement: |
-      if (amount < 0) {
-                      return false;
-                  }
-    fix_type: line_addition
+      name: check
+      signature: boolean check(int value, int min, int max)
+    statement: return value >= min && value <= max;
+    fix_type: line_modification
   expected_szz:
     commit_level:
-      true_positives:
-      - c1
+      true_positives: *id001
       false_positives_allowed: []
+      known_distractors:
+      - c2
     line_level:
-      available: false
-      reason: The fault is an omitted statement, so no faulty deleted line exists.
+      available: true
+      faulty_statements:
+      - return value > min && value < max;
 checks:
 - type: git_history_contains
   commits:
   - c0
   - c1
   - c2
+  - c3

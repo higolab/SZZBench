@@ -1,19 +1,20 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0024
-  title: Negated boolean condition
-  slug: negated-boolean-condition
-  description: This scenario introduces a bug by changing `return !locked;` to `return locked;` and later restores the correct implementation.
-  category: basic
+  title: Incorrect clamp lower bound
+  slug: incorrect-clamp-lower-bound
+  description: This scenario introduces a bug by changing `return Math.max(value, lower);` to `return Math.min(value, lower);` and later restores the correct implementation.
+  category: "Basic semantic line changes"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - boolean-negation
+  - arithmetic-error
   difficulty: easy
   status: active
+  category_code: "S1"
 repository:
-  name: SZZ-0024-negated-boolean-condition
+  name: SZZ-0024-incorrect-clamp-lower-bound
   default_branch: main
   language: java
   build_system: none
@@ -26,13 +27,13 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0024.java
+    path: src/main/java/example/Scenario0037.java
     content: |
       package example;
 
-      public class Scenario0024 {
-          public boolean canProceed(boolean locked) {
-              return !locked;
+      public class Scenario0037 {
+          public int clampLower(int value, int lower) {
+              return Math.max(value, lower);
           }
       }
 - id: c1
@@ -42,21 +43,21 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0024.java
+    path: src/main/java/example/Scenario0037.java
     old: |
       package example;
 
-      public class Scenario0024 {
-          public boolean canProceed(boolean locked) {
-              return !locked;
+      public class Scenario0037 {
+          public int clampLower(int value, int lower) {
+              return Math.max(value, lower);
           }
       }
     new: |
       package example;
 
-      public class Scenario0024 {
-          public boolean canProceed(boolean locked) {
-              return locked;
+      public class Scenario0037 {
+          public int clampLower(int value, int lower) {
+              return Math.min(value, lower);
           }
       }
     labels:
@@ -69,21 +70,21 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0024.java
+    path: src/main/java/example/Scenario0037.java
     old: |
       package example;
 
-      public class Scenario0024 {
-          public boolean canProceed(boolean locked) {
-              return locked;
+      public class Scenario0037 {
+          public int clampLower(int value, int lower) {
+              return Math.min(value, lower);
           }
       }
     new: |
       package example;
 
-      public class Scenario0024 {
-          public boolean canProceed(boolean locked) {
-              return !locked;
+      public class Scenario0037 {
+          public int clampLower(int value, int lower) {
+              return Math.max(value, lower);
           }
       }
     labels:
@@ -91,27 +92,27 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Negated boolean condition
+  title: Incorrect clamp lower bound
   bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0024.java
+    file: src/main/java/example/Scenario0037.java
     entity:
       type: method
-      name: canProceed
-      signature: boolean canProceed(boolean locked)
-    statement: return locked;
+      name: clampLower
+      signature: int clampLower(int value, int lower)
+    statement: return Math.min(value, lower);
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0024.java
+    file: src/main/java/example/Scenario0037.java
     entity:
       type: method
-      name: canProceed
-      signature: boolean canProceed(boolean locked)
-    statement: return !locked;
+      name: clampLower
+      signature: int clampLower(int value, int lower)
+    statement: return Math.max(value, lower);
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -120,7 +121,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return locked;
+      - return Math.min(value, lower);
 checks:
 - type: git_history_contains
   commits:

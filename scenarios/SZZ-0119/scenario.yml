@@ -1,19 +1,20 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0119
-  title: Tiny one-token bug
-  slug: tiny-one-token-bug
-  description: 'This scenario evaluates a bug-introducing commit shape: Tiny one-token bug.'
-  category: bic-shape
+  title: BFC with logging addition
+  slug: bfc-with-logging-addition
+  description: 'This scenario evaluates SZZ behavior when the bug-fixing commit has the shape: BFC with logging addition.'
+  category: "BFC-side noise and tangled commits"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - small-bic
+  - bfc-logging
   difficulty: medium
   status: active
+  category_code: "S4"
 repository:
-  name: SZZ-0119-tiny-one-token-bug
+  name: SZZ-0119-bfc-with-logging-addition
   default_branch: main
   language: java
   build_system: none
@@ -26,13 +27,13 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0119.java
+    path: src/main/java/example/Scenario0054.java
     content: |
       package example;
 
-      public class Scenario0119 {
-          public boolean same(int value, int expected) {
-              return value == expected;
+      public class Scenario0054 {
+          public boolean canRetry(int attempts) {
+              return attempts < 3;
           }
       }
 - id: c1
@@ -42,21 +43,21 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0119.java
+    path: src/main/java/example/Scenario0054.java
     old: |
       package example;
 
-      public class Scenario0119 {
-          public boolean same(int value, int expected) {
-              return value == expected;
+      public class Scenario0054 {
+          public boolean canRetry(int attempts) {
+              return attempts < 3;
           }
       }
     new: |
       package example;
 
-      public class Scenario0119 {
-          public boolean same(int value, int expected) {
-              return value != expected;
+      public class Scenario0054 {
+          public boolean canRetry(int attempts) {
+              return attempts <= 3;
           }
       }
     labels:
@@ -64,26 +65,27 @@ commits:
     - fault
 - id: c2
   message: Fix bug
-  author: Alice <alice@example.com>
+  author: Carol <carol@example.com>
   date: '2024-01-03T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0119.java
+    path: src/main/java/example/Scenario0054.java
     old: |
       package example;
 
-      public class Scenario0119 {
-          public boolean same(int value, int expected) {
-              return value != expected;
+      public class Scenario0054 {
+          public boolean canRetry(int attempts) {
+              return attempts <= 3;
           }
       }
     new: |
       package example;
 
-      public class Scenario0119 {
-          public boolean same(int value, int expected) {
-              return value == expected;
+      public class Scenario0054 {
+          public boolean canRetry(int attempts) {
+              System.out.println(attempts);
+                  return attempts < 3;
           }
       }
     labels:
@@ -91,27 +93,27 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Tiny one-token bug
+  title: BFC with logging addition
   bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0119.java
+    file: src/main/java/example/Scenario0054.java
     entity:
       type: method
-      name: same
-      signature: boolean same(int value, int expected)
-    statement: return value != expected;
+      name: canRetry
+      signature: boolean canRetry(int attempts)
+    statement: return attempts <= 3;
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0119.java
+    file: src/main/java/example/Scenario0054.java
     entity:
       type: method
-      name: same
-      signature: boolean same(int value, int expected)
-    statement: return value == expected;
+      name: canRetry
+      signature: boolean canRetry(int attempts)
+    statement: return attempts < 3;
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -120,7 +122,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return value != expected;
+      - return attempts <= 3;
 checks:
 - type: git_history_contains
   commits:

@@ -1,37 +1,43 @@
-# SZZG-0041: BIC separated from BFC by an intermediate work-item commit
+# SZZG-0041: Ambiguous blame with duplicate faulty lines
 
 ## Source
 
-- Category: Work-item and commit-series scenarios
+- Category: Ambiguous blame scenarios
 
 ## Purpose
 
-Evaluate whether SZZ identifies the original BIC when a related but non-faulty work-item commit sits immediately between the BIC and BFC.
+Evaluate ambiguous blame with duplicate faulty lines and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: create inventory reservation logic
-c1: introduce exact-stock reservation bug
-c2: add unrelated audit event in the same work item
-c3: fix exact-stock reservation bug
+c0: c0: create duplicate limit checks
+c1: c1: introduce user limit bug
+c2: c2: introduce syntactically identical admin limit bug
+c3: c3: fix only user limit boundary
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-Work-item membership and related-but-not-correct candidates require metadata beyond the normal linear scenario schema.
+This history requires graph-aware scenario semantics that are difficult to express with the normal `scenario.yml` schema.
 
 ## Required graph-schema features
 
-- Factors: work_items, intermediate_commit, related_but_not_correct
-- Operation types: write_file, replace
-- Expected SZZ policy is defined in expected_szz.
+- Factors: ambiguous_blame, duplicate_code, same_statement_multiple_locations
+- Operation types: replace, write_file
+- Expected SZZ policy is defined in `expected_szz`.
+
+## Expected BICs
+
+```text
+c1
+```
 
 ## Evaluation points
 
-- Whether SZZ identifies c1 as the BIC.
-- Whether the intermediate audit commit c2 is not mistaken for the BIC.
-- Whether work-item membership is represented without collapsing all commits in the work item into one cause.
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
 ---
 

@@ -1,19 +1,20 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0090
-  title: Extract helper after BIC
-  slug: extract-helper-after-bic
-  description: This scenario inserts an intermediate refactoring change between the BIC and BFC.
-  category: refactoring
+  title: Guard clause addition after BIC
+  slug: guard-clause-after-bic
+  description: This scenario introduces a bug by changing `return value >= min && value <= max;` to `return value > min && value < max;` and later restores the correct implementation.
+  category: "Intermediate noise and history noise"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - extract-method-after-bic
+  - guard-clause-after-bic
   difficulty: medium
   status: active
+  category_code: "S3"
 repository:
-  name: SZZ-0090-extract-helper-after-bic
+  name: SZZ-0090-guard-clause-after-bic
   default_branch: main
   language: java
   build_system: none
@@ -26,13 +27,13 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0090.java
+    path: src/main/java/example/Scenario0049.java
     content: |
       package example;
 
-      public class Scenario0090 {
-          public boolean valid(int value) {
-              return value >= min;
+      public class Scenario0049 {
+          public boolean check(int value, int min, int max) {
+              return value >= min && value <= max;
           }
       }
 - id: c1
@@ -42,82 +43,78 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0090.java
+    path: src/main/java/example/Scenario0049.java
     old: |
       package example;
 
-      public class Scenario0090 {
-          public boolean valid(int value) {
-              return value >= min;
+      public class Scenario0049 {
+          public boolean check(int value, int min, int max) {
+              return value >= min && value <= max;
           }
       }
     new: |
       package example;
 
-      public class Scenario0090 {
-          public boolean valid(int value) {
-              return value > min;
+      public class Scenario0049 {
+          public boolean check(int value, int min, int max) {
+              return value > min && value < max;
           }
       }
     labels:
     - B001
     - fault
 - id: c2
-  message: Apply intermediate rewrite
+  message: Add guard clause after bug introduction
   author: Carol <carol@example.com>
   date: '2024-01-03T10:00:00Z'
-  role: refactoring
+  role: distractor
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0090.java
+    path: src/main/java/example/Scenario0049.java
     old: |
       package example;
 
-      public class Scenario0090 {
-          public boolean valid(int value) {
-              return value > min;
+      public class Scenario0049 {
+          public boolean check(int value, int min, int max) {
+              return value > min && value < max;
           }
       }
     new: |
       package example;
 
-      public class Scenario0090 {
-          public boolean check(int value, int min) {
-              return greaterThanMin(value, min);
-          }
-
-          public boolean greaterThanMin(int value, int min) {
-              return value > min;
+      public class Scenario0049 {
+          public boolean check(int value, int min, int max) {
+              if (min > max) {
+                  return false;
+              }
+              return value > min && value < max;
           }
       }
-    labels:
-    - non_bug_introducing_change
 - id: c3
   message: Fix bug
-  author: Dave <dave@example.com>
+  author: Alice <alice@example.com>
   date: '2024-01-04T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0090.java
+    path: src/main/java/example/Scenario0049.java
     old: |
       package example;
 
-      public class Scenario0090 {
-          public boolean check(int value, int min) {
-              return greaterThanMin(value, min);
-          }
-
-          public boolean greaterThanMin(int value, int min) {
-              return value > min;
+      public class Scenario0049 {
+          public boolean check(int value, int min, int max) {
+              if (min > max) {
+                  return false;
+              }
+              return value > min && value < max;
           }
       }
     new: |
       package example;
 
-      public class Scenario0090 {
-          public boolean valid(int value) {
-              return value >= min;
+      public class Scenario0049 {
+          public boolean check(int value, int min, int max) {
+              return value >= min && value <= max;
           }
       }
     labels:
@@ -125,27 +122,27 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Extract helper after BIC
+  title: Guard clause addition after BIC
   bug_fixing_commit: c3
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0090.java
+    file: src/main/java/example/Scenario0049.java
     entity:
       type: method
-      name: valid
-      signature: boolean valid(int value)
-    statement: return value > min;
+      name: check
+      signature: boolean check(int value, int min, int max)
+    statement: return value > min && value < max;
     change_type: line_modification
   fix:
     commit: c3
-    file: src/main/java/example/Scenario0090.java
+    file: src/main/java/example/Scenario0049.java
     entity:
       type: method
-      name: valid
-      signature: boolean valid(int value)
-    statement: return value >= min;
+      name: check
+      signature: boolean check(int value, int min, int max)
+    statement: return value >= min && value <= max;
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -156,7 +153,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return value > min;
+      - return value > min && value < max;
 checks:
 - type: git_history_contains
   commits:

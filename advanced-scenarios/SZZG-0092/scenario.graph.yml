@@ -1,22 +1,21 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0092
-  title: Repeated revert toggling before final fix
-  slug: repeated-revert-toggling-before-final-fix
-  description: The same bug alternates between fixed and buggy states through repeated revert and revert-of-revert commits
-    before a final explicit fix.
-  category: Revert and reintroduction scenarios
-  category_code: G
+  title: Misleading revert commit message reintroduces bug
+  slug: misleading-revert-commit-message-reintroduces-bug
+  description: A revert commit has a cleanup-like message but actually reintroduces a previously fixed bug.
+  category: "Revert-specific reintroduction"
+  category_code: "G6"
   factors:
   - revert
-  - revert_of_revert
-  - repeated_toggling
+  - misleading_commit_message
+  - context_aware
   - reintroduced_bug
   - re_bic
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0092-repeated-revert-toggling-before-final-fix
+  name: SZZG-0092-misleading-revert-commit-message-reintroduces-bug
   default_branch: main
   language: java
   build_system: none
@@ -29,13 +28,9 @@ graph:
 
     c2: fix boundary bug
 
-    c3: revert c2 and reintroduce bug
+    c3: revert cleanup changes
 
-    c4: revert c3 and restore fix
-
-    c5: revert c4 and reintroduce bug again
-
-    c6: final explicit fix after repeated toggling'
+    c4: fix regression after misleading revert'
 commits:
 - id: c0
   branch: main
@@ -63,7 +58,7 @@ commits:
   parents:
   - c1
   message: 'c2: fix boundary bug'
-  role: bug_fixing
+  role: prior_fix
   operations:
   - type: replace
     path: src/main/java/example/Range.java
@@ -73,7 +68,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: revert c2 and reintroduce bug'
+  message: 'c3: revert cleanup changes'
   role: bug_introducing
   operations:
   - type: replace
@@ -81,35 +76,12 @@ commits:
     old: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
     new: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
   reverts: c2
+  misleading_message: true
 - id: c4
   branch: main
   parents:
   - c3
-  message: 'c4: revert c3 and restore fix'
-  role: bug_fixing
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
-    new: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
-  reverts: c3
-- id: c5
-  branch: main
-  parents:
-  - c4
-  message: 'c5: revert c4 and reintroduce bug again'
-  role: bug_introducing
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
-    new: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
-  reverts: c4
-- id: c6
-  branch: main
-  parents:
-  - c5
-  message: 'c6: final explicit fix after repeated toggling'
+  message: 'c4: fix regression after misleading revert'
   role: bug_fixing
   operations:
   - type: replace
@@ -118,36 +90,34 @@ commits:
     new: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
 bugs:
 - id: B001
-  title: Boundary bug reintroduced after repeated revert toggling
+  title: Boundary bug hidden behind misleading revert message
   bug_introducing_commits:
-  - commit: c5
-    role: direct
   - commit: c3
-    role: related_reintroducing
+    role: direct
   - commit: c1
     role: origin
   bug_fixing_commits:
-  - commit: c6
+  - commit: c4
     role: complete_fix
   faults:
   - id: F001
-    commit: c5
+    commit: c3
     file: src/main/java/example/Range.java
     statement: boolean belowMax = value < max;
-    change_type: latest_reintroduced_upper_boundary
+    change_type: misleading_revert_upper_boundary
   - id: F002
-    commit: c5
+    commit: c3
     file: src/main/java/example/Range.java
     statement: boolean aboveMin = value > min;
-    change_type: latest_reintroduced_lower_boundary
+    change_type: misleading_revert_lower_boundary
   fixes:
   - id: X001
-    commit: c6
+    commit: c4
     file: src/main/java/example/Range.java
     statement: boolean belowMax = value <= max;
     fix_type: line_modification
   - id: X002
-    commit: c6
+    commit: c4
     file: src/main/java/example/Range.java
     statement: boolean aboveMin = value >= min;
     fix_type: line_modification
@@ -155,21 +125,19 @@ expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - c5
+    - c3
     related_but_not_correct:
     - c1
-    - c3
     - c2
-    - c4
-    notes: For the final fix c6, the latest reintroducing revert c5 is the direct BIC.
+    notes: The misleading message should not obscure that c3 is the direct BIC.
 scenario_design:
-  purpose: Evaluate repeated toggling where the latest reintroducing revert should be identified as the direct BIC.
-  key_property: Multiple earlier BIC-like and fix-like commits exist, but the final fix should blame the latest re-BIC.
+  purpose: Evaluate context-aware SZZ robustness when a revert message understates or mislabels the actual bug reintroduction.
+  key_property: The revert message looks like cleanup, but the patch reintroduces the boundary bug.
   difference_from_existing_revert_scenarios: This scenario isolates a double-revert or revert-derived complication beyond
     the existing partial revert and reintroduction scenarios.
   evaluation_points:
-  - Whether SZZ reports c5.
-  - Whether older origin/reintroducing commits are not counted as exact direct answers.
+  - Whether SZZ reports c3.
+  - Whether context-aware methods avoid being misled by the message.
 notes:
 - This scenario models revert-related development history for SZZ evaluation.
 - The direct BIC is the commit that reintroduces the bug in the history observed from the BFC.

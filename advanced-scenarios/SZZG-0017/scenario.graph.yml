@@ -1,48 +1,46 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0017
-  title: Buggy code copied while original is fixed later
-  slug: buggy-code-copied-original-later-fixed
-  description: Evaluates a copied buggy implementation where the original file is fixed before the copied file, and the
-    copy commit remains the direct BIC for the copied file.
-  category: Copy, clone, and propagation scenarios
-  category_code: E
+  title: Clone diverges before fix
+  slug: clone
+  description: Evaluates clone diverges before fix and checks whether SZZ identifies the expected bug-introducing commit set.
+  category: "Clone, copy propagation, and origin-vs-direct BIC"
+  category_code: "G2"
   factors:
-  - copy_file
-  - faults
+  - clone_relationships
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0017-buggy-code-copied-original-later-fixed
+  name: SZZG-0017-clone
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial state (write_file src/main/java/example/A.java)
+  history_summary: 'c0: introduce origin bug (write_file src/main/java/example/A.java)
 
-    c1: copy buggy code to B.java (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)
+    c1: introduce bug (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)
 
-    c2: fix original bug in A.java (replace src/main/java/example/A.java)
+    c2: diverge clone (replace src/main/java/example/B.java; replace src/main/java/example/B.java)
 
-    c3: fix copied bug in B.java (replace src/main/java/example/B.java)'
+    c3: fix bug (replace src/main/java/example/B.java)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_file src/main/java/example/A.java)'
-  role: initial
+  message: 'c0: introduce origin bug (write_file src/main/java/example/A.java)'
+  role: origin_bug_introducing
   operations:
   - type: write_file
     path: src/main/java/example/A.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value > min && value < max;\n  }\n}\n"
+    content: "package example;\n\npublic class A {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: copy buggy code to B.java (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)'
+  message: 'c1: introduce bug (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)'
   role: bug_introducing
   operations:
   - type: copy_file
@@ -52,18 +50,22 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: fix original bug in A.java (replace src/main/java/example/A.java)'
-  role: bug_fixing
+  message: 'c2: diverge clone (replace src/main/java/example/B.java; replace src/main/java/example/B.java)'
+  role: clone_divergence
   operations:
   - type: replace
-    path: src/main/java/example/A.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/B.java
+    old: public class A
+    new: public class B
+  - type: replace
+    path: src/main/java/example/B.java
+    old: public boolean contains
+    new: public boolean containsCopied
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'c3: fix copied bug in B.java (replace src/main/java/example/B.java)'
+  message: 'c3: fix bug (replace src/main/java/example/B.java)'
   role: bug_fixing
   operations:
   - type: replace
@@ -72,14 +74,12 @@ commits:
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Copied boundary bug in B.java
+  title: Diverged clone bug
   bug_introducing_commits:
   - commit: c1
     role: direct
-    description: Direct BIC for B.java because this commit copies the faulty logic into the copied file.
   - commit: c0
     role: origin
-    description: Origin context where the faulty logic already existed in A.java.
   bug_fixing_commits:
   - commit: c3
     role: complete_fix
@@ -88,28 +88,32 @@ bugs:
     commit: c1
     file: src/main/java/example/B.java
     statement: return value > min && value < max;
-    change_type: copy_propagated_line_modification
+    role: direct
   fixes:
   - id: X001
     commit: c3
     file: src/main/java/example/B.java
     statement: return value >= min && value <= max;
-    fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
     - c1
+clone_relationships:
+- origin_file: src/main/java/example/A.java
+  copied_file: src/main/java/example/B.java
+  origin_commit: c0
+  copy_commit: c1
+  divergence_commits:
+  - c2
 scenario_design:
-  purpose: Evaluate a copy-propagated bug where c1 remains the direct BIC for B.java even though A.java is fixed first.
-  key_property: Commit c2 fixes the original A.java instance only. For the later B.java fix in c3, the expected direct BIC
-    is still c1, the commit that copied the faulty logic into B.java.
+  purpose: Evaluate Clone diverges before fix and whether SZZ identifies the expected bug-introducing commit set.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: copy_file, faults; operations: write_file, copy_file, replace.'
+  required_extensions_from_source: 'This scenario uses factors: clone_relationships; operations: write_file, copy_file, replace.'
   evaluation_points:
-  - Whether SZZ identifies c1 as the direct BIC for the copied B.java instance.
-  - Whether SZZ does not treat the later A.java fix c2 as the copied instance's BFC.
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
   - Whether the expected_szz evaluation policy is applied correctly.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.

@@ -1,15 +1,15 @@
-# SZZ-0004: Boolean return value modification
+# SZZ-0004: Conditional expression change
 
 ## Purpose
 
-This scenario checks a simple single-line semantic bug where a predicate method
-is changed to always return `true`.
+This scenario checks a common conditional-expression bug: an inclusive comparison
+is changed to a strict comparison.
 
 ## Commit structure
 
-- `c0`: Introduces the correct predicate.
-- `c1`: Replaces the predicate with `return true;`. This is the BIC.
-- `c2`: Restores the original predicate. This is the BFC.
+- `c0`: Allows payments when `amount <= balance`.
+- `c1`: Changes the condition to `amount < balance`. This is the BIC.
+- `c2`: Restores `amount <= balance`. This is the BFC.
 
 ## Expected behavior
 

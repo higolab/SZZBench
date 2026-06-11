@@ -1,23 +1,23 @@
-# SZZ-0087: SQL wildcard escaping omission
+# SZZ-0087: Unrelated method addition after BIC
 
 ## Purpose
 
-This scenario represents an omission bug: the method is introduced without a necessary SQL wildcard escaping, and the bug-fixing commit adds the missing statement.
+This scenario introduces a bug by changing `return value >= min && value <= max;` to `return value > min && value < max;` and later restores the correct implementation.
 
 ## Commit structure
 
-- `c0`: initial class
-- `c1`: introduces the method without the SQL wildcard escaping
-- `c2`: adds the missing SQL wildcard escaping
+- `c0`: initial correct implementation
+- `c1`: introduces the bug
+- `c2`: Add unrelated helper method
+- `c3`: fixes the bug
 
 ## Expected behavior
 
-The expected BFC is `c2` and the expected BIC is `c1`. Line-level evaluation is unavailable because this is an omission bug.
+The expected BFC is `c3` and the expected BIC is `c1`.
 
 ## Factors
 
 - `single-bic`
 - `single-bfc`
-- `omission-bug`
-- `line-addition-fix`
-- `security`
+- `line-modification`
+- `unrelated-method-after-bic`

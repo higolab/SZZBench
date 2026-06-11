@@ -1,37 +1,44 @@
-# SZZG-0060: Entity-level-only expected SZZ policy
+# SZZG-0060: BFC on main after feature-branch BIC is merged
 
 ## Source
 
-- Category: Schema and evaluation-policy scenarios
+- Category: Branch and merge scenarios
 
 ## Purpose
 
-Evaluate whether SZZ output can be judged against an entity-level oracle when line-level evaluation is intentionally disabled.
-
-This is an oracle-policy scenario rather than a history-shape scenario. The faulty line is recorded for traceability, but line-level evaluation is deliberately unavailable and the expected answer is the `Range.contains` method entity.
+Evaluate bfc on main after feature-branch bic is merged and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c1: create initial buggy range implementation (write_file src/main/java/example/Range.java)
-c2: fix bug (replace src/main/java/example/Range.java)
+c0: c0: create quota checker
+c1: c1: feature branch introduces quota boundary bug
+c2: c2: main branch updates comments only
+c3: c3: merge feature branch
+c4: c4: fix quota boundary on main
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
+This history requires graph-aware scenario semantics that are difficult to express with the normal `scenario.yml` schema.
 
 ## Required graph-schema features
 
-- Factors: expected_szz
-- Operation types: write_file, replace
-- Expected SZZ policy defines line-level evaluation as unavailable and method-level entity evaluation as available.
+- Factors: feature_branch, merge_commit, bfc_after_merge
+- Operation types: replace, write_file
+- Expected SZZ policy is defined in `expected_szz`.
+
+## Expected BICs
+
+```text
+c1
+```
 
 ## Evaluation points
 
-- Whether SZZ output can be evaluated at method-entity level.
-- Whether tooling respects the line_level.available=false policy.
-- Whether the expected_szz entity-level oracle is applied correctly.
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
 ---
 

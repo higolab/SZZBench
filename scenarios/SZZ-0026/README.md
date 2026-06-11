@@ -1,8 +1,8 @@
-# SZZ-0026: Min max swapped
+# SZZ-0026: Wrong substring end
 
 ## Purpose
 
-This scenario introduces a bug by changing `return Math.max(left, right);` to `return Math.min(left, right);` and later restores the correct implementation.
+This scenario introduces a bug by changing `return value.substring(0, Math.min(3, value.length()));` to `return value.substring(0, 3);` and later restores the correct implementation.
 
 ## Commit structure
 
@@ -19,4 +19,4 @@ The expected BFC is `c2` and the expected BIC is `c1`.
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `wrong-variable`
+- `api-misuse`

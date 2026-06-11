@@ -1,19 +1,20 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0088
-  title: Parameter rename after BIC
-  slug: parameter-rename-after-bic
-  description: This scenario inserts an intermediate refactoring change between the BIC and BFC.
-  category: refactoring
+  title: Class body reformat after BIC
+  slug: class-body-reformat-after-bic
+  description: This scenario introduces a bug by changing `return value >= min && value <= max;` to `return value > min && value < max;` and later restores the correct implementation.
+  category: "Intermediate noise and history noise"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - parameter-rename-after-bic
+  - class-body-reformat-after-bic
   difficulty: medium
   status: active
+  category_code: "S3"
 repository:
-  name: SZZ-0088-parameter-rename-after-bic
+  name: SZZ-0088-class-body-reformat-after-bic
   default_branch: main
   language: java
   build_system: none
@@ -26,13 +27,13 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0088.java
+    path: src/main/java/example/Scenario0047.java
     content: |
       package example;
 
-      public class Scenario0088 {
-          public boolean validAmount(int amount) {
-              return amount >= 0;
+      public class Scenario0047 {
+          public boolean check(int value, int min, int max) {
+              return value >= min && value <= max;
           }
       }
 - id: c1
@@ -42,74 +43,72 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0088.java
+    path: src/main/java/example/Scenario0047.java
     old: |
       package example;
 
-      public class Scenario0088 {
-          public boolean validAmount(int amount) {
-              return amount >= 0;
+      public class Scenario0047 {
+          public boolean check(int value, int min, int max) {
+              return value >= min && value <= max;
           }
       }
     new: |
       package example;
 
-      public class Scenario0088 {
-          public boolean validAmount(int amount) {
-              return amount > 0;
+      public class Scenario0047 {
+          public boolean check(int value, int min, int max) {
+              return value > min && value < max;
           }
       }
     labels:
     - B001
     - fault
 - id: c2
-  message: Apply intermediate rewrite
+  message: Reformat class body after bug introduction
   author: Carol <carol@example.com>
   date: '2024-01-03T10:00:00Z'
-  role: refactoring
+  role: formatting
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0088.java
+    path: src/main/java/example/Scenario0047.java
     old: |
       package example;
 
-      public class Scenario0088 {
-          public boolean validAmount(int amount) {
-              return amount > 0;
+      public class Scenario0047 {
+          public boolean check(int value, int min, int max) {
+              return value > min && value < max;
           }
       }
     new: |
       package example;
 
-      public class Scenario0088 {
-          public boolean validAmount(int value) {
-              return value > 0;
+      public final class Scenario0047 {
+          public boolean check(int value, int min, int max) {
+              return value > min && value < max;
           }
       }
-    labels:
-    - non_bug_introducing_change
 - id: c3
   message: Fix bug
-  author: Dave <dave@example.com>
+  author: Alice <alice@example.com>
   date: '2024-01-04T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0088.java
+    path: src/main/java/example/Scenario0047.java
     old: |
       package example;
 
-      public class Scenario0088 {
-          public boolean validAmount(int value) {
-              return value > 0;
+      public final class Scenario0047 {
+          public boolean check(int value, int min, int max) {
+              return value > min && value < max;
           }
       }
     new: |
       package example;
 
-      public class Scenario0088 {
-          public boolean validAmount(int amount) {
-              return amount >= 0;
+      public class Scenario0047 {
+          public boolean check(int value, int min, int max) {
+              return value >= min && value <= max;
           }
       }
     labels:
@@ -117,27 +116,27 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Parameter rename after BIC
+  title: Class body reformat after BIC
   bug_fixing_commit: c3
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0088.java
+    file: src/main/java/example/Scenario0047.java
     entity:
       type: method
-      name: validAmount
-      signature: boolean validAmount(int amount)
-    statement: return amount > 0;
+      name: check
+      signature: boolean check(int value, int min, int max)
+    statement: return value > min && value < max;
     change_type: line_modification
   fix:
     commit: c3
-    file: src/main/java/example/Scenario0088.java
+    file: src/main/java/example/Scenario0047.java
     entity:
       type: method
-      name: validAmount
-      signature: boolean validAmount(int amount)
-    statement: return amount >= 0;
+      name: check
+      signature: boolean check(int value, int min, int max)
+    statement: return value >= min && value <= max;
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -148,7 +147,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return amount > 0;
+      - return value > min && value < max;
 checks:
 - type: git_history_contains
   commits:

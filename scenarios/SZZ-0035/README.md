@@ -1,8 +1,8 @@
-# SZZ-0035: Index upper bound error
+# SZZ-0035: Argument order change introduces bug
 
 ## Purpose
 
-This scenario introduces a bug by changing `return index < size;` to `return index <= size;` and later restores the correct implementation.
+This scenario evaluates a bug-introducing commit shape: Argument order change introduces bug.
 
 ## Commit structure
 
@@ -19,4 +19,4 @@ The expected BFC is `c2` and the expected BIC is `c1`.
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `comparison-error`
+- `argument-order-bic`

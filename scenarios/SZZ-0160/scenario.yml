@@ -1,20 +1,20 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0160
-  title: Large noisy intermediate history
-  slug: large-noisy-intermediate
-  description: This scenario is intended to stress implementation robustness under noisy or repetitive code conditions.
-  category: robustness
+  title: Patch context required around caller
+  slug: patch-context-required
+  description: This scenario is intended for evaluating SZZ variants that use commit messages or broader patch context.
+  category: "Context, message, and non-local evidence"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - robustness
-  - large-noisy-intermediate
+  - context-aware
   difficulty: medium
   status: active
+  category_code: "S7"
 repository:
-  name: SZZ-0160-large-noisy-intermediate
+  name: SZZ-0160-patch-context-required
   default_branch: main
   language: java
   build_system: none
@@ -23,181 +23,84 @@ commits:
 - id: c0
   message: Initial implementation
   author: Alice <alice@example.com>
-  date: '2024-06-01T10:00:00Z'
+  date: '2024-05-01T10:00:00Z'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0160.java
+    path: src/main/java/example/Scenario0151.java
     content: |
       package example;
 
-      public class Scenario0160 {
-          public boolean check(String value) {
-              return value != null;
+      public class Scenario0151 {
+          public boolean callerAllowsEmptyCart(int itemCount) {
+              return hasItems(itemCount);
+          }
+
+          private boolean hasItems(int itemCount) {
+              return itemCount > 0;
           }
       }
 - id: c1
-  message: Introduce bug
+  message: Introduce context-sensitive caller bug
   author: Bob <bob@example.com>
-  date: '2024-06-02T10:00:00Z'
+  date: '2024-05-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0160.java
-    old: |
-      package example;
-
-      public class Scenario0160 {
-          public boolean check(String value) {
-              return value != null;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0160 {
-          public boolean check(String value) {
-              return value == null;
-          }
-      }
+    path: src/main/java/example/Scenario0151.java
+    old: return itemCount > 0;
+    new: return itemCount >= 0;
     labels:
     - B001
     - fault
 - id: c2
-  message: Add noisy helper methods
-  author: Carol <carol@example.com>
-  date: '2024-06-03T10:00:00Z'
-  role: distractor
-  operations:
-  - type: replace
-    path: src/main/java/example/Scenario0160.java
-    old: |
-      package example;
-
-      public class Scenario0160 {
-          public boolean check(String value) {
-              return value == null;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0160 {
-          public boolean check(String value) {
-              return value == null;
-          }
-
-          public int helper1(int x) {
-                  return x + 1;
-              }
-          public int helper2(int x) {
-                  return x + 2;
-              }
-          public int helper3(int x) {
-                  return x + 3;
-              }
-          public int helper4(int x) {
-                  return x + 4;
-              }
-          public int helper5(int x) {
-                  return x + 5;
-              }
-          public int helper6(int x) {
-                  return x + 6;
-              }
-          public int helper7(int x) {
-                  return x + 7;
-              }
-      }
-    labels:
-    - non_bug_introducing_change
-- id: c3
-  message: Fix bug
+  message: Fix caller-visible empty-cart acceptance
   author: Alice <alice@example.com>
-  date: '2024-06-04T10:00:00Z'
+  date: '2024-05-03T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0160.java
-    old: |
-      package example;
-
-      public class Scenario0160 {
-          public boolean check(String value) {
-              return value == null;
-          }
-
-          public int helper1(int x) {
-                  return x + 1;
-              }
-          public int helper2(int x) {
-                  return x + 2;
-              }
-          public int helper3(int x) {
-                  return x + 3;
-              }
-          public int helper4(int x) {
-                  return x + 4;
-              }
-          public int helper5(int x) {
-                  return x + 5;
-              }
-          public int helper6(int x) {
-                  return x + 6;
-              }
-          public int helper7(int x) {
-                  return x + 7;
-              }
-      }
-    new: |
-      package example;
-
-      public class Scenario0160 {
-          public boolean check(String value) {
-              return value != null;
-          }
-      }
+    path: src/main/java/example/Scenario0151.java
+    old: return itemCount >= 0;
+    new: return itemCount > 0;
     labels:
     - B001
     - fix
 bugs:
 - id: B001
-  title: Large noisy intermediate history
-  bug_fixing_commit: c3
+  title: Patch context required around caller
+  bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0160.java
+    file: src/main/java/example/Scenario0151.java
     entity:
       type: method
-      name: check
-      signature: boolean check(String value)
-    statement: return value == null;
+      name: hasItems
+      signature: boolean hasItems(int itemCount)
+    statement: return itemCount >= 0;
     change_type: line_modification
   fix:
-    commit: c3
-    file: src/main/java/example/Scenario0160.java
+    commit: c2
+    file: src/main/java/example/Scenario0151.java
     entity:
       type: method
-      name: check
-      signature: boolean check(String value)
-    statement: return value != null;
+      name: hasItems
+      signature: boolean hasItems(int itemCount)
+    statement: return itemCount > 0;
     fix_type: line_modification
   expected_szz:
     commit_level:
       true_positives: *id001
       false_positives_allowed: []
-      known_distractors:
-      - c2
     line_level:
       available: true
       faulty_statements:
-      - return value == null;
+      - return itemCount >= 0;
 checks:
 - type: git_history_contains
   commits:
   - c0
   - c1
   - c2
-  - c3

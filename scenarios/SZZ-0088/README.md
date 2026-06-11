@@ -1,15 +1,15 @@
-# SZZ-0088: Parameter rename after BIC
+# SZZ-0088: Class body reformat after BIC
 
 ## Purpose
 
-This scenario inserts an intermediate refactoring change between the BIC and BFC.
+This scenario introduces a bug by changing `return value >= min && value <= max;` to `return value > min && value < max;` and later restores the correct implementation.
 
 ## Commit structure
 
-- `c0`: Initial correct implementation
-- `c1`: Introduce bug
-- `c2`: Apply intermediate rewrite
-- `c3`: Fix bug
+- `c0`: initial correct implementation
+- `c1`: introduces the bug
+- `c2`: Reformat class body after bug introduction
+- `c3`: fixes the bug
 
 ## Expected behavior
 
@@ -20,4 +20,4 @@ The expected BFC is `c3` and the expected BIC is `c1`.
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `parameter-rename-after-bic`
+- `class-body-reformat-after-bic`

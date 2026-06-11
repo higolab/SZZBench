@@ -1,22 +1,22 @@
-# SZZ-0057: BFC with multiple files represented by write_file
+# SZZ-0057: Exception handling omission
 
 ## Purpose
 
-This scenario evaluates SZZ behavior when the bug-fixing commit touches the fixed source file and creates an additional file using `write_file`.
+This scenario represents an omission bug: the method is introduced without a necessary exception handling, and the bug-fixing commit adds the missing statement.
 
 ## Commit structure
 
-- `c0`: Initial correct implementation
-- `c1`: Introduce bug
-- `c2`: Fix bug and add an extra source file
+- `c0`: initial class
+- `c1`: introduces the method without the exception handling
+- `c2`: adds the missing exception handling
 
 ## Expected behavior
 
-The expected BFC is `c2` and the expected BIC is `c1`.
+The expected BFC is `c2` and the expected BIC is `c1`. Line-level evaluation is unavailable because this is an omission bug.
 
 ## Factors
 
 - `single-bic`
 - `single-bfc`
-- `line-modification`
-- `multi-file-bfc`
+- `omission-bug`
+- `line-addition-fix`

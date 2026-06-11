@@ -1,14 +1,14 @@
-# SZZ-0108: Feature addition introduces boundary bug
+# SZZ-0108: CRLF-like full file rewrite
 
 ## Purpose
 
-This scenario evaluates a bug-introducing commit shape: Feature addition introduces boundary bug.
+This scenario is intended to stress implementation robustness under noisy or repetitive code conditions.
 
 ## Commit structure
 
-- `c0`: initial correct implementation
-- `c1`: introduces the bug
-- `c2`: fixes the bug
+- `c0`: Initial implementation
+- `c1`: Introduce bug
+- `c2`: Fix bug after line-ending-like rewrite
 
 ## Expected behavior
 
@@ -19,4 +19,5 @@ The expected BFC is `c2` and the expected BIC is `c1`.
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `feature-addition-bic`
+- `robustness`
+- `line-ending-noise`

@@ -4,10 +4,11 @@ meta:
   title: File creation only as fix
   slug: file-creation-only-as-fix
   description: Evaluates file creation only as fix and checks whether SZZ identifies the expected bug-introducing commit set.
-  category: Robustness and implementation-quality scenarios
+  category: "Non-source, configuration, test-only, and file-level edge cases"
   factors: []
   difficulty: hard
   status: active
+  category_code: "S8"
 repository:
   name: SZZ-0173-file-creation-only-as-fix
   default_branch: main

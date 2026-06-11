@@ -1,19 +1,20 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0030
-  title: Wrong fallback number
-  slug: wrong-fallback-number
-  description: 'This scenario introduces a bug by changing `return value < 0 ? 0 : value;` to `return value < 0 ? -1 : value;` and later restores the correct implementation.'
-  category: basic
+  title: BFC fixes an API misuse
+  slug: bfc-api-misuse-fix
+  description: 'This scenario evaluates SZZ behavior when the bug-fixing commit has the shape: BFC fixes an API misuse.'
+  category: "Basic semantic line changes"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - wrong-constant
-  difficulty: easy
+  - api-misuse
+  difficulty: medium
   status: active
+  category_code: "S1"
 repository:
-  name: SZZ-0030-wrong-fallback-number
+  name: SZZ-0030-bfc-api-misuse-fix
   default_branch: main
   language: java
   build_system: none
@@ -26,13 +27,13 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0030.java
+    path: src/main/java/example/Scenario0061.java
     content: |
       package example;
 
-      public class Scenario0030 {
-          public int nonNegative(int value) {
-              return value < 0 ? 0 : value;
+      public class Scenario0061 {
+          public String clean(String value) {
+              return value.trim();
           }
       }
 - id: c1
@@ -42,21 +43,21 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0030.java
+    path: src/main/java/example/Scenario0061.java
     old: |
       package example;
 
-      public class Scenario0030 {
-          public int nonNegative(int value) {
-              return value < 0 ? 0 : value;
+      public class Scenario0061 {
+          public String clean(String value) {
+              return value.trim();
           }
       }
     new: |
       package example;
 
-      public class Scenario0030 {
-          public int nonNegative(int value) {
-              return value < 0 ? -1 : value;
+      public class Scenario0061 {
+          public String clean(String value) {
+              return value.stripTrailing();
           }
       }
     labels:
@@ -64,26 +65,26 @@ commits:
     - fault
 - id: c2
   message: Fix bug
-  author: Alice <alice@example.com>
+  author: Carol <carol@example.com>
   date: '2024-01-03T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0030.java
+    path: src/main/java/example/Scenario0061.java
     old: |
       package example;
 
-      public class Scenario0030 {
-          public int nonNegative(int value) {
-              return value < 0 ? -1 : value;
+      public class Scenario0061 {
+          public String clean(String value) {
+              return value.stripTrailing();
           }
       }
     new: |
       package example;
 
-      public class Scenario0030 {
-          public int nonNegative(int value) {
-              return value < 0 ? 0 : value;
+      public class Scenario0061 {
+          public String clean(String value) {
+              return value.trim();
           }
       }
     labels:
@@ -91,27 +92,27 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Wrong fallback number
+  title: BFC fixes an API misuse
   bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0030.java
+    file: src/main/java/example/Scenario0061.java
     entity:
       type: method
-      name: nonNegative
-      signature: int nonNegative(int value)
-    statement: 'return value < 0 ? -1 : value;'
+      name: clean
+      signature: String clean(String value)
+    statement: return value.stripTrailing();
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0030.java
+    file: src/main/java/example/Scenario0061.java
     entity:
       type: method
-      name: nonNegative
-      signature: int nonNegative(int value)
-    statement: 'return value < 0 ? 0 : value;'
+      name: clean
+      signature: String clean(String value)
+    statement: return value.trim();
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -120,7 +121,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - 'return value < 0 ? -1 : value;'
+      - return value.stripTrailing();
 checks:
 - type: git_history_contains
   commits:

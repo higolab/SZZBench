@@ -1,22 +1,22 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0078
-  title: Multiple BICs replayed by rebase
-  slug: multiple-bics-replayed-by-rebase
-  description: Multiple feature BICs are replayed onto main by rebase.
-  category: Branch, merge, cherry-pick, and backport scenarios
-  category_code: G
+  title: Rebase commit message reveals origin
+  slug: rebase-commit-message-reveals-origin
+  description: The rebased direct BIC message explicitly points to its origin commit.
+  category: "Rebase-specific history rewriting"
+  category_code: "G5"
   factors:
   - branch
   - rebase
-  - multiple_bic
-  - rebased_bic
-  - direct_bic
+  - commit_messages
+  - developer_hints
   - origin_bic
+  - direct_bic
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0078-multiple-bics-replayed-by-rebase
+  name: SZZG-0078-rebase-commit-message-reveals-origin
   default_branch: main
   language: java
   build_system: none
@@ -25,15 +25,15 @@ graph:
   model: commit_dag
   history_summary: 'c0: create initial correct implementation
 
-    f1: introduce lower-bound bug
+    f1: introduce range boundary bug on feature
 
-    f2: introduce upper-bound bug
+    f2: add feature helper using buggy range check
 
-    r1: rebase lower-bound BIC
+    r1: rebase f1 onto main and preserve origin reference
 
-    r2: rebase upper-bound BIC
+    r2: rebase feature helper onto main
 
-    c3: fix both rebased BICs'
+    c3: fix range boundary bug after rebase'
 commits:
 - id: c0
   branch: main
@@ -49,53 +49,59 @@ commits:
   branch: feature
   parents:
   - c0
-  message: 'f1: introduce lower-bound bug'
+  message: 'f1: introduce range boundary bug on feature'
   role: origin_bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
-    new: return value > min && value <= max;
+    new: return value > min && value < max;
 - id: f2
   branch: feature
   parents:
   - f1
-  message: 'f2: introduce upper-bound bug'
-  role: origin_bug_introducing
+  message: 'f2: add feature helper using buggy range check'
+  role: intermediate
   operations:
   - type: replace
     path: src/main/java/example/Range.java
-    old: return value > min && value <= max;
-    new: return value > min && value < max;
+    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n}\n"
+    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
+      \ min, max);\n  }\n}\n"
 - id: r1
   branch: main
   parents:
   - c0
-  message: 'r1: rebase lower-bound BIC'
+  message: 'r1: rebase f1 onto main and preserve origin reference'
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
-    new: return value > min && value <= max;
+    new: return value > min && value < max;
   rebase_of: f1
 - id: r2
   branch: main
   parents:
   - r1
-  message: 'r2: rebase upper-bound BIC'
-  role: bug_introducing
+  message: 'r2: rebase feature helper onto main'
+  role: intermediate
   operations:
   - type: replace
     path: src/main/java/example/Range.java
-    old: return value > min && value <= max;
-    new: return value > min && value < max;
+    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n}\n"
+    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
+      \ min, max);\n  }\n}\n"
   rebase_of: f2
 - id: c3
   branch: main
   parents:
   - r2
-  message: 'c3: fix both rebased BICs'
+  message: 'c3: fix range boundary bug after rebase'
   role: bug_fixing
   operations:
   - type: replace
@@ -104,22 +110,18 @@ commits:
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Bug requiring two rebased BICs
+  title: Range bug with rebase message context
   bug_introducing_commits:
   - commit: r1
     role: direct
-  - commit: r2
-    role: direct
   - commit: f1
-    role: origin
-  - commit: f2
     role: origin
   bug_fixing_commits:
   - commit: c3
     role: complete_fix
   faults:
   - id: F001
-    commit: r2
+    commit: r1
     file: src/main/java/example/Range.java
     statement: return value > min && value < max;
     change_type: line_modification
@@ -133,11 +135,6 @@ bugs:
   - id: OF001
     commit: f1
     file: src/main/java/example/Range.java
-    statement: return value > min && value <= max;
-    change_type: origin_line_modification
-  - id: OF002
-    commit: f2
-    file: src/main/java/example/Range.java
     statement: return value > min && value < max;
     change_type: origin_line_modification
 expected_szz:
@@ -145,17 +142,19 @@ expected_szz:
     evaluation_policy: exact_set
     required:
     - r1
-    - r2
     related_but_not_correct:
     - f1
-    - f2
 scenario_design:
-  purpose: Evaluate multiple-BIC handling when BICs are introduced by rebase replay.
-  key_property: Origin BIC set maps to direct BIC set.
-  difference_from_SZZG_0073: SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
+  purpose: Evaluate whether message context helps or misleads SZZ in a rebase scenario.
+  key_property: The direct BIC remains r1 despite message context.
+  difference_from_SZZG_0073: SZZG-0063 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
     adds a distinct rebase-related complication.
   evaluation_points:
-  - Return r1 and r2.
+  - Report r1.
 notes:
 - This scenario models a rebase-related development history for SZZ evaluation.
 - Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.
+developer_hints:
+- commit: r1
+  kind: rebase_origin
+  text: 'Rebased-from: f1'

@@ -1,41 +1,36 @@
-# SZZG-0110: Configuration BIC is fixed by code-side normalization
+# SZZG-0110: Empty intermediate commit
 
 ## Source
 
-- Category: Context-dependent scenarios
+- Category: Robustness and implementation-quality scenarios
 
 ## Purpose
 
-Evaluate configuration bic is fixed by code-side normalization and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate whether SZZ identifies the real BIC when an empty commit appears in the intermediate history.
 
 ## Expected history
 
 ```text
-c0: c0: create endpoint resolver and config
-c1: c1: introduce trailing slash in configuration
-c2: c2: fix endpoint construction in code
+c0: create initial state (write_file src/main/java/example/Range.java)
+c1: apply empty intermediate change
+c2: introduce bug (replace src/main/java/example/Range.java)
+c3: fix bug (replace src/main/java/example/Range.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal `scenario.yml` schema.
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-- Factors: configuration_change, cross_artifact_fix, context_dependent
-- Operation types: replace, write_file
-- Expected SZZ policy is defined in `expected_szz`.
-
-## Expected BICs
-
-```text
-c1
-```
+- Factors: allow_empty
+- Operation types: write_file, replace
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
 - Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the empty intermediate commit c1 is not reported as the BIC.
 - Whether the expected_szz evaluation policy is applied correctly.
 
 ---

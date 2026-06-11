@@ -1,22 +1,22 @@
-# SZZ-0060: BFC restores division guard condition
+# SZZ-0060: Transaction rollback omission
 
 ## Purpose
 
-This scenario evaluates SZZ behavior when the bug-fixing commit restores a boolean guard condition for a division denominator check.
+This scenario represents an omission bug: the method is introduced without a necessary rollback guard, and the bug-fixing commit adds the missing statement.
 
 ## Commit structure
 
-- `c0`: Initial correct implementation
-- `c1`: Introduce bug
-- `c2`: Fix bug
+- `c0`: initial class
+- `c1`: introduces the method without the rollback guard
+- `c2`: adds the missing rollback guard
 
 ## Expected behavior
 
-The expected BFC is `c2` and the expected BIC is `c1`.
+The expected BFC is `c2` and the expected BIC is `c1`. Line-level evaluation is unavailable because this is an omission bug.
 
 ## Factors
 
 - `single-bic`
 - `single-bfc`
-- `line-modification`
-- `comparison-error`
+- `omission-bug`
+- `line-addition-fix`

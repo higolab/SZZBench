@@ -1,175 +1,124 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0043
-  title: Work item inference without issue ID
-  slug: issue-id-work-item
-  description: A bug is introduced during a short sequence of related feature-work commits that do not contain an explicit
-    issue ID. The scenario evaluates whether a method can infer the work item from commit messages, nearby commit order, and
-    related files, while still selecting the specific BIC inside that inferred work item.
-  category: Work-item and commit-series scenarios
-  category_code: H
+  title: BIC on feature branch, BFC on main
+  slug: bic-on-feature-branch-bfc-on-main
+  description: A feature branch introduces a bug, extends feature code that depends on the buggy method, is merged into main,
+    and is then fixed by a normal main-branch commit.
+  category: "Branch, merge, cherry-pick, backport, and release branches"
+  category_code: "G4"
   factors:
-  - work_items
-  - work_item_inference
-  - no_issue_id
-  - commit_series
-  - related_but_not_correct
+  - branch
+  - merge
+  - feature_branch_bic
+  - main_branch_bfc
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0043-work-item-inference-without-issue-id
+  name: SZZG-0043-bic-on-feature-branch-bfc-on-main
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial range filter
+  history_summary: 'c0: create initial correct implementation on main
 
-    c1: start range filter cleanup without issue ID
+    c1: introduce bug on feature branch
 
-    c2: tighten boundary behavior during the same inferred work item and introduce bug
+    c2: extend feature branch code that uses the buggy method
 
-    c3: wire range filter into request path without issue ID
+    c3: merge feature branch into main
 
-    c4: fix boundary regression from range filter work'
+    c4: fix bug on main after merge'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial range filter'
+  message: 'c0: create initial correct implementation'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/RangeFilter.java
-    content: "package example;\n\npublic class RangeFilter {\n  public int normalize(int value) {\n    return value;\n  }\n\
-      \n  public boolean contains(int value, int min, int max) {\n    int normalized = normalize(value);\n    return normalized\
-      \ >= min && normalized <= max;\n  }\n}\n"
+    path: src/main/java/example/Range.java
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
-  branch: main
+  branch: feature
   parents:
   - c0
-  message: Start range filter cleanup
-  role: work_item_context
-  work_item: INFERRED-WI-001
+  message: 'c1: introduce range boundary bug on feature'
+  role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/RangeFilter.java
-    old: "package example;\n\npublic class RangeFilter {\n  public int normalize(int value) {\n    return value;\n  }\n\n\
-      \  public boolean contains(int value, int min, int max) {\n    int normalized = normalize(value);\n    return normalized\
-      \ >= min && normalized <= max;\n  }\n}\n"
-    new: "package example;\n\npublic class RangeFilter {\n  public int normalize(int value) {\n    return Math.max(0, value);\n\
-      \  }\n\n  public boolean contains(int value, int min, int max) {\n    int normalized = normalize(value);\n    return\
-      \ normalized >= min && normalized <= max;\n  }\n}\n"
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
 - id: c2
-  branch: main
+  branch: feature
   parents:
   - c1
-  message: Tighten boundary behavior in range filter
-  role: bug_introducing
-  work_item: INFERRED-WI-001
+  message: 'c2: extend feature branch code using range check'
+  role: intermediate
   operations:
   - type: replace
-    path: src/main/java/example/RangeFilter.java
-    old: return normalized >= min && normalized <= max;
-    new: return normalized > min && normalized < max;
+    path: src/main/java/example/Range.java
+    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n}\n"
+    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
+      \ min, max);\n  }\n}\n"
 - id: c3
   branch: main
   parents:
+  - c0
   - c2
-  message: Wire range filter into request path
-  role: work_item_context
-  work_item: INFERRED-WI-001
-  operations:
-  - type: replace
-    path: src/main/java/example/RangeFilter.java
-    old: "package example;\n\npublic class RangeFilter {\n  public int normalize(int value) {\n    return Math.max(0, value);\n\
-      \  }\n\n  public boolean contains(int value, int min, int max) {\n    int normalized = normalize(value);\n    return\
-      \ normalized > min && normalized < max;\n  }\n}\n"
-    new: "package example;\n\npublic class RangeFilter {\n  public int normalize(int value) {\n    return Math.max(0, value);\n\
-      \  }\n\n  public boolean contains(int value, int min, int max) {\n    int normalized = normalize(value);\n    return\
-      \ normalized > min && normalized < max;\n  }\n\n  public boolean acceptsRequestValue(int value) {\n    return contains(value,\
-      \ 0, 100);\n  }\n}\n"
+  message: 'c3: merge feature branch into main'
+  role: merge
+  operations: []
 - id: c4
   branch: main
   parents:
   - c3
-  message: Fix boundary regression from range filter work
+  message: 'c4: fix range boundary bug on main'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/RangeFilter.java
-    old: return normalized > min && normalized < max;
-    new: return normalized >= min && normalized <= max;
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Boundary regression introduced during inferred range-filter work item
+  title: Feature branch BIC fixed on main
   bug_introducing_commits:
-  - commit: c2
+  - commit: c1
     role: direct
   bug_fixing_commits:
   - commit: c4
     role: complete_fix
   faults:
   - id: F001
-    commit: c2
-    file: src/main/java/example/RangeFilter.java
-    statement: return normalized > min && normalized < max;
+    commit: c1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
     change_type: line_modification
   fixes:
   - id: X001
     commit: c4
-    file: src/main/java/example/RangeFilter.java
-    statement: return normalized >= min && normalized <= max;
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
     fix_type: line_modification
-  work_item: INFERRED-WI-001
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - c2
-    related_but_not_correct:
     - c1
-    - c3
-    notes: The inferred work item contains c1, c2, and c3, but only c2 is the BIC. c1 and c3 are useful contextual candidates
-      but should not be reported as the BIC.
-  work_item_level:
-    inferred_work_item: INFERRED-WI-001
-    candidate_commits:
-    - c1
-    - c2
-    - c3
-    required_bic: c2
-    no_explicit_issue_id: true
-work_items:
-- id: INFERRED-WI-001
-  title: Range filter cleanup and request wiring
-  commits:
-  - c1
-  - c2
-  - c3
-  inference_required: true
-  explicit_issue_id: null
-  bug_introducing_commit: c2
-  inference_signals:
-  - No commit message contains an explicit issue ID.
-  - The commit messages share range-filter terminology.
-  - The commits appear consecutively in the same short time window.
-  - The commits touch the same file or closely related range-filter behavior.
-  - The fix message in c4 refers to a boundary regression from the range filter work.
 scenario_design:
-  purpose: Evaluate whether SZZ or a work-item-aware extension can infer a work item without explicit issue IDs and still
-    identify the specific BIC inside that inferred work item.
-  key_property: Commit messages intentionally omit issue identifiers. The work item must be inferred from message similarity,
-    commit locality, and related file changes.
-  difference_from_SZZG_0046: SZZG-0042 assumes an explicit work item containing multiple candidate BICs. SZZG-0043 removes
-    the explicit issue ID and relies on inference signals.
+  purpose: Evaluate whether SZZ can identify a BIC located on a feature branch when the BFC is a normal commit on main after
+    the feature branch has been merged.
+  key_property: The BIC occurs on feature, while the BFC occurs on main after merge.
   evaluation_points:
-  - Whether the work item can be inferred from context without issue IDs.
-  - Whether c2 is selected as the BIC rather than neighboring contextual commits c1 or c3.
-  - Whether c4's fix message helps connect the regression to the inferred range-filter work.
+  - Feature-branch BIC
+  - Normal main-branch BFC
+  - Intermediate feature code uses the buggy method before merge.
 notes:
-- This revision makes SZZG-0043 distinct from SZZG-0042 by removing explicit issue IDs from commit messages and adding inference
-  signals.
-- The work_items section is still present as oracle metadata, but the scenario states that the work item should be inferred.
-- c1 and c3 are related context commits; c2 is the only BIC.
+- This scenario is intentionally distinct from SZZG-0046 and SZZG-0042 because the BFC is not a merge commit.

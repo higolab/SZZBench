@@ -1,14 +1,14 @@
-# SZZ-0122: Incorrect default in new method
+# SZZ-0122: BFC with multiple files represented by write_file
 
 ## Purpose
 
-This scenario evaluates a bug-introducing commit shape: Incorrect default in new method.
+This scenario evaluates SZZ behavior when the bug-fixing commit touches the fixed source file and creates an additional file using `write_file`.
 
 ## Commit structure
 
-- `c0`: initial correct implementation
-- `c1`: introduces the bug
-- `c2`: fixes the bug
+- `c0`: Initial correct implementation
+- `c1`: Introduce bug
+- `c2`: Fix bug and add an extra source file
 
 ## Expected behavior
 
@@ -19,4 +19,4 @@ The expected BFC is `c2` and the expected BIC is `c1`.
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `wrong-constant`
+- `multi-file-bfc`

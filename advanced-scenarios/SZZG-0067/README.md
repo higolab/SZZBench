@@ -1,17 +1,16 @@
-# SZZG-0067: Rebase splits original BIC into multiple commits
+# SZZG-0067: Rebase conflict resolution fixes bug
 
 ## Purpose
 
-Evaluate one-origin-to-multiple-direct BIC mapping after rebase.
+Evaluate whether SZZ can handle a BFC that is itself a rebase conflict resolution commit.
 
 ## Commit history
 
 ```text
 c0: c0: create initial correct implementation
-f1: f1: introduce both boundary bugs
-r1: r1: rebase lower-bound part
-r2: r2: rebase upper-bound part
-c3: c3: fix both boundary bugs
+r1: r1: rebase feature bug commit onto main
+m1: m1: main change before conflict-resolution fix
+r2: r2: resolve rebase conflict and fix range bug
 ```
 
 ## Commit table
@@ -19,29 +18,28 @@ c3: c3: fix both boundary bugs
 | Commit | Branch | Parents | Role | Description |
 |---|---|---|---|---|
 | `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `f1` | `feature` | c0 | `origin_bug_introducing` | f1: introduce both boundary bugs |
-| `r1` | `main` | c0 | `bug_introducing` | r1: rebase lower-bound part |
-| `r2` | `main` | r1 | `bug_introducing` | r2: rebase upper-bound part |
-| `c3` | `main` | r2 | `bug_fixing` | c3: fix both boundary bugs |
+| `r1` | `main` | c0 | `bug_introducing` | r1: rebase feature bug commit onto main |
+| `m1` | `main` | r1 | `intermediate` | m1: main change before conflict-resolution fix |
+| `r2` | `main` | m1 | `bug_fixing` | r2: resolve rebase conflict and fix range bug |
 
 ## Expected SZZ result
 
 ```text
-Expected BIC(s): r1, r2
-Related but not correct: f1
+Expected BIC(s): r1
 ```
 
 ## Key property
 
-f1 is split into r1 and r2.
+The fix is introduced by r2 during rebase conflict resolution.
 
-## Difference from SZZG-0061
+## Difference from SZZG-0063
 
-SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
+SZZG-0063 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
 
 ## Evaluation points
 
-- Return r1 and r2.
+- Start from r2.
+- Return r1.
 
 ## Notes
 

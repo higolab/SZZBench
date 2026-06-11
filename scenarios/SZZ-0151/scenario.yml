@@ -1,93 +1,139 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0151
-  title: Patch context required around caller
-  slug: patch-context-required
-  description: This scenario is intended for evaluating SZZ variants that use commit messages or broader patch context.
-  category: context-aware
+  title: Duplicate permission checks
+  slug: duplicate-permission-checks
+  description: This scenario contains duplicate or similar statements so that line-level oracle interpretation is intentionally harder.
+  category: "Multiple BICs, duplicate faults, and composite faults"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - context-aware
+  - ambiguous-blame
+  - duplicate-statement
   difficulty: medium
   status: active
+  category_code: "S6"
 repository:
-  name: SZZ-0151-patch-context-required
+  name: SZZ-0151-duplicate-permission-checks
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 commits:
 - id: c0
-  message: Initial implementation
+  message: Initial implementation with duplicate-looking statement
   author: Alice <alice@example.com>
-  date: '2024-05-01T10:00:00Z'
+  date: '2024-04-01T10:00:00Z'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0151.java
+    path: src/main/java/example/Scenario0145.java
     content: |
       package example;
 
-      public class Scenario0151 {
-          public boolean callerAllowsEmptyCart(int itemCount) {
-              return hasItems(itemCount);
+      public class Scenario0145 {
+          public boolean denied(boolean allowed) {
+              return !allowed;
           }
 
-          private boolean hasItems(int itemCount) {
-              return itemCount > 0;
+          public boolean otherMethod(boolean allowed) {
+              return allowed;
           }
       }
 - id: c1
-  message: Introduce context-sensitive caller bug
+  message: Introduce ambiguous faulty statement
   author: Bob <bob@example.com>
-  date: '2024-05-02T10:00:00Z'
+  date: '2024-04-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0151.java
-    old: return itemCount > 0;
-    new: return itemCount >= 0;
+    path: src/main/java/example/Scenario0145.java
+    old: |
+      package example;
+
+      public class Scenario0145 {
+          public boolean denied(boolean allowed) {
+              return !allowed;
+          }
+
+          public boolean otherMethod(boolean allowed) {
+              return allowed;
+          }
+      }
+    new: |
+      package example;
+
+      public class Scenario0145 {
+          public boolean denied(boolean allowed) {
+              return allowed;
+          }
+
+          public boolean otherMethod(boolean allowed) {
+              return allowed;
+          }
+      }
     labels:
     - B001
     - fault
 - id: c2
-  message: Fix caller-visible empty-cart acceptance
+  message: Fix ambiguous faulty statement
   author: Alice <alice@example.com>
-  date: '2024-05-03T10:00:00Z'
+  date: '2024-04-03T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0151.java
-    old: return itemCount >= 0;
-    new: return itemCount > 0;
+    path: src/main/java/example/Scenario0145.java
+    old: |
+      package example;
+
+      public class Scenario0145 {
+          public boolean denied(boolean allowed) {
+              return allowed;
+          }
+
+          public boolean otherMethod(boolean allowed) {
+              return allowed;
+          }
+      }
+    new: |
+      package example;
+
+      public class Scenario0145 {
+          public boolean denied(boolean allowed) {
+              return !allowed;
+          }
+
+          public boolean otherMethod(boolean allowed) {
+              return allowed;
+          }
+      }
     labels:
     - B001
     - fix
 bugs:
 - id: B001
-  title: Patch context required around caller
+  title: Duplicate permission checks
   bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0151.java
+    file: src/main/java/example/Scenario0145.java
     entity:
       type: method
-      name: hasItems
-      signature: boolean hasItems(int itemCount)
-    statement: return itemCount >= 0;
+      name: denied
+      signature: boolean denied(boolean allowed)
+    statement: return allowed;
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0151.java
+    file: src/main/java/example/Scenario0145.java
     entity:
       type: method
-      name: hasItems
-      signature: boolean hasItems(int itemCount)
-    statement: return itemCount > 0;
+      name: denied
+      signature: boolean denied(boolean allowed)
+    statement: return !allowed;
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -96,7 +142,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return itemCount >= 0;
+      - return allowed;
 checks:
 - type: git_history_contains
   commits:

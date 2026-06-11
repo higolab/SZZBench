@@ -1,4 +1,4 @@
-# SZZ-0144: Duplicate status checks
+# SZZ-0144: Duplicate return false statements
 
 ## Purpose
 

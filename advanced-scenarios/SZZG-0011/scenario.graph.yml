@@ -1,124 +1,101 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0011
-  title: One BIC fixed by multiple BFCs
-  slug: 1-bic-bfc
-  description: Evaluates one bic fixed by multiple bfcs and checks whether SZZ identifies the expected bug-introducing commit
-    set.
-  category: Multiple BIC and BFC scenarios
-  category_code: D
+  title: Bug introduced inside a refactoring commit
+  slug: bug-introduced-inside-refactoring
+  description: Evaluates bug introduced inside a refactoring commit and checks whether SZZ identifies the expected bug-introducing
+    commit set.
+  category: "Refactoring, move, rename, and semantic rewrite"
+  category_code: "G1"
   factors:
-  - bug_fixing_commits
+  - bug_introducing_refactoring
+  - mixed_change
+  - rename_method
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0011-1-bic-bfc
+  name: SZZG-0011-bug-introduced-inside-refactoring
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
+  history_summary: 'c0: c0: create normalizer
 
-    c1: introduce bug (replace src/main/java/example/Range.java; replace src/main/java/example/Range.java)
+    c1: c1: rename method and accidentally remove lower-case conversion
 
-    c2: fix bug (replace src/main/java/example/Range.java)
-
-    c3: fix bug (replace src/main/java/example/Range.java)'
+    c2: c2: fix normalization after refactoring'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
+  message: 'c0: create normalizer'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean acceptsLower(int value, int min) {\n    return value\
-      \ >= min;\n  }\n\n  public boolean acceptsUpper(int value, int max) {\n    return value <= max;\n  }\n}\n"
+    path: src/main/java/example/Normalizer.java
+    content: "package example;\npublic class Normalizer {\n  public String normalize(String value) {\n    return value ==\
+      \ null ? \"\" : value.trim().toLowerCase();\n  }\n\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce bug (replace src/main/java/example/Range.java; replace src/main/java/example/Range.java)'
+  message: 'c1: rename method and accidentally remove lower-case conversion'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min;
-    new: return value > min;
+    path: src/main/java/example/Normalizer.java
+    old: public String normalize(String value) {
+    new: public String clean(String value) {
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value <= max;
-    new: return value < max;
+    path: src/main/java/example/Normalizer.java
+    old: 'return value == null ? "" : value.trim().toLowerCase();'
+    new: 'return value == null ? "" : value.trim();'
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: fix bug (replace src/main/java/example/Range.java)'
+  message: 'c2: fix normalization after refactoring'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min;
-    new: return value >= min;
-- id: c3
-  branch: main
-  parents:
-  - c2
-  message: 'c3: fix bug (replace src/main/java/example/Range.java)'
-  role: bug_fixing
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: return value < max;
-    new: return value <= max;
+    path: src/main/java/example/Normalizer.java
+    old: 'return value == null ? "" : value.trim();'
+    new: 'return value == null ? "" : value.trim().toLowerCase();'
 bugs:
 - id: B001
-  title: One BIC requires two partial BFCs
+  title: Synthetic graph scenario bug
   bug_introducing_commits:
   - commit: c1
     role: direct
   bug_fixing_commits:
   - commit: c2
-    role: partial_fix
-  - commit: c3
-    role: partial_fix
+    role: complete_fix
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/Range.java
-    statement: return value > min;
-    case: lower
-  - id: F002
-    commit: c1
-    file: src/main/java/example/Range.java
-    statement: return value < max;
-    case: upper
+    file: src/main/java/example/Normalizer.java
+    statement: 'return value == null ? "" : value.trim();'
+    change_type: line_modification
   fixes:
   - id: X001
     commit: c2
-    file: src/main/java/example/Range.java
-    statement: return value >= min;
-    fix_type: partial_fix
-    case: lower
-  - id: X002
-    commit: c3
-    file: src/main/java/example/Range.java
-    statement: return value <= max;
-    fix_type: partial_fix
-    case: upper
+    file: src/main/java/example/Normalizer.java
+    statement: 'return value == null ? "" : value.trim().toLowerCase();'
+    fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
     - c1
 scenario_design:
-  purpose: Evaluate One BIC fixed by multiple BFCs and whether SZZ identifies the expected bug-introducing commit set.
+  purpose: Evaluate bug introduced inside a refactoring commit and whether SZZ identifies the expected bug-introducing commit
+    set.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: bug_fixing_commits; operations: write_file, replace.'
+  required_extensions_from_source: 'This scenario uses factors: bug_introducing_refactoring, mixed_change, rename_method;
+    operations: replace, write_file.'
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
   - Whether structural or contextual history is handled according to the scenario factors.

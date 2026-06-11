@@ -1,82 +1,127 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0052
-  title: File deletion
-  slug: file-deletion
-  description: Evaluates a deletion-based fix where the initial commit creates a buggy file and the fix deletes that file.
-  category: Robustness and implementation-quality scenarios
-  category_code: K
+  title: Criss-cross merge
+  slug: criss-cross-merge
+  description: Two long-lived branches merge each other in both directions before a bug introduced on one branch is fixed.
+  category: "Branch, merge, cherry-pick, backport, and release branches"
+  category_code: "G4"
   factors:
-  - delete_file
+  - branch
+  - merge
+  - criss_cross_merge
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0052-file-deletion
+  name: SZZG-0052-criss-cross-merge
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial buggy file (write_file src/main/java/example/Buggy.java)
+  history_summary: 'c0: create initial correct implementation
 
-    c1: fix bug (delete_file src/main/java/example/Buggy.java)'
+    c1: branchA introduces bug
+
+    c2: branchB adds unrelated work
+
+    c3: branchA merges branchB
+
+    c4: branchB merges branchA
+
+    c5: branchB fixes the bug after criss-cross merges'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial buggy file (write_file src/main/java/example/Buggy.java)'
+  message: 'c0: create initial correct implementation'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Buggy.java
-    content: "package example;\npublic class Buggy {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value > min && value < max;\n  }\n}\n"
+    path: src/main/java/example/Range.java
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
-  branch: main
+  branch: branchA
   parents:
   - c0
-  message: 'c1: fix bug (delete_file src/main/java/example/Buggy.java)'
+  message: 'c1: introduce range boundary bug on branchA'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+- id: c2
+  branch: branchB
+  parents:
+  - c0
+  message: 'c2: add branchB reporter'
+  role: intermediate
+  operations:
+  - type: write_file
+    path: src/main/java/example/BranchBReporter.java
+    content: "package example;\n\npublic class BranchBReporter {\n  public String branch() {\n    return \"B\";\n  }\n}\n"
+- id: c3
+  branch: branchA
+  parents:
+  - c1
+  - c2
+  message: 'c3: merge branchB into branchA'
+  role: merge
+  operations: []
+- id: c4
+  branch: branchB
+  parents:
+  - c2
+  - c3
+  message: 'c4: merge branchA back into branchB'
+  role: merge
+  operations: []
+- id: c5
+  branch: branchB
+  parents:
+  - c4
+  message: 'c5: fix range boundary bug after criss-cross merge'
   role: bug_fixing
   operations:
-  - type: delete_file
-    path: src/main/java/example/Buggy.java
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Bug removed by deleting Buggy.java
+  title: Range boundary bug through criss-cross merge
   bug_introducing_commits:
-  - commit: c0
+  - commit: c1
     role: direct
   bug_fixing_commits:
-  - commit: c1
+  - commit: c5
     role: complete_fix
   faults:
   - id: F001
-    commit: c0
-    file: src/main/java/example/Buggy.java
+    commit: c1
+    file: src/main/java/example/Range.java
     statement: return value > min && value < max;
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c1
-    file: src/main/java/example/Buggy.java
-    fix_type: file_deletion
+    commit: c5
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+    fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - c0
+    - c1
 scenario_design:
-  purpose: Evaluate whether SZZ traces a deletion-based fix back to the initial commit c0 that created the buggy file.
-  key_property: The BFC c1 deletes Buggy.java entirely. The required BIC is c0 because that initial commit introduced the
-    buggy file and faulty return statement.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: delete_file; operations: write_file, delete_file.'
+  purpose: Evaluate whether SZZ can identify a BIC when branch history includes reciprocal merges.
+  key_property: The history contains merges in both directions between branchA and branchB before the BFC.
   evaluation_points:
-  - Whether SZZ identifies c0 as the BIC for the deleted buggy file.
-  - Whether SZZ handles file deletion as the complete fix.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Criss-cross-like reciprocal merge structure
+  - BIC on branchA
+  - BFC after the bug has propagated to branchB.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
+- This scenario uses a simplified criss-cross-like DAG that current graph_generator should be able to create.

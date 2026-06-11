@@ -1,20 +1,19 @@
-# SZZG-0106: Copy followed by bug introduction only in the copied code
+# SZZG-0106: Misleading commit message with code-only BIC evidence
 
 ## Source
 
-- Category: Clone propagation scenarios
+- Category: Context-dependent scenarios
 
 ## Purpose
 
-Evaluate copy followed by bug introduction only in the copied code and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate misleading commit message with code-only bic evidence and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: c0: create original formatter
-c1: c1: copy formatter to report formatter
-c2: c2: introduce copied-code null handling bug
-c3: c3: fix copied formatter null handling
+c0: c0: create payment guard
+c1: c1: documentation-only cleanup
+c2: c2: fix zero-value payment acceptance
 ```
 
 ## Why this needs `scenario.graph.yml`
@@ -23,14 +22,14 @@ This history requires graph-aware scenario semantics that are difficult to expre
 
 ## Required graph-schema features
 
-- Factors: copy_file, clone_divergence, direct_bic_in_copy
-- Operation types: copy_file, replace, write_file
+- Factors: commit_message, misleading_metadata, code_evidence
+- Operation types: replace, write_file
 - Expected SZZ policy is defined in `expected_szz`.
 
 ## Expected BICs
 
 ```text
-c2
+c1
 ```
 
 ## Evaluation points

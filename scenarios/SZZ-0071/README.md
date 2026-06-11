@@ -1,14 +1,14 @@
-# SZZ-0071: Initialization omission
+# SZZ-0071: Feature flag check omission
 
 ## Purpose
 
-This scenario represents an omission bug: the method is introduced without a necessary initialization, and the bug-fixing commit adds the missing statement.
+This scenario represents an omission bug: the method is introduced without a necessary feature flag check, and the bug-fixing commit adds the missing statement.
 
 ## Commit structure
 
 - `c0`: initial class
-- `c1`: introduces the method without the initialization
-- `c2`: adds the missing initialization
+- `c1`: introduces the method without the feature flag check
+- `c2`: adds the missing feature flag check
 
 ## Expected behavior
 

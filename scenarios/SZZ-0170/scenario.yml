@@ -1,94 +1,90 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0170
-  title: Config and code interaction
-  slug: config-code
-  description: >-
-    Evaluates a bug introduced by a configuration unit change that is only visible when read together with the code that interprets
-    the setting.
-  category: Context-aware and LLM-based SZZ scenarios
+  title: BIC is a test-only commit
+  slug: bic-test-only-commit
+  description: Evaluates a bug where the bug-introducing commit changes only a test oracle, not production code.
+  category: "Non-source, configuration, test-only, and file-level edge cases"
   factors:
-  - config
-  - code_interaction
-  - context
-  - faults
+  - test_only_bic
+  - expected_szz
   difficulty: hard
   status: active
+  category_code: "S8"
 repository:
-  name: SZZ-0170-config-code
+  name: SZZ-0170-bic-test-only-commit
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 commits:
 - id: c0
-  message: 'c0: create retry delay config and interpreter'
+  message: 'c0: create correct Range code and boundary test'
   role: initial
   operations:
   - type: write_file
-    path: config/retry.properties
-    content: |
-      retry.delay.unit=seconds
-      retry.delay.value=2
-  - type: write_file
-    path: src/main/java/example/RetryPolicy.java
+    path: src/main/java/example/Range.java
     content: |
       package example;
-
-      public class RetryPolicy {
-        private final String unit;
-        private final int configuredDelay;
-
-        public RetryPolicy(String unit, int configuredDelay) {
-          this.unit = unit;
-          this.configuredDelay = configuredDelay;
+      public class Range {
+        public boolean contains(int value, int min, int max) {
+          return value >= min && value <= max;
+        }
+      }
+  - type: write_file
+    path: src/test/java/example/RangeTest.java
+    content: |
+      package example;
+      public class RangeTest {
+        public void includesLowerBoundary() {
+          Range range = new Range();
+          assertTrue(range.contains(0, 0, 10));
         }
 
-        public int delayMillis() {
-          return configuredDelay * 1000;
+        private void assertTrue(boolean value) {
+          if (!value) {
+            throw new AssertionError();
+          }
+        }
+
+        private void assertFalse(boolean value) {
+          if (value) {
+            throw new AssertionError();
+          }
         }
       }
 - id: c1
-  message: 'c1: tune retry delay config to milliseconds'
+  message: 'c1: introduce faulty boundary expectation in test only'
   role: bug_introducing
   operations:
   - type: replace
-    path: config/retry.properties
-    old: retry.delay.unit=seconds
-    new: retry.delay.unit=milliseconds
+    path: src/test/java/example/RangeTest.java
+    old: assertTrue(range.contains(0, 0, 10));
+    new: assertFalse(range.contains(0, 0, 10));
 - id: c2
-  message: 'c2: document retry delay configuration'
-  role: distractor
-  operations:
-  - type: write_file
-    path: docs/retry-delay.md
-    content: 'Retry delay is configured by retry.delay.value and retry.delay.unit.
-
-'
-- id: c3
-  message: 'c3: honor millisecond retry delay config'
+  message: 'c2: fix test oracle for inclusive lower boundary'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/RetryPolicy.java
-    old: return configuredDelay * 1000;
-    new: 'return unit.equals("milliseconds") ? configuredDelay : configuredDelay * 1000;'
+    path: src/test/java/example/RangeTest.java
+    old: assertFalse(range.contains(0, 0, 10));
+    new: assertTrue(range.contains(0, 0, 10));
 bugs:
 - id: B001
-  title: Millisecond retry config is interpreted as seconds
-  bug_fixing_commit: c3
+  title: Test oracle rejects an inclusive boundary that production code accepts
+  bug_fixing_commit: c2
   bug_introducing_commits:
   - c1
   fault:
     commit: c1
-    file: config/retry.properties
-    statement: retry.delay.unit=milliseconds
-    change_type: config_modification
+    file: src/test/java/example/RangeTest.java
+    statement: assertFalse(range.contains(0, 0, 10));
+    change_type: test_oracle_modification
   fix:
-    commit: c3
-    file: src/main/java/example/RetryPolicy.java
-    statement: 'return unit.equals("milliseconds") ? configuredDelay : configuredDelay * 1000;'
-    fix_type: line_modification
+    commit: c2
+    file: src/test/java/example/RangeTest.java
+    statement: assertTrue(range.contains(0, 0, 10));
+    fix_type: test_oracle_modification
   expected_szz:
     commit_level:
       true_positives:
@@ -97,11 +93,10 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - retry.delay.unit=milliseconds
+      - assertFalse(range.contains(0, 0, 10));
 checks:
 - type: git_history_contains
   commits:
   - c0
   - c1
   - c2
-  - c3

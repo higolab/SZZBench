@@ -1,130 +1,123 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0045
-  title: BFC message references the wrong commit
-  slug: bfc-message-references-wrong-commit
-  description: Evaluates a BFC whose message points to a plausible but incorrect prior commit, while the true BIC is an earlier
-    rounding change.
-  category: Work-item and commit-series scenarios
-  category_code: H
+  title: BIC in merge commit
+  slug: bic-in-merge-commit
+  description: The merge commit itself introduces the bug during merge resolution; a later normal commit fixes it.
+  category: "Branch, merge, cherry-pick, backport, and release branches"
+  category_code: "G4"
   factors:
-  - developer_hints
-  - misleading_commit_message
+  - branch
+  - merge
+  - merge_commit_bic
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0045-bfc-message-references-wrong-commit
+  name: SZZG-0045-bic-in-merge-commit
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: |
-    c0: create currency rounding helper
-    c1: introduce truncating cents normalization
-    c2: add invoice label helper mentioned by mistake
-    c3: fix rounding while incorrectly blaming c2 in the message
+  history_summary: 'c0: create initial correct implementation on main
+
+    c1: add feature branch helper without changing the range logic
+
+    c2: add unrelated main branch note
+
+    c3: merge feature into main and introduce bug in the merge commit
+
+    c4: fix the merge-introduced bug'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create currency rounding helper'
+  message: 'c0: create initial correct implementation'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/CurrencyFormatter.java
-    content: |
-      package example;
-
-      public class CurrencyFormatter {
-        public double roundToCents(double amount) {
-          return Math.round(amount * 100.0) / 100.0;
-        }
-      }
+    path: src/main/java/example/Range.java
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
-  branch: main
+  branch: feature
   parents:
   - c0
-  message: 'c1: speed up cents normalization by truncating fractions'
-  role: bug_introducing
-  operations:
-  - type: replace
-    path: src/main/java/example/CurrencyFormatter.java
-    old: return Math.round(amount * 100.0) / 100.0;
-    new: return (int)(amount * 100.0) / 100.0;
-- id: c2
-  branch: main
-  parents:
-  - c1
-  message: 'c2: add invoice total label helper'
+  message: 'c1: add feature helper without bug'
   role: intermediate
   operations:
   - type: write_file
-    path: src/main/java/example/InvoiceLabels.java
-    content: |
-      package example;
+    path: src/main/java/example/FeatureReporter.java
+    content: "package example;\n\npublic class FeatureReporter {\n  public String name() {\n    return \"feature\";\n  }\n\
+      }\n"
+- id: c2
+  branch: main
+  parents:
+  - c0
+  message: 'c2: add unrelated main branch note'
+  role: intermediate
+  operations:
+  - type: write_file
+    path: docs/main-note.md
+    content: 'Main branch note before merge.
 
-      public class InvoiceLabels {
-        public String totalLabel() {
-          return "Invoice total";
-        }
-      }
+      '
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'c3: fix invoice rounding regression from c2'
+  - c1
+  message: 'c3: merge feature and introduce boundary bug'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: 'c4: fix merge-introduced range boundary bug'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/CurrencyFormatter.java
-    old: return (int)(amount * 100.0) / 100.0;
-    new: return Math.round(amount * 100.0) / 100.0;
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Currency values are truncated instead of rounded
+  title: Range boundary bug introduced by merge commit
   bug_introducing_commits:
-  - commit: c1
-    role: direct
-  bug_fixing_commits:
   - commit: c3
+    role: merge_introducing
+  bug_fixing_commits:
+  - commit: c4
     role: complete_fix
   faults:
   - id: F001
-    commit: c1
-    file: src/main/java/example/CurrencyFormatter.java
-    statement: return (int)(amount * 100.0) / 100.0;
+    commit: c3
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c3
-    file: src/main/java/example/CurrencyFormatter.java
-    statement: return Math.round(amount * 100.0) / 100.0;
+    commit: c4
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
     fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - c1
-    related_but_not_correct:
-    - c2
+    - c3
 scenario_design:
-  purpose: Evaluate whether SZZ resists an incorrect BFC-message hint and still identifies the true code-level BIC.
-  current_schema_limitation: Misleading developer hints are represented as metadata attached to the BFC.
-  required_extensions_from_source: 'This scenario uses factors: developer_hints, misleading_commit_message; operations: write_file, replace.'
+  purpose: Evaluate whether SZZ can identify a merge commit as the BIC when the merge resolution itself introduces the bug.
+  key_property: The BIC is the two-parent merge commit c3.
   evaluation_points:
-  - Whether SZZ identifies c1 as the true rounding BIC.
-  - Whether c2 is treated as an incorrect message reference rather than the expected BIC.
-  - Whether developer hints are distinguished from trustworthy blame evidence.
+  - Merge commit as BIC
+  - Later normal BFC
+  - No parent contains the buggy range condition before the merge.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
-developer_hints:
-- bug: B001
-  source: commit_message
-  commit: c3
-  referenced_commits:
-  - c2
-  correctness: incorrect
-  explanation: The BFC message blames c2, but c2 only adds labels; c1 introduced the truncating arithmetic.
+- This scenario requires support for operations on merge commits.

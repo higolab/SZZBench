@@ -1,144 +1,114 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0013
-  title: Partial credit when only some BICs are returned
-  slug: bic-partial-credit
-  description: Evaluates a single checkout defect whose complete cause is split across two independent BICs, allowing partial
-    credit when an SZZ result returns only one of them.
-  category: Multiple BIC and BFC scenarios
-  category_code: D
+  title: Semantic-preserving rewrite between BIC and BFC
+  slug: semantic-preserving-rewrite
+  description: Evaluates semantic-preserving rewrite between bic and bfc and checks whether SZZ identifies the expected bug-introducing
+    commit set.
+  category: "Refactoring, move, rename, and semantic rewrite"
+  category_code: "G1"
   factors:
-  - multiple_bic
-  - partial_credit
-  - expected_szz
+  - intermediate_rewrite
+  - formatting
+  - line_history_break
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0013-bic-partial-credit
+  name: SZZG-0013-semantic-preserving-rewrite
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: |
-    c0: create checkout policy classes
-    c1: introduce loyalty-discount threshold bug
-    c2: introduce tax-exemption logic bug
-    c3: fix both checkout policy faults
+  history_summary: 'c0: c0: create age gate
+
+    c1: c1: introduce boundary bug
+
+    c2: c2: rewrite condition into explicit if statement
+
+    c3: c3: fix adult boundary after rewrite'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create checkout policy classes'
+  message: 'c0: create age gate'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/PricePolicy.java
-    content: |
-      package example;
-
-      public class PricePolicy {
-        public int loyaltyDiscountCents(int subtotalCents) {
-          return subtotalCents >= 10000 ? 1000 : 0;
-        }
-      }
-  - type: write_file
-    path: src/main/java/example/TaxPolicy.java
-    content: |
-      package example;
-
-      public class TaxPolicy {
-        public boolean isTaxExempt(String stateCode) {
-          return stateCode.equals("OR") || stateCode.equals("MT");
-        }
-      }
+    path: src/main/java/example/AgeGate.java
+    content: "package example;\npublic class AgeGate {\n  public boolean adult(int age) {\n    return age >= 18;\n  }\n\n\
+      }\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: require totals above the loyalty threshold'
+  message: 'c1: introduce boundary bug'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/PricePolicy.java
-    old: 'return subtotalCents >= 10000 ? 1000 : 0;'
-    new: 'return subtotalCents > 10000 ? 1000 : 0;'
+    path: src/main/java/example/AgeGate.java
+    old: return age >= 18;
+    new: return age > 18;
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: tighten tax-exempt state matching'
-  role: bug_introducing
+  message: 'c2: rewrite condition into explicit if statement'
+  role: refactoring
   operations:
   - type: replace
-    path: src/main/java/example/TaxPolicy.java
-    old: return stateCode.equals("OR") || stateCode.equals("MT");
-    new: return stateCode.equals("OR") && stateCode.equals("MT");
+    path: src/main/java/example/AgeGate.java
+    old: return age > 18;
+    new: "if (age > 18) {\n      return true;\n    }\n    return false;"
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'c3: fix checkout totals at discount and tax boundaries'
+  message: 'c3: fix adult boundary after rewrite'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/PricePolicy.java
-    old: 'return subtotalCents > 10000 ? 1000 : 0;'
-    new: 'return subtotalCents >= 10000 ? 1000 : 0;'
-  - type: replace
-    path: src/main/java/example/TaxPolicy.java
-    old: return stateCode.equals("OR") && stateCode.equals("MT");
-    new: return stateCode.equals("OR") || stateCode.equals("MT");
+    path: src/main/java/example/AgeGate.java
+    old: if (age > 18) {
+    new: if (age >= 18) {
 bugs:
 - id: B001
-  title: Checkout total bug caused by two independent policy regressions
+  title: Synthetic graph scenario bug
   bug_introducing_commits:
   - commit: c1
-    role: contributing
-  - commit: c2
-    role: contributing
+    role: direct
   bug_fixing_commits:
   - commit: c3
     role: complete_fix
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/PricePolicy.java
-    statement: 'return subtotalCents > 10000 ? 1000 : 0;'
-    change_type: line_modification
-  - id: F002
-    commit: c2
-    file: src/main/java/example/TaxPolicy.java
-    statement: return stateCode.equals("OR") && stateCode.equals("MT");
+    file: src/main/java/example/AgeGate.java
+    statement: return age > 18;
     change_type: line_modification
   fixes:
   - id: X001
     commit: c3
-    file: src/main/java/example/PricePolicy.java
-    statement: 'return subtotalCents >= 10000 ? 1000 : 0;'
-    fix_type: line_modification
-  - id: X002
-    commit: c3
-    file: src/main/java/example/TaxPolicy.java
-    statement: return stateCode.equals("OR") || stateCode.equals("MT");
+    file: src/main/java/example/AgeGate.java
+    statement: if (age >= 18) {
     fix_type: line_modification
 expected_szz:
   commit_level:
-    evaluation_policy: partial_credit
+    evaluation_policy: exact_set
     required:
     - c1
-    - c2
-    minimum_required: 1
 scenario_design:
-  purpose: Evaluate scoring behavior when a complete answer contains two BICs but an SZZ implementation returns only one
-    of them.
-  current_schema_limitation: Partial-credit evaluation is represented as graph-specific expected_szz metadata.
-  required_extensions_from_source: 'This scenario uses factors: multiple_bic, partial_credit, expected_szz; operations: write_file, replace.'
+  purpose: Evaluate semantic-preserving rewrite between bic and bfc and whether SZZ identifies the expected bug-introducing
+    commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: intermediate_rewrite, formatting, line_history_break; operations:
+    replace, write_file.'
   evaluation_points:
-  - Whether SZZ can identify both checkout-policy BICs for one bug.
-  - Whether returning only c1 or only c2 receives partial credit rather than full exact-set credit.
-  - Whether the BFC that edits two files is evaluated against both required BICs.
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.

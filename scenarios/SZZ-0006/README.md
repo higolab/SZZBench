@@ -1,16 +1,22 @@
-# SZZ-0006: Conditional expression change
+# SZZ-0006: Arithmetic sign error
 
 ## Purpose
 
-This scenario checks a common conditional-expression bug: an inclusive comparison
-is changed to a strict comparison.
+This scenario introduces a bug by changing `return value + 1;` to `return value - 1;` and later restores the correct implementation.
 
 ## Commit structure
 
-- `c0`: Allows payments when `amount <= balance`.
-- `c1`: Changes the condition to `amount < balance`. This is the BIC.
-- `c2`: Restores `amount <= balance`. This is the BFC.
+- `c0`: initial correct implementation
+- `c1`: introduces the bug
+- `c2`: fixes the bug
 
 ## Expected behavior
 
-SZZ should report `c1` as the bug-introducing commit for bug `B001`.
+The expected BFC is `c2` and the expected BIC is `c1`.
+
+## Factors
+
+- `single-bic`
+- `single-bfc`
+- `line-modification`
+- `arithmetic-error`

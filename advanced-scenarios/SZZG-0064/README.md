@@ -1,17 +1,18 @@
-# SZZG-0064: Rebase conflict resolution propagates existing bug
+# SZZG-0064: Rebase with non-BIC intermediate commit
 
 ## Purpose
 
-Evaluate direct-vs-origin BIC behavior when conflict resolution propagates an existing bug.
+Evaluate whether SZZ distinguishes a rebased BIC from a later rebased intermediate commit.
 
 ## Commit history
 
 ```text
 c0: c0: create initial correct implementation
-f1: f1: introduce range bug on feature
-m1: m1: add main-line documentation
-r1: r1: resolve rebase conflict by taking buggy feature logic
-c2: c2: fix propagated rebase bug
+f1: f1: introduce range boundary bug on feature
+f2: f2: add feature helper using buggy range check
+r1: r1: rebase feature BIC onto main
+r2: r2: rebase feature helper onto main
+c3: c3: fix range boundary bug after rebase
 ```
 
 ## Commit table
@@ -19,30 +20,31 @@ c2: c2: fix propagated rebase bug
 | Commit | Branch | Parents | Role | Description |
 |---|---|---|---|---|
 | `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `f1` | `feature` | c0 | `origin_bug_introducing` | f1: introduce range bug on feature |
-| `m1` | `main` | c0 | `intermediate` | m1: add main-line documentation |
-| `r1` | `main` | m1 | `bug_introducing` | r1: resolve rebase conflict by taking buggy feature logic |
-| `c2` | `main` | r1 | `bug_fixing` | c2: fix propagated rebase bug |
+| `f1` | `feature` | c0 | `origin_bug_introducing` | f1: introduce range boundary bug on feature |
+| `f2` | `feature` | f1 | `intermediate` | f2: add feature helper using buggy range check |
+| `r1` | `main` | c0 | `bug_introducing` | r1: rebase feature BIC onto main |
+| `r2` | `main` | r1 | `intermediate` | r2: rebase feature helper onto main |
+| `c3` | `main` | r2 | `bug_fixing` | c3: fix range boundary bug after rebase |
 
 ## Expected SZZ result
 
 ```text
 Expected BIC(s): r1
-Related but not correct: f1
+Related but not correct: f1, r2
 ```
 
 ## Key property
 
-The same buggy logic exists in f1, but main-line direct BIC is r1.
+r1 is the direct BIC; r2 is non-BIC intermediate.
 
-## Difference from SZZG-0061
+## Difference from SZZG-0063
 
-SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
+SZZG-0063 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
 
 ## Evaluation points
 
 - Report r1.
-- Treat f1 as origin.
+- Avoid r2.
 
 ## Notes
 

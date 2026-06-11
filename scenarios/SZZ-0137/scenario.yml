@@ -1,18 +1,19 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0137
-  title: Feature flag and limit checks introduced separately
-  slug: feature-limit-multi-bic
+  title: Null handling and empty handling changed separately
+  slug: null-and-empty-handling
   description: This scenario requires treating two bug-introducing commits as contributing to the same later fix.
-  category: multiple-bic
+  category: "Multiple BICs, duplicate faults, and composite faults"
   factors:
   - multi-bic
   - single-bfc
   - line-modification
   difficulty: medium
   status: active
+  category_code: "S6"
 repository:
-  name: SZZ-0137-feature-limit-multi-bic
+  name: SZZ-0137-null-and-empty-handling
   default_branch: main
   language: java
   build_system: none
@@ -25,8 +26,8 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0137.java
-    content: "package example;\n\npublic class Scenario0137 {\n    public boolean canUse(boolean featureEnabled, int usage, int limit) {\n        return true;\n    }\n}\n"
+    path: src/main/java/example/Scenario0131.java
+    content: "package example;\n\npublic class Scenario0131 {\n    public boolean hasText(String value) {\n        return true;\n    }\n}\n"
 - id: c1
   message: Introduce first contributing change
   author: Bob <bob@example.com>
@@ -34,9 +35,9 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0137.java
-    old: "package example;\n\npublic class Scenario0137 {\n    public boolean canUse(boolean featureEnabled, int usage, int limit) {\n        return true;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0137 {\n    public boolean canUse(boolean featureEnabled, int usage, int limit) {\n        return featureEnabled;\n    }\n}\n"
+    path: src/main/java/example/Scenario0131.java
+    old: "package example;\n\npublic class Scenario0131 {\n    public boolean hasText(String value) {\n        return true;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0131 {\n    public boolean hasText(String value) {\n        return value != null;\n    }\n}\n"
     labels:
     - B001
     - fault
@@ -47,9 +48,9 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0137.java
-    old: "package example;\n\npublic class Scenario0137 {\n    public boolean canUse(boolean featureEnabled, int usage, int limit) {\n        return featureEnabled;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0137 {\n    public boolean canUse(boolean featureEnabled, int usage, int limit) {\n        return featureEnabled && usage < limit;\n    }\n}\n"
+    path: src/main/java/example/Scenario0131.java
+    old: "package example;\n\npublic class Scenario0131 {\n    public boolean hasText(String value) {\n        return value != null;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0131 {\n    public boolean hasText(String value) {\n        return value != null && !value.isEmpty();\n    }\n}\n"
     labels:
     - B001
     - fault
@@ -60,13 +61,13 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0137.java
-    old: "package example;\n\npublic class Scenario0137 {\n    public boolean canUse(boolean featureEnabled, int usage, int limit) {\n        return featureEnabled && usage < limit;\n    }\n}\n"
+    path: src/main/java/example/Scenario0131.java
+    old: "package example;\n\npublic class Scenario0131 {\n    public boolean hasText(String value) {\n        return value != null && !value.isEmpty();\n    }\n}\n"
     new: |
       package example;
 
-      public class Scenario0137 {
-          public boolean canUse(boolean featureEnabled, int usage, int limit) {
+      public class Scenario0131 {
+          public boolean hasText(String value) {
               return true;
           }
       }
@@ -75,27 +76,27 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Feature flag and limit checks introduced separately
+  title: Null handling and empty handling changed separately
   bug_fixing_commit: c3
   bug_introducing_commits: &id001
   - c1
   - c2
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0137.java
+    file: src/main/java/example/Scenario0131.java
     entity:
       type: method
-      name: canUse
-      signature: boolean canUse(boolean featureEnabled, int usage, int limit)
-    statement: return featureEnabled;
+      name: hasText
+      signature: boolean hasText(String value)
+    statement: return value != null;
     change_type: line_modification
   fix:
     commit: c3
-    file: src/main/java/example/Scenario0137.java
+    file: src/main/java/example/Scenario0131.java
     entity:
       type: method
-      name: canUse
-      signature: boolean canUse(boolean featureEnabled, int usage, int limit)
+      name: hasText
+      signature: boolean hasText(String value)
     statement: return true;
     fix_type: line_modification
   expected_szz:
@@ -105,7 +106,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return featureEnabled;
+      - return value != null;
 checks:
 - type: git_history_contains
   commits:

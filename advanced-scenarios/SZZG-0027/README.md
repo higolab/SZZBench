@@ -1,39 +1,55 @@
-# SZZG-0027: BIC before merge, BFC after merge
+# SZZG-0027: Clone divergence before fixing one clone
+
+## Source
+
+- Category: Clone propagation scenarios
 
 ## Purpose
 
-A bug is introduced on main before a feature branch is merged, and the bug is fixed on main after the merge.
+Evaluate clone divergence before fixing one clone and whether SZZ identifies the expected bug-introducing commit set.
 
-## Commit history
-
-```text
-c0: create initial correct implementation on main
-c1: introduce bug on main before merge
-c2: perform unrelated feature branch work
-c3: merge feature branch into main
-c4: fix the pre-merge bug on main after merge
-```
-
-## Commit table
-
-| Commit | Branch | Parents | Role | Description |
-|---|---|---|---|---|
-| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `c1` | `main` | c0 | `bug_introducing` | c1: introduce range boundary bug on main before merge |
-| `c2` | `feature` | c0 | `intermediate` | c2: add unrelated feature helper |
-| `c3` | `main` | c1, c2 | `merge` | c3: merge feature branch after bug introduction |
-| `c4` | `main` | c3 | `bug_fixing` | c4: fix pre-merge range boundary bug |
-
-## Expected SZZ result
+## Expected history
 
 ```text
-Expected BIC: c1
+c0: c0: create base permission check
+c1: c1: introduce permissive delete check
+c2: c2: clone policy to group policy
+c3: c3: diverge copied clone by renaming parameters
+c4: c4: fix copied clone after divergence
 ```
 
-## Scenario purpose
+## Why this needs `scenario.graph.yml`
 
-Evaluate a BIC that exists before a merge and a BFC that appears after that merge.
+This history requires graph-aware scenario semantics that are difficult to express with the normal `scenario.yml` schema.
 
-## Notes
+## Required graph-schema features
 
-- This scenario separates pre-merge main-line bug introduction from feature-branch bug introduction.
+- Factors: clone, clone_divergence, ambiguous_blame
+- Operation types: copy_file, replace, write_file
+- Expected SZZ policy is defined in `expected_szz`.
+
+## Expected BICs
+
+```text
+c1
+```
+
+## Evaluation points
+
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
+
+---
+
+## Draft status
+
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
+
+## Files
+
+```text
+SZZG-0027/
+|-- scenario.graph.yml
+`-- README.md
+```

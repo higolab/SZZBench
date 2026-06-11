@@ -1,50 +1,47 @@
-# SZZG-0094: Misleading revert commit message reintroduces bug
+# SZZG-0094: BIC and BFC belong to the same issue commit series
+
+## Source
+
+- Category: Work-item and commit-series scenarios
 
 ## Purpose
 
-Evaluate context-aware SZZ robustness when a revert message understates or mislabels the actual bug reintroduction.
+Evaluate whether issue-series context is preserved when the BIC and BFC both reference the same issue.
 
-## Commit history
-
-```text
-c0: create initial correct implementation
-c1: introduce boundary bug
-c2: fix boundary bug
-c3: revert cleanup changes
-c4: fix regression after misleading revert
-```
-
-## Commit table
-
-| Commit | Branch | Parents | Role | Description |
-|---|---|---|---|---|
-| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `c1` | `main` | c0 | `origin_bug_introducing` | c1: introduce boundary bug |
-| `c2` | `main` | c1 | `prior_fix` | c2: fix boundary bug |
-| `c3` | `main` | c2 | `bug_introducing` | c3: revert cleanup changes |
-| `c4` | `main` | c3 | `bug_fixing` | c4: fix regression after misleading revert |
-
-## Expected SZZ result
+## Expected history
 
 ```text
-Expected BIC(s): c3
-Related but not correct: c1, c2
+c1: create initial range implementation
+c2: ISSUE-101 implement boundary optimization but introduce bug
+c3: ISSUE-101 fix inclusive boundary regression
 ```
 
-## Key property
+## Why this needs `scenario.graph.yml`
 
-The revert message looks like cleanup, but the patch reintroduces the boundary bug.
+Issue membership and linked commits require graph-aware contextual metadata.
 
-## Difference from existing revert scenarios
+## Required graph-schema features
 
-This scenario isolates a double-revert or revert-derived complication beyond the existing partial revert and reintroduction scenarios.
+- Factors: issues
+- Operation types: write_file, replace
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- Whether SZZ reports c3.
-- Whether context-aware methods avoid being misled by the message.
+- Whether SZZ identifies c2 as the BIC rather than the initial commit.
+- Whether both the BIC and BFC are represented as part of ISSUE-101.
+- Whether the expected_szz exact-set policy is applied correctly.
 
-## Notes
+---
 
-- This scenario models revert-related development history for SZZ evaluation.
-- The direct BIC is the commit that reintroduces the bug in the history observed from the BFC.
+## Draft status
+
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
+
+## Files
+
+```text
+SZZG-0094/
+|-- scenario.graph.yml
+`-- README.md
+```

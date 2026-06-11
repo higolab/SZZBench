@@ -1,14 +1,14 @@
-# SZZ-0117: Schema version check change introduces bug
+# SZZ-0117: BFC with test file addition
 
 ## Purpose
 
-This scenario evaluates a bug-introducing commit shape: Schema version check change introduces bug.
+This scenario evaluates SZZ behavior when the bug-fixing commit fixes production code and adds a regression test file in the same BFC.
 
 ## Commit structure
 
-- `c0`: initial correct implementation
-- `c1`: introduces the bug
-- `c2`: fixes the bug
+- `c0`: Initial correct implementation
+- `c1`: Introduce bug
+- `c2`: Fix bug and add regression test file
 
 ## Expected behavior
 
@@ -19,4 +19,4 @@ The expected BFC is `c2` and the expected BIC is `c1`.
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `schema-change-bic`
+- `bfc-test-addition`

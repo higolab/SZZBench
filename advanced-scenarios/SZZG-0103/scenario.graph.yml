@@ -1,77 +1,68 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0103
-  title: Semantic-preserving rewrite between BIC and BFC
-  slug: semantic-preserving-rewrite
-  description: Evaluates semantic-preserving rewrite between bic and bfc and checks whether SZZ identifies the expected bug-introducing
-    commit set.
-  category: Intermediate-history scenarios
-  category_code: A
+  title: Caller-side context is needed to identify the BIC
+  slug: caller-context-needed
+  description: Evaluates caller-side context is needed to identify the bic and checks whether SZZ identifies the expected
+    bug-introducing commit set.
+  category: "Issue, message, context, and non-local evidence"
+  category_code: "G7"
   factors:
-  - intermediate_rewrite
-  - formatting
-  - line_history_break
+  - context_dependent
+  - caller_callee
+  - not_directly_local
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0103-semantic-preserving-rewrite
+  name: SZZG-0103-caller-context-needed
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: c0: create age gate
+  history_summary: 'c0: c0: create account service and caller
 
-    c1: c1: introduce boundary bug
+    c1: c1: introduce caller-side inversion bug
 
-    c2: c2: rewrite condition into explicit if statement
-
-    c3: c3: fix adult boundary after rewrite'
+    c2: c2: fix login behavior by changing callee condition'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create age gate'
+  message: 'c0: create account service and caller'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/AgeGate.java
-    content: "package example;\npublic class AgeGate {\n  public boolean adult(int age) {\n    return age >= 18;\n  }\n\n\
-      }\n"
+    path: src/main/java/example/AccountService.java
+    content: "package example;\npublic class AccountService {\n  public boolean active(String status) {\n    return \"ACTIVE\"\
+      .equals(status);\n  }\n\n}\n"
+  - type: write_file
+    path: src/main/java/example/LoginController.java
+    content: "package example;\npublic class LoginController {\n  private final AccountService service = new AccountService();\n\
+      \  public boolean canLogin(String status) {\n    return service.active(status);\n  }\n\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce boundary bug'
+  message: 'c1: introduce caller-side inversion bug'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/AgeGate.java
-    old: return age >= 18;
-    new: return age > 18;
+    path: src/main/java/example/LoginController.java
+    old: return service.active(status);
+    new: return !service.active(status);
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: rewrite condition into explicit if statement'
-  role: refactoring
-  operations:
-  - type: replace
-    path: src/main/java/example/AgeGate.java
-    old: return age > 18;
-    new: "if (age > 18) {\n      return true;\n    }\n    return false;"
-- id: c3
-  branch: main
-  parents:
-  - c2
-  message: 'c3: fix adult boundary after rewrite'
+  message: 'c2: fix login behavior by changing callee condition'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/AgeGate.java
-    old: if (age > 18) {
-    new: if (age >= 18) {
+    path: src/main/java/example/AccountService.java
+    old: return "ACTIVE".equals(status);
+    new: return !"DISABLED".equals(status);
 bugs:
 - id: B001
   title: Synthetic graph scenario bug
@@ -79,19 +70,19 @@ bugs:
   - commit: c1
     role: direct
   bug_fixing_commits:
-  - commit: c3
+  - commit: c2
     role: complete_fix
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/AgeGate.java
-    statement: return age > 18;
+    file: src/main/java/example/LoginController.java
+    statement: return !service.active(status);
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c3
-    file: src/main/java/example/AgeGate.java
-    statement: if (age >= 18) {
+    commit: c2
+    file: src/main/java/example/AccountService.java
+    statement: return !"DISABLED".equals(status);
     fix_type: line_modification
 expected_szz:
   commit_level:
@@ -99,11 +90,11 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: Evaluate semantic-preserving rewrite between bic and bfc and whether SZZ identifies the expected bug-introducing
+  purpose: Evaluate caller-side context is needed to identify the bic and whether SZZ identifies the expected bug-introducing
     commit set.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: intermediate_rewrite, formatting, line_history_break; operations:
+  required_extensions_from_source: 'This scenario uses factors: context_dependent, caller_callee, not_directly_local; operations:
     replace, write_file.'
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.

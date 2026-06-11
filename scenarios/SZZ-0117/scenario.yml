@@ -1,19 +1,20 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0117
-  title: Schema version check change introduces bug
-  slug: schema-version-check-bic
-  description: 'This scenario evaluates a bug-introducing commit shape: Schema version check change introduces bug.'
-  category: bic-shape
+  title: BFC with test file addition
+  slug: bfc-with-test-addition
+  description: 'This scenario evaluates SZZ behavior when the bug-fixing commit has the shape: BFC with test file addition.'
+  category: "BFC-side noise and tangled commits"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - schema-change-bic
+  - bfc-test-addition
   difficulty: medium
   status: active
+  category_code: "S4"
 repository:
-  name: SZZ-0117-schema-version-check-bic
+  name: SZZ-0117-bfc-with-test-addition
   default_branch: main
   language: java
   build_system: none
@@ -26,13 +27,13 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0117.java
+    path: src/main/java/example/Scenario0052.java
     content: |
       package example;
 
-      public class Scenario0117 {
-          public boolean supports(int version) {
-              return version >= 2;
+      public class Scenario0052 {
+          public boolean valid(int value) {
+              return value >= 0;
           }
       }
 - id: c1
@@ -42,21 +43,21 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0117.java
+    path: src/main/java/example/Scenario0052.java
     old: |
       package example;
 
-      public class Scenario0117 {
-          public boolean supports(int version) {
-              return version >= 2;
+      public class Scenario0052 {
+          public boolean valid(int value) {
+              return value >= 0;
           }
       }
     new: |
       package example;
 
-      public class Scenario0117 {
-          public boolean supports(int version) {
-              return version > 2;
+      public class Scenario0052 {
+          public boolean valid(int value) {
+              return value > 0;
           }
       }
     labels:
@@ -64,54 +65,66 @@ commits:
     - fault
 - id: c2
   message: Fix bug
-  author: Alice <alice@example.com>
+  author: Carol <carol@example.com>
   date: '2024-01-03T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0117.java
+    path: src/main/java/example/Scenario0052.java
     old: |
       package example;
 
-      public class Scenario0117 {
-          public boolean supports(int version) {
-              return version > 2;
+      public class Scenario0052 {
+          public boolean valid(int value) {
+              return value > 0;
           }
       }
     new: |
       package example;
 
-      public class Scenario0117 {
-          public boolean supports(int version) {
-              return version >= 2;
+      public class Scenario0052 {
+          public boolean valid(int value) {
+              return value >= 0;
           }
       }
     labels:
     - B001
     - fix
+  - type: write_file
+    path: src/test/java/example/Scenario0052Test.java
+    content: |
+      package example;
+
+      public class Scenario0052Test {
+          public void zeroIsValid() {
+              if (!new Scenario0052().valid(0)) {
+                  throw new AssertionError("zero should be valid");
+              }
+          }
+      }
 bugs:
 - id: B001
-  title: Schema version check change introduces bug
+  title: BFC with test file addition
   bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0117.java
+    file: src/main/java/example/Scenario0052.java
     entity:
       type: method
-      name: supports
-      signature: boolean supports(int version)
-    statement: return version > 2;
+      name: valid
+      signature: boolean valid(int value)
+    statement: return value > 0;
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0117.java
+    file: src/main/java/example/Scenario0052.java
     entity:
       type: method
-      name: supports
-      signature: boolean supports(int version)
-    statement: return version >= 2;
+      name: valid
+      signature: boolean valid(int value)
+    statement: return value >= 0;
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -120,7 +133,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return version > 2;
+      - return value > 0;
 checks:
 - type: git_history_contains
   commits:

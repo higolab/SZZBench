@@ -1,117 +1,90 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0107
-  title: Clone divergence before fixing one clone
-  slug: clone-divergence-before-fix
-  description: Evaluates clone divergence before fixing one clone and checks whether SZZ identifies the expected bug-introducing
-    commit set.
-  category: Clone propagation scenarios
-  category_code: A
+  title: BFC includes generated files
+  slug: bfc-generated-file
+  description: Evaluates a bug-fixing commit that fixes source code while also updating generated artifacts in the same commit.
+  category: "Non-source, binary, generated, and scalability edge cases"
+  category_code: "G8"
   factors:
-  - clone
-  - clone_divergence
-  - ambiguous_blame
+  - generated_files
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0107-clone-divergence-before-fix
+  name: SZZG-0107-bfc-generated-file
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: c0: create base permission check
+  history_summary: 'c0: create correct range implementation
 
-    c1: c1: introduce permissive delete check
+    c1: introduce exclusive-boundary bug
 
-    c2: c2: clone policy to group policy
-
-    c3: c3: diverge copied clone by renaming parameters
-
-    c4: c4: fix copied clone after divergence'
+    c2: fix range bug and update generated boundary table'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create base permission check'
+  message: 'c0: create correct range implementation'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/UserPolicy.java
-    content: "package example;\npublic class UserPolicy {\n  public boolean canDelete(boolean owner, boolean admin) {\n  \
-      \  return owner || admin;\n  }\n\n}\n"
+    path: src/main/java/example/Range.java
+    content: |
+      package example;
+      public class Range {
+        public boolean contains(int value, int min, int max) {
+          return value >= min && value <= max;
+        }
+      }
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce permissive delete check'
+  message: 'c1: introduce exclusive-boundary bug'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/UserPolicy.java
-    old: return owner || admin;
-    new: return owner || admin || true;
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: clone policy to group policy'
-  role: other
-  operations:
-  - type: copy_file
-    from: src/main/java/example/UserPolicy.java
-    to: src/main/java/example/GroupPolicy.java
-  - type: replace
-    path: src/main/java/example/GroupPolicy.java
-    old: public class UserPolicy
-    new: public class GroupPolicy
-- id: c3
-  branch: main
-  parents:
-  - c2
-  message: 'c3: diverge copied clone by renaming parameters'
-  role: refactoring
-  operations:
-  - type: replace
-    path: src/main/java/example/GroupPolicy.java
-    old: canDelete(boolean owner, boolean admin)
-    new: canDelete(boolean maintainer, boolean admin)
-  - type: replace
-    path: src/main/java/example/GroupPolicy.java
-    old: return owner || admin || true;
-    new: return maintainer || admin || true;
-- id: c4
-  branch: main
-  parents:
-  - c3
-  message: 'c4: fix copied clone after divergence'
+  message: 'c2: fix range bug and update generated boundary table'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/GroupPolicy.java
-    old: return maintainer || admin || true;
-    new: return maintainer || admin;
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+  - type: write_generated_text_file
+    path: build/generated/range-boundary-table.txt
+    lines: 5
+    template: boundary-case-${line}=generated
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Boundary bug fixed alongside generated file updates
   bug_introducing_commits:
   - commit: c1
     role: direct
   bug_fixing_commits:
-  - commit: c4
+  - commit: c2
     role: complete_fix
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/UserPolicy.java
-    statement: return owner || admin || true;
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c4
-    file: src/main/java/example/GroupPolicy.java
-    statement: return maintainer || admin;
+    commit: c2
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
     fix_type: line_modification
 expected_szz:
   commit_level:
@@ -119,16 +92,13 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: Evaluate clone divergence before fixing one clone and whether SZZ identifies the expected bug-introducing commit
-    set.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: clone, clone_divergence, ambiguous_blame; operations: copy_file,
-    replace, write_file.'
+  purpose: Evaluate whether SZZ identifies the source BIC when the BFC contains both the real source fix and generated-file noise.
+  current_schema_limitation: The generated artifact in the BFC is represented explicitly with graph operations.
+  required_extensions_from_source: 'This scenario uses factors: generated_files; operations: write_file, replace, write_generated_text_file.'
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Whether SZZ identifies c1 as the BIC.
+  - Whether generated files added or refreshed in the BFC are ignored as blame targets.
+  - Whether the expected_szz exact-set policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
+- The generated file is intentionally changed only in the BFC.
+- The source fix remains in src/main/java/example/Range.java.

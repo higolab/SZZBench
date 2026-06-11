@@ -1,22 +1,20 @@
-# SZZG-0031: Cherry-pick BIC
+# SZZG-0031: One BIC fixed by multiple BFCs
 
 ## Source
 
-- Category: Branch, merge, cherry-pick, and backport scenarios
+- Category: Multiple BIC and BFC scenarios
 
 ## Purpose
 
-Evaluate Cherry-pick BIC and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate One BIC fixed by multiple BFCs and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
 c0: create initial state (write_file src/main/java/example/Range.java)
-c1: introduce bug (replace src/main/java/example/Range.java)
-c2: apply intermediate change (write_file docs/feature-note.md)
-c3: merge branch
-c4: fix bug (replace src/main/java/example/Range.java)
-r1: cherry-pick change (apply_patch_from c1)
+c1: introduce bug (replace src/main/java/example/Range.java; replace src/main/java/example/Range.java)
+c2: fix bug (replace src/main/java/example/Range.java)
+c3: fix bug (replace src/main/java/example/Range.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
@@ -25,8 +23,8 @@ This history requires graph-aware scenario semantics that are difficult to expre
 
 ## Required graph-schema features
 
-- Factors: branch, cherry_pick_of
-- Operation types: write_file, replace, apply_patch_from
+- Factors: bug_fixing_commits
+- Operation types: write_file, replace
 - Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points

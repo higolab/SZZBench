@@ -1,90 +1,80 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0041
-  title: BIC separated from BFC by an intermediate work-item commit
-  slug: bic-bfc-intermediate-work-item
-  description: Evaluates a work-item series where an unrelated commit from the same work item appears between the BIC and
-    the BFC.
-  category: Work-item and commit-series scenarios
-  category_code: H
+  title: Ambiguous blame with duplicate faulty lines
+  slug: ambiguous-duplicate-faulty-line
+  description: Evaluates ambiguous blame with duplicate faulty lines and checks whether SZZ identifies the expected bug-introducing
+    commit set.
+  category: "Multiple BICs, multiple BFCs, and partial fixes"
+  category_code: "G3"
   factors:
-  - work_items
-  - intermediate_commit
-  - related_but_not_correct
+  - ambiguous_blame
+  - duplicate_code
+  - same_statement_multiple_locations
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0041-bic-bfc-intermediate-work-item
+  name: SZZG-0041-ambiguous-duplicate-faulty-line
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: |
-    c0: create inventory reservation logic
-    c1: introduce exact-stock reservation bug
-    c2: add unrelated audit event in the same work item
-    c3: fix exact-stock reservation bug
+  history_summary: 'c0: c0: create duplicate limit checks
+
+    c1: c1: introduce user limit bug
+
+    c2: c2: introduce syntactically identical admin limit bug
+
+    c3: c3: fix only user limit boundary'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'WI-418 c0: create inventory reservation logic'
+  message: 'c0: create duplicate limit checks'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/InventoryReservation.java
-    content: |
-      package example;
-
-      public class InventoryReservation {
-        public boolean canReserve(int available, int alreadyReserved, int requested) {
-          return available - alreadyReserved >= requested;
-        }
-      }
+    path: src/main/java/example/Limits.java
+    content: "package example;\npublic class Limits {\n  public boolean userLimit(int value) {\n    return value <= 100;\n\
+      \  }\n  public boolean adminLimit(int value) {\n    return value <= 1000;\n  }\n\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'WI-418 c1: reject oversold reservations'
+  message: 'c1: introduce user limit bug'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/InventoryReservation.java
-    old: return available - alreadyReserved >= requested;
-    new: return available - alreadyReserved > requested;
+    path: src/main/java/example/Limits.java
+    old: return value <= 100;
+    new: return value < 100;
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'WI-418 c2: add inventory audit event names'
-  role: intermediate
+  message: 'c2: introduce syntactically identical admin limit bug'
+  role: other
   operations:
-  - type: write_file
-    path: src/main/java/example/InventoryAudit.java
-    content: |
-      package example;
-
-      public class InventoryAudit {
-        public String reservationEvent() {
-          return "inventory.reservation.requested";
-        }
-      }
+  - type: replace
+    path: src/main/java/example/Limits.java
+    old: return value <= 1000;
+    new: return value < 1000;
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'WI-418 c3: allow reservation when stock exactly matches request'
+  message: 'c3: fix only user limit boundary'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/InventoryReservation.java
-    old: return available - alreadyReserved > requested;
-    new: return available - alreadyReserved >= requested;
+    path: src/main/java/example/Limits.java
+    old: return value < 100;
+    new: return value <= 100;
 bugs:
 - id: B001
-  title: Exact-stock reservations are rejected after a work-item change
+  title: Synthetic graph scenario bug
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -94,43 +84,31 @@ bugs:
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/InventoryReservation.java
-    statement: return available - alreadyReserved > requested;
+    file: src/main/java/example/Limits.java
+    statement: return value < 100;
     change_type: line_modification
   fixes:
   - id: X001
     commit: c3
-    file: src/main/java/example/InventoryReservation.java
-    statement: return available - alreadyReserved >= requested;
+    file: src/main/java/example/Limits.java
+    statement: return value <= 100;
     fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
     - c1
-    related_but_not_correct:
-    - c2
 scenario_design:
-  purpose: Evaluate whether SZZ identifies the original BIC when a related but non-faulty work-item commit sits immediately
-    between the BIC and BFC.
-  current_schema_limitation: Work-item membership and related-but-not-correct candidates are graph-specific metadata.
-  required_extensions_from_source: 'This scenario uses factors: work_items, intermediate_commit, related_but_not_correct; operations: write_file, replace.'
+  purpose: Evaluate ambiguous blame with duplicate faulty lines and whether SZZ identifies the expected bug-introducing commit
+    set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: ambiguous_blame, duplicate_code, same_statement_multiple_locations;
+    operations: replace, write_file.'
   evaluation_points:
-  - Whether SZZ identifies c1 as the BIC.
-  - Whether the intermediate audit commit c2 is not mistaken for the BIC.
-  - Whether work-item membership is represented without collapsing all commits in the work item into one cause.
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.
-work_items:
-- id: WI-418
-  title: Inventory reservation reliability work
-  commits:
-  - commit: c0
-    relevance: setup
-  - commit: c1
-    relevance: bug_introducing
-  - commit: c2
-    relevance: related_but_not_correct
-  - commit: c3
-    relevance: bug_fixing

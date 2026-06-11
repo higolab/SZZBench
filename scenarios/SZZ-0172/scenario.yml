@@ -1,84 +1,94 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0172
-  title: Root cause not in changed lines
-  slug: root-cause-not-in-changed-lines
+  title: Config and code interaction
+  slug: config-code
   description: >-
-    Evaluates a fix that changes a caller-side guard while the root-cause bug was introduced earlier in a callee method that
-    the BFC does not edit.
-  category: Context-aware and LLM-based SZZ scenarios
+    Evaluates a bug introduced by a configuration unit change that is only visible when read together with the code that interprets
+    the setting.
+  category: "Non-source, configuration, test-only, and file-level edge cases"
   factors:
-  - root_cause
+  - config
+  - code_interaction
+  - context
+  - faults
   difficulty: hard
   status: active
+  category_code: "S8"
 repository:
-  name: SZZ-0172-root-cause-not-in-changed-lines
+  name: SZZ-0172-config-code
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 commits:
 - id: c0
-  message: 'c0: create correct range and access policy'
+  message: 'c0: create retry delay config and interpreter'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
+    path: config/retry.properties
     content: |
-      package example;
-      public class Range {
-        public boolean contains(int value, int min, int max) {
-          return value >= min && value <= max;
-        }
-      }
+      retry.delay.unit=seconds
+      retry.delay.value=2
   - type: write_file
-    path: src/main/java/example/AccessPolicy.java
+    path: src/main/java/example/RetryPolicy.java
     content: |
       package example;
-      public class AccessPolicy {
-        private final Range range = new Range();
 
-        public boolean allows(int value, int min, int max) {
-          return range.contains(value, min, max);
+      public class RetryPolicy {
+        private final String unit;
+        private final int configuredDelay;
+
+        public RetryPolicy(String unit, int configuredDelay) {
+          this.unit = unit;
+          this.configuredDelay = configuredDelay;
+        }
+
+        public int delayMillis() {
+          return configuredDelay * 1000;
         }
       }
 - id: c1
-  message: 'c1: introduce boundary bug in Range.contains'
+  message: 'c1: tune retry delay config to milliseconds'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
+    path: config/retry.properties
+    old: retry.delay.unit=seconds
+    new: retry.delay.unit=milliseconds
 - id: c2
-  message: 'c2: compensate for boundary bug in AccessPolicy'
+  message: 'c2: document retry delay configuration'
+  role: distractor
+  operations:
+  - type: write_file
+    path: docs/retry-delay.md
+    content: 'Retry delay is configured by retry.delay.value and retry.delay.unit.
+
+'
+- id: c3
+  message: 'c3: honor millisecond retry delay config'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/AccessPolicy.java
-    old: return range.contains(value, min, max);
-    new: return range.contains(value, min, max) || value == min || value == max;
+    path: src/main/java/example/RetryPolicy.java
+    old: return configuredDelay * 1000;
+    new: 'return unit.equals("milliseconds") ? configuredDelay : configuredDelay * 1000;'
 bugs:
 - id: B001
-  title: Boundary bug whose fix changes the caller instead of the root cause
-  bug_fixing_commit: c2
+  title: Millisecond retry config is interpreted as seconds
+  bug_fixing_commit: c3
   bug_introducing_commits:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Range.java
-    entity:
-      type: method
-      signature: boolean contains(int value, int min, int max)
-    statement: return value > min && value < max;
-    change_type: line_modification
+    file: config/retry.properties
+    statement: retry.delay.unit=milliseconds
+    change_type: config_modification
   fix:
-    commit: c2
-    file: src/main/java/example/AccessPolicy.java
-    entity:
-      type: method
-      signature: boolean allows(int value, int min, int max)
-    statement: return range.contains(value, min, max) || value == min || value == max;
+    commit: c3
+    file: src/main/java/example/RetryPolicy.java
+    statement: 'return unit.equals("milliseconds") ? configuredDelay : configuredDelay * 1000;'
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -88,10 +98,11 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return value > min && value < max;
+      - retry.delay.unit=milliseconds
 checks:
 - type: git_history_contains
   commits:
   - c0
   - c1
   - c2
+  - c3

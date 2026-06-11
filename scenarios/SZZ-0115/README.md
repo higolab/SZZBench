@@ -1,22 +1,16 @@
-# SZZ-0115: Argument order change introduces bug
+# SZZ-0115: Tangled bug-fixing commit
 
 ## Purpose
 
-This scenario evaluates a bug-introducing commit shape: Argument order change introduces bug.
+This scenario checks a tangled BFC: the fixing commit contains both the real fix
+and an unrelated helper-method addition.
 
 ## Commit structure
 
-- `c0`: initial correct implementation
-- `c1`: introduces the bug
-- `c2`: fixes the bug
+- `c0`: Correct implementation.
+- `c1`: Introduces the strict boundary bug. This is the BIC.
+- `c2`: Fixes the bug and adds an unrelated helper method. This is the BFC.
 
 ## Expected behavior
 
-The expected BFC is `c2` and the expected BIC is `c1`.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `argument-order-bic`
+SZZ should use the actual fix hunk and report `c1` as the bug-introducing commit.

@@ -1,14 +1,14 @@
-# SZZ-0123: Off-by-one in new loop boundary
+# SZZ-0123: BFC with two faulty expressions fixed
 
 ## Purpose
 
-This scenario evaluates a bug-introducing commit shape: Off-by-one in new loop boundary.
+This scenario evaluates SZZ behavior when the bug-fixing commit has the shape: BFC with two faulty expressions fixed.
 
 ## Commit structure
 
-- `c0`: initial correct implementation
-- `c1`: introduces the bug
-- `c2`: fixes the bug
+- `c0`: Initial correct implementation
+- `c1`: Introduce bug
+- `c2`: Fix bug
 
 ## Expected behavior
 
@@ -19,4 +19,4 @@ The expected BFC is `c2` and the expected BIC is `c1`.
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `off-by-one`
+- `multiple-line-bfc`

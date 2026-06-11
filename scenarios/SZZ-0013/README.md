@@ -1,17 +1,22 @@
-# SZZ-0013: Duplicate fault statement
+# SZZ-0013: Logical disjunction error
 
 ## Purpose
 
-This scenario checks ambiguity when the same faulty statement appears in multiple
-locations at the BIC.
+This scenario introduces a bug by changing `return isAdmin || isOwner;` to `return isAdmin && isOwner;` and later restores the correct implementation.
 
 ## Commit structure
 
-- `c0`: Introduces two validators with identical correct return statements.
-- `c1`: Changes both statements to the same faulty text. This is the BIC.
-- `c2`: Fixes only the `acceptsAge` occurrence. This is the BFC.
+- `c0`: initial correct implementation
+- `c1`: introduces the bug
+- `c2`: fixes the bug
 
 ## Expected behavior
 
-Commit-level SZZ should report `c1`. Line/entity-level analysis needs context to
-distinguish the fixed occurrence from the duplicate occurrence.
+The expected BFC is `c2` and the expected BIC is `c1`.
+
+## Factors
+
+- `single-bic`
+- `single-bfc`
+- `line-modification`
+- `logical-operator-error`

@@ -1,37 +1,43 @@
-# SZZG-0013: Partial credit when only some BICs are returned
+# SZZG-0013: Semantic-preserving rewrite between BIC and BFC
 
 ## Source
 
-- Category: Multiple BIC and BFC scenarios
+- Category: Intermediate-history scenarios
 
 ## Purpose
 
-Evaluate scoring behavior when a complete answer contains two BICs but an SZZ implementation returns only one of them.
+Evaluate semantic-preserving rewrite between bic and bfc and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: create checkout policy classes
-c1: introduce loyalty-discount threshold bug
-c2: introduce tax-exemption logic bug
-c3: fix both checkout policy faults
+c0: c0: create age gate
+c1: c1: introduce boundary bug
+c2: c2: rewrite condition into explicit if statement
+c3: c3: fix adult boundary after rewrite
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-This scenario needs graph-aware expected-SZZ metadata because the oracle allows partial credit for returning only one of the two required BICs.
+This history requires graph-aware scenario semantics that are difficult to express with the normal `scenario.yml` schema.
 
 ## Required graph-schema features
 
-- Factors: multiple_bic, partial_credit, expected_szz
-- Operation types: write_file, replace
-- Expected SZZ policy is defined in expected_szz.
+- Factors: intermediate_rewrite, formatting, line_history_break
+- Operation types: replace, write_file
+- Expected SZZ policy is defined in `expected_szz`.
+
+## Expected BICs
+
+```text
+c1
+```
 
 ## Evaluation points
 
-- Whether SZZ can identify both checkout-policy BICs for one bug.
-- Whether returning only c1 or only c2 receives partial credit rather than full exact-set credit.
-- Whether the BFC that edits two files is evaluated against both required BICs.
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
 ---
 

@@ -1,138 +1,114 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0042
-  title: Multiple candidate BICs inside a work item
-  slug: work-item-bic
-  description: Evaluates multiple candidate bics inside a work item and checks whether SZZ identifies the expected bug-introducing
-    commit set.
-  category: Work-item and commit-series scenarios
-  category_code: H
+  title: BFC is a merge commit
+  slug: bfc-merge-commit
+  description: A bug is introduced on a feature branch, and the merge commit itself resolves the bug while merging the feature
+    branch into main.
+  category: "Branch, merge, cherry-pick, backport, and release branches"
+  category_code: "G4"
   factors:
-  - work_items
-  - expected_szz
+  - merge_commit
+  - bug_fixing_commit
+  - branch
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0042-work-item-bic
+  name: SZZG-0042-bfc-merge-commit
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial state (write_file src/main/java/example/RangeService.java)
+  history_summary: 'c0: create initial correct implementation on main
 
-    c1: add candidate change (replace src/main/java/example/RangeService.java)
+    c1: introduce bug on feature branch
 
-    c2: introduce bug (replace src/main/java/example/RangeService.java)
+    c2: unrelated main-branch change
 
-    c3: add candidate change (replace src/main/java/example/RangeService.java)
-
-    c4: fix bug (replace src/main/java/example/RangeService.java)'
+    c3: merge feature into main and fix bug in the merge commit'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_file src/main/java/example/RangeService.java)'
+  message: 'c0: create initial correct implementation'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/RangeService.java
-    content: "package example;\n\npublic class RangeService {\n  public boolean isEnabled() { return true; }\n  public boolean\
-      \ contains(int value, int min, int max) { return value >= min && value <= max; }\n  public int normalize(int value)\
-      \ { return value; }\n}\n"
+    path: src/main/java/example/Range.java
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
-  branch: main
+  branch: feature
   parents:
   - c0
-  message: 'c1: add candidate change (replace src/main/java/example/RangeService.java)'
-  role: candidate
-  operations:
-  - type: replace
-    path: src/main/java/example/RangeService.java
-    old: public boolean isEnabled() { return true; }
-    new: public boolean isEnabled() { return System.getProperty("range.enabled", "true").equals("true"); }
-- id: c2
-  branch: main
-  parents:
-  - c1
-  message: 'c2: introduce bug (replace src/main/java/example/RangeService.java)'
+  message: 'c1: introduce range boundary bug on feature'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/RangeService.java
+    path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
     new: return value > min && value < max;
+- id: c2
+  branch: main
+  parents:
+  - c0
+  message: 'c2: add unrelated main branch note'
+  role: intermediate
+  operations:
+  - type: write_file
+    path: docs/main-note.md
+    content: 'This note is unrelated to the range boundary bug.
+
+      '
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'c3: add candidate change (replace src/main/java/example/RangeService.java)'
-  role: candidate
-  operations:
-  - type: replace
-    path: src/main/java/example/RangeService.java
-    old: public int normalize(int value) { return value; }
-    new: public int normalize(int value) { return Math.max(0, value); }
-- id: c4
-  branch: main
-  parents:
-  - c3
-  message: 'c4: fix bug (replace src/main/java/example/RangeService.java)'
+  - c1
+  message: 'c3: merge feature and fix range boundary bug'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/RangeService.java
+    path: src/main/java/example/Range.java
     old: return value > min && value < max;
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Work item contains multiple candidate BICs
+  title: Range boundary bug fixed by merge commit
   bug_introducing_commits:
-  - commit: c2
+  - commit: c1
     role: direct
   bug_fixing_commits:
-  - commit: c4
-    role: complete_fix
+  - commit: c3
+    role: merge_fix
   faults:
   - id: F001
-    commit: c2
-    file: src/main/java/example/RangeService.java
+    commit: c1
+    file: src/main/java/example/Range.java
     statement: return value > min && value < max;
+    change_type: line_modification
   fixes:
   - id: X001
-    commit: c4
-    file: src/main/java/example/RangeService.java
+    commit: c3
+    file: src/main/java/example/Range.java
     statement: return value >= min && value <= max;
+    fix_type: line_modification
 expected_szz:
   commit_level:
-    evaluation_policy: top_k
-    relevant:
-    - c2
+    evaluation_policy: exact_set
     required:
-    - c2
-work_items:
-- id: WI-001
-  title: Implement range service changes
-  commits:
-  - commit: c1
-    relevance: candidate
-  - commit: c2
-    relevance: bug_introducing
-  - commit: c3
-    relevance: distractor
-  - commit: c4
-    relevance: bug_fixing
+    - c1
 scenario_design:
-  purpose: Evaluate Multiple candidate BICs inside a work item and whether SZZ identifies the expected bug-introducing commit
-    set.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: work_items, expected_szz; operations: write_file, replace.'
+  purpose: Evaluate whether an SZZ method can identify a feature-branch BIC when the BFC is itself a merge commit.
+  key_property: The merge commit c3 has two parents and also contains the bug-fixing edit.
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - BFC is a merge commit rather than a normal linear commit.
+  - The BIC is on the merged feature branch.
+  - An unrelated main-branch change exists before the merge.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
+- This scenario intentionally makes c3 both a merge commit and the bug-fixing commit.
+- If generate-graph cannot apply operations on merge commits, graph_generator.py must be updated to support merge commits
+  with operations.
+- This revision differentiates SZZG-0042 from SZZG-0043, where the BFC should be a normal main-branch commit after a merge.

@@ -1,14 +1,14 @@
-# SZZ-0063: Bounds check omission
+# SZZ-0063: Else branch omission
 
 ## Purpose
 
-This scenario represents an omission bug: the method is introduced without a necessary bounds check, and the bug-fixing commit adds the missing statement.
+This scenario represents an omission bug: the method is introduced without a necessary else branch, and the bug-fixing commit adds the missing statement.
 
 ## Commit structure
 
 - `c0`: initial class
-- `c1`: introduces the method without the bounds check
-- `c2`: adds the missing bounds check
+- `c1`: introduces the method without the else branch
+- `c2`: adds the missing else branch
 
 ## Expected behavior
 

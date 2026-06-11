@@ -1,89 +1,84 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0010
-  title: Extract class after BIC
-  slug: extract-class-after-bic
-  description: A bug is introduced in a class that mixes range validation and reporting responsibilities. After the BIC, a
-    new RangeValidator class is extracted and the buggy validation logic is moved there. The BFC then fixes the bug in the
-    extracted class.
-  category: Intermediate-history scenarios
-  category_code: C
+  title: Intermediate file move and package rename between BIC and BFC
+  slug: intermediate-file-move-package-rename
+  description: Evaluates intermediate file move and package rename between bic and bfc and checks whether SZZ identifies the
+    expected bug-introducing commit set.
+  category: "Refactoring, move, rename, and semantic rewrite"
+  category_code: "G1"
   factors:
-  - refactoring
-  - extract_class
-  - move_entity
-  - post_bic_refactoring
+  - rename_file
+  - move_file
+  - package_rename
+  - intermediate_refactoring
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0010-extract-class-after-bic
+  name: SZZG-0010-intermediate-file-move-package-rename
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create RangeService with validation and reporting responsibilities
+  history_summary: 'c0: c0: create legacy parser
 
-    c1: introduce boundary bug in RangeService.contains
+    c1: c1: introduce parser trimming bug
 
-    c2: extract RangeValidator class after the BIC and move the buggy validation logic there
+    c2: c2: move parser to core package
 
-    c3: fix the boundary bug in the extracted RangeValidator class'
+    c3: c3: fix parser whitespace handling'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create RangeService with validation and reporting'
+  message: 'c0: create legacy parser'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/RangeService.java
-    content: "package example;\n\npublic class RangeService {\n  public boolean contains(int value, int min, int max) {\n\
-      \    return value >= min && value <= max;\n  }\n\n  public String describe(int min, int max) {\n    return \"range[\"\
-      \ + min + \",\" + max + \"]\";\n  }\n\n  public boolean acceptsAndReport(int value, int min, int max) {\n    return\
-      \ contains(value, min, max);\n  }\n}\n"
+    path: src/main/java/example/legacy/Parser.java
+    content: "package example.legacy;\npublic class Parser {\n  public int parseCount(String text) {\n    return Integer.parseInt(text.trim());\n\
+      \  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce range boundary bug'
+  message: 'c1: introduce parser trimming bug'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/RangeService.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
+    path: src/main/java/example/legacy/Parser.java
+    old: return Integer.parseInt(text.trim());
+    new: return Integer.parseInt(text);
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: extract RangeValidator class after BIC'
-  role: intermediate
+  message: 'c2: move parser to core package'
+  role: refactoring
   operations:
-  - type: write_file
-    path: src/main/java/example/RangeService.java
-    content: "package example;\n\npublic class RangeService {\n  private final RangeValidator validator = new RangeValidator();\n\
-      \n  public String describe(int min, int max) {\n    return \"range[\" + min + \",\" + max + \"]\";\n  }\n\n  public\
-      \ boolean acceptsAndReport(int value, int min, int max) {\n    return validator.contains(value, min, max);\n  }\n}\n"
-  - type: write_file
-    path: src/main/java/example/RangeValidator.java
-    content: "package example;\n\npublic class RangeValidator {\n  public boolean contains(int value, int min, int max) {\n\
-      \    return value > min && value < max;\n  }\n}\n"
+  - type: rename_file
+    from: src/main/java/example/legacy/Parser.java
+    to: src/main/java/example/core/Parser.java
+  - type: replace
+    path: src/main/java/example/core/Parser.java
+    old: package example.legacy;
+    new: package example.core;
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'c3: fix boundary bug in extracted validator'
+  message: 'c3: fix parser whitespace handling'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/RangeValidator.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/core/Parser.java
+    old: return Integer.parseInt(text);
+    new: return Integer.parseInt(text.trim());
 bugs:
 - id: B001
-  title: Range boundary bug moved to extracted validator class
+  title: Synthetic graph scenario bug
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -93,43 +88,31 @@ bugs:
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/RangeService.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/legacy/Parser.java
+    statement: return Integer.parseInt(text);
     change_type: line_modification
   fixes:
   - id: X001
     commit: c3
-    file: src/main/java/example/RangeValidator.java
-    statement: return value >= min && value <= max;
-    fix_type: line_modification_after_extract_class
-  refactorings:
-  - commit: c2
-    type: extract_class
-    from_file: src/main/java/example/RangeService.java
-    to_file: src/main/java/example/RangeValidator.java
-    moved_entities:
-    - boolean contains(int value, int min, int max)
+    file: src/main/java/example/core/Parser.java
+    statement: return Integer.parseInt(text.trim());
+    fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
     - c1
-    notes: The fault is introduced in RangeService.java at c1 and later moved to RangeValidator.java by the extract-class
-      refactoring at c2.
 scenario_design:
-  purpose: Evaluate whether SZZ can identify the original BIC when the buggy method is moved into a newly extracted class
-    before the BFC.
-  key_property: 'The BIC and BFC are in different files: the fault is introduced in RangeService.java, then moved to RangeValidator.java,
-    and finally fixed there.'
-  difference_from_SZZG_0011: 'SZZG-0009 represents a method move between classes. This scenario represents extract class:
-    a new class is created after the BIC, responsibilities are split, and the BFC occurs in the extracted class.'
+  purpose: Evaluate intermediate file move and package rename between bic and bfc and whether SZZ identifies the expected
+    bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: rename_file, move_file, package_rename, intermediate_refactoring;
+    operations: rename_file, replace, write_file.'
   evaluation_points:
-  - Whether SZZ follows the bug across extract-class refactoring.
-  - Whether SZZ avoids treating the extraction commit c2 as the BIC.
-  - Whether file movement from RangeService.java to RangeValidator.java is handled correctly.
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- This revision differentiates SZZG-0010 from SZZG-0009 by creating a new RangeValidator class and moving the buggy validation
-  responsibility there.
-- The BIC remains c1, even though the BFC is in a different file after extraction.
-- The c2 extraction is intentionally represented with write_file operations so that current graph generation can reproduce
-  the refactoring without requiring a dedicated extract_class operation.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

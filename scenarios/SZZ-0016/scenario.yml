@@ -1,19 +1,20 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0016
-  title: Arithmetic sign error
-  slug: arithmetic-sign-error
-  description: This scenario introduces a bug by changing `return value + 1;` to `return value - 1;` and later restores the correct implementation.
-  category: basic
+  title: Min max swapped
+  slug: min-max-swapped
+  description: This scenario introduces a bug by changing `return Math.max(left, right);` to `return Math.min(left, right);` and later restores the correct implementation.
+  category: "Basic semantic line changes"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - arithmetic-error
+  - wrong-variable
   difficulty: easy
   status: active
+  category_code: "S1"
 repository:
-  name: SZZ-0016-arithmetic-sign-error
+  name: SZZ-0016-min-max-swapped
   default_branch: main
   language: java
   build_system: none
@@ -26,13 +27,13 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0016.java
+    path: src/main/java/example/Scenario0026.java
     content: |
       package example;
 
-      public class Scenario0016 {
-          public int compute(int value) {
-              return value + 1;
+      public class Scenario0026 {
+          public int larger(int left, int right) {
+              return Math.max(left, right);
           }
       }
 - id: c1
@@ -42,21 +43,21 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0016.java
+    path: src/main/java/example/Scenario0026.java
     old: |
       package example;
 
-      public class Scenario0016 {
-          public int compute(int value) {
-              return value + 1;
+      public class Scenario0026 {
+          public int larger(int left, int right) {
+              return Math.max(left, right);
           }
       }
     new: |
       package example;
 
-      public class Scenario0016 {
-          public int compute(int value) {
-              return value - 1;
+      public class Scenario0026 {
+          public int larger(int left, int right) {
+              return Math.min(left, right);
           }
       }
     labels:
@@ -69,21 +70,21 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0016.java
+    path: src/main/java/example/Scenario0026.java
     old: |
       package example;
 
-      public class Scenario0016 {
-          public int compute(int value) {
-              return value - 1;
+      public class Scenario0026 {
+          public int larger(int left, int right) {
+              return Math.min(left, right);
           }
       }
     new: |
       package example;
 
-      public class Scenario0016 {
-          public int compute(int value) {
-              return value + 1;
+      public class Scenario0026 {
+          public int larger(int left, int right) {
+              return Math.max(left, right);
           }
       }
     labels:
@@ -91,27 +92,27 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Arithmetic sign error
+  title: Min max swapped
   bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0016.java
+    file: src/main/java/example/Scenario0026.java
     entity:
       type: method
-      name: compute
-      signature: int compute(int value)
-    statement: return value - 1;
+      name: larger
+      signature: int larger(int left, int right)
+    statement: return Math.min(left, right);
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0016.java
+    file: src/main/java/example/Scenario0026.java
     entity:
       type: method
-      name: compute
-      signature: int compute(int value)
-    statement: return value + 1;
+      name: larger
+      signature: int larger(int left, int right)
+    statement: return Math.max(left, right);
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -120,7 +121,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return value - 1;
+      - return Math.min(left, right);
 checks:
 - type: git_history_contains
   commits:

@@ -1,4 +1,4 @@
-# SZZ-0136: Authentication and token checks introduced separately
+# SZZ-0136: Range minimum and maximum changed separately
 
 ## Purpose
 

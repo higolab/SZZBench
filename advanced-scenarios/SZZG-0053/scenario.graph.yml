@@ -1,54 +1,61 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0053
-  title: Empty intermediate commit
-  slug: empty-intermediate-commit
-  description: Evaluates an empty intermediate commit between the BIC and BFC and checks whether SZZ ignores it as a cause.
-  category: Robustness and implementation-quality scenarios
-  category_code: K
+  title: Release-branch-only bug
+  slug: release-branch-only-bug
+  description: A release branch introduces and fixes a bug that never exists on main.
+  category: "Branch, merge, cherry-pick, backport, and release branches"
+  category_code: "G4"
   factors:
-  - allow_empty
+  - release_branch
+  - branch_only_bug
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0053-empty-intermediate-commit
+  name: SZZG-0053-release-branch-only-bug
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
+  history_summary: 'c0: create initial correct implementation on main
 
-    c1: apply empty intermediate change
+    c1: main continues correct development
 
-    c2: introduce bug (replace src/main/java/example/Range.java)
+    c2: release branch introduces release-only bug
 
-    c3: fix bug (replace src/main/java/example/Range.java)'
+    c3: main adds unrelated correct change
+
+    c4: release branch fixes release-only bug'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
+  message: 'c0: create initial correct implementation'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
       \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: apply empty intermediate change'
+  message: 'c1: add main-only version note'
   role: intermediate
-  operations: []
-  allow_empty: true
+  operations:
+  - type: write_file
+    path: docs/main-version.md
+    content: 'Main remains correct.
+
+      '
 - id: c2
-  branch: main
+  branch: release
   parents:
-  - c1
-  message: 'c2: introduce bug (replace src/main/java/example/Range.java)'
+  - c0
+  message: 'c2: introduce release-only range boundary bug'
   role: bug_introducing
   operations:
   - type: replace
@@ -58,8 +65,20 @@ commits:
 - id: c3
   branch: main
   parents:
+  - c1
+  message: 'c3: add unrelated main documentation'
+  role: intermediate
+  operations:
+  - type: write_file
+    path: docs/main-unrelated.md
+    content: 'Unrelated main branch change.
+
+      '
+- id: c4
+  branch: release
+  parents:
   - c2
-  message: 'c3: fix bug (replace src/main/java/example/Range.java)'
+  message: 'c4: fix release-only range boundary bug'
   role: bug_fixing
   operations:
   - type: replace
@@ -68,12 +87,12 @@ commits:
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Release-branch-only range boundary bug
   bug_introducing_commits:
   - commit: c2
     role: direct
   bug_fixing_commits:
-  - commit: c3
+  - commit: c4
     role: complete_fix
   faults:
   - id: F001
@@ -83,7 +102,7 @@ bugs:
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c3
+    commit: c4
     file: src/main/java/example/Range.java
     statement: return value >= min && value <= max;
     fix_type: line_modification
@@ -93,14 +112,11 @@ expected_szz:
     required:
     - c2
 scenario_design:
-  purpose: Evaluate whether SZZ identifies the real BIC when an empty commit appears in the intermediate history.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: allow_empty; operations: write_file, replace.'
+  purpose: Evaluate whether SZZ can handle a bug that exists only on a release branch and not on main.
+  key_property: The BIC and BFC are both on release; main never contains the bug.
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether the empty intermediate commit c1 is not reported as the BIC.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Release-only BIC
+  - Release-only BFC
+  - Main branch has unrelated correct development.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
+- This scenario should not be collapsed into feature-to-main merge scenarios.

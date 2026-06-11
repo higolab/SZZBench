@@ -1,19 +1,20 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0037
-  title: Incorrect clamp lower bound
-  slug: incorrect-clamp-lower-bound
-  description: This scenario introduces a bug by changing `return Math.max(value, lower);` to `return Math.min(value, lower);` and later restores the correct implementation.
-  category: basic
+  title: Schema version check change introduces bug
+  slug: schema-version-check-bic
+  description: 'This scenario evaluates a bug-introducing commit shape: Schema version check change introduces bug.'
+  category: "Basic semantic line changes"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - arithmetic-error
-  difficulty: easy
+  - schema-change-bic
+  difficulty: medium
   status: active
+  category_code: "S1"
 repository:
-  name: SZZ-0037-incorrect-clamp-lower-bound
+  name: SZZ-0037-schema-version-check-bic
   default_branch: main
   language: java
   build_system: none
@@ -26,13 +27,13 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0037.java
+    path: src/main/java/example/Scenario0117.java
     content: |
       package example;
 
-      public class Scenario0037 {
-          public int clampLower(int value, int lower) {
-              return Math.max(value, lower);
+      public class Scenario0117 {
+          public boolean supports(int version) {
+              return version >= 2;
           }
       }
 - id: c1
@@ -42,21 +43,21 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0037.java
+    path: src/main/java/example/Scenario0117.java
     old: |
       package example;
 
-      public class Scenario0037 {
-          public int clampLower(int value, int lower) {
-              return Math.max(value, lower);
+      public class Scenario0117 {
+          public boolean supports(int version) {
+              return version >= 2;
           }
       }
     new: |
       package example;
 
-      public class Scenario0037 {
-          public int clampLower(int value, int lower) {
-              return Math.min(value, lower);
+      public class Scenario0117 {
+          public boolean supports(int version) {
+              return version > 2;
           }
       }
     labels:
@@ -69,21 +70,21 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0037.java
+    path: src/main/java/example/Scenario0117.java
     old: |
       package example;
 
-      public class Scenario0037 {
-          public int clampLower(int value, int lower) {
-              return Math.min(value, lower);
+      public class Scenario0117 {
+          public boolean supports(int version) {
+              return version > 2;
           }
       }
     new: |
       package example;
 
-      public class Scenario0037 {
-          public int clampLower(int value, int lower) {
-              return Math.max(value, lower);
+      public class Scenario0117 {
+          public boolean supports(int version) {
+              return version >= 2;
           }
       }
     labels:
@@ -91,27 +92,27 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Incorrect clamp lower bound
+  title: Schema version check change introduces bug
   bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0037.java
+    file: src/main/java/example/Scenario0117.java
     entity:
       type: method
-      name: clampLower
-      signature: int clampLower(int value, int lower)
-    statement: return Math.min(value, lower);
+      name: supports
+      signature: boolean supports(int version)
+    statement: return version > 2;
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0037.java
+    file: src/main/java/example/Scenario0117.java
     entity:
       type: method
-      name: clampLower
-      signature: int clampLower(int value, int lower)
-    statement: return Math.max(value, lower);
+      name: supports
+      signature: boolean supports(int version)
+    statement: return version >= 2;
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -120,7 +121,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return Math.min(value, lower);
+      - return version > 2;
 checks:
 - type: git_history_contains
   commits:

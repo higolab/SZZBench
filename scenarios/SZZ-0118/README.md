@@ -1,14 +1,14 @@
-# SZZ-0118: Large commit with small bug
+# SZZ-0118: BFC with comment update
 
 ## Purpose
 
-This scenario evaluates a bug-introducing commit shape: Large commit with small bug.
+This scenario evaluates SZZ behavior when the bug-fixing commit has the shape: BFC with comment update.
 
 ## Commit structure
 
-- `c0`: initial correct implementation
-- `c1`: large cleanup commit that introduces a small bug
-- `c2`: fixes the bug
+- `c0`: Initial correct implementation
+- `c1`: Introduce bug
+- `c2`: Fix bug
 
 ## Expected behavior
 
@@ -19,5 +19,4 @@ The expected BFC is `c2` and the expected BIC is `c1`.
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `large-bic`
-- `tangled-bic`
+- `bfc-comment-change`

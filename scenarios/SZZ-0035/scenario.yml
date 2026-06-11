@@ -1,19 +1,20 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0035
-  title: Index upper bound error
-  slug: index-upper-bound-error
-  description: This scenario introduces a bug by changing `return index < size;` to `return index <= size;` and later restores the correct implementation.
-  category: basic
+  title: Argument order change introduces bug
+  slug: argument-order-change-bic
+  description: 'This scenario evaluates a bug-introducing commit shape: Argument order change introduces bug.'
+  category: "Basic semantic line changes"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - comparison-error
-  difficulty: easy
+  - argument-order-bic
+  difficulty: medium
   status: active
+  category_code: "S1"
 repository:
-  name: SZZ-0035-index-upper-bound-error
+  name: SZZ-0035-argument-order-change-bic
   default_branch: main
   language: java
   build_system: none
@@ -26,13 +27,13 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0035.java
+    path: src/main/java/example/Scenario0115.java
     content: |
       package example;
 
-      public class Scenario0035 {
-          public boolean validUpperBound(int index, int size) {
-              return index < size;
+      public class Scenario0115 {
+          public boolean contains(int value, int min, int max) {
+              return inRange(value, min, max);
           }
       }
 - id: c1
@@ -42,21 +43,21 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0035.java
+    path: src/main/java/example/Scenario0115.java
     old: |
       package example;
 
-      public class Scenario0035 {
-          public boolean validUpperBound(int index, int size) {
-              return index < size;
+      public class Scenario0115 {
+          public boolean contains(int value, int min, int max) {
+              return inRange(value, min, max);
           }
       }
     new: |
       package example;
 
-      public class Scenario0035 {
-          public boolean validUpperBound(int index, int size) {
-              return index <= size;
+      public class Scenario0115 {
+          public boolean contains(int value, int min, int max) {
+              return inRange(value, max, min);
           }
       }
     labels:
@@ -69,21 +70,21 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0035.java
+    path: src/main/java/example/Scenario0115.java
     old: |
       package example;
 
-      public class Scenario0035 {
-          public boolean validUpperBound(int index, int size) {
-              return index <= size;
+      public class Scenario0115 {
+          public boolean contains(int value, int min, int max) {
+              return inRange(value, max, min);
           }
       }
     new: |
       package example;
 
-      public class Scenario0035 {
-          public boolean validUpperBound(int index, int size) {
-              return index < size;
+      public class Scenario0115 {
+          public boolean contains(int value, int min, int max) {
+              return inRange(value, min, max);
           }
       }
     labels:
@@ -91,27 +92,27 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Index upper bound error
+  title: Argument order change introduces bug
   bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0035.java
+    file: src/main/java/example/Scenario0115.java
     entity:
       type: method
-      name: validUpperBound
-      signature: boolean validUpperBound(int index, int size)
-    statement: return index <= size;
+      name: contains
+      signature: boolean contains(int value, int min, int max)
+    statement: return inRange(value, max, min);
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0035.java
+    file: src/main/java/example/Scenario0115.java
     entity:
       type: method
-      name: validUpperBound
-      signature: boolean validUpperBound(int index, int size)
-    statement: return index < size;
+      name: contains
+      signature: boolean contains(int value, int min, int max)
+    statement: return inRange(value, min, max);
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -120,7 +121,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return index <= size;
+      - return inRange(value, max, min);
 checks:
 - type: git_history_contains
   commits:

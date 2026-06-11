@@ -1,24 +1,22 @@
-# SZZ-0160: Large noisy intermediate history
+# SZZ-0160: Patch context required around caller
 
 ## Purpose
 
-This scenario is intended to stress implementation robustness under noisy or repetitive code conditions.
+This scenario is intended for evaluating SZZ variants that need caller context around a patched helper method.
 
 ## Commit structure
 
-- `c0`: Initial implementation
-- `c1`: Introduce bug
-- `c2`: Add noisy helper methods
-- `c3`: Fix bug
+- `c0`: initial implementation
+- `c1`: introduces the bug
+- `c2`: BFC with message: Fix caller-visible boundary failure
 
 ## Expected behavior
 
-The expected BFC is `c3` and the expected BIC is `c1`.
+The expected BFC is `c2` and the expected BIC is `c1`.
 
 ## Factors
 
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `robustness`
-- `large-noisy-intermediate`
+- `context-aware`

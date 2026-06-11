@@ -1,19 +1,21 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0029
-  title: Wrong default string
-  slug: wrong-default-string
-  description: This scenario introduces a bug by changing `return "unknown";` to `return "";` and later restores the correct implementation.
-  category: basic
+  title: BFC restores division guard condition
+  slug: bfc-restores-division-guard
+  description: This scenario evaluates SZZ behavior when the bug-fixing commit restores a boolean guard condition for a division
+    denominator check.
+  category: "Basic semantic line changes"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - wrong-constant
-  difficulty: easy
+  - comparison-error
+  difficulty: medium
   status: active
+  category_code: "S1"
 repository:
-  name: SZZ-0029-wrong-default-string
+  name: SZZ-0029-bfc-restores-division-guard
   default_branch: main
   language: java
   build_system: none
@@ -26,13 +28,13 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0029.java
+    path: src/main/java/example/Scenario0060.java
     content: |
       package example;
 
-      public class Scenario0029 {
-          public String label(String value) {
-              return "unknown";
+      public class Scenario0060 {
+          public boolean canDivide(int denominator) {
+              return denominator != 0;
           }
       }
 - id: c1
@@ -42,21 +44,21 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0029.java
+    path: src/main/java/example/Scenario0060.java
     old: |
       package example;
 
-      public class Scenario0029 {
-          public String label(String value) {
-              return "unknown";
+      public class Scenario0060 {
+          public boolean canDivide(int denominator) {
+              return denominator != 0;
           }
       }
     new: |
       package example;
 
-      public class Scenario0029 {
-          public String label(String value) {
-              return "";
+      public class Scenario0060 {
+          public boolean canDivide(int denominator) {
+              return denominator >= 0;
           }
       }
     labels:
@@ -64,26 +66,26 @@ commits:
     - fault
 - id: c2
   message: Fix bug
-  author: Alice <alice@example.com>
+  author: Carol <carol@example.com>
   date: '2024-01-03T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0029.java
+    path: src/main/java/example/Scenario0060.java
     old: |
       package example;
 
-      public class Scenario0029 {
-          public String label(String value) {
-              return "";
+      public class Scenario0060 {
+          public boolean canDivide(int denominator) {
+              return denominator >= 0;
           }
       }
     new: |
       package example;
 
-      public class Scenario0029 {
-          public String label(String value) {
-              return "unknown";
+      public class Scenario0060 {
+          public boolean canDivide(int denominator) {
+              return denominator != 0;
           }
       }
     labels:
@@ -91,27 +93,27 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Wrong default string
+  title: BFC restores division guard condition
   bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0029.java
+    file: src/main/java/example/Scenario0060.java
     entity:
       type: method
-      name: label
-      signature: String label(String value)
-    statement: return "";
+      name: canDivide
+      signature: boolean canDivide(int denominator)
+    statement: return denominator >= 0;
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0029.java
+    file: src/main/java/example/Scenario0060.java
     entity:
       type: method
-      name: label
-      signature: String label(String value)
-    statement: return "unknown";
+      name: canDivide
+      signature: boolean canDivide(int denominator)
+    statement: return denominator != 0;
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -120,7 +122,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return "";
+      - return denominator >= 0;
 checks:
 - type: git_history_contains
   commits:

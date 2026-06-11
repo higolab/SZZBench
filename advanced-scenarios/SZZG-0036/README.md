@@ -1,39 +1,49 @@
-# SZZG-0036: Release-branch-only bug
+# SZZG-0036: Fix split across multiple commits
+
+## Source
+
+- Category: Work-item and commit-series scenarios
 
 ## Purpose
 
-A release branch introduces and fixes a bug that never exists on main.
+Evaluate Fix split across multiple commits and whether SZZ identifies the expected bug-introducing commit set.
 
-## Commit history
-
-```text
-c0: create initial correct implementation on main
-c1: main continues correct development
-c2: release branch introduces release-only bug
-c3: main adds unrelated correct change
-c4: release branch fixes release-only bug
-```
-
-## Commit table
-
-| Commit | Branch | Parents | Role | Description |
-|---|---|---|---|---|
-| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `c1` | `main` | c0 | `intermediate` | c1: add main-only version note |
-| `c2` | `release` | c0 | `bug_introducing` | c2: introduce release-only range boundary bug |
-| `c3` | `main` | c1 | `intermediate` | c3: add unrelated main documentation |
-| `c4` | `release` | c2 | `bug_fixing` | c4: fix release-only range boundary bug |
-
-## Expected SZZ result
+## Expected history
 
 ```text
-Expected BIC: c2
+c0: create initial state (write_file src/main/java/example/Range.java)
+c1: introduce bug (replace src/main/java/example/Range.java)
+c2: add test context (write_file src/test/java/example/RangeTest.java)
+c3: fix bug (replace src/main/java/example/Range.java)
+c4: fix bug (replace src/main/java/example/Range.java)
 ```
 
-## Scenario purpose
+## Why this needs `scenario.graph.yml`
 
-Evaluate whether SZZ can handle a bug that exists only on a release branch and not on main.
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
-## Notes
+## Required graph-schema features
 
-- This scenario should not be collapsed into feature-to-main merge scenarios.
+- Factors: bug_fixing_commits
+- Operation types: write_file, replace
+- Expected SZZ policy is defined in expected_szz.
+
+## Evaluation points
+
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
+
+---
+
+## Draft status
+
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
+
+## Files
+
+```text
+SZZG-0036/
+|-- scenario.graph.yml
+`-- README.md
+```

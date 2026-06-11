@@ -1,49 +1,50 @@
-# SZZG-0058: Top-k evaluation
-
-## Source
-
-- Category: Schema and evaluation-policy scenarios
+# SZZG-0058: Bug-fixing commit is rebased onto main
 
 ## Purpose
 
-Evaluate Top-k evaluation and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate a BFC that is itself a rebased feature fix.
 
-## Expected history
+## Commit history
 
 ```text
-c0: create initial state (write_file src/main/java/example/RangeService.java)
-c1: introduce bug (replace src/main/java/example/RangeService.java)
-c2: add distractor change (replace src/main/java/example/RangeService.java)
-c3: add distractor change (write_file docs/ranking-distractor.md)
-c4: fix bug (replace src/main/java/example/RangeService.java)
+c0: c0: create initial correct implementation
+f1: f1: introduce bug on feature
+f2: f2: fix bug on feature
+r1: r1: rebase feature bug commit onto main
+r2: r2: rebase feature fix commit onto main
 ```
 
-## Why this needs `scenario.graph.yml`
+## Commit table
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
+| Commit | Branch | Parents | Role | Description |
+|---|---|---|---|---|
+| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
+| `f1` | `feature` | c0 | `origin_bug_introducing` | f1: introduce bug on feature |
+| `f2` | `feature` | f1 | `origin_bug_fixing` | f2: fix bug on feature |
+| `r1` | `main` | c0 | `bug_introducing` | r1: rebase feature bug commit onto main |
+| `r2` | `main` | r1 | `bug_fixing` | r2: rebase feature fix commit onto main |
 
-## Required graph-schema features
+## Expected SZZ result
 
-- Factors: expected_szz
-- Operation types: write_file, replace
-- Expected SZZ policy is defined in expected_szz.
+```text
+Expected BIC(s): r1
+Related but not correct: f1, f2
+```
+
+## Key property
+
+r2 is the main-line BFC.
+
+## Difference from SZZG-0063
+
+SZZG-0063 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
 
 ## Evaluation points
 
-- Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
-- Whether the expected_szz evaluation policy is applied correctly.
+- Start from r2.
+- Return r1.
 
----
+## Notes
 
-## Draft status
-
-This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
-
-## Files
-
-```text
-SZZG-0058/
-|-- scenario.graph.yml
-`-- README.md
-```
+- This scenario models a rebase-related development history for SZZ evaluation.
+- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

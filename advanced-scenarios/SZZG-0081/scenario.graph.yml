@@ -1,22 +1,22 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0081
-  title: Clone diverges before rebase
-  slug: clone-diverges-before-rebase
-  description: A cloned buggy implementation diverges on feature and is replayed by rebase.
-  category: Branch, merge, cherry-pick, and backport scenarios
-  category_code: G
+  title: Rebase with formatting rewrite noise
+  slug: rebase-with-formatting-rewrite-noise
+  description: A formatting rewrite occurs after a rebased BIC and before the fix.
+  category: "Rebase-specific history rewriting"
+  category_code: "G5"
   factors:
   - branch
   - rebase
-  - clone_relationships
-  - clone_divergence
+  - formatting_rewrite
+  - formatting
+  - robustness
   - direct_bic
-  - origin_bic
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0081-clone-diverges-before-rebase
+  name: SZZG-0081-rebase-with-formatting-rewrite-noise
   default_branch: main
   language: java
   build_system: none
@@ -25,15 +25,13 @@ graph:
   model: commit_dag
   history_summary: 'c0: create initial correct implementation
 
-    f1: create buggy clone
+    f1: introduce range bug
 
-    f2: diverge cloned buggy logic
+    r1: rebase bug onto main
 
-    r1: rebase buggy clone creation
+    r2: line ending rewrite during rebase cleanup
 
-    r2: rebase clone divergence
-
-    c4: fix diverged clone'
+    c3: fix bug after line ending rewrite'
 commits:
 - id: c0
   branch: main
@@ -49,102 +47,96 @@ commits:
   branch: feature
   parents:
   - c0
-  message: 'f1: create buggy clone'
-  role: origin_bug_introducing
-  operations:
-  - type: write_file
-    path: src/main/java/example/RangeClone.java
-    content: "package example;\n\npublic class RangeClone {\n  public boolean containsClone(int value, int min, int max) {\n\
-      \    return value > min && value < max;\n  }\n}\n"
-- id: f2
-  branch: feature
-  parents:
-  - f1
-  message: 'f2: diverge cloned buggy logic'
+  message: 'f1: introduce range bug'
   role: origin_bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/RangeClone.java
-    old: return value > min && value < max;
-    new: return value > min && value < max; // cloned logic
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
 - id: r1
   branch: main
   parents:
   - c0
-  message: 'r1: rebase buggy clone creation'
-  role: intermediate
+  message: 'r1: rebase bug onto main'
+  role: bug_introducing
   operations:
-  - type: write_file
-    path: src/main/java/example/RangeClone.java
-    content: "package example;\n\npublic class RangeClone {\n  public boolean containsClone(int value, int min, int max) {\n\
-      \    return value > min && value < max;\n  }\n}\n"
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
   rebase_of: f1
 - id: r2
   branch: main
   parents:
   - r1
-  message: 'r2: rebase clone divergence'
-  role: bug_introducing
+  message: 'r2: formatting rewrite during rebase cleanup'
+  role: formatting
   operations:
   - type: replace
-    path: src/main/java/example/RangeClone.java
-    old: return value > min && value < max;
-    new: return value > min && value < max; // cloned logic
-  rebase_of: f2
-- id: c4
+    path: src/main/java/example/Range.java
+    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n}\n"
+    new: "package example;\n\npublic class Range {\n  // Rebase cleanup normalized formatting around this method.\n  public\
+      \ boolean contains(int value, int min, int max) {\n    return value > min && value < max;\n  }\n}\n"
+  rebase_cleanup: formatting_rewrite
+- id: c3
   branch: main
   parents:
   - r2
-  message: 'c4: fix diverged clone'
+  message: 'c3: fix bug after formatting rewrite'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/RangeClone.java
-    old: return value > min && value < max; // cloned logic
-    new: return value >= min && value <= max; // fixed cloned logic
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Diverged clone bug introduced by rebase
+  title: Range bug obscured by formatting rewrite after rebase
   bug_introducing_commits:
-  - commit: r2
-    role: direct
   - commit: r1
-    role: origin
+    role: direct
   - commit: f1
     role: origin
-  - commit: f2
-    role: origin
   bug_fixing_commits:
-  - commit: c4
+  - commit: c3
     role: complete_fix
   faults:
   - id: F001
-    commit: r2
-    file: src/main/java/example/RangeClone.java
-    statement: return value > min && value < max; // cloned logic
+    commit: r1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c4
-    file: src/main/java/example/RangeClone.java
-    statement: return value >= min && value <= max; // fixed cloned logic
+    commit: c3
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
     fix_type: line_modification
+  origin_faults:
+  - id: OF001
+    commit: f1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: origin_line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - r2
-    related_but_not_correct:
     - r1
+    related_but_not_correct:
     - f1
-    - f2
+    - r2
+    notes: r2 is formatting noise and should not be the BIC.
 scenario_design:
-  purpose: Evaluate rebase combined with clone divergence.
-  key_property: The fixed instance is the diverged clone line introduced by r2.
-  difference_from_SZZG_0073: SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
+  purpose: Evaluate rebase plus formatting rewrite noise.
+  key_property: The expected BIC is r1, while r2 is a formatting-only cleanup.
+  difference_from_SZZG_0073: SZZG-0063 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
     adds a distinct rebase-related complication.
   evaluation_points:
-  - Report r2.
+  - Report r1.
+  - Avoid r2.
 notes:
 - This scenario models a rebase-related development history for SZZ evaluation.
 - Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

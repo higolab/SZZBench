@@ -1,38 +1,30 @@
-# SZZG-0108: Origin BIC and direct copied-code BIC are both required
+# SZZG-0108: Binary file change
 
 ## Source
 
-- Category: Clone propagation scenarios
+- Category: Robustness and implementation-quality scenarios
 
 ## Purpose
 
-Evaluate origin bic and direct copied-code bic are both required and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate Binary file change and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: c0: create amount parser
-c1: c1: introduce original parser trim bug
-c2: c2: copy amount parser to invoice parser
-c3: c3: introduce copied parser sign bug
-c4: c4: fix invoice parsing behavior
+c0: create initial state (write_file src/main/java/example/Range.java)
+c1: introduce bug (replace src/main/java/example/Range.java)
+c2: fix bug (write_binary_file assets/data.bin; replace src/main/java/example/Range.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal `scenario.yml` schema.
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-- Factors: clone, multiple_bic, origin_and_direct_bic
-- Operation types: copy_file, replace, write_file
-- Expected SZZ policy is defined in `expected_szz`.
-
-## Expected BICs
-
-```text
-c1, c3
-```
+- Factors: write_binary_file
+- Operation types: write_file, replace, write_binary_file
+- Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 

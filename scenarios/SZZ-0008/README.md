@@ -1,17 +1,22 @@
-# SZZ-0008: Formatting-only rewrite after bug introduction
+# SZZ-0008: Division denominator error
 
 ## Purpose
 
-This scenario checks whether SZZ implementations confuse a formatting-only
-rewrite with the original bug-introducing commit.
+This scenario introduces a bug by changing `return total / count;` to `return total / (count - 1);` and later restores the correct implementation.
 
 ## Commit structure
 
-- `c0`: Introduces the correct inclusive condition.
-- `c1`: Introduces the strict boundary bug. This is the expected BIC.
-- `c2`: Reformats the faulty expression into multiple lines. This is a distractor.
-- `c3`: Fixes the formatted expression. This is the BFC.
+- `c0`: initial correct implementation
+- `c1`: introduces the bug
+- `c2`: fixes the bug
 
 ## Expected behavior
 
-SZZ should report `c1`, not the formatting commit `c2`.
+The expected BFC is `c2` and the expected BIC is `c1`.
+
+## Factors
+
+- `single-bic`
+- `single-bfc`
+- `line-modification`
+- `arithmetic-error`

@@ -1,32 +1,37 @@
-# SZZG-0039: Fix split across multiple commits
+# SZZG-0039: Prerequisite BIC and symptom BIC fixed together
 
 ## Source
 
-- Category: Work-item and commit-series scenarios
+- Category: Multiple-BIC scenarios
 
 ## Purpose
 
-Evaluate Fix split across multiple commits and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate prerequisite bic and symptom bic fixed together and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: create initial state (write_file src/main/java/example/Range.java)
-c1: introduce bug (replace src/main/java/example/Range.java)
-c2: add test context (write_file src/test/java/example/RangeTest.java)
-c3: fix bug (replace src/main/java/example/Range.java)
-c4: fix bug (replace src/main/java/example/Range.java)
+c0: c0: create token verifier
+c1: c1: weaken token trust predicate
+c2: c2: weaken access control condition
+c3: c3: fix access control vulnerability
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
+This history requires graph-aware scenario semantics that are difficult to express with the normal `scenario.yml` schema.
 
 ## Required graph-schema features
 
-- Factors: bug_fixing_commits
-- Operation types: write_file, replace
-- Expected SZZ policy is defined in expected_szz.
+- Factors: multiple_bic, causal_chain, single_bfc
+- Operation types: replace, write_file
+- Expected SZZ policy is defined in `expected_szz`.
+
+## Expected BICs
+
+```text
+c1, c2
+```
 
 ## Evaluation points
 

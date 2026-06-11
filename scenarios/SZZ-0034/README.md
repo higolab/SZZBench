@@ -1,8 +1,8 @@
-# SZZ-0034: Index lower bound error
+# SZZ-0034: API call change introduces bug
 
 ## Purpose
 
-This scenario introduces a bug by changing `return index >= 0;` to `return index > 0;` and later restores the correct implementation.
+This scenario evaluates a bug-introducing commit shape: API call change introduces bug.
 
 ## Commit structure
 
@@ -19,4 +19,4 @@ The expected BFC is `c2` and the expected BIC is `c1`.
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `comparison-error`
+- `api-misuse-bic`

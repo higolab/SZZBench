@@ -1,14 +1,14 @@
-# SZZ-0158: CRLF-like full file rewrite
+# SZZ-0158: BFC message has misleading reference
 
 ## Purpose
 
-This scenario is intended to stress implementation robustness under noisy or repetitive code conditions.
+This scenario is intended for evaluating SZZ variants that use commit messages or broader patch context.
 
 ## Commit structure
 
-- `c0`: Initial implementation
-- `c1`: Introduce bug
-- `c2`: Fix bug after line-ending-like rewrite
+- `c0`: initial implementation
+- `c1`: introduces the bug
+- `c2`: BFC with message: Fix bug; suspected c0
 
 ## Expected behavior
 
@@ -19,5 +19,4 @@ The expected BFC is `c2` and the expected BIC is `c1`.
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `robustness`
-- `line-ending-noise`
+- `context-aware`

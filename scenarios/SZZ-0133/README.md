@@ -1,22 +1,17 @@
-# SZZ-0133: Permission and owner checks introduced separately
+# SZZ-0133: Duplicate fault statement
 
 ## Purpose
 
-This scenario requires treating two bug-introducing commits as contributing to the same later fix.
+This scenario checks ambiguity when the same faulty statement appears in multiple
+locations at the BIC.
 
 ## Commit structure
 
-- `c0`: initial implementation
-- `c1`: first contributing BIC
-- `c2`: second contributing BIC
-- `c3`: BFC
+- `c0`: Introduces two validators with identical correct return statements.
+- `c1`: Changes both statements to the same faulty text. This is the BIC.
+- `c2`: Fixes only the `acceptsAge` occurrence. This is the BFC.
 
 ## Expected behavior
 
-The expected BFC is `c3`; the expected BIC set is `{c1, c2}`.
-
-## Factors
-
-- `multi-bic`
-- `single-bfc`
-- `line-modification`
+Commit-level SZZ should report `c1`. Line/entity-level analysis needs context to
+distinguish the fixed occurrence from the duplicate occurrence.

@@ -1,19 +1,21 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0121
-  title: Wrong field assignment represented as return
-  slug: wrong-field-bic
-  description: 'This scenario evaluates a bug-introducing commit shape: Wrong field assignment represented as return.'
-  category: bic-shape
+  title: BFC with cleanup of unrelated method
+  slug: bfc-with-cleanup
+  description: 'This scenario evaluates SZZ behavior when the bug-fixing commit has the shape: BFC with cleanup of unrelated method.'
+  category: "BFC-side noise and tangled commits"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - wrong-variable
+  - tangled-bfc
+  - cleanup
   difficulty: medium
   status: active
+  category_code: "S4"
 repository:
-  name: SZZ-0121-wrong-field-bic
+  name: SZZ-0121-bfc-with-cleanup
   default_branch: main
   language: java
   build_system: none
@@ -26,13 +28,17 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0121.java
+    path: src/main/java/example/Scenario0056.java
     content: |
       package example;
 
-      public class Scenario0121 {
-          public int updated(int oldValue, int newValue) {
-              return newValue;
+      public class Scenario0056 {
+          public boolean hasValue(String value) {
+              return value != null;
+          }
+
+          public int unused(int value) {
+              return 1;
           }
       }
 - id: c1
@@ -42,21 +48,29 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0121.java
+    path: src/main/java/example/Scenario0056.java
     old: |
       package example;
 
-      public class Scenario0121 {
-          public int updated(int oldValue, int newValue) {
-              return newValue;
+      public class Scenario0056 {
+          public boolean hasValue(String value) {
+              return value != null;
+          }
+
+          public int unused(int value) {
+              return 1;
           }
       }
     new: |
       package example;
 
-      public class Scenario0121 {
-          public int updated(int oldValue, int newValue) {
-              return oldValue;
+      public class Scenario0056 {
+          public boolean hasValue(String value) {
+              return value == null;
+          }
+
+          public int unused(int value) {
+              return 1;
           }
       }
     labels:
@@ -64,26 +78,30 @@ commits:
     - fault
 - id: c2
   message: Fix bug
-  author: Alice <alice@example.com>
+  author: Carol <carol@example.com>
   date: '2024-01-03T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0121.java
+    path: src/main/java/example/Scenario0056.java
     old: |
       package example;
 
-      public class Scenario0121 {
-          public int updated(int oldValue, int newValue) {
-              return oldValue;
+      public class Scenario0056 {
+          public boolean hasValue(String value) {
+              return value == null;
+          }
+
+          public int unused(int value) {
+              return 1;
           }
       }
     new: |
       package example;
 
-      public class Scenario0121 {
-          public int updated(int oldValue, int newValue) {
-              return newValue;
+      public class Scenario0056 {
+          public boolean hasValue(String value) {
+              return value != null;
           }
       }
     labels:
@@ -91,27 +109,27 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Wrong field assignment represented as return
+  title: BFC with cleanup of unrelated method
   bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0121.java
+    file: src/main/java/example/Scenario0056.java
     entity:
       type: method
-      name: updated
-      signature: int updated(int oldValue, int newValue)
-    statement: return oldValue;
+      name: hasValue
+      signature: boolean hasValue(String value)
+    statement: return value == null;
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0121.java
+    file: src/main/java/example/Scenario0056.java
     entity:
       type: method
-      name: updated
-      signature: int updated(int oldValue, int newValue)
-    statement: return newValue;
+      name: hasValue
+      signature: boolean hasValue(String value)
+    statement: return value != null;
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -120,7 +138,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return oldValue;
+      - return value == null;
 checks:
 - type: git_history_contains
   commits:

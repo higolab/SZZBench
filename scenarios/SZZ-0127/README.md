@@ -1,22 +1,23 @@
-# SZZ-0127: Incorrect normalization API
+# SZZ-0127: Method signature extension after BIC
 
 ## Purpose
 
-This scenario evaluates a bug-introducing commit shape: Incorrect normalization API.
+This scenario inserts an intermediate refactoring change between the BIC and BFC.
 
 ## Commit structure
 
-- `c0`: initial correct implementation
-- `c1`: introduces the bug
-- `c2`: fixes the bug
+- `c0`: Initial correct implementation
+- `c1`: Introduce bug
+- `c2`: Apply intermediate rewrite
+- `c3`: Fix bug
 
 ## Expected behavior
 
-The expected BFC is `c2` and the expected BIC is `c1`.
+The expected BFC is `c3` and the expected BIC is `c1`.
 
 ## Factors
 
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `api-misuse-bic`
+- `method-signature-change-after-bic`

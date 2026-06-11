@@ -1,14 +1,14 @@
-# SZZ-0030: Wrong fallback number
+# SZZ-0030: BFC fixes an API misuse
 
 ## Purpose
 
-This scenario introduces a bug by changing `return value < 0 ? 0 : value;` to `return value < 0 ? -1 : value;` and later restores the correct implementation.
+This scenario evaluates SZZ behavior when the bug-fixing commit has the shape: BFC fixes an API misuse.
 
 ## Commit structure
 
-- `c0`: initial correct implementation
-- `c1`: introduces the bug
-- `c2`: fixes the bug
+- `c0`: Initial correct implementation
+- `c1`: Introduce bug
+- `c2`: Fix bug
 
 ## Expected behavior
 
@@ -19,4 +19,4 @@ The expected BFC is `c2` and the expected BIC is `c1`.
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `wrong-constant`
+- `api-misuse`

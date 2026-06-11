@@ -1,19 +1,20 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0038
-  title: Incorrect string normalization
-  slug: incorrect-string-normalization
-  description: This scenario introduces a bug by changing `return value.trim().toLowerCase();` to `return value.toLowerCase();` and later restores the correct implementation.
-  category: basic
+  title: Tiny one-token bug
+  slug: tiny-one-token-bug
+  description: 'This scenario evaluates a bug-introducing commit shape: Tiny one-token bug.'
+  category: "Basic semantic line changes"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - api-misuse
-  difficulty: easy
+  - small-bic
+  difficulty: medium
   status: active
+  category_code: "S1"
 repository:
-  name: SZZ-0038-incorrect-string-normalization
+  name: SZZ-0038-tiny-one-token-bug
   default_branch: main
   language: java
   build_system: none
@@ -26,13 +27,13 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0038.java
+    path: src/main/java/example/Scenario0119.java
     content: |
       package example;
 
-      public class Scenario0038 {
-          public String normalize(String value) {
-              return value.trim().toLowerCase();
+      public class Scenario0119 {
+          public boolean same(int value, int expected) {
+              return value == expected;
           }
       }
 - id: c1
@@ -42,21 +43,21 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0038.java
+    path: src/main/java/example/Scenario0119.java
     old: |
       package example;
 
-      public class Scenario0038 {
-          public String normalize(String value) {
-              return value.trim().toLowerCase();
+      public class Scenario0119 {
+          public boolean same(int value, int expected) {
+              return value == expected;
           }
       }
     new: |
       package example;
 
-      public class Scenario0038 {
-          public String normalize(String value) {
-              return value.toLowerCase();
+      public class Scenario0119 {
+          public boolean same(int value, int expected) {
+              return value != expected;
           }
       }
     labels:
@@ -69,21 +70,21 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0038.java
+    path: src/main/java/example/Scenario0119.java
     old: |
       package example;
 
-      public class Scenario0038 {
-          public String normalize(String value) {
-              return value.toLowerCase();
+      public class Scenario0119 {
+          public boolean same(int value, int expected) {
+              return value != expected;
           }
       }
     new: |
       package example;
 
-      public class Scenario0038 {
-          public String normalize(String value) {
-              return value.trim().toLowerCase();
+      public class Scenario0119 {
+          public boolean same(int value, int expected) {
+              return value == expected;
           }
       }
     labels:
@@ -91,27 +92,27 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Incorrect string normalization
+  title: Tiny one-token bug
   bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0038.java
+    file: src/main/java/example/Scenario0119.java
     entity:
       type: method
-      name: normalize
-      signature: String normalize(String value)
-    statement: return value.toLowerCase();
+      name: same
+      signature: boolean same(int value, int expected)
+    statement: return value != expected;
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0038.java
+    file: src/main/java/example/Scenario0119.java
     entity:
       type: method
-      name: normalize
-      signature: String normalize(String value)
-    statement: return value.trim().toLowerCase();
+      name: same
+      signature: boolean same(int value, int expected)
+    statement: return value == expected;
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -120,7 +121,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return value.toLowerCase();
+      - return value != expected;
 checks:
 - type: git_history_contains
   commits:

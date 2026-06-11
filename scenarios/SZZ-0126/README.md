@@ -1,22 +1,23 @@
-# SZZ-0126: Incorrect retry policy condition
+# SZZ-0126: Parameter rename after BIC
 
 ## Purpose
 
-This scenario evaluates a bug-introducing commit shape: Incorrect retry policy condition.
+This scenario inserts an intermediate refactoring change between the BIC and BFC.
 
 ## Commit structure
 
-- `c0`: initial correct implementation
-- `c1`: introduces the bug
-- `c2`: fixes the bug
+- `c0`: Initial correct implementation
+- `c1`: Introduce bug
+- `c2`: Apply intermediate rewrite
+- `c3`: Fix bug
 
 ## Expected behavior
 
-The expected BFC is `c2` and the expected BIC is `c1`.
+The expected BFC is `c3` and the expected BIC is `c1`.
 
 ## Factors
 
 - `single-bic`
 - `single-bfc`
 - `line-modification`
-- `state-bug`
+- `parameter-rename-after-bic`

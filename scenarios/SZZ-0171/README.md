@@ -1,15 +1,15 @@
-# SZZ-0171: Cause can be inferred from test failure
+# SZZ-0171: Dependency update as BIC
 
 ## Summary
 
-Evaluates a case where the BFC is a small parser change and the specific cause is clarified by a failing test message.
+Evaluates dependency update as bic and checks whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected SZZ Behavior
 
 - Bug-introducing commit(s): c1
-- Bug-fixing commit: c3
+- Bug-fixing commit: c2
 
 ## Notes
 
-- Moved from SZZG-0057 after applying the scenario.yml / scenario.graph.yml boundary policy.
+- Moved from SZZG-0004 after applying the scenario.yml / scenario.graph.yml boundary policy.
 - This scenario uses a linear main-branch history and a commit-level exact-set oracle.

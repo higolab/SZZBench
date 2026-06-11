@@ -1,8 +1,8 @@
-# SZZ-0018: Division denominator error
+# SZZ-0018: Rounding direction error
 
 ## Purpose
 
-This scenario introduces a bug by changing `return total / count;` to `return total / (count - 1);` and later restores the correct implementation.
+This scenario introduces a bug by changing `return (value + 9) / 10;` to `return value / 10;` and later restores the correct implementation.
 
 ## Commit structure
 
