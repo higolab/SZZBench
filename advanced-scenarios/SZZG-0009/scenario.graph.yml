@@ -1,63 +1,67 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0009
-  title: File rename between BIC and BFC
-  slug: file-rename-between-bic-and-bfc
-  description: Evaluates file rename between bic and bfc and checks whether SZZ identifies the expected bug-introducing commit
+  title: Method move between classes
+  slug: method-move-between-classes
+  description: Evaluates method move between classes and checks whether SZZ identifies the expected bug-introducing commit
     set.
   category: Intermediate-history scenarios
   category_code: C
   factors:
-  - rename_file
+  - move_entity
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0009-file-rename-between-bic-and-bfc
+  name: SZZG-0009-method-move-between-classes
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial state (write_file src/main/java/example/OldRange.java)
+  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
 
-    c1: introduce bug (replace src/main/java/example/OldRange.java)
+    c1: introduce bug (replace src/main/java/example/Range.java)
 
-    c2: apply intermediate change (rename_file src/main/java/example/OldRange.java -> src/main/java/example/Range.java)
+    c2: apply intermediate change (move_entity)
 
     c3: fix bug (replace src/main/java/example/Range.java)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_file src/main/java/example/OldRange.java)'
+  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/OldRange.java
+    path: src/main/java/example/Range.java
     content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
       \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce bug (replace src/main/java/example/OldRange.java)'
+  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/OldRange.java
+    path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
     new: return value > min && value < max;
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: apply intermediate change (rename_file src/main/java/example/OldRange.java -> src/main/java/example/Range.java)'
+  message: 'c2: apply intermediate change (move_entity)'
   role: intermediate
   operations:
-  - type: rename_file
-    from: src/main/java/example/OldRange.java
-    to: src/main/java/example/Range.java
+  - type: move_entity
+    entity:
+      type: method
+      name: contains
+      signature: boolean contains(int value, int min, int max)
+    from_file: src/main/java/example/Range.java
+    to_file: src/main/java/example/RangeUtils.java
 - id: c3
   branch: main
   parents:
@@ -81,9 +85,12 @@ bugs:
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/OldRange.java
+    file: src/main/java/example/Range.java
     statement: return value > min && value < max;
     change_type: line_modification
+    entity:
+      type: method
+      signature: boolean contains(int value, int min, int max)
   fixes:
   - id: X001
     commit: c3
@@ -96,10 +103,10 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: Evaluate File rename between BIC and BFC and whether SZZ identifies the expected bug-introducing commit set.
+  purpose: Evaluate Method move between classes and whether SZZ identifies the expected bug-introducing commit set.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: rename_file; operations: write_file, replace, rename_file.'
+  required_extensions_from_source: 'This scenario uses factors: move_entity; operations: write_file, replace, move_entity.'
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
   - Whether structural or contextual history is handled according to the scenario factors.

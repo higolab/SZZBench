@@ -1,0 +1,82 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0052
+  title: File deletion
+  slug: file-deletion
+  description: Evaluates a deletion-based fix where the initial commit creates a buggy file and the fix deletes that file.
+  category: Robustness and implementation-quality scenarios
+  category_code: K
+  factors:
+  - delete_file
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0052-file-deletion
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: 'c0: create initial buggy file (write_file src/main/java/example/Buggy.java)
+
+    c1: fix bug (delete_file src/main/java/example/Buggy.java)'
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'c0: create initial buggy file (write_file src/main/java/example/Buggy.java)'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Buggy.java
+    content: "package example;\npublic class Buggy {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value > min && value < max;\n  }\n}\n"
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'c1: fix bug (delete_file src/main/java/example/Buggy.java)'
+  role: bug_fixing
+  operations:
+  - type: delete_file
+    path: src/main/java/example/Buggy.java
+bugs:
+- id: B001
+  title: Bug removed by deleting Buggy.java
+  bug_introducing_commits:
+  - commit: c0
+    role: direct
+  bug_fixing_commits:
+  - commit: c1
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c0
+    file: src/main/java/example/Buggy.java
+    statement: return value > min && value < max;
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c1
+    file: src/main/java/example/Buggy.java
+    fix_type: file_deletion
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c0
+scenario_design:
+  purpose: Evaluate whether SZZ traces a deletion-based fix back to the initial commit c0 that created the buggy file.
+  key_property: The BFC c1 deletes Buggy.java entirely. The required BIC is c0 because that initial commit introduced the
+    buggy file and faulty return statement.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: delete_file; operations: write_file, delete_file.'
+  evaluation_points:
+  - Whether SZZ identifies c0 as the BIC for the deleted buggy file.
+  - Whether SZZ handles file deletion as the complete fix.
+  - Whether the expected_szz evaluation policy is applied correctly.
+notes:
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

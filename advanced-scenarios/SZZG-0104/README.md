@@ -1,54 +1,54 @@
-# SZZG-0104: Repeated revert toggling before final fix
+# SZZG-0104: Ambiguous blame with duplicate faulty lines
+
+## Source
+
+- Category: Ambiguous blame scenarios
 
 ## Purpose
 
-Evaluate repeated toggling where the latest reintroducing revert should be identified as the direct BIC.
+Evaluate ambiguous blame with duplicate faulty lines and whether SZZ identifies the expected bug-introducing commit set.
 
-## Commit history
-
-```text
-c0: create initial correct implementation
-c1: introduce boundary bug
-c2: fix boundary bug
-c3: revert c2 and reintroduce bug
-c4: revert c3 and restore fix
-c5: revert c4 and reintroduce bug again
-c6: final explicit fix after repeated toggling
-```
-
-## Commit table
-
-| Commit | Branch | Parents | Role | Description |
-|---|---|---|---|---|
-| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `c1` | `main` | c0 | `origin_bug_introducing` | c1: introduce boundary bug |
-| `c2` | `main` | c1 | `bug_fixing` | c2: fix boundary bug |
-| `c3` | `main` | c2 | `bug_introducing` | c3: revert c2 and reintroduce bug |
-| `c4` | `main` | c3 | `bug_fixing` | c4: revert c3 and restore fix |
-| `c5` | `main` | c4 | `bug_introducing` | c5: revert c4 and reintroduce bug again |
-| `c6` | `main` | c5 | `bug_fixing` | c6: final explicit fix after repeated toggling |
-
-## Expected SZZ result
+## Expected history
 
 ```text
-Expected BIC(s): c5
-Related but not correct: c1, c3, c2, c4
+c0: c0: create duplicate limit checks
+c1: c1: introduce user limit bug
+c2: c2: introduce syntactically identical admin limit bug
+c3: c3: fix only user limit boundary
 ```
 
-## Key property
+## Why this needs `scenario.graph.yml`
 
-Multiple earlier BIC-like and fix-like commits exist, but the final fix should blame the latest re-BIC.
+This history requires graph-aware scenario semantics that are difficult to express with the normal `scenario.yml` schema.
 
-## Difference from existing revert scenarios
+## Required graph-schema features
 
-This scenario isolates a double-revert or revert-derived complication beyond the existing partial revert and reintroduction scenarios.
+- Factors: ambiguous_blame, duplicate_code, same_statement_multiple_locations
+- Operation types: replace, write_file
+- Expected SZZ policy is defined in `expected_szz`.
+
+## Expected BICs
+
+```text
+c1
+```
 
 ## Evaluation points
 
-- Whether SZZ reports c5.
-- Whether older origin/reintroducing commits are not counted as exact direct answers.
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
-## Notes
+---
 
-- This scenario models revert-related development history for SZZ evaluation.
-- The direct BIC is the commit that reintroduces the bug in the history observed from the BFC.
+## Draft status
+
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
+
+## Files
+
+```text
+SZZG-0104/
+|-- scenario.graph.yml
+`-- README.md
+```

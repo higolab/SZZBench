@@ -1,81 +1,64 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0111
-  title: Intermediate method extraction between BIC and BFC
-  slug: intermediate-method-extraction
-  description: Evaluates intermediate method extraction between bic and bfc and checks whether SZZ identifies the expected
+  title: Defensive check BFC masks an earlier root-cause BIC
+  slug: defensive-check-masks-root-cause
+  description: Evaluates defensive check bfc masks an earlier root-cause bic and checks whether SZZ identifies the expected
     bug-introducing commit set.
-  category: Refactoring scenarios
+  category: Context-dependent scenarios
   category_code: A
   factors:
-  - intermediate_refactoring
-  - extract_method
-  - line_history_break
+  - defensive_fix
+  - root_cause_not_touched
+  - context_dependent
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0111-intermediate-method-extraction
+  name: SZZG-0111-defensive-check-masks-root-cause
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: c0: create shipping fee calculation
+  history_summary: 'c0: c0: create profile renderer
 
-    c1: c1: introduce free-shipping threshold bug
+    c1: c1: introduce null-producing root cause
 
-    c2: c2: extract free-shipping predicate
-
-    c3: c3: fix extracted threshold predicate'
+    c2: c2: fix crash with defensive null checks'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create shipping fee calculation'
+  message: 'c0: create profile renderer'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Shipping.java
-    content: "package example;\npublic class Shipping {\n  public int fee(int subtotal) {\n    int base = 500;\n    if (subtotal\
-      \ >= 5000) {\n      base = 0;\n    }\n    return base;\n  }\n\n}\n"
+    path: src/main/java/example/Profile.java
+    content: "package example;\npublic class Profile {\n  public String displayName(String first, String last) {\n    return\
+      \ first + \" \" + last;\n  }\n\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce free-shipping threshold bug'
+  message: 'c1: introduce null-producing root cause'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Shipping.java
-    old: if (subtotal >= 5000) {
-    new: if (subtotal > 5000) {
+    path: src/main/java/example/Profile.java
+    old: return first + " " + last;
+    new: return first.trim() + " " + last.trim();
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: extract free-shipping predicate'
-  role: refactoring
-  operations:
-  - type: replace
-    path: src/main/java/example/Shipping.java
-    old: if (subtotal > 5000) {
-    new: if (qualifiesForFreeShipping(subtotal)) {
-  - type: insert_after
-    path: src/main/java/example/Shipping.java
-    anchor: "    return base;\n  }\n\n"
-    content: "  private boolean qualifiesForFreeShipping(int subtotal) {\n    return subtotal > 5000;\n  }\n"
-- id: c3
-  branch: main
-  parents:
-  - c2
-  message: 'c3: fix extracted threshold predicate'
+  message: 'c2: fix crash with defensive null checks'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Shipping.java
-    old: return subtotal > 5000;
-    new: return subtotal >= 5000;
+    path: src/main/java/example/Profile.java
+    old: return first.trim() + " " + last.trim();
+    new: 'return (first == null ? "" : first.trim()) + " " + (last == null ? "" : last.trim());'
 bugs:
 - id: B001
   title: Synthetic graph scenario bug
@@ -83,19 +66,19 @@ bugs:
   - commit: c1
     role: direct
   bug_fixing_commits:
-  - commit: c3
+  - commit: c2
     role: complete_fix
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/Shipping.java
-    statement: if (subtotal > 5000) {
+    file: src/main/java/example/Profile.java
+    statement: return first.trim() + " " + last.trim();
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c3
-    file: src/main/java/example/Shipping.java
-    statement: return subtotal >= 5000;
+    commit: c2
+    file: src/main/java/example/Profile.java
+    statement: 'return (first == null ? "" : first.trim()) + " " + (last == null ? "" : last.trim());'
     fix_type: line_modification
 expected_szz:
   commit_level:
@@ -103,12 +86,12 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: Evaluate intermediate method extraction between bic and bfc and whether SZZ identifies the expected bug-introducing
+  purpose: Evaluate defensive check bfc masks an earlier root-cause bic and whether SZZ identifies the expected bug-introducing
     commit set.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: intermediate_refactoring, extract_method, line_history_break;
-    operations: insert_after, replace, write_file.'
+  required_extensions_from_source: 'This scenario uses factors: defensive_fix, root_cause_not_touched, context_dependent;
+    operations: replace, write_file.'
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
   - Whether structural or contextual history is handled according to the scenario factors.

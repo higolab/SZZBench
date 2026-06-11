@@ -1,17 +1,17 @@
-# SZZG-0079: Rebase splits original BIC into multiple commits
+# SZZG-0079: Rebased BIC fixed by multiple BFCs
 
 ## Purpose
 
-Evaluate one-origin-to-multiple-direct BIC mapping after rebase.
+Evaluate progressive repair of a rebased BIC.
 
 ## Commit history
 
 ```text
-c0: c0: create initial correct implementation
-f1: f1: introduce both boundary bugs
-r1: r1: rebase lower-bound part
-r2: r2: rebase upper-bound part
-c3: c3: fix both boundary bugs
+c0: create initial correct implementation
+f1: introduce both boundary bugs
+r1: rebase feature BIC onto main
+c3: partially fix lower boundary
+c4: complete boundary fix
 ```
 
 ## Commit table
@@ -20,28 +20,62 @@ c3: c3: fix both boundary bugs
 |---|---|---|---|---|
 | `c0` | `main` | none | `initial` | c0: create initial correct implementation |
 | `f1` | `feature` | c0 | `origin_bug_introducing` | f1: introduce both boundary bugs |
-| `r1` | `main` | c0 | `bug_introducing` | r1: rebase lower-bound part |
-| `r2` | `main` | r1 | `bug_introducing` | r2: rebase upper-bound part |
-| `c3` | `main` | r2 | `bug_fixing` | c3: fix both boundary bugs |
+| `r1` | `main` | c0 | `bug_introducing` | r1: rebase feature BIC onto main |
+| `c3` | `main` | r1 | `bug_fixing` | c3: partially fix lower boundary |
+| `c4` | `main` | c3 | `bug_fixing` | c4: complete boundary fix |
 
 ## Expected SZZ result
 
 ```text
-Expected BIC(s): r1, r2
+Expected BIC(s): r1
 Related but not correct: f1
 ```
 
 ## Key property
 
-f1 is split into r1 and r2.
+The rebased BIC introduces separate lower-bound and upper-bound faults. The partial fix repairs only the lower-bound fault, while the upper-bound fault remains until the complete fix.
 
-## Difference from SZZG-0073
+## Code states
 
-SZZG-0073 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
+Correct implementation in `c0`:
+
+```java
+boolean aboveMin = value >= min;
+boolean belowMax = value <= max;
+return aboveMin && belowMax;
+```
+
+Rebased bug in `r1`:
+
+```java
+boolean aboveMin = value > min;
+boolean belowMax = value < max;
+return aboveMin && belowMax;
+```
+
+Partial fix in `c3`:
+
+```java
+boolean aboveMin = value >= min;
+boolean belowMax = value < max;
+return aboveMin && belowMax;
+```
+
+Complete fix in `c4`:
+
+```java
+boolean aboveMin = value >= min;
+boolean belowMax = value <= max;
+return aboveMin && belowMax;
+```
+
+## Difference from SZZG-0061
+
+SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
 
 ## Evaluation points
 
-- Return r1 and r2.
+- Return r1 from final fix.
 
 ## Notes
 

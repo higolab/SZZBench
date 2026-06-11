@@ -1,136 +1,126 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0058
-  title: Issue description required
-  slug: issue-description
-  description: Evaluates a case where the issue description is needed to distinguish the true BIC from nearby data-cleanup
-    commits.
-  category: Context-aware and LLM-based SZZ scenarios
-  category_code: J
+  title: Top-k evaluation
+  slug: top-k-evaluation
+  description: Evaluates top-k evaluation and checks whether SZZ identifies the expected bug-introducing commit set.
+  category: Schema and evaluation-policy scenarios
+  category_code: L
   factors:
-  - issues
-  - context
+  - expected_szz
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0058-issue-description
+  name: SZZG-0058-top-k-evaluation
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: |
-    c0: create CSV contact importer
-    c1: introduce null handling for blank middle names
-    c2: change postal-code whitespace cleanup
-    c3: fix blank middle-name import using issue description
+  history_summary: 'c0: create initial state (write_file src/main/java/example/RangeService.java)
+
+    c1: introduce bug (replace src/main/java/example/RangeService.java)
+
+    c2: add distractor change (replace src/main/java/example/RangeService.java)
+
+    c3: add distractor change (write_file docs/ranking-distractor.md)
+
+    c4: fix bug (replace src/main/java/example/RangeService.java)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create CSV contact importer'
+  message: 'c0: create initial state (write_file src/main/java/example/RangeService.java)'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/CsvContactImporter.java
-    content: |
-      package example;
-
-      public class CsvContactImporter {
-        public String middleName(String[] row) {
-          return normalizeOptional(row[1]);
-        }
-
-        public String postalCode(String[] row) {
-          return row[2].trim();
-        }
-
-        private String normalizeOptional(String value) {
-          return value == null ? "" : value.trim();
-        }
-      }
+    path: src/main/java/example/RangeService.java
+    content: "package example;\n\npublic class RangeService {\n  public boolean isEnabled() { return true; }\n  public boolean\
+      \ contains(int value, int min, int max) { return value >= min && value <= max; }\n  public int normalize(int value)\
+      \ { return value; }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: normalize blank optional contact fields as null'
+  message: 'c1: introduce bug (replace src/main/java/example/RangeService.java)'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/CsvContactImporter.java
-    old: 'return value == null ? "" : value.trim();'
-    new: 'return value == null || value.trim().isEmpty() ? null : value.trim();'
+    path: src/main/java/example/RangeService.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: strip spaces from imported postal codes'
-  role: intermediate
+  message: 'c2: add distractor change (replace src/main/java/example/RangeService.java)'
+  role: distractor
   operations:
   - type: replace
-    path: src/main/java/example/CsvContactImporter.java
-    old: return row[2].trim();
-    new: return row[2].replace(" ", "").trim();
+    path: src/main/java/example/RangeService.java
+    old: public boolean isEnabled() { return true; }
+    new: public boolean isEnabled() { return Boolean.parseBoolean(System.getProperty("range.enabled", "true")); }
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'c3: keep blank middle names as empty strings'
+  message: 'c3: add distractor change (write_file docs/ranking-distractor.md)'
+  role: distractor
+  operations:
+  - type: write_file
+    path: docs/ranking-distractor.md
+    content: 'This commit is a ranking distractor for top-k SZZ evaluation.
+
+      '
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: 'c4: fix bug (replace src/main/java/example/RangeService.java)'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/CsvContactImporter.java
-    old: 'return value == null || value.trim().isEmpty() ? null : value.trim();'
-    new: 'return value == null ? "" : value.trim();'
+    path: src/main/java/example/RangeService.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Blank middle names are imported as null instead of empty strings
+  title: Top-k evaluation with distractor commits
   bug_introducing_commits:
   - commit: c1
     role: direct
   bug_fixing_commits:
-  - commit: c3
+  - commit: c4
     role: complete_fix
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/CsvContactImporter.java
-    statement: 'return value == null || value.trim().isEmpty() ? null : value.trim();'
-    change_type: line_modification
+    file: src/main/java/example/RangeService.java
+    statement: return value > min && value < max;
   fixes:
   - id: X001
-    commit: c3
-    file: src/main/java/example/CsvContactImporter.java
-    statement: 'return value == null ? "" : value.trim();'
-    fix_type: line_modification
+    commit: c4
+    file: src/main/java/example/RangeService.java
+    statement: return value >= min && value <= max;
 expected_szz:
   commit_level:
-    evaluation_policy: exact_set
-    required:
+    evaluation_policy: top_k
+    k_values:
+    - 1
+    - 3
+    - 5
+    relevant:
     - c1
-    related_but_not_correct:
-    - c2
 scenario_design:
-  purpose: Evaluate whether SZZ can use issue text to choose the middle-name normalization BIC instead of a nearby importer
-    cleanup commit.
-  current_schema_limitation: Issue descriptions are represented as graph metadata linked to bugs.
-  required_extensions_from_source: 'This scenario uses factors: issues, context; operations: write_file, replace.'
+  purpose: Evaluate Top-k evaluation and whether SZZ identifies the expected bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: expected_szz; operations: write_file, replace.'
   evaluation_points:
-  - Whether SZZ identifies c1 as the BIC.
-  - Whether the issue description rules out the postal-code cleanup c2.
-  - Whether the BFC is interpreted as restoring an empty-string contract for optional middle names.
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.
-issues:
-- id: ISSUE-482
-  title: Blank middle names are exported as null after CSV import
-  description: Contacts imported from CSV should preserve a blank middle_name column as an empty string. Postal-code whitespace
-    cleanup is unrelated; the regression is specifically in optional-name normalization.
-  linked_bugs:
-  - B001
-  referenced_commits:
-  - c1
-  excludes_commits:
-  - c2

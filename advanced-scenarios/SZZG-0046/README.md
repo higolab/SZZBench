@@ -1,4 +1,4 @@
-# SZZG-0046: Multiple candidate BICs inside a work item
+# SZZG-0046: Unrelated commits mixed in the same issue
 
 ## Source
 
@@ -6,15 +6,15 @@
 
 ## Purpose
 
-Evaluate Multiple candidate BICs inside a work item and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate Unrelated commits mixed in the same issue and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
 c0: create initial state (write_file src/main/java/example/RangeService.java)
-c1: add candidate change (replace src/main/java/example/RangeService.java)
-c2: introduce bug (replace src/main/java/example/RangeService.java)
-c3: add candidate change (replace src/main/java/example/RangeService.java)
+c1: introduce bug (replace src/main/java/example/RangeService.java)
+c2: add unrelated change (replace src/main/java/example/RangeService.java)
+c3: add unrelated change (write_file docs/issue-10-note.md)
 c4: fix bug (replace src/main/java/example/RangeService.java)
 ```
 
@@ -24,7 +24,7 @@ This history requires graph-aware scenario semantics that are difficult to expre
 
 ## Required graph-schema features
 
-- Factors: work_items, expected_szz
+- Factors: work_items, issues
 - Operation types: write_file, replace
 - Expected SZZ policy is defined in expected_szz.
 

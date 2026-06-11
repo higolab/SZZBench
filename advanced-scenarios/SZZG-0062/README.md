@@ -1,48 +1,52 @@
-# SZZG-0062: File deletion
-
-## Source
-
-- Category: Robustness and implementation-quality scenarios
+# SZZG-0062: Rebase with non-BIC intermediate commit
 
 ## Purpose
 
-Evaluate a deletion-based fix where `c0` creates a buggy file and `c1` fixes the bug by deleting that file.
+Evaluate whether SZZ distinguishes a rebased BIC from a later rebased intermediate commit.
 
-The required BIC is `c0`, because the initial commit introduced both `Buggy.java` and the faulty return statement.
-
-## Expected history
+## Commit history
 
 ```text
-c0: create initial buggy file (write_file src/main/java/example/Buggy.java)
-c1: fix bug (delete_file src/main/java/example/Buggy.java)
+c0: c0: create initial correct implementation
+f1: f1: introduce range boundary bug on feature
+f2: f2: add feature helper using buggy range check
+r1: r1: rebase feature BIC onto main
+r2: r2: rebase feature helper onto main
+c3: c3: fix range boundary bug after rebase
 ```
 
-## Why this needs `scenario.graph.yml`
+## Commit table
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
+| Commit | Branch | Parents | Role | Description |
+|---|---|---|---|---|
+| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
+| `f1` | `feature` | c0 | `origin_bug_introducing` | f1: introduce range boundary bug on feature |
+| `f2` | `feature` | f1 | `intermediate` | f2: add feature helper using buggy range check |
+| `r1` | `main` | c0 | `bug_introducing` | r1: rebase feature BIC onto main |
+| `r2` | `main` | r1 | `intermediate` | r2: rebase feature helper onto main |
+| `c3` | `main` | r2 | `bug_fixing` | c3: fix range boundary bug after rebase |
 
-## Required graph-schema features
+## Expected SZZ result
 
-- Factors: delete_file
-- Operation types: write_file, delete_file
-- Expected SZZ policy is defined in expected_szz.
+```text
+Expected BIC(s): r1
+Related but not correct: f1, r2
+```
+
+## Key property
+
+r1 is the direct BIC; r2 is non-BIC intermediate.
+
+## Difference from SZZG-0061
+
+SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
 
 ## Evaluation points
 
-- Whether SZZ identifies `c0` as the BIC for the deleted buggy file.
-- Whether SZZ handles file deletion as the complete fix.
-- Whether the expected_szz evaluation policy is applied correctly.
+- Report r1.
+- Avoid r2.
 
----
+## Notes
 
-## Draft status
-
-This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
-
-## Files
-
-```text
-SZZG-0062/
-|-- scenario.graph.yml
-`-- README.md
-```
+- This scenario models a rebase-related development history for SZZ evaluation.
+- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

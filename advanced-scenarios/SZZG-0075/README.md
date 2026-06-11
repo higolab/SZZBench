@@ -1,17 +1,18 @@
-# SZZG-0075: Rebase conflict resolution introduces bug
+# SZZG-0075: Rebase old feature branch after unrelated main changes
 
 ## Purpose
 
-Evaluate a bug introduced by conflict resolution during rebase.
+Evaluate rebase after unrelated main-line changes.
 
 ## Commit history
 
 ```text
 c0: c0: create initial correct implementation
-m1: m1: add main-line documentation
-f1: f1: add feature documentation
-r1: r1: resolve rebase conflict and introduce range bug
-c2: c2: fix range bug from conflict resolution
+f1: f1: introduce bug on old feature base
+m1: m1: unrelated main change
+m2: m2: second unrelated main change
+r1: r1: rebase old feature BIC onto latest main
+c3: c3: fix bug after rebase onto latest main
 ```
 
 ## Commit table
@@ -19,28 +20,31 @@ c2: c2: fix range bug from conflict resolution
 | Commit | Branch | Parents | Role | Description |
 |---|---|---|---|---|
 | `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `m1` | `main` | c0 | `intermediate` | m1: add main-line documentation |
-| `f1` | `feature` | c0 | `intermediate` | f1: add feature documentation |
-| `r1` | `main` | m1 | `bug_introducing` | r1: resolve rebase conflict and introduce range bug |
-| `c2` | `main` | r1 | `bug_fixing` | c2: fix range bug from conflict resolution |
+| `f1` | `feature` | c0 | `origin_bug_introducing` | f1: introduce bug on old feature base |
+| `m1` | `main` | c0 | `intermediate` | m1: unrelated main change |
+| `m2` | `main` | m1 | `intermediate` | m2: second unrelated main change |
+| `r1` | `main` | m2 | `bug_introducing` | r1: rebase old feature BIC onto latest main |
+| `c3` | `main` | r1 | `bug_fixing` | c3: fix bug after rebase onto latest main |
 
 ## Expected SZZ result
 
 ```text
 Expected BIC(s): r1
+Related but not correct: f1, m1, m2
 ```
 
 ## Key property
 
-The feature commit is not the BIC; the conflict resolution commit is.
+m1/m2 are distractors; r1 is direct BIC.
 
-## Difference from SZZG-0073
+## Difference from SZZG-0061
 
-SZZG-0073 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
+SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
 
 ## Evaluation points
 
 - Report r1.
+- Avoid m1/m2.
 
 ## Notes
 

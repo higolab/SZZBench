@@ -1,37 +1,38 @@
-# SZZG-0016: Partial credit when only some BICs are returned
+# SZZG-0016: Buggy code copied to a new file
 
 ## Source
 
-- Category: Multiple BIC and BFC scenarios
+- Category: Copy, clone, and propagation scenarios
 
 ## Purpose
 
-Evaluate scoring behavior when a complete answer contains two BICs but an SZZ implementation returns only one of them.
+Evaluate a copy-propagated bug where `c1` copies already faulty logic from `A.java` into `B.java`.
+
+For the later fix in `B.java`, the expected direct BIC is the copy commit `c1`. The initial commit `c0` is origin context, not the required direct answer.
 
 ## Expected history
 
 ```text
-c0: create checkout policy classes
-c1: introduce loyalty-discount threshold bug
-c2: introduce tax-exemption logic bug
-c3: fix both checkout policy faults
+c0: create initial state (write_file src/main/java/example/A.java)
+c1: copy buggy code to B.java (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)
+c2: fix bug (replace src/main/java/example/B.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-This scenario needs graph-aware expected-SZZ metadata because the oracle allows partial credit for returning only one of the two required BICs.
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-- Factors: multiple_bic, partial_credit, expected_szz
-- Operation types: write_file, replace
+- Factors: copy_file
+- Operation types: write_file, copy_file, replace
 - Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- Whether SZZ can identify both checkout-policy BICs for one bug.
-- Whether returning only c1 or only c2 receives partial credit rather than full exact-set credit.
-- Whether the BFC that edits two files is evaluated against both required BICs.
+- Whether SZZ identifies `c1` as the direct BIC for `B.java`.
+- Whether SZZ keeps `c0` as origin context without replacing the direct copy commit.
+- Whether the expected_szz evaluation policy is applied correctly.
 
 ---
 

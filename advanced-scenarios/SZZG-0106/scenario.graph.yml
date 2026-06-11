@@ -1,143 +1,117 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0106
-  title: Misleading revert commit message reintroduces bug
-  slug: misleading-revert-commit-message-reintroduces-bug
-  description: A revert commit has a cleanup-like message but actually reintroduces a previously fixed bug.
-  category: Revert and reintroduction scenarios
-  category_code: G
+  title: Copy followed by bug introduction only in the copied code
+  slug: copy-then-copied-bic
+  description: Evaluates copy followed by bug introduction only in the copied code and checks whether SZZ identifies the expected
+    bug-introducing commit set.
+  category: Clone propagation scenarios
+  category_code: A
   factors:
-  - revert
-  - misleading_commit_message
-  - context_aware
-  - reintroduced_bug
-  - re_bic
+  - copy_file
+  - clone_divergence
+  - direct_bic_in_copy
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0106-misleading-revert-commit-message-reintroduces-bug
+  name: SZZG-0106-copy-then-copied-bic
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial correct implementation
+  history_summary: 'c0: c0: create original formatter
 
-    c1: introduce boundary bug
+    c1: c1: copy formatter to report formatter
 
-    c2: fix boundary bug
+    c2: c2: introduce copied-code null handling bug
 
-    c3: revert cleanup changes
-
-    c4: fix regression after misleading revert'
+    c3: c3: fix copied formatter null handling'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial correct implementation'
+  message: 'c0: create original formatter'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    boolean\
-      \ aboveMin = value >= min;\n    boolean belowMax = value <= max;\n    return aboveMin && belowMax;\n  }\n}\n"
+    path: src/main/java/example/Formatter.java
+    content: "package example;\npublic class Formatter {\n  public String format(String s) {\n    return s == null ? \"\"\
+      \ : s.trim();\n  }\n\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce boundary bug'
-  role: origin_bug_introducing
+  message: 'c1: copy formatter to report formatter'
+  role: other
   operations:
+  - type: copy_file
+    from: src/main/java/example/Formatter.java
+    to: src/main/java/example/ReportFormatter.java
   - type: replace
-    path: src/main/java/example/Range.java
-    old: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
-    new: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
+    path: src/main/java/example/ReportFormatter.java
+    old: public class Formatter
+    new: public class ReportFormatter
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: fix boundary bug'
-  role: prior_fix
+  message: 'c2: introduce copied-code null handling bug'
+  role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
-    new: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
+    path: src/main/java/example/ReportFormatter.java
+    old: 'return s == null ? "" : s.trim();'
+    new: return s.trim();
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'c3: revert cleanup changes'
-  role: bug_introducing
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
-    new: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
-  reverts: c2
-  misleading_message: true
-- id: c4
-  branch: main
-  parents:
-  - c3
-  message: 'c4: fix regression after misleading revert'
+  message: 'c3: fix copied formatter null handling'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
-    new: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
+    path: src/main/java/example/ReportFormatter.java
+    old: return s.trim();
+    new: 'return s == null ? "" : s.trim();'
 bugs:
 - id: B001
-  title: Boundary bug hidden behind misleading revert message
+  title: Synthetic graph scenario bug
   bug_introducing_commits:
-  - commit: c3
+  - commit: c2
     role: direct
-  - commit: c1
-    role: origin
   bug_fixing_commits:
-  - commit: c4
+  - commit: c3
     role: complete_fix
   faults:
   - id: F001
-    commit: c3
-    file: src/main/java/example/Range.java
-    statement: boolean belowMax = value < max;
-    change_type: misleading_revert_upper_boundary
-  - id: F002
-    commit: c3
-    file: src/main/java/example/Range.java
-    statement: boolean aboveMin = value > min;
-    change_type: misleading_revert_lower_boundary
+    commit: c2
+    file: src/main/java/example/ReportFormatter.java
+    statement: return s.trim();
+    change_type: line_modification
   fixes:
   - id: X001
-    commit: c4
-    file: src/main/java/example/Range.java
-    statement: boolean belowMax = value <= max;
-    fix_type: line_modification
-  - id: X002
-    commit: c4
-    file: src/main/java/example/Range.java
-    statement: boolean aboveMin = value >= min;
+    commit: c3
+    file: src/main/java/example/ReportFormatter.java
+    statement: 'return s == null ? "" : s.trim();'
     fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - c3
-    related_but_not_correct:
-    - c1
     - c2
-    notes: The misleading message should not obscure that c3 is the direct BIC.
 scenario_design:
-  purpose: Evaluate context-aware SZZ robustness when a revert message understates or mislabels the actual bug reintroduction.
-  key_property: The revert message looks like cleanup, but the patch reintroduces the boundary bug.
-  difference_from_existing_revert_scenarios: This scenario isolates a double-revert or revert-derived complication beyond
-    the existing partial revert and reintroduction scenarios.
+  purpose: Evaluate copy followed by bug introduction only in the copied code and whether SZZ identifies the expected bug-introducing
+    commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: copy_file, clone_divergence, direct_bic_in_copy; operations:
+    copy_file, replace, write_file.'
   evaluation_points:
-  - Whether SZZ reports c3.
-  - Whether context-aware methods avoid being misled by the message.
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- This scenario models revert-related development history for SZZ evaluation.
-- The direct BIC is the commit that reintroduces the bug in the history observed from the BFC.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

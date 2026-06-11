@@ -1,138 +1,175 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0043
-  title: Fix split across multiple commits
-  slug: fix-commit
-  description: Evaluates fix split across multiple commits and checks whether SZZ identifies the expected bug-introducing
-    commit set.
+  title: Work item inference without issue ID
+  slug: issue-id-work-item
+  description: A bug is introduced during a short sequence of related feature-work commits that do not contain an explicit
+    issue ID. The scenario evaluates whether a method can infer the work item from commit messages, nearby commit order, and
+    related files, while still selecting the specific BIC inside that inferred work item.
   category: Work-item and commit-series scenarios
   category_code: H
   factors:
-  - bug_fixing_commits
+  - work_items
+  - work_item_inference
+  - no_issue_id
+  - commit_series
+  - related_but_not_correct
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0043-fix-commit
+  name: SZZG-0043-work-item-inference-without-issue-id
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
+  history_summary: 'c0: create initial range filter
 
-    c1: introduce bug (replace src/main/java/example/Range.java)
+    c1: start range filter cleanup without issue ID
 
-    c2: add test context (write_file src/test/java/example/RangeTest.java)
+    c2: tighten boundary behavior during the same inferred work item and introduce bug
 
-    c3: fix bug (replace src/main/java/example/Range.java)
+    c3: wire range filter into request path without issue ID
 
-    c4: fix bug (replace src/main/java/example/Range.java)'
+    c4: fix boundary regression from range filter work'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
+  message: 'c0: create initial range filter'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
+    path: src/main/java/example/RangeFilter.java
+    content: "package example;\n\npublic class RangeFilter {\n  public int normalize(int value) {\n    return value;\n  }\n\
+      \n  public boolean contains(int value, int min, int max) {\n    int normalized = normalize(value);\n    return normalized\
+      \ >= min && normalized <= max;\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
-  role: bug_introducing
+  message: Start range filter cleanup
+  role: work_item_context
+  work_item: INFERRED-WI-001
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
+    path: src/main/java/example/RangeFilter.java
+    old: "package example;\n\npublic class RangeFilter {\n  public int normalize(int value) {\n    return value;\n  }\n\n\
+      \  public boolean contains(int value, int min, int max) {\n    int normalized = normalize(value);\n    return normalized\
+      \ >= min && normalized <= max;\n  }\n}\n"
+    new: "package example;\n\npublic class RangeFilter {\n  public int normalize(int value) {\n    return Math.max(0, value);\n\
+      \  }\n\n  public boolean contains(int value, int min, int max) {\n    int normalized = normalize(value);\n    return\
+      \ normalized >= min && normalized <= max;\n  }\n}\n"
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: add test context (write_file src/test/java/example/RangeTest.java)'
-  role: test_added
+  message: Tighten boundary behavior in range filter
+  role: bug_introducing
+  work_item: INFERRED-WI-001
   operations:
-  - type: write_file
-    path: src/test/java/example/RangeTest.java
-    content: 'package example;
-
-      // expected: boundary values must be accepted
-
-      '
+  - type: replace
+    path: src/main/java/example/RangeFilter.java
+    old: return normalized >= min && normalized <= max;
+    new: return normalized > min && normalized < max;
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'c3: fix bug (replace src/main/java/example/Range.java)'
-  role: bug_fixing
+  message: Wire range filter into request path
+  role: work_item_context
+  work_item: INFERRED-WI-001
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value < max;
+    path: src/main/java/example/RangeFilter.java
+    old: "package example;\n\npublic class RangeFilter {\n  public int normalize(int value) {\n    return Math.max(0, value);\n\
+      \  }\n\n  public boolean contains(int value, int min, int max) {\n    int normalized = normalize(value);\n    return\
+      \ normalized > min && normalized < max;\n  }\n}\n"
+    new: "package example;\n\npublic class RangeFilter {\n  public int normalize(int value) {\n    return Math.max(0, value);\n\
+      \  }\n\n  public boolean contains(int value, int min, int max) {\n    int normalized = normalize(value);\n    return\
+      \ normalized > min && normalized < max;\n  }\n\n  public boolean acceptsRequestValue(int value) {\n    return contains(value,\
+      \ 0, 100);\n  }\n}\n"
 - id: c4
   branch: main
   parents:
   - c3
-  message: 'c4: fix bug (replace src/main/java/example/Range.java)'
+  message: Fix boundary regression from range filter work
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/RangeFilter.java
+    old: return normalized > min && normalized < max;
+    new: return normalized >= min && normalized <= max;
 bugs:
 - id: B001
-  title: Fix series split across test, partial fix, final fix
+  title: Boundary regression introduced during inferred range-filter work item
   bug_introducing_commits:
-  - commit: c1
+  - commit: c2
     role: direct
   bug_fixing_commits:
-  - commit: c3
-    role: partial_fix
   - commit: c4
     role: complete_fix
   faults:
   - id: F001
-    commit: c1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    commit: c2
+    file: src/main/java/example/RangeFilter.java
+    statement: return normalized > min && normalized < max;
+    change_type: line_modification
   fixes:
   - id: X001
-    commit: c3
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value < max;
-    fix_type: partial_fix
-  - id: X002
     commit: c4
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
-    fix_type: complete_fix
+    file: src/main/java/example/RangeFilter.java
+    statement: return normalized >= min && normalized <= max;
+    fix_type: line_modification
+  work_item: INFERRED-WI-001
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
+    - c2
+    related_but_not_correct:
     - c1
-fix_series:
-- id: FIX-B001
+    - c3
+    notes: The inferred work item contains c1, c2, and c3, but only c2 is the BIC. c1 and c3 are useful contextual candidates
+      but should not be reported as the BIC.
+  work_item_level:
+    inferred_work_item: INFERRED-WI-001
+    candidate_commits:
+    - c1
+    - c2
+    - c3
+    required_bic: c2
+    no_explicit_issue_id: true
+work_items:
+- id: INFERRED-WI-001
+  title: Range filter cleanup and request wiring
   commits:
+  - c1
   - c2
   - c3
-  - c4
+  inference_required: true
+  explicit_issue_id: null
+  bug_introducing_commit: c2
+  inference_signals:
+  - No commit message contains an explicit issue ID.
+  - The commit messages share range-filter terminology.
+  - The commits appear consecutively in the same short time window.
+  - The commits touch the same file or closely related range-filter behavior.
+  - The fix message in c4 refers to a boundary regression from the range filter work.
 scenario_design:
-  purpose: Evaluate Fix split across multiple commits and whether SZZ identifies the expected bug-introducing commit set.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: bug_fixing_commits; operations: write_file, replace.'
+  purpose: Evaluate whether SZZ or a work-item-aware extension can infer a work item without explicit issue IDs and still
+    identify the specific BIC inside that inferred work item.
+  key_property: Commit messages intentionally omit issue identifiers. The work item must be inferred from message similarity,
+    commit locality, and related file changes.
+  difference_from_SZZG_0046: SZZG-0042 assumes an explicit work item containing multiple candidate BICs. SZZG-0043 removes
+    the explicit issue ID and relies on inference signals.
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Whether the work item can be inferred from context without issue IDs.
+  - Whether c2 is selected as the BIC rather than neighboring contextual commits c1 or c3.
+  - Whether c4's fix message helps connect the regression to the inferred range-filter work.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
+- This revision makes SZZG-0043 distinct from SZZG-0042 by removing explicit issue IDs from commit messages and adding inference
+  signals.
+- The work_items section is still present as oracle metadata, but the scenario states that the work item should be inferred.
+- c1 and c3 are related context commits; c2 is the only BIC.

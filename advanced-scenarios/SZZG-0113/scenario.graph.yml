@@ -1,101 +1,124 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0113
-  title: Bug introduced inside a refactoring commit
-  slug: bug-introduced-inside-refactoring
-  description: Evaluates bug introduced inside a refactoring commit and checks whether SZZ identifies the expected bug-introducing
-    commit set.
-  category: Refactoring scenarios
+  title: Merge commit itself is the BIC
+  slug: merge-commit-as-bic
+  description: Evaluates merge commit itself is the bic and checks whether SZZ identifies the expected bug-introducing commit
+    set.
+  category: Branch and merge scenarios
   category_code: A
   factors:
-  - bug_introducing_refactoring
-  - mixed_change
-  - rename_method
+  - merge_commit
+  - bug_introducing_merge
+  - non_linear_history
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0113-bug-introduced-inside-refactoring
+  name: SZZG-0113-merge-commit-as-bic
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: c0: create normalizer
+  history_summary: 'c0: c0: create feature flag
 
-    c1: c1: rename method and accidentally remove lower-case conversion
+    c1: c1: main branch hardens feature flag
 
-    c2: c2: fix normalization after refactoring'
+    c2: c2: feature branch keeps simple flag
+
+    c3: c3: merge feature branch and accidentally drop safety check
+
+    c4: c4: fix dropped safety check'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create normalizer'
+  message: 'c0: create feature flag'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Normalizer.java
-    content: "package example;\npublic class Normalizer {\n  public String normalize(String value) {\n    return value ==\
-      \ null ? \"\" : value.trim().toLowerCase();\n  }\n\n}\n"
+    path: src/main/java/example/Flags.java
+    content: "package example;\npublic class Flags {\n  public boolean enabled(boolean configured) {\n    return configured;\n\
+      \  }\n\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: rename method and accidentally remove lower-case conversion'
-  role: bug_introducing
+  message: 'c1: main branch hardens feature flag'
+  role: other
   operations:
   - type: replace
-    path: src/main/java/example/Normalizer.java
-    old: public String normalize(String value) {
-    new: public String clean(String value) {
-  - type: replace
-    path: src/main/java/example/Normalizer.java
-    old: 'return value == null ? "" : value.trim().toLowerCase();'
-    new: 'return value == null ? "" : value.trim();'
+    path: src/main/java/example/Flags.java
+    old: return configured;
+    new: return configured && System.getProperty("safe") != null;
 - id: c2
+  branch: feature
+  parents:
+  - c0
+  message: 'c2: feature branch keeps simple flag'
+  role: other
+  allow_empty: true
+  operations:
+  - type: replace
+    path: src/main/java/example/Flags.java
+    old: return configured;
+    new: return configured;
+- id: c3
   branch: main
   parents:
   - c1
-  message: 'c2: fix normalization after refactoring'
+  - c2
+  message: 'c3: merge feature branch and accidentally drop safety check'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Flags.java
+    old: return configured && System.getProperty("safe") != null;
+    new: return configured;
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: 'c4: fix dropped safety check'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Normalizer.java
-    old: 'return value == null ? "" : value.trim();'
-    new: 'return value == null ? "" : value.trim().toLowerCase();'
+    path: src/main/java/example/Flags.java
+    old: return configured;
+    new: return configured && System.getProperty("safe") != null;
 bugs:
 - id: B001
   title: Synthetic graph scenario bug
   bug_introducing_commits:
-  - commit: c1
+  - commit: c3
     role: direct
   bug_fixing_commits:
-  - commit: c2
+  - commit: c4
     role: complete_fix
   faults:
   - id: F001
-    commit: c1
-    file: src/main/java/example/Normalizer.java
-    statement: 'return value == null ? "" : value.trim();'
+    commit: c3
+    file: src/main/java/example/Flags.java
+    statement: return configured;
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c2
-    file: src/main/java/example/Normalizer.java
-    statement: 'return value == null ? "" : value.trim().toLowerCase();'
+    commit: c4
+    file: src/main/java/example/Flags.java
+    statement: return configured && System.getProperty("safe") != null;
     fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - c1
+    - c3
 scenario_design:
-  purpose: Evaluate bug introduced inside a refactoring commit and whether SZZ identifies the expected bug-introducing commit
-    set.
+  purpose: Evaluate merge commit itself is the bic and whether SZZ identifies the expected bug-introducing commit set.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: bug_introducing_refactoring, mixed_change, rename_method;
-    operations: replace, write_file.'
+  required_extensions_from_source: 'This scenario uses factors: merge_commit, bug_introducing_merge, non_linear_history; operations:
+    replace, write_file.'
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
   - Whether structural or contextual history is handled according to the scenario factors.

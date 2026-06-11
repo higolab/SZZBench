@@ -1,39 +1,48 @@
-# SZZG-0033: BFC in merge commit
+# SZZG-0033: Backport fix
 
 ## Purpose
 
-A bug is introduced before branches diverge; main and feature apply complementary partial changes, and the merge commit performs the final fix.
+This scenario represents a main-line fix that is backported to a release branch.
+
+A bug is introduced on `main` before the release branch is cut. The release branch is created from the buggy state. Main fixes the bug and continues development. The release branch also receives release-specific changes. Finally, the main fix is backported to release.
+
+## Commit graph
+
+```text
+main:     c0 ---- c1(BIC) ---- c2(BFC) ---- c3
+                    \
+release:             r0 ---- r1 ---- r2(BFC, backport of c2)
+```
 
 ## Commit history
 
 ```text
 c0: create initial correct implementation on main
-c1: introduce bug before branch divergence
-c2: main branch adds tests but does not fix the bug
-c3: feature branch adds a helper that still uses the buggy method
-c4: merge main and feature and fix the bug in the merge commit
+c1: introduce bug on main before release branch is cut
+r0: create release branch from the buggy state and add release metadata
+c2: fix bug on main
+c3: continue main development after the fix
+r1: add release-specific configuration while bug is still present on release
+r2: backport main fix c2 onto release
 ```
 
-## Commit table
+## Oracle
 
-| Commit | Branch | Parents | Role | Description |
-|---|---|---|---|---|
-| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `c1` | `main` | c0 | `bug_introducing` | c1: introduce shared range boundary bug |
-| `c2` | `main` | c1 | `intermediate` | c2: add boundary test documentation without fixing code |
-| `c3` | `feature` | c1 | `intermediate` | c3: add feature helper that depends on buggy range check |
-| `c4` | `main` | c2, c3 | `bug_fixing` | c4: merge feature and complete range boundary fix |
-
-## Expected SZZ result
+Expected BIC:
 
 ```text
-Expected BIC: c1
+c1
 ```
 
-## Scenario purpose
+Bug-fixing commits:
 
-Evaluate a BFC that is a merge commit, but with a different shape from SZZG-0005: the bug predates branch divergence and the merge completes the fix after partial contextual changes on both branches.
+```text
+c2: main-line fix
+r2: release-branch backport fix
+```
 
-## Notes
+## Difference from SZZG-0024 and SZZG-0025
 
-- This is案B for distinguishing SZZG-0033 from SZZG-0005.
+`SZZG-0024` and `SZZG-0025` are revert / reintroduction scenarios.
+
+`SZZG-0033` is a branch and backport scenario. The release branch keeps the bug until the main-line fix is backported.

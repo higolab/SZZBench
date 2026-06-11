@@ -1,55 +1,52 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0026
-  title: Explicit evaluation of direct BIC vs origin BIC
-  slug: direct-bic-vs-origin-bic
-  description: Evaluates a copied buggy implementation where the direct BIC is the copy commit and the origin BIC is the earlier
-    source commit.
-  category: Copy, clone, and propagation scenarios
-  category_code: E
+  title: BIC on feature branch, BFC on main
+  slug: bic-on-feature-branch-bfc-on-main
+  description: A feature branch introduces a bug, extends feature code that depends on the buggy method, is merged into main,
+    and is then fixed by a normal main-branch commit.
+  category: Branch, merge, cherry-pick, and backport scenarios
+  category_code: G
   factors:
-  - copy_file
-  - expected_szz
-  - direct_bic
-  - origin_bic
+  - branch
+  - merge
+  - feature_branch_bic
+  - main_branch_bfc
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0026-direct-bic-vs-origin-bic
+  name: SZZG-0026-bic-on-feature-branch-bfc-on-main
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create correct original range implementation
+  history_summary: 'c0: create initial correct implementation on main
 
-    c1: introduce bug in original Range
+    c1: introduce bug on feature branch
 
-    c2: copy buggy Range into CopiedRange
+    c2: extend feature branch code that uses the buggy method
 
-    c3: fix CopiedRange only'
+    c3: merge feature branch into main
+
+    c4: fix bug on main after merge'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create correct original range implementation'
+  message: 'c0: create initial correct implementation'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: |
-      package example;
-      public class Range {
-        public boolean contains(int value, int min, int max) {
-          return value >= min && value <= max;
-        }
-      }
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
-  branch: main
+  branch: feature
   parents:
   - c0
-  message: 'c1: introduce bug in original Range'
+  message: 'c1: introduce range boundary bug on feature'
   role: bug_introducing
   operations:
   - type: replace
@@ -57,85 +54,71 @@ commits:
     old: return value >= min && value <= max;
     new: return value > min && value < max;
 - id: c2
-  branch: main
+  branch: feature
   parents:
   - c1
-  message: 'c2: copy buggy Range into CopiedRange'
-  role: bug_introducing
+  message: 'c2: extend feature branch code using range check'
+  role: intermediate
   operations:
-  - type: copy_file
-    from: src/main/java/example/Range.java
-    to: src/main/java/example/CopiedRange.java
   - type: replace
-    path: src/main/java/example/CopiedRange.java
-    old: public class Range
-    new: public class CopiedRange
+    path: src/main/java/example/Range.java
+    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n}\n"
+    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
+      \ min, max);\n  }\n}\n"
 - id: c3
   branch: main
   parents:
+  - c0
   - c2
-  message: 'c3: fix copied range implementation'
+  message: 'c3: merge feature branch into main'
+  role: merge
+  operations: []
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: 'c4: fix range boundary bug on main'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/CopiedRange.java
+    path: src/main/java/example/Range.java
     old: return value > min && value < max;
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Copied range bug with direct and origin BICs
+  title: Feature branch BIC fixed on main
   bug_introducing_commits:
-  - commit: c2
-    role: direct
   - commit: c1
-    role: origin
+    role: direct
   bug_fixing_commits:
-  - commit: c3
+  - commit: c4
     role: complete_fix
   faults:
   - id: F001
-    commit: c2
-    file: src/main/java/example/CopiedRange.java
+    commit: c1
+    file: src/main/java/example/Range.java
     statement: return value > min && value < max;
-    change_type: copy_propagation
+    change_type: line_modification
   fixes:
   - id: X001
-    commit: c3
-    file: src/main/java/example/CopiedRange.java
+    commit: c4
+    file: src/main/java/example/Range.java
     statement: return value >= min && value <= max;
     fix_type: line_modification
 expected_szz:
   commit_level:
-    evaluation_policy: direct_only
+    evaluation_policy: exact_set
     required:
-    - c2
-    related_origins:
     - c1
-  evaluation_variants:
-  - name: direct_bic_only
-    commit_level:
-      required:
-      - c2
-  - name: origin_aware
-    commit_level:
-      required:
-      - c2
-      related_origins:
-      - c1
 scenario_design:
-  purpose: Evaluate direct-BIC versus origin-BIC accounting for copied buggy code.
-  current_schema_limitation: Direct and origin BIC roles require graph-aware bug metadata and evaluation policy.
-  required_extensions_from_source: 'This scenario uses factors: copy_file, expected_szz, direct_bic, origin_bic; operations: write_file, replace, copy_file.'
+  purpose: Evaluate whether SZZ can identify a BIC located on a feature branch when the BFC is a normal commit on main after
+    the feature branch has been merged.
+  key_property: The BIC occurs on feature, while the BFC occurs on main after merge.
   evaluation_points:
-  - Whether SZZ identifies c2 as the direct BIC for CopiedRange.
-  - Whether c1 is tracked as the origin BIC without being required under direct-only scoring.
-  - Whether evaluation variants can distinguish direct-only and origin-aware policies.
+  - Feature-branch BIC
+  - Normal main-branch BFC
+  - Intermediate feature code uses the buggy method before merge.
 notes:
-- c1 introduces the bug in the original file.
-- c2 propagates the already-buggy implementation into a new copied file and is the direct BIC for that copy.
-clone_relationships:
-- origin_commit: c1
-  direct_copy_commit: c2
-  from: src/main/java/example/Range.java
-  to: src/main/java/example/CopiedRange.java
-  relationship: copied_buggy_code
+- This scenario is intentionally distinct from SZZG-0029 and SZZG-0005 because the BFC is not a merge commit.

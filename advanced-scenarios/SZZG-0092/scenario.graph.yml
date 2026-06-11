@@ -1,22 +1,22 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0092
-  title: Rebase with copy propagation
-  slug: rebase-with-copy-propagation
-  description: Buggy code is copied on feature and introduced into main by rebase.
-  category: Branch, merge, cherry-pick, and backport scenarios
+  title: Repeated revert toggling before final fix
+  slug: repeated-revert-toggling-before-final-fix
+  description: The same bug alternates between fixed and buggy states through repeated revert and revert-of-revert commits
+    before a final explicit fix.
+  category: Revert and reintroduction scenarios
   category_code: G
   factors:
-  - branch
-  - rebase
-  - copy_propagation
-  - copy_file
-  - direct_bic
-  - origin_bic
+  - revert
+  - revert_of_revert
+  - repeated_toggling
+  - reintroduced_bug
+  - re_bic
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0092-rebase-with-copy-propagation
+  name: SZZG-0092-repeated-revert-toggling-before-final-fix
   default_branch: main
   language: java
   build_system: none
@@ -25,15 +25,17 @@ graph:
   model: commit_dag
   history_summary: 'c0: create initial correct implementation
 
-    f1: introduce range bug on feature
+    c1: introduce boundary bug
 
-    f2: copy buggy range logic
+    c2: fix boundary bug
 
-    r1: rebase original bug
+    c3: revert c2 and reintroduce bug
 
-    r2: rebase copied buggy logic
+    c4: revert c3 and restore fix
 
-    c3: fix copied range logic'
+    c5: revert c4 and reintroduce bug again
+
+    c6: final explicit fix after repeated toggling'
 commits:
 - id: c0
   branch: main
@@ -43,119 +45,131 @@ commits:
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
-- id: f1
-  branch: feature
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    boolean\
+      \ aboveMin = value >= min;\n    boolean belowMax = value <= max;\n    return aboveMin && belowMax;\n  }\n}\n"
+- id: c1
+  branch: main
   parents:
   - c0
-  message: 'f1: introduce range bug on feature'
+  message: 'c1: introduce boundary bug'
   role: origin_bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
-- id: f2
-  branch: feature
-  parents:
-  - f1
-  message: 'f2: copy buggy range logic'
-  role: origin_bug_propagating
-  operations:
-  - type: write_file
-    path: src/main/java/example/RangeCopy.java
-    content: "package example;\n\npublic class RangeCopy {\n  public boolean containsCopy(int value, int min, int max) {\n\
-      \    return value > min && value < max;\n  }\n}\n"
-- id: r1
+    old: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
+    new: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
+- id: c2
   branch: main
   parents:
-  - c0
-  message: 'r1: rebase original bug'
+  - c1
+  message: 'c2: fix boundary bug'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
+    new: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'c3: revert c2 and reintroduce bug'
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
-  rebase_of: f1
-- id: r2
+    old: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
+    new: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
+  reverts: c2
+- id: c4
   branch: main
   parents:
-  - r1
-  message: 'r2: rebase copied buggy logic'
-  role: bug_introducing
-  operations:
-  - type: write_file
-    path: src/main/java/example/RangeCopy.java
-    content: "package example;\n\npublic class RangeCopy {\n  public boolean containsCopy(int value, int min, int max) {\n\
-      \    return value > min && value < max;\n  }\n}\n"
-  rebase_of: f2
-- id: c3
-  branch: main
-  parents:
-  - r2
-  message: 'c3: fix copied range logic'
+  - c3
+  message: 'c4: revert c3 and restore fix'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/RangeCopy.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/Range.java
+    old: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
+    new: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
+  reverts: c3
+- id: c5
+  branch: main
+  parents:
+  - c4
+  message: 'c5: revert c4 and reintroduce bug again'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
+    new: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
+  reverts: c4
+- id: c6
+  branch: main
+  parents:
+  - c5
+  message: 'c6: final explicit fix after repeated toggling'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
+    new: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
 bugs:
 - id: B001
-  title: Copied range bug introduced by rebased copy commit
+  title: Boundary bug reintroduced after repeated revert toggling
   bug_introducing_commits:
-  - commit: r2
+  - commit: c5
     role: direct
-  - commit: r1
-    role: origin
-  - commit: f1
-    role: origin
-  - commit: f2
+  - commit: c3
+    role: related_reintroducing
+  - commit: c1
     role: origin
   bug_fixing_commits:
-  - commit: c3
+  - commit: c6
     role: complete_fix
   faults:
   - id: F001
-    commit: r2
-    file: src/main/java/example/RangeCopy.java
-    statement: return value > min && value < max;
-    change_type: line_modification
+    commit: c5
+    file: src/main/java/example/Range.java
+    statement: boolean belowMax = value < max;
+    change_type: latest_reintroduced_upper_boundary
+  - id: F002
+    commit: c5
+    file: src/main/java/example/Range.java
+    statement: boolean aboveMin = value > min;
+    change_type: latest_reintroduced_lower_boundary
   fixes:
   - id: X001
-    commit: c3
-    file: src/main/java/example/RangeCopy.java
-    statement: return value >= min && value <= max;
-    fix_type: line_modification
-  origin_faults:
-  - id: OF001
-    commit: f1
+    commit: c6
     file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
-    change_type: origin_line_modification
-  - id: OF002
-    commit: f2
-    file: src/main/java/example/RangeCopy.java
-    statement: return value > min && value < max;
-    change_type: origin_line_modification
+    statement: boolean belowMax = value <= max;
+    fix_type: line_modification
+  - id: X002
+    commit: c6
+    file: src/main/java/example/Range.java
+    statement: boolean aboveMin = value >= min;
+    fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - r2
+    - c5
     related_but_not_correct:
-    - r1
-    - f1
-    - f2
+    - c1
+    - c3
+    - c2
+    - c4
+    notes: For the final fix c6, the latest reintroducing revert c5 is the direct BIC.
 scenario_design:
-  purpose: Evaluate copy propagation through rebase.
-  key_property: The fixed instance is in the copied file introduced by r2.
-  difference_from_SZZG_0073: SZZG-0073 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
-    adds a distinct rebase-related complication.
+  purpose: Evaluate repeated toggling where the latest reintroducing revert should be identified as the direct BIC.
+  key_property: Multiple earlier BIC-like and fix-like commits exist, but the final fix should blame the latest re-BIC.
+  difference_from_existing_revert_scenarios: This scenario isolates a double-revert or revert-derived complication beyond
+    the existing partial revert and reintroduction scenarios.
   evaluation_points:
-  - Report r2.
+  - Whether SZZ reports c5.
+  - Whether older origin/reintroducing commits are not counted as exact direct answers.
 notes:
-- This scenario models a rebase-related development history for SZZ evaluation.
-- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.
+- This scenario models revert-related development history for SZZ evaluation.
+- The direct BIC is the commit that reintroduces the bug in the history observed from the BFC.

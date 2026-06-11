@@ -1,17 +1,17 @@
-# SZZG-0088: Bug-fixing commit is rebased onto main
+# SZZG-0088: Revert of fix reintroduces bug
 
 ## Purpose
 
-Evaluate a BFC that is itself a rebased feature fix.
+Evaluate whether SZZ returns the revert commit that reintroduced the bug rather than the original historical BIC.
 
 ## Commit history
 
 ```text
-c0: c0: create initial correct implementation
-f1: f1: introduce bug on feature
-f2: f2: fix bug on feature
-r1: r1: rebase feature bug commit onto main
-r2: r2: rebase feature fix commit onto main
+c0: create initial correct implementation
+c1: introduce boundary bug
+c2: fix boundary bug
+c3: revert c2 and reintroduce boundary bug
+c4: fix boundary bug again
 ```
 
 ## Commit table
@@ -19,32 +19,33 @@ r2: r2: rebase feature fix commit onto main
 | Commit | Branch | Parents | Role | Description |
 |---|---|---|---|---|
 | `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `f1` | `feature` | c0 | `origin_bug_introducing` | f1: introduce bug on feature |
-| `f2` | `feature` | f1 | `origin_bug_fixing` | f2: fix bug on feature |
-| `r1` | `main` | c0 | `bug_introducing` | r1: rebase feature bug commit onto main |
-| `r2` | `main` | r1 | `bug_fixing` | r2: rebase feature fix commit onto main |
+| `c1` | `main` | c0 | `origin_bug_introducing` | c1: introduce boundary bug |
+| `c2` | `main` | c1 | `bug_fixing` | c2: fix boundary bug |
+| `c3` | `main` | c2 | `bug_introducing` | c3: revert c2 and reintroduce boundary bug |
+| `c4` | `main` | c3 | `bug_fixing` | c4: fix boundary bug again |
 
 ## Expected SZZ result
 
 ```text
-Expected BIC(s): r1
-Related but not correct: f1, f2
+Expected BIC(s): c3
+Related but not correct: c1, c2
 ```
 
 ## Key property
 
-r2 is the main-line BFC.
+The bug was fixed once, but reverting that fix creates the direct BIC for the later BFC.
 
-## Difference from SZZG-0073
+## Difference from existing revert scenarios
 
-SZZG-0073 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
+This scenario isolates a double-revert or revert-derived complication beyond the existing partial revert and reintroduction scenarios.
 
 ## Evaluation points
 
-- Start from r2.
-- Return r1.
+- Whether SZZ reports c3.
+- Whether c1 is treated as origin rather than the direct answer.
+- Whether the prior fix c2 is not reported as BIC.
 
 ## Notes
 
-- This scenario models a rebase-related development history for SZZ evaluation.
-- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.
+- This scenario models revert-related development history for SZZ evaluation.
+- The direct BIC is the commit that reintroduces the bug in the history observed from the BFC.

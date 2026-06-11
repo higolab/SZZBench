@@ -1,21 +1,22 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0077
-  title: Rebase conflict resolution fixes bug
-  slug: rebase-conflict-resolution-fixes-bug
-  description: A rebase conflict resolution commit acts as the BFC.
+  title: Interactive rebase squashes BIC and BFC into neutral commit
+  slug: interactive-rebase-squashes-bic-and-bfc-into-neutral-commit
+  description: A transient feature bug is fixed before rebase and does not survive into main.
   category: Branch, merge, cherry-pick, and backport scenarios
   category_code: G
   factors:
   - branch
   - rebase
-  - rebase_conflict_resolution
-  - conflict_resolution_bfc
-  - rebased_bic
+  - interactive_rebase
+  - squash
+  - transient_bug
+  - scope_boundary
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0077-rebase-conflict-resolution-fixes-bug
+  name: SZZG-0077-interactive-rebase-squashes-bic-and-bfc-into-neutral-commit
   default_branch: main
   language: java
   build_system: none
@@ -24,11 +25,11 @@ graph:
   model: commit_dag
   history_summary: 'c0: create initial correct implementation
 
-    r1: rebase feature bug commit onto main
+    f1: introduce transient bug on feature
 
-    m1: main change before conflict-resolution fix
+    f2: fix transient bug on feature
 
-    r2: resolve rebase conflict and fix range bug'
+    r1: squash transient bug and fix into neutral commit'
 commits:
 - id: c0
   branch: main
@@ -40,61 +41,62 @@ commits:
     path: src/main/java/example/Range.java
     content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
       \ value >= min && value <= max;\n  }\n}\n"
-- id: r1
-  branch: main
+- id: f1
+  branch: feature
   parents:
   - c0
-  message: 'r1: rebase feature bug commit onto main'
+  message: 'f1: introduce transient bug on feature'
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
     new: return value > min && value < max;
-  rebase_of: f1
-- id: m1
-  branch: main
+- id: f2
+  branch: feature
   parents:
-  - r1
-  message: 'm1: main change before conflict-resolution fix'
-  role: intermediate
-  operations:
-  - type: write_file
-    path: docs/main.md
-    content: 'before fix
-
-      '
-- id: r2
-  branch: main
-  parents:
-  - m1
-  message: 'r2: resolve rebase conflict and fix range bug'
+  - f1
+  message: 'f2: fix transient bug on feature'
   role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value > min && value < max;
     new: return value >= min && value <= max;
-  rebase_of: f2
-  rebase_conflict_resolution: true
+- id: r1
+  branch: main
+  parents:
+  - c0
+  message: 'r1: squash transient bug and fix into neutral commit'
+  role: intermediate
+  operations:
+  - type: write_file
+    path: docs/rebase-note.md
+    content: 'transient bug squashed out
+
+      '
+  rebase_of:
+  - f1
+  - f2
+  interactive_rebase: squash_transient_bug_fix
 bugs:
 - id: B001
-  title: Bug fixed by rebase conflict resolution
+  title: Transient feature bug squashed out before main
   bug_introducing_commits:
-  - commit: r1
+  - commit: f1
     role: direct
   bug_fixing_commits:
-  - commit: r2
+  - commit: f2
     role: complete_fix
   faults:
   - id: F001
-    commit: r1
+    commit: f1
     file: src/main/java/example/Range.java
     statement: return value > min && value < max;
     change_type: line_modification
   fixes:
   - id: X001
-    commit: r2
+    commit: f2
     file: src/main/java/example/Range.java
     statement: return value >= min && value <= max;
     fix_type: line_modification
@@ -102,16 +104,16 @@ expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - r1
-    notes: The BFC is r2; the BIC is r1.
+    - f1
+    notes: This records the pre-rebase transient BIC/BFC pair; r1 is not a main-line SZZ target.
 scenario_design:
-  purpose: Evaluate whether SZZ can handle a BFC that is itself a rebase conflict resolution commit.
-  key_property: The fix is introduced by r2 during rebase conflict resolution.
-  difference_from_SZZG_0073: SZZG-0073 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
+  purpose: Clarify a scope boundary for bugs that do not survive into final main history.
+  key_property: The final main history has no main-line BIC for this transient bug.
+  difference_from_SZZG_0073: SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
     adds a distinct rebase-related complication.
   evaluation_points:
-  - Start from r2.
-  - Return r1.
+  - Record transient pair.
+  - Treat as special scope-boundary case.
 notes:
 - This scenario models a rebase-related development history for SZZ evaluation.
 - Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

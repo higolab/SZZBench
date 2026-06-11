@@ -1,22 +1,21 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0094
-  title: Rebase commit message reveals origin
-  slug: rebase-commit-message-reveals-origin
-  description: The rebased direct BIC message explicitly points to its origin commit.
-  category: Branch, merge, cherry-pick, and backport scenarios
+  title: Misleading revert commit message reintroduces bug
+  slug: misleading-revert-commit-message-reintroduces-bug
+  description: A revert commit has a cleanup-like message but actually reintroduces a previously fixed bug.
+  category: Revert and reintroduction scenarios
   category_code: G
   factors:
-  - branch
-  - rebase
-  - commit_messages
-  - developer_hints
-  - origin_bic
-  - direct_bic
+  - revert
+  - misleading_commit_message
+  - context_aware
+  - reintroduced_bug
+  - re_bic
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0094-rebase-commit-message-reveals-origin
+  name: SZZG-0094-misleading-revert-commit-message-reintroduces-bug
   default_branch: main
   language: java
   build_system: none
@@ -25,15 +24,13 @@ graph:
   model: commit_dag
   history_summary: 'c0: create initial correct implementation
 
-    f1: introduce range boundary bug on feature
+    c1: introduce boundary bug
 
-    f2: add feature helper using buggy range check
+    c2: fix boundary bug
 
-    r1: rebase f1 onto main and preserve origin reference
+    c3: revert cleanup changes
 
-    r2: rebase feature helper onto main
-
-    c3: fix range boundary bug after rebase'
+    c4: fix regression after misleading revert'
 commits:
 - id: c0
   branch: main
@@ -43,118 +40,104 @@ commits:
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
-- id: f1
-  branch: feature
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    boolean\
+      \ aboveMin = value >= min;\n    boolean belowMax = value <= max;\n    return aboveMin && belowMax;\n  }\n}\n"
+- id: c1
+  branch: main
   parents:
   - c0
-  message: 'f1: introduce range boundary bug on feature'
+  message: 'c1: introduce boundary bug'
   role: origin_bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
-- id: f2
-  branch: feature
+    old: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
+    new: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
+- id: c2
+  branch: main
   parents:
-  - f1
-  message: 'f2: add feature helper using buggy range check'
-  role: intermediate
+  - c1
+  message: 'c2: fix boundary bug'
+  role: prior_fix
   operations:
   - type: replace
     path: src/main/java/example/Range.java
-    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n}\n"
-    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
-      \ min, max);\n  }\n}\n"
-- id: r1
+    old: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
+    new: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
+- id: c3
   branch: main
   parents:
-  - c0
-  message: 'r1: rebase f1 onto main and preserve origin reference'
+  - c2
+  message: 'c3: revert cleanup changes'
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
-  rebase_of: f1
-- id: r2
+    old: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
+    new: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
+  reverts: c2
+  misleading_message: true
+- id: c4
   branch: main
   parents:
-  - r1
-  message: 'r2: rebase feature helper onto main'
-  role: intermediate
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n}\n"
-    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
-      \ min, max);\n  }\n}\n"
-  rebase_of: f2
-- id: c3
-  branch: main
-  parents:
-  - r2
-  message: 'c3: fix range boundary bug after rebase'
+  - c3
+  message: 'c4: fix regression after misleading revert'
   role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    old: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
+    new: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
 bugs:
 - id: B001
-  title: Range bug with rebase message context
+  title: Boundary bug hidden behind misleading revert message
   bug_introducing_commits:
-  - commit: r1
+  - commit: c3
     role: direct
-  - commit: f1
+  - commit: c1
     role: origin
   bug_fixing_commits:
-  - commit: c3
+  - commit: c4
     role: complete_fix
   faults:
   - id: F001
-    commit: r1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
-    change_type: line_modification
-  fixes:
-  - id: X001
     commit: c3
     file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
-    fix_type: line_modification
-  origin_faults:
-  - id: OF001
-    commit: f1
+    statement: boolean belowMax = value < max;
+    change_type: misleading_revert_upper_boundary
+  - id: F002
+    commit: c3
     file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
-    change_type: origin_line_modification
+    statement: boolean aboveMin = value > min;
+    change_type: misleading_revert_lower_boundary
+  fixes:
+  - id: X001
+    commit: c4
+    file: src/main/java/example/Range.java
+    statement: boolean belowMax = value <= max;
+    fix_type: line_modification
+  - id: X002
+    commit: c4
+    file: src/main/java/example/Range.java
+    statement: boolean aboveMin = value >= min;
+    fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - r1
+    - c3
     related_but_not_correct:
-    - f1
+    - c1
+    - c2
+    notes: The misleading message should not obscure that c3 is the direct BIC.
 scenario_design:
-  purpose: Evaluate whether message context helps or misleads SZZ in a rebase scenario.
-  key_property: The direct BIC remains r1 despite message context.
-  difference_from_SZZG_0073: SZZG-0073 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
-    adds a distinct rebase-related complication.
+  purpose: Evaluate context-aware SZZ robustness when a revert message understates or mislabels the actual bug reintroduction.
+  key_property: The revert message looks like cleanup, but the patch reintroduces the boundary bug.
+  difference_from_existing_revert_scenarios: This scenario isolates a double-revert or revert-derived complication beyond
+    the existing partial revert and reintroduction scenarios.
   evaluation_points:
-  - Report r1.
+  - Whether SZZ reports c3.
+  - Whether context-aware methods avoid being misled by the message.
 notes:
-- This scenario models a rebase-related development history for SZZ evaluation.
-- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.
-developer_hints:
-- commit: r1
-  kind: rebase_origin
-  text: 'Rebased-from: f1'
+- This scenario models revert-related development history for SZZ evaluation.
+- The direct BIC is the commit that reintroduces the bug in the history observed from the BFC.

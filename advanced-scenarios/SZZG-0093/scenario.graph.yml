@@ -1,22 +1,21 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0093
-  title: Clone diverges before rebase
-  slug: clone-diverges-before-rebase
-  description: A cloned buggy implementation diverges on feature and is replayed by rebase.
-  category: Branch, merge, cherry-pick, and backport scenarios
+  title: Multiple BICs with partial revert reintroducing one fault
+  slug: multiple-bics-with-partial-revert-reintroducing-one-fault
+  description: Two original BICs are fixed together, but a later partial revert reintroduces only one fault.
+  category: Revert and reintroduction scenarios
   category_code: G
   factors:
-  - branch
-  - rebase
-  - clone_relationships
-  - clone_divergence
-  - direct_bic
-  - origin_bic
+  - revert
+  - partial_revert
+  - multiple_bic
+  - single_fault_reintroduced
+  - re_bic
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0093-clone-diverges-before-rebase
+  name: SZZG-0093-multiple-bics-with-partial-revert-reintroducing-one-fault
   default_branch: main
   language: java
   build_system: none
@@ -25,15 +24,15 @@ graph:
   model: commit_dag
   history_summary: 'c0: create initial correct implementation
 
-    f1: create buggy clone
+    c1: introduce lower-bound bug
 
-    f2: diverge cloned buggy logic
+    c2: introduce upper-bound bug
 
-    r1: rebase buggy clone creation
+    c3: fix both boundary bugs
 
-    r2: rebase clone divergence
+    c4: partially revert fix for upper boundary only
 
-    c4: fix diverged clone'
+    c5: fix reintroduced upper-bound bug'
 commits:
 - id: c0
   branch: main
@@ -43,108 +42,105 @@ commits:
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
-- id: f1
-  branch: feature
-  parents:
-  - c0
-  message: 'f1: create buggy clone'
-  role: origin_bug_introducing
-  operations:
-  - type: write_file
-    path: src/main/java/example/RangeClone.java
-    content: "package example;\n\npublic class RangeClone {\n  public boolean containsClone(int value, int min, int max) {\n\
-      \    return value > min && value < max;\n  }\n}\n"
-- id: f2
-  branch: feature
-  parents:
-  - f1
-  message: 'f2: diverge cloned buggy logic'
-  role: origin_bug_introducing
-  operations:
-  - type: replace
-    path: src/main/java/example/RangeClone.java
-    old: return value > min && value < max;
-    new: return value > min && value < max; // cloned logic
-- id: r1
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    boolean\
+      \ aboveMin = value >= min;\n    boolean belowMax = value <= max;\n    return aboveMin && belowMax;\n  }\n}\n"
+- id: c1
   branch: main
   parents:
   - c0
-  message: 'r1: rebase buggy clone creation'
-  role: intermediate
-  operations:
-  - type: write_file
-    path: src/main/java/example/RangeClone.java
-    content: "package example;\n\npublic class RangeClone {\n  public boolean containsClone(int value, int min, int max) {\n\
-      \    return value > min && value < max;\n  }\n}\n"
-  rebase_of: f1
-- id: r2
-  branch: main
-  parents:
-  - r1
-  message: 'r2: rebase clone divergence'
-  role: bug_introducing
+  message: 'c1: introduce lower-bound bug'
+  role: origin_bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/RangeClone.java
-    old: return value > min && value < max;
-    new: return value > min && value < max; // cloned logic
-  rebase_of: f2
+    path: src/main/java/example/Range.java
+    old: boolean aboveMin = value >= min;
+    new: boolean aboveMin = value > min;
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'c2: introduce upper-bound bug'
+  role: origin_bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: boolean belowMax = value <= max;
+    new: boolean belowMax = value < max;
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'c3: fix both boundary bugs'
+  role: prior_fix
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
+    new: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
 - id: c4
   branch: main
   parents:
-  - r2
-  message: 'c4: fix diverged clone'
+  - c3
+  message: 'c4: partially revert fix for upper boundary only'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: boolean belowMax = value <= max;
+    new: boolean belowMax = value < max;
+  reverts: part_of_c3
+- id: c5
+  branch: main
+  parents:
+  - c4
+  message: 'c5: fix reintroduced upper-bound bug'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/RangeClone.java
-    old: return value > min && value < max; // cloned logic
-    new: return value >= min && value <= max; // fixed cloned logic
+    path: src/main/java/example/Range.java
+    old: boolean belowMax = value < max;
+    new: boolean belowMax = value <= max;
 bugs:
 - id: B001
-  title: Diverged clone bug introduced by rebase
+  title: Upper-bound fault reintroduced after multiple-BIC fix
   bug_introducing_commits:
-  - commit: r2
+  - commit: c4
     role: direct
-  - commit: r1
-    role: origin
-  - commit: f1
-    role: origin
-  - commit: f2
+  - commit: c2
     role: origin
   bug_fixing_commits:
-  - commit: c4
+  - commit: c5
     role: complete_fix
   faults:
   - id: F001
-    commit: r2
-    file: src/main/java/example/RangeClone.java
-    statement: return value > min && value < max; // cloned logic
-    change_type: line_modification
+    commit: c4
+    file: src/main/java/example/Range.java
+    statement: boolean belowMax = value < max;
+    change_type: partial_revert_upper_boundary
   fixes:
   - id: X001
-    commit: c4
-    file: src/main/java/example/RangeClone.java
-    statement: return value >= min && value <= max; // fixed cloned logic
+    commit: c5
+    file: src/main/java/example/Range.java
+    statement: boolean belowMax = value <= max;
     fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - r2
+    - c4
     related_but_not_correct:
-    - r1
-    - f1
-    - f2
+    - c1
+    - c2
+    - c3
+    notes: The final BFC targets only the fault reintroduced by c4; original BICs are related history.
 scenario_design:
-  purpose: Evaluate rebase combined with clone divergence.
-  key_property: The fixed instance is the diverged clone line introduced by r2.
-  difference_from_SZZG_0073: SZZG-0073 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
-    adds a distinct rebase-related complication.
+  purpose: Evaluate multiple original BICs when a later partial revert reintroduces only one of them.
+  key_property: The direct BIC for the final fix is the partial revert, not the older original BIC set.
+  difference_from_existing_revert_scenarios: This scenario isolates a double-revert or revert-derived complication beyond
+    the existing partial revert and reintroduction scenarios.
   evaluation_points:
-  - Report r2.
+  - Whether SZZ reports c4.
+  - Whether SZZ avoids reporting both old BICs as exact direct answers.
 notes:
-- This scenario models a rebase-related development history for SZZ evaluation.
-- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.
+- This scenario models revert-related development history for SZZ evaluation.
+- The direct BIC is the commit that reintroduces the bug in the history observed from the BFC.

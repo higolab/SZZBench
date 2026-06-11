@@ -1,19 +1,21 @@
-# SZZG-0114: BFC performs method extraction and bug fix in the same commit
+# SZZG-0114: BFC on main after feature-branch BIC is merged
 
 ## Source
 
-- Category: Refactoring scenarios
+- Category: Branch and merge scenarios
 
 ## Purpose
 
-Evaluate bfc performs method extraction and bug fix in the same commit and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate bfc on main after feature-branch bic is merged and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: c0: create tax calculator
-c1: c1: introduce tax rounding bug
-c2: c2: extract tax rate helper and fix rounding
+c0: c0: create quota checker
+c1: c1: feature branch introduces quota boundary bug
+c2: c2: main branch updates comments only
+c3: c3: merge feature branch
+c4: c4: fix quota boundary on main
 ```
 
 ## Why this needs `scenario.graph.yml`
@@ -22,8 +24,8 @@ This history requires graph-aware scenario semantics that are difficult to expre
 
 ## Required graph-schema features
 
-- Factors: bfc_refactoring, extract_method, mixed_bfc
-- Operation types: insert_after, replace, write_file
+- Factors: feature_branch, merge_commit, bfc_after_merge
+- Operation types: replace, write_file
 - Expected SZZ policy is defined in `expected_szz`.
 
 ## Expected BICs

@@ -1,39 +1,50 @@
-# SZZG-0034: Squash merge
+# SZZG-0034: Backport introduces release-specific bug
+
+## Source
+
+- Category: Branch, merge, cherry-pick, and backport scenarios
 
 ## Purpose
 
-Feature branch commits introduce and extend a bug, but main receives them through a single-parent squash-merge commit.
+Evaluate a release-specific regression introduced while adapting a main-line source change onto a release branch.
 
-## Commit history
+Commit `c1` is not a BFC. It is the main-line source change that adds `RangePolicy.java`. Commit `r1` is a release-side backport/adaptation of that source change, and it introduces the boundary bug in `Range.java`. The expected BIC is therefore `r1`, not `c1`.
 
-```text
-c0: create initial correct implementation on main
-c1: feature branch introduces bug
-c2: feature branch extends code using the buggy method
-c3: squash-merge feature branch into main as a single-parent commit
-c4: fix bug on main after squash merge
-```
-
-## Commit table
-
-| Commit | Branch | Parents | Role | Description |
-|---|---|---|---|---|
-| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `c1` | `feature` | c0 | `source_bug_introducing` | c1: introduce range boundary bug on feature |
-| `c2` | `feature` | c1 | `intermediate` | c2: extend feature branch code using range check |
-| `c3` | `main` | c0 | `bug_introducing` | c3: squash merge feature branch into main |
-| `c4` | `main` | c3 | `bug_fixing` | c4: fix squashed range boundary bug |
-
-## Expected SZZ result
+## Expected history
 
 ```text
-Expected BIC: c3
+c0: create initial state (write_file src/main/java/example/Range.java)
+c1: add main range policy source change (write_file src/main/java/example/RangePolicy.java)
+r1: backport range policy to release and introduce boundary bug (replace src/main/java/example/Range.java; write_file src/main/java/example/RangePolicy.java)
+r2: fix bug (replace src/main/java/example/Range.java)
 ```
 
-## Scenario purpose
+## Why this needs `scenario.graph.yml`
 
-Evaluate how SZZ handles a squash merge where the main-line BIC is the squash commit, even though the origin of the faulty change is on the feature branch.
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
-## Notes
+## Required graph-schema features
 
-- The direct BIC for the generated main history is c3; c1 is recorded as origin metadata.
+- Factors: branch, backport_of
+- Operation types: write_file, replace
+- Expected SZZ policy is defined in expected_szz.
+
+## Evaluation points
+
+- Whether SZZ identifies `r1` as the release-specific BIC.
+- Whether `backport_of: c1` metadata does not cause SZZ to blame the main-line source change `c1`.
+- Whether the expected_szz evaluation policy is applied correctly.
+
+---
+
+## Draft status
+
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
+
+## Files
+
+```text
+SZZG-0034/
+|-- scenario.graph.yml
+`-- README.md
+```

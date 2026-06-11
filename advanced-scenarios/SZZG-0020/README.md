@@ -1,4 +1,4 @@
-# SZZG-0020: Buggy code copied while original is fixed later
+# SZZG-0020: Only one clone instance is fixed first
 
 ## Source
 
@@ -6,17 +6,15 @@
 
 ## Purpose
 
-Evaluate a copied-bug scenario where `c1` copies faulty logic from `A.java` into `B.java`, `c2` fixes only the original `A.java` instance, and `c3` fixes the copied `B.java` instance.
-
-For the `B.java` fix, the expected direct BIC is `c1`. The original faulty state in `c0` is origin context, and the original-file fix `c2` is not the BFC for the copied instance.
+Evaluate Only one clone instance is fixed first and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: create initial state (write_file src/main/java/example/A.java)
-c1: copy buggy code to B.java (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)
-c2: fix original bug in A.java (replace src/main/java/example/A.java)
-c3: fix copied bug in B.java (replace src/main/java/example/B.java)
+c0: introduce origin bug (write_file src/main/java/example/A.java)
+c1: introduce bug (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)
+c2: fix bug (replace src/main/java/example/A.java)
+c3: fix bug (replace src/main/java/example/B.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
@@ -25,14 +23,14 @@ This history requires graph-aware scenario semantics that are difficult to expre
 
 ## Required graph-schema features
 
-- Factors: copy_file, faults
+- Factors: clone_relationships, bug_instances
 - Operation types: write_file, copy_file, replace
 - Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- Whether SZZ identifies `c1` as the direct BIC for the copied `B.java` instance.
-- Whether SZZ does not treat the later `A.java` fix `c2` as the copied instance's BFC.
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
 - Whether the expected_szz evaluation policy is applied correctly.
 
 ---

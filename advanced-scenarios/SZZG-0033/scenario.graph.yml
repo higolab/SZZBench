@@ -1,21 +1,22 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0033
-  title: BFC in merge commit
-  slug: bfc-in-merge-commit
-  description: A bug is introduced before branches diverge; main and feature apply complementary partial changes, and the
-    merge commit performs the final fix.
+  title: Backport fix
+  slug: backport-fix
+  description: A bug is introduced on main before a release branch is cut. Main fixes the bug, continues with unrelated development,
+    and the release branch receives release-specific changes. The main fix is then backported to release.
   category: Branch, merge, cherry-pick, and backport scenarios
   category_code: G
   factors:
   - branch
-  - merge
-  - merge_commit_bfc
-  - partial_fix
+  - backport_of
+  - release_branch
+  - release_specific_changes
+  - bug_instances
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0033-bfc-in-merge-commit
+  name: SZZG-0033-backport-fix
   default_branch: main
   language: java
   build_system: none
@@ -24,13 +25,17 @@ graph:
   model: commit_dag
   history_summary: 'c0: create initial correct implementation on main
 
-    c1: introduce bug before branch divergence
+    c1: introduce bug on main before release branch is cut
 
-    c2: main branch adds tests but does not fix the bug
+    r0: create release branch from the buggy state and add release metadata
 
-    c3: feature branch adds a helper that still uses the buggy method
+    c2: fix bug on main
 
-    c4: merge main and feature and fix the bug in the merge commit'
+    c3: continue main development after the fix
+
+    r1: add release-specific configuration while bug is still present on release
+
+    r2: backport main fix c2 onto release'
 commits:
 - id: c0
   branch: main
@@ -46,46 +51,67 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: introduce shared range boundary bug'
+  message: 'c1: introduce range boundary bug before release branch'
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
     new: return value > min && value < max;
+- id: r0
+  branch: release
+  parents:
+  - c1
+  message: 'r0: cut release branch from buggy state'
+  role: release_branch_point
+  operations:
+  - type: write_file
+    path: release/version.txt
+    content: '1.0.0
+
+      '
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: add boundary test documentation without fixing code'
-  role: intermediate
-  operations:
-  - type: write_file
-    path: docs/boundary-test-note.md
-    content: 'Boundary cases should be covered by tests, but the implementation is still buggy here.
-
-      '
-- id: c3
-  branch: feature
-  parents:
-  - c1
-  message: 'c3: add feature helper that depends on buggy range check'
-  role: intermediate
+  message: 'c2: fix range boundary bug on main'
+  role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
-    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n}\n"
-    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
-      \ min, max);\n  }\n}\n"
-- id: c4
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+- id: c3
   branch: main
   parents:
   - c2
-  - c3
-  message: 'c4: merge feature and complete range boundary fix'
+  message: 'c3: continue main development after fix'
+  role: intermediate
+  operations:
+  - type: write_file
+    path: docs/main-after-fix.md
+    content: 'Main branch continues after the range bug fix.
+
+      '
+- id: r1
+  branch: release
+  parents:
+  - r0
+  message: 'r1: add release-specific configuration before backport'
+  role: intermediate
+  operations:
+  - type: write_file
+    path: release/config.properties
+    content: 'range.mode=compat
+
+      '
+- id: r2
+  branch: release
+  parents:
+  - r1
+  message: 'r2: backport range boundary fix from main'
   role: bug_fixing
+  backport_of: c2
   operations:
   - type: replace
     path: src/main/java/example/Range.java
@@ -93,13 +119,16 @@ commits:
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Shared range boundary bug fixed by merge commit
+  title: Range boundary bug fixed on main and backported to release
   bug_introducing_commits:
   - commit: c1
     role: direct
   bug_fixing_commits:
-  - commit: c4
-    role: merge_fix
+  - commit: c2
+    role: main_fix
+  - commit: r2
+    role: backport_fix
+    backport_of: c2
   faults:
   - id: F001
     commit: c1
@@ -108,22 +137,49 @@ bugs:
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c4
+    commit: c2
     file: src/main/java/example/Range.java
     statement: return value >= min && value <= max;
-    fix_type: line_modification
+    fix_type: main_line_fix
+  - id: X002
+    commit: r2
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+    fix_type: backport_fix
+  bug_instances:
+  - branch: main
+    status: fixed
+    fix_commit: c2
+  - branch: release
+    status: fixed
+    fix_commit: r2
+    backport_of: c2
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
     - c1
+    notes: Both the main fix c2 and the release backport r2 should trace back to the original BIC c1.
+  branch_level:
+    main:
+      bfc: c2
+      required:
+      - c1
+    release:
+      bfc: r2
+      required:
+      - c1
 scenario_design:
-  purpose: 'Evaluate a BFC that is a merge commit, but with a different shape from SZZG-0005: the bug predates branch divergence
-    and the merge completes the fix after partial contextual changes on both branches.'
-  key_property: The BFC is merge commit c4, and both parents still contain the bug before c4 applies the final fix.
+  purpose: Evaluate whether SZZ can identify the original BIC when a main-line fix is backported to a release branch.
+  key_property: The release branch has release-specific changes before the backport, so the history is not just a linear correct-buggy-fixed
+    sequence.
+  difference_from_SZZG_0028_0029: SZZG-0024 and SZZG-0025 are revert/reintroduction scenarios. SZZG-0033 is a branch scenario
+    where the release fix is a backport of the main-line BFC.
   evaluation_points:
-  - Merge commit as BFC
-  - Bug introduced before branch divergence
-  - Both branches contain relevant intermediate context before the merge.
+  - Whether SZZ traces the release backport r2 to c1.
+  - Whether backport metadata is handled without treating c2 as the BIC.
+  - Whether release-specific changes before the backport do not hide the original BIC.
 notes:
-- This is案B for distinguishing SZZG-0033 from SZZG-0005.
+- This revision adds release-specific changes to avoid collapsing the source history into a simple correct-buggy-fixed sequence.
+- r2 is an explicit backport of c2.
+- The expected BIC remains c1 for both main and release fixes.

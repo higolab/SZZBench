@@ -1,146 +1,116 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0105
-  title: Multiple BICs with partial revert reintroducing one fault
-  slug: multiple-bics-with-partial-revert-reintroducing-one-fault
-  description: Two original BICs are fixed together, but a later partial revert reintroduces only one fault.
-  category: Revert and reintroduction scenarios
-  category_code: G
+  title: Clone origin versus copied direct BIC
+  slug: clone-origin-versus-direct-bic
+  description: Evaluates clone origin versus copied direct bic and checks whether SZZ identifies the expected bug-introducing
+    commit set.
+  category: Clone propagation scenarios
+  category_code: A
   factors:
-  - revert
-  - partial_revert
-  - multiple_bic
-  - single_fault_reintroduced
-  - re_bic
+  - clone
+  - copy_file
+  - origin_bic_policy
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0105-multiple-bics-with-partial-revert-reintroducing-one-fault
+  name: SZZG-0105-clone-origin-versus-direct-bic
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial correct implementation
+  history_summary: 'c0: c0: create original sanitizer
 
-    c1: introduce lower-bound bug
+    c1: c1: introduce bug in original sanitizer
 
-    c2: introduce upper-bound bug
+    c2: c2: copy sanitizer into admin module
 
-    c3: fix both boundary bugs
-
-    c4: partially revert fix for upper boundary only
-
-    c5: fix reintroduced upper-bound bug'
+    c3: c3: fix copied sanitizer only'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial correct implementation'
+  message: 'c0: create original sanitizer'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    boolean\
-      \ aboveMin = value >= min;\n    boolean belowMax = value <= max;\n    return aboveMin && belowMax;\n  }\n}\n"
+    path: src/main/java/example/Sanitizer.java
+    content: "package example;\npublic class Sanitizer {\n  public String clean(String s) {\n    return s.replace(\"<\", \"\
+      &lt;\");\n  }\n\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce lower-bound bug'
-  role: origin_bug_introducing
+  message: 'c1: introduce bug in original sanitizer'
+  role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: boolean aboveMin = value >= min;
-    new: boolean aboveMin = value > min;
+    path: src/main/java/example/Sanitizer.java
+    old: return s.replace("<", "&lt;");
+    new: return s;
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: introduce upper-bound bug'
-  role: origin_bug_introducing
+  message: 'c2: copy sanitizer into admin module'
+  role: other
   operations:
+  - type: copy_file
+    from: src/main/java/example/Sanitizer.java
+    to: src/main/java/example/AdminSanitizer.java
   - type: replace
-    path: src/main/java/example/Range.java
-    old: boolean belowMax = value <= max;
-    new: boolean belowMax = value < max;
+    path: src/main/java/example/AdminSanitizer.java
+    old: public class Sanitizer
+    new: public class AdminSanitizer
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'c3: fix both boundary bugs'
-  role: prior_fix
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
-    new: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
-- id: c4
-  branch: main
-  parents:
-  - c3
-  message: 'c4: partially revert fix for upper boundary only'
-  role: bug_introducing
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: boolean belowMax = value <= max;
-    new: boolean belowMax = value < max;
-  reverts: part_of_c3
-- id: c5
-  branch: main
-  parents:
-  - c4
-  message: 'c5: fix reintroduced upper-bound bug'
+  message: 'c3: fix copied sanitizer only'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: boolean belowMax = value < max;
-    new: boolean belowMax = value <= max;
+    path: src/main/java/example/AdminSanitizer.java
+    old: return s;
+    new: return s.replace("<", "&lt;");
 bugs:
 - id: B001
-  title: Upper-bound fault reintroduced after multiple-BIC fix
+  title: Synthetic graph scenario bug
   bug_introducing_commits:
-  - commit: c4
+  - commit: c1
     role: direct
-  - commit: c2
-    role: origin
   bug_fixing_commits:
-  - commit: c5
+  - commit: c3
     role: complete_fix
   faults:
   - id: F001
-    commit: c4
-    file: src/main/java/example/Range.java
-    statement: boolean belowMax = value < max;
-    change_type: partial_revert_upper_boundary
+    commit: c1
+    file: src/main/java/example/Sanitizer.java
+    statement: return s;
+    change_type: line_modification
   fixes:
   - id: X001
-    commit: c5
-    file: src/main/java/example/Range.java
-    statement: boolean belowMax = value <= max;
+    commit: c3
+    file: src/main/java/example/AdminSanitizer.java
+    statement: return s.replace("<", "&lt;");
     fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - c4
-    related_but_not_correct:
     - c1
-    - c2
-    - c3
-    notes: The final BFC targets only the fault reintroduced by c4; original BICs are related history.
 scenario_design:
-  purpose: Evaluate multiple original BICs when a later partial revert reintroduces only one of them.
-  key_property: The direct BIC for the final fix is the partial revert, not the older original BIC set.
-  difference_from_existing_revert_scenarios: This scenario isolates a double-revert or revert-derived complication beyond
-    the existing partial revert and reintroduction scenarios.
+  purpose: Evaluate clone origin versus copied direct bic and whether SZZ identifies the expected bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: clone, copy_file, origin_bic_policy; operations: copy_file,
+    replace, write_file.'
   evaluation_points:
-  - Whether SZZ reports c4.
-  - Whether SZZ avoids reporting both old BICs as exact direct answers.
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- This scenario models revert-related development history for SZZ evaluation.
-- The direct BIC is the commit that reintroduces the bug in the history observed from the BFC.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

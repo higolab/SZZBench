@@ -1,78 +1,89 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0010
-  title: File move between BIC and BFC
-  slug: file-move-between-bic-and-bfc
-  description: Evaluates file move between bic and bfc and checks whether SZZ identifies the expected bug-introducing commit
-    set.
+  title: Extract class after BIC
+  slug: extract-class-after-bic
+  description: A bug is introduced in a class that mixes range validation and reporting responsibilities. After the BIC, a
+    new RangeValidator class is extracted and the buggy validation logic is moved there. The BFC then fixes the bug in the
+    extracted class.
   category: Intermediate-history scenarios
   category_code: C
   factors:
-  - rename_file
-  - move_file
+  - refactoring
+  - extract_class
+  - move_entity
+  - post_bic_refactoring
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0010-file-move-between-bic-and-bfc
+  name: SZZG-0010-extract-class-after-bic
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
+  history_summary: 'c0: create RangeService with validation and reporting responsibilities
 
-    c1: introduce bug (replace src/main/java/example/Range.java)
+    c1: introduce boundary bug in RangeService.contains
 
-    c2: apply intermediate change (move_file src/main/java/example/Range.java -> src/main/java/domain/Range.java)
+    c2: extract RangeValidator class after the BIC and move the buggy validation logic there
 
-    c3: fix bug (replace src/main/java/domain/Range.java)'
+    c3: fix the boundary bug in the extracted RangeValidator class'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
+  message: 'c0: create RangeService with validation and reporting'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
+    path: src/main/java/example/RangeService.java
+    content: "package example;\n\npublic class RangeService {\n  public boolean contains(int value, int min, int max) {\n\
+      \    return value >= min && value <= max;\n  }\n\n  public String describe(int min, int max) {\n    return \"range[\"\
+      \ + min + \",\" + max + \"]\";\n  }\n\n  public boolean acceptsAndReport(int value, int min, int max) {\n    return\
+      \ contains(value, min, max);\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
+  message: 'c1: introduce range boundary bug'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
+    path: src/main/java/example/RangeService.java
     old: return value >= min && value <= max;
     new: return value > min && value < max;
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: apply intermediate change (move_file src/main/java/example/Range.java -> src/main/java/domain/Range.java)'
+  message: 'c2: extract RangeValidator class after BIC'
   role: intermediate
   operations:
-  - type: move_file
-    from: src/main/java/example/Range.java
-    to: src/main/java/domain/Range.java
+  - type: write_file
+    path: src/main/java/example/RangeService.java
+    content: "package example;\n\npublic class RangeService {\n  private final RangeValidator validator = new RangeValidator();\n\
+      \n  public String describe(int min, int max) {\n    return \"range[\" + min + \",\" + max + \"]\";\n  }\n\n  public\
+      \ boolean acceptsAndReport(int value, int min, int max) {\n    return validator.contains(value, min, max);\n  }\n}\n"
+  - type: write_file
+    path: src/main/java/example/RangeValidator.java
+    content: "package example;\n\npublic class RangeValidator {\n  public boolean contains(int value, int min, int max) {\n\
+      \    return value > min && value < max;\n  }\n}\n"
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'c3: fix bug (replace src/main/java/domain/Range.java)'
+  message: 'c3: fix boundary bug in extracted validator'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/domain/Range.java
+    path: src/main/java/example/RangeValidator.java
     old: return value > min && value < max;
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Range boundary bug moved to extracted validator class
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -82,29 +93,43 @@ bugs:
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/Range.java
+    file: src/main/java/example/RangeService.java
     statement: return value > min && value < max;
     change_type: line_modification
   fixes:
   - id: X001
     commit: c3
-    file: src/main/java/domain/Range.java
+    file: src/main/java/example/RangeValidator.java
     statement: return value >= min && value <= max;
-    fix_type: line_modification
+    fix_type: line_modification_after_extract_class
+  refactorings:
+  - commit: c2
+    type: extract_class
+    from_file: src/main/java/example/RangeService.java
+    to_file: src/main/java/example/RangeValidator.java
+    moved_entities:
+    - boolean contains(int value, int min, int max)
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
     - c1
+    notes: The fault is introduced in RangeService.java at c1 and later moved to RangeValidator.java by the extract-class
+      refactoring at c2.
 scenario_design:
-  purpose: Evaluate File move between BIC and BFC and whether SZZ identifies the expected bug-introducing commit set.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: rename_file, move_file; operations: write_file, replace, move_file.'
+  purpose: Evaluate whether SZZ can identify the original BIC when the buggy method is moved into a newly extracted class
+    before the BFC.
+  key_property: 'The BIC and BFC are in different files: the fault is introduced in RangeService.java, then moved to RangeValidator.java,
+    and finally fixed there.'
+  difference_from_SZZG_0011: 'SZZG-0009 represents a method move between classes. This scenario represents extract class:
+    a new class is created after the BIC, responsibilities are split, and the BFC occurs in the extracted class.'
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Whether SZZ follows the bug across extract-class refactoring.
+  - Whether SZZ avoids treating the extraction commit c2 as the BIC.
+  - Whether file movement from RangeService.java to RangeValidator.java is handled correctly.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
+- This revision differentiates SZZG-0010 from SZZG-0009 by creating a new RangeValidator class and moving the buggy validation
+  responsibility there.
+- The BIC remains c1, even though the BFC is in a different file after extraction.
+- The c2 extraction is intentionally represented with write_file operations so that current graph generation can reproduce
+  the refactoring without requiring a dedicated extract_class operation.

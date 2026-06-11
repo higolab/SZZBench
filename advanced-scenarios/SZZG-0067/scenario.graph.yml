@@ -1,101 +1,143 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0067
-  title: Huge file
-  slug: huge-file
-  description: Evaluates huge file and checks whether SZZ identifies the expected bug-introducing commit set.
-  category: Robustness and implementation-quality scenarios
-  category_code: K
+  title: Rebase splits original BIC into multiple commits
+  slug: rebase-splits-original-bic-into-multiple-commits
+  description: One origin BIC is split into two direct BICs during rebase.
+  category: Branch, merge, cherry-pick, and backport scenarios
+  category_code: G
   factors:
-  - write_generated_text_file
+  - branch
+  - rebase
+  - split_bic
+  - multiple_bic
+  - origin_bic
+  - direct_bic
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0067-huge-file
+  name: SZZG-0067-rebase-splits-original-bic-into-multiple-commits
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
+  history_summary: 'c0: create initial correct implementation
 
-    c1: introduce bug (replace src/main/java/example/Range.java)
+    f1: introduce both boundary bugs
 
-    c2: fix bug (write_generated_text_file src/main/java/example/LargeRange.java; replace src/main/java/example/Range.java)'
+    r1: rebase lower-bound part
+
+    r2: rebase upper-bound part
+
+    c3: fix both boundary bugs'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
+  message: 'c0: create initial correct implementation'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
       \ value >= min && value <= max;\n  }\n}\n"
-- id: c1
-  branch: main
+- id: f1
+  branch: feature
   parents:
   - c0
-  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
-  role: bug_introducing
+  message: 'f1: introduce both boundary bugs'
+  role: origin_bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
     new: return value > min && value < max;
-- id: c2
+- id: r1
   branch: main
   parents:
-  - c1
-  message: 'c2: fix bug (write_generated_text_file src/main/java/example/LargeRange.java; replace src/main/java/example/Range.java)'
+  - c0
+  message: 'r1: rebase lower-bound part'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value <= max;
+  rebase_of: f1
+  rebase_split_part: lower_bound
+- id: r2
+  branch: main
+  parents:
+  - r1
+  message: 'r2: rebase upper-bound part'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min && value <= max;
+    new: return value > min && value < max;
+  rebase_of: f1
+  rebase_split_part: upper_bound
+- id: c3
+  branch: main
+  parents:
+  - r2
+  message: 'c3: fix both boundary bugs'
   role: bug_fixing
   operations:
-  - type: write_generated_text_file
-    path: src/main/java/example/LargeRange.java
-    lines: 10000
-    template: public int value_${line} = ${line};
   - type: replace
     path: src/main/java/example/Range.java
     old: return value > min && value < max;
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Bug split across two rebased commits
   bug_introducing_commits:
-  - commit: c1
+  - commit: r1
     role: direct
+  - commit: r2
+    role: direct
+  - commit: f1
+    role: origin
   bug_fixing_commits:
-  - commit: c2
+  - commit: c3
     role: complete_fix
   faults:
   - id: F001
-    commit: c1
+    commit: r2
     file: src/main/java/example/Range.java
     statement: return value > min && value < max;
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c2
+    commit: c3
     file: src/main/java/example/Range.java
     statement: return value >= min && value <= max;
     fix_type: line_modification
+  origin_faults:
+  - id: OF001
+    commit: f1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: origin_line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - c1
+    - r1
+    - r2
+    related_but_not_correct:
+    - f1
+    notes: The direct BIC set is r1 and r2.
 scenario_design:
-  purpose: Evaluate Huge file and whether SZZ identifies the expected bug-introducing commit set.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: write_generated_text_file; operations: write_file, replace,
-    write_generated_text_file.'
+  purpose: Evaluate one-origin-to-multiple-direct BIC mapping after rebase.
+  key_property: f1 is split into r1 and r2.
+  difference_from_SZZG_0073: SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
+    adds a distinct rebase-related complication.
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Return r1 and r2.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
+- This scenario models a rebase-related development history for SZZ evaluation.
+- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

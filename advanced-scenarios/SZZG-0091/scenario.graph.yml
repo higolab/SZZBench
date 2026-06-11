@@ -1,22 +1,21 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0091
-  title: Rebased BIC fixed by multiple BFCs
-  slug: rebased-bic-fixed-by-multiple-bfcs
-  description: A rebased BIC is repaired by a partial fix followed by a complete fix.
-  category: Branch, merge, cherry-pick, and backport scenarios
+  title: Revert of revert with conflict resolution
+  slug: revert-of-revert-with-conflict-resolution
+  description: A revert-of-revert fixes a reintroduced bug while resolving conflicts caused by intervening changes.
+  category: Revert and reintroduction scenarios
   category_code: G
   factors:
-  - branch
-  - rebase
-  - rebased_bic
-  - multiple_bfc
-  - partial_fix
-  - complete_fix
+  - revert
+  - revert_of_revert
+  - conflict_resolution
+  - intermediate_change
+  - re_bic
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0091-rebased-bic-fixed-by-multiple-bfcs
+  name: SZZG-0091-revert-of-revert-with-conflict-resolution
   default_branch: main
   language: java
   build_system: none
@@ -25,13 +24,15 @@ graph:
   model: commit_dag
   history_summary: 'c0: create initial correct implementation
 
-    f1: introduce both boundary bugs
+    c1: introduce boundary bug
 
-    r1: rebase feature BIC onto main
+    c2: fix boundary bug
 
-    c3: partially fix lower boundary
+    c3: revert c2 and reintroduce boundary bug
 
-    c4: complete boundary fix'
+    c4: add description before resolving revert conflict
+
+    c5: revert c3 with conflict resolution and restore boundary fix'
 commits:
 - id: c0
   branch: main
@@ -41,122 +42,120 @@ commits:
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: |
-      package example;
-
-      public class Range {
-        public boolean contains(int value, int min, int max) {
-          boolean aboveMin = value >= min;
-          boolean belowMax = value <= max;
-          return aboveMin && belowMax;
-        }
-      }
-- id: f1
-  branch: feature
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    boolean\
+      \ aboveMin = value >= min;\n    boolean belowMax = value <= max;\n    return aboveMin && belowMax;\n  }\n}\n"
+- id: c1
+  branch: main
   parents:
   - c0
-  message: 'f1: introduce both boundary bugs'
+  message: 'c1: introduce boundary bug'
   role: origin_bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
     new: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
-- id: r1
+- id: c2
   branch: main
   parents:
-  - c0
-  message: 'r1: rebase feature BIC onto main'
+  - c1
+  message: 'c2: fix boundary bug'
+  role: prior_fix
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
+    new: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'c3: revert c2 and reintroduce boundary bug'
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
     new: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
-  rebase_of: f1
-- id: c3
-  branch: main
-  parents:
-  - r1
-  message: 'c3: partially fix lower boundary'
-  role: bug_fixing
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: boolean aboveMin = value > min;
-    new: boolean aboveMin = value >= min;
+  reverts: c2
 - id: c4
   branch: main
   parents:
   - c3
-  message: 'c4: complete boundary fix'
+  message: 'c4: add description before resolving revert conflict'
+  role: intermediate
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    boolean\
+      \ aboveMin = value > min;\n    boolean belowMax = value < max;\n    return aboveMin && belowMax;\n  }\n}\n"
+    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    boolean\
+      \ aboveMin = value > min;\n    boolean belowMax = value < max;\n    return aboveMin && belowMax;\n  }\n\n  public String\
+      \ description() {\n    return \"exclusive range after revert\";\n  }\n}\n"
+- id: c5
+  branch: main
+  parents:
+  - c4
+  message: 'c5: revert c3 with conflict resolution and restore boundary fix'
   role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
-    old: boolean belowMax = value < max;
-    new: boolean belowMax = value <= max;
+    old: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
+    new: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
+  reverts: c3
+  revert_conflict_resolution: true
 bugs:
 - id: B001
-  title: Rebased bug fixed progressively
+  title: Boundary bug fixed by conflict-resolved revert of revert
   bug_introducing_commits:
-  - commit: r1
+  - commit: c3
     role: direct
-  - commit: f1
+  - commit: c1
     role: origin
   bug_fixing_commits:
-  - commit: c3
-    role: partial_fix
-  - commit: c4
+  - commit: c5
     role: complete_fix
   faults:
   - id: F001
-    commit: r1
-    file: src/main/java/example/Range.java
-    statement: boolean belowMax = value < max;
-    change_type: upper_boundary_line_modification
-  - id: F002
-    commit: r1
-    file: src/main/java/example/Range.java
-    statement: boolean aboveMin = value > min;
-    change_type: lower_boundary_line_modification
-  fixes:
-  - id: X001
     commit: c3
     file: src/main/java/example/Range.java
-    statement: boolean aboveMin = value >= min;
-    fix_type: partial_line_modification
-  - id: X002
-    commit: c4
-    file: src/main/java/example/Range.java
-    statement: boolean belowMax = value <= max;
-    fix_type: complete_line_modification
-  origin_faults:
-  - id: OF001
-    commit: f1
-    file: src/main/java/example/Range.java
     statement: boolean belowMax = value < max;
-    change_type: origin_upper_boundary_line_modification
-  - id: OF002
-    commit: f1
+    change_type: reintroduced_upper_boundary
+  - id: F002
+    commit: c3
     file: src/main/java/example/Range.java
     statement: boolean aboveMin = value > min;
-    change_type: origin_lower_boundary_line_modification
+    change_type: reintroduced_lower_boundary
+  fixes:
+  - id: X001
+    commit: c5
+    file: src/main/java/example/Range.java
+    statement: boolean belowMax = value <= max;
+    fix_type: conflict_resolved_revert_fix
+  - id: X002
+    commit: c5
+    file: src/main/java/example/Range.java
+    statement: boolean aboveMin = value >= min;
+    fix_type: conflict_resolved_revert_fix
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - r1
+    - c3
     related_but_not_correct:
-    - f1
+    - c1
+    - c2
+    - c4
+    notes: The direct BIC is c3 even though the BFC c5 is a conflict-resolved revert-of-revert.
 scenario_design:
-  purpose: Evaluate progressive repair of a rebased BIC.
-  key_property: The rebased BIC introduces separate lower-bound and upper-bound faults. The partial fix repairs only the lower
-    bound, leaving the upper-bound fault present until the complete fix.
-  difference_from_SZZG_0073: SZZG-0073 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
-    adds a distinct rebase-related complication.
+  purpose: Evaluate a revert-of-revert BFC that includes conflict resolution after intervening code changes.
+  key_property: The BFC restores the earlier fix while preserving unrelated intervening changes.
+  difference_from_existing_revert_scenarios: This scenario isolates a double-revert or revert-derived complication beyond
+    the existing partial revert and reintroduction scenarios.
   evaluation_points:
-  - Return r1 from final fix.
+  - Whether SZZ reports c3.
+  - Whether the intermediate c4 is not selected.
 notes:
-- This scenario models a rebase-related development history for SZZ evaluation.
-- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.
+- This scenario models revert-related development history for SZZ evaluation.
+- The direct BIC is the commit that reintroduces the bug in the history observed from the BFC.

@@ -1,20 +1,20 @@
-# SZZG-0115: Semantic-preserving rewrite between BIC and BFC
+# SZZG-0115: Cherry-picked BIC appears as duplicate commits on two branches
 
 ## Source
 
-- Category: Intermediate-history scenarios
+- Category: Branch and merge scenarios
 
 ## Purpose
 
-Evaluate semantic-preserving rewrite between bic and bfc and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate cherry-picked bic appears as duplicate commits on two branches and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: c0: create age gate
-c1: c1: introduce boundary bug
-c2: c2: rewrite condition into explicit if statement
-c3: c3: fix adult boundary after rewrite
+c0: c0: create status mapper
+c1: c1: introduce wrong error status on release branch
+c2: c2: cherry-pick wrong error status onto main
+c3: c3: fix wrong error status on main
 ```
 
 ## Why this needs `scenario.graph.yml`
@@ -23,14 +23,14 @@ This history requires graph-aware scenario semantics that are difficult to expre
 
 ## Required graph-schema features
 
-- Factors: intermediate_rewrite, formatting, line_history_break
+- Factors: cherry_pick, duplicate_patch, non_linear_history
 - Operation types: replace, write_file
 - Expected SZZ policy is defined in `expected_szz`.
 
 ## Expected BICs
 
 ```text
-c1
+c2
 ```
 
 ## Evaluation points

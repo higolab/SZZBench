@@ -1,4 +1,4 @@
-# SZZG-0009: File rename between BIC and BFC
+# SZZG-0009: Method move between classes
 
 ## Source
 
@@ -6,14 +6,14 @@
 
 ## Purpose
 
-Evaluate File rename between BIC and BFC and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate Method move between classes and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: create initial state (write_file src/main/java/example/OldRange.java)
-c1: introduce bug (replace src/main/java/example/OldRange.java)
-c2: apply intermediate change (rename_file src/main/java/example/OldRange.java -> src/main/java/example/Range.java)
+c0: create initial state (write_file src/main/java/example/Range.java)
+c1: introduce bug (replace src/main/java/example/Range.java)
+c2: apply intermediate change (move_entity)
 c3: fix bug (replace src/main/java/example/Range.java)
 ```
 
@@ -23,8 +23,8 @@ This history requires graph-aware scenario semantics that are difficult to expre
 
 ## Required graph-schema features
 
-- Factors: rename_file
-- Operation types: write_file, replace, rename_file
+- Factors: move_entity
+- Operation types: write_file, replace, move_entity
 - Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points

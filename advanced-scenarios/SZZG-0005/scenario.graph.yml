@@ -111,4 +111,4 @@ notes:
 - This scenario intentionally makes c3 both a merge commit and the bug-fixing commit.
 - If generate-graph cannot apply operations on merge commits, graph_generator.py must be updated to support merge commits
   with operations.
-- This revision differentiates SZZG-0005 from SZZG-0030, where the BFC should be a normal main-branch commit after a merge.
+- This revision differentiates SZZG-0005 from SZZG-0026, where the BFC should be a normal main-branch commit after a merge.

@@ -1,151 +1,116 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0017
-  title: One BFC fixes multiple independent bugs
-  slug: 1-bfc-bug
-  description: Two independent bugs are introduced in different files and different functional areas. One later BFC fixes
-    both bugs in the same commit.
-  category: Multiple BIC and BFC scenarios
-  category_code: D
+  title: Buggy code copied while original is fixed later
+  slug: buggy-code-copied-original-later-fixed
+  description: Evaluates a copied buggy implementation where the original file is fixed before the copied file, and the
+    copy commit remains the direct BIC for the copied file.
+  category: Copy, clone, and propagation scenarios
+  category_code: E
   factors:
-  - multiple_bug
-  - single_bfc
-  - independent_faults
-  - different_files
+  - copy_file
+  - faults
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0017-1-bfc-bug
+  name: SZZG-0017-buggy-code-copied-original-later-fixed
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create correct Range and DiscountCalculator implementations
+  history_summary: 'c0: create initial state (write_file src/main/java/example/A.java)
 
-    c1: introduce a range boundary bug in Range.java
+    c1: copy buggy code to B.java (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)
 
-    c2: introduce an independent discount calculation bug in DiscountCalculator.java
+    c2: fix original bug in A.java (replace src/main/java/example/A.java)
 
-    c3: one BFC fixes both independent bugs'
+    c3: fix copied bug in B.java (replace src/main/java/example/B.java)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create correct range and discount implementations'
+  message: 'c0: create initial state (write_file src/main/java/example/A.java)'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
-  - type: write_file
-    path: src/main/java/example/DiscountCalculator.java
-    content: "package example;\n\npublic class DiscountCalculator {\n  public int applyDiscount(int price, int discount) {\n\
-      \    return price - discount;\n  }\n}\n"
+    path: src/main/java/example/A.java
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value > min && value < max;\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce range boundary bug'
+  message: 'c1: copy buggy code to B.java (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)'
   role: bug_introducing
   operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
+  - type: copy_file
+    from: src/main/java/example/A.java
+    to: src/main/java/example/B.java
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: introduce discount calculation bug'
-  role: bug_introducing
+  message: 'c2: fix original bug in A.java (replace src/main/java/example/A.java)'
+  role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/DiscountCalculator.java
-    old: return price - discount;
-    new: return price + discount;
+    path: src/main/java/example/A.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'c3: fix range and discount bugs together'
+  message: 'c3: fix copied bug in B.java (replace src/main/java/example/B.java)'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
+    path: src/main/java/example/B.java
     old: return value > min && value < max;
     new: return value >= min && value <= max;
-  - type: replace
-    path: src/main/java/example/DiscountCalculator.java
-    old: return price + discount;
-    new: return price - discount;
 bugs:
 - id: B001
-  title: Range boundary bug fixed in shared BFC
+  title: Copied boundary bug in B.java
   bug_introducing_commits:
   - commit: c1
     role: direct
+    description: Direct BIC for B.java because this commit copies the faulty logic into the copied file.
+  - commit: c0
+    role: origin
+    description: Origin context where the faulty logic already existed in A.java.
   bug_fixing_commits:
   - commit: c3
-    role: shared_bfc
+    role: complete_fix
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/Range.java
+    file: src/main/java/example/B.java
     statement: return value > min && value < max;
-    change_type: line_modification
+    change_type: copy_propagated_line_modification
   fixes:
   - id: X001
     commit: c3
-    file: src/main/java/example/Range.java
+    file: src/main/java/example/B.java
     statement: return value >= min && value <= max;
-    fix_type: line_modification
-- id: B002
-  title: Discount calculation bug fixed in shared BFC
-  bug_introducing_commits:
-  - commit: c2
-    role: direct
-  bug_fixing_commits:
-  - commit: c3
-    role: shared_bfc
-  faults:
-  - id: F002
-    commit: c2
-    file: src/main/java/example/DiscountCalculator.java
-    statement: return price + discount;
-    change_type: line_modification
-  fixes:
-  - id: X002
-    commit: c3
-    file: src/main/java/example/DiscountCalculator.java
-    statement: return price - discount;
     fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
     - c1
-    - c2
-    notes: The shared BFC c3 fixes two independent bugs, so both BICs are expected at commit level.
-  bug_level:
-    B001:
-      required:
-      - c1
-    B002:
-      required:
-      - c2
 scenario_design:
-  purpose: Evaluate a BFC that fixes multiple independent bugs in one commit.
-  key_property: 'The two bugs are in different files and different functional areas: range checking and discount calculation.'
-  difference_from_SZZ_0166: SZZ-0166 is one composite bug with multiple BICs. SZZG-0017 is two independent bugs with a shared
-    BFC.
+  purpose: Evaluate a copy-propagated bug where c1 remains the direct BIC for B.java even though A.java is fixed first.
+  key_property: Commit c2 fixes the original A.java instance only. For the later B.java fix in c3, the expected direct BIC
+    is still c1, the commit that copied the faulty logic into B.java.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: copy_file, faults; operations: write_file, copy_file, replace.'
   evaluation_points:
-  - Whether SZZ can return both BICs for a shared BFC.
-  - Whether bug-level evaluation can associate c1 with B001 and c2 with B002.
-  - Whether independent faults in different files are distinguished from a composite single bug.
+  - Whether SZZ identifies c1 as the direct BIC for the copied B.java instance.
+  - Whether SZZ does not treat the later A.java fix c2 as the copied instance's BFC.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- This revision changes SZZG-0017 from a same-file composite range scenario to two independent bugs in two files.
-- c3 is a single BFC that fixes both bugs.
-- At commit level, both c1 and c2 are expected BICs.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

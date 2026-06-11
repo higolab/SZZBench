@@ -1,4 +1,4 @@
-# SZZG-0045: BIC separated from BFC by an intermediate work-item commit
+# SZZG-0045: BFC message references the wrong commit
 
 ## Source
 
@@ -6,32 +6,32 @@
 
 ## Purpose
 
-Evaluate whether SZZ identifies the original BIC when a related but non-faulty work-item commit sits immediately between the BIC and BFC.
+Evaluate whether SZZ resists an incorrect BFC-message hint and still identifies the true code-level BIC.
 
 ## Expected history
 
 ```text
-c0: create inventory reservation logic
-c1: introduce exact-stock reservation bug
-c2: add unrelated audit event in the same work item
-c3: fix exact-stock reservation bug
+c0: create currency rounding helper
+c1: introduce truncating cents normalization
+c2: add invoice label helper mentioned by mistake
+c3: fix rounding while incorrectly blaming c2 in the message
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-Work-item membership and related-but-not-correct candidates require metadata beyond the normal linear scenario schema.
+The BFC contains a misleading developer hint that must be represented separately from the code-level fault metadata.
 
 ## Required graph-schema features
 
-- Factors: work_items, intermediate_commit, related_but_not_correct
+- Factors: developer_hints, misleading_commit_message
 - Operation types: write_file, replace
 - Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- Whether SZZ identifies c1 as the BIC.
-- Whether the intermediate audit commit c2 is not mistaken for the BIC.
-- Whether work-item membership is represented without collapsing all commits in the work item into one cause.
+- Whether SZZ identifies c1 as the true rounding BIC.
+- Whether c2 is treated as an incorrect message reference rather than the expected BIC.
+- Whether developer hints are distinguished from trustworthy blame evidence.
 
 ---
 

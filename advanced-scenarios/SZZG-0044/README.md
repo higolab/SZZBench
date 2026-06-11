@@ -1,4 +1,4 @@
-# SZZG-0044: BIC and BFC belong to the same issue commit series
+# SZZG-0044: Only commit message provides the clue
 
 ## Source
 
@@ -6,31 +6,32 @@
 
 ## Purpose
 
-Evaluate whether issue-series context is preserved when the BIC and BFC both reference the same issue.
+Evaluate whether a context-aware SZZ method can use commit-message evidence when the changed code itself contains only a generic boolean gate.
 
 ## Expected history
 
 ```text
-c1: create initial range implementation
-c2: ISSUE-101 implement boundary optimization but introduce bug
-c3: ISSUE-101 fix inclusive boundary regression
+c0: create regional checkout challenge gate
+c1: disable the EU checkout challenge with the only explicit message clue
+c2: change an unrelated Canada rollout gate
+c3: restore the EU checkout challenge
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-Issue membership and linked commits require graph-aware contextual metadata.
+The scenario needs commit-message context because the relevant domain clue is not carried by the edited line alone.
 
 ## Required graph-schema features
 
-- Factors: issues
+- Factors: context, commit_messages
 - Operation types: write_file, replace
 - Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- Whether SZZ identifies c2 as the BIC rather than the initial commit.
-- Whether both the BIC and BFC are represented as part of ISSUE-101.
-- Whether the expected_szz exact-set policy is applied correctly.
+- Whether SZZ identifies c1 as the BIC using the PAY-314 EU clue in the commit message.
+- Whether the unrelated Canada gate change c2 is not selected just because it is nearby and similar.
+- Whether the BFC can be linked to the correct regional intent without relying only on line text.
 
 ---
 

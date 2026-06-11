@@ -1,4 +1,4 @@
-# SZZG-0013: One BIC fixed by multiple BFCs
+# SZZG-0013: Partial credit when only some BICs are returned
 
 ## Source
 
@@ -6,32 +6,32 @@
 
 ## Purpose
 
-Evaluate One BIC fixed by multiple BFCs and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate scoring behavior when a complete answer contains two BICs but an SZZ implementation returns only one of them.
 
 ## Expected history
 
 ```text
-c0: create initial state (write_file src/main/java/example/Range.java)
-c1: introduce bug (replace src/main/java/example/Range.java; replace src/main/java/example/Range.java)
-c2: fix bug (replace src/main/java/example/Range.java)
-c3: fix bug (replace src/main/java/example/Range.java)
+c0: create checkout policy classes
+c1: introduce loyalty-discount threshold bug
+c2: introduce tax-exemption logic bug
+c3: fix both checkout policy faults
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
+This scenario needs graph-aware expected-SZZ metadata because the oracle allows partial credit for returning only one of the two required BICs.
 
 ## Required graph-schema features
 
-- Factors: bug_fixing_commits
+- Factors: multiple_bic, partial_credit, expected_szz
 - Operation types: write_file, replace
 - Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
-- Whether the expected_szz evaluation policy is applied correctly.
+- Whether SZZ can identify both checkout-policy BICs for one bug.
+- Whether returning only c1 or only c2 receives partial credit rather than full exact-set credit.
+- Whether the BFC that edits two files is evaluated against both required BICs.
 
 ---
 

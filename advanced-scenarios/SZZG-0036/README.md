@@ -1,102 +1,39 @@
-# SZZG-0036: Cherry-pick BFC
+# SZZG-0036: Release-branch-only bug
 
 ## Purpose
 
-This scenario represents a bug-fixing commit that is cherry-picked from `main` to a `release` branch.
-
-The bug is introduced on `main` before the release branch is cut. The release branch is created from the buggy state. The bug is then fixed on `main`, and that BFC is cherry-picked onto `release`.
-
-This distinguishes `SZZG-0036` from `SZZG-0035`.
-
-```text
-SZZG-0035: cherry-pick BIC
-SZZG-0036: cherry-pick BFC
-```
-
-## Commit graph
-
-```text
-main:     c0 ---- c1(BIC) ---- c2(BFC)
-                    \
-release:             r1 ---- r2(BFC, cherry-pick of c2)
-```
+A release branch introduces and fixes a bug that never exists on main.
 
 ## Commit history
 
 ```text
 c0: create initial correct implementation on main
-c1: introduce bug on main before the release branch is cut
-r1: create release branch from the buggy state
-c2: fix bug on main
-r2: cherry-pick the main BFC onto release
+c1: main continues correct development
+c2: release branch introduces release-only bug
+c3: main adds unrelated correct change
+c4: release branch fixes release-only bug
 ```
 
 ## Commit table
 
 | Commit | Branch | Parents | Role | Description |
 |---|---|---|---|---|
-| `c0` | `main` | none | initial | Creates the correct range check. |
-| `c1` | `main` | `c0` | bug_introducing | Introduces the range boundary bug. |
-| `r1` | `release` | `c1` | release_branch_point | Creates the release branch from the buggy state. |
-| `c2` | `main` | `c1` | bug_fixing | Fixes the bug on main. |
-| `r2` | `release` | `r1` | bug_fixing | Cherry-picks the main-line fix `c2` onto release. |
+| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
+| `c1` | `main` | c0 | `intermediate` | c1: add main-only version note |
+| `c2` | `release` | c0 | `bug_introducing` | c2: introduce release-only range boundary bug |
+| `c3` | `main` | c1 | `intermediate` | c3: add unrelated main documentation |
+| `c4` | `release` | c2 | `bug_fixing` | c4: fix release-only range boundary bug |
 
-## Code states
-
-Correct range check in `c0`:
-
-```java
-return value >= min && value <= max;
-```
-
-Bug introduced in `c1`:
-
-```java
-return value > min && value < max;
-```
-
-Main-line fix in `c2`:
-
-```java
-return value >= min && value <= max;
-```
-
-Release fix in `r2`:
+## Expected SZZ result
 
 ```text
-r2 cherry-picks the fixing patch from c2.
+Expected BIC: c2
 ```
 
-## Oracle
+## Scenario purpose
 
-Expected BIC:
+Evaluate whether SZZ can handle a bug that exists only on a release branch and not on main.
 
-```text
-c1
-```
+## Notes
 
-Bug-fixing commits:
-
-```text
-c2: main-line fix
-r2: release-branch cherry-picked fix
-```
-
-## Evaluation purpose
-
-This scenario checks whether SZZ can handle a BFC that is cherry-picked onto another branch.
-
-When SZZ starts from the release-branch BFC `r2`, the expected BIC is still `c1`. A tool should not report `c2` as the BIC merely because `r2` is derived from `c2`.
-
-## Notes for generator / verifier
-
-`r2` uses:
-
-```yaml
-cherry_pick_of: c2
-operations:
-  - type: apply_patch_from
-    commit: c2
-```
-
-If the current verifier has limited support for `apply_patch_from`, `r2` can be rewritten as an explicit `replace` operation equivalent to the patch in `c2`.
+- This scenario should not be collapsed into feature-to-main merge scenarios.

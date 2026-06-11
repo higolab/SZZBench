@@ -1,47 +1,39 @@
-# SZZG-0027: Clone removal as fix
-
-## Source
-
-- Category: Copy, clone, and propagation scenarios
+# SZZG-0027: BIC before merge, BFC after merge
 
 ## Purpose
 
-Evaluate Clone removal as fix and whether SZZ identifies the expected bug-introducing commit set.
+A bug is introduced on main before a feature branch is merged, and the bug is fixed on main after the merge.
 
-## Expected history
-
-```text
-c0: create initial state (write_file src/main/java/example/A.java)
-c1: introduce bug (write_file src/main/java/example/B.java)
-c2: fix bug (delete_file src/main/java/example/B.java; write_file docs/clone-removal.md)
-```
-
-## Why this needs `scenario.graph.yml`
-
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
-
-## Required graph-schema features
-
-- Factors: clone_relationships
-- Operation types: write_file, delete_file
-- Expected SZZ policy is defined in expected_szz.
-
-## Evaluation points
-
-- Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
-- Whether the expected_szz evaluation policy is applied correctly.
-
----
-
-## Draft status
-
-This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
-
-## Files
+## Commit history
 
 ```text
-SZZG-0027/
-|-- scenario.graph.yml
-`-- README.md
+c0: create initial correct implementation on main
+c1: introduce bug on main before merge
+c2: perform unrelated feature branch work
+c3: merge feature branch into main
+c4: fix the pre-merge bug on main after merge
 ```
+
+## Commit table
+
+| Commit | Branch | Parents | Role | Description |
+|---|---|---|---|---|
+| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
+| `c1` | `main` | c0 | `bug_introducing` | c1: introduce range boundary bug on main before merge |
+| `c2` | `feature` | c0 | `intermediate` | c2: add unrelated feature helper |
+| `c3` | `main` | c1, c2 | `merge` | c3: merge feature branch after bug introduction |
+| `c4` | `main` | c3 | `bug_fixing` | c4: fix pre-merge range boundary bug |
+
+## Expected SZZ result
+
+```text
+Expected BIC: c1
+```
+
+## Scenario purpose
+
+Evaluate a BIC that exists before a merge and a BFC that appears after that merge.
+
+## Notes
+
+- This scenario separates pre-merge main-line bug introduction from feature-branch bug introduction.

@@ -1,17 +1,17 @@
-# SZZG-0085: Release branch change rebased onto main
+# SZZG-0085: Rebase with formatting rewrite noise
 
 ## Purpose
 
-Evaluate rebase from release branch to main.
+Evaluate formatting rewrite noise after rebase.
 
 ## Commit history
 
 ```text
 c0: c0: create initial correct implementation
-rel1: rel1: introduce release-specific range bug
-m1: m1: continue main development
-r1: r1: rebase release change onto main
-c2: c2: fix release-origin bug on main
+f1: f1: introduce range bug
+r1: r1: rebase bug onto main
+r2: r2: formatting rewrite during rebase cleanup
+c3: c3: fix bug after formatting rewrite
 ```
 
 ## Commit table
@@ -19,29 +19,30 @@ c2: c2: fix release-origin bug on main
 | Commit | Branch | Parents | Role | Description |
 |---|---|---|---|---|
 | `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `rel1` | `release` | c0 | `origin_bug_introducing` | rel1: introduce release-specific range bug |
-| `m1` | `main` | c0 | `intermediate` | m1: continue main development |
-| `r1` | `main` | m1 | `bug_introducing` | r1: rebase release change onto main |
-| `c2` | `main` | r1 | `bug_fixing` | c2: fix release-origin bug on main |
+| `f1` | `feature` | c0 | `origin_bug_introducing` | f1: introduce range bug |
+| `r1` | `main` | c0 | `bug_introducing` | r1: rebase bug onto main |
+| `r2` | `main` | r1 | `formatting` | r2: formatting rewrite during rebase cleanup |
+| `c3` | `main` | r2 | `bug_fixing` | c3: fix bug after formatting rewrite |
 
 ## Expected SZZ result
 
 ```text
 Expected BIC(s): r1
-Related but not correct: rel1
+Related but not correct: f1, r2
 ```
 
 ## Key property
 
-rel1 is origin, r1 is direct on main.
+r2 is formatting noise; r1 is the true BIC.
 
-## Difference from SZZG-0073
+## Difference from SZZG-0061
 
-SZZG-0073 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
+SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
 
 ## Evaluation points
 
 - Report r1.
+- Avoid r2.
 
 ## Notes
 

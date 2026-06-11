@@ -1,4 +1,4 @@
-# SZZG-0019: Buggy code copied to a new file
+# SZZG-0019: Clone diverges before fix
 
 ## Source
 
@@ -6,16 +6,15 @@
 
 ## Purpose
 
-Evaluate a copy-propagated bug where `c1` copies already faulty logic from `A.java` into `B.java`.
-
-For the later fix in `B.java`, the expected direct BIC is the copy commit `c1`. The initial commit `c0` is origin context, not the required direct answer.
+Evaluate Clone diverges before fix and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: create initial state (write_file src/main/java/example/A.java)
-c1: copy buggy code to B.java (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)
-c2: fix bug (replace src/main/java/example/B.java)
+c0: introduce origin bug (write_file src/main/java/example/A.java)
+c1: introduce bug (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)
+c2: diverge clone (replace src/main/java/example/B.java; replace src/main/java/example/B.java)
+c3: fix bug (replace src/main/java/example/B.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
@@ -24,14 +23,14 @@ This history requires graph-aware scenario semantics that are difficult to expre
 
 ## Required graph-schema features
 
-- Factors: copy_file
+- Factors: clone_relationships
 - Operation types: write_file, copy_file, replace
 - Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- Whether SZZ identifies `c1` as the direct BIC for `B.java`.
-- Whether SZZ keeps `c0` as origin context without replacing the direct copy commit.
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
 - Whether the expected_szz evaluation policy is applied correctly.
 
 ---

@@ -1,120 +1,141 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0022
-  title: Clone diverges before fix
-  slug: clone
-  description: Evaluates clone diverges before fix and checks whether SZZ identifies the expected bug-introducing commit set.
+  title: Explicit evaluation of direct BIC vs origin BIC
+  slug: direct-bic-vs-origin-bic
+  description: Evaluates a copied buggy implementation where the direct BIC is the copy commit and the origin BIC is the earlier
+    source commit.
   category: Copy, clone, and propagation scenarios
   category_code: E
   factors:
-  - clone_relationships
+  - copy_file
+  - expected_szz
+  - direct_bic
+  - origin_bic
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0022-clone
+  name: SZZG-0022-direct-bic-vs-origin-bic
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: introduce origin bug (write_file src/main/java/example/A.java)
+  history_summary: 'c0: create correct original range implementation
 
-    c1: introduce bug (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)
+    c1: introduce bug in original Range
 
-    c2: diverge clone (replace src/main/java/example/B.java; replace src/main/java/example/B.java)
+    c2: copy buggy Range into CopiedRange
 
-    c3: fix bug (replace src/main/java/example/B.java)'
+    c3: fix CopiedRange only'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: introduce origin bug (write_file src/main/java/example/A.java)'
-  role: origin_bug_introducing
+  message: 'c0: create correct original range implementation'
+  role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/A.java
-    content: "package example;\n\npublic class A {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n}\n"
+    path: src/main/java/example/Range.java
+    content: |
+      package example;
+      public class Range {
+        public boolean contains(int value, int min, int max) {
+          return value >= min && value <= max;
+        }
+      }
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce bug (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)'
+  message: 'c1: introduce bug in original Range'
   role: bug_introducing
   operations:
-  - type: copy_file
-    from: src/main/java/example/A.java
-    to: src/main/java/example/B.java
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: diverge clone (replace src/main/java/example/B.java; replace src/main/java/example/B.java)'
-  role: clone_divergence
+  message: 'c2: copy buggy Range into CopiedRange'
+  role: bug_introducing
   operations:
+  - type: copy_file
+    from: src/main/java/example/Range.java
+    to: src/main/java/example/CopiedRange.java
   - type: replace
-    path: src/main/java/example/B.java
-    old: public class A
-    new: public class B
-  - type: replace
-    path: src/main/java/example/B.java
-    old: public boolean contains
-    new: public boolean containsCopied
+    path: src/main/java/example/CopiedRange.java
+    old: public class Range
+    new: public class CopiedRange
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'c3: fix bug (replace src/main/java/example/B.java)'
+  message: 'c3: fix copied range implementation'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/B.java
+    path: src/main/java/example/CopiedRange.java
     old: return value > min && value < max;
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Diverged clone bug
+  title: Copied range bug with direct and origin BICs
   bug_introducing_commits:
-  - commit: c1
+  - commit: c2
     role: direct
-  - commit: c0
+  - commit: c1
     role: origin
   bug_fixing_commits:
   - commit: c3
     role: complete_fix
   faults:
   - id: F001
-    commit: c1
-    file: src/main/java/example/B.java
+    commit: c2
+    file: src/main/java/example/CopiedRange.java
     statement: return value > min && value < max;
-    role: direct
+    change_type: copy_propagation
   fixes:
   - id: X001
     commit: c3
-    file: src/main/java/example/B.java
+    file: src/main/java/example/CopiedRange.java
     statement: return value >= min && value <= max;
+    fix_type: line_modification
 expected_szz:
   commit_level:
-    evaluation_policy: exact_set
+    evaluation_policy: direct_only
     required:
+    - c2
+    related_origins:
     - c1
-clone_relationships:
-- origin_file: src/main/java/example/A.java
-  copied_file: src/main/java/example/B.java
-  origin_commit: c0
-  copy_commit: c1
-  divergence_commits:
-  - c2
+  evaluation_variants:
+  - name: direct_bic_only
+    commit_level:
+      required:
+      - c2
+  - name: origin_aware
+    commit_level:
+      required:
+      - c2
+      related_origins:
+      - c1
 scenario_design:
-  purpose: Evaluate Clone diverges before fix and whether SZZ identifies the expected bug-introducing commit set.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: clone_relationships; operations: write_file, copy_file, replace.'
+  purpose: Evaluate direct-BIC versus origin-BIC accounting for copied buggy code.
+  current_schema_limitation: Direct and origin BIC roles require graph-aware bug metadata and evaluation policy.
+  required_extensions_from_source: 'This scenario uses factors: copy_file, expected_szz, direct_bic, origin_bic; operations: write_file, replace, copy_file.'
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Whether SZZ identifies c2 as the direct BIC for CopiedRange.
+  - Whether c1 is tracked as the origin BIC without being required under direct-only scoring.
+  - Whether evaluation variants can distinguish direct-only and origin-aware policies.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
+- c1 introduces the bug in the original file.
+- c2 propagates the already-buggy implementation into a new copied file and is the direct BIC for that copy.
+clone_relationships:
+- origin_commit: c1
+  direct_copy_commit: c2
+  from: src/main/java/example/Range.java
+  to: src/main/java/example/CopiedRange.java
+  relationship: copied_buggy_code

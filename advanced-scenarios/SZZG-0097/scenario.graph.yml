@@ -1,142 +1,132 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0097
-  title: Rebase with formatting rewrite noise
-  slug: rebase-with-formatting-rewrite-noise
-  description: A formatting rewrite occurs after a rebased BIC and before the fix.
-  category: Branch, merge, cherry-pick, and backport scenarios
-  category_code: G
+  title: Prerequisite BIC and symptom BIC fixed together
+  slug: multi-bic-prerequisite-symptom
+  description: Evaluates prerequisite bic and symptom bic fixed together and checks whether SZZ identifies the expected bug-introducing
+    commit set.
+  category: Multiple-BIC scenarios
+  category_code: A
   factors:
-  - branch
-  - rebase
-  - formatting_rewrite
-  - formatting
-  - robustness
-  - direct_bic
+  - multiple_bic
+  - causal_chain
+  - single_bfc
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0097-rebase-with-formatting-rewrite-noise
+  name: SZZG-0097-multi-bic-prerequisite-symptom
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial correct implementation
+  history_summary: 'c0: c0: create token verifier
 
-    f1: introduce range bug
+    c1: c1: weaken token trust predicate
 
-    r1: rebase bug onto main
+    c2: c2: weaken access control condition
 
-    r2: line ending rewrite during rebase cleanup
-
-    c3: fix bug after line ending rewrite'
+    c3: c3: fix access control vulnerability'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial correct implementation'
+  message: 'c0: create token verifier'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
-- id: f1
-  branch: feature
-  parents:
-  - c0
-  message: 'f1: introduce range bug'
-  role: origin_bug_introducing
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
-- id: r1
+    path: src/main/java/example/TokenVerifier.java
+    content: "package example;\npublic class TokenVerifier {\n  public boolean isTrusted(String token) {\n    return token\
+      \ != null && token.startsWith(\"T-\");\n  }\n  public boolean canAccess(String token, boolean admin) {\n    return admin\
+      \ && isTrusted(token);\n  }\n\n}\n"
+- id: c1
   branch: main
   parents:
   - c0
-  message: 'r1: rebase bug onto main'
+  message: 'c1: weaken token trust predicate'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
-  rebase_of: f1
-- id: r2
+    path: src/main/java/example/TokenVerifier.java
+    old: return token != null && token.startsWith("T-");
+    new: return token != null;
+- id: c2
   branch: main
   parents:
-  - r1
-  message: 'r2: formatting rewrite during rebase cleanup'
-  role: formatting
+  - c1
+  message: 'c2: weaken access control condition'
+  role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n}\n"
-    new: "package example;\n\npublic class Range {\n  // Rebase cleanup normalized formatting around this method.\n  public\
-      \ boolean contains(int value, int min, int max) {\n    return value > min && value < max;\n  }\n}\n"
-  rebase_cleanup: formatting_rewrite
+    path: src/main/java/example/TokenVerifier.java
+    old: return admin && isTrusted(token);
+    new: return admin || isTrusted(token);
 - id: c3
   branch: main
   parents:
-  - r2
-  message: 'c3: fix bug after formatting rewrite'
+  - c2
+  message: 'c3: fix access control vulnerability'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/TokenVerifier.java
+    old: return token != null;
+    new: return token != null && token.startsWith("T-");
+  - type: replace
+    path: src/main/java/example/TokenVerifier.java
+    old: return admin || isTrusted(token);
+    new: return admin && isTrusted(token);
 bugs:
 - id: B001
-  title: Range bug obscured by formatting rewrite after rebase
+  title: Synthetic graph scenario bug
   bug_introducing_commits:
-  - commit: r1
+  - commit: c1
     role: direct
-  - commit: f1
-    role: origin
+  - commit: c2
+    role: direct
   bug_fixing_commits:
   - commit: c3
     role: complete_fix
   faults:
   - id: F001
-    commit: r1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    commit: c1
+    file: src/main/java/example/TokenVerifier.java
+    statement: return token != null;
+    change_type: line_modification
+  - id: F002
+    commit: c2
+    file: src/main/java/example/TokenVerifier.java
+    statement: return admin || isTrusted(token);
     change_type: line_modification
   fixes:
   - id: X001
     commit: c3
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
+    file: src/main/java/example/TokenVerifier.java
+    statement: return token != null && token.startsWith("T-");
     fix_type: line_modification
-  origin_faults:
-  - id: OF001
-    commit: f1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
-    change_type: origin_line_modification
+  - id: X002
+    commit: c3
+    file: src/main/java/example/TokenVerifier.java
+    statement: return admin && isTrusted(token);
+    fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - r1
-    related_but_not_correct:
-    - f1
-    - r2
-    notes: r2 is formatting noise and should not be the BIC.
+    - c1
+    - c2
 scenario_design:
-  purpose: Evaluate rebase plus formatting rewrite noise.
-  key_property: The expected BIC is r1, while r2 is a formatting-only cleanup.
-  difference_from_SZZG_0073: SZZG-0073 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
-    adds a distinct rebase-related complication.
+  purpose: Evaluate prerequisite bic and symptom bic fixed together and whether SZZ identifies the expected bug-introducing
+    commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: multiple_bic, causal_chain, single_bfc; operations: replace,
+    write_file.'
   evaluation_points:
-  - Report r1.
-  - Avoid r2.
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- This scenario models a rebase-related development history for SZZ evaluation.
-- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

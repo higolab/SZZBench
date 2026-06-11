@@ -1,141 +1,122 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0098
-  title: Rebase with generated file update
-  slug: rebase-with-generated-file-update
-  description: A generated file is updated during rebase after the source BIC.
-  category: Branch, merge, cherry-pick, and backport scenarios
-  category_code: G
+  title: Multiple BICs where one true BIC is not directly touched by the BFC
+  slug: multi-bic-untouched-root-cause
+  description: Evaluates multiple bics where one true bic is not directly touched by the bfc and checks whether SZZ identifies
+    the expected bug-introducing commit set.
+  category: Multiple-BIC scenarios
+  category_code: A
   factors:
-  - branch
-  - rebase
-  - generated_files
-  - generated_code_noise
-  - direct_bic
+  - multiple_bic
+  - not_directly_touched_by_fix
+  - context_dependent
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0098-rebase-with-generated-file-update
+  name: SZZG-0098-multi-bic-untouched-root-cause
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial correct implementation
+  history_summary: 'c0: c0: create retry policy
 
-    f1: introduce range bug
+    c1: c1: introduce excessive retry limit
 
-    r1: rebase bug onto main
+    c2: c2: introduce retry on client errors
 
-    r2: regenerate derived range metadata during rebase
-
-    c3: fix source range bug'
+    c3: c3: fix retry condition without touching retry limit'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial correct implementation'
+  message: 'c0: create retry policy'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
-- id: f1
-  branch: feature
-  parents:
-  - c0
-  message: 'f1: introduce range bug'
-  role: origin_bug_introducing
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
-- id: r1
+    path: src/main/java/example/RetryPolicy.java
+    content: "package example;\npublic class RetryPolicy {\n  private int maxRetries() {\n    return 3;\n  }\n  public boolean\
+      \ shouldRetry(int attempts, int status) {\n    return status >= 500 && attempts < maxRetries();\n  }\n\n}\n"
+- id: c1
   branch: main
   parents:
   - c0
-  message: 'r1: rebase bug onto main'
+  message: 'c1: introduce excessive retry limit'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
-  rebase_of: f1
-- id: r2
+    path: src/main/java/example/RetryPolicy.java
+    old: return 3;
+    new: return 10;
+- id: c2
   branch: main
   parents:
-  - r1
-  message: 'r2: regenerate derived range metadata during rebase'
-  role: intermediate
+  - c1
+  message: 'c2: introduce retry on client errors'
+  role: bug_introducing
   operations:
-  - type: write_file
-    path: generated/range.properties
-    content: 'minInclusive=false
-
-      maxInclusive=false
-
-      '
-  generated_files: true
+  - type: replace
+    path: src/main/java/example/RetryPolicy.java
+    old: return status >= 500 && attempts < maxRetries();
+    new: return status >= 400 && attempts < maxRetries();
 - id: c3
   branch: main
   parents:
-  - r2
-  message: 'c3: fix source range bug'
+  - c2
+  message: 'c3: fix retry condition without touching retry limit'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/RetryPolicy.java
+    old: return status >= 400 && attempts < maxRetries();
+    new: return status >= 500 && attempts < 3;
 bugs:
 - id: B001
-  title: Source bug with generated file noise after rebase
+  title: Synthetic graph scenario bug
   bug_introducing_commits:
-  - commit: r1
+  - commit: c1
     role: direct
-  - commit: f1
-    role: origin
+  - commit: c2
+    role: direct
   bug_fixing_commits:
   - commit: c3
     role: complete_fix
   faults:
   - id: F001
-    commit: r1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    commit: c1
+    file: src/main/java/example/RetryPolicy.java
+    statement: return 10;
+    change_type: line_modification
+  - id: F002
+    commit: c2
+    file: src/main/java/example/RetryPolicy.java
+    statement: return status >= 400 && attempts < maxRetries();
     change_type: line_modification
   fixes:
   - id: X001
     commit: c3
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
+    file: src/main/java/example/RetryPolicy.java
+    statement: return status >= 500 && attempts < 3;
     fix_type: line_modification
-  origin_faults:
-  - id: OF001
-    commit: f1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
-    change_type: origin_line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - r1
-    related_but_not_correct:
-    - f1
-    - r2
+    - c1
+    - c2
 scenario_design:
-  purpose: Evaluate generated-file noise during rebase.
-  key_property: r2 updates generated metadata only.
-  difference_from_SZZG_0073: SZZG-0073 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
-    adds a distinct rebase-related complication.
+  purpose: Evaluate multiple bics where one true bic is not directly touched by the bfc and whether SZZ identifies the expected
+    bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: multiple_bic, not_directly_touched_by_fix, context_dependent;
+    operations: replace, write_file.'
   evaluation_points:
-  - Report r1.
-  - Ignore r2.
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- This scenario models a rebase-related development history for SZZ evaluation.
-- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

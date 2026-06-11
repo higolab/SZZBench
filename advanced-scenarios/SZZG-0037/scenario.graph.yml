@@ -1,22 +1,20 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0037
-  title: Backport fix
-  slug: backport-fix
-  description: A bug is introduced on main before a release branch is cut. Main fixes the bug, continues with unrelated development,
-    and the release branch receives release-specific changes. The main fix is then backported to release.
+  title: Fixed on main but unfixed on release
+  slug: fixed-on-main-unfixed-on-release
+  description: A bug is introduced before a release branch is cut; main fixes the bug, but the release branch continues without
+    the fix.
   category: Branch, merge, cherry-pick, and backport scenarios
   category_code: G
   factors:
-  - branch
-  - backport_of
   - release_branch
-  - release_specific_changes
-  - bug_instances
+  - partial_fix_propagation
+  - unfixed_release
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0037-backport-fix
+  name: SZZG-0037-fixed-on-main-unfixed-on-release
   default_branch: main
   language: java
   build_system: none
@@ -25,17 +23,13 @@ graph:
   model: commit_dag
   history_summary: 'c0: create initial correct implementation on main
 
-    c1: introduce bug on main before release branch is cut
+    c1: introduce bug on main before release branch
 
-    r0: create release branch from the buggy state and add release metadata
+    c2: create release branch from buggy state and add release note
 
-    c2: fix bug on main
+    c3: fix bug on main
 
-    c3: continue main development after the fix
-
-    r1: add release-specific configuration while bug is still present on release
-
-    r2: backport main fix c2 onto release'
+    c4: release branch continues with bug unfixed'
 commits:
 - id: c0
   branch: main
@@ -58,77 +52,50 @@ commits:
     path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
     new: return value > min && value < max;
-- id: r0
+- id: c2
   branch: release
   parents:
   - c1
-  message: 'r0: cut release branch from buggy state'
-  role: release_branch_point
+  message: 'c2: cut release branch from buggy state'
+  role: intermediate
   operations:
   - type: write_file
-    path: release/version.txt
-    content: '1.0.0
+    path: docs/release-note.md
+    content: 'Release branch is cut while the range bug is still present.
 
       '
-- id: c2
-  branch: main
-  parents:
-  - c1
-  message: 'c2: fix range boundary bug on main'
-  role: bug_fixing
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
 - id: c3
   branch: main
   parents:
-  - c2
-  message: 'c3: continue main development after fix'
-  role: intermediate
-  operations:
-  - type: write_file
-    path: docs/main-after-fix.md
-    content: 'Main branch continues after the range bug fix.
-
-      '
-- id: r1
-  branch: release
-  parents:
-  - r0
-  message: 'r1: add release-specific configuration before backport'
-  role: intermediate
-  operations:
-  - type: write_file
-    path: release/config.properties
-    content: 'range.mode=compat
-
-      '
-- id: r2
-  branch: release
-  parents:
-  - r1
-  message: 'r2: backport range boundary fix from main'
+  - c1
+  message: 'c3: fix range boundary bug on main'
   role: bug_fixing
-  backport_of: c2
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value > min && value < max;
     new: return value >= min && value <= max;
+- id: c4
+  branch: release
+  parents:
+  - c2
+  message: 'c4: release branch continues without main fix'
+  role: unfixed_release
+  operations:
+  - type: write_file
+    path: docs/release-followup.md
+    content: 'Release branch follow-up. The code is still unfixed on this branch.
+
+      '
 bugs:
 - id: B001
-  title: Range boundary bug fixed on main and backported to release
+  title: Bug fixed on main but still present on release
   bug_introducing_commits:
   - commit: c1
     role: direct
   bug_fixing_commits:
-  - commit: c2
+  - commit: c3
     role: main_fix
-  - commit: r2
-    role: backport_fix
-    backport_of: c2
   faults:
   - id: F001
     commit: c1
@@ -137,49 +104,29 @@ bugs:
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c2
+    commit: c3
     file: src/main/java/example/Range.java
     statement: return value >= min && value <= max;
-    fix_type: main_line_fix
-  - id: X002
-    commit: r2
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
-    fix_type: backport_fix
+    fix_type: line_modification
   bug_instances:
   - branch: main
     status: fixed
-    fix_commit: c2
+    fix_commit: c3
   - branch: release
-    status: fixed
-    fix_commit: r2
-    backport_of: c2
+    status: unfixed
+    last_commit: c4
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
     - c1
-    notes: Both the main fix c2 and the release backport r2 should trace back to the original BIC c1.
-  branch_level:
-    main:
-      bfc: c2
-      required:
-      - c1
-    release:
-      bfc: r2
-      required:
-      - c1
 scenario_design:
-  purpose: Evaluate whether SZZ can identify the original BIC when a main-line fix is backported to a release branch.
-  key_property: The release branch has release-specific changes before the backport, so the history is not just a linear correct-buggy-fixed
-    sequence.
-  difference_from_SZZG_0028_0029: SZZG-0028 and SZZG-0029 are revert/reintroduction scenarios. SZZG-0037 is a branch scenario
-    where the release fix is a backport of the main-line BFC.
+  purpose: Evaluate whether SZZ can identify the original BIC when a fix exists on main but has not been propagated to a release
+    branch.
+  key_property: The same BIC affects both branches, but only main contains a BFC.
   evaluation_points:
-  - Whether SZZ traces the release backport r2 to c1.
-  - Whether backport metadata is handled without treating c2 as the BIC.
-  - Whether release-specific changes before the backport do not hide the original BIC.
+  - Main fixed
+  - Release unfixed
+  - Bug instance remains active on release.
 notes:
-- This revision adds release-specific changes to avoid collapsing the source history into a simple correct-buggy-fixed sequence.
-- r2 is an explicit backport of c2.
-- The expected BIC remains c1 for both main and release fixes.
+- The release branch intentionally remains buggy at c4.

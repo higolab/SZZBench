@@ -1,50 +1,54 @@
-# SZZG-0097: Rebase with formatting rewrite noise
+# SZZG-0097: Prerequisite BIC and symptom BIC fixed together
+
+## Source
+
+- Category: Multiple-BIC scenarios
 
 ## Purpose
 
-Evaluate formatting rewrite noise after rebase.
+Evaluate prerequisite bic and symptom bic fixed together and whether SZZ identifies the expected bug-introducing commit set.
 
-## Commit history
-
-```text
-c0: c0: create initial correct implementation
-f1: f1: introduce range bug
-r1: r1: rebase bug onto main
-r2: r2: formatting rewrite during rebase cleanup
-c3: c3: fix bug after formatting rewrite
-```
-
-## Commit table
-
-| Commit | Branch | Parents | Role | Description |
-|---|---|---|---|---|
-| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `f1` | `feature` | c0 | `origin_bug_introducing` | f1: introduce range bug |
-| `r1` | `main` | c0 | `bug_introducing` | r1: rebase bug onto main |
-| `r2` | `main` | r1 | `formatting` | r2: formatting rewrite during rebase cleanup |
-| `c3` | `main` | r2 | `bug_fixing` | c3: fix bug after formatting rewrite |
-
-## Expected SZZ result
+## Expected history
 
 ```text
-Expected BIC(s): r1
-Related but not correct: f1, r2
+c0: c0: create token verifier
+c1: c1: weaken token trust predicate
+c2: c2: weaken access control condition
+c3: c3: fix access control vulnerability
 ```
 
-## Key property
+## Why this needs `scenario.graph.yml`
 
-r2 is formatting noise; r1 is the true BIC.
+This history requires graph-aware scenario semantics that are difficult to express with the normal `scenario.yml` schema.
 
-## Difference from SZZG-0073
+## Required graph-schema features
 
-SZZG-0073 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
+- Factors: multiple_bic, causal_chain, single_bfc
+- Operation types: replace, write_file
+- Expected SZZ policy is defined in `expected_szz`.
+
+## Expected BICs
+
+```text
+c1, c2
+```
 
 ## Evaluation points
 
-- Report r1.
-- Avoid r2.
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
-## Notes
+---
 
-- This scenario models a rebase-related development history for SZZ evaluation.
-- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.
+## Draft status
+
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
+
+## Files
+
+```text
+SZZG-0097/
+|-- scenario.graph.yml
+`-- README.md
+```

@@ -1,22 +1,21 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0089
-  title: Interactive rebase squashes BIC and BFC into neutral commit
-  slug: interactive-rebase-squashes-bic-and-bfc-into-neutral-commit
-  description: A transient feature bug is fixed before rebase and does not survive into main.
-  category: Branch, merge, cherry-pick, and backport scenarios
+  title: Revert of revert fixes reintroduced bug
+  slug: revert-of-revert-fixes-reintroduced-bug
+  description: A fix is reverted, reintroducing the bug, and then the revert is reverted to restore the fix.
+  category: Revert and reintroduction scenarios
   category_code: G
   factors:
-  - branch
-  - rebase
-  - interactive_rebase
-  - squash
-  - transient_bug
-  - scope_boundary
+  - revert
+  - revert_of_fix
+  - revert_of_revert
+  - reintroduced_bug
+  - re_bic
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0089-interactive-rebase-squashes-bic-and-bfc-into-neutral-commit
+  name: SZZG-0089-revert-of-revert-fixes-reintroduced-bug
   default_branch: main
   language: java
   build_system: none
@@ -25,11 +24,13 @@ graph:
   model: commit_dag
   history_summary: 'c0: create initial correct implementation
 
-    f1: introduce transient bug on feature
+    c1: introduce boundary bug
 
-    f2: fix transient bug on feature
+    c2: fix boundary bug
 
-    r1: squash transient bug and fix into neutral commit'
+    c3: revert c2 and reintroduce boundary bug
+
+    c4: revert c3 and restore boundary fix'
 commits:
 - id: c0
   branch: main
@@ -39,81 +40,104 @@ commits:
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
-- id: f1
-  branch: feature
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    boolean\
+      \ aboveMin = value >= min;\n    boolean belowMax = value <= max;\n    return aboveMin && belowMax;\n  }\n}\n"
+- id: c1
+  branch: main
   parents:
   - c0
-  message: 'f1: introduce transient bug on feature'
+  message: 'c1: introduce boundary bug'
+  role: origin_bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
+    new: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'c2: fix boundary bug'
+  role: prior_fix
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
+    new: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'c3: revert c2 and reintroduce boundary bug'
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
-- id: f2
-  branch: feature
+    old: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
+    new: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
+  reverts: c2
+- id: c4
+  branch: main
   parents:
-  - f1
-  message: 'f2: fix transient bug on feature'
+  - c3
+  message: 'c4: revert c3 and restore boundary fix'
   role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
-- id: r1
-  branch: main
-  parents:
-  - c0
-  message: 'r1: squash transient bug and fix into neutral commit'
-  role: intermediate
-  operations:
-  - type: write_file
-    path: docs/rebase-note.md
-    content: 'transient bug squashed out
-
-      '
-  rebase_of:
-  - f1
-  - f2
-  interactive_rebase: squash_transient_bug_fix
+    old: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
+    new: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
+  reverts: c3
 bugs:
 - id: B001
-  title: Transient feature bug squashed out before main
+  title: Boundary bug fixed by revert of revert
   bug_introducing_commits:
-  - commit: f1
+  - commit: c3
     role: direct
+  - commit: c1
+    role: origin
   bug_fixing_commits:
-  - commit: f2
+  - commit: c4
     role: complete_fix
   faults:
   - id: F001
-    commit: f1
+    commit: c3
     file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
-    change_type: line_modification
+    statement: boolean belowMax = value < max;
+    change_type: reintroduced_upper_boundary
+  - id: F002
+    commit: c3
+    file: src/main/java/example/Range.java
+    statement: boolean aboveMin = value > min;
+    change_type: reintroduced_lower_boundary
   fixes:
   - id: X001
-    commit: f2
+    commit: c4
     file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
-    fix_type: line_modification
+    statement: boolean belowMax = value <= max;
+    fix_type: revert_of_revert_fix
+  - id: X002
+    commit: c4
+    file: src/main/java/example/Range.java
+    statement: boolean aboveMin = value >= min;
+    fix_type: revert_of_revert_fix
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - f1
-    notes: This records the pre-rebase transient BIC/BFC pair; r1 is not a main-line SZZ target.
+    - c3
+    related_but_not_correct:
+    - c1
+    - c2
+    notes: The BFC c4 is a revert-of-revert; the direct BIC is c3.
 scenario_design:
-  purpose: Clarify a scope boundary for bugs that do not survive into final main history.
-  key_property: The final main history has no main-line BIC for this transient bug.
-  difference_from_SZZG_0073: SZZG-0073 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
-    adds a distinct rebase-related complication.
+  purpose: Evaluate whether SZZ can handle a BFC that is itself a revert-of-revert commit.
+  key_property: The fix in c4 is produced by reverting the reintroducing revert c3.
+  difference_from_existing_revert_scenarios: This scenario isolates a double-revert or revert-derived complication beyond
+    the existing partial revert and reintroduction scenarios.
   evaluation_points:
-  - Record transient pair.
-  - Treat as special scope-boundary case.
+  - Whether SZZ reports c3.
+  - Whether the prior origin c1 and prior fix c2 are not treated as direct BICs.
 notes:
-- This scenario models a rebase-related development history for SZZ evaluation.
-- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.
+- This scenario models revert-related development history for SZZ evaluation.
+- The direct BIC is the commit that reintroduces the bug in the history observed from the BFC.

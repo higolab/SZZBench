@@ -1,81 +1,64 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0112
-  title: Intermediate file move and package rename between BIC and BFC
-  slug: intermediate-file-move-package-rename
-  description: Evaluates intermediate file move and package rename between bic and bfc and checks whether SZZ identifies the
-    expected bug-introducing commit set.
-  category: Refactoring scenarios
+  title: Misleading commit message with code-only BIC evidence
+  slug: misleading-commit-message
+  description: Evaluates misleading commit message with code-only bic evidence and checks whether SZZ identifies the expected
+    bug-introducing commit set.
+  category: Context-dependent scenarios
   category_code: A
   factors:
-  - rename_file
-  - move_file
-  - package_rename
-  - intermediate_refactoring
+  - commit_message
+  - misleading_metadata
+  - code_evidence
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0112-intermediate-file-move-package-rename
+  name: SZZG-0112-misleading-commit-message
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: c0: create legacy parser
+  history_summary: 'c0: c0: create payment guard
 
-    c1: c1: introduce parser trimming bug
+    c1: c1: documentation-only cleanup
 
-    c2: c2: move parser to core package
-
-    c3: c3: fix parser whitespace handling'
+    c2: c2: fix zero-value payment acceptance'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create legacy parser'
+  message: 'c0: create payment guard'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/legacy/Parser.java
-    content: "package example.legacy;\npublic class Parser {\n  public int parseCount(String text) {\n    return Integer.parseInt(text.trim());\n\
-      \  }\n}\n"
+    path: src/main/java/example/PaymentGuard.java
+    content: "package example;\npublic class PaymentGuard {\n  public boolean allow(int cents) {\n    return cents > 0;\n\
+      \  }\n\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce parser trimming bug'
+  message: 'c1: documentation-only cleanup'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/legacy/Parser.java
-    old: return Integer.parseInt(text.trim());
-    new: return Integer.parseInt(text);
+    path: src/main/java/example/PaymentGuard.java
+    old: return cents > 0;
+    new: return cents >= 0;
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: move parser to core package'
-  role: refactoring
-  operations:
-  - type: rename_file
-    from: src/main/java/example/legacy/Parser.java
-    to: src/main/java/example/core/Parser.java
-  - type: replace
-    path: src/main/java/example/core/Parser.java
-    old: package example.legacy;
-    new: package example.core;
-- id: c3
-  branch: main
-  parents:
-  - c2
-  message: 'c3: fix parser whitespace handling'
+  message: 'c2: fix zero-value payment acceptance'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/core/Parser.java
-    old: return Integer.parseInt(text);
-    new: return Integer.parseInt(text.trim());
+    path: src/main/java/example/PaymentGuard.java
+    old: return cents >= 0;
+    new: return cents > 0;
 bugs:
 - id: B001
   title: Synthetic graph scenario bug
@@ -83,19 +66,19 @@ bugs:
   - commit: c1
     role: direct
   bug_fixing_commits:
-  - commit: c3
+  - commit: c2
     role: complete_fix
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/legacy/Parser.java
-    statement: return Integer.parseInt(text);
+    file: src/main/java/example/PaymentGuard.java
+    statement: return cents >= 0;
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c3
-    file: src/main/java/example/core/Parser.java
-    statement: return Integer.parseInt(text.trim());
+    commit: c2
+    file: src/main/java/example/PaymentGuard.java
+    statement: return cents > 0;
     fix_type: line_modification
 expected_szz:
   commit_level:
@@ -103,12 +86,12 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: Evaluate intermediate file move and package rename between bic and bfc and whether SZZ identifies the expected
-    bug-introducing commit set.
+  purpose: Evaluate misleading commit message with code-only bic evidence and whether SZZ identifies the expected bug-introducing
+    commit set.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: rename_file, move_file, package_rename, intermediate_refactoring;
-    operations: rename_file, replace, write_file.'
+  required_extensions_from_source: 'This scenario uses factors: commit_message, misleading_metadata, code_evidence; operations:
+    replace, write_file.'
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
   - Whether structural or contextual history is handled according to the scenario factors.

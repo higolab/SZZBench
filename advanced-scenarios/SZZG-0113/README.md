@@ -1,19 +1,21 @@
-# SZZG-0113: Bug introduced inside a refactoring commit
+# SZZG-0113: Merge commit itself is the BIC
 
 ## Source
 
-- Category: Refactoring scenarios
+- Category: Branch and merge scenarios
 
 ## Purpose
 
-Evaluate bug introduced inside a refactoring commit and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate merge commit itself is the bic and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: c0: create normalizer
-c1: c1: rename method and accidentally remove lower-case conversion
-c2: c2: fix normalization after refactoring
+c0: c0: create feature flag
+c1: c1: main branch hardens feature flag
+c2: c2: feature branch keeps simple flag
+c3: c3: merge feature branch and accidentally drop safety check
+c4: c4: fix dropped safety check
 ```
 
 ## Why this needs `scenario.graph.yml`
@@ -22,14 +24,14 @@ This history requires graph-aware scenario semantics that are difficult to expre
 
 ## Required graph-schema features
 
-- Factors: bug_introducing_refactoring, mixed_change, rename_method
+- Factors: merge_commit, bug_introducing_merge, non_linear_history
 - Operation types: replace, write_file
 - Expected SZZ policy is defined in `expected_szz`.
 
 ## Expected BICs
 
 ```text
-c1
+c3
 ```
 
 ## Evaluation points

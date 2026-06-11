@@ -1,67 +1,86 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0114
-  title: BFC performs method extraction and bug fix in the same commit
-  slug: bfc-extract-method-and-fix
-  description: Evaluates bfc performs method extraction and bug fix in the same commit and checks whether SZZ identifies the
-    expected bug-introducing commit set.
-  category: Refactoring scenarios
+  title: BFC on main after feature-branch BIC is merged
+  slug: bfc-main-after-feature-merge
+  description: Evaluates bfc on main after feature-branch bic is merged and checks whether SZZ identifies the expected bug-introducing
+    commit set.
+  category: Branch and merge scenarios
   category_code: A
   factors:
-  - bfc_refactoring
-  - extract_method
-  - mixed_bfc
+  - feature_branch
+  - merge_commit
+  - bfc_after_merge
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0114-bfc-extract-method-and-fix
+  name: SZZG-0114-bfc-main-after-feature-merge
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: c0: create tax calculator
+  history_summary: 'c0: c0: create quota checker
 
-    c1: c1: introduce tax rounding bug
+    c1: c1: feature branch introduces quota boundary bug
 
-    c2: c2: extract tax rate helper and fix rounding'
+    c2: c2: main branch updates comments only
+
+    c3: c3: merge feature branch
+
+    c4: c4: fix quota boundary on main'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create tax calculator'
+  message: 'c0: create quota checker'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Tax.java
-    content: "package example;\npublic class Tax {\n  public int tax(int price) {\n    return price / 10;\n  }\n\n}\n"
+    path: src/main/java/example/Quota.java
+    content: "package example;\npublic class Quota {\n  public boolean within(int used, int limit) {\n    return used <= limit;\n\
+      \  }\n\n}\n"
 - id: c1
-  branch: main
+  branch: feature
   parents:
   - c0
-  message: 'c1: introduce tax rounding bug'
+  message: 'c1: feature branch introduces quota boundary bug'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Tax.java
-    old: return price / 10;
-    new: return (price + 9) / 10;
+    path: src/main/java/example/Quota.java
+    old: return used <= limit;
+    new: return used < limit;
 - id: c2
   branch: main
   parents:
+  - c0
+  message: 'c2: main branch updates comments only'
+  role: other
+  operations:
+  - type: write_file
+    path: src/main/java/example/QuotaNotes.java
+    content: "package example;\n// Quota helper notes.\n"
+- id: c3
+  branch: main
+  parents:
+  - c2
   - c1
-  message: 'c2: extract tax rate helper and fix rounding'
+  message: 'c3: merge feature branch'
+  role: merge
+  operations: []
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: 'c4: fix quota boundary on main'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Tax.java
-    old: return (price + 9) / 10;
-    new: return rate(price);
-  - type: insert_after
-    path: src/main/java/example/Tax.java
-    anchor: "    return rate(price);\n  }\n\n"
-    content: "  private int rate(int price) {\n    return price / 10;\n  }\n"
+    path: src/main/java/example/Quota.java
+    old: return used < limit;
+    new: return used <= limit;
 bugs:
 - id: B001
   title: Synthetic graph scenario bug
@@ -69,19 +88,19 @@ bugs:
   - commit: c1
     role: direct
   bug_fixing_commits:
-  - commit: c2
+  - commit: c4
     role: complete_fix
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/Tax.java
-    statement: return (price + 9) / 10;
+    file: src/main/java/example/Quota.java
+    statement: return used < limit;
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c2
-    file: src/main/java/example/Tax.java
-    statement: return price / 10;
+    commit: c4
+    file: src/main/java/example/Quota.java
+    statement: return used <= limit;
     fix_type: line_modification
 expected_szz:
   commit_level:
@@ -89,11 +108,11 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: Evaluate bfc performs method extraction and bug fix in the same commit and whether SZZ identifies the expected
-    bug-introducing commit set.
+  purpose: Evaluate bfc on main after feature-branch bic is merged and whether SZZ identifies the expected bug-introducing
+    commit set.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: bfc_refactoring, extract_method, mixed_bfc; operations: insert_after,
+  required_extensions_from_source: 'This scenario uses factors: feature_branch, merge_commit, bfc_after_merge; operations:
     replace, write_file.'
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.

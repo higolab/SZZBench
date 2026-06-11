@@ -1,39 +1,47 @@
-# SZZG-0040: Release-branch-only bug
+# SZZG-0040: BIC and BFC belong to the same issue commit series
+
+## Source
+
+- Category: Work-item and commit-series scenarios
 
 ## Purpose
 
-A release branch introduces and fixes a bug that never exists on main.
+Evaluate whether issue-series context is preserved when the BIC and BFC both reference the same issue.
 
-## Commit history
-
-```text
-c0: create initial correct implementation on main
-c1: main continues correct development
-c2: release branch introduces release-only bug
-c3: main adds unrelated correct change
-c4: release branch fixes release-only bug
-```
-
-## Commit table
-
-| Commit | Branch | Parents | Role | Description |
-|---|---|---|---|---|
-| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `c1` | `main` | c0 | `intermediate` | c1: add main-only version note |
-| `c2` | `release` | c0 | `bug_introducing` | c2: introduce release-only range boundary bug |
-| `c3` | `main` | c1 | `intermediate` | c3: add unrelated main documentation |
-| `c4` | `release` | c2 | `bug_fixing` | c4: fix release-only range boundary bug |
-
-## Expected SZZ result
+## Expected history
 
 ```text
-Expected BIC: c2
+c1: create initial range implementation
+c2: ISSUE-101 implement boundary optimization but introduce bug
+c3: ISSUE-101 fix inclusive boundary regression
 ```
 
-## Scenario purpose
+## Why this needs `scenario.graph.yml`
 
-Evaluate whether SZZ can handle a bug that exists only on a release branch and not on main.
+Issue membership and linked commits require graph-aware contextual metadata.
 
-## Notes
+## Required graph-schema features
 
-- This scenario should not be collapsed into feature-to-main merge scenarios.
+- Factors: issues
+- Operation types: write_file, replace
+- Expected SZZ policy is defined in expected_szz.
+
+## Evaluation points
+
+- Whether SZZ identifies c2 as the BIC rather than the initial commit.
+- Whether both the BIC and BFC are represented as part of ISSUE-101.
+- Whether the expected_szz exact-set policy is applied correctly.
+
+---
+
+## Draft status
+
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
+
+## Files
+
+```text
+SZZG-0040/
+|-- scenario.graph.yml
+`-- README.md
+```

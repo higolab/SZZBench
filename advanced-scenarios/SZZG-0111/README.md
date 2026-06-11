@@ -1,20 +1,19 @@
-# SZZG-0111: Intermediate method extraction between BIC and BFC
+# SZZG-0111: Defensive check BFC masks an earlier root-cause BIC
 
 ## Source
 
-- Category: Refactoring scenarios
+- Category: Context-dependent scenarios
 
 ## Purpose
 
-Evaluate intermediate method extraction between bic and bfc and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate defensive check bfc masks an earlier root-cause bic and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: c0: create shipping fee calculation
-c1: c1: introduce free-shipping threshold bug
-c2: c2: extract free-shipping predicate
-c3: c3: fix extracted threshold predicate
+c0: c0: create profile renderer
+c1: c1: introduce null-producing root cause
+c2: c2: fix crash with defensive null checks
 ```
 
 ## Why this needs `scenario.graph.yml`
@@ -23,8 +22,8 @@ This history requires graph-aware scenario semantics that are difficult to expre
 
 ## Required graph-schema features
 
-- Factors: intermediate_refactoring, extract_method, line_history_break
-- Operation types: insert_after, replace, write_file
+- Factors: defensive_fix, root_cause_not_touched, context_dependent
+- Operation types: replace, write_file
 - Expected SZZ policy is defined in `expected_szz`.
 
 ## Expected BICs

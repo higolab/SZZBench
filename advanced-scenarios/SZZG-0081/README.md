@@ -1,16 +1,18 @@
-# SZZG-0081: Interactive rebase edits BIC commit
+# SZZG-0081: Clone diverges before rebase
 
 ## Purpose
 
-Evaluate interactive rebase edit of a BIC.
+Evaluate rebase combined with clone divergence.
 
 ## Commit history
 
 ```text
 c0: c0: create initial correct implementation
-f1: f1: introduce exclusive range bug
-r1: r1: edit feature bug during interactive rebase
-c2: c2: fix edited rebased bug
+f1: f1: create buggy clone
+f2: f2: diverge cloned buggy logic
+r1: r1: rebase buggy clone creation
+r2: r2: rebase clone divergence
+c4: c4: fix diverged clone
 ```
 
 ## Commit table
@@ -18,28 +20,30 @@ c2: c2: fix edited rebased bug
 | Commit | Branch | Parents | Role | Description |
 |---|---|---|---|---|
 | `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `f1` | `feature` | c0 | `origin_bug_introducing` | f1: introduce exclusive range bug |
-| `r1` | `main` | c0 | `bug_introducing` | r1: edit feature bug during interactive rebase |
-| `c2` | `main` | r1 | `bug_fixing` | c2: fix edited rebased bug |
+| `f1` | `feature` | c0 | `origin_bug_introducing` | f1: create buggy clone |
+| `f2` | `feature` | f1 | `origin_bug_introducing` | f2: diverge cloned buggy logic |
+| `r1` | `main` | c0 | `intermediate` | r1: rebase buggy clone creation |
+| `r2` | `main` | r1 | `bug_introducing` | r2: rebase clone divergence |
+| `c4` | `main` | r2 | `bug_fixing` | c4: fix diverged clone |
 
 ## Expected SZZ result
 
 ```text
-Expected BIC(s): r1
-Related but not correct: f1
+Expected BIC(s): r2
+Related but not correct: r1, f1, f2
 ```
 
 ## Key property
 
-r1 is an edited replay of f1.
+The fixed instance is the diverged clone line introduced by r2.
 
-## Difference from SZZG-0073
+## Difference from SZZG-0061
 
-SZZG-0073 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
+SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
 
 ## Evaluation points
 
-- Report r1.
+- Report r2.
 
 ## Notes
 

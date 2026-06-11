@@ -1,125 +1,106 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0053
-  title: Line moved and duplicated
-  slug: line-moved-and-duplicated
-  description: Evaluates a faulty line that is introduced in the initial file, then moved and duplicated before being fixed
-    in the moved location.
-  category: Ambiguous blame and duplicate-code scenarios
-  category_code: I
+  title: Empty intermediate commit
+  slug: empty-intermediate-commit
+  description: Evaluates an empty intermediate commit between the BIC and BFC and checks whether SZZ ignores it as a cause.
+  category: Robustness and implementation-quality scenarios
+  category_code: K
   factors:
-  - move_entity
-  - copy_entity
-  - bug_instances
+  - allow_empty
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0053-line-moved-and-duplicated
+  name: SZZG-0053-empty-intermediate-commit
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c1: create initial buggy range implementation (write_file src/main/java/example/Range.java)
+  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
 
-    c2: move and duplicate the existing buggy range check (move_entity; copy_entity)
+    c1: apply empty intermediate change
 
-    c3: fix moved duplicated bug (replace src/main/java/example/RangeUtils.java)'
+    c2: introduce bug (replace src/main/java/example/Range.java)
+
+    c3: fix bug (replace src/main/java/example/Range.java)'
 commits:
-- id: c1
+- id: c0
   branch: main
   parents: []
-  message: 'c1: create initial buggy range implementation (write_file src/main/java/example/Range.java)'
+  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
     content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value > min && value < max;\n  }\n}\n"
+      \ value >= min && value <= max;\n  }\n}\n"
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'c1: apply empty intermediate change'
+  role: intermediate
+  operations: []
+  allow_empty: true
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: move and duplicate the existing buggy range check (move_entity; copy_entity)'
-  role: intermediate
+  message: 'c2: introduce bug (replace src/main/java/example/Range.java)'
+  role: bug_introducing
   operations:
-  - type: move_entity
-    entity:
-      type: method
-      name: contains
-      signature: boolean contains(int value, int min, int max)
-    from_file: src/main/java/example/Range.java
-    to_file: src/main/java/example/RangeUtils.java
-  - type: copy_entity
-    entity:
-      type: statement
-      text: return value > min && value < max;
-    from_file: src/main/java/example/Range.java
-    to_file: src/main/java/example/RangeUtils.java
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'c3: fix moved duplicated bug (replace src/main/java/example/RangeUtils.java)'
+  message: 'c3: fix bug (replace src/main/java/example/Range.java)'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/RangeUtils.java
+    path: src/main/java/example/Range.java
     old: return value > min && value < max;
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Boundary bug moved and duplicated before the fix
+  title: Synthetic graph scenario bug
   bug_introducing_commits:
-  - commit: c1
+  - commit: c2
     role: direct
   bug_fixing_commits:
   - commit: c3
     role: complete_fix
   faults:
   - id: F001
-    commit: c1
+    commit: c2
     file: src/main/java/example/Range.java
     statement: return value > min && value < max;
     change_type: line_modification
-    entity:
-      type: method
-      signature: boolean contains(int value, int min, int max)
   fixes:
   - id: X001
     commit: c3
-    file: src/main/java/example/RangeUtils.java
+    file: src/main/java/example/Range.java
     statement: return value >= min && value <= max;
     fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - c1
+    - c2
 scenario_design:
-  purpose: Evaluate whether SZZ traces a fix in the moved duplicated location back to the initial BIC c1.
-  key_property: Commit c2 only moves and duplicates an already buggy line. It is related propagation history, not the expected
-    BIC; c1 remains the required bug-introducing commit.
+  purpose: Evaluate whether SZZ identifies the real BIC when an empty commit appears in the intermediate history.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: move_entity, copy_entity, bug_instances; operations: write_file,
-    move_entity, copy_entity, replace.'
+  required_extensions_from_source: 'This scenario uses factors: allow_empty; operations: write_file, replace.'
   evaluation_points:
-  - Whether SZZ identifies c1 as the original BIC despite the move and duplicate in c2.
-  - Whether SZZ does not treat the move/copy commit c2 as the direct BIC.
+  - Whether SZZ identifies the expected BIC set.
+  - Whether the empty intermediate commit c1 is not reported as the BIC.
   - Whether the expected_szz evaluation policy is applied correctly.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.
-bug_instances:
-- id: B001-origin
-  file: src/main/java/example/Range.java
-  introduced_by: c1
-  status: moved_and_duplicated_by_c2
-- id: B001-moved-duplicate
-  file: src/main/java/example/RangeUtils.java
-  introduced_by: c1
-  propagated_by: c2
-  fixed_by: c3
-  status: fixed

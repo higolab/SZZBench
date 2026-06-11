@@ -1,19 +1,22 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0032
-  title: BIC in merge commit
-  slug: bic-in-merge-commit
-  description: The merge commit itself introduces the bug during merge resolution; a later normal commit fixes it.
+  title: Cherry-pick BFC
+  slug: cherry-pick-bfc
+  description: A bug exists on both main and release branches. The bug is fixed on main, and the BFC is then cherry-picked
+    onto the release branch to fix the release instance.
   category: Branch, merge, cherry-pick, and backport scenarios
   category_code: G
   factors:
   - branch
-  - merge
-  - merge_commit_bic
+  - cherry_pick_of
+  - bug_fixing_commits
+  - bug_instances
+  - backport_like_fix
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0032-bic-in-merge-commit
+  name: SZZG-0032-cherry-pick-bfc
   default_branch: main
   language: java
   build_system: none
@@ -22,13 +25,13 @@ graph:
   model: commit_dag
   history_summary: 'c0: create initial correct implementation on main
 
-    c1: add feature branch helper without changing the range logic
+    c1: introduce bug on main before the release branch is cut
 
-    c2: add unrelated main branch note
+    r1: create release branch from the buggy state
 
-    c3: merge feature into main and introduce bug in the merge commit
+    c2: fix bug on main
 
-    c4: fix the merge-introduced bug'
+    r2: cherry-pick the main BFC onto release'
 commits:
 - id: c0
   branch: main
@@ -41,83 +44,122 @@ commits:
     content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
       \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
-  branch: feature
-  parents:
-  - c0
-  message: 'c1: add feature helper without bug'
-  role: intermediate
-  operations:
-  - type: write_file
-    path: src/main/java/example/FeatureReporter.java
-    content: "package example;\n\npublic class FeatureReporter {\n  public String name() {\n    return \"feature\";\n  }\n\
-      }\n"
-- id: c2
   branch: main
   parents:
   - c0
-  message: 'c2: add unrelated main branch note'
-  role: intermediate
-  operations:
-  - type: write_file
-    path: docs/main-note.md
-    content: 'Main branch note before merge.
-
-      '
-- id: c3
-  branch: main
-  parents:
-  - c2
-  - c1
-  message: 'c3: merge feature and introduce boundary bug'
+  message: 'c1: introduce range boundary bug'
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
     new: return value > min && value < max;
-- id: c4
+- id: r1
+  branch: release
+  parents:
+  - c1
+  message: 'r1: create release branch from buggy state'
+  role: release_branch_point
+  operations:
+  - type: write_file
+    path: docs/release-note.md
+    content: 'Release branch is cut while the range boundary bug is still present.
+
+      '
+- id: c2
   branch: main
   parents:
-  - c3
-  message: 'c4: fix merge-introduced range boundary bug'
+  - c1
+  message: 'c2: fix range boundary bug on main'
   role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value > min && value < max;
     new: return value >= min && value <= max;
+- id: r2
+  branch: release
+  parents:
+  - r1
+  message: 'r2: cherry-pick main range boundary fix onto release'
+  role: bug_fixing
+  cherry_pick_of: c2
+  operations:
+  - type: apply_patch_from
+    commit: c2
 bugs:
 - id: B001
-  title: Range boundary bug introduced by merge commit
+  title: Range boundary bug fixed on main and cherry-picked to release
   bug_introducing_commits:
-  - commit: c3
-    role: merge_introducing
+  - commit: c1
+    role: direct
   bug_fixing_commits:
-  - commit: c4
-    role: complete_fix
+  - commit: c2
+    role: main_fix
+  - commit: r2
+    role: cherry_picked_release_fix
+    cherry_pick_of: c2
   faults:
   - id: F001
-    commit: c3
+    commit: c1
     file: src/main/java/example/Range.java
     statement: return value > min && value < max;
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c4
+    commit: c2
     file: src/main/java/example/Range.java
     statement: return value >= min && value <= max;
-    fix_type: line_modification
+    fix_type: main_line_fix
+  - id: X002
+    commit: r2
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+    fix_type: cherry_picked_fix
+  bug_instances:
+  - branch: main
+    status: fixed
+    fix_commit: c2
+  - branch: release
+    status: fixed
+    fix_commit: r2
+    cherry_pick_of: c2
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - c3
+    - c1
+    notes: The original BIC is c1. Both c2 and r2 are BFCs. r2 is a cherry-picked instance of the main-line BFC c2.
+  branch_level:
+    main:
+      bfc: c2
+      required:
+      - c1
+    release:
+      bfc: r2
+      required:
+      - c1
 scenario_design:
-  purpose: Evaluate whether SZZ can identify a merge commit as the BIC when the merge resolution itself introduces the bug.
-  key_property: The BIC is the two-parent merge commit c3.
+  purpose: Evaluate whether SZZ can identify the original BIC when a bug-fixing commit is cherry-picked from main to a release
+    branch.
+  key_property: The cherry-picked commit r2 is a BFC, not a BIC. This distinguishes SZZG-0032 from SZZG-0031, where the cherry-picked
+    commit is a BIC.
+  difference_from_SZZG_0035: SZZG-0031 is about cherry-picking the BIC onto another branch. SZZG-0032 is about cherry-picking
+    the BFC onto another branch.
   evaluation_points:
-  - Merge commit as BIC
-  - Later normal BFC
-  - No parent contains the buggy range condition before the merge.
+  - Whether SZZ treats the release BFC r2 as a fixing commit.
+  - Whether SZZ traces from r2 back to the original BIC c1 rather than to the main-line BFC c2.
+  - Whether a cherry-picked fix is handled as a branch-specific bug-fixing instance.
 notes:
-- This scenario requires support for operations on merge commits.
+- This revision changes the cherry-picked commit from the BIC to the BFC.
+- The release branch is created from the buggy state at c1.
+- The main fix c2 is cherry-picked onto release as r2.
+- If apply_patch_from cannot be validated by the current verifier, r2 can be represented with an explicit replace operation
+  equivalent to c2.
+bug_instances:
+- id: B001-main
+  branch: main
+  status: fixed
+- id: B001-release
+  branch: release
+  status: open

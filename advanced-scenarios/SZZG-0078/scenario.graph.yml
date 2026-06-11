@@ -1,21 +1,22 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0078
-  title: Rebase changes patch content during replay
-  slug: rebase-changes-patch-content-during-replay
-  description: The rebased BIC has different patch content from the original feature BIC.
+  title: Multiple BICs replayed by rebase
+  slug: multiple-bics-replayed-by-rebase
+  description: Multiple feature BICs are replayed onto main by rebase.
   category: Branch, merge, cherry-pick, and backport scenarios
   category_code: G
   factors:
   - branch
   - rebase
-  - patch_modified_during_rebase
-  - origin_bic
+  - multiple_bic
+  - rebased_bic
   - direct_bic
+  - origin_bic
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0078-rebase-changes-patch-content-during-replay
+  name: SZZG-0078-multiple-bics-replayed-by-rebase
   default_branch: main
   language: java
   build_system: none
@@ -24,13 +25,15 @@ graph:
   model: commit_dag
   history_summary: 'c0: create initial correct implementation
 
-    f1: introduce exclusive bug on feature
+    f1: introduce lower-bound bug
 
-    m1: add main note
+    f2: introduce upper-bound bug
 
-    r1: rebase feature bug with adjusted patch content
+    r1: rebase lower-bound BIC
 
-    c2: fix adjusted lower-bound bug'
+    r2: rebase upper-bound BIC
+
+    c3: fix both rebased BICs'
 commits:
 - id: c0
   branch: main
@@ -46,30 +49,29 @@ commits:
   branch: feature
   parents:
   - c0
-  message: 'f1: introduce exclusive bug on feature'
+  message: 'f1: introduce lower-bound bug'
   role: origin_bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
-    new: return value > min && value < max;
-- id: m1
-  branch: main
+    new: return value > min && value <= max;
+- id: f2
+  branch: feature
   parents:
-  - c0
-  message: 'm1: add main note'
-  role: intermediate
+  - f1
+  message: 'f2: introduce upper-bound bug'
+  role: origin_bug_introducing
   operations:
-  - type: write_file
-    path: docs/main.md
-    content: 'note
-
-      '
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min && value <= max;
+    new: return value > min && value < max;
 - id: r1
   branch: main
   parents:
-  - m1
-  message: 'r1: rebase feature bug with adjusted patch content'
+  - c0
+  message: 'r1: rebase lower-bound BIC'
   role: bug_introducing
   operations:
   - type: replace
@@ -77,44 +79,64 @@ commits:
     old: return value >= min && value <= max;
     new: return value > min && value <= max;
   rebase_of: f1
-  rebase_patch_modified: true
-- id: c2
+- id: r2
   branch: main
   parents:
   - r1
-  message: 'c2: fix adjusted lower-bound bug'
-  role: bug_fixing
+  message: 'r2: rebase upper-bound BIC'
+  role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value > min && value <= max;
+    new: return value > min && value < max;
+  rebase_of: f2
+- id: c3
+  branch: main
+  parents:
+  - r2
+  message: 'c3: fix both rebased BICs'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Adjusted lower-bound bug during rebase
+  title: Bug requiring two rebased BICs
   bug_introducing_commits:
   - commit: r1
     role: direct
+  - commit: r2
+    role: direct
   - commit: f1
     role: origin
+  - commit: f2
+    role: origin
   bug_fixing_commits:
-  - commit: c2
+  - commit: c3
     role: complete_fix
   faults:
   - id: F001
-    commit: r1
+    commit: r2
     file: src/main/java/example/Range.java
-    statement: return value > min && value <= max;
+    statement: return value > min && value < max;
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c2
+    commit: c3
     file: src/main/java/example/Range.java
     statement: return value >= min && value <= max;
     fix_type: line_modification
   origin_faults:
   - id: OF001
     commit: f1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value <= max;
+    change_type: origin_line_modification
+  - id: OF002
+    commit: f2
     file: src/main/java/example/Range.java
     statement: return value > min && value < max;
     change_type: origin_line_modification
@@ -123,17 +145,17 @@ expected_szz:
     evaluation_policy: exact_set
     required:
     - r1
+    - r2
     related_but_not_correct:
     - f1
-    notes: r1 differs from origin patch f1.
+    - f2
 scenario_design:
-  purpose: Evaluate direct/origin handling when rebase changes patch content.
-  key_property: Patch equality alone is insufficient.
-  difference_from_SZZG_0073: SZZG-0073 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
+  purpose: Evaluate multiple-BIC handling when BICs are introduced by rebase replay.
+  key_property: Origin BIC set maps to direct BIC set.
+  difference_from_SZZG_0073: SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
     adds a distinct rebase-related complication.
   evaluation_points:
-  - Report r1.
-  - Treat f1 as origin.
+  - Return r1 and r2.
 notes:
 - This scenario models a rebase-related development history for SZZ evaluation.
 - Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

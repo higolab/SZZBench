@@ -1,51 +1,54 @@
-# SZZG-0095: Misleading rebase commit message
+# SZZG-0095: One BFC fixes multiple BICs across multiple files
+
+## Source
+
+- Category: Multiple-BIC scenarios
 
 ## Purpose
 
-Evaluate whether message context helps or misleads SZZ in a rebase scenario.
+Evaluate one bfc fixes multiple bics across multiple files and whether SZZ identifies the expected bug-introducing commit set.
 
-## Commit history
-
-```text
-c0: c0: create initial correct implementation
-f1: f1: introduce range boundary bug on feature
-f2: f2: add feature helper using buggy range check
-r1: r1: cleanup after rebase
-r2: r2: rebase feature helper onto main
-c3: c3: fix range boundary bug after rebase
-```
-
-## Commit table
-
-| Commit | Branch | Parents | Role | Description |
-|---|---|---|---|---|
-| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `f1` | `feature` | c0 | `origin_bug_introducing` | f1: introduce range boundary bug on feature |
-| `f2` | `feature` | f1 | `intermediate` | f2: add feature helper using buggy range check |
-| `r1` | `main` | c0 | `bug_introducing` | r1: cleanup after rebase |
-| `r2` | `main` | r1 | `intermediate` | r2: rebase feature helper onto main |
-| `c3` | `main` | r2 | `bug_fixing` | c3: fix range boundary bug after rebase |
-
-## Expected SZZ result
+## Expected history
 
 ```text
-Expected BIC(s): r1
-Related but not correct: f1
+c0: c0: create initial calculator and validator
+c1: c1: introduce rounding bug in calculator
+c2: c2: introduce zero-quantity validation bug
+c3: c3: fix both pricing and validation bugs
 ```
 
-## Key property
+## Why this needs `scenario.graph.yml`
 
-The direct BIC remains r1 despite message context.
+This history requires graph-aware scenario semantics that are difficult to express with the normal `scenario.yml` schema.
 
-## Difference from SZZG-0073
+## Required graph-schema features
 
-SZZG-0073 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
+- Factors: multiple_bic, multiple_file, single_bfc
+- Operation types: replace, write_file
+- Expected SZZ policy is defined in `expected_szz`.
+
+## Expected BICs
+
+```text
+c1, c2
+```
 
 ## Evaluation points
 
-- Report r1.
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
-## Notes
+---
 
-- This scenario models a rebase-related development history for SZZ evaluation.
-- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.
+## Draft status
+
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
+
+## Files
+
+```text
+SZZG-0095/
+|-- scenario.graph.yml
+`-- README.md
+```

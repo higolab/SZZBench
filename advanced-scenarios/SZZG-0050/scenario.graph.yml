@@ -1,19 +1,19 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0050
-  title: BFC message references the wrong commit
-  slug: bfc-message-references-wrong-commit
-  description: Evaluates a BFC whose message points to a plausible but incorrect prior commit, while the true BIC is an earlier
-    rounding change.
-  category: Work-item and commit-series scenarios
-  category_code: H
+  title: Semantically equivalent rewrite
+  slug: semantically-equivalent-rewrite
+  description: Evaluates a buggy predicate that is rewritten into equivalent form before the BFC, so the rewrite commit should
+    not be treated as the BIC.
+  category: Context-aware and LLM-based SZZ scenarios
+  category_code: J
   factors:
-  - developer_hints
-  - misleading_commit_message
+  - semantic_rewrite
+  - related_but_not_correct
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0050-bfc-message-references-wrong-commit
+  name: SZZG-0050-semantically-equivalent-rewrite
   default_branch: main
   language: java
   build_system: none
@@ -21,69 +21,74 @@ repository:
 graph:
   model: commit_dag
   history_summary: |
-    c0: create currency rounding helper
-    c1: introduce truncating cents normalization
-    c2: add invoice label helper mentioned by mistake
-    c3: fix rounding while incorrectly blaming c2 in the message
+    c0: create API key validator
+    c1: weaken API key length requirement
+    c2: rewrite the buggy predicate without changing behavior
+    c3: fix the length requirement inside the rewritten predicate
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create currency rounding helper'
+  message: 'c0: create API key validator'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/CurrencyFormatter.java
+    path: src/main/java/example/ApiKeyValidator.java
     content: |
       package example;
 
-      public class CurrencyFormatter {
-        public double roundToCents(double amount) {
-          return Math.round(amount * 100.0) / 100.0;
+      public class ApiKeyValidator {
+        public boolean isValid(String token) {
+          return token != null && token.startsWith("sk_") && token.length() == 32;
         }
       }
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: speed up cents normalization by truncating fractions'
+  message: 'c1: accept shorter API keys during migration'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/CurrencyFormatter.java
-    old: return Math.round(amount * 100.0) / 100.0;
-    new: return (int)(amount * 100.0) / 100.0;
+    path: src/main/java/example/ApiKeyValidator.java
+    old: return token != null && token.startsWith("sk_") && token.length() == 32;
+    new: return token != null && token.startsWith("sk_") && token.length() >= 16;
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: add invoice total label helper'
-  role: intermediate
+  message: 'c2: rewrite API key predicate for readability'
+  role: semantic_rewrite
   operations:
-  - type: write_file
-    path: src/main/java/example/InvoiceLabels.java
-    content: |
-      package example;
-
-      public class InvoiceLabels {
-        public String totalLabel() {
-          return "Invoice total";
+  - type: replace
+    path: src/main/java/example/ApiKeyValidator.java
+    old: |-
+      public boolean isValid(String token) {
+          return token != null && token.startsWith("sk_") && token.length() >= 16;
         }
-      }
+    new: |-
+      public boolean isValid(String token) {
+          if (token == null) {
+            return false;
+          }
+          boolean hasPrefix = token.startsWith("sk_");
+          boolean hasAcceptableLength = token.length() >= 16;
+          return hasPrefix && hasAcceptableLength;
+        }
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'c3: fix invoice rounding regression from c2'
+  message: 'c3: require full-length API keys again'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/CurrencyFormatter.java
-    old: return (int)(amount * 100.0) / 100.0;
-    new: return Math.round(amount * 100.0) / 100.0;
+    path: src/main/java/example/ApiKeyValidator.java
+    old: boolean hasAcceptableLength = token.length() >= 16;
+    new: boolean hasAcceptableLength = token.length() == 32;
 bugs:
 - id: B001
-  title: Currency values are truncated instead of rounded
+  title: API key validator accepts shortened tokens after a semantic rewrite
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -93,14 +98,20 @@ bugs:
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/CurrencyFormatter.java
-    statement: return (int)(amount * 100.0) / 100.0;
+    file: src/main/java/example/ApiKeyValidator.java
+    statement: return token != null && token.startsWith("sk_") && token.length() >= 16;
     change_type: line_modification
+  - id: F002
+    commit: c2
+    file: src/main/java/example/ApiKeyValidator.java
+    statement: boolean hasAcceptableLength = token.length() >= 16;
+    change_type: semantic_equivalent_rewrite
+    semantic_role: preserves_existing_bug
   fixes:
   - id: X001
     commit: c3
-    file: src/main/java/example/CurrencyFormatter.java
-    statement: return Math.round(amount * 100.0) / 100.0;
+    file: src/main/java/example/ApiKeyValidator.java
+    statement: boolean hasAcceptableLength = token.length() == 32;
     fix_type: line_modification
 expected_szz:
   commit_level:
@@ -110,21 +121,18 @@ expected_szz:
     related_but_not_correct:
     - c2
 scenario_design:
-  purpose: Evaluate whether SZZ resists an incorrect BFC-message hint and still identifies the true code-level BIC.
-  current_schema_limitation: Misleading developer hints are represented as metadata attached to the BFC.
-  required_extensions_from_source: 'This scenario uses factors: developer_hints, misleading_commit_message; operations: write_file, replace.'
+  purpose: Evaluate whether SZZ traces through a semantically equivalent rewrite and reports the earlier bug-introducing commit.
+  current_schema_limitation: Semantic equivalence is represented as scenario metadata rather than mechanically proven.
+  required_extensions_from_source: 'This scenario uses factors: semantic_rewrite, related_but_not_correct; operations: write_file, replace.'
   evaluation_points:
-  - Whether SZZ identifies c1 as the true rounding BIC.
-  - Whether c2 is treated as an incorrect message reference rather than the expected BIC.
-  - Whether developer hints are distinguished from trustworthy blame evidence.
+  - Whether SZZ identifies c1 as the BIC.
+  - Whether c2 is recognized as preserving the already-buggy predicate rather than introducing it.
+  - Whether blame can pass through the predicate rewrite to the original weakening commit.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.
-developer_hints:
-- bug: B001
-  source: commit_message
-  commit: c3
-  referenced_commits:
-  - c2
-  correctness: incorrect
-  explanation: The BFC message blames c2, but c2 only adds labels; c1 introduced the truncating arithmetic.
+semantic_rewrites:
+- commit: c2
+  file: src/main/java/example/ApiKeyValidator.java
+  preserves_behavior_from: c1
+  description: The one-line predicate is expanded into local variables while preserving the weakened length check.

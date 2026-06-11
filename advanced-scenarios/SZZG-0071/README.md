@@ -1,109 +1,52 @@
-# SZZG-0071: Copy propagation with direct and origin BIC evaluation variants
+# SZZG-0071: Interactive rebase reorders commits before BIC
 
 ## Purpose
 
-This scenario represents a copy-propagated bug.
-
-A bug is first introduced in the original file `A.java`. Later, the buggy logic is copied into `B.java`. The fix is applied to `B.java`.
-
-For the fix in `B.java`, there are two meaningful BIC notions:
-
-```text
-direct BIC: c2
-origin BIC: c1
-```
-
-The direct BIC is the commit that copied the faulty logic into the fixed file. The origin BIC is the commit where the faulty logic first appeared.
+Evaluate commit reordering during rebase.
 
 ## Commit history
 
 ```text
-c0: create original correct implementation in A.java
-c1: introduce boundary bug in original A.java
-c2: copy buggy implementation from A.java to B.java, creating the direct BIC for B.java
-c3: fix the copied bug in B.java
+c0: c0: create initial correct implementation
+f1: f1: add feature docs
+f2: f2: introduce range bug
+r1: r1: replay docs before reordered BIC
+r2: r2: replay bug commit after reorder
+c3: c3: fix reordered bug
 ```
 
 ## Commit table
 
 | Commit | Branch | Parents | Role | Description |
 |---|---|---|---|---|
-| `c0` | `main` | none | initial | Creates correct `A.java`. |
-| `c1` | `main` | `c0` | origin_bug_introducing | Introduces the bug in `A.java`. |
-| `c2` | `main` | `c1` | bug_introducing | Copies the buggy logic into `B.java`. |
-| `c3` | `main` | `c2` | bug_fixing | Fixes the copied bug in `B.java`. |
+| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
+| `f1` | `feature` | c0 | `intermediate` | f1: add feature docs |
+| `f2` | `feature` | f1 | `origin_bug_introducing` | f2: introduce range bug |
+| `r1` | `main` | c0 | `intermediate` | r1: replay docs before reordered BIC |
+| `r2` | `main` | r1 | `bug_introducing` | r2: replay bug commit after reorder |
+| `c3` | `main` | r2 | `bug_fixing` | c3: fix reordered bug |
 
-## Code states
-
-Correct original code in `c0`:
-
-```java
-return value >= min && value <= max;
-```
-
-Origin bug introduced in `c1`:
-
-```java
-return value > min && value < max;
-```
-
-Copied bug in `c2`:
+## Expected SZZ result
 
 ```text
-A.java contains the buggy logic.
-B.java is created with the same buggy logic.
+Expected BIC(s): r2
+Related but not correct: f2, r1
 ```
 
-Fix in `c3`:
+## Key property
 
-```java
-return value >= min && value <= max;
-```
+Only r2 introduces the bug after reorder.
 
-## Oracle
+## Difference from SZZG-0061
 
-Bug-fixing commit:
+SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
 
-```text
-c3
-```
+## Evaluation points
 
-Direct BIC:
+- Report r2.
+- Avoid r1.
 
-```text
-c2
-```
+## Notes
 
-Origin BIC:
-
-```text
-c1
-```
-
-## Evaluation variants
-
-### direct-only
-
-Only the direct BIC is accepted.
-
-```text
-required: c2
-```
-
-### origin-aware
-
-The direct BIC is required, and the origin BIC is accepted as related context.
-
-```text
-required: c2
-acceptable_related: c1
-```
-
-### relaxed-with-credit
-
-Compatibility variant equivalent to the former `SZZG-0071` policy.
-
-```text
-required: c2
-acceptable_related: c1, credit 0.5
-```
+- This scenario models a rebase-related development history for SZZ evaluation.
+- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

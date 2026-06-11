@@ -1,19 +1,19 @@
-# SZZG-0011: Method move between classes
+# SZZG-0011: One BIC fixed by multiple BFCs
 
 ## Source
 
-- Category: Intermediate-history scenarios
+- Category: Multiple BIC and BFC scenarios
 
 ## Purpose
 
-Evaluate Method move between classes and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate One BIC fixed by multiple BFCs and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
 c0: create initial state (write_file src/main/java/example/Range.java)
-c1: introduce bug (replace src/main/java/example/Range.java)
-c2: apply intermediate change (move_entity)
+c1: introduce bug (replace src/main/java/example/Range.java; replace src/main/java/example/Range.java)
+c2: fix bug (replace src/main/java/example/Range.java)
 c3: fix bug (replace src/main/java/example/Range.java)
 ```
 
@@ -23,8 +23,8 @@ This history requires graph-aware scenario semantics that are difficult to expre
 
 ## Required graph-schema features
 
-- Factors: move_entity
-- Operation types: write_file, replace, move_entity
+- Factors: bug_fixing_commits
+- Operation types: write_file, replace
 - Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points

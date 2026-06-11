@@ -1,21 +1,20 @@
-# SZZG-0053: Line moved and duplicated
+# SZZG-0053: Empty intermediate commit
 
 ## Source
 
-- Category: Ambiguous blame and duplicate-code scenarios
+- Category: Robustness and implementation-quality scenarios
 
 ## Purpose
 
-Evaluate a bug whose faulty line is introduced in `Range.java`, then moved and duplicated into `RangeUtils.java` before the fix.
-
-The required BIC remains `c1`. Commit `c2` is propagation history only: it moves and duplicates an already buggy line and should not replace the original BIC.
+Evaluate whether SZZ identifies the real BIC when an empty commit appears in the intermediate history.
 
 ## Expected history
 
 ```text
-c1: create initial buggy range implementation (write_file src/main/java/example/Range.java)
-c2: move and duplicate the existing buggy range check (move_entity; copy_entity)
-c3: fix moved duplicated bug (replace src/main/java/example/RangeUtils.java)
+c0: create initial state (write_file src/main/java/example/Range.java)
+c1: apply empty intermediate change
+c2: introduce bug (replace src/main/java/example/Range.java)
+c3: fix bug (replace src/main/java/example/Range.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
@@ -24,14 +23,14 @@ This history requires graph-aware scenario semantics that are difficult to expre
 
 ## Required graph-schema features
 
-- Factors: move_entity, copy_entity, bug_instances
-- Operation types: write_file, move_entity, copy_entity, replace
+- Factors: allow_empty
+- Operation types: write_file, replace
 - Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- Whether SZZ identifies `c1` as the original BIC despite the move and duplicate in `c2`.
-- Whether SZZ does not treat the move/copy commit `c2` as the direct BIC.
+- Whether SZZ identifies the expected BIC set.
+- Whether the empty intermediate commit c1 is not reported as the BIC.
 - Whether the expected_szz evaluation policy is applied correctly.
 
 ---

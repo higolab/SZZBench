@@ -1,20 +1,19 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0045
-  title: BIC separated from BFC by an intermediate work-item commit
-  slug: bic-bfc-intermediate-work-item
-  description: Evaluates a work-item series where an unrelated commit from the same work item appears between the BIC and
-    the BFC.
+  title: BFC message references the wrong commit
+  slug: bfc-message-references-wrong-commit
+  description: Evaluates a BFC whose message points to a plausible but incorrect prior commit, while the true BIC is an earlier
+    rounding change.
   category: Work-item and commit-series scenarios
   category_code: H
   factors:
-  - work_items
-  - intermediate_commit
-  - related_but_not_correct
+  - developer_hints
+  - misleading_commit_message
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0045-bic-bfc-intermediate-work-item
+  name: SZZG-0045-bfc-message-references-wrong-commit
   default_branch: main
   language: java
   build_system: none
@@ -22,69 +21,69 @@ repository:
 graph:
   model: commit_dag
   history_summary: |
-    c0: create inventory reservation logic
-    c1: introduce exact-stock reservation bug
-    c2: add unrelated audit event in the same work item
-    c3: fix exact-stock reservation bug
+    c0: create currency rounding helper
+    c1: introduce truncating cents normalization
+    c2: add invoice label helper mentioned by mistake
+    c3: fix rounding while incorrectly blaming c2 in the message
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'WI-418 c0: create inventory reservation logic'
+  message: 'c0: create currency rounding helper'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/InventoryReservation.java
+    path: src/main/java/example/CurrencyFormatter.java
     content: |
       package example;
 
-      public class InventoryReservation {
-        public boolean canReserve(int available, int alreadyReserved, int requested) {
-          return available - alreadyReserved >= requested;
+      public class CurrencyFormatter {
+        public double roundToCents(double amount) {
+          return Math.round(amount * 100.0) / 100.0;
         }
       }
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'WI-418 c1: reject oversold reservations'
+  message: 'c1: speed up cents normalization by truncating fractions'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/InventoryReservation.java
-    old: return available - alreadyReserved >= requested;
-    new: return available - alreadyReserved > requested;
+    path: src/main/java/example/CurrencyFormatter.java
+    old: return Math.round(amount * 100.0) / 100.0;
+    new: return (int)(amount * 100.0) / 100.0;
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'WI-418 c2: add inventory audit event names'
+  message: 'c2: add invoice total label helper'
   role: intermediate
   operations:
   - type: write_file
-    path: src/main/java/example/InventoryAudit.java
+    path: src/main/java/example/InvoiceLabels.java
     content: |
       package example;
 
-      public class InventoryAudit {
-        public String reservationEvent() {
-          return "inventory.reservation.requested";
+      public class InvoiceLabels {
+        public String totalLabel() {
+          return "Invoice total";
         }
       }
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'WI-418 c3: allow reservation when stock exactly matches request'
+  message: 'c3: fix invoice rounding regression from c2'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/InventoryReservation.java
-    old: return available - alreadyReserved > requested;
-    new: return available - alreadyReserved >= requested;
+    path: src/main/java/example/CurrencyFormatter.java
+    old: return (int)(amount * 100.0) / 100.0;
+    new: return Math.round(amount * 100.0) / 100.0;
 bugs:
 - id: B001
-  title: Exact-stock reservations are rejected after a work-item change
+  title: Currency values are truncated instead of rounded
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -94,14 +93,14 @@ bugs:
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/InventoryReservation.java
-    statement: return available - alreadyReserved > requested;
+    file: src/main/java/example/CurrencyFormatter.java
+    statement: return (int)(amount * 100.0) / 100.0;
     change_type: line_modification
   fixes:
   - id: X001
     commit: c3
-    file: src/main/java/example/InventoryReservation.java
-    statement: return available - alreadyReserved >= requested;
+    file: src/main/java/example/CurrencyFormatter.java
+    statement: return Math.round(amount * 100.0) / 100.0;
     fix_type: line_modification
 expected_szz:
   commit_level:
@@ -111,26 +110,21 @@ expected_szz:
     related_but_not_correct:
     - c2
 scenario_design:
-  purpose: Evaluate whether SZZ identifies the original BIC when a related but non-faulty work-item commit sits immediately
-    between the BIC and BFC.
-  current_schema_limitation: Work-item membership and related-but-not-correct candidates are graph-specific metadata.
-  required_extensions_from_source: 'This scenario uses factors: work_items, intermediate_commit, related_but_not_correct; operations: write_file, replace.'
+  purpose: Evaluate whether SZZ resists an incorrect BFC-message hint and still identifies the true code-level BIC.
+  current_schema_limitation: Misleading developer hints are represented as metadata attached to the BFC.
+  required_extensions_from_source: 'This scenario uses factors: developer_hints, misleading_commit_message; operations: write_file, replace.'
   evaluation_points:
-  - Whether SZZ identifies c1 as the BIC.
-  - Whether the intermediate audit commit c2 is not mistaken for the BIC.
-  - Whether work-item membership is represented without collapsing all commits in the work item into one cause.
+  - Whether SZZ identifies c1 as the true rounding BIC.
+  - Whether c2 is treated as an incorrect message reference rather than the expected BIC.
+  - Whether developer hints are distinguished from trustworthy blame evidence.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.
-work_items:
-- id: WI-418
-  title: Inventory reservation reliability work
-  commits:
-  - commit: c0
-    relevance: setup
-  - commit: c1
-    relevance: bug_introducing
-  - commit: c2
-    relevance: related_but_not_correct
-  - commit: c3
-    relevance: bug_fixing
+developer_hints:
+- bug: B001
+  source: commit_message
+  commit: c3
+  referenced_commits:
+  - c2
+  correctness: incorrect
+  explanation: The BFC message blames c2, but c2 only adds labels; c1 introduced the truncating arithmetic.

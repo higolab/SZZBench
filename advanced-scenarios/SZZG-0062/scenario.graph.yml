@@ -1,82 +1,159 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0062
-  title: File deletion
-  slug: file-deletion
-  description: Evaluates a deletion-based fix where the initial commit creates a buggy file and the fix deletes that file.
-  category: Robustness and implementation-quality scenarios
-  category_code: K
+  title: Rebase with non-BIC intermediate commit
+  slug: rebase-with-non-bic-intermediate-commit
+  description: A rebased BIC is followed by a rebased intermediate commit that should not be selected as the BIC.
+  category: Branch, merge, cherry-pick, and backport scenarios
+  category_code: G
   factors:
-  - delete_file
+  - branch
+  - rebase
+  - rebased_bic
+  - intermediate_commit
+  - direct_bic
+  - origin_bic
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0062-file-deletion
+  name: SZZG-0062-rebase-with-non-bic-intermediate-commit
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial buggy file (write_file src/main/java/example/Buggy.java)
+  history_summary: 'c0: create initial correct implementation
 
-    c1: fix bug (delete_file src/main/java/example/Buggy.java)'
+    f1: introduce range boundary bug on feature
+
+    f2: add feature helper using buggy range check
+
+    r1: rebase feature BIC onto main
+
+    r2: rebase feature helper onto main
+
+    c3: fix range boundary bug after rebase'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial buggy file (write_file src/main/java/example/Buggy.java)'
+  message: 'c0: create initial correct implementation'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Buggy.java
-    content: "package example;\npublic class Buggy {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value > min && value < max;\n  }\n}\n"
-- id: c1
+    path: src/main/java/example/Range.java
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n}\n"
+- id: f1
+  branch: feature
+  parents:
+  - c0
+  message: 'f1: introduce range boundary bug on feature'
+  role: origin_bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+- id: f2
+  branch: feature
+  parents:
+  - f1
+  message: 'f2: add feature helper using buggy range check'
+  role: intermediate
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n}\n"
+    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
+      \ min, max);\n  }\n}\n"
+- id: r1
   branch: main
   parents:
   - c0
-  message: 'c1: fix bug (delete_file src/main/java/example/Buggy.java)'
+  message: 'r1: rebase feature BIC onto main'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+  rebase_of: f1
+- id: r2
+  branch: main
+  parents:
+  - r1
+  message: 'r2: rebase feature helper onto main'
+  role: intermediate
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n}\n"
+    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
+      \ min, max);\n  }\n}\n"
+  rebase_of: f2
+- id: c3
+  branch: main
+  parents:
+  - r2
+  message: 'c3: fix range boundary bug after rebase'
   role: bug_fixing
   operations:
-  - type: delete_file
-    path: src/main/java/example/Buggy.java
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Bug removed by deleting Buggy.java
+  title: Range bug with rebased non-BIC intermediate
   bug_introducing_commits:
-  - commit: c0
+  - commit: r1
     role: direct
+  - commit: f1
+    role: origin
   bug_fixing_commits:
-  - commit: c1
+  - commit: c3
     role: complete_fix
   faults:
   - id: F001
-    commit: c0
-    file: src/main/java/example/Buggy.java
+    commit: r1
+    file: src/main/java/example/Range.java
     statement: return value > min && value < max;
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c1
-    file: src/main/java/example/Buggy.java
-    fix_type: file_deletion
+    commit: c3
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+    fix_type: line_modification
+  origin_faults:
+  - id: OF001
+    commit: f1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: origin_line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - c0
+    - r1
+    related_but_not_correct:
+    - f1
+    - r2
+    notes: r2 is a rebased intermediate commit, not the BIC.
 scenario_design:
-  purpose: Evaluate whether SZZ traces a deletion-based fix back to the initial commit c0 that created the buggy file.
-  key_property: The BFC c1 deletes Buggy.java entirely. The required BIC is c0 because that initial commit introduced the
-    buggy file and faulty return statement.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: delete_file; operations: write_file, delete_file.'
+  purpose: Evaluate whether SZZ distinguishes a rebased BIC from a later rebased intermediate commit.
+  key_property: r1 is the direct BIC; r2 is non-BIC intermediate.
+  difference_from_SZZG_0073: SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
+    adds a distinct rebase-related complication.
   evaluation_points:
-  - Whether SZZ identifies c0 as the BIC for the deleted buggy file.
-  - Whether SZZ handles file deletion as the complete fix.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Report r1.
+  - Avoid r2.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
+- This scenario models a rebase-related development history for SZZ evaluation.
+- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

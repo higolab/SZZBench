@@ -1,20 +1,19 @@
-# SZZG-0110: Multiple BICs where one true BIC is not directly touched by the BFC
+# SZZG-0110: Configuration BIC is fixed by code-side normalization
 
 ## Source
 
-- Category: Multiple-BIC scenarios
+- Category: Context-dependent scenarios
 
 ## Purpose
 
-Evaluate multiple bics where one true bic is not directly touched by the bfc and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate configuration bic is fixed by code-side normalization and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: c0: create retry policy
-c1: c1: introduce excessive retry limit
-c2: c2: introduce retry on client errors
-c3: c3: fix retry condition without touching retry limit
+c0: c0: create endpoint resolver and config
+c1: c1: introduce trailing slash in configuration
+c2: c2: fix endpoint construction in code
 ```
 
 ## Why this needs `scenario.graph.yml`
@@ -23,14 +22,14 @@ This history requires graph-aware scenario semantics that are difficult to expre
 
 ## Required graph-schema features
 
-- Factors: multiple_bic, not_directly_touched_by_fix, context_dependent
+- Factors: configuration_change, cross_artifact_fix, context_dependent
 - Operation types: replace, write_file
 - Expected SZZ policy is defined in `expected_szz`.
 
 ## Expected BICs
 
 ```text
-c1, c2
+c1
 ```
 
 ## Evaluation points

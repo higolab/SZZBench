@@ -1,47 +1,54 @@
-# SZZG-0061: Binary file change
-
-## Source
-
-- Category: Robustness and implementation-quality scenarios
+# SZZG-0061: Rebase feature branch with BIC
 
 ## Purpose
 
-Evaluate Binary file change and whether SZZ identifies the expected bug-introducing commit set.
+Feature branch commits introduce and extend a bug, and those commits are then rebased onto `main` as new single-parent commits.
 
-## Expected history
+This scenario evaluates how SZZ handles a rebase-style workflow where the **direct BIC on main** is the rebased commit, while the original feature-branch commit is retained as **origin metadata**.
 
-```text
-c0: create initial state (write_file src/main/java/example/Range.java)
-c1: introduce bug (replace src/main/java/example/Range.java)
-c2: fix bug (write_binary_file assets/data.bin; replace src/main/java/example/Range.java)
-```
-
-## Why this needs `scenario.graph.yml`
-
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
-
-## Required graph-schema features
-
-- Factors: write_binary_file
-- Operation types: write_file, replace, write_binary_file
-- Expected SZZ policy is defined in expected_szz.
-
-## Evaluation points
-
-- Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
-- Whether the expected_szz evaluation policy is applied correctly.
-
----
-
-## Draft status
-
-This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
-
-## Files
+## Commit history
 
 ```text
-SZZG-0061/
-|-- scenario.graph.yml
-`-- README.md
+c0: create initial correct implementation on main
+f1: feature branch introduces range boundary bug
+f2: feature branch adds code that uses the buggy range check
+r1: rebase f1 onto main as a new main-line commit
+r2: rebase f2 onto main as a new main-line commit
+c3: fix the rebased range boundary bug on main
 ```
+
+## Commit table
+
+| Commit | Branch | Parents | Role | Description |
+|---|---|---|---|---|
+| `c0` | `main` | none | `initial` | Create the initial correct implementation. |
+| `f1` | `feature` | `c0` | `origin_bug_introducing` | Introduce the boundary bug on the feature branch. |
+| `f2` | `feature` | `f1` | `intermediate` | Add feature code that uses the buggy range check. |
+| `r1` | `main` | `c0` | `bug_introducing` | Rebased copy of `f1`; introduces the bug into the main-line history. |
+| `r2` | `main` | `r1` | `intermediate` | Rebased copy of `f2`; adds the feature helper on main. |
+| `c3` | `main` | `r2` | `bug_fixing` | Fix the range boundary bug on main. |
+
+## Expected SZZ result
+
+```text
+Expected BIC: r1
+Related but not correct: f1
+```
+
+## Scenario purpose
+
+Evaluate how SZZ handles rebase-style history rewriting.
+
+In a rebase workflow, the original feature-branch commits are replayed onto another base and receive new commit identities. Therefore, the commit that directly introduces the faulty code into the main-line history is `r1`, not the original feature-branch commit `f1`.
+
+## Difference from nearby branch scenarios
+
+- `SZZG-0026` uses a normal merge with a two-parent merge commit.
+- `SZZG-0030` uses a squash merge, where multiple feature commits are collapsed into one single-parent commit on `main`.
+- `SZZG-0061` uses rebase-style replay, where each feature commit is represented by a corresponding new single-parent commit on `main`.
+
+## Notes
+
+- The `rebase_of` metadata records which feature-branch commit each rebased main-line commit corresponds to.
+- The direct BIC for generated main history is `r1`.
+- The origin BIC is `f1`, but it is not the expected direct BIC for the main-line BFC.

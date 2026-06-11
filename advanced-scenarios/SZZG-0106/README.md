@@ -1,50 +1,54 @@
-# SZZG-0106: Misleading revert commit message reintroduces bug
+# SZZG-0106: Copy followed by bug introduction only in the copied code
+
+## Source
+
+- Category: Clone propagation scenarios
 
 ## Purpose
 
-Evaluate context-aware SZZ robustness when a revert message understates or mislabels the actual bug reintroduction.
+Evaluate copy followed by bug introduction only in the copied code and whether SZZ identifies the expected bug-introducing commit set.
 
-## Commit history
-
-```text
-c0: create initial correct implementation
-c1: introduce boundary bug
-c2: fix boundary bug
-c3: revert cleanup changes
-c4: fix regression after misleading revert
-```
-
-## Commit table
-
-| Commit | Branch | Parents | Role | Description |
-|---|---|---|---|---|
-| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `c1` | `main` | c0 | `origin_bug_introducing` | c1: introduce boundary bug |
-| `c2` | `main` | c1 | `prior_fix` | c2: fix boundary bug |
-| `c3` | `main` | c2 | `bug_introducing` | c3: revert cleanup changes |
-| `c4` | `main` | c3 | `bug_fixing` | c4: fix regression after misleading revert |
-
-## Expected SZZ result
+## Expected history
 
 ```text
-Expected BIC(s): c3
-Related but not correct: c1, c2
+c0: c0: create original formatter
+c1: c1: copy formatter to report formatter
+c2: c2: introduce copied-code null handling bug
+c3: c3: fix copied formatter null handling
 ```
 
-## Key property
+## Why this needs `scenario.graph.yml`
 
-The revert message looks like cleanup, but the patch reintroduces the boundary bug.
+This history requires graph-aware scenario semantics that are difficult to express with the normal `scenario.yml` schema.
 
-## Difference from existing revert scenarios
+## Required graph-schema features
 
-This scenario isolates a double-revert or revert-derived complication beyond the existing partial revert and reintroduction scenarios.
+- Factors: copy_file, clone_divergence, direct_bic_in_copy
+- Operation types: copy_file, replace, write_file
+- Expected SZZ policy is defined in `expected_szz`.
+
+## Expected BICs
+
+```text
+c2
+```
 
 ## Evaluation points
 
-- Whether SZZ reports c3.
-- Whether context-aware methods avoid being misled by the message.
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
-## Notes
+---
 
-- This scenario models revert-related development history for SZZ evaluation.
-- The direct BIC is the commit that reintroduces the bug in the history observed from the BFC.
+## Draft status
+
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
+
+## Files
+
+```text
+SZZG-0106/
+|-- scenario.graph.yml
+`-- README.md
+```

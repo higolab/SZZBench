@@ -1,37 +1,36 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0029
-  title: Old BIC and re-BIC are both plausible
-  slug: old-bic-re-bic-plausible
-  description: A bug is introduced, fixed, reintroduced by a partial revert, and fixed again. The direct BIC for the final
-    fix is the reintroducing commit, but the old original BIC is also a plausible origin-related answer under an origin-aware
-    evaluation policy.
-  category: Revert and reintroduction scenarios
-  category_code: F
+  title: BFC in merge commit
+  slug: bfc-in-merge-commit
+  description: A bug is introduced before branches diverge; main and feature apply complementary partial changes, and the
+    merge commit performs the final fix.
+  category: Branch, merge, cherry-pick, and backport scenarios
+  category_code: G
   factors:
-  - reintroduction
-  - partial_revert
-  - origin_bic
-  - evaluation_variants
+  - branch
+  - merge
+  - merge_commit_bfc
+  - partial_fix
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0029-old-bic-and-re-bic-plausible
+  name: SZZG-0029-bfc-in-merge-commit
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial correct implementation
+  history_summary: 'c0: create initial correct implementation on main
 
-    c1: introduce original range boundary bug
+    c1: introduce bug before branch divergence
 
-    c2: fix original bug and perform a small refactoring
+    c2: main branch adds tests but does not fix the bug
 
-    c3: partially revert c2 and reintroduce the boundary bug while keeping the refactoring
+    c3: feature branch adds a helper that still uses the buggy method
 
-    c4: fix the reintroduced bug'
+    c4: merge main and feature and fix the bug in the merge commit'
 commits:
 - id: c0
   branch: main
@@ -42,12 +41,12 @@ commits:
   - type: write_file
     path: src/main/java/example/Range.java
     content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n\n  public String source() {\n    return \"main\";\n  }\n}\n"
+      \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce original range boundary bug'
+  message: 'c1: introduce shared range boundary bug'
   role: bug_introducing
   operations:
   - type: replace
@@ -58,34 +57,34 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: fix range boundary bug and rename source label'
-  role: bug_fixing
+  message: 'c2: add boundary test documentation without fixing code'
+  role: intermediate
   operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: return "main";
-    new: return "range-service";
+  - type: write_file
+    path: docs/boundary-test-note.md
+    content: 'Boundary cases should be covered by tests, but the implementation is still buggy here.
+
+      '
 - id: c3
-  branch: main
+  branch: feature
   parents:
-  - c2
-  message: 'c3: partially revert boundary fix and reintroduce bug'
-  role: bug_reintroducing
-  revert_of: c2
+  - c1
+  message: 'c3: add feature helper that depends on buggy range check'
+  role: intermediate
   operations:
   - type: replace
     path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
+    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n}\n"
+    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
+      \ min, max);\n  }\n}\n"
 - id: c4
   branch: main
   parents:
+  - c2
   - c3
-  message: 'c4: fix reintroduced range boundary bug'
+  message: 'c4: merge feature and complete range boundary fix'
   role: bug_fixing
   operations:
   - type: replace
@@ -94,30 +93,19 @@ commits:
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Reintroduced range boundary bug with old and new plausible BICs
+  title: Shared range boundary bug fixed by merge commit
   bug_introducing_commits:
-  - commit: c3
-    role: direct_reintroduction
-    description: Direct BIC for the final bug instance fixed by c4.
-    reverts: c2
   - commit: c1
-    role: old_origin_bic
-    description: Original BIC where the same faulty logic first appeared.
+    role: direct
   bug_fixing_commits:
   - commit: c4
-    role: final_fix
+    role: merge_fix
   faults:
   - id: F001
-    commit: c3
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
-    change_type: reintroduced_line_modification
-  origin_faults:
-  - id: OF001
     commit: c1
     file: src/main/java/example/Range.java
     statement: return value > min && value < max;
-    change_type: origin_line_modification
+    change_type: line_modification
   fixes:
   - id: X001
     commit: c4
@@ -125,37 +113,17 @@ bugs:
     statement: return value >= min && value <= max;
     fix_type: line_modification
 expected_szz:
-  default_variant: reintroduction-direct
-  evaluation_variants:
-  - name: reintroduction-direct
-    description: Only the reintroducing commit is considered the correct BIC for the final fix.
-    commit_level:
-      evaluation_policy: exact_set
-      required:
-      - c3
-      related_but_not_correct:
-      - c1
-  - name: origin-aware
-    description: The reintroducing commit is required, and the old origin BIC is accepted as related context.
-    commit_level:
-      evaluation_policy: relaxed_with_related
-      required:
-      - c3
-      acceptable_related:
-      - commit: c1
-        reason: old_origin_bic
-        credit: 0.5
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
 scenario_design:
-  purpose: Evaluate a reintroduced bug where the direct re-BIC and the old origin BIC are both plausible depending on the
-    evaluation policy.
-  key_property: c3 partially reverts c2 by restoring only the faulty boundary condition, while keeping c2's unrelated refactoring.
-  difference_from_SZZG_0028: SZZG-0028 should focus on direct reintroduction. SZZG-0029 keeps the same reintroduction theme
-    but adds explicit evaluation variants for old-origin-aware evaluation.
+  purpose: 'Evaluate a BFC that is a merge commit, but with a different shape from SZZG-0005: the bug predates branch divergence
+    and the merge completes the fix after partial contextual changes on both branches.'
+  key_property: The BFC is merge commit c4, and both parents still contain the bug before c4 applies the final fix.
   evaluation_points:
-  - Whether SZZ identifies c3 as the direct reintroducing BIC for c4.
-  - Whether c1 can be treated as an origin-related answer under an alternative evaluation policy.
-  - Whether a partial revert is distinguished from the old original BIC.
+  - Merge commit as BFC
+  - Bug introduced before branch divergence
+  - Both branches contain relevant intermediate context before the merge.
 notes:
-- This revision makes SZZG-0029 an evaluation-variant scenario for old BIC versus re-BIC.
-- c3 partially reverts c2 only for the boundary condition; it keeps the source-label refactoring from c2.
-- The default expected BIC is c3.
+- This is案B for distinguishing SZZG-0029 from SZZG-0005.

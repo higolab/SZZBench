@@ -1,16 +1,16 @@
-# SZZG-0077: Rebase conflict resolution fixes bug
+# SZZG-0077: Interactive rebase squashes BIC and BFC into neutral commit
 
 ## Purpose
 
-Evaluate whether SZZ can handle a BFC that is itself a rebase conflict resolution commit.
+Clarify a scope boundary for bugs that do not survive into final main history.
 
 ## Commit history
 
 ```text
 c0: c0: create initial correct implementation
-r1: r1: rebase feature bug commit onto main
-m1: m1: main change before conflict-resolution fix
-r2: r2: resolve rebase conflict and fix range bug
+f1: f1: introduce transient bug on feature
+f2: f2: fix transient bug on feature
+r1: r1: squash transient bug and fix into neutral commit
 ```
 
 ## Commit table
@@ -18,28 +18,28 @@ r2: r2: resolve rebase conflict and fix range bug
 | Commit | Branch | Parents | Role | Description |
 |---|---|---|---|---|
 | `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `r1` | `main` | c0 | `bug_introducing` | r1: rebase feature bug commit onto main |
-| `m1` | `main` | r1 | `intermediate` | m1: main change before conflict-resolution fix |
-| `r2` | `main` | m1 | `bug_fixing` | r2: resolve rebase conflict and fix range bug |
+| `f1` | `feature` | c0 | `bug_introducing` | f1: introduce transient bug on feature |
+| `f2` | `feature` | f1 | `bug_fixing` | f2: fix transient bug on feature |
+| `r1` | `main` | c0 | `intermediate` | r1: squash transient bug and fix into neutral commit |
 
 ## Expected SZZ result
 
 ```text
-Expected BIC(s): r1
+Expected BIC(s): f1
 ```
 
 ## Key property
 
-The fix is introduced by r2 during rebase conflict resolution.
+The final main history has no main-line BIC for this transient bug.
 
-## Difference from SZZG-0073
+## Difference from SZZG-0061
 
-SZZG-0073 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
+SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
 
 ## Evaluation points
 
-- Start from r2.
-- Return r1.
+- Record transient pair.
+- Treat as special scope-boundary case.
 
 ## Notes
 

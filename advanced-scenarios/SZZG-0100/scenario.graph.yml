@@ -1,143 +1,118 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0100
-  title: Revert of fix reintroduces bug
-  slug: revert-of-fix-reintroduces-bug
-  description: A bug is fixed, the fix is reverted and the bug is reintroduced, then the bug is fixed again.
-  category: Revert and reintroduction scenarios
-  category_code: G
+  title: Intermediate file move and package rename between BIC and BFC
+  slug: intermediate-file-move-package-rename
+  description: Evaluates intermediate file move and package rename between bic and bfc and checks whether SZZ identifies the
+    expected bug-introducing commit set.
+  category: Refactoring scenarios
+  category_code: A
   factors:
-  - revert
-  - revert_of_fix
-  - reintroduced_bug
-  - re_bic
-  - origin_bic
+  - rename_file
+  - move_file
+  - package_rename
+  - intermediate_refactoring
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0100-revert-of-fix-reintroduces-bug
+  name: SZZG-0100-intermediate-file-move-package-rename
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial correct implementation
+  history_summary: 'c0: c0: create legacy parser
 
-    c1: introduce boundary bug
+    c1: c1: introduce parser trimming bug
 
-    c2: fix boundary bug
+    c2: c2: move parser to core package
 
-    c3: revert c2 and reintroduce boundary bug
-
-    c4: fix boundary bug again'
+    c3: c3: fix parser whitespace handling'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial correct implementation'
+  message: 'c0: create legacy parser'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    boolean\
-      \ aboveMin = value >= min;\n    boolean belowMax = value <= max;\n    return aboveMin && belowMax;\n  }\n}\n"
+    path: src/main/java/example/legacy/Parser.java
+    content: "package example.legacy;\npublic class Parser {\n  public int parseCount(String text) {\n    return Integer.parseInt(text.trim());\n\
+      \  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce boundary bug'
-  role: origin_bug_introducing
+  message: 'c1: introduce parser trimming bug'
+  role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
-    new: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
+    path: src/main/java/example/legacy/Parser.java
+    old: return Integer.parseInt(text.trim());
+    new: return Integer.parseInt(text);
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: fix boundary bug'
-  role: bug_fixing
+  message: 'c2: move parser to core package'
+  role: refactoring
   operations:
+  - type: rename_file
+    from: src/main/java/example/legacy/Parser.java
+    to: src/main/java/example/core/Parser.java
   - type: replace
-    path: src/main/java/example/Range.java
-    old: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
-    new: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
+    path: src/main/java/example/core/Parser.java
+    old: package example.legacy;
+    new: package example.core;
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'c3: revert c2 and reintroduce boundary bug'
-  role: bug_introducing
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
-    new: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
-  reverts: c2
-- id: c4
-  branch: main
-  parents:
-  - c3
-  message: 'c4: fix boundary bug again'
+  message: 'c3: fix parser whitespace handling'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
-    new: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
+    path: src/main/java/example/core/Parser.java
+    old: return Integer.parseInt(text);
+    new: return Integer.parseInt(text.trim());
 bugs:
 - id: B001
-  title: Boundary bug reintroduced by reverting the fix
+  title: Synthetic graph scenario bug
   bug_introducing_commits:
-  - commit: c3
-    role: direct
   - commit: c1
-    role: origin
+    role: direct
   bug_fixing_commits:
-  - commit: c4
+  - commit: c3
     role: complete_fix
   faults:
   - id: F001
-    commit: c3
-    file: src/main/java/example/Range.java
-    statement: boolean belowMax = value < max;
-    change_type: reintroduced_upper_boundary
-  - id: F002
-    commit: c3
-    file: src/main/java/example/Range.java
-    statement: boolean aboveMin = value > min;
-    change_type: reintroduced_lower_boundary
+    commit: c1
+    file: src/main/java/example/legacy/Parser.java
+    statement: return Integer.parseInt(text);
+    change_type: line_modification
   fixes:
   - id: X001
-    commit: c4
-    file: src/main/java/example/Range.java
-    statement: boolean belowMax = value <= max;
-    fix_type: line_modification
-  - id: X002
-    commit: c4
-    file: src/main/java/example/Range.java
-    statement: boolean aboveMin = value >= min;
+    commit: c3
+    file: src/main/java/example/core/Parser.java
+    statement: return Integer.parseInt(text.trim());
     fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - c3
-    related_but_not_correct:
     - c1
-    - c2
-    notes: c3 is the direct re-BIC for c4; c1 is the older origin BIC and c2 is the reverted prior fix.
 scenario_design:
-  purpose: Evaluate whether SZZ returns the revert commit that reintroduced the bug rather than the original historical BIC.
-  key_property: The bug was fixed once, but reverting that fix creates the direct BIC for the later BFC.
-  difference_from_existing_revert_scenarios: This scenario isolates a double-revert or revert-derived complication beyond
-    the existing partial revert and reintroduction scenarios.
+  purpose: Evaluate intermediate file move and package rename between bic and bfc and whether SZZ identifies the expected
+    bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: rename_file, move_file, package_rename, intermediate_refactoring;
+    operations: rename_file, replace, write_file.'
   evaluation_points:
-  - Whether SZZ reports c3.
-  - Whether c1 is treated as origin rather than the direct answer.
-  - Whether the prior fix c2 is not reported as BIC.
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- This scenario models revert-related development history for SZZ evaluation.
-- The direct BIC is the commit that reintroduces the bug in the history observed from the BFC.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

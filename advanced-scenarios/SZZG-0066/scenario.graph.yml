@@ -1,110 +1,139 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0066
-  title: Non-UTF-8 file
-  slug: non-utf-8-file
-  description: Evaluates a bug introduced and fixed in a non-UTF-8 encoded configuration file.
-  category: Robustness and implementation-quality scenarios
-  category_code: K
+  title: Rebase changes patch content during replay
+  slug: rebase-changes-patch-content-during-replay
+  description: The rebased BIC has different patch content from the original feature BIC.
+  category: Branch, merge, cherry-pick, and backport scenarios
+  category_code: G
   factors:
-  - encoding
-  - non_utf8_file
-  - write_binary_file
+  - branch
+  - rebase
+  - patch_modified_during_rebase
+  - origin_bic
+  - direct_bic
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0066-non-utf-8-file
+  name: SZZG-0066-rebase-changes-patch-content-during-replay
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create CP1252-encoded boundary configuration
+  history_summary: 'c0: create initial correct implementation
 
-    c1: introduce boundary bug in the non-UTF-8 config
+    f1: introduce exclusive bug on feature
 
-    c2: fix the non-UTF-8 config'
+    m1: add main note
+
+    r1: rebase feature bug with adjusted patch content
+
+    c2: fix adjusted lower-bound bug'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create CP1252-encoded boundary configuration'
+  message: 'c0: create initial correct implementation'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/ConfigBackedRange.java
-    content: |
-      package example;
-      public class ConfigBackedRange {
-        public boolean contains(int value, int min, int max) {
-          return value >= min && value <= max;
-        }
-      }
-  - type: write_binary_file
-    path: config/range-limits.properties
-    content_base64: bWluPTAKbWF4PTEwCmxhYmVsPWNhZukK
-- id: c1
+    path: src/main/java/example/Range.java
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n}\n"
+- id: f1
+  branch: feature
+  parents:
+  - c0
+  message: 'f1: introduce exclusive bug on feature'
+  role: origin_bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+- id: m1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce boundary bug in CP1252 config'
+  message: 'm1: add main note'
+  role: intermediate
+  operations:
+  - type: write_file
+    path: docs/main.md
+    content: 'note
+
+      '
+- id: r1
+  branch: main
+  parents:
+  - m1
+  message: 'r1: rebase feature bug with adjusted patch content'
   role: bug_introducing
   operations:
-  - type: write_binary_file
-    path: config/range-limits.properties
-    content_base64: bWluPTEKbWF4PTkKbGFiZWw9Y2Fm6Qo=
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value <= max;
+  rebase_of: f1
+  rebase_patch_modified: true
 - id: c2
   branch: main
   parents:
-  - c1
-  message: 'c2: fix CP1252 boundary config'
+  - r1
+  message: 'c2: fix adjusted lower-bound bug'
   role: bug_fixing
   operations:
-  - type: write_binary_file
-    path: config/range-limits.properties
-    content_base64: bWluPTAKbWF4PTEwCmxhYmVsPWNhZukK
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min && value <= max;
+    new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Boundary values are narrowed in a non-UTF-8 configuration file
+  title: Adjusted lower-bound bug during rebase
   bug_introducing_commits:
-  - commit: c1
+  - commit: r1
     role: direct
+  - commit: f1
+    role: origin
   bug_fixing_commits:
   - commit: c2
     role: complete_fix
   faults:
   - id: F001
-    commit: c1
-    file: config/range-limits.properties
-    change_type: non_utf8_binary_update
-    encoding: windows-1252
-    description: The CP1252 file changes min=0/max=10 to min=1/max=9, excluding the boundary values.
+    commit: r1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value <= max;
+    change_type: line_modification
   fixes:
   - id: X001
     commit: c2
-    file: config/range-limits.properties
-    fix_type: non_utf8_binary_update
-    encoding: windows-1252
-    description: The CP1252 file restores min=0/max=10.
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+    fix_type: line_modification
+  origin_faults:
+  - id: OF001
+    commit: f1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: origin_line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - c1
+    - r1
+    related_but_not_correct:
+    - f1
+    notes: r1 differs from origin patch f1.
 scenario_design:
-  purpose: Evaluate whether SZZBench tooling handles non-UTF-8 files without assuming all changed files are UTF-8 text.
-  current_schema_limitation: The non-UTF-8 file is modeled with write_binary_file so that invalid UTF-8 bytes can be represented safely.
-  required_extensions_from_source: 'This scenario uses factors: encoding, non_utf8_file, write_binary_file; operations: write_file, write_binary_file.'
+  purpose: Evaluate direct/origin handling when rebase changes patch content.
+  key_property: Patch equality alone is insufficient.
+  difference_from_SZZG_0073: SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
+    adds a distinct rebase-related complication.
   evaluation_points:
-  - Whether SZZ identifies c1 as the BIC for the encoded configuration change.
-  - Whether non-UTF-8 file content does not break parsing, generation, or verification.
-  - Whether the expected_szz exact-set policy is applied correctly.
+  - Report r1.
+  - Treat f1 as origin.
 notes:
-- The properties file contains the byte 0xE9 in the word cafe encoded as CP1252, which is not valid standalone UTF-8.
-- Fault and fix descriptions avoid relying on text-line lookup inside the binary file.
-encoding:
-  files:
-  - path: config/range-limits.properties
-    encoding: windows-1252
-    contains_invalid_utf8: true
+- This scenario models a rebase-related development history for SZZ evaluation.
+- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

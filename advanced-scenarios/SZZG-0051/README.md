@@ -1,21 +1,19 @@
-# SZZG-0051: Unrelated commits mixed in the same issue
+# SZZG-0051: Binary file change
 
 ## Source
 
-- Category: Work-item and commit-series scenarios
+- Category: Robustness and implementation-quality scenarios
 
 ## Purpose
 
-Evaluate Unrelated commits mixed in the same issue and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate Binary file change and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: create initial state (write_file src/main/java/example/RangeService.java)
-c1: introduce bug (replace src/main/java/example/RangeService.java)
-c2: add unrelated change (replace src/main/java/example/RangeService.java)
-c3: add unrelated change (write_file docs/issue-10-note.md)
-c4: fix bug (replace src/main/java/example/RangeService.java)
+c0: create initial state (write_file src/main/java/example/Range.java)
+c1: introduce bug (replace src/main/java/example/Range.java)
+c2: fix bug (write_binary_file assets/data.bin; replace src/main/java/example/Range.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
@@ -24,8 +22,8 @@ This history requires graph-aware scenario semantics that are difficult to expre
 
 ## Required graph-schema features
 
-- Factors: work_items, issues
-- Operation types: write_file, replace
+- Factors: write_binary_file
+- Operation types: write_file, replace, write_binary_file
 - Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points

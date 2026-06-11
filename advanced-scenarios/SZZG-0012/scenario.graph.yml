@@ -1,135 +1,136 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0012
-  title: Extract class after BIC
-  slug: extract-class-after-bic
-  description: A bug is introduced in a class that mixes range validation and reporting responsibilities. After the BIC, a
-    new RangeValidator class is extracted and the buggy validation logic is moved there. The BFC then fixes the bug in the
-    extracted class.
-  category: Intermediate-history scenarios
-  category_code: C
+  title: Multiple BFCs progressively fix the same bug
+  slug: bfc-bug
+  description: 'A single bug affects two helper methods that together implement a range check. Two bug-fixing commits progressively
+    repair the same bug: the first BFC fixes the lower-bound helper, and the second BFC fixes the upper-bound helper and completes
+    the repair.'
+  category: Multiple BIC and BFC scenarios
+  category_code: D
   factors:
-  - refactoring
-  - extract_class
-  - move_entity
-  - post_bic_refactoring
+  - multiple_bfc
+  - progressive_fix
+  - same_bug
+  - partial_fix
+  - complete_fix
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0012-extract-class-after-bic
+  name: SZZG-0012-bfc-bug
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create RangeService with validation and reporting responsibilities
+  history_summary: 'c0: create range check with separate lower-bound and upper-bound helpers
 
-    c1: introduce boundary bug in RangeService.contains
+    c1: introduce the same boundary bug in both helper methods
 
-    c2: extract RangeValidator class after the BIC and move the buggy validation logic there
+    c2: first BFC fixes only the lower-bound helper
 
-    c3: fix the boundary bug in the extracted RangeValidator class'
+    c3: second BFC fixes the upper-bound helper and completes the repair'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create RangeService with validation and reporting'
+  message: 'c0: create range helper methods'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/RangeService.java
-    content: "package example;\n\npublic class RangeService {\n  public boolean contains(int value, int min, int max) {\n\
-      \    return value >= min && value <= max;\n  }\n\n  public String describe(int min, int max) {\n    return \"range[\"\
-      \ + min + \",\" + max + \"]\";\n  }\n\n  public boolean acceptsAndReport(int value, int min, int max) {\n    return\
-      \ contains(value, min, max);\n  }\n}\n"
+    path: src/main/java/example/Range.java
+    content: "package example;\n\npublic class Range {\n  public boolean aboveMin(int value, int min) {\n    return value\
+      \ >= min;\n  }\n\n  public boolean belowMax(int value, int max) {\n    return value <= max;\n  }\n\n  public boolean\
+      \ contains(int value, int min, int max) {\n    return aboveMin(value, min) && belowMax(value, max);\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce range boundary bug'
+  message: 'c1: introduce lower and upper boundary bugs'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/RangeService.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
+    path: src/main/java/example/Range.java
+    old: return value >= min;
+    new: return value > min;
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value <= max;
+    new: return value < max;
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: extract RangeValidator class after BIC'
-  role: intermediate
+  message: 'c2: partially fix lower boundary'
+  role: bug_fixing
   operations:
-  - type: write_file
-    path: src/main/java/example/RangeService.java
-    content: "package example;\n\npublic class RangeService {\n  private final RangeValidator validator = new RangeValidator();\n\
-      \n  public String describe(int min, int max) {\n    return \"range[\" + min + \",\" + max + \"]\";\n  }\n\n  public\
-      \ boolean acceptsAndReport(int value, int min, int max) {\n    return validator.contains(value, min, max);\n  }\n}\n"
-  - type: write_file
-    path: src/main/java/example/RangeValidator.java
-    content: "package example;\n\npublic class RangeValidator {\n  public boolean contains(int value, int min, int max) {\n\
-      \    return value > min && value < max;\n  }\n}\n"
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min;
+    new: return value >= min;
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'c3: fix boundary bug in extracted validator'
+  message: 'c3: complete fix by repairing upper boundary'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/RangeValidator.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/Range.java
+    old: return value < max;
+    new: return value <= max;
 bugs:
 - id: B001
-  title: Range boundary bug moved to extracted validator class
+  title: Boundary bug progressively fixed by multiple BFCs
   bug_introducing_commits:
   - commit: c1
     role: direct
   bug_fixing_commits:
+  - commit: c2
+    role: partial_fix_lower_bound
   - commit: c3
-    role: complete_fix
+    role: complete_fix_upper_bound
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/RangeService.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/Range.java
+    statement: return value > min;
+    change_type: line_modification
+  - id: F002
+    commit: c1
+    file: src/main/java/example/Range.java
+    statement: return value < max;
     change_type: line_modification
   fixes:
   - id: X001
+    commit: c2
+    file: src/main/java/example/Range.java
+    statement: return value >= min;
+    fix_type: partial_fix_lower_bound
+  - id: X002
     commit: c3
-    file: src/main/java/example/RangeValidator.java
-    statement: return value >= min && value <= max;
-    fix_type: line_modification_after_extract_class
-  refactorings:
-  - commit: c2
-    type: extract_class
-    from_file: src/main/java/example/RangeService.java
-    to_file: src/main/java/example/RangeValidator.java
-    moved_entities:
-    - boolean contains(int value, int min, int max)
+    file: src/main/java/example/Range.java
+    statement: return value <= max;
+    fix_type: complete_fix_upper_bound
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
     - c1
-    notes: The fault is introduced in RangeService.java at c1 and later moved to RangeValidator.java by the extract-class
-      refactoring at c2.
+    notes: The same BIC c1 introduced both faulty helper conditions. Both c2 and c3 are BFCs for the same bug, but the expected
+      BIC remains c1.
 scenario_design:
-  purpose: Evaluate whether SZZ can identify the original BIC when the buggy method is moved into a newly extracted class
-    before the BFC.
-  key_property: 'The BIC and BFC are in different files: the fault is introduced in RangeService.java, then moved to RangeValidator.java,
-    and finally fixed there.'
-  difference_from_SZZG_0011: 'SZZG-0011 represents a method move between classes. This scenario represents extract class:
-    a new class is created after the BIC, responsibilities are split, and the BFC occurs in the extracted class.'
+  purpose: Evaluate whether SZZ identifies the original BIC when the same bug is repaired progressively by multiple BFCs.
+  key_property: 'Two BFCs are required to fully repair the same bug: c2 fixes the lower-bound helper, and c3 fixes the upper-bound
+    helper.'
+  difference_from_SZZG_0003: SZZG-0003 represents a single partial-fix sequence on one condition expression. SZZG-0012 represents
+    multiple BFCs for one bug with two distinct faulty helper methods.
   evaluation_points:
-  - Whether SZZ follows the bug across extract-class refactoring.
-  - Whether SZZ avoids treating the extraction commit c2 as the BIC.
-  - Whether file movement from RangeService.java to RangeValidator.java is handled correctly.
+  - Whether SZZ identifies c1 rather than either fixing commit.
+  - Whether multiple BFCs for the same bug are represented and evaluated consistently.
+  - Whether partial and complete repairs of separate fault locations are handled.
 notes:
-- This revision differentiates SZZG-0012 from SZZG-0011 by creating a new RangeValidator class and moving the buggy validation
-  responsibility there.
-- The BIC remains c1, even though the BFC is in a different file after extraction.
-- The c2 extraction is intentionally represented with write_file operations so that current graph generation can reproduce
-  the refactoring without requiring a dedicated extract_class operation.
+- This revision makes c2 and c3 both meaningful bug-fixing commits.
+- The bug is introduced once in c1, but it affects two helper methods.
+- c2 fixes only the lower-bound helper; c3 completes the fix by repairing the upper-bound helper.

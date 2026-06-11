@@ -1,84 +1,39 @@
-# SZZG-0029: Old BIC and re-BIC are both plausible
+# SZZG-0029: BFC in merge commit
 
 ## Purpose
 
-This scenario represents a bug that is introduced, fixed, reintroduced by a partial revert, and fixed again.
-
-The direct BIC for the final fix is the reintroducing commit `c3`. However, the original old BIC `c1` is also a plausible origin-related answer under an origin-aware evaluation policy.
+A bug is introduced before branches diverge; main and feature apply complementary partial changes, and the merge commit performs the final fix.
 
 ## Commit history
 
 ```text
-c0: create initial correct implementation
-c1: introduce original range boundary bug
-c2: fix original bug and perform a small refactoring
-c3: partially revert c2 and reintroduce the boundary bug while keeping the refactoring
-c4: fix the reintroduced bug
+c0: create initial correct implementation on main
+c1: introduce bug before branch divergence
+c2: main branch adds tests but does not fix the bug
+c3: feature branch adds a helper that still uses the buggy method
+c4: merge main and feature and fix the bug in the merge commit
 ```
 
-## Code states
+## Commit table
 
-Correct state in `c0`:
+| Commit | Branch | Parents | Role | Description |
+|---|---|---|---|---|
+| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
+| `c1` | `main` | c0 | `bug_introducing` | c1: introduce shared range boundary bug |
+| `c2` | `main` | c1 | `intermediate` | c2: add boundary test documentation without fixing code |
+| `c3` | `feature` | c1 | `intermediate` | c3: add feature helper that depends on buggy range check |
+| `c4` | `main` | c2, c3 | `bug_fixing` | c4: merge feature and complete range boundary fix |
 
-```java
-return value >= min && value <= max;
-return "main";
-```
-
-Original bug in `c1`:
-
-```java
-return value > min && value < max;
-return "main";
-```
-
-Fix and unrelated refactoring in `c2`:
-
-```java
-return value >= min && value <= max;
-return "range-service";
-```
-
-Partial revert / reintroduction in `c3`:
-
-```java
-return value > min && value < max;
-return "range-service";
-```
-
-Final fix in `c4`:
-
-```java
-return value >= min && value <= max;
-return "range-service";
-```
-
-## Oracle
-
-Default expected BIC:
+## Expected SZZ result
 
 ```text
-c3
+Expected BIC: c1
 ```
 
-Related old origin BIC:
+## Scenario purpose
 
-```text
-c1
-```
+Evaluate a BFC that is a merge commit, but with a different shape from SZZG-0005: the bug predates branch divergence and the merge completes the fix after partial contextual changes on both branches.
 
-## Evaluation variants
+## Notes
 
-### reintroduction-direct
-
-Only `c3` is considered correct for the final fix.
-
-### origin-aware
-
-`c3` is required, while `c1` is accepted as an origin-related BIC with partial credit.
-
-## Difference from SZZG-0028
-
-`SZZG-0028` should focus on the direct reintroduction case.
-
-`SZZG-0029` explicitly models the evaluation question where both the reintroducing BIC and the old origin BIC may be considered plausible depending on evaluation policy.
+- This is案B for distinguishing SZZG-0029 from SZZG-0005.

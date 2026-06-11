@@ -1,161 +1,114 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0103
-  title: Revert of revert with conflict resolution
-  slug: revert-of-revert-with-conflict-resolution
-  description: A revert-of-revert fixes a reintroduced bug while resolving conflicts caused by intervening changes.
-  category: Revert and reintroduction scenarios
-  category_code: G
+  title: Semantic-preserving rewrite between BIC and BFC
+  slug: semantic-preserving-rewrite
+  description: Evaluates semantic-preserving rewrite between bic and bfc and checks whether SZZ identifies the expected bug-introducing
+    commit set.
+  category: Intermediate-history scenarios
+  category_code: A
   factors:
-  - revert
-  - revert_of_revert
-  - conflict_resolution
-  - intermediate_change
-  - re_bic
+  - intermediate_rewrite
+  - formatting
+  - line_history_break
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0103-revert-of-revert-with-conflict-resolution
+  name: SZZG-0103-semantic-preserving-rewrite
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial correct implementation
+  history_summary: 'c0: c0: create age gate
 
-    c1: introduce boundary bug
+    c1: c1: introduce boundary bug
 
-    c2: fix boundary bug
+    c2: c2: rewrite condition into explicit if statement
 
-    c3: revert c2 and reintroduce boundary bug
-
-    c4: add description before resolving revert conflict
-
-    c5: revert c3 with conflict resolution and restore boundary fix'
+    c3: c3: fix adult boundary after rewrite'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial correct implementation'
+  message: 'c0: create age gate'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    boolean\
-      \ aboveMin = value >= min;\n    boolean belowMax = value <= max;\n    return aboveMin && belowMax;\n  }\n}\n"
+    path: src/main/java/example/AgeGate.java
+    content: "package example;\npublic class AgeGate {\n  public boolean adult(int age) {\n    return age >= 18;\n  }\n\n\
+      }\n"
 - id: c1
   branch: main
   parents:
   - c0
   message: 'c1: introduce boundary bug'
-  role: origin_bug_introducing
+  role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
-    new: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
+    path: src/main/java/example/AgeGate.java
+    old: return age >= 18;
+    new: return age > 18;
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: fix boundary bug'
-  role: prior_fix
+  message: 'c2: rewrite condition into explicit if statement'
+  role: refactoring
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
-    new: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
+    path: src/main/java/example/AgeGate.java
+    old: return age > 18;
+    new: "if (age > 18) {\n      return true;\n    }\n    return false;"
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'c3: revert c2 and reintroduce boundary bug'
-  role: bug_introducing
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
-    new: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
-  reverts: c2
-- id: c4
-  branch: main
-  parents:
-  - c3
-  message: 'c4: add description before resolving revert conflict'
-  role: intermediate
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    boolean\
-      \ aboveMin = value > min;\n    boolean belowMax = value < max;\n    return aboveMin && belowMax;\n  }\n}\n"
-    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    boolean\
-      \ aboveMin = value > min;\n    boolean belowMax = value < max;\n    return aboveMin && belowMax;\n  }\n\n  public String\
-      \ description() {\n    return \"exclusive range after revert\";\n  }\n}\n"
-- id: c5
-  branch: main
-  parents:
-  - c4
-  message: 'c5: revert c3 with conflict resolution and restore boundary fix'
+  message: 'c3: fix adult boundary after rewrite'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
-    new: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
-  reverts: c3
-  revert_conflict_resolution: true
+    path: src/main/java/example/AgeGate.java
+    old: if (age > 18) {
+    new: if (age >= 18) {
 bugs:
 - id: B001
-  title: Boundary bug fixed by conflict-resolved revert of revert
+  title: Synthetic graph scenario bug
   bug_introducing_commits:
-  - commit: c3
-    role: direct
   - commit: c1
-    role: origin
+    role: direct
   bug_fixing_commits:
-  - commit: c5
+  - commit: c3
     role: complete_fix
   faults:
   - id: F001
-    commit: c3
-    file: src/main/java/example/Range.java
-    statement: boolean belowMax = value < max;
-    change_type: reintroduced_upper_boundary
-  - id: F002
-    commit: c3
-    file: src/main/java/example/Range.java
-    statement: boolean aboveMin = value > min;
-    change_type: reintroduced_lower_boundary
+    commit: c1
+    file: src/main/java/example/AgeGate.java
+    statement: return age > 18;
+    change_type: line_modification
   fixes:
   - id: X001
-    commit: c5
-    file: src/main/java/example/Range.java
-    statement: boolean belowMax = value <= max;
-    fix_type: conflict_resolved_revert_fix
-  - id: X002
-    commit: c5
-    file: src/main/java/example/Range.java
-    statement: boolean aboveMin = value >= min;
-    fix_type: conflict_resolved_revert_fix
+    commit: c3
+    file: src/main/java/example/AgeGate.java
+    statement: if (age >= 18) {
+    fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - c3
-    related_but_not_correct:
     - c1
-    - c2
-    - c4
-    notes: The direct BIC is c3 even though the BFC c5 is a conflict-resolved revert-of-revert.
 scenario_design:
-  purpose: Evaluate a revert-of-revert BFC that includes conflict resolution after intervening code changes.
-  key_property: The BFC restores the earlier fix while preserving unrelated intervening changes.
-  difference_from_existing_revert_scenarios: This scenario isolates a double-revert or revert-derived complication beyond
-    the existing partial revert and reintroduction scenarios.
+  purpose: Evaluate semantic-preserving rewrite between bic and bfc and whether SZZ identifies the expected bug-introducing
+    commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: intermediate_rewrite, formatting, line_history_break; operations:
+    replace, write_file.'
   evaluation_points:
-  - Whether SZZ reports c3.
-  - Whether the intermediate c4 is not selected.
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- This scenario models revert-related development history for SZZ evaluation.
-- The direct BIC is the commit that reintroduces the bug in the history observed from the BFC.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

@@ -1,0 +1,140 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0015
+  title: One BIC causes multiple bug symptoms
+  slug: bic-bug
+  description: Evaluates one bic causes multiple bug symptoms and checks whether SZZ identifies the expected bug-introducing
+    commit set.
+  category: Multiple BIC and BFC scenarios
+  category_code: D
+  factors:
+  - root_cause
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0015-bic-bug
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
+
+    c1: introduce bug (replace src/main/java/example/Range.java)
+
+    c2: fix bug (replace src/main/java/example/Range.java)
+
+    c3: fix bug (replace src/main/java/example/Range.java)'
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: "package example;\n\npublic class Range {\n  private boolean within(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n\n  public boolean acceptImport(int value, int min, int max) {\n    return within(value,\
+      \ min, max);\n  }\n\n  public boolean acceptSearch(int value, int min, int max) {\n    return within(value, min, max);\n\
+      \  }\n}\n"
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'c2: fix bug (replace src/main/java/example/Range.java)'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return within(value, min, max);
+    new: return value >= min && value <= max;
+    occurrence: 1
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'c3: fix bug (replace src/main/java/example/Range.java)'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return within(value, min, max);
+    new: return value >= min && value <= max;
+    occurrence: 1
+bugs:
+- id: B001
+  title: Import symptom caused by shared helper BIC
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  bug_fixing_commits:
+  - commit: c2
+    role: symptom_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    location: within
+  fixes:
+  - id: X001
+    commit: c2
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+    location: acceptImport
+- id: B002
+  title: Search symptom caused by same shared helper BIC
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  bug_fixing_commits:
+  - commit: c3
+    role: symptom_fix
+  faults:
+  - id: F002
+    commit: c1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    location: within
+  fixes:
+  - id: X002
+    commit: c3
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+    location: acceptSearch
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+bug_groups:
+- id: BG001
+  root_cause: c1
+  bugs:
+  - B001
+  - B002
+scenario_design:
+  purpose: Evaluate One BIC causes multiple bug symptoms and whether SZZ identifies the expected bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: root_cause; operations: write_file, replace.'
+  evaluation_points:
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
+notes:
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

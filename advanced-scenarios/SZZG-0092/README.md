@@ -1,18 +1,19 @@
-# SZZG-0092: Rebase with copy propagation
+# SZZG-0092: Repeated revert toggling before final fix
 
 ## Purpose
 
-Evaluate copy propagation through rebase.
+Evaluate repeated toggling where the latest reintroducing revert should be identified as the direct BIC.
 
 ## Commit history
 
 ```text
-c0: c0: create initial correct implementation
-f1: f1: introduce range bug on feature
-f2: f2: copy buggy range logic
-r1: r1: rebase original bug
-r2: r2: rebase copied buggy logic
-c3: c3: fix copied range logic
+c0: create initial correct implementation
+c1: introduce boundary bug
+c2: fix boundary bug
+c3: revert c2 and reintroduce bug
+c4: revert c3 and restore fix
+c5: revert c4 and reintroduce bug again
+c6: final explicit fix after repeated toggling
 ```
 
 ## Commit table
@@ -20,32 +21,34 @@ c3: c3: fix copied range logic
 | Commit | Branch | Parents | Role | Description |
 |---|---|---|---|---|
 | `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `f1` | `feature` | c0 | `origin_bug_introducing` | f1: introduce range bug on feature |
-| `f2` | `feature` | f1 | `origin_bug_propagating` | f2: copy buggy range logic |
-| `r1` | `main` | c0 | `bug_introducing` | r1: rebase original bug |
-| `r2` | `main` | r1 | `bug_introducing` | r2: rebase copied buggy logic |
-| `c3` | `main` | r2 | `bug_fixing` | c3: fix copied range logic |
+| `c1` | `main` | c0 | `origin_bug_introducing` | c1: introduce boundary bug |
+| `c2` | `main` | c1 | `bug_fixing` | c2: fix boundary bug |
+| `c3` | `main` | c2 | `bug_introducing` | c3: revert c2 and reintroduce bug |
+| `c4` | `main` | c3 | `bug_fixing` | c4: revert c3 and restore fix |
+| `c5` | `main` | c4 | `bug_introducing` | c5: revert c4 and reintroduce bug again |
+| `c6` | `main` | c5 | `bug_fixing` | c6: final explicit fix after repeated toggling |
 
 ## Expected SZZ result
 
 ```text
-Expected BIC(s): r2
-Related but not correct: r1, f1, f2
+Expected BIC(s): c5
+Related but not correct: c1, c3, c2, c4
 ```
 
 ## Key property
 
-The fixed instance is in the copied file introduced by r2.
+Multiple earlier BIC-like and fix-like commits exist, but the final fix should blame the latest re-BIC.
 
-## Difference from SZZG-0073
+## Difference from existing revert scenarios
 
-SZZG-0073 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
+This scenario isolates a double-revert or revert-derived complication beyond the existing partial revert and reintroduction scenarios.
 
 ## Evaluation points
 
-- Report r2.
+- Whether SZZ reports c5.
+- Whether older origin/reintroducing commits are not counted as exact direct answers.
 
 ## Notes
 
-- This scenario models a rebase-related development history for SZZ evaluation.
-- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.
+- This scenario models revert-related development history for SZZ evaluation.
+- The direct BIC is the commit that reintroduces the bug in the history observed from the BFC.

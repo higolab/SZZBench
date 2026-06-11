@@ -1,93 +1,49 @@
-# SZZG-0047: Work item inference without issue ID
+# SZZG-0047: Line moved and duplicated
+
+## Source
+
+- Category: Ambiguous blame and duplicate-code scenarios
 
 ## Purpose
 
-This scenario represents a work-item inference case where commit messages do not contain explicit issue IDs.
+Evaluate a bug whose faulty line is introduced in `Range.java`, then moved and duplicated into `RangeUtils.java` before the fix.
 
-The commits `c1`, `c2`, and `c3` are part of the same inferred work item, but only `c2` is the BIC. The neighboring commits are related context and should not be reported as the bug-introducing commit.
+The required BIC remains `c1`. Commit `c2` is propagation history only: it moves and duplicates an already buggy line and should not replace the original BIC.
 
-## Commit history
-
-```text
-c0: create initial range filter
-c1: start range filter cleanup without issue ID
-c2: tighten boundary behavior during the same inferred work item and introduce bug
-c3: wire range filter into request path without issue ID
-c4: fix boundary regression from range filter work
-```
-
-## Commit table
-
-| Commit | Branch | Parents | Role | Work item | Message |
-|---|---|---|---|---|---|
-| `c0` | `main` | none | initial | none | `c0: create initial range filter` |
-| `c1` | `main` | `c0` | work_item_context | `INFERRED-WI-001` | `Start range filter cleanup` |
-| `c2` | `main` | `c1` | bug_introducing | `INFERRED-WI-001` | `Tighten boundary behavior in range filter` |
-| `c3` | `main` | `c2` | work_item_context | `INFERRED-WI-001` | `Wire range filter into request path` |
-| `c4` | `main` | `c3` | bug_fixing | none | `Fix boundary regression from range filter work` |
-
-## Inference signals
-
-The intended work item is not given by an issue ID in the commit messages. It should be inferred from:
+## Expected history
 
 ```text
-- related range-filter terminology in commit messages
-- consecutive commits in a short series
-- changes to the same file or related behavior
-- the fix message referring to a boundary regression from range filter work
+c1: create initial buggy range implementation (write_file src/main/java/example/Range.java)
+c2: move and duplicate the existing buggy range check (move_entity; copy_entity)
+c3: fix moved duplicated bug (replace src/main/java/example/RangeUtils.java)
 ```
 
-## Code states
+## Why this needs `scenario.graph.yml`
 
-Correct condition before the BIC:
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
-```java
-return normalized >= min && normalized <= max;
-```
+## Required graph-schema features
 
-Bug introduced in `c2`:
+- Factors: move_entity, copy_entity, bug_instances
+- Operation types: write_file, move_entity, copy_entity, replace
+- Expected SZZ policy is defined in expected_szz.
 
-```java
-return normalized > min && normalized < max;
-```
+## Evaluation points
 
-Related but non-BIC context added in `c3`:
+- Whether SZZ identifies `c1` as the original BIC despite the move and duplicate in `c2`.
+- Whether SZZ does not treat the move/copy commit `c2` as the direct BIC.
+- Whether the expected_szz evaluation policy is applied correctly.
 
-```java
-public boolean acceptsRequestValue(int value) {
-  return contains(value, 0, 100);
-}
-```
+---
 
-Fix in `c4`:
+## Draft status
 
-```java
-return normalized >= min && normalized <= max;
-```
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
 
-## Oracle
-
-Expected BIC:
+## Files
 
 ```text
-c2
+SZZG-0047/
+|-- scenario.graph.yml
+`-- README.md
 ```
-
-Related but not correct BICs:
-
-```text
-c1
-c3
-```
-
-Bug-fixing commit:
-
-```text
-c4
-```
-
-## Difference from SZZG-0046
-
-`SZZG-0046` assumes an explicit work item with multiple candidate BICs.
-
-`SZZG-0047` represents the case where the work item has to be inferred because no explicit issue ID appears in the commit messages.

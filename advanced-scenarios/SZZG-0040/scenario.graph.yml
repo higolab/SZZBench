@@ -1,61 +1,49 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0040
-  title: Release-branch-only bug
-  slug: release-branch-only-bug
-  description: A release branch introduces and fixes a bug that never exists on main.
-  category: Branch, merge, cherry-pick, and backport scenarios
-  category_code: G
+  title: BIC and BFC belong to the same issue commit series
+  slug: bic-bfc-issue-commit
+  description: Evaluates a bug-introducing commit and a bug-fixing commit that are both linked to the same issue series.
+  category: Work-item and commit-series scenarios
+  category_code: H
   factors:
-  - release_branch
-  - branch_only_bug
+  - issues
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0040-release-branch-only-bug
+  name: SZZG-0040-bic-bfc-issue-commit
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial correct implementation on main
+  history_summary: 'c1: create initial range implementation
 
-    c1: main continues correct development
+    c2: ISSUE-101 implement boundary optimization but introduce bug
 
-    c2: release branch introduces release-only bug
-
-    c3: main adds unrelated correct change
-
-    c4: release branch fixes release-only bug'
+    c3: ISSUE-101 fix inclusive boundary regression'
 commits:
-- id: c0
+- id: c1
   branch: main
   parents: []
-  message: 'c0: create initial correct implementation'
+  message: 'c1: create initial range implementation'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
-- id: c1
+    content: |
+      package example;
+      public class Range {
+        public boolean contains(int value, int min, int max) {
+          return value >= min && value <= max;
+        }
+      }
+- id: c2
   branch: main
   parents:
-  - c0
-  message: 'c1: add main-only version note'
-  role: intermediate
-  operations:
-  - type: write_file
-    path: docs/main-version.md
-    content: 'Main remains correct.
-
-      '
-- id: c2
-  branch: release
-  parents:
-  - c0
-  message: 'c2: introduce release-only range boundary bug'
+  - c1
+  message: 'ISSUE-101: implement boundary optimization'
   role: bug_introducing
   operations:
   - type: replace
@@ -65,20 +53,8 @@ commits:
 - id: c3
   branch: main
   parents:
-  - c1
-  message: 'c3: add unrelated main documentation'
-  role: intermediate
-  operations:
-  - type: write_file
-    path: docs/main-unrelated.md
-    content: 'Unrelated main branch change.
-
-      '
-- id: c4
-  branch: release
-  parents:
   - c2
-  message: 'c4: fix release-only range boundary bug'
+  message: 'ISSUE-101: fix inclusive boundary regression'
   role: bug_fixing
   operations:
   - type: replace
@@ -87,12 +63,12 @@ commits:
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Release-branch-only range boundary bug
+  title: Boundary regression introduced and fixed in the same issue series
   bug_introducing_commits:
   - commit: c2
     role: direct
   bug_fixing_commits:
-  - commit: c4
+  - commit: c3
     role: complete_fix
   faults:
   - id: F001
@@ -102,7 +78,7 @@ bugs:
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c4
+    commit: c3
     file: src/main/java/example/Range.java
     statement: return value >= min && value <= max;
     fix_type: line_modification
@@ -112,11 +88,23 @@ expected_szz:
     required:
     - c2
 scenario_design:
-  purpose: Evaluate whether SZZ can handle a bug that exists only on a release branch and not on main.
-  key_property: The BIC and BFC are both on release; main never contains the bug.
+  purpose: Evaluate whether issue-series context is preserved when the BIC and BFC both reference the same issue.
+  current_schema_limitation: Issue membership and linked commits require graph-aware contextual metadata.
+  required_extensions_from_source: 'This scenario uses factors: issues; operations: write_file, replace.'
   evaluation_points:
-  - Release-only BIC
-  - Release-only BFC
-  - Main branch has unrelated correct development.
+  - Whether SZZ identifies c2 as the BIC rather than the initial commit.
+  - Whether both the BIC and BFC are represented as part of ISSUE-101.
+  - Whether the expected_szz exact-set policy is applied correctly.
 notes:
-- This scenario should not be collapsed into feature-to-main merge scenarios.
+- This scenario intentionally keeps the source change simple while making issue membership explicit.
+issues:
+- id: ISSUE-101
+  title: Boundary handling issue series
+  description: The same issue contains the optimization that introduced the boundary bug and the follow-up fix.
+  linked_bugs:
+  - B001
+  commits:
+  - commit: c2
+    relevance: bug_introducing
+  - commit: c3
+    relevance: bug_fixing

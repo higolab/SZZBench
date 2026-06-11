@@ -1,20 +1,19 @@
-# SZZG-0112: Intermediate file move and package rename between BIC and BFC
+# SZZG-0112: Misleading commit message with code-only BIC evidence
 
 ## Source
 
-- Category: Refactoring scenarios
+- Category: Context-dependent scenarios
 
 ## Purpose
 
-Evaluate intermediate file move and package rename between bic and bfc and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate misleading commit message with code-only bic evidence and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: c0: create legacy parser
-c1: c1: introduce parser trimming bug
-c2: c2: move parser to core package
-c3: c3: fix parser whitespace handling
+c0: c0: create payment guard
+c1: c1: documentation-only cleanup
+c2: c2: fix zero-value payment acceptance
 ```
 
 ## Why this needs `scenario.graph.yml`
@@ -23,8 +22,8 @@ This history requires graph-aware scenario semantics that are difficult to expre
 
 ## Required graph-schema features
 
-- Factors: rename_file, move_file, package_rename, intermediate_refactoring
-- Operation types: rename_file, replace, write_file
+- Factors: commit_message, misleading_metadata, code_evidence
+- Operation types: replace, write_file
 - Expected SZZ policy is defined in `expected_szz`.
 
 ## Expected BICs

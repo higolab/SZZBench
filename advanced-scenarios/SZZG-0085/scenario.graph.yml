@@ -1,22 +1,22 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0085
-  title: Release branch change rebased onto main
-  slug: release-branch-change-rebased-onto-main
-  description: A release-branch bug is replayed onto main by rebase.
+  title: Rebase with formatting rewrite noise
+  slug: rebase-with-formatting-rewrite-noise
+  description: A formatting rewrite occurs after a rebased BIC and before the fix.
   category: Branch, merge, cherry-pick, and backport scenarios
   category_code: G
   factors:
   - branch
   - rebase
-  - release_branch
-  - release_to_main
+  - formatting_rewrite
+  - formatting
+  - robustness
   - direct_bic
-  - origin_bic
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0085-release-branch-change-rebased-onto-main
+  name: SZZG-0085-rebase-with-formatting-rewrite-noise
   default_branch: main
   language: java
   build_system: none
@@ -25,13 +25,13 @@ graph:
   model: commit_dag
   history_summary: 'c0: create initial correct implementation
 
-    rel1: introduce release-specific range bug
+    f1: introduce range bug
 
-    m1: continue main development
+    r1: rebase bug onto main
 
-    r1: rebase release change onto main
+    r2: line ending rewrite during rebase cleanup
 
-    c2: fix release-origin bug on main'
+    c3: fix bug after line ending rewrite'
 commits:
 - id: c0
   branch: main
@@ -43,46 +43,48 @@ commits:
     path: src/main/java/example/Range.java
     content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
       \ value >= min && value <= max;\n  }\n}\n"
-- id: rel1
-  branch: release
+- id: f1
+  branch: feature
   parents:
   - c0
-  message: 'rel1: introduce release-specific range bug'
+  message: 'f1: introduce range bug'
   role: origin_bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
     new: return value > min && value < max;
-- id: m1
-  branch: main
-  parents:
-  - c0
-  message: 'm1: continue main development'
-  role: intermediate
-  operations:
-  - type: write_file
-    path: docs/main.md
-    content: 'main dev
-
-      '
 - id: r1
   branch: main
   parents:
-  - m1
-  message: 'r1: rebase release change onto main'
+  - c0
+  message: 'r1: rebase bug onto main'
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
     new: return value > min && value < max;
-  rebase_of: rel1
-- id: c2
+  rebase_of: f1
+- id: r2
   branch: main
   parents:
   - r1
-  message: 'c2: fix release-origin bug on main'
+  message: 'r2: formatting rewrite during rebase cleanup'
+  role: formatting
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n}\n"
+    new: "package example;\n\npublic class Range {\n  // Rebase cleanup normalized formatting around this method.\n  public\
+      \ boolean contains(int value, int min, int max) {\n    return value > min && value < max;\n  }\n}\n"
+  rebase_cleanup: formatting_rewrite
+- id: c3
+  branch: main
+  parents:
+  - r2
+  message: 'c3: fix bug after formatting rewrite'
   role: bug_fixing
   operations:
   - type: replace
@@ -91,14 +93,14 @@ commits:
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Release-origin bug rebased onto main
+  title: Range bug obscured by formatting rewrite after rebase
   bug_introducing_commits:
   - commit: r1
     role: direct
-  - commit: rel1
+  - commit: f1
     role: origin
   bug_fixing_commits:
-  - commit: c2
+  - commit: c3
     role: complete_fix
   faults:
   - id: F001
@@ -108,13 +110,13 @@ bugs:
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c2
+    commit: c3
     file: src/main/java/example/Range.java
     statement: return value >= min && value <= max;
     fix_type: line_modification
   origin_faults:
   - id: OF001
-    commit: rel1
+    commit: f1
     file: src/main/java/example/Range.java
     statement: return value > min && value < max;
     change_type: origin_line_modification
@@ -124,14 +126,17 @@ expected_szz:
     required:
     - r1
     related_but_not_correct:
-    - rel1
+    - f1
+    - r2
+    notes: r2 is formatting noise and should not be the BIC.
 scenario_design:
-  purpose: Evaluate rebase from release branch to main.
-  key_property: rel1 is origin, r1 is direct on main.
-  difference_from_SZZG_0073: SZZG-0073 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
+  purpose: Evaluate rebase plus formatting rewrite noise.
+  key_property: The expected BIC is r1, while r2 is a formatting-only cleanup.
+  difference_from_SZZG_0073: SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
     adds a distinct rebase-related complication.
   evaluation_points:
   - Report r1.
+  - Avoid r2.
 notes:
 - This scenario models a rebase-related development history for SZZ evaluation.
 - Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

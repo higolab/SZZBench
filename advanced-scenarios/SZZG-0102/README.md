@@ -1,50 +1,53 @@
-# SZZG-0102: Partial revert of fix reintroduces one fault
+# SZZG-0102: BFC performs method extraction and bug fix in the same commit
+
+## Source
+
+- Category: Refactoring scenarios
 
 ## Purpose
 
-Evaluate a partial revert where only part of a previous fix is undone.
+Evaluate bfc performs method extraction and bug fix in the same commit and whether SZZ identifies the expected bug-introducing commit set.
 
-## Commit history
-
-```text
-c0: create initial correct implementation
-c1: introduce two boundary bugs
-c2: fix both boundary bugs
-c3: partially revert upper-bound fix
-c4: fix reintroduced upper-bound bug
-```
-
-## Commit table
-
-| Commit | Branch | Parents | Role | Description |
-|---|---|---|---|---|
-| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `c1` | `main` | c0 | `origin_bug_introducing` | c1: introduce two boundary bugs |
-| `c2` | `main` | c1 | `prior_fix` | c2: fix both boundary bugs |
-| `c3` | `main` | c2 | `bug_introducing` | c3: partially revert upper-bound fix |
-| `c4` | `main` | c3 | `bug_fixing` | c4: fix reintroduced upper-bound bug |
-
-## Expected SZZ result
+## Expected history
 
 ```text
-Expected BIC(s): c3
-Related but not correct: c1, c2
+c0: c0: create tax calculator
+c1: c1: introduce tax rounding bug
+c2: c2: extract tax rate helper and fix rounding
 ```
 
-## Key property
+## Why this needs `scenario.graph.yml`
 
-The direct BIC reintroduces only one of the previously fixed faults.
+This history requires graph-aware scenario semantics that are difficult to express with the normal `scenario.yml` schema.
 
-## Difference from existing revert scenarios
+## Required graph-schema features
 
-This scenario isolates a double-revert or revert-derived complication beyond the existing partial revert and reintroduction scenarios.
+- Factors: bfc_refactoring, extract_method, mixed_bfc
+- Operation types: insert_after, replace, write_file
+- Expected SZZ policy is defined in `expected_szz`.
+
+## Expected BICs
+
+```text
+c1
+```
 
 ## Evaluation points
 
-- Whether SZZ reports c3.
-- Whether SZZ does not require c1 as the direct BIC.
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
-## Notes
+---
 
-- This scenario models revert-related development history for SZZ evaluation.
-- The direct BIC is the commit that reintroduces the bug in the history observed from the BFC.
+## Draft status
+
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
+
+## Files
+
+```text
+SZZG-0102/
+|-- scenario.graph.yml
+`-- README.md
+```

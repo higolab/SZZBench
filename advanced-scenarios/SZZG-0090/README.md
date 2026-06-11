@@ -1,18 +1,17 @@
-# SZZG-0090: Multiple BICs replayed by rebase
+# SZZG-0090: Partial revert of fix reintroduces one fault
 
 ## Purpose
 
-Evaluate multiple-BIC handling when BICs are introduced by rebase replay.
+Evaluate a partial revert where only part of a previous fix is undone.
 
 ## Commit history
 
 ```text
-c0: c0: create initial correct implementation
-f1: f1: introduce lower-bound bug
-f2: f2: introduce upper-bound bug
-r1: r1: rebase lower-bound BIC
-r2: r2: rebase upper-bound BIC
-c3: c3: fix both rebased BICs
+c0: create initial correct implementation
+c1: introduce two boundary bugs
+c2: fix both boundary bugs
+c3: partially revert upper-bound fix
+c4: fix reintroduced upper-bound bug
 ```
 
 ## Commit table
@@ -20,32 +19,32 @@ c3: c3: fix both rebased BICs
 | Commit | Branch | Parents | Role | Description |
 |---|---|---|---|---|
 | `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `f1` | `feature` | c0 | `origin_bug_introducing` | f1: introduce lower-bound bug |
-| `f2` | `feature` | f1 | `origin_bug_introducing` | f2: introduce upper-bound bug |
-| `r1` | `main` | c0 | `bug_introducing` | r1: rebase lower-bound BIC |
-| `r2` | `main` | r1 | `bug_introducing` | r2: rebase upper-bound BIC |
-| `c3` | `main` | r2 | `bug_fixing` | c3: fix both rebased BICs |
+| `c1` | `main` | c0 | `origin_bug_introducing` | c1: introduce two boundary bugs |
+| `c2` | `main` | c1 | `prior_fix` | c2: fix both boundary bugs |
+| `c3` | `main` | c2 | `bug_introducing` | c3: partially revert upper-bound fix |
+| `c4` | `main` | c3 | `bug_fixing` | c4: fix reintroduced upper-bound bug |
 
 ## Expected SZZ result
 
 ```text
-Expected BIC(s): r1, r2
-Related but not correct: f1, f2
+Expected BIC(s): c3
+Related but not correct: c1, c2
 ```
 
 ## Key property
 
-Origin BIC set maps to direct BIC set.
+The direct BIC reintroduces only one of the previously fixed faults.
 
-## Difference from SZZG-0073
+## Difference from existing revert scenarios
 
-SZZG-0073 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
+This scenario isolates a double-revert or revert-derived complication beyond the existing partial revert and reintroduction scenarios.
 
 ## Evaluation points
 
-- Return r1 and r2.
+- Whether SZZ reports c3.
+- Whether SZZ does not require c1 as the direct BIC.
 
 ## Notes
 
-- This scenario models a rebase-related development history for SZZ evaluation.
-- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.
+- This scenario models revert-related development history for SZZ evaluation.
+- The direct BIC is the commit that reintroduces the bug in the history observed from the BFC.

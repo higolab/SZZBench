@@ -1,0 +1,136 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0049
+  title: Issue description required
+  slug: issue-description
+  description: Evaluates a case where the issue description is needed to distinguish the true BIC from nearby data-cleanup
+    commits.
+  category: Context-aware and LLM-based SZZ scenarios
+  category_code: J
+  factors:
+  - issues
+  - context
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0049-issue-description
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: |
+    c0: create CSV contact importer
+    c1: introduce null handling for blank middle names
+    c2: change postal-code whitespace cleanup
+    c3: fix blank middle-name import using issue description
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'c0: create CSV contact importer'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/CsvContactImporter.java
+    content: |
+      package example;
+
+      public class CsvContactImporter {
+        public String middleName(String[] row) {
+          return normalizeOptional(row[1]);
+        }
+
+        public String postalCode(String[] row) {
+          return row[2].trim();
+        }
+
+        private String normalizeOptional(String value) {
+          return value == null ? "" : value.trim();
+        }
+      }
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'c1: normalize blank optional contact fields as null'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/CsvContactImporter.java
+    old: 'return value == null ? "" : value.trim();'
+    new: 'return value == null || value.trim().isEmpty() ? null : value.trim();'
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'c2: strip spaces from imported postal codes'
+  role: intermediate
+  operations:
+  - type: replace
+    path: src/main/java/example/CsvContactImporter.java
+    old: return row[2].trim();
+    new: return row[2].replace(" ", "").trim();
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'c3: keep blank middle names as empty strings'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/CsvContactImporter.java
+    old: 'return value == null || value.trim().isEmpty() ? null : value.trim();'
+    new: 'return value == null ? "" : value.trim();'
+bugs:
+- id: B001
+  title: Blank middle names are imported as null instead of empty strings
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  bug_fixing_commits:
+  - commit: c3
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/CsvContactImporter.java
+    statement: 'return value == null || value.trim().isEmpty() ? null : value.trim();'
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c3
+    file: src/main/java/example/CsvContactImporter.java
+    statement: 'return value == null ? "" : value.trim();'
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+    related_but_not_correct:
+    - c2
+scenario_design:
+  purpose: Evaluate whether SZZ can use issue text to choose the middle-name normalization BIC instead of a nearby importer
+    cleanup commit.
+  current_schema_limitation: Issue descriptions are represented as graph metadata linked to bugs.
+  required_extensions_from_source: 'This scenario uses factors: issues, context; operations: write_file, replace.'
+  evaluation_points:
+  - Whether SZZ identifies c1 as the BIC.
+  - Whether the issue description rules out the postal-code cleanup c2.
+  - Whether the BFC is interpreted as restoring an empty-string contract for optional middle names.
+notes:
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.
+issues:
+- id: ISSUE-482
+  title: Blank middle names are exported as null after CSV import
+  description: Contacts imported from CSV should preserve a blank middle_name column as an empty string. Postal-code whitespace
+    cleanup is unrelated; the regression is specifically in optional-name normalization.
+  linked_bugs:
+  - B001
+  referenced_commits:
+  - c1
+  excludes_commits:
+  - c2

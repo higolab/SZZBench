@@ -1,20 +1,19 @@
-# SZZG-0109: Prerequisite BIC and symptom BIC fixed together
+# SZZG-0109: Caller-side context is needed to identify the BIC
 
 ## Source
 
-- Category: Multiple-BIC scenarios
+- Category: Context-dependent scenarios
 
 ## Purpose
 
-Evaluate prerequisite bic and symptom bic fixed together and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate caller-side context is needed to identify the bic and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: c0: create token verifier
-c1: c1: weaken token trust predicate
-c2: c2: weaken access control condition
-c3: c3: fix access control vulnerability
+c0: c0: create account service and caller
+c1: c1: introduce caller-side inversion bug
+c2: c2: fix login behavior by changing callee condition
 ```
 
 ## Why this needs `scenario.graph.yml`
@@ -23,14 +22,14 @@ This history requires graph-aware scenario semantics that are difficult to expre
 
 ## Required graph-schema features
 
-- Factors: multiple_bic, causal_chain, single_bfc
+- Factors: context_dependent, caller_callee, not_directly_local
 - Operation types: replace, write_file
 - Expected SZZ policy is defined in `expected_szz`.
 
 ## Expected BICs
 
 ```text
-c1, c2
+c1
 ```
 
 ## Evaluation points

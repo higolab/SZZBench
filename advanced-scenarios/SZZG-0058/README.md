@@ -1,37 +1,38 @@
-# SZZG-0058: Issue description required
+# SZZG-0058: Top-k evaluation
 
 ## Source
 
-- Category: Context-aware and LLM-based SZZ scenarios
+- Category: Schema and evaluation-policy scenarios
 
 ## Purpose
 
-Evaluate whether SZZ can use issue text to choose the middle-name normalization BIC instead of a nearby importer cleanup commit.
+Evaluate Top-k evaluation and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: create CSV contact importer
-c1: introduce null handling for blank middle names
-c2: change postal-code whitespace cleanup
-c3: fix blank middle-name import using issue description
+c0: create initial state (write_file src/main/java/example/RangeService.java)
+c1: introduce bug (replace src/main/java/example/RangeService.java)
+c2: add distractor change (replace src/main/java/example/RangeService.java)
+c3: add distractor change (write_file docs/ranking-distractor.md)
+c4: fix bug (replace src/main/java/example/RangeService.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-The code history contains more than one plausible importer cleanup, so the linked issue description is needed to identify the relevant symptom.
+This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
 
 ## Required graph-schema features
 
-- Factors: issues, context
+- Factors: expected_szz
 - Operation types: write_file, replace
 - Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- Whether SZZ identifies c1 as the BIC.
-- Whether the issue description rules out the postal-code cleanup c2.
-- Whether the BFC is interpreted as restoring an empty-string contract for optional middle names.
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
 ---
 

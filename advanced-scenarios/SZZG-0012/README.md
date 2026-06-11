@@ -1,61 +1,64 @@
-# SZZG-0012: Extract class after BIC
+# SZZG-0012: Multiple BFCs progressively fix the same bug
 
 ## Purpose
 
-This scenario represents an extract-class refactoring after a bug-introducing commit.
+This scenario represents a single bug that is repaired progressively by multiple bug-fixing commits.
 
-The bug is first introduced in `RangeService.java`. After that, a new `RangeValidator.java` class is extracted, and the buggy validation logic is moved into the extracted class. The bug is then fixed in the extracted class.
+The implementation uses two helper methods:
 
-This distinguishes `SZZG-0012` from `SZZG-0011`, which represents a method move between classes. In this scenario, a new class is created and responsibility is split after the BIC.
+```text
+aboveMin(value, min)
+belowMax(value, max)
+```
+
+The BIC `c1` breaks both helper methods. The first BFC `c2` fixes only the lower-bound helper. The second BFC `c3` fixes the upper-bound helper and completes the repair.
 
 ## Commit history
 
 ```text
-c0: create RangeService with validation and reporting responsibilities
-c1: introduce boundary bug in RangeService.contains
-c2: extract RangeValidator class after the BIC and move the buggy validation logic there
-c3: fix the boundary bug in the extracted RangeValidator class
+c0: create range check with separate lower-bound and upper-bound helpers
+c1: introduce the same boundary bug in both helper methods
+c2: first BFC fixes only the lower-bound helper
+c3: second BFC fixes the upper-bound helper and completes the repair
 ```
 
 ## Commit table
 
 | Commit | Branch | Parents | Role | Description |
 |---|---|---|---|---|
-| `c0` | `main` | none | initial | Creates `RangeService` with validation and reporting responsibilities. |
-| `c1` | `main` | `c0` | bug_introducing | Introduces a boundary bug in `RangeService.contains`. |
-| `c2` | `main` | `c1` | intermediate | Extracts `RangeValidator` and moves the buggy validation logic there. |
-| `c3` | `main` | `c2` | bug_fixing | Fixes the boundary bug in `RangeValidator`. |
+| `c0` | `main` | none | initial | Creates the correct helper-method based implementation. |
+| `c1` | `main` | `c0` | bug_introducing | Changes both boundary helpers from inclusive to exclusive checks. |
+| `c2` | `main` | `c1` | bug_fixing | Partially fixes the bug by repairing the lower-bound helper. |
+| `c3` | `main` | `c2` | bug_fixing | Completes the fix by repairing the upper-bound helper. |
 
 ## Code states
 
-Correct validation in `c0`:
+Correct state in `c0`:
 
 ```java
-return value >= min && value <= max;
+return value >= min;
+return value <= max;
 ```
 
 Bug introduced in `c1`:
 
 ```java
-return value > min && value < max;
+return value > min;
+return value < max;
 ```
 
-After `c2`, the buggy logic is moved from:
-
-```text
-src/main/java/example/RangeService.java
-```
-
-to:
-
-```text
-src/main/java/example/RangeValidator.java
-```
-
-The follow-up fix in `c3` restores the correct condition in `RangeValidator.java`:
+Partial fix in `c2`:
 
 ```java
-return value >= min && value <= max;
+return value >= min;
+return value < max;
+```
+
+Complete fix in `c3`:
+
+```java
+return value >= min;
+return value <= max;
 ```
 
 ## Oracle
@@ -66,29 +69,15 @@ Expected BIC:
 c1
 ```
 
-Bug-fixing commit:
+Bug-fixing commits:
 
 ```text
-c3
+c2: partial fix for the lower-bound helper
+c3: complete fix for the upper-bound helper
 ```
 
-The extraction commit `c2` is not the BIC. It moves the buggy logic to a new class after the bug has already been introduced.
+## Difference from SZZG-0003
 
-## Difference from SZZG-0011
+`SZZG-0003` represents a partial-fix sequence on one condition expression.
 
-`SZZG-0011` is intended to represent a method move between classes.
-
-`SZZG-0012` is intended to represent extract class after BIC:
-
-```text
-RangeService.java
-  validation + reporting responsibilities
-        ↓
-RangeService.java
-  reporting / orchestration
-
-RangeValidator.java
-  extracted validation responsibility
-```
-
-The BIC and BFC occur in different files because the buggy code is moved by the extract-class refactoring.
+`SZZG-0012` represents multiple BFCs for the same bug, with two separate faulty helper methods and two separate fixing commits.

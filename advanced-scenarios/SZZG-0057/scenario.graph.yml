@@ -1,0 +1,130 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0057
+  title: Huge history
+  slug: huge-history
+  description: Evaluates huge history and checks whether SZZ identifies the expected bug-introducing commit set.
+  category: Robustness and implementation-quality scenarios
+  category_code: K
+  factors:
+  - commit_generators
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0057-huge-history
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: 'c0: create initial state (write_generated_text_file src/main/java/example/LargeRange.java)
+
+    c1: introduce bug (replace src/main/java/example/LargeRange.java)
+
+    c2: apply intermediate change (commit_generator)
+
+    c3: apply intermediate change (commit_generator)
+
+    c4: fix bug (replace src/main/java/example/LargeRange.java)'
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'c0: create initial state (write_generated_text_file src/main/java/example/LargeRange.java)'
+  role: initial
+  operations:
+  - type: write_generated_text_file
+    path: src/main/java/example/LargeRange.java
+    lines: 10000
+    template: public int value_${line} = ${line};
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'c1: introduce bug (replace src/main/java/example/LargeRange.java)'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/LargeRange.java
+    old: public int value_5000 = 5000;
+    new: public int value_5000 = -1;
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'c2: apply intermediate change (commit_generator)'
+  role: intermediate
+  operations:
+  - type: commit_generator
+    generator: unrelated_changes
+    count: 500
+    files: 10
+    path: generated/unrelated-batch-1.txt
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'c3: apply intermediate change (commit_generator)'
+  role: intermediate
+  operations:
+  - type: commit_generator
+    generator: unrelated_changes
+    count: 500
+    files: 10
+    path: generated/unrelated-batch-2.txt
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: 'c4: fix bug (replace src/main/java/example/LargeRange.java)'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/LargeRange.java
+    old: public int value_5000 = -1;
+    new: public int value_5000 = 5000;
+bugs:
+- id: B001
+  title: Huge history with large file one-line bug
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  bug_fixing_commits:
+  - commit: c4
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/LargeRange.java
+    statement: public int value_5000 = -1;
+  fixes:
+  - id: X001
+    commit: c4
+    file: src/main/java/example/LargeRange.java
+    statement: public int value_5000 = 5000;
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+commit_generators:
+- type: unrelated_changes
+  count: 1000
+  files: 10
+  materialized_as:
+  - c2
+  - c3
+scenario_design:
+  purpose: Evaluate Huge history and whether SZZ identifies the expected bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: commit_generators; operations: write_generated_text_file,
+    replace, commit_generator.'
+  evaluation_points:
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
+notes:
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

@@ -1,139 +1,95 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0051
-  title: Unrelated commits mixed in the same issue
-  slug: issue-commit
-  description: Evaluates unrelated commits mixed in the same issue and checks whether SZZ identifies the expected bug-introducing
-    commit set.
-  category: Work-item and commit-series scenarios
-  category_code: H
+  title: Binary file change
+  slug: binary-file
+  description: Evaluates binary file change and checks whether SZZ identifies the expected bug-introducing commit set.
+  category: Robustness and implementation-quality scenarios
+  category_code: K
   factors:
-  - work_items
-  - issues
+  - write_binary_file
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0051-issue-commit
+  name: SZZG-0051-binary-file
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial state (write_file src/main/java/example/RangeService.java)
+  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
 
-    c1: introduce bug (replace src/main/java/example/RangeService.java)
+    c1: introduce bug (replace src/main/java/example/Range.java)
 
-    c2: add unrelated change (replace src/main/java/example/RangeService.java)
-
-    c3: add unrelated change (write_file docs/issue-10-note.md)
-
-    c4: fix bug (replace src/main/java/example/RangeService.java)'
+    c2: fix bug (write_binary_file assets/data.bin; replace src/main/java/example/Range.java)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_file src/main/java/example/RangeService.java)'
+  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/RangeService.java
-    content: "package example;\n\npublic class RangeService {\n  public boolean isEnabled() { return true; }\n  public boolean\
-      \ contains(int value, int min, int max) { return value >= min && value <= max; }\n  public int normalize(int value)\
-      \ { return value; }\n}\n"
+    path: src/main/java/example/Range.java
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce bug (replace src/main/java/example/RangeService.java)'
+  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/RangeService.java
+    path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
     new: return value > min && value < max;
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: add unrelated change (replace src/main/java/example/RangeService.java)'
-  role: unrelated
-  operations:
-  - type: replace
-    path: src/main/java/example/RangeService.java
-    old: public int normalize(int value) { return value; }
-    new: public int normalize(int rawValue) { return rawValue; }
-- id: c3
-  branch: main
-  parents:
-  - c2
-  message: 'c3: add unrelated change (write_file docs/issue-10-note.md)'
-  role: unrelated
-  operations:
-  - type: write_file
-    path: docs/issue-10-note.md
-    content: 'This note is unrelated to the boundary defect.
-
-      '
-- id: c4
-  branch: main
-  parents:
-  - c3
-  message: 'c4: fix bug (replace src/main/java/example/RangeService.java)'
+  message: 'c2: fix bug (write_binary_file assets/data.bin; replace src/main/java/example/Range.java)'
   role: bug_fixing
   operations:
+  - type: write_binary_file
+    path: assets/data.bin
+    content_base64: AAECAwQF
   - type: replace
-    path: src/main/java/example/RangeService.java
+    path: src/main/java/example/Range.java
     old: return value > min && value < max;
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Issue contains unrelated commits around true BIC
+  title: Synthetic graph scenario bug
   bug_introducing_commits:
   - commit: c1
     role: direct
   bug_fixing_commits:
-  - commit: c4
+  - commit: c2
     role: complete_fix
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/RangeService.java
+    file: src/main/java/example/Range.java
     statement: return value > min && value < max;
+    change_type: line_modification
   fixes:
   - id: X001
-    commit: c4
-    file: src/main/java/example/RangeService.java
+    commit: c2
+    file: src/main/java/example/Range.java
     statement: return value >= min && value <= max;
+    fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
     - c1
-work_items:
-- id: ISSUE-10
-  title: Range validation issue with unrelated commits
-  commits:
-  - commit: c1
-    relevance: bug_introducing
-  - commit: c2
-    relevance: unrelated
-  - commit: c3
-    relevance: unrelated
-  - commit: c4
-    relevance: bug_fixing
-issues:
-- id: ISSUE-10
-  title: Range validation fails on boundaries
-  description: The issue thread also contains cleanup and documentation commits.
-  linked_bugs:
-  - B001
 scenario_design:
-  purpose: Evaluate Unrelated commits mixed in the same issue and whether SZZ identifies the expected bug-introducing commit
-    set.
+  purpose: Evaluate Binary file change and whether SZZ identifies the expected bug-introducing commit set.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: work_items, issues; operations: write_file, replace.'
+  required_extensions_from_source: 'This scenario uses factors: write_binary_file; operations: write_file, replace, write_binary_file.'
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
   - Whether structural or contextual history is handled according to the scenario factors.

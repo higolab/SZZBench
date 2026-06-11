@@ -1,50 +1,39 @@
-# SZZG-0028: Partial revert reintroduces bug
-
-## Source
-
-- Category: Revert and reintroduction scenarios
+# SZZG-0028: BIC in merge commit
 
 ## Purpose
 
-Evaluate a partial revert where `c3` reintroduces the boundary bug and is the expected direct BIC for the final fix.
+The merge commit itself introduces the bug during merge resolution; a later normal commit fixes it.
 
-The original BIC `c1` is related history, but the `reintroduction_direct` oracle requires the reintroducing commit `c3`.
-
-## Expected history
+## Commit history
 
 ```text
-c0: create initial state (write_file src/main/java/example/Range.java)
-c1: introduce bug (replace src/main/java/example/Range.java)
-c2: fix bug (replace src/main/java/example/Range.java)
-c3: partially revert c2 and reintroduce bug (replace src/main/java/example/Range.java)
-c4: fix bug (replace src/main/java/example/Range.java)
+c0: create initial correct implementation on main
+c1: add feature branch helper without changing the range logic
+c2: add unrelated main branch note
+c3: merge feature into main and introduce bug in the merge commit
+c4: fix the merge-introduced bug
 ```
 
-## Why this needs `scenario.graph.yml`
+## Commit table
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
+| Commit | Branch | Parents | Role | Description |
+|---|---|---|---|---|
+| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
+| `c1` | `feature` | c0 | `intermediate` | c1: add feature helper without bug |
+| `c2` | `main` | c0 | `intermediate` | c2: add unrelated main branch note |
+| `c3` | `main` | c2, c1 | `bug_introducing` | c3: merge feature and introduce boundary bug |
+| `c4` | `main` | c3 | `bug_fixing` | c4: fix merge-introduced range boundary bug |
 
-## Required graph-schema features
-
-- Operation types: write_file, replace
-- Expected SZZ policy is defined in expected_szz.
-
-## Evaluation points
-
-- Whether SZZ identifies `c3` as the reintroducing BIC for the final fix.
-- Whether SZZ treats the original BIC `c1` as related history, not the required direct answer.
-- Whether the expected_szz evaluation policy is applied correctly.
-
----
-
-## Draft status
-
-This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
-
-## Files
+## Expected SZZ result
 
 ```text
-SZZG-0028/
-|-- scenario.graph.yml
-`-- README.md
+Expected BIC: c3
 ```
+
+## Scenario purpose
+
+Evaluate whether SZZ can identify a merge commit as the BIC when the merge resolution itself introduces the bug.
+
+## Notes
+
+- This scenario requires support for operations on merge commits.

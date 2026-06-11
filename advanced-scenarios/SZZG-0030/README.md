@@ -1,17 +1,17 @@
-# SZZG-0030: BIC on feature branch, BFC on main
+# SZZG-0030: Squash merge
 
 ## Purpose
 
-A feature branch introduces a bug, extends feature code that depends on the buggy method, is merged into main, and is then fixed by a normal main-branch commit.
+Feature branch commits introduce and extend a bug, but main receives them through a single-parent squash-merge commit.
 
 ## Commit history
 
 ```text
 c0: create initial correct implementation on main
-c1: introduce bug on feature branch
-c2: extend feature branch code that uses the buggy method
-c3: merge feature branch into main
-c4: fix bug on main after merge
+c1: feature branch introduces bug
+c2: feature branch extends code using the buggy method
+c3: squash-merge feature branch into main as a single-parent commit
+c4: fix bug on main after squash merge
 ```
 
 ## Commit table
@@ -19,21 +19,21 @@ c4: fix bug on main after merge
 | Commit | Branch | Parents | Role | Description |
 |---|---|---|---|---|
 | `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `c1` | `feature` | c0 | `bug_introducing` | c1: introduce range boundary bug on feature |
+| `c1` | `feature` | c0 | `source_bug_introducing` | c1: introduce range boundary bug on feature |
 | `c2` | `feature` | c1 | `intermediate` | c2: extend feature branch code using range check |
-| `c3` | `main` | c0, c2 | `merge` | c3: merge feature branch into main |
-| `c4` | `main` | c3 | `bug_fixing` | c4: fix range boundary bug on main |
+| `c3` | `main` | c0 | `bug_introducing` | c3: squash merge feature branch into main |
+| `c4` | `main` | c3 | `bug_fixing` | c4: fix squashed range boundary bug |
 
 ## Expected SZZ result
 
 ```text
-Expected BIC: c1
+Expected BIC: c3
 ```
 
 ## Scenario purpose
 
-Evaluate whether SZZ can identify a BIC located on a feature branch when the BFC is a normal commit on main after the feature branch has been merged.
+Evaluate how SZZ handles a squash merge where the main-line BIC is the squash commit, even though the origin of the faulty change is on the feature branch.
 
 ## Notes
 
-- This scenario is intentionally distinct from SZZG-0033 and SZZG-0005 because the BFC is not a merge commit.
+- The direct BIC for the generated main history is c3; c1 is recorded as origin metadata.

@@ -1,54 +1,49 @@
-# SZZG-0073: Rebase feature branch with BIC
+# SZZG-0073: Release branch change rebased onto main
 
 ## Purpose
 
-Feature branch commits introduce and extend a bug, and those commits are then rebased onto `main` as new single-parent commits.
-
-This scenario evaluates how SZZ handles a rebase-style workflow where the **direct BIC on main** is the rebased commit, while the original feature-branch commit is retained as **origin metadata**.
+Evaluate rebase from release branch to main.
 
 ## Commit history
 
 ```text
-c0: create initial correct implementation on main
-f1: feature branch introduces range boundary bug
-f2: feature branch adds code that uses the buggy range check
-r1: rebase f1 onto main as a new main-line commit
-r2: rebase f2 onto main as a new main-line commit
-c3: fix the rebased range boundary bug on main
+c0: c0: create initial correct implementation
+rel1: rel1: introduce release-specific range bug
+m1: m1: continue main development
+r1: r1: rebase release change onto main
+c2: c2: fix release-origin bug on main
 ```
 
 ## Commit table
 
 | Commit | Branch | Parents | Role | Description |
 |---|---|---|---|---|
-| `c0` | `main` | none | `initial` | Create the initial correct implementation. |
-| `f1` | `feature` | `c0` | `origin_bug_introducing` | Introduce the boundary bug on the feature branch. |
-| `f2` | `feature` | `f1` | `intermediate` | Add feature code that uses the buggy range check. |
-| `r1` | `main` | `c0` | `bug_introducing` | Rebased copy of `f1`; introduces the bug into the main-line history. |
-| `r2` | `main` | `r1` | `intermediate` | Rebased copy of `f2`; adds the feature helper on main. |
-| `c3` | `main` | `r2` | `bug_fixing` | Fix the range boundary bug on main. |
+| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
+| `rel1` | `release` | c0 | `origin_bug_introducing` | rel1: introduce release-specific range bug |
+| `m1` | `main` | c0 | `intermediate` | m1: continue main development |
+| `r1` | `main` | m1 | `bug_introducing` | r1: rebase release change onto main |
+| `c2` | `main` | r1 | `bug_fixing` | c2: fix release-origin bug on main |
 
 ## Expected SZZ result
 
 ```text
-Expected BIC: r1
-Related but not correct: f1
+Expected BIC(s): r1
+Related but not correct: rel1
 ```
 
-## Scenario purpose
+## Key property
 
-Evaluate how SZZ handles rebase-style history rewriting.
+rel1 is origin, r1 is direct on main.
 
-In a rebase workflow, the original feature-branch commits are replayed onto another base and receive new commit identities. Therefore, the commit that directly introduces the faulty code into the main-line history is `r1`, not the original feature-branch commit `f1`.
+## Difference from SZZG-0061
 
-## Difference from nearby branch scenarios
+SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
 
-- `SZZG-0030` uses a normal merge with a two-parent merge commit.
-- `SZZG-0034` uses a squash merge, where multiple feature commits are collapsed into one single-parent commit on `main`.
-- `SZZG-0073` uses rebase-style replay, where each feature commit is represented by a corresponding new single-parent commit on `main`.
+## Evaluation points
+
+- Report r1.
 
 ## Notes
 
-- The `rebase_of` metadata records which feature-branch commit each rebased main-line commit corresponds to.
-- The direct BIC for generated main history is `r1`.
-- The origin BIC is `f1`, but it is not the expected direct BIC for the main-line BFC.
+- This scenario models a rebase-related development history for SZZ evaluation.
+- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

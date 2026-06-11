@@ -1,48 +1,50 @@
-# SZZG-0064: Empty intermediate commit
-
-## Source
-
-- Category: Robustness and implementation-quality scenarios
+# SZZG-0064: Rebase conflict resolution propagates existing bug
 
 ## Purpose
 
-Evaluate whether SZZ identifies the real BIC when an empty commit appears in the intermediate history.
+Evaluate direct-vs-origin BIC behavior when conflict resolution propagates an existing bug.
 
-## Expected history
+## Commit history
 
 ```text
-c0: create initial state (write_file src/main/java/example/Range.java)
-c1: apply empty intermediate change
-c2: introduce bug (replace src/main/java/example/Range.java)
-c3: fix bug (replace src/main/java/example/Range.java)
+c0: c0: create initial correct implementation
+f1: f1: introduce range bug on feature
+m1: m1: add main-line documentation
+r1: r1: resolve rebase conflict by taking buggy feature logic
+c2: c2: fix propagated rebase bug
 ```
 
-## Why this needs `scenario.graph.yml`
+## Commit table
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
+| Commit | Branch | Parents | Role | Description |
+|---|---|---|---|---|
+| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
+| `f1` | `feature` | c0 | `origin_bug_introducing` | f1: introduce range bug on feature |
+| `m1` | `main` | c0 | `intermediate` | m1: add main-line documentation |
+| `r1` | `main` | m1 | `bug_introducing` | r1: resolve rebase conflict by taking buggy feature logic |
+| `c2` | `main` | r1 | `bug_fixing` | c2: fix propagated rebase bug |
 
-## Required graph-schema features
+## Expected SZZ result
 
-- Factors: allow_empty
-- Operation types: write_file, replace
-- Expected SZZ policy is defined in expected_szz.
+```text
+Expected BIC(s): r1
+Related but not correct: f1
+```
+
+## Key property
+
+The same buggy logic exists in f1, but main-line direct BIC is r1.
+
+## Difference from SZZG-0061
+
+SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
 
 ## Evaluation points
 
-- Whether SZZ identifies the expected BIC set.
-- Whether the empty intermediate commit c1 is not reported as the BIC.
-- Whether the expected_szz evaluation policy is applied correctly.
+- Report r1.
+- Treat f1 as origin.
 
----
+## Notes
 
-## Draft status
-
-This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
-
-## Files
-
-```text
-SZZG-0064/
-|-- scenario.graph.yml
-`-- README.md
-```
+- This scenario models a rebase-related development history for SZZ evaluation.
+- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

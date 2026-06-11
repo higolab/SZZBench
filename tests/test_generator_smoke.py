@@ -779,7 +779,7 @@ def test_graph_apply_patch_from_generates(tmp_path):
     assert "return value > min && value < max;" in release_content
 
 def test_graph_map_records_rebase_of(tmp_path):
-    scenario = Path("advanced-scenarios/SZZG-0073/scenario.graph.yml")
+    scenario = Path("advanced-scenarios/SZZG-0061/scenario.graph.yml")
     out = tmp_path / "generated"
 
     subprocess.run([sys.executable, "-m", "szzbench.cli", "generate-graph", str(scenario), "--out", str(out), "--force"], check=True)

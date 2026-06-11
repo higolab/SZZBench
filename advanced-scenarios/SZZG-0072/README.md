@@ -1,48 +1,49 @@
-# SZZG-0072: Entity-level-only expected SZZ policy
-
-## Source
-
-- Category: Schema and evaluation-policy scenarios
+# SZZG-0072: Interactive rebase fixup combines buggy commits
 
 ## Purpose
 
-Evaluate whether SZZ output can be judged against an entity-level oracle when line-level evaluation is intentionally disabled.
+Evaluate fixup/squash inside interactive rebase.
 
-This is an oracle-policy scenario rather than a history-shape scenario. The faulty line is recorded for traceability, but line-level evaluation is deliberately unavailable and the expected answer is the `Range.contains` method entity.
-
-## Expected history
+## Commit history
 
 ```text
-c1: create initial buggy range implementation (write_file src/main/java/example/Range.java)
-c2: fix bug (replace src/main/java/example/Range.java)
+c0: c0: create initial correct implementation
+f1: f1: introduce range bug
+f2: f2: fixup helper using buggy logic
+r1: r1: interactive rebase fixup combines feature commits
+c2: c2: fix bug from fixup commit
 ```
 
-## Why this needs `scenario.graph.yml`
+## Commit table
 
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
+| Commit | Branch | Parents | Role | Description |
+|---|---|---|---|---|
+| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
+| `f1` | `feature` | c0 | `origin_bug_introducing` | f1: introduce range bug |
+| `f2` | `feature` | f1 | `intermediate` | f2: fixup helper using buggy logic |
+| `r1` | `main` | c0 | `bug_introducing` | r1: interactive rebase fixup combines feature commits |
+| `c2` | `main` | r1 | `bug_fixing` | c2: fix bug from fixup commit |
 
-## Required graph-schema features
+## Expected SZZ result
 
-- Factors: expected_szz
-- Operation types: write_file, replace
-- Expected SZZ policy defines line-level evaluation as unavailable and method-level entity evaluation as available.
+```text
+Expected BIC(s): r1
+Related but not correct: f1, f2
+```
+
+## Key property
+
+f1 and f2 collapse into r1.
+
+## Difference from SZZG-0061
+
+SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
 
 ## Evaluation points
 
-- Whether SZZ output can be evaluated at method-entity level.
-- Whether tooling respects the line_level.available=false policy.
-- Whether the expected_szz entity-level oracle is applied correctly.
+- Report r1.
 
----
+## Notes
 
-## Draft status
-
-This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
-
-## Files
-
-```text
-SZZG-0072/
-|-- scenario.graph.yml
-`-- README.md
-```
+- This scenario models a rebase-related development history for SZZ evaluation.
+- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

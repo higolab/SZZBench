@@ -1,20 +1,19 @@
-# SZZG-0018: One BIC causes multiple bug symptoms
+# SZZG-0018: Original and clone fixed together
 
 ## Source
 
-- Category: Multiple BIC and BFC scenarios
+- Category: Copy, clone, and propagation scenarios
 
 ## Purpose
 
-Evaluate One BIC causes multiple bug symptoms and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate Original and clone fixed together and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: create initial state (write_file src/main/java/example/Range.java)
-c1: introduce bug (replace src/main/java/example/Range.java)
-c2: fix bug (replace src/main/java/example/Range.java)
-c3: fix bug (replace src/main/java/example/Range.java)
+c0: introduce origin bug (write_file src/main/java/example/A.java)
+c1: introduce bug (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)
+c2: fix bug (replace src/main/java/example/A.java; replace src/main/java/example/B.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
@@ -23,8 +22,8 @@ This history requires graph-aware scenario semantics that are difficult to expre
 
 ## Required graph-schema features
 
-- Factors: root_cause
-- Operation types: write_file, replace
+- Factors: faults, clone_relationships
+- Operation types: write_file, copy_file, replace
 - Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points

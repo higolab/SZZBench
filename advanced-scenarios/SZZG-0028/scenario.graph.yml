@@ -1,37 +1,39 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0028
-  title: Partial revert reintroduces bug
-  slug: partial-revert
-  description: Evaluates partial revert reintroduces bug and checks whether SZZ identifies the expected bug-introducing commit
-    set.
-  category: Revert and reintroduction scenarios
-  category_code: F
-  factors: []
+  title: BIC in merge commit
+  slug: bic-in-merge-commit
+  description: The merge commit itself introduces the bug during merge resolution; a later normal commit fixes it.
+  category: Branch, merge, cherry-pick, and backport scenarios
+  category_code: G
+  factors:
+  - branch
+  - merge
+  - merge_commit_bic
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0028-partial-revert
+  name: SZZG-0028-bic-in-merge-commit
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
+  history_summary: 'c0: create initial correct implementation on main
 
-    c1: introduce bug (replace src/main/java/example/Range.java)
+    c1: add feature branch helper without changing the range logic
 
-    c2: fix bug (replace src/main/java/example/Range.java)
+    c2: add unrelated main branch note
 
-    c3: partially revert c2 and reintroduce bug (replace src/main/java/example/Range.java)
+    c3: merge feature into main and introduce bug in the merge commit
 
-    c4: fix bug (replace src/main/java/example/Range.java)'
+    c4: fix the merge-introduced bug'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
+  message: 'c0: create initial correct implementation'
   role: initial
   operations:
   - type: write_file
@@ -39,47 +41,45 @@ commits:
     content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
       \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
+  branch: feature
+  parents:
+  - c0
+  message: 'c1: add feature helper without bug'
+  role: intermediate
+  operations:
+  - type: write_file
+    path: src/main/java/example/FeatureReporter.java
+    content: "package example;\n\npublic class FeatureReporter {\n  public String name() {\n    return \"feature\";\n  }\n\
+      }\n"
+- id: c2
   branch: main
   parents:
   - c0
-  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
+  message: 'c2: add unrelated main branch note'
+  role: intermediate
+  operations:
+  - type: write_file
+    path: docs/main-note.md
+    content: 'Main branch note before merge.
+
+      '
+- id: c3
+  branch: main
+  parents:
+  - c2
+  - c1
+  message: 'c3: merge feature and introduce boundary bug'
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
     new: return value > min && value < max;
-- id: c2
-  branch: main
-  parents:
-  - c1
-  message: 'c2: fix bug (replace src/main/java/example/Range.java)'
-  role: bug_fixing
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
-- id: c3
-  branch: main
-  parents:
-  - c2
-  message: 'c3: partially revert c2 and reintroduce bug (replace src/main/java/example/Range.java)'
-  role: bug_reintroducing
-  revert_of: c2
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
-  reverts:
-  - commit: c2
-    mode: partial
 - id: c4
   branch: main
   parents:
   - c3
-  message: 'c4: fix bug (replace src/main/java/example/Range.java)'
+  message: 'c4: fix merge-introduced range boundary bug'
   role: bug_fixing
   operations:
   - type: replace
@@ -88,12 +88,10 @@ commits:
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Partial revert reintroduces boundary bug
+  title: Range boundary bug introduced by merge commit
   bug_introducing_commits:
   - commit: c3
-    role: reintroducing
-  - commit: c1
-    role: origin
+    role: merge_introducing
   bug_fixing_commits:
   - commit: c4
     role: complete_fix
@@ -102,30 +100,24 @@ bugs:
     commit: c3
     file: src/main/java/example/Range.java
     statement: return value > min && value < max;
-    change_type: partial_revert
+    change_type: line_modification
   fixes:
   - id: X001
     commit: c4
     file: src/main/java/example/Range.java
     statement: return value >= min && value <= max;
+    fix_type: line_modification
 expected_szz:
   commit_level:
-    evaluation_policy: reintroduction_direct
+    evaluation_policy: exact_set
     required:
     - c3
-    related_but_not_correct:
-    - c1
 scenario_design:
-  purpose: Evaluate a partial revert where c3 reintroduces the boundary bug and is the expected direct BIC for the final
-    fix.
-  key_property: Commit c1 is the original BIC, but c3 is the reintroducing BIC required by the reintroduction_direct policy.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses operations: write_file, replace.'
+  purpose: Evaluate whether SZZ can identify a merge commit as the BIC when the merge resolution itself introduces the bug.
+  key_property: The BIC is the two-parent merge commit c3.
   evaluation_points:
-  - Whether SZZ identifies c3 as the reintroducing BIC for the final fix.
-  - Whether SZZ treats the original BIC c1 as related history, not the required direct answer.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Merge commit as BIC
+  - Later normal BFC
+  - No parent contains the buggy range condition before the merge.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
+- This scenario requires support for operations on merge commits.

@@ -1,128 +1,101 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0109
-  title: Prerequisite BIC and symptom BIC fixed together
-  slug: multi-bic-prerequisite-symptom
-  description: Evaluates prerequisite bic and symptom bic fixed together and checks whether SZZ identifies the expected bug-introducing
-    commit set.
-  category: Multiple-BIC scenarios
+  title: Caller-side context is needed to identify the BIC
+  slug: caller-context-needed
+  description: Evaluates caller-side context is needed to identify the bic and checks whether SZZ identifies the expected
+    bug-introducing commit set.
+  category: Context-dependent scenarios
   category_code: A
   factors:
-  - multiple_bic
-  - causal_chain
-  - single_bfc
+  - context_dependent
+  - caller_callee
+  - not_directly_local
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0109-multi-bic-prerequisite-symptom
+  name: SZZG-0109-caller-context-needed
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: c0: create token verifier
+  history_summary: 'c0: c0: create account service and caller
 
-    c1: c1: weaken token trust predicate
+    c1: c1: introduce caller-side inversion bug
 
-    c2: c2: weaken access control condition
-
-    c3: c3: fix access control vulnerability'
+    c2: c2: fix login behavior by changing callee condition'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create token verifier'
+  message: 'c0: create account service and caller'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/TokenVerifier.java
-    content: "package example;\npublic class TokenVerifier {\n  public boolean isTrusted(String token) {\n    return token\
-      \ != null && token.startsWith(\"T-\");\n  }\n  public boolean canAccess(String token, boolean admin) {\n    return admin\
-      \ && isTrusted(token);\n  }\n\n}\n"
+    path: src/main/java/example/AccountService.java
+    content: "package example;\npublic class AccountService {\n  public boolean active(String status) {\n    return \"ACTIVE\"\
+      .equals(status);\n  }\n\n}\n"
+  - type: write_file
+    path: src/main/java/example/LoginController.java
+    content: "package example;\npublic class LoginController {\n  private final AccountService service = new AccountService();\n\
+      \  public boolean canLogin(String status) {\n    return service.active(status);\n  }\n\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: weaken token trust predicate'
+  message: 'c1: introduce caller-side inversion bug'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/TokenVerifier.java
-    old: return token != null && token.startsWith("T-");
-    new: return token != null;
+    path: src/main/java/example/LoginController.java
+    old: return service.active(status);
+    new: return !service.active(status);
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: weaken access control condition'
-  role: bug_introducing
-  operations:
-  - type: replace
-    path: src/main/java/example/TokenVerifier.java
-    old: return admin && isTrusted(token);
-    new: return admin || isTrusted(token);
-- id: c3
-  branch: main
-  parents:
-  - c2
-  message: 'c3: fix access control vulnerability'
+  message: 'c2: fix login behavior by changing callee condition'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/TokenVerifier.java
-    old: return token != null;
-    new: return token != null && token.startsWith("T-");
-  - type: replace
-    path: src/main/java/example/TokenVerifier.java
-    old: return admin || isTrusted(token);
-    new: return admin && isTrusted(token);
+    path: src/main/java/example/AccountService.java
+    old: return "ACTIVE".equals(status);
+    new: return !"DISABLED".equals(status);
 bugs:
 - id: B001
   title: Synthetic graph scenario bug
   bug_introducing_commits:
   - commit: c1
     role: direct
-  - commit: c2
-    role: direct
   bug_fixing_commits:
-  - commit: c3
+  - commit: c2
     role: complete_fix
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/TokenVerifier.java
-    statement: return token != null;
-    change_type: line_modification
-  - id: F002
-    commit: c2
-    file: src/main/java/example/TokenVerifier.java
-    statement: return admin || isTrusted(token);
+    file: src/main/java/example/LoginController.java
+    statement: return !service.active(status);
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c3
-    file: src/main/java/example/TokenVerifier.java
-    statement: return token != null && token.startsWith("T-");
-    fix_type: line_modification
-  - id: X002
-    commit: c3
-    file: src/main/java/example/TokenVerifier.java
-    statement: return admin && isTrusted(token);
+    commit: c2
+    file: src/main/java/example/AccountService.java
+    statement: return !"DISABLED".equals(status);
     fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
     - c1
-    - c2
 scenario_design:
-  purpose: Evaluate prerequisite bic and symptom bic fixed together and whether SZZ identifies the expected bug-introducing
+  purpose: Evaluate caller-side context is needed to identify the bic and whether SZZ identifies the expected bug-introducing
     commit set.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: multiple_bic, causal_chain, single_bfc; operations: replace,
-    write_file.'
+  required_extensions_from_source: 'This scenario uses factors: context_dependent, caller_callee, not_directly_local; operations:
+    replace, write_file.'
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
   - Whether structural or contextual history is handled according to the scenario factors.

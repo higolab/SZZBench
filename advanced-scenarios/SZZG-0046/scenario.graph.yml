@@ -1,19 +1,19 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0046
-  title: Multiple candidate BICs inside a work item
-  slug: work-item-bic
-  description: Evaluates multiple candidate bics inside a work item and checks whether SZZ identifies the expected bug-introducing
+  title: Unrelated commits mixed in the same issue
+  slug: issue-commit
+  description: Evaluates unrelated commits mixed in the same issue and checks whether SZZ identifies the expected bug-introducing
     commit set.
   category: Work-item and commit-series scenarios
   category_code: H
   factors:
   - work_items
-  - expected_szz
+  - issues
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0046-work-item-bic
+  name: SZZG-0046-issue-commit
   default_branch: main
   language: java
   build_system: none
@@ -22,11 +22,11 @@ graph:
   model: commit_dag
   history_summary: 'c0: create initial state (write_file src/main/java/example/RangeService.java)
 
-    c1: add candidate change (replace src/main/java/example/RangeService.java)
+    c1: introduce bug (replace src/main/java/example/RangeService.java)
 
-    c2: introduce bug (replace src/main/java/example/RangeService.java)
+    c2: add unrelated change (replace src/main/java/example/RangeService.java)
 
-    c3: add candidate change (replace src/main/java/example/RangeService.java)
+    c3: add unrelated change (write_file docs/issue-10-note.md)
 
     c4: fix bug (replace src/main/java/example/RangeService.java)'
 commits:
@@ -45,35 +45,36 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: add candidate change (replace src/main/java/example/RangeService.java)'
-  role: candidate
-  operations:
-  - type: replace
-    path: src/main/java/example/RangeService.java
-    old: public boolean isEnabled() { return true; }
-    new: public boolean isEnabled() { return System.getProperty("range.enabled", "true").equals("true"); }
-- id: c2
-  branch: main
-  parents:
-  - c1
-  message: 'c2: introduce bug (replace src/main/java/example/RangeService.java)'
+  message: 'c1: introduce bug (replace src/main/java/example/RangeService.java)'
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/RangeService.java
     old: return value >= min && value <= max;
     new: return value > min && value < max;
-- id: c3
+- id: c2
   branch: main
   parents:
-  - c2
-  message: 'c3: add candidate change (replace src/main/java/example/RangeService.java)'
-  role: candidate
+  - c1
+  message: 'c2: add unrelated change (replace src/main/java/example/RangeService.java)'
+  role: unrelated
   operations:
   - type: replace
     path: src/main/java/example/RangeService.java
     old: public int normalize(int value) { return value; }
-    new: public int normalize(int value) { return Math.max(0, value); }
+    new: public int normalize(int rawValue) { return rawValue; }
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'c3: add unrelated change (write_file docs/issue-10-note.md)'
+  role: unrelated
+  operations:
+  - type: write_file
+    path: docs/issue-10-note.md
+    content: 'This note is unrelated to the boundary defect.
+
+      '
 - id: c4
   branch: main
   parents:
@@ -87,16 +88,16 @@ commits:
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Work item contains multiple candidate BICs
+  title: Issue contains unrelated commits around true BIC
   bug_introducing_commits:
-  - commit: c2
+  - commit: c1
     role: direct
   bug_fixing_commits:
   - commit: c4
     role: complete_fix
   faults:
   - id: F001
-    commit: c2
+    commit: c1
     file: src/main/java/example/RangeService.java
     statement: return value > min && value < max;
   fixes:
@@ -106,29 +107,33 @@ bugs:
     statement: return value >= min && value <= max;
 expected_szz:
   commit_level:
-    evaluation_policy: top_k
-    relevant:
-    - c2
+    evaluation_policy: exact_set
     required:
-    - c2
+    - c1
 work_items:
-- id: WI-001
-  title: Implement range service changes
+- id: ISSUE-10
+  title: Range validation issue with unrelated commits
   commits:
   - commit: c1
-    relevance: candidate
-  - commit: c2
     relevance: bug_introducing
+  - commit: c2
+    relevance: unrelated
   - commit: c3
-    relevance: distractor
+    relevance: unrelated
   - commit: c4
     relevance: bug_fixing
+issues:
+- id: ISSUE-10
+  title: Range validation fails on boundaries
+  description: The issue thread also contains cleanup and documentation commits.
+  linked_bugs:
+  - B001
 scenario_design:
-  purpose: Evaluate Multiple candidate BICs inside a work item and whether SZZ identifies the expected bug-introducing commit
+  purpose: Evaluate Unrelated commits mixed in the same issue and whether SZZ identifies the expected bug-introducing commit
     set.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: work_items, expected_szz; operations: write_file, replace.'
+  required_extensions_from_source: 'This scenario uses factors: work_items, issues; operations: write_file, replace.'
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
   - Whether structural or contextual history is handled according to the scenario factors.

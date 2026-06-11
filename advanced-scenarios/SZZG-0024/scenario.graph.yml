@@ -1,0 +1,131 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0024
+  title: Partial revert reintroduces bug
+  slug: partial-revert
+  description: Evaluates partial revert reintroduces bug and checks whether SZZ identifies the expected bug-introducing commit
+    set.
+  category: Revert and reintroduction scenarios
+  category_code: F
+  factors: []
+  difficulty: advanced
+  status: draft
+repository:
+  name: SZZG-0024-partial-revert
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
+
+    c1: introduce bug (replace src/main/java/example/Range.java)
+
+    c2: fix bug (replace src/main/java/example/Range.java)
+
+    c3: partially revert c2 and reintroduce bug (replace src/main/java/example/Range.java)
+
+    c4: fix bug (replace src/main/java/example/Range.java)'
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n}\n"
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'c2: fix bug (replace src/main/java/example/Range.java)'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'c3: partially revert c2 and reintroduce bug (replace src/main/java/example/Range.java)'
+  role: bug_reintroducing
+  revert_of: c2
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+  reverts:
+  - commit: c2
+    mode: partial
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: 'c4: fix bug (replace src/main/java/example/Range.java)'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+bugs:
+- id: B001
+  title: Partial revert reintroduces boundary bug
+  bug_introducing_commits:
+  - commit: c3
+    role: reintroducing
+  - commit: c1
+    role: origin
+  bug_fixing_commits:
+  - commit: c4
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c3
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: partial_revert
+  fixes:
+  - id: X001
+    commit: c4
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+expected_szz:
+  commit_level:
+    evaluation_policy: reintroduction_direct
+    required:
+    - c3
+    related_but_not_correct:
+    - c1
+scenario_design:
+  purpose: Evaluate a partial revert where c3 reintroduces the boundary bug and is the expected direct BIC for the final
+    fix.
+  key_property: Commit c1 is the original BIC, but c3 is the reintroducing BIC required by the reintroduction_direct policy.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses operations: write_file, replace.'
+  evaluation_points:
+  - Whether SZZ identifies c3 as the reintroducing BIC for the final fix.
+  - Whether SZZ treats the original BIC c1 as related history, not the required direct answer.
+  - Whether the expected_szz evaluation policy is applied correctly.
+notes:
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

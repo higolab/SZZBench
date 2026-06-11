@@ -1,17 +1,17 @@
-# SZZG-0086: Main fix rebased onto release branch
+# SZZG-0086: Rebase with generated file update
 
 ## Purpose
 
-Evaluate a release BFC that is a rebased copy of a main fix.
+Evaluate generated-file noise during rebase.
 
 ## Commit history
 
 ```text
 c0: c0: create initial correct implementation
-c1: c1: introduce range bug on main
-rel1: rel1: cut release branch with bug
-c2: c2: fix bug on main
-r2: r2: rebase main fix onto release
+f1: f1: introduce range bug
+r1: r1: rebase bug onto main
+r2: r2: regenerate derived range metadata during rebase
+c3: c3: fix source range bug
 ```
 
 ## Commit table
@@ -19,30 +19,30 @@ r2: r2: rebase main fix onto release
 | Commit | Branch | Parents | Role | Description |
 |---|---|---|---|---|
 | `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `c1` | `main` | c0 | `bug_introducing` | c1: introduce range bug on main |
-| `rel1` | `release` | c1 | `release_branch_point` | rel1: cut release branch with bug |
-| `c2` | `main` | c1 | `bug_fixing` | c2: fix bug on main |
-| `r2` | `release` | rel1 | `bug_fixing` | r2: rebase main fix onto release |
+| `f1` | `feature` | c0 | `origin_bug_introducing` | f1: introduce range bug |
+| `r1` | `main` | c0 | `bug_introducing` | r1: rebase bug onto main |
+| `r2` | `main` | r1 | `intermediate` | r2: regenerate derived range metadata during rebase |
+| `c3` | `main` | r2 | `bug_fixing` | c3: fix source range bug |
 
 ## Expected SZZ result
 
 ```text
-Expected BIC(s): c1
-Related but not correct: c2
+Expected BIC(s): r1
+Related but not correct: f1, r2
 ```
 
 ## Key property
 
-r2 is the release BFC replaying c2.
+r2 updates generated metadata only.
 
-## Difference from SZZG-0073
+## Difference from SZZG-0061
 
-SZZG-0073 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
+SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
 
 ## Evaluation points
 
-- Start from r2.
-- Return c1.
+- Report r1.
+- Ignore r2.
 
 ## Notes
 

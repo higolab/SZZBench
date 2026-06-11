@@ -1,82 +1,141 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0061
-  title: Binary file change
-  slug: binary-file
-  description: Evaluates binary file change and checks whether SZZ identifies the expected bug-introducing commit set.
-  category: Robustness and implementation-quality scenarios
-  category_code: K
+  title: Rebase feature branch with BIC
+  slug: rebase-feature-branch-with-bic
+  description: A feature branch introduces a bug and is then rebased onto main. The rebased commit on main becomes the direct
+    BIC for the main-line BFC, while the original feature-branch commit is retained as origin metadata.
+  category: Branch, merge, cherry-pick, and backport scenarios
+  category_code: G
   factors:
-  - write_binary_file
+  - branch
+  - rebase
+  - rebased_bic
+  - direct_bic
+  - origin_bic
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0061-binary-file
+  name: SZZG-0061-rebase-feature-branch-with-bic
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
+  history_summary: 'c0: create initial correct implementation on main
 
-    c1: introduce bug (replace src/main/java/example/Range.java)
+    f1: feature branch introduces range boundary bug
 
-    c2: fix bug (write_binary_file assets/data.bin; replace src/main/java/example/Range.java)'
+    f2: feature branch adds code that uses the buggy range check
+
+    r1: rebase f1 onto main as a new main-line commit
+
+    r2: rebase f2 onto main as a new main-line commit
+
+    c3: fix the rebased range boundary bug on main'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
+  message: 'c0: create initial correct implementation'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
       \ value >= min && value <= max;\n  }\n}\n"
-- id: c1
-  branch: main
+- id: f1
+  branch: feature
   parents:
   - c0
-  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
-  role: bug_introducing
+  message: 'f1: introduce range boundary bug on feature'
+  role: origin_bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
     new: return value > min && value < max;
-- id: c2
+- id: f2
+  branch: feature
+  parents:
+  - f1
+  message: 'f2: add feature helper using buggy range check'
+  role: intermediate
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n}\n"
+    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
+      \ min, max);\n  }\n}\n"
+- id: r1
   branch: main
   parents:
-  - c1
-  message: 'c2: fix bug (write_binary_file assets/data.bin; replace src/main/java/example/Range.java)'
+  - c0
+  message: 'r1: rebase feature bug commit onto main'
+  role: bug_introducing
+  rebase_of: f1
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+- id: r2
+  branch: main
+  parents:
+  - r1
+  message: 'r2: rebase feature helper commit onto main'
+  role: intermediate
+  rebase_of: f2
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n}\n"
+    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
+      \ min, max);\n  }\n}\n"
+- id: c3
+  branch: main
+  parents:
+  - r2
+  message: 'c3: fix rebased range boundary bug on main'
   role: bug_fixing
   operations:
-  - type: write_binary_file
-    path: assets/data.bin
-    content_base64: AAECAwQF
   - type: replace
     path: src/main/java/example/Range.java
     old: return value > min && value < max;
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Range boundary bug propagated by rebase
   bug_introducing_commits:
-  - commit: c1
+  - commit: r1
     role: direct
+    description: Direct BIC on main because the rebased commit introduces the faulty code into the main-line history.
+  - commit: f1
+    role: origin
+    description: Origin BIC on the feature branch before the rebase rewrites it as r1.
   bug_fixing_commits:
-  - commit: c2
+  - commit: c3
     role: complete_fix
   faults:
   - id: F001
-    commit: c1
+    commit: r1
     file: src/main/java/example/Range.java
     statement: return value > min && value < max;
-    change_type: line_modification
+    change_type: rebased_line_modification
+  origin_faults:
+  - id: OF001
+    commit: f1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: origin_line_modification
   fixes:
   - id: X001
-    commit: c2
+    commit: c3
     file: src/main/java/example/Range.java
     statement: return value >= min && value <= max;
     fix_type: line_modification
@@ -84,16 +143,24 @@ expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - c1
+    - r1
+    related_but_not_correct:
+    - f1
+    notes: The expected direct BIC is r1 because rebase rewrites the feature-branch BIC f1 as a new commit on main. f1 is
+      the origin BIC but is not the direct BIC for the main-line BFC.
 scenario_design:
-  purpose: Evaluate Binary file change and whether SZZ identifies the expected bug-introducing commit set.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: write_binary_file; operations: write_file, replace, write_binary_file.'
+  purpose: Evaluate how SZZ handles a rebase workflow where feature-branch commits are rewritten onto main. The rebased main-line
+    commit is the direct BIC, while the original feature-branch commit is origin metadata.
+  key_property: Unlike a normal merge, the rebased commits r1 and r2 each have a single parent on main. Unlike a squash merge,
+    the feature branch is preserved as multiple rebased commits rather than collapsed into one commit.
+  difference_from_SZZG_0034: SZZG-0030 represents a squash merge as one single-parent commit on main. SZZG-0061 represents
+    rebase as a sequence of new single-parent commits on main, each linked to its original feature-branch commit via rebase_of
+    metadata.
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Whether SZZ reports the direct main-line BIC r1.
+  - Whether the origin BIC f1 is distinguished from the rebased direct BIC.
+  - Whether the benchmark can represent rebase-style history rewriting without using a two-parent merge commit.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
+- This scenario models rebase by replaying the feature branch commits as new single-parent commits on main.
+- The rebase relationship is recorded with commit-level rebase_of metadata.
+- The expected direct BIC is r1; f1 is related origin metadata but not the direct BIC for the main-line fix.

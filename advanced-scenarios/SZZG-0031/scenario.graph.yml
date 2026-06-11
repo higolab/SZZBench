@@ -1,51 +1,51 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0031
-  title: BIC before merge, BFC after merge
-  slug: bic-before-merge-bfc-after-merge
-  description: A bug is introduced on main before a feature branch is merged, and the bug is fixed on main after the merge.
+  title: Cherry-pick BIC
+  slug: cherry-pick-bic
+  description: Evaluates cherry-pick bic and checks whether SZZ identifies the expected bug-introducing commit set.
   category: Branch, merge, cherry-pick, and backport scenarios
   category_code: G
   factors:
   - branch
-  - merge
-  - pre_merge_bic
-  - post_merge_bfc
+  - cherry_pick_of
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0031-bic-before-merge-bfc-after-merge
+  name: SZZG-0031-cherry-pick-bic
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial correct implementation on main
+  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
 
-    c1: introduce bug on main before merge
+    c1: introduce bug (replace src/main/java/example/Range.java)
 
-    c2: perform unrelated feature branch work
+    c2: apply intermediate change (write_file docs/feature-note.md)
 
-    c3: merge feature branch into main
+    c3: merge branch
 
-    c4: fix the pre-merge bug on main after merge'
+    c4: fix bug (replace src/main/java/example/Range.java)
+
+    r1: cherry-pick change (apply_patch_from c1)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial correct implementation'
+  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
       \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
-  branch: main
+  branch: feature
   parents:
   - c0
-  message: 'c1: introduce range boundary bug on main before merge'
+  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
   role: bug_introducing
   operations:
   - type: replace
@@ -55,35 +55,47 @@ commits:
 - id: c2
   branch: feature
   parents:
-  - c0
-  message: 'c2: add unrelated feature helper'
+  - c1
+  message: 'c2: apply intermediate change (write_file docs/feature-note.md)'
   role: intermediate
   operations:
   - type: write_file
-    path: src/main/java/example/FeatureFlag.java
-    content: "package example;\n\npublic class FeatureFlag {\n  public boolean enabled() {\n    return true;\n  }\n}\n"
+    path: docs/feature-note.md
+    content: 'feature note
+
+      '
 - id: c3
   branch: main
   parents:
-  - c1
+  - c0
   - c2
-  message: 'c3: merge feature branch after bug introduction'
+  message: 'c3: merge branch'
   role: merge
   operations: []
 - id: c4
   branch: main
   parents:
   - c3
-  message: 'c4: fix pre-merge range boundary bug'
+  message: 'c4: fix bug (replace src/main/java/example/Range.java)'
   role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value > min && value < max;
     new: return value >= min && value <= max;
+- id: r1
+  branch: release
+  parents:
+  - c0
+  message: 'r1: cherry-pick change (apply_patch_from c1)'
+  role: cherry_pick
+  cherry_pick_of: c1
+  operations:
+  - type: apply_patch_from
+    commit: c1
 bugs:
 - id: B001
-  title: Pre-merge main-branch bug fixed after merge
+  title: Synthetic graph scenario bug
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -108,11 +120,14 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: Evaluate a BIC that exists before a merge and a BFC that appears after that merge.
-  key_property: Unlike SZZG-0030, the BIC is on main before the merge, not on the feature branch.
+  purpose: Evaluate Cherry-pick BIC and whether SZZ identifies the expected bug-introducing commit set.
+  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
+    scenario.yml schema.
+  required_extensions_from_source: 'This scenario uses factors: branch, cherry_pick_of; operations: write_file, replace, apply_patch_from.'
   evaluation_points:
-  - Pre-merge main BIC
-  - Unrelated feature merge between BIC and BFC
-  - Post-merge main BFC.
+  - Whether SZZ identifies the expected BIC set.
+  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- This scenario separates pre-merge main-line bug introduction from feature-branch bug introduction.
+- Draft scenario.graph.yml for graph-aware SZZBench support.
+- This file is intended for graph-aware generation and verification.

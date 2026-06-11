@@ -1,20 +1,21 @@
-# SZZG-0107: One BFC fixes multiple BICs across multiple files
+# SZZG-0107: Clone divergence before fixing one clone
 
 ## Source
 
-- Category: Multiple-BIC scenarios
+- Category: Clone propagation scenarios
 
 ## Purpose
 
-Evaluate one bfc fixes multiple bics across multiple files and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate clone divergence before fixing one clone and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: c0: create initial calculator and validator
-c1: c1: introduce rounding bug in calculator
-c2: c2: introduce zero-quantity validation bug
-c3: c3: fix both pricing and validation bugs
+c0: c0: create base permission check
+c1: c1: introduce permissive delete check
+c2: c2: clone policy to group policy
+c3: c3: diverge copied clone by renaming parameters
+c4: c4: fix copied clone after divergence
 ```
 
 ## Why this needs `scenario.graph.yml`
@@ -23,14 +24,14 @@ This history requires graph-aware scenario semantics that are difficult to expre
 
 ## Required graph-schema features
 
-- Factors: multiple_bic, multiple_file, single_bfc
-- Operation types: replace, write_file
+- Factors: clone, clone_divergence, ambiguous_blame
+- Operation types: copy_file, replace, write_file
 - Expected SZZ policy is defined in `expected_szz`.
 
 ## Expected BICs
 
 ```text
-c1, c2
+c1
 ```
 
 ## Evaluation points

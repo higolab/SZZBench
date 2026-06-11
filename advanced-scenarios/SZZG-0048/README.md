@@ -1,37 +1,37 @@
-# SZZG-0048: Only commit message provides the clue
+# SZZG-0048: Caller/callee interaction bug
 
 ## Source
 
-- Category: Work-item and commit-series scenarios
+- Category: Context-aware and LLM-based SZZ scenarios
 
 ## Purpose
 
-Evaluate whether a context-aware SZZ method can use commit-message evidence when the changed code itself contains only a generic boolean gate.
+Evaluate whether context-aware SZZ can distinguish a valid callee behavior change from the caller commit that mishandled that behavior.
 
 ## Expected history
 
 ```text
-c0: create regional checkout challenge gate
-c1: disable the EU checkout challenge with the only explicit message clue
-c2: change an unrelated Canada rollout gate
-c3: restore the EU checkout challenge
+c0: create account directory and welcome mailer
+c1: allow the callee to return an empty guest name
+c2: introduce caller bug by assuming the callee always returns a value
+c3: fix caller fallback for empty guest names
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-The scenario needs commit-message context because the relevant domain clue is not carried by the edited line alone.
+The relevant fault depends on the relationship between caller and callee rather than on an isolated changed line.
 
 ## Required graph-schema features
 
-- Factors: context, commit_messages
+- Factors: caller_callee, context, faults
 - Operation types: write_file, replace
 - Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- Whether SZZ identifies c1 as the BIC using the PAY-314 EU clue in the commit message.
-- Whether the unrelated Canada gate change c2 is not selected just because it is nearby and similar.
-- Whether the BFC can be linked to the correct regional intent without relying only on line text.
+- Whether SZZ identifies c2 as the direct BIC in the caller.
+- Whether c1 is treated as required context but not as the faulty commit.
+- Whether the analysis can connect the BFC line to the callee contract.
 
 ---
 

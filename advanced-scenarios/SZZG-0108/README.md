@@ -1,20 +1,21 @@
-# SZZG-0108: One directly blamed BIC and one context-only BIC
+# SZZG-0108: Origin BIC and direct copied-code BIC are both required
 
 ## Source
 
-- Category: Multiple-BIC scenarios
+- Category: Clone propagation scenarios
 
 ## Purpose
 
-Evaluate one directly blamed bic and one context-only bic and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate origin bic and direct copied-code bic are both required and whether SZZ identifies the expected bug-introducing commit set.
 
 ## Expected history
 
 ```text
-c0: c0: create discount service
-c1: c1: introduce wrong threshold
-c2: c2: introduce wrong base discount
-c3: c3: fix customer discount behavior by restoring threshold only
+c0: c0: create amount parser
+c1: c1: introduce original parser trim bug
+c2: c2: copy amount parser to invoice parser
+c3: c3: introduce copied parser sign bug
+c4: c4: fix invoice parsing behavior
 ```
 
 ## Why this needs `scenario.graph.yml`
@@ -23,14 +24,14 @@ This history requires graph-aware scenario semantics that are difficult to expre
 
 ## Required graph-schema features
 
-- Factors: multiple_bic, context_dependent, partial_observability
-- Operation types: replace, write_file
+- Factors: clone, multiple_bic, origin_and_direct_bic
+- Operation types: copy_file, replace, write_file
 - Expected SZZ policy is defined in `expected_szz`.
 
 ## Expected BICs
 
 ```text
-c1, c2
+c1, c3
 ```
 
 ## Evaluation points

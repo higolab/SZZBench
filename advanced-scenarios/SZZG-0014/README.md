@@ -1,83 +1,100 @@
-# SZZG-0014: Multiple BFCs progressively fix the same bug
+# SZZG-0014: One BFC fixes multiple independent bugs
 
 ## Purpose
 
-This scenario represents a single bug that is repaired progressively by multiple bug-fixing commits.
+This scenario represents one bug-fixing commit that fixes two independent bugs.
 
-The implementation uses two helper methods:
+The two bugs are in different files and different functional areas:
 
 ```text
-aboveMin(value, min)
-belowMax(value, max)
+B001: Range boundary bug in Range.java
+B002: Discount calculation bug in DiscountCalculator.java
 ```
 
-The BIC `c1` breaks both helper methods. The first BFC `c2` fixes only the lower-bound helper. The second BFC `c3` fixes the upper-bound helper and completes the repair.
+Both are fixed by the same BFC `c3`.
 
 ## Commit history
 
 ```text
-c0: create range check with separate lower-bound and upper-bound helpers
-c1: introduce the same boundary bug in both helper methods
-c2: first BFC fixes only the lower-bound helper
-c3: second BFC fixes the upper-bound helper and completes the repair
+c0: create correct Range and DiscountCalculator implementations
+c1: introduce a range boundary bug in Range.java
+c2: introduce an independent discount calculation bug in DiscountCalculator.java
+c3: one BFC fixes both independent bugs
 ```
 
 ## Commit table
 
 | Commit | Branch | Parents | Role | Description |
 |---|---|---|---|---|
-| `c0` | `main` | none | initial | Creates the correct helper-method based implementation. |
-| `c1` | `main` | `c0` | bug_introducing | Changes both boundary helpers from inclusive to exclusive checks. |
-| `c2` | `main` | `c1` | bug_fixing | Partially fixes the bug by repairing the lower-bound helper. |
-| `c3` | `main` | `c2` | bug_fixing | Completes the fix by repairing the upper-bound helper. |
+| `c0` | `main` | none | initial | Creates correct implementations of both files. |
+| `c1` | `main` | `c0` | bug_introducing | Introduces the range boundary bug. |
+| `c2` | `main` | `c1` | bug_introducing | Introduces the discount calculation bug. |
+| `c3` | `main` | `c2` | bug_fixing | Fixes both bugs in one commit. |
 
-## Code states
+## Bug B001
 
-Correct state in `c0`:
+File:
 
-```java
-return value >= min;
-return value <= max;
+```text
+src/main/java/example/Range.java
 ```
 
-Bug introduced in `c1`:
+Fault introduced in `c1`:
 
 ```java
-return value > min;
-return value < max;
+return value > min && value < max;
 ```
 
-Partial fix in `c2`:
+Fix in `c3`:
 
 ```java
-return value >= min;
-return value < max;
+return value >= min && value <= max;
 ```
 
-Complete fix in `c3`:
+## Bug B002
+
+File:
+
+```text
+src/main/java/example/DiscountCalculator.java
+```
+
+Fault introduced in `c2`:
 
 ```java
-return value >= min;
-return value <= max;
+return price + discount;
+```
+
+Fix in `c3`:
+
+```java
+return price - discount;
 ```
 
 ## Oracle
 
-Expected BIC:
+Commit-level expected BICs:
 
 ```text
 c1
+c2
 ```
 
-Bug-fixing commits:
+Bug-level expected BICs:
 
 ```text
-c2: partial fix for the lower-bound helper
-c3: complete fix for the upper-bound helper
+B001: c1
+B002: c2
 ```
 
-## Difference from SZZG-0003
+Bug-fixing commit:
 
-`SZZG-0003` represents a partial-fix sequence on one condition expression.
+```text
+c3
+```
 
-`SZZG-0014` represents multiple BFCs for the same bug, with two separate faulty helper methods and two separate fixing commits.
+## Difference from SZZ-0166
+
+`SZZ-0166` represents one composite bug with multiple BICs.
+
+`SZZG-0014` represents two independent bugs that happen to be fixed by one shared BFC.

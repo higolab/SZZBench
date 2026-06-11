@@ -1,52 +1,54 @@
-# SZZG-0105: Multiple BICs with partial revert reintroducing one fault
+# SZZG-0105: Clone origin versus copied direct BIC
+
+## Source
+
+- Category: Clone propagation scenarios
 
 ## Purpose
 
-Evaluate multiple original BICs when a later partial revert reintroduces only one of them.
+Evaluate clone origin versus copied direct bic and whether SZZ identifies the expected bug-introducing commit set.
 
-## Commit history
-
-```text
-c0: create initial correct implementation
-c1: introduce lower-bound bug
-c2: introduce upper-bound bug
-c3: fix both boundary bugs
-c4: partially revert fix for upper boundary only
-c5: fix reintroduced upper-bound bug
-```
-
-## Commit table
-
-| Commit | Branch | Parents | Role | Description |
-|---|---|---|---|---|
-| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `c1` | `main` | c0 | `origin_bug_introducing` | c1: introduce lower-bound bug |
-| `c2` | `main` | c1 | `origin_bug_introducing` | c2: introduce upper-bound bug |
-| `c3` | `main` | c2 | `prior_fix` | c3: fix both boundary bugs |
-| `c4` | `main` | c3 | `bug_introducing` | c4: partially revert fix for upper boundary only |
-| `c5` | `main` | c4 | `bug_fixing` | c5: fix reintroduced upper-bound bug |
-
-## Expected SZZ result
+## Expected history
 
 ```text
-Expected BIC(s): c4
-Related but not correct: c1, c2, c3
+c0: c0: create original sanitizer
+c1: c1: introduce bug in original sanitizer
+c2: c2: copy sanitizer into admin module
+c3: c3: fix copied sanitizer only
 ```
 
-## Key property
+## Why this needs `scenario.graph.yml`
 
-The direct BIC for the final fix is the partial revert, not the older original BIC set.
+This history requires graph-aware scenario semantics that are difficult to express with the normal `scenario.yml` schema.
 
-## Difference from existing revert scenarios
+## Required graph-schema features
 
-This scenario isolates a double-revert or revert-derived complication beyond the existing partial revert and reintroduction scenarios.
+- Factors: clone, copy_file, origin_bic_policy
+- Operation types: copy_file, replace, write_file
+- Expected SZZ policy is defined in `expected_szz`.
+
+## Expected BICs
+
+```text
+c1
+```
 
 ## Evaluation points
 
-- Whether SZZ reports c4.
-- Whether SZZ avoids reporting both old BICs as exact direct answers.
+- Whether SZZ identifies the expected BIC set.
+- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the expected_szz evaluation policy is applied correctly.
 
-## Notes
+---
 
-- This scenario models revert-related development history for SZZ evaluation.
-- The direct BIC is the commit that reintroduces the bug in the history observed from the BFC.
+## Draft status
+
+This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
+
+## Files
+
+```text
+SZZG-0105/
+|-- scenario.graph.yml
+`-- README.md
+```

@@ -1,37 +1,37 @@
-# SZZG-0050: BFC message references the wrong commit
+# SZZG-0050: Semantically equivalent rewrite
 
 ## Source
 
-- Category: Work-item and commit-series scenarios
+- Category: Context-aware and LLM-based SZZ scenarios
 
 ## Purpose
 
-Evaluate whether SZZ resists an incorrect BFC-message hint and still identifies the true code-level BIC.
+Evaluate whether SZZ traces through a semantically equivalent rewrite and reports the earlier bug-introducing commit.
 
 ## Expected history
 
 ```text
-c0: create currency rounding helper
-c1: introduce truncating cents normalization
-c2: add invoice label helper mentioned by mistake
-c3: fix rounding while incorrectly blaming c2 in the message
+c0: create API key validator
+c1: weaken API key length requirement
+c2: rewrite the buggy predicate without changing behavior
+c3: fix the length requirement inside the rewritten predicate
 ```
 
 ## Why this needs `scenario.graph.yml`
 
-The BFC contains a misleading developer hint that must be represented separately from the code-level fault metadata.
+The intermediate rewrite preserves the bug, so it needs semantic metadata to avoid treating the rewrite as the BIC.
 
 ## Required graph-schema features
 
-- Factors: developer_hints, misleading_commit_message
+- Factors: semantic_rewrite, related_but_not_correct
 - Operation types: write_file, replace
 - Expected SZZ policy is defined in expected_szz.
 
 ## Evaluation points
 
-- Whether SZZ identifies c1 as the true rounding BIC.
-- Whether c2 is treated as an incorrect message reference rather than the expected BIC.
-- Whether developer hints are distinguished from trustworthy blame evidence.
+- Whether SZZ identifies c1 as the BIC.
+- Whether c2 is recognized as preserving the already-buggy predicate rather than introducing it.
+- Whether blame can pass through the predicate rewrite to the original weakening commit.
 
 ---
 

@@ -1,167 +1,156 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0071
-  title: Copy propagation with direct and origin BIC evaluation variants
-  slug: copy-propagation-direct-origin-evaluation-variants
-  description: A bug is introduced in an original file and then propagated to a copied file. The copied file is fixed later.
-    The direct BIC for the fixed copied file is the copy commit, while the original BIC is kept as a related origin BIC. This
-    scenario provides multiple evaluation variants, including direct-only and origin-aware policies.
-  category: Schema and evaluation-policy scenarios
-  category_code: L
+  title: Interactive rebase reorders commits before BIC
+  slug: interactive-rebase-reorders-commits-before-bic
+  description: Interactive rebase changes order while preserving the bug commit.
+  category: Branch, merge, cherry-pick, and backport scenarios
+  category_code: G
   factors:
-  - copy_propagation
+  - branch
+  - rebase
+  - interactive_rebase
+  - reorder
   - direct_bic
   - origin_bic
-  - evaluation_variants
-  - relaxed_with_credit
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0071-copy-propagation-direct-origin-evaluation-variants
+  name: SZZG-0071-interactive-rebase-reorders-commits-before-bic
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create original correct implementation in A.java
+  history_summary: 'c0: create initial correct implementation
 
-    c1: introduce boundary bug in original A.java
+    f1: add feature docs
 
-    c2: copy buggy implementation from A.java to B.java, creating the direct BIC for B.java
+    f2: introduce range bug
 
-    c3: fix the copied bug in B.java'
+    r1: replay docs before reordered BIC
+
+    r2: replay bug commit after reorder
+
+    c3: fix reordered bug'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create original correct implementation'
+  message: 'c0: create initial correct implementation'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/A.java
-    content: "package example;\n\npublic class A {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ >= min && value <= max;\n  }\n}\n"
-- id: c1
-  branch: main
+    path: src/main/java/example/Range.java
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n}\n"
+- id: f1
+  branch: feature
   parents:
   - c0
-  message: 'c1: introduce boundary bug in original implementation'
+  message: 'f1: add feature docs'
+  role: intermediate
+  operations:
+  - type: write_file
+    path: docs/feature.md
+    content: 'note
+
+      '
+- id: f2
+  branch: feature
+  parents:
+  - f1
+  message: 'f2: introduce range bug'
   role: origin_bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/A.java
+    path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
     new: return value > min && value < max;
-- id: c2
+- id: r1
   branch: main
   parents:
-  - c1
-  message: 'c2: copy buggy range logic into B'
-  role: bug_introducing
+  - c0
+  message: 'r1: replay docs before reordered BIC'
+  role: intermediate
   operations:
   - type: write_file
-    path: src/main/java/example/B.java
-    content: "package example;\n\npublic class B {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n}\n"
+    path: docs/feature.md
+    content: 'note after reorder
+
+      '
+  rebase_of: f1
+  interactive_rebase: reorder
+- id: r2
+  branch: main
+  parents:
+  - r1
+  message: 'r2: replay bug commit after reorder'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+  rebase_of: f2
+  interactive_rebase: reorder
 - id: c3
   branch: main
   parents:
-  - c2
-  message: 'c3: fix copied boundary bug in B'
+  - r2
+  message: 'c3: fix reordered bug'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/B.java
+    path: src/main/java/example/Range.java
     old: return value > min && value < max;
     new: return value >= min && value <= max;
-clone_relationships:
-- origin_file: src/main/java/example/A.java
-  copied_file: src/main/java/example/B.java
-  copy_commit: c2
-  origin_commit: c1
-  relationship: buggy_code_copy
 bugs:
 - id: B001
-  title: Copied range boundary bug in B.java
+  title: Bug after reordered rebase
   bug_introducing_commits:
-  - commit: c2
+  - commit: r2
     role: direct
-    description: Direct BIC for the fixed file B.java.
-  - commit: c1
+  - commit: f2
     role: origin
-    description: Origin BIC where the copied faulty logic first appeared in A.java.
   bug_fixing_commits:
   - commit: c3
     role: complete_fix
   faults:
   - id: F001
-    commit: c2
-    file: src/main/java/example/B.java
+    commit: r2
+    file: src/main/java/example/Range.java
     statement: return value > min && value < max;
-    change_type: copy_propagated_line_modification
-  origin_faults:
-  - id: OF001
-    commit: c1
-    file: src/main/java/example/A.java
-    statement: return value > min && value < max;
-    change_type: origin_line_modification
+    change_type: line_modification
   fixes:
   - id: X001
     commit: c3
-    file: src/main/java/example/B.java
+    file: src/main/java/example/Range.java
     statement: return value >= min && value <= max;
     fix_type: line_modification
+  origin_faults:
+  - id: OF001
+    commit: f2
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: origin_line_modification
 expected_szz:
-  evaluation_variants:
-  - name: direct-only
-    description: Only the direct BIC in the copied file is accepted.
-    commit_level:
-      evaluation_policy: exact_set
-      required:
-      - c2
-  - name: origin-aware
-    description: The direct BIC is required, while the origin BIC is accepted as related context.
-    commit_level:
-      evaluation_policy: relaxed_with_related
-      required:
-      - c2
-      acceptable_related:
-      - commit: c1
-        reason: origin_bic
-        credit: 0.5
-  - name: relaxed-with-credit
-    description: Compatibility variant that absorbs the former SZZG-0071 relaxed-with-credit policy.
-    commit_level:
-      evaluation_policy: relaxed_with_credit
-      required:
-      - c2
-      acceptable_related:
-      - commit: c1
-        reason: origin_bic
-        credit: 0.5
-  default_variant: direct-only
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - r2
+    related_but_not_correct:
+    - f2
+    - r1
 scenario_design:
-  purpose: Evaluate copy-propagated bugs where the direct BIC for the fixed copied file differs from the origin BIC where
-    the faulty logic first appeared.
-  key_property: For the BFC c3 in B.java, c2 is the direct BIC because it copies the faulty logic into B.java. Commit c1 is
-    the origin BIC in A.java and can be treated as related depending on the evaluation policy.
-  merged_from:
-  - old_id: SZZG-0071
-    reason: Former relaxed-with-credit copy-propagation scenario.
+  purpose: Evaluate commit reordering during rebase.
+  key_property: Only r2 introduces the bug after reorder.
+  difference_from_SZZG_0073: SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
+    adds a distinct rebase-related complication.
   evaluation_points:
-  - Whether SZZ identifies the direct BIC c2 for the copied file B.java.
-  - Whether the origin BIC c1 can be treated as related without replacing the direct BIC.
-  - Whether multiple evaluation policies can be applied to the same repository history.
+  - Report r2.
+  - Avoid r1.
 notes:
-- This scenario absorbs the relaxed-with-credit evaluation policy from the old SZZG-0071.
-- The default evaluation variant is direct-only; origin-aware and relaxed-with-credit variants are provided for alternative
-  evaluation settings.
-copy_relationships:
-- id: COPY-001
-  source_file: src/main/java/example/A.java
-  target_file: src/main/java/example/B.java
-  copy_commit: c2
-  origin_bic: c1
-  direct_bic: c2
-  description: B.java receives the buggy range check copied from A.java.
+- This scenario models a rebase-related development history for SZZ evaluation.
+- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

@@ -1,17 +1,18 @@
-# SZZG-0078: Rebase changes patch content during replay
+# SZZG-0078: Multiple BICs replayed by rebase
 
 ## Purpose
 
-Evaluate direct/origin handling when rebase changes patch content.
+Evaluate multiple-BIC handling when BICs are introduced by rebase replay.
 
 ## Commit history
 
 ```text
 c0: c0: create initial correct implementation
-f1: f1: introduce exclusive bug on feature
-m1: m1: add main note
-r1: r1: rebase feature bug with adjusted patch content
-c2: c2: fix adjusted lower-bound bug
+f1: f1: introduce lower-bound bug
+f2: f2: introduce upper-bound bug
+r1: r1: rebase lower-bound BIC
+r2: r2: rebase upper-bound BIC
+c3: c3: fix both rebased BICs
 ```
 
 ## Commit table
@@ -19,30 +20,30 @@ c2: c2: fix adjusted lower-bound bug
 | Commit | Branch | Parents | Role | Description |
 |---|---|---|---|---|
 | `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `f1` | `feature` | c0 | `origin_bug_introducing` | f1: introduce exclusive bug on feature |
-| `m1` | `main` | c0 | `intermediate` | m1: add main note |
-| `r1` | `main` | m1 | `bug_introducing` | r1: rebase feature bug with adjusted patch content |
-| `c2` | `main` | r1 | `bug_fixing` | c2: fix adjusted lower-bound bug |
+| `f1` | `feature` | c0 | `origin_bug_introducing` | f1: introduce lower-bound bug |
+| `f2` | `feature` | f1 | `origin_bug_introducing` | f2: introduce upper-bound bug |
+| `r1` | `main` | c0 | `bug_introducing` | r1: rebase lower-bound BIC |
+| `r2` | `main` | r1 | `bug_introducing` | r2: rebase upper-bound BIC |
+| `c3` | `main` | r2 | `bug_fixing` | c3: fix both rebased BICs |
 
 ## Expected SZZ result
 
 ```text
-Expected BIC(s): r1
-Related but not correct: f1
+Expected BIC(s): r1, r2
+Related but not correct: f1, f2
 ```
 
 ## Key property
 
-Patch equality alone is insufficient.
+Origin BIC set maps to direct BIC set.
 
-## Difference from SZZG-0073
+## Difference from SZZG-0061
 
-SZZG-0073 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
+SZZG-0061 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
 
 ## Evaluation points
 
-- Report r1.
-- Treat f1 as origin.
+- Return r1 and r2.
 
 ## Notes
 

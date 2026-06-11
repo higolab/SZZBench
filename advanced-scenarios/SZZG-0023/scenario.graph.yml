@@ -1,138 +1,93 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0023
-  title: Only one clone instance is fixed first
-  slug: clone
-  description: Evaluates only one clone instance is fixed first and checks whether SZZ identifies the expected bug-introducing
-    commit set.
+  title: Clone removal as fix
+  slug: clone-removal-as-fix
+  description: Evaluates clone removal as fix and checks whether SZZ identifies the expected bug-introducing commit set.
   category: Copy, clone, and propagation scenarios
   category_code: E
   factors:
   - clone_relationships
-  - bug_instances
   difficulty: advanced
   status: draft
 repository:
-  name: SZZG-0023-clone
+  name: SZZG-0023-clone-removal-as-fix
   default_branch: main
   language: java
   build_system: none
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: introduce origin bug (write_file src/main/java/example/A.java)
+  history_summary: 'c0: create initial state (write_file src/main/java/example/A.java)
 
-    c1: introduce bug (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)
+    c1: introduce bug (write_file src/main/java/example/B.java)
 
-    c2: fix bug (replace src/main/java/example/A.java)
-
-    c3: fix bug (replace src/main/java/example/B.java)'
+    c2: fix bug (delete_file src/main/java/example/B.java; write_file docs/clone-removal.md)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: introduce origin bug (write_file src/main/java/example/A.java)'
-  role: origin_bug_introducing
+  message: 'c0: create initial state (write_file src/main/java/example/A.java)'
+  role: initial
   operations:
   - type: write_file
     path: src/main/java/example/A.java
     content: "package example;\n\npublic class A {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n}\n"
+      \ >= min && value <= max;\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce bug (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)'
+  message: 'c1: introduce bug (write_file src/main/java/example/B.java)'
   role: bug_introducing
   operations:
-  - type: copy_file
-    from: src/main/java/example/A.java
-    to: src/main/java/example/B.java
+  - type: write_file
+    path: src/main/java/example/B.java
+    content: "package example;\n\npublic class B {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n}\n"
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: fix bug (replace src/main/java/example/A.java)'
+  message: 'c2: fix bug (delete_file src/main/java/example/B.java; write_file docs/clone-removal.md)'
   role: bug_fixing
   operations:
-  - type: replace
-    path: src/main/java/example/A.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
-- id: c3
-  branch: main
-  parents:
-  - c2
-  message: 'c3: fix bug (replace src/main/java/example/B.java)'
-  role: bug_fixing
-  operations:
-  - type: replace
+  - type: delete_file
     path: src/main/java/example/B.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+  - type: write_file
+    path: docs/clone-removal.md
+    content: 'Buggy clone B.java was removed; callers should use A.java.
+
+      '
 bugs:
-- id: B001-A
-  title: Original instance fixed first
+- id: B001
+  title: Buggy clone removed as fix
   bug_introducing_commits:
-  - commit: c0
-    role: origin
+  - commit: c1
+    role: direct
   bug_fixing_commits:
   - commit: c2
     role: complete_fix
   faults:
   - id: F001
-    commit: c0
-    file: src/main/java/example/A.java
-    statement: return value > min && value < max;
-  fixes:
-  - id: X001
-    commit: c2
-    file: src/main/java/example/A.java
-    statement: return value >= min && value <= max;
-- id: B001-B
-  title: Copied instance fixed later
-  bug_introducing_commits:
-  - commit: c1
-    role: direct
-  - commit: c0
-    role: origin
-  bug_fixing_commits:
-  - commit: c3
-    role: complete_fix
-  faults:
-  - id: F002
     commit: c1
     file: src/main/java/example/B.java
     statement: return value > min && value < max;
   fixes:
-  - id: X002
-    commit: c3
+  - id: X001
+    commit: c2
     file: src/main/java/example/B.java
-    statement: return value >= min && value <= max;
+    fix_type: file_deletion
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
     - c1
-clone_relationships:
-- origin_file: src/main/java/example/A.java
-  copied_file: src/main/java/example/B.java
-  origin_commit: c0
-  copy_commit: c1
-bug_instances:
-- id: B001-A
-  file: src/main/java/example/A.java
-  status: fixed_at_c2
-- id: B001-B
-  file: src/main/java/example/B.java
-  status: fixed_at_c3
 scenario_design:
-  purpose: Evaluate Only one clone instance is fixed first and whether SZZ identifies the expected bug-introducing commit
-    set.
+  purpose: Evaluate Clone removal as fix and whether SZZ identifies the expected bug-introducing commit set.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: clone_relationships, bug_instances; operations: write_file,
-    copy_file, replace.'
+  required_extensions_from_source: 'This scenario uses factors: clone_relationships; operations: write_file, delete_file.'
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
   - Whether structural or contextual history is handled according to the scenario factors.
