@@ -20,6 +20,9 @@ temp/
 results/
 outputs/
 
+# Local archive snapshots.
+SZZBench.zip
+
 
 # ----------------------------------------------------------------------
 # Python cache and build artifacts
