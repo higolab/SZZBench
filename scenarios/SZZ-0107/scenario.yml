@@ -28,11 +28,11 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0118.java
+    path: src/main/java/example/Scenario0107.java
     content: |
       package example;
 
-      public class Scenario0118 {
+      public class Scenario0107 {
           public boolean valid(int value) {
               return value >= 0;
           }
@@ -44,11 +44,11 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0118.java
+    path: src/main/java/example/Scenario0107.java
     old: |
       package example;
 
-      public class Scenario0118 {
+      public class Scenario0107 {
           public boolean valid(int value) {
               return value >= 0;
           }
@@ -56,7 +56,7 @@ commits:
     new: |
       package example;
 
-      public class Scenario0118 {
+      public class Scenario0107 {
           public boolean valid(int value) {
               return value > 0;
           }
@@ -87,11 +87,11 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0118.java
+    path: src/main/java/example/Scenario0107.java
     old: |
       package example;
 
-      public class Scenario0118 {
+      public class Scenario0107 {
           public boolean valid(int value) {
               return value > 0;
           }
@@ -115,7 +115,7 @@ commits:
     new: |
       package example;
 
-      public class Scenario0118 {
+      public class Scenario0107 {
           public boolean valid(int value) {
               return value >= 0;
           }
@@ -147,7 +147,7 @@ bugs:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0118.java
+    file: src/main/java/example/Scenario0107.java
     entity:
       type: method
       name: valid
@@ -156,7 +156,7 @@ bugs:
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0118.java
+    file: src/main/java/example/Scenario0107.java
     entity:
       type: method
       name: valid

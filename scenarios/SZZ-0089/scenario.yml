@@ -27,11 +27,11 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0048.java
+    path: src/main/java/example/Scenario0089.java
     content: |
       package example;
 
-      public class Scenario0048 {
+      public class Scenario0089 {
           public boolean check(int value, int min, int max) {
               return value >= min && value <= max;
           }
@@ -43,11 +43,11 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0048.java
+    path: src/main/java/example/Scenario0089.java
     old: |
       package example;
 
-      public class Scenario0048 {
+      public class Scenario0089 {
           public boolean check(int value, int min, int max) {
               return value >= min && value <= max;
           }
@@ -55,7 +55,7 @@ commits:
     new: |
       package example;
 
-      public class Scenario0048 {
+      public class Scenario0089 {
           public boolean check(int value, int min, int max) {
               return value > min && value < max;
           }
@@ -70,11 +70,11 @@ commits:
   role: distractor
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0048.java
+    path: src/main/java/example/Scenario0089.java
     old: |
       package example;
 
-      public class Scenario0048 {
+      public class Scenario0089 {
           public boolean check(int value, int min, int max) {
               return value > min && value < max;
           }
@@ -84,7 +84,7 @@ commits:
 
       import java.util.Objects;
 
-      public class Scenario0048 {
+      public class Scenario0089 {
           public boolean check(int value, int min, int max) {
               return value > min && value < max;
           }
@@ -96,13 +96,13 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0048.java
+    path: src/main/java/example/Scenario0089.java
     old: |
       package example;
 
       import java.util.Objects;
 
-      public class Scenario0048 {
+      public class Scenario0089 {
           public boolean check(int value, int min, int max) {
               return value > min && value < max;
           }
@@ -110,7 +110,7 @@ commits:
     new: |
       package example;
 
-      public class Scenario0048 {
+      public class Scenario0089 {
           public boolean check(int value, int min, int max) {
               return value >= min && value <= max;
           }
@@ -126,7 +126,7 @@ bugs:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0048.java
+    file: src/main/java/example/Scenario0089.java
     entity:
       type: method
       name: check
@@ -135,7 +135,7 @@ bugs:
     change_type: line_modification
   fix:
     commit: c3
-    file: src/main/java/example/Scenario0048.java
+    file: src/main/java/example/Scenario0089.java
     entity:
       type: method
       name: check

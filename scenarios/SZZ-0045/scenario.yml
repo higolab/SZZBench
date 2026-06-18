@@ -27,11 +27,11 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0126.java
+    path: src/main/java/example/Scenario0045.java
     content: |
       package example;
 
-      public class Scenario0126 {
+      public class Scenario0045 {
           public boolean canRetry(int attempts, int maxAttempts) {
               return attempts < maxAttempts;
           }
@@ -43,11 +43,11 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0126.java
+    path: src/main/java/example/Scenario0045.java
     old: |
       package example;
 
-      public class Scenario0126 {
+      public class Scenario0045 {
           public boolean canRetry(int attempts, int maxAttempts) {
               return attempts < maxAttempts;
           }
@@ -55,7 +55,7 @@ commits:
     new: |
       package example;
 
-      public class Scenario0126 {
+      public class Scenario0045 {
           public boolean canRetry(int attempts, int maxAttempts) {
               return attempts <= maxAttempts;
           }
@@ -70,11 +70,11 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0126.java
+    path: src/main/java/example/Scenario0045.java
     old: |
       package example;
 
-      public class Scenario0126 {
+      public class Scenario0045 {
           public boolean canRetry(int attempts, int maxAttempts) {
               return attempts <= maxAttempts;
           }
@@ -82,7 +82,7 @@ commits:
     new: |
       package example;
 
-      public class Scenario0126 {
+      public class Scenario0045 {
           public boolean canRetry(int attempts, int maxAttempts) {
               return attempts < maxAttempts;
           }
@@ -98,7 +98,7 @@ bugs:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0126.java
+    file: src/main/java/example/Scenario0045.java
     entity:
       type: method
       name: canRetry
@@ -107,7 +107,7 @@ bugs:
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0126.java
+    file: src/main/java/example/Scenario0045.java
     entity:
       type: method
       name: canRetry

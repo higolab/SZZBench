@@ -28,11 +28,11 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0087.java
+    path: src/main/java/example/Scenario0077.java
     content: 'package example;
 
 
-      public class Scenario0087 {
+      public class Scenario0077 {
 
       }
 
@@ -44,16 +44,16 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0087.java
+    path: src/main/java/example/Scenario0077.java
     old: 'package example;
 
 
-      public class Scenario0087 {
+      public class Scenario0077 {
 
       }
 
       '
-    new: "package example;\n\npublic class Scenario0087 {\n    public String sanitize(String query) {\n        return query;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0077 {\n    public String sanitize(String query) {\n        return query;\n    }\n}\n"
     labels:
     - B001
     - fault
@@ -64,9 +64,9 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0087.java
-    old: "package example;\n\npublic class Scenario0087 {\n    public String sanitize(String query) {\n        return query;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0087 {\n    public String sanitize(String query) {\n        if (query.contains(\"%\")) {\n                return \"\";\n            }\n            return query;\n    }\n}\n"
+    path: src/main/java/example/Scenario0077.java
+    old: "package example;\n\npublic class Scenario0077 {\n    public String sanitize(String query) {\n        return query;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0077 {\n    public String sanitize(String query) {\n        if (query.contains(\"%\")) {\n                return \"\";\n            }\n            return query;\n    }\n}\n"
     labels:
     - B001
     - fix
@@ -78,7 +78,7 @@ bugs:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0087.java
+    file: src/main/java/example/Scenario0077.java
     entity:
       type: method
       name: sanitize
@@ -87,7 +87,7 @@ bugs:
     missing_statement: "if (query.contains(\"%\")) {\n            return \"\";\n        }\n"
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0087.java
+    file: src/main/java/example/Scenario0077.java
     entity:
       type: method
       name: sanitize

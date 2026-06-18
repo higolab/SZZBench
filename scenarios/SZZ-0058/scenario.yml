@@ -27,11 +27,11 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0068.java
+    path: src/main/java/example/Scenario0058.java
     content: 'package example;
 
 
-      public class Scenario0068 {
+      public class Scenario0058 {
 
       }
 
@@ -43,16 +43,16 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0068.java
+    path: src/main/java/example/Scenario0058.java
     old: 'package example;
 
 
-      public class Scenario0068 {
+      public class Scenario0058 {
 
       }
 
       '
-    new: "package example;\n\npublic class Scenario0068 {\n    public boolean canOpen(boolean opened) {\n        return true;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0058 {\n    public boolean canOpen(boolean opened) {\n        return true;\n    }\n}\n"
     labels:
     - B001
     - fault
@@ -63,9 +63,9 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0068.java
-    old: "package example;\n\npublic class Scenario0068 {\n    public boolean canOpen(boolean opened) {\n        return true;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0068 {\n    public boolean canOpen(boolean opened) {\n        if (opened) {\n                return false;\n            }\n            return true;\n    }\n}\n"
+    path: src/main/java/example/Scenario0058.java
+    old: "package example;\n\npublic class Scenario0058 {\n    public boolean canOpen(boolean opened) {\n        return true;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0058 {\n    public boolean canOpen(boolean opened) {\n        if (opened) {\n                return false;\n            }\n            return true;\n    }\n}\n"
     labels:
     - B001
     - fix
@@ -77,7 +77,7 @@ bugs:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0068.java
+    file: src/main/java/example/Scenario0058.java
     entity:
       type: method
       name: canOpen
@@ -86,7 +86,7 @@ bugs:
     missing_statement: "if (opened) {\n            return false;\n        }\n"
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0068.java
+    file: src/main/java/example/Scenario0058.java
     entity:
       type: method
       name: canOpen

@@ -28,8 +28,8 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0112.java
-    content: "package example;\n\npublic class Scenario0112 {\n    public String clean(String value) {\n        if (value == null) {\n                return \"\";\n            }\n            return value.trim();\n    }\n}\n"
+    path: src/main/java/example/Scenario0079.java
+    content: "package example;\n\npublic class Scenario0079 {\n    public String clean(String value) {\n        if (value == null) {\n                return \"\";\n            }\n            return value.trim();\n    }\n}\n"
 - id: c1
   message: Introduce bug
   author: Bob <bob@example.com>
@@ -37,9 +37,9 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0112.java
-    old: "package example;\n\npublic class Scenario0112 {\n    public String clean(String value) {\n        if (value == null) {\n                return \"\";\n            }\n            return value.trim();\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0112 {\n    public String clean(String value) {\n        return value.trim();\n    }\n}\n"
+    path: src/main/java/example/Scenario0079.java
+    old: "package example;\n\npublic class Scenario0079 {\n    public String clean(String value) {\n        if (value == null) {\n                return \"\";\n            }\n            return value.trim();\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0079 {\n    public String clean(String value) {\n        return value.trim();\n    }\n}\n"
     labels:
     - B001
     - fault
@@ -50,9 +50,9 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0112.java
-    old: "package example;\n\npublic class Scenario0112 {\n    public String clean(String value) {\n        return value.trim();\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0112 {\n    public String clean(String value) {\n        if (value == null) {\n                return \"\";\n            }\n            return value.trim();\n    }\n}\n"
+    path: src/main/java/example/Scenario0079.java
+    old: "package example;\n\npublic class Scenario0079 {\n    public String clean(String value) {\n        return value.trim();\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0079 {\n    public String clean(String value) {\n        if (value == null) {\n                return \"\";\n            }\n            return value.trim();\n    }\n}\n"
     labels:
     - B001
     - fix
@@ -64,7 +64,7 @@ bugs:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0112.java
+    file: src/main/java/example/Scenario0079.java
     entity:
       type: method
       name: clean
@@ -73,7 +73,7 @@ bugs:
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0112.java
+    file: src/main/java/example/Scenario0079.java
     entity:
       type: method
       name: clean

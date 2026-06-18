@@ -28,11 +28,11 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0056.java
+    path: src/main/java/example/Scenario0121.java
     content: |
       package example;
 
-      public class Scenario0056 {
+      public class Scenario0121 {
           public boolean hasValue(String value) {
               return value != null;
           }
@@ -48,11 +48,11 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0056.java
+    path: src/main/java/example/Scenario0121.java
     old: |
       package example;
 
-      public class Scenario0056 {
+      public class Scenario0121 {
           public boolean hasValue(String value) {
               return value != null;
           }
@@ -64,7 +64,7 @@ commits:
     new: |
       package example;
 
-      public class Scenario0056 {
+      public class Scenario0121 {
           public boolean hasValue(String value) {
               return value == null;
           }
@@ -83,11 +83,11 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0056.java
+    path: src/main/java/example/Scenario0121.java
     old: |
       package example;
 
-      public class Scenario0056 {
+      public class Scenario0121 {
           public boolean hasValue(String value) {
               return value == null;
           }
@@ -99,7 +99,7 @@ commits:
     new: |
       package example;
 
-      public class Scenario0056 {
+      public class Scenario0121 {
           public boolean hasValue(String value) {
               return value != null;
           }
@@ -115,7 +115,7 @@ bugs:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0056.java
+    file: src/main/java/example/Scenario0121.java
     entity:
       type: method
       name: hasValue
@@ -124,7 +124,7 @@ bugs:
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0056.java
+    file: src/main/java/example/Scenario0121.java
     entity:
       type: method
       name: hasValue

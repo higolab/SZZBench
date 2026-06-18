@@ -28,11 +28,11 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0082.java
+    path: src/main/java/example/Scenario0072.java
     content: 'package example;
 
 
-      public class Scenario0082 {
+      public class Scenario0072 {
 
       }
 
@@ -44,16 +44,16 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0082.java
+    path: src/main/java/example/Scenario0072.java
     old: 'package example;
 
 
-      public class Scenario0082 {
+      public class Scenario0072 {
 
       }
 
       '
-    new: "package example;\n\npublic class Scenario0082 {\n    public boolean canDelete(boolean admin) {\n        return true;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0072 {\n    public boolean canDelete(boolean admin) {\n        return true;\n    }\n}\n"
     labels:
     - B001
     - fault
@@ -64,9 +64,9 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0082.java
-    old: "package example;\n\npublic class Scenario0082 {\n    public boolean canDelete(boolean admin) {\n        return true;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0082 {\n    public boolean canDelete(boolean admin) {\n        if (!admin) {\n                return false;\n            }\n            return true;\n    }\n}\n"
+    path: src/main/java/example/Scenario0072.java
+    old: "package example;\n\npublic class Scenario0072 {\n    public boolean canDelete(boolean admin) {\n        return true;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0072 {\n    public boolean canDelete(boolean admin) {\n        if (!admin) {\n                return false;\n            }\n            return true;\n    }\n}\n"
     labels:
     - B001
     - fix
@@ -78,7 +78,7 @@ bugs:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0082.java
+    file: src/main/java/example/Scenario0072.java
     entity:
       type: method
       name: canDelete
@@ -87,7 +87,7 @@ bugs:
     missing_statement: "if (!admin) {\n            return false;\n        }\n"
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0082.java
+    file: src/main/java/example/Scenario0072.java
     entity:
       type: method
       name: canDelete

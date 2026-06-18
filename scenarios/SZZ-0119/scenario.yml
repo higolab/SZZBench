@@ -27,11 +27,11 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0054.java
+    path: src/main/java/example/Scenario0119.java
     content: |
       package example;
 
-      public class Scenario0054 {
+      public class Scenario0119 {
           public boolean canRetry(int attempts) {
               return attempts < 3;
           }
@@ -43,11 +43,11 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0054.java
+    path: src/main/java/example/Scenario0119.java
     old: |
       package example;
 
-      public class Scenario0054 {
+      public class Scenario0119 {
           public boolean canRetry(int attempts) {
               return attempts < 3;
           }
@@ -55,7 +55,7 @@ commits:
     new: |
       package example;
 
-      public class Scenario0054 {
+      public class Scenario0119 {
           public boolean canRetry(int attempts) {
               return attempts <= 3;
           }
@@ -70,11 +70,11 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0054.java
+    path: src/main/java/example/Scenario0119.java
     old: |
       package example;
 
-      public class Scenario0054 {
+      public class Scenario0119 {
           public boolean canRetry(int attempts) {
               return attempts <= 3;
           }
@@ -82,7 +82,7 @@ commits:
     new: |
       package example;
 
-      public class Scenario0054 {
+      public class Scenario0119 {
           public boolean canRetry(int attempts) {
               System.out.println(attempts);
                   return attempts < 3;
@@ -99,7 +99,7 @@ bugs:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0054.java
+    file: src/main/java/example/Scenario0119.java
     entity:
       type: method
       name: canRetry
@@ -108,7 +108,7 @@ bugs:
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0054.java
+    file: src/main/java/example/Scenario0119.java
     entity:
       type: method
       name: canRetry

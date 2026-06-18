@@ -26,8 +26,8 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0136.java
-    content: "package example;\n\npublic class Scenario0136 {\n    public boolean authorized(boolean authenticated, boolean tokenValid) {\n        return true;\n    }\n}\n"
+    path: src/main/java/example/Scenario0142.java
+    content: "package example;\n\npublic class Scenario0142 {\n    public boolean authorized(boolean authenticated, boolean tokenValid) {\n        return true;\n    }\n}\n"
 - id: c1
   message: Introduce first contributing change
   author: Bob <bob@example.com>
@@ -35,9 +35,9 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0136.java
-    old: "package example;\n\npublic class Scenario0136 {\n    public boolean authorized(boolean authenticated, boolean tokenValid) {\n        return true;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0136 {\n    public boolean authorized(boolean authenticated, boolean tokenValid) {\n        return authenticated;\n    }\n}\n"
+    path: src/main/java/example/Scenario0142.java
+    old: "package example;\n\npublic class Scenario0142 {\n    public boolean authorized(boolean authenticated, boolean tokenValid) {\n        return true;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0142 {\n    public boolean authorized(boolean authenticated, boolean tokenValid) {\n        return authenticated;\n    }\n}\n"
     labels:
     - B001
     - fault
@@ -48,9 +48,9 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0136.java
-    old: "package example;\n\npublic class Scenario0136 {\n    public boolean authorized(boolean authenticated, boolean tokenValid) {\n        return authenticated;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0136 {\n    public boolean authorized(boolean authenticated, boolean tokenValid) {\n        return authenticated && tokenValid;\n    }\n}\n"
+    path: src/main/java/example/Scenario0142.java
+    old: "package example;\n\npublic class Scenario0142 {\n    public boolean authorized(boolean authenticated, boolean tokenValid) {\n        return authenticated;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0142 {\n    public boolean authorized(boolean authenticated, boolean tokenValid) {\n        return authenticated && tokenValid;\n    }\n}\n"
     labels:
     - B001
     - fault
@@ -61,12 +61,12 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0136.java
-    old: "package example;\n\npublic class Scenario0136 {\n    public boolean authorized(boolean authenticated, boolean tokenValid) {\n        return authenticated && tokenValid;\n    }\n}\n"
+    path: src/main/java/example/Scenario0142.java
+    old: "package example;\n\npublic class Scenario0142 {\n    public boolean authorized(boolean authenticated, boolean tokenValid) {\n        return authenticated && tokenValid;\n    }\n}\n"
     new: |
       package example;
 
-      public class Scenario0136 {
+      public class Scenario0142 {
           public boolean authorized(boolean authenticated, boolean tokenValid) {
               return true;
           }
@@ -83,7 +83,7 @@ bugs:
   - c2
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0136.java
+    file: src/main/java/example/Scenario0142.java
     entity:
       type: method
       name: authorized
@@ -92,7 +92,7 @@ bugs:
     change_type: line_modification
   fix:
     commit: c3
-    file: src/main/java/example/Scenario0136.java
+    file: src/main/java/example/Scenario0142.java
     entity:
       type: method
       name: authorized

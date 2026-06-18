@@ -27,11 +27,11 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0070.java
+    path: src/main/java/example/Scenario0060.java
     content: 'package example;
 
 
-      public class Scenario0070 {
+      public class Scenario0060 {
 
       }
 
@@ -43,16 +43,16 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0070.java
+    path: src/main/java/example/Scenario0060.java
     old: 'package example;
 
 
-      public class Scenario0070 {
+      public class Scenario0060 {
 
       }
 
       '
-    new: "package example;\n\npublic class Scenario0070 {\n    public String nextAction(boolean failed) {\n        return \"commit\";\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0060 {\n    public String nextAction(boolean failed) {\n        return \"commit\";\n    }\n}\n"
     labels:
     - B001
     - fault
@@ -63,9 +63,9 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0070.java
-    old: "package example;\n\npublic class Scenario0070 {\n    public String nextAction(boolean failed) {\n        return \"commit\";\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0070 {\n    public String nextAction(boolean failed) {\n        if (failed) {\n                return \"rollback\";\n            }\n            return \"commit\";\n    }\n}\n"
+    path: src/main/java/example/Scenario0060.java
+    old: "package example;\n\npublic class Scenario0060 {\n    public String nextAction(boolean failed) {\n        return \"commit\";\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0060 {\n    public String nextAction(boolean failed) {\n        if (failed) {\n                return \"rollback\";\n            }\n            return \"commit\";\n    }\n}\n"
     labels:
     - B001
     - fix
@@ -77,7 +77,7 @@ bugs:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0070.java
+    file: src/main/java/example/Scenario0060.java
     entity:
       type: method
       name: nextAction
@@ -86,7 +86,7 @@ bugs:
     missing_statement: "if (failed) {\n            return \"rollback\";\n        }\n"
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0070.java
+    file: src/main/java/example/Scenario0060.java
     entity:
       type: method
       name: nextAction

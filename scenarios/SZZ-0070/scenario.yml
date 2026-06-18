@@ -27,11 +27,11 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0080.java
+    path: src/main/java/example/Scenario0070.java
     content: 'package example;
 
 
-      public class Scenario0080 {
+      public class Scenario0070 {
 
       }
 
@@ -43,16 +43,16 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0080.java
+    path: src/main/java/example/Scenario0070.java
     old: 'package example;
 
 
-      public class Scenario0080 {
+      public class Scenario0070 {
 
       }
 
       '
-    new: "package example;\n\npublic class Scenario0080 {\n    public boolean canStart(boolean ready) {\n        return true;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0070 {\n    public boolean canStart(boolean ready) {\n        return true;\n    }\n}\n"
     labels:
     - B001
     - fault
@@ -63,9 +63,9 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0080.java
-    old: "package example;\n\npublic class Scenario0080 {\n    public boolean canStart(boolean ready) {\n        return true;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0080 {\n    public boolean canStart(boolean ready) {\n        if (!ready) {\n                return false;\n            }\n            return true;\n    }\n}\n"
+    path: src/main/java/example/Scenario0070.java
+    old: "package example;\n\npublic class Scenario0070 {\n    public boolean canStart(boolean ready) {\n        return true;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0070 {\n    public boolean canStart(boolean ready) {\n        if (!ready) {\n                return false;\n            }\n            return true;\n    }\n}\n"
     labels:
     - B001
     - fix
@@ -77,7 +77,7 @@ bugs:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0080.java
+    file: src/main/java/example/Scenario0070.java
     entity:
       type: method
       name: canStart
@@ -86,7 +86,7 @@ bugs:
     missing_statement: "if (!ready) {\n            return false;\n        }\n"
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0080.java
+    file: src/main/java/example/Scenario0070.java
     entity:
       type: method
       name: canStart

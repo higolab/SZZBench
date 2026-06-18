@@ -27,11 +27,11 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0089.java
+    path: src/main/java/example/Scenario0127.java
     content: |
       package example;
 
-      public class Scenario0089 {
+      public class Scenario0127 {
           public boolean valid(int value) {
               return value >= min;
           }
@@ -43,11 +43,11 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0089.java
+    path: src/main/java/example/Scenario0127.java
     old: |
       package example;
 
-      public class Scenario0089 {
+      public class Scenario0127 {
           public boolean valid(int value) {
               return value >= min;
           }
@@ -55,7 +55,7 @@ commits:
     new: |
       package example;
 
-      public class Scenario0089 {
+      public class Scenario0127 {
           public boolean valid(int value) {
               return value > min;
           }
@@ -70,11 +70,11 @@ commits:
   role: refactoring
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0089.java
+    path: src/main/java/example/Scenario0127.java
     old: |
       package example;
 
-      public class Scenario0089 {
+      public class Scenario0127 {
           public boolean valid(int value) {
               return value > min;
           }
@@ -82,7 +82,7 @@ commits:
     new: |
       package example;
 
-      public class Scenario0089 {
+      public class Scenario0127 {
           public boolean check(int value, int min, boolean inclusive) {
               return value > min;
           }
@@ -96,11 +96,11 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0089.java
+    path: src/main/java/example/Scenario0127.java
     old: |
       package example;
 
-      public class Scenario0089 {
+      public class Scenario0127 {
           public boolean check(int value, int min, boolean inclusive) {
               return value > min;
           }
@@ -108,7 +108,7 @@ commits:
     new: |
       package example;
 
-      public class Scenario0089 {
+      public class Scenario0127 {
           public boolean valid(int value) {
               return value >= min;
           }
@@ -124,7 +124,7 @@ bugs:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0089.java
+    file: src/main/java/example/Scenario0127.java
     entity:
       type: method
       name: valid
@@ -133,7 +133,7 @@ bugs:
     change_type: line_modification
   fix:
     commit: c3
-    file: src/main/java/example/Scenario0089.java
+    file: src/main/java/example/Scenario0127.java
     entity:
       type: method
       name: valid

@@ -27,11 +27,11 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0057.java
+    path: src/main/java/example/Scenario0122.java
     content: |
       package example;
 
-      public class Scenario0057 {
+      public class Scenario0122 {
           public boolean active(boolean enabled, boolean ready) {
               return enabled && ready;
           }
@@ -43,11 +43,11 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0057.java
+    path: src/main/java/example/Scenario0122.java
     old: |
       package example;
 
-      public class Scenario0057 {
+      public class Scenario0122 {
           public boolean active(boolean enabled, boolean ready) {
               return enabled && ready;
           }
@@ -55,7 +55,7 @@ commits:
     new: |
       package example;
 
-      public class Scenario0057 {
+      public class Scenario0122 {
           public boolean active(boolean enabled, boolean ready) {
               return enabled || ready;
           }
@@ -70,11 +70,11 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0057.java
+    path: src/main/java/example/Scenario0122.java
     old: |
       package example;
 
-      public class Scenario0057 {
+      public class Scenario0122 {
           public boolean active(boolean enabled, boolean ready) {
               return enabled || ready;
           }
@@ -82,7 +82,7 @@ commits:
     new: |
       package example;
 
-      public class Scenario0057 {
+      public class Scenario0122 {
           public boolean active(boolean enabled, boolean ready) {
               return enabled && ready;
           }
@@ -91,13 +91,13 @@ commits:
     - B001
     - fix
   - type: write_file
-    path: src/main/java/example/Scenario0057Audit.java
+    path: src/main/java/example/Scenario0122Audit.java
     content: |
       package example;
 
-      public class Scenario0057Audit {
+      public class Scenario0122Audit {
           public String fixedBy() {
-              return "Scenario0057";
+              return "Scenario0122";
           }
       }
 bugs:
@@ -108,7 +108,7 @@ bugs:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0057.java
+    file: src/main/java/example/Scenario0122.java
     entity:
       type: method
       name: active
@@ -117,7 +117,7 @@ bugs:
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0057.java
+    file: src/main/java/example/Scenario0122.java
     entity:
       type: method
       name: active

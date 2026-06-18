@@ -27,11 +27,11 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0081.java
+    path: src/main/java/example/Scenario0071.java
     content: 'package example;
 
 
-      public class Scenario0081 {
+      public class Scenario0071 {
 
       }
 
@@ -43,16 +43,16 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0081.java
+    path: src/main/java/example/Scenario0071.java
     old: 'package example;
 
 
-      public class Scenario0081 {
+      public class Scenario0071 {
 
       }
 
       '
-    new: "package example;\n\npublic class Scenario0081 {\n    public boolean canUseFeature(boolean enabled) {\n        return true;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0071 {\n    public boolean canUseFeature(boolean enabled) {\n        return true;\n    }\n}\n"
     labels:
     - B001
     - fault
@@ -63,9 +63,9 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0081.java
-    old: "package example;\n\npublic class Scenario0081 {\n    public boolean canUseFeature(boolean enabled) {\n        return true;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0081 {\n    public boolean canUseFeature(boolean enabled) {\n        if (!enabled) {\n                return false;\n            }\n            return true;\n    }\n}\n"
+    path: src/main/java/example/Scenario0071.java
+    old: "package example;\n\npublic class Scenario0071 {\n    public boolean canUseFeature(boolean enabled) {\n        return true;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0071 {\n    public boolean canUseFeature(boolean enabled) {\n        if (!enabled) {\n                return false;\n            }\n            return true;\n    }\n}\n"
     labels:
     - B001
     - fix
@@ -77,7 +77,7 @@ bugs:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0081.java
+    file: src/main/java/example/Scenario0071.java
     entity:
       type: method
       name: canUseFeature
@@ -86,7 +86,7 @@ bugs:
     missing_statement: "if (!enabled) {\n            return false;\n        }\n"
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0081.java
+    file: src/main/java/example/Scenario0071.java
     entity:
       type: method
       name: canUseFeature

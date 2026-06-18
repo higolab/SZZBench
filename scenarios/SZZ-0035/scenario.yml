@@ -27,11 +27,11 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0115.java
+    path: src/main/java/example/Scenario0035.java
     content: |
       package example;
 
-      public class Scenario0115 {
+      public class Scenario0035 {
           public boolean contains(int value, int min, int max) {
               return inRange(value, min, max);
           }
@@ -43,11 +43,11 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0115.java
+    path: src/main/java/example/Scenario0035.java
     old: |
       package example;
 
-      public class Scenario0115 {
+      public class Scenario0035 {
           public boolean contains(int value, int min, int max) {
               return inRange(value, min, max);
           }
@@ -55,7 +55,7 @@ commits:
     new: |
       package example;
 
-      public class Scenario0115 {
+      public class Scenario0035 {
           public boolean contains(int value, int min, int max) {
               return inRange(value, max, min);
           }
@@ -70,11 +70,11 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0115.java
+    path: src/main/java/example/Scenario0035.java
     old: |
       package example;
 
-      public class Scenario0115 {
+      public class Scenario0035 {
           public boolean contains(int value, int min, int max) {
               return inRange(value, max, min);
           }
@@ -82,7 +82,7 @@ commits:
     new: |
       package example;
 
-      public class Scenario0115 {
+      public class Scenario0035 {
           public boolean contains(int value, int min, int max) {
               return inRange(value, min, max);
           }
@@ -98,7 +98,7 @@ bugs:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0115.java
+    file: src/main/java/example/Scenario0035.java
     entity:
       type: method
       name: contains
@@ -107,7 +107,7 @@ bugs:
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0115.java
+    file: src/main/java/example/Scenario0035.java
     entity:
       type: method
       name: contains

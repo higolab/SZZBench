@@ -26,11 +26,11 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0130.java
+    path: src/main/java/example/Scenario0136.java
     content: |
       package example;
 
-      public class Scenario0130 {
+      public class Scenario0136 {
           public boolean contains(int value, int min, int max) {
               return true;
           }
@@ -42,11 +42,11 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0130.java
+    path: src/main/java/example/Scenario0136.java
     old: |
       package example;
 
-      public class Scenario0130 {
+      public class Scenario0136 {
           public boolean contains(int value, int min, int max) {
               return true;
           }
@@ -54,7 +54,7 @@ commits:
     new: |
       package example;
 
-      public class Scenario0130 {
+      public class Scenario0136 {
           public boolean contains(int value, int min, int max) {
               return value > min;
           }
@@ -69,11 +69,11 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0130.java
+    path: src/main/java/example/Scenario0136.java
     old: |
       package example;
 
-      public class Scenario0130 {
+      public class Scenario0136 {
           public boolean contains(int value, int min, int max) {
               return value > min;
           }
@@ -81,7 +81,7 @@ commits:
     new: |
       package example;
 
-      public class Scenario0130 {
+      public class Scenario0136 {
           public boolean contains(int value, int min, int max) {
               return value > min && value < max;
           }
@@ -96,11 +96,11 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0130.java
+    path: src/main/java/example/Scenario0136.java
     old: |
       package example;
 
-      public class Scenario0130 {
+      public class Scenario0136 {
           public boolean contains(int value, int min, int max) {
               return value > min && value < max;
           }
@@ -108,7 +108,7 @@ commits:
     new: |
       package example;
 
-      public class Scenario0130 {
+      public class Scenario0136 {
           public boolean contains(int value, int min, int max) {
               return value >= min && value <= max;
           }
@@ -125,7 +125,7 @@ bugs:
   - c2
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0130.java
+    file: src/main/java/example/Scenario0136.java
     entity:
       type: method
       name: contains
@@ -134,7 +134,7 @@ bugs:
     change_type: line_modification
   fix:
     commit: c3
-    file: src/main/java/example/Scenario0130.java
+    file: src/main/java/example/Scenario0136.java
     entity:
       type: method
       name: contains

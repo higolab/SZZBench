@@ -28,8 +28,8 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0113.java
-    content: "package example;\n\npublic class Scenario0113 {\n    public int divide(int total, int denominator) {\n        if (denominator == 0) {\n                return 0;\n            }\n            return total / denominator;\n    }\n}\n"
+    path: src/main/java/example/Scenario0080.java
+    content: "package example;\n\npublic class Scenario0080 {\n    public int divide(int total, int denominator) {\n        if (denominator == 0) {\n                return 0;\n            }\n            return total / denominator;\n    }\n}\n"
 - id: c1
   message: Introduce bug
   author: Bob <bob@example.com>
@@ -37,9 +37,9 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0113.java
-    old: "package example;\n\npublic class Scenario0113 {\n    public int divide(int total, int denominator) {\n        if (denominator == 0) {\n                return 0;\n            }\n            return total / denominator;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0113 {\n    public int divide(int total, int denominator) {\n        return total / denominator;\n    }\n}\n"
+    path: src/main/java/example/Scenario0080.java
+    old: "package example;\n\npublic class Scenario0080 {\n    public int divide(int total, int denominator) {\n        if (denominator == 0) {\n                return 0;\n            }\n            return total / denominator;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0080 {\n    public int divide(int total, int denominator) {\n        return total / denominator;\n    }\n}\n"
     labels:
     - B001
     - fault
@@ -50,9 +50,9 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0113.java
-    old: "package example;\n\npublic class Scenario0113 {\n    public int divide(int total, int denominator) {\n        return total / denominator;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0113 {\n    public int divide(int total, int denominator) {\n        if (denominator == 0) {\n                return 0;\n            }\n            return total / denominator;\n    }\n}\n"
+    path: src/main/java/example/Scenario0080.java
+    old: "package example;\n\npublic class Scenario0080 {\n    public int divide(int total, int denominator) {\n        return total / denominator;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0080 {\n    public int divide(int total, int denominator) {\n        if (denominator == 0) {\n                return 0;\n            }\n            return total / denominator;\n    }\n}\n"
     labels:
     - B001
     - fix
@@ -64,7 +64,7 @@ bugs:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0113.java
+    file: src/main/java/example/Scenario0080.java
     entity:
       type: method
       name: divide
@@ -73,7 +73,7 @@ bugs:
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0113.java
+    file: src/main/java/example/Scenario0080.java
     entity:
       type: method
       name: divide

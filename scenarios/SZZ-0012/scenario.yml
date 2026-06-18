@@ -27,11 +27,11 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0022.java
+    path: src/main/java/example/Scenario0012.java
     content: |
       package example;
 
-      public class Scenario0022 {
+      public class Scenario0012 {
           public boolean isComplete(boolean hasName, boolean hasEmail) {
               return hasName && hasEmail;
           }
@@ -43,11 +43,11 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0022.java
+    path: src/main/java/example/Scenario0012.java
     old: |
       package example;
 
-      public class Scenario0022 {
+      public class Scenario0012 {
           public boolean isComplete(boolean hasName, boolean hasEmail) {
               return hasName && hasEmail;
           }
@@ -55,7 +55,7 @@ commits:
     new: |
       package example;
 
-      public class Scenario0022 {
+      public class Scenario0012 {
           public boolean isComplete(boolean hasName, boolean hasEmail) {
               return hasName || hasEmail;
           }
@@ -70,11 +70,11 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0022.java
+    path: src/main/java/example/Scenario0012.java
     old: |
       package example;
 
-      public class Scenario0022 {
+      public class Scenario0012 {
           public boolean isComplete(boolean hasName, boolean hasEmail) {
               return hasName || hasEmail;
           }
@@ -82,7 +82,7 @@ commits:
     new: |
       package example;
 
-      public class Scenario0022 {
+      public class Scenario0012 {
           public boolean isComplete(boolean hasName, boolean hasEmail) {
               return hasName && hasEmail;
           }
@@ -98,7 +98,7 @@ bugs:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0022.java
+    file: src/main/java/example/Scenario0012.java
     entity:
       type: method
       name: isComplete
@@ -107,7 +107,7 @@ bugs:
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0022.java
+    file: src/main/java/example/Scenario0012.java
     entity:
       type: method
       name: isComplete

@@ -27,11 +27,11 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0069.java
+    path: src/main/java/example/Scenario0059.java
     content: 'package example;
 
 
-      public class Scenario0069 {
+      public class Scenario0059 {
 
       }
 
@@ -43,16 +43,16 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0069.java
+    path: src/main/java/example/Scenario0059.java
     old: 'package example;
 
 
-      public class Scenario0069 {
+      public class Scenario0059 {
 
       }
 
       '
-    new: "package example;\n\npublic class Scenario0069 {\n    public boolean canUpdate(boolean locked) {\n        return true;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0059 {\n    public boolean canUpdate(boolean locked) {\n        return true;\n    }\n}\n"
     labels:
     - B001
     - fault
@@ -63,9 +63,9 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0069.java
-    old: "package example;\n\npublic class Scenario0069 {\n    public boolean canUpdate(boolean locked) {\n        return true;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0069 {\n    public boolean canUpdate(boolean locked) {\n        if (locked) {\n                return false;\n            }\n            return true;\n    }\n}\n"
+    path: src/main/java/example/Scenario0059.java
+    old: "package example;\n\npublic class Scenario0059 {\n    public boolean canUpdate(boolean locked) {\n        return true;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0059 {\n    public boolean canUpdate(boolean locked) {\n        if (locked) {\n                return false;\n            }\n            return true;\n    }\n}\n"
     labels:
     - B001
     - fix
@@ -77,7 +77,7 @@ bugs:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0069.java
+    file: src/main/java/example/Scenario0059.java
     entity:
       type: method
       name: canUpdate
@@ -86,7 +86,7 @@ bugs:
     missing_statement: "if (locked) {\n            return false;\n        }\n"
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0069.java
+    file: src/main/java/example/Scenario0059.java
     entity:
       type: method
       name: canUpdate

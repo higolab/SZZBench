@@ -26,8 +26,8 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0134.java
-    content: "package example;\n\npublic class Scenario0134 {\n    public boolean enabled(boolean configured, boolean runtimeReady) {\n        return true;\n    }\n}\n"
+    path: src/main/java/example/Scenario0140.java
+    content: "package example;\n\npublic class Scenario0140 {\n    public boolean enabled(boolean configured, boolean runtimeReady) {\n        return true;\n    }\n}\n"
 - id: c1
   message: Introduce first contributing change
   author: Bob <bob@example.com>
@@ -35,9 +35,9 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0134.java
-    old: "package example;\n\npublic class Scenario0134 {\n    public boolean enabled(boolean configured, boolean runtimeReady) {\n        return true;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0134 {\n    public boolean enabled(boolean configured, boolean runtimeReady) {\n        return configured;\n    }\n}\n"
+    path: src/main/java/example/Scenario0140.java
+    old: "package example;\n\npublic class Scenario0140 {\n    public boolean enabled(boolean configured, boolean runtimeReady) {\n        return true;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0140 {\n    public boolean enabled(boolean configured, boolean runtimeReady) {\n        return configured;\n    }\n}\n"
     labels:
     - B001
     - fault
@@ -48,9 +48,9 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0134.java
-    old: "package example;\n\npublic class Scenario0134 {\n    public boolean enabled(boolean configured, boolean runtimeReady) {\n        return configured;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0134 {\n    public boolean enabled(boolean configured, boolean runtimeReady) {\n        return configured && runtimeReady;\n    }\n}\n"
+    path: src/main/java/example/Scenario0140.java
+    old: "package example;\n\npublic class Scenario0140 {\n    public boolean enabled(boolean configured, boolean runtimeReady) {\n        return configured;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0140 {\n    public boolean enabled(boolean configured, boolean runtimeReady) {\n        return configured && runtimeReady;\n    }\n}\n"
     labels:
     - B001
     - fault
@@ -61,12 +61,12 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0134.java
-    old: "package example;\n\npublic class Scenario0134 {\n    public boolean enabled(boolean configured, boolean runtimeReady) {\n        return configured && runtimeReady;\n    }\n}\n"
+    path: src/main/java/example/Scenario0140.java
+    old: "package example;\n\npublic class Scenario0140 {\n    public boolean enabled(boolean configured, boolean runtimeReady) {\n        return configured && runtimeReady;\n    }\n}\n"
     new: |
       package example;
 
-      public class Scenario0134 {
+      public class Scenario0140 {
           public boolean enabled(boolean configured, boolean runtimeReady) {
               return true;
           }
@@ -83,7 +83,7 @@ bugs:
   - c2
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0134.java
+    file: src/main/java/example/Scenario0140.java
     entity:
       type: method
       name: enabled
@@ -92,7 +92,7 @@ bugs:
     change_type: line_modification
   fix:
     commit: c3
-    file: src/main/java/example/Scenario0134.java
+    file: src/main/java/example/Scenario0140.java
     entity:
       type: method
       name: enabled

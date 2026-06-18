@@ -27,8 +27,8 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0050.java
-    content: "package example;\n\npublic class Scenario0050 {\n    public boolean check(int value, int min, int max) {\n        return value >= min && value <= max;\n    }\n}\n"
+    path: src/main/java/example/Scenario0091.java
+    content: "package example;\n\npublic class Scenario0091 {\n    public boolean check(int value, int min, int max) {\n        return value >= min && value <= max;\n    }\n}\n"
 - id: c1
   message: Introduce bug
   author: Bob <bob@example.com>
@@ -36,9 +36,9 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0050.java
-    old: "package example;\n\npublic class Scenario0050 {\n    public boolean check(int value, int min, int max) {\n        return value >= min && value <= max;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0050 {\n    public boolean check(int value, int min, int max) {\n        return value > min && value < max;\n    }\n}\n"
+    path: src/main/java/example/Scenario0091.java
+    old: "package example;\n\npublic class Scenario0091 {\n    public boolean check(int value, int min, int max) {\n        return value >= min && value <= max;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0091 {\n    public boolean check(int value, int min, int max) {\n        return value > min && value < max;\n    }\n}\n"
     labels:
     - B001
     - fault
@@ -49,12 +49,12 @@ commits:
   role: cleanup
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0050.java
-    old: "package example;\n\npublic class Scenario0050 {\n    public boolean check(int value, int min, int max) {\n        return value > min && value < max;\n    }\n}\n"
+    path: src/main/java/example/Scenario0091.java
+    old: "package example;\n\npublic class Scenario0091 {\n    public boolean check(int value, int min, int max) {\n        return value > min && value < max;\n    }\n}\n"
     new: |
       package example;
 
-      public class Scenario0050 {
+      public class Scenario0091 {
           public boolean check(int value, int min, int max) {
               // dead code removed; boundary remains faulty
               return value > min && value < max;
@@ -67,17 +67,17 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0050.java
+    path: src/main/java/example/Scenario0091.java
     old: |
       package example;
 
-      public class Scenario0050 {
+      public class Scenario0091 {
           public boolean check(int value, int min, int max) {
               // dead code removed; boundary remains faulty
               return value > min && value < max;
           }
       }
-    new: "package example;\n\npublic class Scenario0050 {\n    public boolean check(int value, int min, int max) {\n        return value >= min && value <= max;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0091 {\n    public boolean check(int value, int min, int max) {\n        return value >= min && value <= max;\n    }\n}\n"
     labels:
     - B001
     - fix
@@ -89,7 +89,7 @@ bugs:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0050.java
+    file: src/main/java/example/Scenario0091.java
     entity:
       type: method
       name: check
@@ -98,7 +98,7 @@ bugs:
     change_type: line_modification
   fix:
     commit: c3
-    file: src/main/java/example/Scenario0050.java
+    file: src/main/java/example/Scenario0091.java
     entity:
       type: method
       name: check

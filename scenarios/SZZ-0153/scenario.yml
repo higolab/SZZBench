@@ -28,11 +28,11 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0147.java
+    path: src/main/java/example/Scenario0153.java
     content: |
       package example;
 
-      public class Scenario0147 {
+      public class Scenario0153 {
           public String normalize(String value) {
               return value.strip();
           }
@@ -48,11 +48,11 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0147.java
+    path: src/main/java/example/Scenario0153.java
     old: |
       package example;
 
-      public class Scenario0147 {
+      public class Scenario0153 {
           public String normalize(String value) {
               return value.strip();
           }
@@ -64,7 +64,7 @@ commits:
     new: |
       package example;
 
-      public class Scenario0147 {
+      public class Scenario0153 {
           public String normalize(String value) {
               return value.trim();
           }
@@ -83,11 +83,11 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0147.java
+    path: src/main/java/example/Scenario0153.java
     old: |
       package example;
 
-      public class Scenario0147 {
+      public class Scenario0153 {
           public String normalize(String value) {
               return value.trim();
           }
@@ -99,7 +99,7 @@ commits:
     new: |
       package example;
 
-      public class Scenario0147 {
+      public class Scenario0153 {
           public String normalize(String value) {
               return value.strip();
           }
@@ -119,7 +119,7 @@ bugs:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0147.java
+    file: src/main/java/example/Scenario0153.java
     entity:
       type: method
       name: normalize
@@ -128,7 +128,7 @@ bugs:
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0147.java
+    file: src/main/java/example/Scenario0153.java
     entity:
       type: method
       name: normalize

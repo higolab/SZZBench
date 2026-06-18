@@ -27,8 +27,8 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0111.java
-    content: "package example;\n\npublic class Scenario0111 {\n    public boolean valid(int value) {\n        if (value < 0) {\n                return false;\n            }\n            return true;\n    }\n}\n"
+    path: src/main/java/example/Scenario0078.java
+    content: "package example;\n\npublic class Scenario0078 {\n    public boolean valid(int value) {\n        if (value < 0) {\n                return false;\n            }\n            return true;\n    }\n}\n"
 - id: c1
   message: Introduce bug
   author: Bob <bob@example.com>
@@ -36,9 +36,9 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0111.java
-    old: "package example;\n\npublic class Scenario0111 {\n    public boolean valid(int value) {\n        if (value < 0) {\n                return false;\n            }\n            return true;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0111 {\n    public boolean valid(int value) {\n        return true;\n    }\n}\n"
+    path: src/main/java/example/Scenario0078.java
+    old: "package example;\n\npublic class Scenario0078 {\n    public boolean valid(int value) {\n        if (value < 0) {\n                return false;\n            }\n            return true;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0078 {\n    public boolean valid(int value) {\n        return true;\n    }\n}\n"
     labels:
     - B001
     - fault
@@ -49,9 +49,9 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0111.java
-    old: "package example;\n\npublic class Scenario0111 {\n    public boolean valid(int value) {\n        return true;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0111 {\n    public boolean valid(int value) {\n        if (value < 0) {\n                return false;\n            }\n            return true;\n    }\n}\n"
+    path: src/main/java/example/Scenario0078.java
+    old: "package example;\n\npublic class Scenario0078 {\n    public boolean valid(int value) {\n        return true;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0078 {\n    public boolean valid(int value) {\n        if (value < 0) {\n                return false;\n            }\n            return true;\n    }\n}\n"
     labels:
     - B001
     - fix
@@ -63,7 +63,7 @@ bugs:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0111.java
+    file: src/main/java/example/Scenario0078.java
     entity:
       type: method
       name: valid
@@ -72,7 +72,7 @@ bugs:
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0111.java
+    file: src/main/java/example/Scenario0078.java
     entity:
       type: method
       name: valid

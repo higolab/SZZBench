@@ -28,11 +28,11 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0143.java
+    path: src/main/java/example/Scenario0149.java
     content: |
       package example;
 
-      public class Scenario0143 {
+      public class Scenario0149 {
           public boolean hasItems(int size) {
               return size > 0;
           }
@@ -48,11 +48,11 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0143.java
+    path: src/main/java/example/Scenario0149.java
     old: |
       package example;
 
-      public class Scenario0143 {
+      public class Scenario0149 {
           public boolean hasItems(int size) {
               return size > 0;
           }
@@ -64,7 +64,7 @@ commits:
     new: |
       package example;
 
-      public class Scenario0143 {
+      public class Scenario0149 {
           public boolean hasItems(int size) {
               return size >= 0;
           }
@@ -83,11 +83,11 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0143.java
+    path: src/main/java/example/Scenario0149.java
     old: |
       package example;
 
-      public class Scenario0143 {
+      public class Scenario0149 {
           public boolean hasItems(int size) {
               return size >= 0;
           }
@@ -99,7 +99,7 @@ commits:
     new: |
       package example;
 
-      public class Scenario0143 {
+      public class Scenario0149 {
           public boolean hasItems(int size) {
               return size > 0;
           }
@@ -119,7 +119,7 @@ bugs:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0143.java
+    file: src/main/java/example/Scenario0149.java
     entity:
       type: method
       name: hasItems
@@ -128,7 +128,7 @@ bugs:
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0143.java
+    file: src/main/java/example/Scenario0149.java
     entity:
       type: method
       name: hasItems

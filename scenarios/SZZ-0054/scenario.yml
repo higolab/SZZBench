@@ -28,11 +28,11 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0064.java
+    path: src/main/java/example/Scenario0054.java
     content: 'package example;
 
 
-      public class Scenario0064 {
+      public class Scenario0054 {
 
       }
 
@@ -44,16 +44,16 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0064.java
+    path: src/main/java/example/Scenario0054.java
     old: 'package example;
 
 
-      public class Scenario0064 {
+      public class Scenario0054 {
 
       }
 
       '
-    new: "package example;\n\npublic class Scenario0064 {\n    public boolean canAccess(boolean hasPermission) {\n        return true;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0054 {\n    public boolean canAccess(boolean hasPermission) {\n        return true;\n    }\n}\n"
     labels:
     - B001
     - fault
@@ -64,9 +64,9 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0064.java
-    old: "package example;\n\npublic class Scenario0064 {\n    public boolean canAccess(boolean hasPermission) {\n        return true;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0064 {\n    public boolean canAccess(boolean hasPermission) {\n        if (!hasPermission) {\n                return false;\n            }\n            return true;\n    }\n}\n"
+    path: src/main/java/example/Scenario0054.java
+    old: "package example;\n\npublic class Scenario0054 {\n    public boolean canAccess(boolean hasPermission) {\n        return true;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0054 {\n    public boolean canAccess(boolean hasPermission) {\n        if (!hasPermission) {\n                return false;\n            }\n            return true;\n    }\n}\n"
     labels:
     - B001
     - fix
@@ -78,7 +78,7 @@ bugs:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0064.java
+    file: src/main/java/example/Scenario0054.java
     entity:
       type: method
       name: canAccess
@@ -87,7 +87,7 @@ bugs:
     missing_statement: "if (!hasPermission) {\n            return false;\n        }\n"
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0064.java
+    file: src/main/java/example/Scenario0054.java
     entity:
       type: method
       name: canAccess

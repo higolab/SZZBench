@@ -26,8 +26,8 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0129.java
-    content: "package example;\n\npublic class Scenario0129 {\n    public boolean allowed(int value, boolean enabled) {\n        return true;\n    }\n}\n"
+    path: src/main/java/example/Scenario0135.java
+    content: "package example;\n\npublic class Scenario0135 {\n    public boolean allowed(int value, boolean enabled) {\n        return true;\n    }\n}\n"
 - id: c1
   message: Introduce first contributing change
   author: Bob <bob@example.com>
@@ -35,9 +35,9 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0129.java
-    old: "package example;\n\npublic class Scenario0129 {\n    public boolean allowed(int value, boolean enabled) {\n        return true;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0129 {\n    public boolean allowed(int value, boolean enabled) {\n        return value < 100;\n    }\n}\n"
+    path: src/main/java/example/Scenario0135.java
+    old: "package example;\n\npublic class Scenario0135 {\n    public boolean allowed(int value, boolean enabled) {\n        return true;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0135 {\n    public boolean allowed(int value, boolean enabled) {\n        return value < 100;\n    }\n}\n"
     labels:
     - B001
     - fault
@@ -48,9 +48,9 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0129.java
-    old: "package example;\n\npublic class Scenario0129 {\n    public boolean allowed(int value, boolean enabled) {\n        return value < 100;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0129 {\n    public boolean allowed(int value, boolean enabled) {\n        return value < 100 && enabled;\n    }\n}\n"
+    path: src/main/java/example/Scenario0135.java
+    old: "package example;\n\npublic class Scenario0135 {\n    public boolean allowed(int value, boolean enabled) {\n        return value < 100;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0135 {\n    public boolean allowed(int value, boolean enabled) {\n        return value < 100 && enabled;\n    }\n}\n"
     labels:
     - B001
     - fault
@@ -61,12 +61,12 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0129.java
-    old: "package example;\n\npublic class Scenario0129 {\n    public boolean allowed(int value, boolean enabled) {\n        return value < 100 && enabled;\n    }\n}\n"
+    path: src/main/java/example/Scenario0135.java
+    old: "package example;\n\npublic class Scenario0135 {\n    public boolean allowed(int value, boolean enabled) {\n        return value < 100 && enabled;\n    }\n}\n"
     new: |
       package example;
 
-      public class Scenario0129 {
+      public class Scenario0135 {
           public boolean allowed(int value, boolean enabled) {
               return true;
           }
@@ -83,7 +83,7 @@ bugs:
   - c2
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0129.java
+    file: src/main/java/example/Scenario0135.java
     entity:
       type: method
       name: allowed
@@ -92,7 +92,7 @@ bugs:
     change_type: line_modification
   fix:
     commit: c3
-    file: src/main/java/example/Scenario0129.java
+    file: src/main/java/example/Scenario0135.java
     entity:
       type: method
       name: allowed

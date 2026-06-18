@@ -27,11 +27,11 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0091.java
+    path: src/main/java/example/Scenario0129.java
     content: |
       package example;
 
-      public class Scenario0091 {
+      public class Scenario0129 {
           public boolean valid(int value, int min) {
               return atLeastMin(value, min);
           }
@@ -47,11 +47,11 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0091.java
+    path: src/main/java/example/Scenario0129.java
     old: |
       package example;
 
-      public class Scenario0091 {
+      public class Scenario0129 {
           public boolean valid(int value, int min) {
               return atLeastMin(value, min);
           }
@@ -63,7 +63,7 @@ commits:
     new: |
       package example;
 
-      public class Scenario0091 {
+      public class Scenario0129 {
           public boolean valid(int value, int min) {
               return atLeastMin(value, min);
           }
@@ -82,11 +82,11 @@ commits:
   role: refactoring
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0091.java
+    path: src/main/java/example/Scenario0129.java
     old: |
       package example;
 
-      public class Scenario0091 {
+      public class Scenario0129 {
           public boolean valid(int value, int min) {
               return atLeastMin(value, min);
           }
@@ -98,7 +98,7 @@ commits:
     new: |
       package example;
 
-      public class Scenario0091 {
+      public class Scenario0129 {
           public boolean valid(int value, int min) {
               return value > min;
           }
@@ -112,11 +112,11 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0091.java
+    path: src/main/java/example/Scenario0129.java
     old: |
       package example;
 
-      public class Scenario0091 {
+      public class Scenario0129 {
           public boolean valid(int value, int min) {
               return value > min;
           }
@@ -124,7 +124,7 @@ commits:
     new: |
       package example;
 
-      public class Scenario0091 {
+      public class Scenario0129 {
           public boolean valid(int value, int min) {
               return value >= min;
           }
@@ -140,7 +140,7 @@ bugs:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0091.java
+    file: src/main/java/example/Scenario0129.java
     entity:
       type: method
       name: atLeastMin
@@ -149,7 +149,7 @@ bugs:
     change_type: line_modification
   fix:
     commit: c3
-    file: src/main/java/example/Scenario0091.java
+    file: src/main/java/example/Scenario0129.java
     entity:
       type: method
       name: valid

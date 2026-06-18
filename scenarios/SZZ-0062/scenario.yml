@@ -27,11 +27,11 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0072.java
+    path: src/main/java/example/Scenario0062.java
     content: 'package example;
 
 
-      public class Scenario0072 {
+      public class Scenario0062 {
 
       }
 
@@ -43,16 +43,16 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0072.java
+    path: src/main/java/example/Scenario0062.java
     old: 'package example;
 
 
-      public class Scenario0072 {
+      public class Scenario0062 {
 
       }
 
       '
-    new: "package example;\n\npublic class Scenario0072 {\n    public String label(int code) {\n        return code == 1 ? \"one\" : \"two\";\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0062 {\n    public String label(int code) {\n        return code == 1 ? \"one\" : \"two\";\n    }\n}\n"
     labels:
     - B001
     - fault
@@ -63,9 +63,9 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0072.java
-    old: "package example;\n\npublic class Scenario0072 {\n    public String label(int code) {\n        return code == 1 ? \"one\" : \"two\";\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0072 {\n    public String label(int code) {\n        if (code != 1 && code != 2) {\n                return \"unknown\";\n            }\n            return code == 1 ? \"one\" : \"two\";\n    }\n}\n"
+    path: src/main/java/example/Scenario0062.java
+    old: "package example;\n\npublic class Scenario0062 {\n    public String label(int code) {\n        return code == 1 ? \"one\" : \"two\";\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0062 {\n    public String label(int code) {\n        if (code != 1 && code != 2) {\n                return \"unknown\";\n            }\n            return code == 1 ? \"one\" : \"two\";\n    }\n}\n"
     labels:
     - B001
     - fix
@@ -77,7 +77,7 @@ bugs:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0072.java
+    file: src/main/java/example/Scenario0062.java
     entity:
       type: method
       name: label
@@ -86,7 +86,7 @@ bugs:
     missing_statement: "if (code != 1 && code != 2) {\n            return \"unknown\";\n        }\n"
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0072.java
+    file: src/main/java/example/Scenario0062.java
     entity:
       type: method
       name: label

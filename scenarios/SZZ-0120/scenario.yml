@@ -27,11 +27,11 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0055.java
+    path: src/main/java/example/Scenario0120.java
     content: |
       package example;
 
-      public class Scenario0055 {
+      public class Scenario0120 {
           public boolean passed(int score) {
               return score >= 60;
           }
@@ -43,11 +43,11 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0055.java
+    path: src/main/java/example/Scenario0120.java
     old: |
       package example;
 
-      public class Scenario0055 {
+      public class Scenario0120 {
           public boolean passed(int score) {
               return score >= 60;
           }
@@ -55,7 +55,7 @@ commits:
     new: |
       package example;
 
-      public class Scenario0055 {
+      public class Scenario0120 {
           public boolean passed(int score) {
               return score > 60;
           }
@@ -70,11 +70,11 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0055.java
+    path: src/main/java/example/Scenario0120.java
     old: |
       package example;
 
-      public class Scenario0055 {
+      public class Scenario0120 {
           public boolean passed(int score) {
               return score > 60;
           }
@@ -82,7 +82,7 @@ commits:
     new: |
       package example;
 
-      public class Scenario0055 {
+      public class Scenario0120 {
           public boolean passed(int score) {
               return score >= 60;
           }
@@ -102,7 +102,7 @@ bugs:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0055.java
+    file: src/main/java/example/Scenario0120.java
     entity:
       type: method
       name: passed
@@ -111,7 +111,7 @@ bugs:
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0055.java
+    file: src/main/java/example/Scenario0120.java
     entity:
       type: method
       name: passed

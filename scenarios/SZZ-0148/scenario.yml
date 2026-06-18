@@ -28,11 +28,11 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0142.java
+    path: src/main/java/example/Scenario0148.java
     content: |
       package example;
 
-      public class Scenario0142 {
+      public class Scenario0148 {
           public boolean hasText(String value) {
               return !value.isEmpty();
           }
@@ -48,11 +48,11 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0142.java
+    path: src/main/java/example/Scenario0148.java
     old: |
       package example;
 
-      public class Scenario0142 {
+      public class Scenario0148 {
           public boolean hasText(String value) {
               return !value.isEmpty();
           }
@@ -64,7 +64,7 @@ commits:
     new: |
       package example;
 
-      public class Scenario0142 {
+      public class Scenario0148 {
           public boolean hasText(String value) {
               return value.isEmpty();
           }
@@ -83,11 +83,11 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0142.java
+    path: src/main/java/example/Scenario0148.java
     old: |
       package example;
 
-      public class Scenario0142 {
+      public class Scenario0148 {
           public boolean hasText(String value) {
               return value.isEmpty();
           }
@@ -99,7 +99,7 @@ commits:
     new: |
       package example;
 
-      public class Scenario0142 {
+      public class Scenario0148 {
           public boolean hasText(String value) {
               return !value.isEmpty();
           }
@@ -119,7 +119,7 @@ bugs:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0142.java
+    file: src/main/java/example/Scenario0148.java
     entity:
       type: method
       name: hasText
@@ -128,7 +128,7 @@ bugs:
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0142.java
+    file: src/main/java/example/Scenario0148.java
     entity:
       type: method
       name: hasText

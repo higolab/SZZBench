@@ -26,8 +26,8 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0137.java
-    content: "package example;\n\npublic class Scenario0137 {\n    public boolean canUse(boolean featureEnabled, int usage, int limit) {\n        return true;\n    }\n}\n"
+    path: src/main/java/example/Scenario0143.java
+    content: "package example;\n\npublic class Scenario0143 {\n    public boolean canUse(boolean featureEnabled, int usage, int limit) {\n        return true;\n    }\n}\n"
 - id: c1
   message: Introduce first contributing change
   author: Bob <bob@example.com>
@@ -35,9 +35,9 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0137.java
-    old: "package example;\n\npublic class Scenario0137 {\n    public boolean canUse(boolean featureEnabled, int usage, int limit) {\n        return true;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0137 {\n    public boolean canUse(boolean featureEnabled, int usage, int limit) {\n        return featureEnabled;\n    }\n}\n"
+    path: src/main/java/example/Scenario0143.java
+    old: "package example;\n\npublic class Scenario0143 {\n    public boolean canUse(boolean featureEnabled, int usage, int limit) {\n        return true;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0143 {\n    public boolean canUse(boolean featureEnabled, int usage, int limit) {\n        return featureEnabled;\n    }\n}\n"
     labels:
     - B001
     - fault
@@ -48,9 +48,9 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0137.java
-    old: "package example;\n\npublic class Scenario0137 {\n    public boolean canUse(boolean featureEnabled, int usage, int limit) {\n        return featureEnabled;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0137 {\n    public boolean canUse(boolean featureEnabled, int usage, int limit) {\n        return featureEnabled && usage < limit;\n    }\n}\n"
+    path: src/main/java/example/Scenario0143.java
+    old: "package example;\n\npublic class Scenario0143 {\n    public boolean canUse(boolean featureEnabled, int usage, int limit) {\n        return featureEnabled;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0143 {\n    public boolean canUse(boolean featureEnabled, int usage, int limit) {\n        return featureEnabled && usage < limit;\n    }\n}\n"
     labels:
     - B001
     - fault
@@ -61,12 +61,12 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0137.java
-    old: "package example;\n\npublic class Scenario0137 {\n    public boolean canUse(boolean featureEnabled, int usage, int limit) {\n        return featureEnabled && usage < limit;\n    }\n}\n"
+    path: src/main/java/example/Scenario0143.java
+    old: "package example;\n\npublic class Scenario0143 {\n    public boolean canUse(boolean featureEnabled, int usage, int limit) {\n        return featureEnabled && usage < limit;\n    }\n}\n"
     new: |
       package example;
 
-      public class Scenario0137 {
+      public class Scenario0143 {
           public boolean canUse(boolean featureEnabled, int usage, int limit) {
               return true;
           }
@@ -83,7 +83,7 @@ bugs:
   - c2
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0137.java
+    file: src/main/java/example/Scenario0143.java
     entity:
       type: method
       name: canUse
@@ -92,7 +92,7 @@ bugs:
     change_type: line_modification
   fix:
     commit: c3
-    file: src/main/java/example/Scenario0137.java
+    file: src/main/java/example/Scenario0143.java
     entity:
       type: method
       name: canUse

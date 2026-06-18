@@ -26,11 +26,11 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0128.java
+    path: src/main/java/example/Scenario0134.java
     content: |
       package example;
 
-      public class Scenario0128 {
+      public class Scenario0134 {
           public boolean validate(int value) {
               return value >= 0 && value <= 10;
           }
@@ -46,7 +46,7 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0128.java
+    path: src/main/java/example/Scenario0134.java
     old: return value >= 0 && value <= 10;
     new: return value >= 0;
     labels:
@@ -59,7 +59,7 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0128.java
+    path: src/main/java/example/Scenario0134.java
     old: return validate(value);
     new: return validate(value) || value == 99;
     labels:
@@ -72,11 +72,11 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0128.java
+    path: src/main/java/example/Scenario0134.java
     old: return value >= 0;
     new: return value >= 0 && value <= 10;
   - type: replace
-    path: src/main/java/example/Scenario0128.java
+    path: src/main/java/example/Scenario0134.java
     old: return validate(value) || value == 99;
     new: return validate(value);
     labels:
@@ -91,7 +91,7 @@ bugs:
   - c2
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0128.java
+    file: src/main/java/example/Scenario0134.java
     entity:
       type: method
       name: validate
@@ -100,7 +100,7 @@ bugs:
     change_type: line_modification
   fix:
     commit: c3
-    file: src/main/java/example/Scenario0128.java
+    file: src/main/java/example/Scenario0134.java
     entity:
       type: method
       name: validate

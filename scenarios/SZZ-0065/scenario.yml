@@ -27,11 +27,11 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0075.java
+    path: src/main/java/example/Scenario0065.java
     content: 'package example;
 
 
-      public class Scenario0075 {
+      public class Scenario0065 {
 
       }
 
@@ -43,16 +43,16 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0075.java
+    path: src/main/java/example/Scenario0065.java
     old: 'package example;
 
 
-      public class Scenario0075 {
+      public class Scenario0065 {
 
       }
 
       '
-    new: "package example;\n\npublic class Scenario0075 {\n    public String describe(String value) {\n        return value;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0065 {\n    public String describe(String value) {\n        return value;\n    }\n}\n"
     labels:
     - B001
     - fault
@@ -63,9 +63,9 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0075.java
-    old: "package example;\n\npublic class Scenario0075 {\n    public String describe(String value) {\n        return value;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0075 {\n    public String describe(String value) {\n        if (value.isEmpty()) {\n                return \"empty\";\n            }\n            return value;\n    }\n}\n"
+    path: src/main/java/example/Scenario0065.java
+    old: "package example;\n\npublic class Scenario0065 {\n    public String describe(String value) {\n        return value;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0065 {\n    public String describe(String value) {\n        if (value.isEmpty()) {\n                return \"empty\";\n            }\n            return value;\n    }\n}\n"
     labels:
     - B001
     - fix
@@ -77,7 +77,7 @@ bugs:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0075.java
+    file: src/main/java/example/Scenario0065.java
     entity:
       type: method
       name: describe
@@ -86,7 +86,7 @@ bugs:
     missing_statement: "if (value.isEmpty()) {\n            return \"empty\";\n        }\n"
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0075.java
+    file: src/main/java/example/Scenario0065.java
     entity:
       type: method
       name: describe

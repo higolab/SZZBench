@@ -27,11 +27,11 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0063.java
+    path: src/main/java/example/Scenario0053.java
     content: 'package example;
 
 
-      public class Scenario0063 {
+      public class Scenario0053 {
 
       }
 
@@ -43,16 +43,16 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0063.java
+    path: src/main/java/example/Scenario0053.java
     old: 'package example;
 
 
-      public class Scenario0063 {
+      public class Scenario0053 {
 
       }
 
       '
-    new: "package example;\n\npublic class Scenario0063 {\n    public boolean isValidIndex(int index, int size) {\n        return true;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0053 {\n    public boolean isValidIndex(int index, int size) {\n        return true;\n    }\n}\n"
     labels:
     - B001
     - fault
@@ -63,9 +63,9 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0063.java
-    old: "package example;\n\npublic class Scenario0063 {\n    public boolean isValidIndex(int index, int size) {\n        return true;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0063 {\n    public boolean isValidIndex(int index, int size) {\n        if (index < 0 || index >= size) {\n                return false;\n            }\n            return true;\n    }\n}\n"
+    path: src/main/java/example/Scenario0053.java
+    old: "package example;\n\npublic class Scenario0053 {\n    public boolean isValidIndex(int index, int size) {\n        return true;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0053 {\n    public boolean isValidIndex(int index, int size) {\n        if (index < 0 || index >= size) {\n                return false;\n            }\n            return true;\n    }\n}\n"
     labels:
     - B001
     - fix
@@ -77,7 +77,7 @@ bugs:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0063.java
+    file: src/main/java/example/Scenario0053.java
     entity:
       type: method
       name: isValidIndex
@@ -86,7 +86,7 @@ bugs:
     missing_statement: "if (index < 0 || index >= size) {\n            return false;\n        }\n"
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0063.java
+    file: src/main/java/example/Scenario0053.java
     entity:
       type: method
       name: isValidIndex

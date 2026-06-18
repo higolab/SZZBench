@@ -27,11 +27,11 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0073.java
+    path: src/main/java/example/Scenario0063.java
     content: 'package example;
 
 
-      public class Scenario0073 {
+      public class Scenario0063 {
 
       }
 
@@ -43,16 +43,16 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0073.java
+    path: src/main/java/example/Scenario0063.java
     old: 'package example;
 
 
-      public class Scenario0073 {
+      public class Scenario0063 {
 
       }
 
       '
-    new: "package example;\n\npublic class Scenario0073 {\n    public String status(boolean enabled) {\n        return \"enabled\";\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0063 {\n    public String status(boolean enabled) {\n        return \"enabled\";\n    }\n}\n"
     labels:
     - B001
     - fault
@@ -63,9 +63,9 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0073.java
-    old: "package example;\n\npublic class Scenario0073 {\n    public String status(boolean enabled) {\n        return \"enabled\";\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0073 {\n    public String status(boolean enabled) {\n        if (!enabled) {\n                return \"disabled\";\n            }\n            return \"enabled\";\n    }\n}\n"
+    path: src/main/java/example/Scenario0063.java
+    old: "package example;\n\npublic class Scenario0063 {\n    public String status(boolean enabled) {\n        return \"enabled\";\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0063 {\n    public String status(boolean enabled) {\n        if (!enabled) {\n                return \"disabled\";\n            }\n            return \"enabled\";\n    }\n}\n"
     labels:
     - B001
     - fix
@@ -77,7 +77,7 @@ bugs:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0073.java
+    file: src/main/java/example/Scenario0063.java
     entity:
       type: method
       name: status
@@ -86,7 +86,7 @@ bugs:
     missing_statement: "if (!enabled) {\n            return \"disabled\";\n        }\n"
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0073.java
+    file: src/main/java/example/Scenario0063.java
     entity:
       type: method
       name: status

@@ -29,11 +29,11 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0162.java
+    path: src/main/java/example/Scenario0112.java
     content: |
       package example;
 
-      public class Scenario0162 {
+      public class Scenario0112 {
           public boolean check(int value, int limit) {
               int tmp1 = value + 1;
                   int tmp2 = value + 2;
@@ -59,11 +59,11 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0162.java
+    path: src/main/java/example/Scenario0112.java
     old: |
       package example;
 
-      public class Scenario0162 {
+      public class Scenario0112 {
           public boolean check(int value, int limit) {
               int tmp1 = value + 1;
                   int tmp2 = value + 2;
@@ -85,7 +85,7 @@ commits:
     new: |
       package example;
 
-      public class Scenario0162 {
+      public class Scenario0112 {
           public boolean check(int value, int limit) {
               int tmp1 = value + 1;
                   int tmp2 = value + 2;
@@ -114,11 +114,11 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0162.java
+    path: src/main/java/example/Scenario0112.java
     old: |
       package example;
 
-      public class Scenario0162 {
+      public class Scenario0112 {
           public boolean check(int value, int limit) {
               int tmp1 = value + 1;
                   int tmp2 = value + 2;
@@ -140,7 +140,7 @@ commits:
     new: |
       package example;
 
-      public class Scenario0162 {
+      public class Scenario0112 {
           public boolean check(int value, int limit) {
               int tmp1 = value + 1;
                   int tmp2 = value + 2;
@@ -170,7 +170,7 @@ bugs:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0162.java
+    file: src/main/java/example/Scenario0112.java
     entity:
       type: method
       name: check
@@ -179,7 +179,7 @@ bugs:
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0162.java
+    file: src/main/java/example/Scenario0112.java
     entity:
       type: method
       name: check

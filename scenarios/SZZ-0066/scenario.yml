@@ -28,11 +28,11 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0076.java
+    path: src/main/java/example/Scenario0066.java
     content: 'package example;
 
 
-      public class Scenario0076 {
+      public class Scenario0066 {
 
       }
 
@@ -44,16 +44,16 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0076.java
+    path: src/main/java/example/Scenario0066.java
     old: 'package example;
 
 
-      public class Scenario0076 {
+      public class Scenario0066 {
 
       }
 
       '
-    new: "package example;\n\npublic class Scenario0076 {\n    public boolean validToken(String token) {\n        return true;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0066 {\n    public boolean validToken(String token) {\n        return true;\n    }\n}\n"
     labels:
     - B001
     - fault
@@ -64,9 +64,9 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0076.java
-    old: "package example;\n\npublic class Scenario0076 {\n    public boolean validToken(String token) {\n        return true;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0076 {\n    public boolean validToken(String token) {\n        if (token == null || token.isEmpty()) {\n                return false;\n            }\n            return true;\n    }\n}\n"
+    path: src/main/java/example/Scenario0066.java
+    old: "package example;\n\npublic class Scenario0066 {\n    public boolean validToken(String token) {\n        return true;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0066 {\n    public boolean validToken(String token) {\n        if (token == null || token.isEmpty()) {\n                return false;\n            }\n            return true;\n    }\n}\n"
     labels:
     - B001
     - fix
@@ -78,7 +78,7 @@ bugs:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0076.java
+    file: src/main/java/example/Scenario0066.java
     entity:
       type: method
       name: validToken
@@ -87,7 +87,7 @@ bugs:
     missing_statement: "if (token == null || token.isEmpty()) {\n            return false;\n        }\n"
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0076.java
+    file: src/main/java/example/Scenario0066.java
     entity:
       type: method
       name: validToken

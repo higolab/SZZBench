@@ -27,11 +27,11 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0079.java
+    path: src/main/java/example/Scenario0069.java
     content: 'package example;
 
 
-      public class Scenario0079 {
+      public class Scenario0069 {
 
       }
 
@@ -43,16 +43,16 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0079.java
+    path: src/main/java/example/Scenario0069.java
     old: 'package example;
 
 
-      public class Scenario0079 {
+      public class Scenario0069 {
 
       }
 
       '
-    new: "package example;\n\npublic class Scenario0079 {\n    public boolean canInsert(boolean duplicate) {\n        return true;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0069 {\n    public boolean canInsert(boolean duplicate) {\n        return true;\n    }\n}\n"
     labels:
     - B001
     - fault
@@ -63,9 +63,9 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0079.java
-    old: "package example;\n\npublic class Scenario0079 {\n    public boolean canInsert(boolean duplicate) {\n        return true;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0079 {\n    public boolean canInsert(boolean duplicate) {\n        if (duplicate) {\n                return false;\n            }\n            return true;\n    }\n}\n"
+    path: src/main/java/example/Scenario0069.java
+    old: "package example;\n\npublic class Scenario0069 {\n    public boolean canInsert(boolean duplicate) {\n        return true;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0069 {\n    public boolean canInsert(boolean duplicate) {\n        if (duplicate) {\n                return false;\n            }\n            return true;\n    }\n}\n"
     labels:
     - B001
     - fix
@@ -77,7 +77,7 @@ bugs:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0079.java
+    file: src/main/java/example/Scenario0069.java
     entity:
       type: method
       name: canInsert
@@ -86,7 +86,7 @@ bugs:
     missing_statement: "if (duplicate) {\n            return false;\n        }\n"
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0079.java
+    file: src/main/java/example/Scenario0069.java
     entity:
       type: method
       name: canInsert

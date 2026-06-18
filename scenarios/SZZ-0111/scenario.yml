@@ -29,11 +29,11 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0161.java
+    path: src/main/java/example/Scenario0111.java
     content: |
       package example;
 
-      public class Scenario0161 {
+      public class Scenario0111 {
           public boolean check(int value) {
               return value >= 0;
           }
@@ -58,11 +58,11 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0161.java
+    path: src/main/java/example/Scenario0111.java
     old: |
       package example;
 
-      public class Scenario0161 {
+      public class Scenario0111 {
           public boolean check(int value) {
               return value >= 0;
           }
@@ -83,7 +83,7 @@ commits:
     new: |
       package example;
 
-      public class Scenario0161 {
+      public class Scenario0111 {
           public boolean check(int value) {
               return value > 0;
           }
@@ -111,11 +111,11 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0161.java
+    path: src/main/java/example/Scenario0111.java
     old: |
       package example;
 
-      public class Scenario0161 {
+      public class Scenario0111 {
           public boolean check(int value) {
               return value > 0;
           }
@@ -136,7 +136,7 @@ commits:
     new: |
       package example;
 
-      public class Scenario0161 {
+      public class Scenario0111 {
           public boolean check(int value) {
               return value >= 0;
           }
@@ -165,7 +165,7 @@ bugs:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0161.java
+    file: src/main/java/example/Scenario0111.java
     entity:
       type: method
       name: check
@@ -174,7 +174,7 @@ bugs:
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0161.java
+    file: src/main/java/example/Scenario0111.java
     entity:
       type: method
       name: check

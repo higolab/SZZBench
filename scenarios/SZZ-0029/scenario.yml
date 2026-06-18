@@ -28,11 +28,11 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0060.java
+    path: src/main/java/example/Scenario0029.java
     content: |
       package example;
 
-      public class Scenario0060 {
+      public class Scenario0029 {
           public boolean canDivide(int denominator) {
               return denominator != 0;
           }
@@ -44,11 +44,11 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0060.java
+    path: src/main/java/example/Scenario0029.java
     old: |
       package example;
 
-      public class Scenario0060 {
+      public class Scenario0029 {
           public boolean canDivide(int denominator) {
               return denominator != 0;
           }
@@ -56,7 +56,7 @@ commits:
     new: |
       package example;
 
-      public class Scenario0060 {
+      public class Scenario0029 {
           public boolean canDivide(int denominator) {
               return denominator >= 0;
           }
@@ -71,11 +71,11 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0060.java
+    path: src/main/java/example/Scenario0029.java
     old: |
       package example;
 
-      public class Scenario0060 {
+      public class Scenario0029 {
           public boolean canDivide(int denominator) {
               return denominator >= 0;
           }
@@ -83,7 +83,7 @@ commits:
     new: |
       package example;
 
-      public class Scenario0060 {
+      public class Scenario0029 {
           public boolean canDivide(int denominator) {
               return denominator != 0;
           }
@@ -99,7 +99,7 @@ bugs:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0060.java
+    file: src/main/java/example/Scenario0029.java
     entity:
       type: method
       name: canDivide
@@ -108,7 +108,7 @@ bugs:
     change_type: line_modification
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0060.java
+    file: src/main/java/example/Scenario0029.java
     entity:
       type: method
       name: canDivide

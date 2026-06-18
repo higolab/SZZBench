@@ -27,11 +27,11 @@ commits:
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0084.java
+    path: src/main/java/example/Scenario0074.java
     content: 'package example;
 
 
-      public class Scenario0084 {
+      public class Scenario0074 {
 
       }
 
@@ -43,16 +43,16 @@ commits:
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0084.java
+    path: src/main/java/example/Scenario0074.java
     old: 'package example;
 
 
-      public class Scenario0084 {
+      public class Scenario0074 {
 
       }
 
       '
-    new: "package example;\n\npublic class Scenario0084 {\n    public int size(String[] items) {\n        return items.length;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0074 {\n    public int size(String[] items) {\n        return items.length;\n    }\n}\n"
     labels:
     - B001
     - fault
@@ -63,9 +63,9 @@ commits:
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0084.java
-    old: "package example;\n\npublic class Scenario0084 {\n    public int size(String[] items) {\n        return items.length;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0084 {\n    public int size(String[] items) {\n        if (items == null) {\n                return 0;\n            }\n            return items.length;\n    }\n}\n"
+    path: src/main/java/example/Scenario0074.java
+    old: "package example;\n\npublic class Scenario0074 {\n    public int size(String[] items) {\n        return items.length;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0074 {\n    public int size(String[] items) {\n        if (items == null) {\n                return 0;\n            }\n            return items.length;\n    }\n}\n"
     labels:
     - B001
     - fix
@@ -77,7 +77,7 @@ bugs:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0084.java
+    file: src/main/java/example/Scenario0074.java
     entity:
       type: method
       name: size
@@ -86,7 +86,7 @@ bugs:
     missing_statement: "if (items == null) {\n            return 0;\n        }\n"
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0084.java
+    file: src/main/java/example/Scenario0074.java
     entity:
       type: method
       name: size
