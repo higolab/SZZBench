@@ -1,55 +1,4 @@
 scenarios:
-- id: SZZ-0001
-  title: Simple line modification
-  slug: simple-line-modification
-  category_code: S1
-  category: Basic semantic line changes
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  difficulty: easy
-  status: active
-  path: scenarios/SZZ-0001/scenario.yml
-- id: SZZ-0002
-  title: Boolean return value modification
-  slug: boolean-return-value-modification
-  category_code: S1
-  category: Basic semantic line changes
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - boolean-return-change
-  difficulty: easy
-  status: active
-  path: scenarios/SZZ-0002/scenario.yml
-- id: SZZ-0003
-  title: Constant value change
-  slug: constant-value-change
-  category_code: S1
-  category: Basic semantic line changes
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - constant-change
-  difficulty: easy
-  status: active
-  path: scenarios/SZZ-0003/scenario.yml
-- id: SZZ-0004
-  title: Conditional expression change
-  slug: conditional-expression-change
-  category_code: S1
-  category: Basic semantic line changes
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - conditional-expression-change
-  difficulty: easy
-  status: active
-  path: scenarios/SZZ-0004/scenario.yml
 - id: SZZ-0005
   title: Java annotation syntax change
   slug: java-annotation-syntax-change
@@ -77,71 +26,6 @@ scenarios:
   difficulty: easy
   status: active
   path: scenarios/SZZ-0006/scenario.yml
-- id: SZZ-0007
-  title: Multiplication factor error
-  slug: multiplication-factor-error
-  category_code: S1
-  category: Basic semantic line changes
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - arithmetic-error
-  difficulty: easy
-  status: active
-  path: scenarios/SZZ-0007/scenario.yml
-- id: SZZ-0008
-  title: Division denominator error
-  slug: division-denominator-error
-  category_code: S1
-  category: Basic semantic line changes
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - arithmetic-error
-  difficulty: easy
-  status: active
-  path: scenarios/SZZ-0008/scenario.yml
-- id: SZZ-0009
-  title: Minimum comparison error
-  slug: minimum-comparison-error
-  category_code: S1
-  category: Basic semantic line changes
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - comparison-error
-  difficulty: easy
-  status: active
-  path: scenarios/SZZ-0009/scenario.yml
-- id: SZZ-0010
-  title: Maximum comparison error
-  slug: maximum-comparison-error
-  category_code: S1
-  category: Basic semantic line changes
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - comparison-error
-  difficulty: easy
-  status: active
-  path: scenarios/SZZ-0010/scenario.yml
-- id: SZZ-0011
-  title: Equality comparison error
-  slug: equality-comparison-error
-  category_code: S1
-  category: Basic semantic line changes
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - comparison-error
-  difficulty: easy
-  status: active
-  path: scenarios/SZZ-0011/scenario.yml
 - id: SZZ-0012
   title: Logical conjunction error
   slug: logical-conjunction-error
@@ -155,19 +39,6 @@ scenarios:
   difficulty: easy
   status: active
   path: scenarios/SZZ-0012/scenario.yml
-- id: SZZ-0013
-  title: Logical disjunction error
-  slug: logical-disjunction-error
-  category_code: S1
-  category: Basic semantic line changes
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - logical-operator-error
-  difficulty: easy
-  status: active
-  path: scenarios/SZZ-0013/scenario.yml
 - id: SZZ-0014
   title: Negated boolean condition
   slug: negated-boolean-condition
@@ -194,71 +65,6 @@ scenarios:
   difficulty: easy
   status: active
   path: scenarios/SZZ-0015/scenario.yml
-- id: SZZ-0016
-  title: Min max swapped
-  slug: min-max-swapped
-  category_code: S1
-  category: Basic semantic line changes
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - wrong-variable
-  difficulty: easy
-  status: active
-  path: scenarios/SZZ-0016/scenario.yml
-- id: SZZ-0017
-  title: Absolute value omitted
-  slug: absolute-value-omitted
-  category_code: S1
-  category: Basic semantic line changes
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - arithmetic-error
-  difficulty: easy
-  status: active
-  path: scenarios/SZZ-0017/scenario.yml
-- id: SZZ-0018
-  title: Rounding direction error
-  slug: rounding-direction-error
-  category_code: S1
-  category: Basic semantic line changes
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - arithmetic-error
-  difficulty: easy
-  status: active
-  path: scenarios/SZZ-0018/scenario.yml
-- id: SZZ-0019
-  title: Wrong default string
-  slug: wrong-default-string
-  category_code: S1
-  category: Basic semantic line changes
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - wrong-constant
-  difficulty: easy
-  status: active
-  path: scenarios/SZZ-0019/scenario.yml
-- id: SZZ-0020
-  title: Wrong fallback number
-  slug: wrong-fallback-number
-  category_code: S1
-  category: Basic semantic line changes
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - wrong-constant
-  difficulty: easy
-  status: active
-  path: scenarios/SZZ-0020/scenario.yml
 - id: SZZ-0021
   title: Wrong threshold constant
   slug: wrong-threshold-constant
@@ -272,84 +78,6 @@ scenarios:
   difficulty: easy
   status: active
   path: scenarios/SZZ-0021/scenario.yml
-- id: SZZ-0022
-  title: Null predicate reversed
-  slug: null-predicate-reversed
-  category_code: S1
-  category: Basic semantic line changes
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - boolean-negation
-  difficulty: easy
-  status: active
-  path: scenarios/SZZ-0022/scenario.yml
-- id: SZZ-0023
-  title: Empty string predicate reversed
-  slug: empty-string-predicate-reversed
-  category_code: S1
-  category: Basic semantic line changes
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - boolean-negation
-  difficulty: easy
-  status: active
-  path: scenarios/SZZ-0023/scenario.yml
-- id: SZZ-0024
-  title: Incorrect clamp lower bound
-  slug: incorrect-clamp-lower-bound
-  category_code: S1
-  category: Basic semantic line changes
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - arithmetic-error
-  difficulty: easy
-  status: active
-  path: scenarios/SZZ-0024/scenario.yml
-- id: SZZ-0025
-  title: Incorrect string normalization
-  slug: incorrect-string-normalization
-  category_code: S1
-  category: Basic semantic line changes
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - api-misuse
-  difficulty: easy
-  status: active
-  path: scenarios/SZZ-0025/scenario.yml
-- id: SZZ-0026
-  title: Wrong substring end
-  slug: wrong-substring-end
-  category_code: S1
-  category: Basic semantic line changes
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - api-misuse
-  difficulty: easy
-  status: active
-  path: scenarios/SZZ-0026/scenario.yml
-- id: SZZ-0027
-  title: Wrong collection size check
-  slug: wrong-collection-size-check
-  category_code: S1
-  category: Basic semantic line changes
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - comparison-error
-  difficulty: easy
-  status: active
-  path: scenarios/SZZ-0027/scenario.yml
 - id: SZZ-0028
   title: BFC removes an erroneous guard
   slug: bfc-removes-erroneous-guard
@@ -362,202 +90,6 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0028/scenario.yml
-- id: SZZ-0029
-  title: BFC restores division guard condition
-  slug: bfc-restores-division-guard
-  category_code: S1
-  category: Basic semantic line changes
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - comparison-error
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0029/scenario.yml
-- id: SZZ-0030
-  title: BFC fixes an API misuse
-  slug: bfc-api-misuse-fix
-  category_code: S1
-  category: Basic semantic line changes
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - api-misuse
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0030/scenario.yml
-- id: SZZ-0031
-  title: BFC changes default branch in conditional
-  slug: bfc-default-branch-change
-  category_code: S1
-  category: Basic semantic line changes
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - conditional-default
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0031/scenario.yml
-- id: SZZ-0032
-  title: Feature addition introduces boundary bug
-  slug: feature-addition-bic
-  category_code: S1
-  category: Basic semantic line changes
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - feature-addition-bic
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0032/scenario.yml
-- id: SZZ-0033
-  title: Refactoring introduces comparison bug
-  slug: refactoring-bic
-  category_code: S1
-  category: Basic semantic line changes
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - refactoring-bic
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0033/scenario.yml
-- id: SZZ-0034
-  title: API call change introduces bug
-  slug: api-call-change-bic
-  category_code: S1
-  category: Basic semantic line changes
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - api-misuse-bic
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0034/scenario.yml
-- id: SZZ-0035
-  title: Argument order change introduces bug
-  slug: argument-order-change-bic
-  category_code: S1
-  category: Basic semantic line changes
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - argument-order-bic
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0035/scenario.yml
-- id: SZZ-0036
-  title: Configuration-like constant change introduces bug
-  slug: configuration-constant-bic
-  category_code: S1
-  category: Basic semantic line changes
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - configuration-bic
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0036/scenario.yml
-- id: SZZ-0037
-  title: Schema version check change introduces bug
-  slug: schema-version-check-bic
-  category_code: S1
-  category: Basic semantic line changes
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - schema-change-bic
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0037/scenario.yml
-- id: SZZ-0038
-  title: Tiny one-token bug
-  slug: tiny-one-token-bug
-  category_code: S1
-  category: Basic semantic line changes
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - small-bic
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0038/scenario.yml
-- id: SZZ-0039
-  title: Wrong parameter used in new feature
-  slug: wrong-parameter-bic
-  category_code: S1
-  category: Basic semantic line changes
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - feature-addition-bic
-  - wrong-variable
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0039/scenario.yml
-- id: SZZ-0040
-  title: Wrong field assignment represented as return
-  slug: wrong-field-bic
-  category_code: S1
-  category: Basic semantic line changes
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - wrong-variable
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0040/scenario.yml
-- id: SZZ-0041
-  title: Incorrect default in new method
-  slug: incorrect-default-bic
-  category_code: S1
-  category: Basic semantic line changes
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - wrong-constant
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0041/scenario.yml
-- id: SZZ-0042
-  title: Off-by-one in new loop boundary
-  slug: loop-boundary-bic
-  category_code: S1
-  category: Basic semantic line changes
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - off-by-one
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0042/scenario.yml
-- id: SZZ-0043
-  title: Incorrect cache invalidation condition
-  slug: cache-invalidation-bic
-  category_code: S1
-  category: Basic semantic line changes
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - state-bug
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0043/scenario.yml
 - id: SZZ-0044
   title: Incorrect status transition condition
   slug: status-transition-bic
@@ -571,32 +103,6 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0044/scenario.yml
-- id: SZZ-0045
-  title: Incorrect retry policy condition
-  slug: retry-policy-bic
-  category_code: S1
-  category: Basic semantic line changes
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - state-bug
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0045/scenario.yml
-- id: SZZ-0046
-  title: Incorrect normalization API
-  slug: normalization-api-bic
-  category_code: S1
-  category: Basic semantic line changes
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - api-misuse-bic
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0046/scenario.yml
 - id: SZZ-0047
   title: Simple omission bug
   slug: simple-omission-bug
@@ -610,34 +116,6 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0047/scenario.yml
-- id: SZZ-0048
-  title: Bounds check omission bug
-  slug: bounds-check-omission-bug
-  category_code: S2
-  category: Omission and deletion bugs
-  factors:
-  - single-bic
-  - single-bfc
-  - omission-bug
-  - line-addition-fix
-  - bounds-check
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0048/scenario.yml
-- id: SZZ-0049
-  title: Security validation omission
-  slug: security-validation-omission
-  category_code: S2
-  category: Omission and deletion bugs
-  factors:
-  - single-bic
-  - single-bfc
-  - omission-bug
-  - line-addition-fix
-  - security-validation-omission
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0049/scenario.yml
 - id: SZZ-0050
   title: Index lower bound error
   slug: index-lower-bound-error
@@ -651,32 +129,6 @@ scenarios:
   difficulty: easy
   status: active
   path: scenarios/SZZ-0050/scenario.yml
-- id: SZZ-0051
-  title: Index upper bound error
-  slug: index-upper-bound-error
-  category_code: S2
-  category: Omission and deletion bugs
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - comparison-error
-  difficulty: easy
-  status: active
-  path: scenarios/SZZ-0051/scenario.yml
-- id: SZZ-0052
-  title: Cache enabled flag error
-  slug: cache-enabled-flag-error
-  category_code: S2
-  category: Omission and deletion bugs
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - boolean-negation
-  difficulty: easy
-  status: active
-  path: scenarios/SZZ-0052/scenario.yml
 - id: SZZ-0053
   title: Bounds check omission
   slug: bounds-check-omission
@@ -690,60 +142,6 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0053/scenario.yml
-- id: SZZ-0054
-  title: Permission check omission
-  slug: permission-check-omission
-  category_code: S2
-  category: Omission and deletion bugs
-  factors:
-  - single-bic
-  - single-bfc
-  - omission-bug
-  - line-addition-fix
-  - security
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0054/scenario.yml
-- id: SZZ-0055
-  title: Authentication check omission
-  slug: authentication-check-omission
-  category_code: S2
-  category: Omission and deletion bugs
-  factors:
-  - single-bic
-  - single-bfc
-  - omission-bug
-  - line-addition-fix
-  - security
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0055/scenario.yml
-- id: SZZ-0056
-  title: Input validation omission
-  slug: input-validation-omission
-  category_code: S2
-  category: Omission and deletion bugs
-  factors:
-  - single-bic
-  - single-bfc
-  - omission-bug
-  - line-addition-fix
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0056/scenario.yml
-- id: SZZ-0057
-  title: Exception handling omission
-  slug: exception-handling-omission
-  category_code: S2
-  category: Omission and deletion bugs
-  factors:
-  - single-bic
-  - single-bfc
-  - omission-bug
-  - line-addition-fix
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0057/scenario.yml
 - id: SZZ-0058
   title: Resource close omission
   slug: resource-close-omission
@@ -757,150 +155,6 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0058/scenario.yml
-- id: SZZ-0059
-  title: Synchronization guard omission
-  slug: synchronization-guard-omission
-  category_code: S2
-  category: Omission and deletion bugs
-  factors:
-  - single-bic
-  - single-bfc
-  - omission-bug
-  - line-addition-fix
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0059/scenario.yml
-- id: SZZ-0060
-  title: Transaction rollback omission
-  slug: transaction-rollback-omission
-  category_code: S2
-  category: Omission and deletion bugs
-  factors:
-  - single-bic
-  - single-bfc
-  - omission-bug
-  - line-addition-fix
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0060/scenario.yml
-- id: SZZ-0061
-  title: Initialization omission
-  slug: initialization-omission
-  category_code: S2
-  category: Omission and deletion bugs
-  factors:
-  - single-bic
-  - single-bfc
-  - omission-bug
-  - line-addition-fix
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0061/scenario.yml
-- id: SZZ-0062
-  title: Default case omission
-  slug: default-case-omission
-  category_code: S2
-  category: Omission and deletion bugs
-  factors:
-  - single-bic
-  - single-bfc
-  - omission-bug
-  - line-addition-fix
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0062/scenario.yml
-- id: SZZ-0063
-  title: Else branch omission
-  slug: else-branch-omission
-  category_code: S2
-  category: Omission and deletion bugs
-  factors:
-  - single-bic
-  - single-bfc
-  - omission-bug
-  - line-addition-fix
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0063/scenario.yml
-- id: SZZ-0064
-  title: Early return omission
-  slug: early-return-omission
-  category_code: S2
-  category: Omission and deletion bugs
-  factors:
-  - single-bic
-  - single-bfc
-  - omission-bug
-  - line-addition-fix
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0064/scenario.yml
-- id: SZZ-0065
-  title: Empty string check omission
-  slug: empty-string-check-omission
-  category_code: S2
-  category: Omission and deletion bugs
-  factors:
-  - single-bic
-  - single-bfc
-  - omission-bug
-  - line-addition-fix
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0065/scenario.yml
-- id: SZZ-0066
-  title: Token validation omission
-  slug: token-validation-omission
-  category_code: S2
-  category: Omission and deletion bugs
-  factors:
-  - single-bic
-  - single-bfc
-  - omission-bug
-  - line-addition-fix
-  - security
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0066/scenario.yml
-- id: SZZ-0067
-  title: Range validation omission
-  slug: range-validation-omission
-  category_code: S2
-  category: Omission and deletion bugs
-  factors:
-  - single-bic
-  - single-bfc
-  - omission-bug
-  - line-addition-fix
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0067/scenario.yml
-- id: SZZ-0068
-  title: Overflow check omission
-  slug: overflow-check-omission
-  category_code: S2
-  category: Omission and deletion bugs
-  factors:
-  - single-bic
-  - single-bfc
-  - omission-bug
-  - line-addition-fix
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0068/scenario.yml
-- id: SZZ-0069
-  title: Duplicate detection omission
-  slug: duplicate-detection-omission
-  category_code: S2
-  category: Omission and deletion bugs
-  factors:
-  - single-bic
-  - single-bfc
-  - omission-bug
-  - line-addition-fix
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0069/scenario.yml
 - id: SZZ-0070
   title: State transition check omission
   slug: state-transition-check-omission
@@ -914,72 +168,6 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0070/scenario.yml
-- id: SZZ-0071
-  title: Feature flag check omission
-  slug: feature-flag-check-omission
-  category_code: S2
-  category: Omission and deletion bugs
-  factors:
-  - single-bic
-  - single-bfc
-  - omission-bug
-  - line-addition-fix
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0071/scenario.yml
-- id: SZZ-0072
-  title: Role check omission
-  slug: role-check-omission
-  category_code: S2
-  category: Omission and deletion bugs
-  factors:
-  - single-bic
-  - single-bfc
-  - omission-bug
-  - line-addition-fix
-  - security
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0072/scenario.yml
-- id: SZZ-0073
-  title: Rate limit check omission
-  slug: rate-limit-check-omission
-  category_code: S2
-  category: Omission and deletion bugs
-  factors:
-  - single-bic
-  - single-bfc
-  - omission-bug
-  - line-addition-fix
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0073/scenario.yml
-- id: SZZ-0074
-  title: Null collection check omission
-  slug: null-collection-check-omission
-  category_code: S2
-  category: Omission and deletion bugs
-  factors:
-  - single-bic
-  - single-bfc
-  - omission-bug
-  - line-addition-fix
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0074/scenario.yml
-- id: SZZ-0075
-  title: Negative amount check omission
-  slug: negative-amount-check-omission
-  category_code: S2
-  category: Omission and deletion bugs
-  factors:
-  - single-bic
-  - single-bfc
-  - omission-bug
-  - line-addition-fix
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0075/scenario.yml
 - id: SZZ-0076
   title: Path traversal check omission
   slug: path-traversal-check-omission
@@ -994,20 +182,6 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0076/scenario.yml
-- id: SZZ-0077
-  title: SQL wildcard escaping omission
-  slug: sql-wildcard-escaping-omission
-  category_code: S2
-  category: Omission and deletion bugs
-  factors:
-  - single-bic
-  - single-bfc
-  - omission-bug
-  - line-addition-fix
-  - security
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0077/scenario.yml
 - id: SZZ-0078
   title: Guard deletion introduces bug
   slug: guard-deletion-bic
@@ -1262,19 +436,6 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0096/scenario.yml
-- id: SZZ-0097
-  title: Method reference rewrite after BIC
-  slug: method-reference-rewrite-after-bic
-  category_code: S3
-  category: Intermediate noise and history noise
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - method-reference-after-bic
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0097/scenario.yml
 - id: SZZ-0098
   title: Enum case addition after BIC
   slug: enum-case-after-bic
@@ -1379,19 +540,6 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0105/scenario.yml
-- id: SZZ-0106
-  title: Formatting and bug introduced together
-  slug: formatting-and-bug-bic
-  category_code: S3
-  category: Intermediate noise and history noise
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - formatting-and-bug-bic
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0106/scenario.yml
 - id: SZZ-0107
   title: Large commit with small bug
   slug: large-commit-small-bug
@@ -1651,19 +799,6 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0125/scenario.yml
-- id: SZZ-0126
-  title: Parameter rename after BIC
-  slug: parameter-rename-after-bic
-  category_code: S5
-  category: Refactoring, move, and rename after BIC
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - parameter-rename-after-bic
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0126/scenario.yml
 - id: SZZ-0127
   title: Method signature extension after BIC
   slug: method-signature-extension-after-bic
@@ -1716,19 +851,6 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0130/scenario.yml
-- id: SZZ-0131
-  title: Constant extraction after BIC
-  slug: constant-extraction-after-bic
-  category_code: S5
-  category: Refactoring, move, and rename after BIC
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - constant-extraction-after-bic
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0131/scenario.yml
 - id: SZZ-0132
   title: Basic multiple bug-introducing commits
   slug: basic-multiple-bic
@@ -1768,18 +890,6 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0134/scenario.yml
-- id: SZZ-0135
-  title: Threshold change plus flag change
-  slug: threshold-and-flag-change
-  category_code: S6
-  category: Multiple BICs, duplicate faults, and composite faults
-  factors:
-  - multi-bic
-  - single-bfc
-  - line-modification
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0135/scenario.yml
 - id: SZZ-0136
   title: Range minimum and maximum changed separately
   slug: range-min-max-changed-separately
@@ -1804,54 +914,6 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0137/scenario.yml
-- id: SZZ-0138
-  title: Retry limit and state condition changed separately
-  slug: retry-and-state-condition
-  category_code: S6
-  category: Multiple BICs, duplicate faults, and composite faults
-  factors:
-  - multi-bic
-  - single-bfc
-  - line-modification
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0138/scenario.yml
-- id: SZZ-0139
-  title: Permission and owner checks introduced separately
-  slug: permission-owner-multi-bic
-  category_code: S6
-  category: Multiple BICs, duplicate faults, and composite faults
-  factors:
-  - multi-bic
-  - single-bfc
-  - line-modification
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0139/scenario.yml
-- id: SZZ-0140
-  title: Config and runtime checks combined
-  slug: config-runtime-multi-bic
-  category_code: S6
-  category: Multiple BICs, duplicate faults, and composite faults
-  factors:
-  - multi-bic
-  - single-bfc
-  - line-modification
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0140/scenario.yml
-- id: SZZ-0141
-  title: Size and index checks introduced separately
-  slug: size-index-multi-bic
-  category_code: S6
-  category: Multiple BICs, duplicate faults, and composite faults
-  factors:
-  - multi-bic
-  - single-bfc
-  - line-modification
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0141/scenario.yml
 - id: SZZ-0142
   title: Authentication and token checks introduced separately
   slug: auth-token-multi-bic
@@ -1864,46 +926,6 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0142/scenario.yml
-- id: SZZ-0143
-  title: Feature flag and limit checks introduced separately
-  slug: feature-limit-multi-bic
-  category_code: S6
-  category: Multiple BICs, duplicate faults, and composite faults
-  factors:
-  - multi-bic
-  - single-bfc
-  - line-modification
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0143/scenario.yml
-- id: SZZ-0144
-  title: Duplicate return false statements
-  slug: duplicate-return-false
-  category_code: S6
-  category: Multiple BICs, duplicate faults, and composite faults
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - ambiguous-blame
-  - duplicate-statement
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0144/scenario.yml
-- id: SZZ-0145
-  title: Duplicate null checks
-  slug: duplicate-null-checks
-  category_code: S6
-  category: Multiple BICs, duplicate faults, and composite faults
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - ambiguous-blame
-  - duplicate-statement
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0145/scenario.yml
 - id: SZZ-0146
   title: Duplicate boundary checks
   slug: duplicate-boundary-checks
@@ -1918,104 +940,6 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0146/scenario.yml
-- id: SZZ-0147
-  title: Duplicate constant comparisons
-  slug: duplicate-constant-comparisons
-  category_code: S6
-  category: Multiple BICs, duplicate faults, and composite faults
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - ambiguous-blame
-  - duplicate-statement
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0147/scenario.yml
-- id: SZZ-0148
-  title: Duplicate empty string checks
-  slug: duplicate-empty-checks
-  category_code: S6
-  category: Multiple BICs, duplicate faults, and composite faults
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - ambiguous-blame
-  - duplicate-statement
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0148/scenario.yml
-- id: SZZ-0149
-  title: Duplicate size checks
-  slug: duplicate-size-checks
-  category_code: S6
-  category: Multiple BICs, duplicate faults, and composite faults
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - ambiguous-blame
-  - duplicate-statement
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0149/scenario.yml
-- id: SZZ-0150
-  title: Duplicate status checks
-  slug: duplicate-status-checks
-  category_code: S6
-  category: Multiple BICs, duplicate faults, and composite faults
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - ambiguous-blame
-  - duplicate-statement
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0150/scenario.yml
-- id: SZZ-0151
-  title: Duplicate permission checks
-  slug: duplicate-permission-checks
-  category_code: S6
-  category: Multiple BICs, duplicate faults, and composite faults
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - ambiguous-blame
-  - duplicate-statement
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0151/scenario.yml
-- id: SZZ-0152
-  title: Duplicate arithmetic statements
-  slug: duplicate-arithmetic-statements
-  category_code: S6
-  category: Multiple BICs, duplicate faults, and composite faults
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - ambiguous-blame
-  - duplicate-statement
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0152/scenario.yml
-- id: SZZ-0153
-  title: Duplicate normalization statements
-  slug: duplicate-normalization-statements
-  category_code: S6
-  category: Multiple BICs, duplicate faults, and composite faults
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - ambiguous-blame
-  - duplicate-statement
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0153/scenario.yml
 - id: SZZ-0154
   title: One BFC fixes multiple BICs for one composite bug
   slug: 1-bfc-bic-bic
@@ -2048,19 +972,6 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0156/scenario.yml
-- id: SZZ-0157
-  title: BFC message explicitly references BIC
-  slug: bfc-message-references-bic
-  category_code: S7
-  category: Context, message, and non-local evidence
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - context-aware
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0157/scenario.yml
 - id: SZZ-0158
   title: BFC message has misleading reference
   slug: bfc-message-misleading-reference
@@ -2100,71 +1011,6 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0160/scenario.yml
-- id: SZZ-0161
-  title: Issue-like message in BFC
-  slug: issue-like-bfc-message
-  category_code: S7
-  category: Context, message, and non-local evidence
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - context-aware
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0161/scenario.yml
-- id: SZZ-0162
-  title: Ambiguous BFC message
-  slug: ambiguous-bfc-message
-  category_code: S7
-  category: Context, message, and non-local evidence
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - context-aware
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0162/scenario.yml
-- id: SZZ-0163
-  title: Root cause described in BIC message
-  slug: bic-message-root-cause
-  category_code: S7
-  category: Context, message, and non-local evidence
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - context-aware
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0163/scenario.yml
-- id: SZZ-0164
-  title: Test failure described in BFC message
-  slug: test-failure-in-bfc-message
-  category_code: S7
-  category: Context, message, and non-local evidence
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - context-aware
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0164/scenario.yml
-- id: SZZ-0165
-  title: Security context in message
-  slug: security-context-in-message
-  category_code: S7
-  category: Context, message, and non-local evidence
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - context-aware
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0165/scenario.yml
 - id: SZZ-0166
   title: Performance cleanup distractor with message
   slug: context-with-cleanup-distractor

@@ -35,9 +35,9 @@ Related but not correct: f1, r2
 
 r2 is formatting noise; r1 is the true BIC.
 
-## Difference from SZZG-0063
+## Difference from SZZG-0064
 
-SZZG-0063 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
+SZZG-0064 covers a rebased BIC followed by a non-BIC rebased intermediate commit. This scenario adds a distinct rebase-related complication.
 
 ## Evaluation points
 

@@ -37,9 +37,9 @@ Related but not correct: f1, r2
 
 r1 is the direct BIC; r2 is non-BIC intermediate.
 
-## Difference from SZZG-0063
+## Distinctive rebase behavior
 
-SZZG-0063 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
+The rebased BIC `r1` must be distinguished from the later rebased intermediate commit `r2`.
 
 ## Evaluation points
 

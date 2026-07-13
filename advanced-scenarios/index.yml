@@ -687,19 +687,6 @@ scenarios:
   - backport
   - maintenance_branch
   - cross_branch_bic
-- id: SZZG-0063
-  title: Rebase feature branch with BIC
-  category_code: G5
-  category: Rebase-specific history rewriting
-  path: advanced-scenarios/SZZG-0063/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0063/README.md
-  status: draft
-  factors:
-  - branch
-  - rebase
-  - rebased_bic
-  - direct_bic
-  - origin_bic
 - id: SZZG-0064
   title: Rebase with non-BIC intermediate commit
   category_code: G5
@@ -837,21 +824,6 @@ scenarios:
   - reorder
   - direct_bic
   - origin_bic
-- id: SZZG-0074
-  title: Interactive rebase fixup combines buggy commits
-  category_code: G5
-  category: Rebase-specific history rewriting
-  path: advanced-scenarios/SZZG-0074/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0074/README.md
-  status: draft
-  factors:
-  - branch
-  - rebase
-  - interactive_rebase
-  - fixup
-  - squash
-  - direct_bic
-  - origin_bic
 - id: SZZG-0075
   title: Interactive rebase squashes BIC and BFC into neutral commit
   category_code: G5
@@ -907,33 +879,6 @@ scenarios:
   - commit_messages
   - developer_hints
   - origin_bic
-  - direct_bic
-- id: SZZG-0079
-  title: Misleading rebase commit message
-  category_code: G5
-  category: Rebase-specific history rewriting
-  path: advanced-scenarios/SZZG-0079/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0079/README.md
-  status: draft
-  factors:
-  - branch
-  - rebase
-  - commit_messages
-  - misleading_commit_message
-  - direct_bic
-- id: SZZG-0080
-  title: BFC message identifies rebase regression
-  category_code: G5
-  category: Rebase-specific history rewriting
-  path: advanced-scenarios/SZZG-0080/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0080/README.md
-  status: draft
-  factors:
-  - branch
-  - rebase
-  - commit_messages
-  - bfc_message
-  - context
   - direct_bic
 - id: SZZG-0081
   title: Rebase with formatting rewrite noise
@@ -1009,19 +954,6 @@ scenarios:
   - reintroduced_bug
   - re_bic
   - origin_bic
-- id: SZZG-0087
-  title: Revert of revert fixes reintroduced bug
-  category_code: G6
-  category: Revert-specific reintroduction
-  path: advanced-scenarios/SZZG-0087/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0087/README.md
-  status: draft
-  factors:
-  - revert
-  - revert_of_fix
-  - revert_of_revert
-  - reintroduced_bug
-  - re_bic
 - id: SZZG-0088
   title: Partial revert of fix reintroduces one fault
   category_code: G6
@@ -1073,19 +1005,6 @@ scenarios:
   - partial_revert
   - multiple_bic
   - single_fault_reintroduced
-  - re_bic
-- id: SZZG-0092
-  title: Misleading revert commit message reintroduces bug
-  category_code: G6
-  category: Revert-specific reintroduction
-  path: advanced-scenarios/SZZG-0092/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0092/README.md
-  status: draft
-  factors:
-  - revert
-  - misleading_commit_message
-  - context_aware
-  - reintroduced_bug
   - re_bic
 - id: SZZG-0093
   title: BIC occurs during feature work
@@ -1226,17 +1145,6 @@ scenarios:
   - defensive_fix
   - root_cause_not_touched
   - context_dependent
-- id: SZZG-0106
-  title: Misleading commit message with code-only BIC evidence
-  category_code: G7
-  category: Issue, message, context, and non-local evidence
-  path: advanced-scenarios/SZZG-0106/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0106/README.md
-  status: draft
-  factors:
-  - commit_message
-  - misleading_metadata
-  - code_evidence
 - id: SZZG-0107
   title: BFC includes generated files
   category_code: G8

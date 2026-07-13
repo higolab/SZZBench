@@ -109,7 +109,7 @@ expected_szz:
 scenario_design:
   purpose: Clarify a scope boundary for bugs that do not survive into final main history.
   key_property: The final main history has no main-line BIC for this transient bug.
-  difference_from_SZZG_0073: SZZG-0063 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
+  difference_from_SZZG_0064: SZZG-0064 covers a rebased BIC followed by a non-BIC rebased intermediate commit. This scenario
     adds a distinct rebase-related complication.
   evaluation_points:
   - Record transient pair.

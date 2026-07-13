@@ -32,9 +32,9 @@ Expected BIC(s): f1
 
 The final main history has no main-line BIC for this transient bug.
 
-## Difference from SZZG-0063
+## Difference from SZZG-0064
 
-SZZG-0063 covers the basic case where a feature-branch BIC is replayed onto main. This scenario adds a distinct rebase-related complication.
+SZZG-0064 covers a rebased BIC followed by a non-BIC rebased intermediate commit. This scenario adds a distinct rebase-related complication.
 
 ## Evaluation points
 

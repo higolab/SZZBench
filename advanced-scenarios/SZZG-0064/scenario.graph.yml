@@ -149,8 +149,6 @@ expected_szz:
 scenario_design:
   purpose: Evaluate whether SZZ distinguishes a rebased BIC from a later rebased intermediate commit.
   key_property: r1 is the direct BIC; r2 is non-BIC intermediate.
-  difference_from_SZZG_0073: SZZG-0063 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
-    adds a distinct rebase-related complication.
   evaluation_points:
   - Report r1.
   - Avoid r2.

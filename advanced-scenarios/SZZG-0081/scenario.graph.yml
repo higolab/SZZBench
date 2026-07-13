@@ -132,7 +132,7 @@ expected_szz:
 scenario_design:
   purpose: Evaluate rebase plus formatting rewrite noise.
   key_property: The expected BIC is r1, while r2 is a formatting-only cleanup.
-  difference_from_SZZG_0073: SZZG-0063 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
+  difference_from_SZZG_0064: SZZG-0064 covers a rebased BIC followed by a non-BIC rebased intermediate commit. This scenario
     adds a distinct rebase-related complication.
   evaluation_points:
   - Report r1.

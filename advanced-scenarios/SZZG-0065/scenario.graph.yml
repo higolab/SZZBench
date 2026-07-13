@@ -120,7 +120,7 @@ expected_szz:
 scenario_design:
   purpose: Evaluate a bug introduced by conflict resolution during rebase.
   key_property: The feature commit is not the BIC; the conflict resolution commit is.
-  difference_from_SZZG_0073: SZZG-0063 covers the basic case where a feature-branch BIC is replayed onto main. This scenario
+  difference_from_SZZG_0064: SZZG-0064 covers a rebased BIC followed by a non-BIC rebased intermediate commit. This scenario
     adds a distinct rebase-related complication.
   evaluation_points:
   - Report r1.

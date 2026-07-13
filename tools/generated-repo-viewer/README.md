@@ -51,7 +51,7 @@ The viewer expects generated repositories like this:
 
 ```text
 generated-input-repos/
-  SZZ-0001/
+  SZZ-0006/
     default/
       repo/
         .git/

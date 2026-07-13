@@ -24,7 +24,7 @@ Normal scenarios handle relatively simple histories.
 
 ```text
 scenarios/
-└── SZZ-0001/
+└── SZZ-0006/
     ├── scenario.yml
     └── README.md
 ```
@@ -134,7 +134,7 @@ SZZBench/
 │
 ├── scenarios/
 │   ├── index.yml
-│   ├── SZZ-0001/
+│   ├── SZZ-0006/
 │   │   ├── scenario.yml
 │   │   └── README.md
 │   └── ...
@@ -233,25 +233,25 @@ On Windows PowerShell:
 Validate the structure and references in `scenario.yml`.
 
 ```bash
-szzbench validate scenarios/SZZ-0001/scenario.yml
+szzbench validate scenarios/SZZ-0006/scenario.yml
 ```
 
 Use `--simulate` to validate operations by simulating them in memory.
 
 ```bash
-szzbench validate --simulate scenarios/SZZ-0001/scenario.yml
+szzbench validate --simulate scenarios/SZZ-0006/scenario.yml
 ```
 
 Use `--strict` to treat warnings as failures.
 
 ```bash
-szzbench validate --simulate --strict scenarios/SZZ-0001/scenario.yml
+szzbench validate --simulate --strict scenarios/SZZ-0006/scenario.yml
 ```
 
 Use `--json` to output the result as JSON.
 
 ```bash
-szzbench validate --simulate --json scenarios/SZZ-0001/scenario.yml
+szzbench validate --simulate --json scenarios/SZZ-0006/scenario.yml
 ```
 
 ### generate
@@ -259,19 +259,19 @@ szzbench validate --simulate --json scenarios/SZZ-0001/scenario.yml
 Generate an actual Git repository from `scenario.yml`.
 
 ```bash
-szzbench generate   scenarios/SZZ-0001/scenario.yml   --out generated-input-repos/SZZ-0001/default   --force
+szzbench generate   scenarios/SZZ-0006/scenario.yml   --out generated-input-repos/SZZ-0006/default   --force
 ```
 
 Add `--no-verify` to skip verification after generation.
 
 ```bash
-szzbench generate   scenarios/SZZ-0001/scenario.yml   --out generated-input-repos/SZZ-0001/default   --force   --no-verify
+szzbench generate   scenarios/SZZ-0006/scenario.yml   --out generated-input-repos/SZZ-0006/default   --force   --no-verify
 ```
 
 The generated directory has the following structure.
 
 ```text
-generated-input-repos/SZZ-0001/default/
+generated-input-repos/SZZ-0006/default/
 ├── repo/
 │   ├── .git/
 │   └── ...
@@ -288,13 +288,13 @@ generated-input-repos/SZZ-0001/default/
 Verify that a generated repository corresponds to `scenario.yml`.
 
 ```bash
-szzbench verify   generated-input-repos/SZZ-0001/default/repo   --scenario scenarios/SZZ-0001/scenario.yml
+szzbench verify   generated-input-repos/SZZ-0006/default/repo   --scenario scenarios/SZZ-0006/scenario.yml
 ```
 
 You can also explicitly specify `commit-map.json` if necessary.
 
 ```bash
-szzbench verify   generated-input-repos/SZZ-0001/default/repo   --scenario scenarios/SZZ-0001/scenario.yml   --commit-map generated-input-repos/SZZ-0001/default/metadata/commit-map.json
+szzbench verify   generated-input-repos/SZZ-0006/default/repo   --scenario scenarios/SZZ-0006/scenario.yml   --commit-map generated-input-repos/SZZ-0006/default/metadata/commit-map.json
 ```
 
 ### new-scenario
@@ -394,13 +394,13 @@ szzbench evaluate \
 
 ```jsonl
 {"scenario_id":"SZZ-0047","predictions":[]}
-{"scenario_id":"SZZ-0002","predictions":[{"fix_commit":"<actual hash>","inducing_commit":"<actual hash>"}]}
+{"scenario_id":"SZZ-0006","predictions":[{"fix_commit":"<actual hash>","inducing_commit":"<actual hash>"}]}
 ```
 
 It can also be one record per predicted BIC:
 
 ```jsonl
-{"scenario_id":"SZZ-0002","fix_commit":"<actual hash>","inducing_commit":"<actual hash>"}
+{"scenario_id":"SZZ-0006","fix_commit":"<actual hash>","inducing_commit":"<actual hash>"}
 ```
 
 `fix_commit` is optional for evaluation. `inducing_commit` may be an actual Git hash, a unique hash prefix, or a logical commit id from `commit-map.json`.
@@ -644,7 +644,7 @@ SZZBench には、大きく分けて2種類のシナリオがあります。
 
 ```text
 scenarios/
-└── SZZ-0001/
+└── SZZ-0006/
     ├── scenario.yml
     └── README.md
 ```
@@ -731,7 +731,7 @@ SZZBench/
 │
 ├── scenarios/
 │   ├── index.yml
-│   ├── SZZ-0001/
+│   ├── SZZ-0006/
 │   │   ├── scenario.yml
 │   │   └── README.md
 │   └── ...
@@ -830,25 +830,25 @@ Windows PowerShell の場合:
 `scenario.yml` の構造や参照関係を検査します。
 
 ```bash
-szzbench validate scenarios/SZZ-0001/scenario.yml
+szzbench validate scenarios/SZZ-0006/scenario.yml
 ```
 
 operation をメモリ上でシミュレーションして検査したい場合は、`--simulate` を使います。
 
 ```bash
-szzbench validate --simulate scenarios/SZZ-0001/scenario.yml
+szzbench validate --simulate scenarios/SZZ-0006/scenario.yml
 ```
 
 warning も失敗扱いにしたい場合は、`--strict` を使います。
 
 ```bash
-szzbench validate --simulate --strict scenarios/SZZ-0001/scenario.yml
+szzbench validate --simulate --strict scenarios/SZZ-0006/scenario.yml
 ```
 
 JSON で出力したい場合は、`--json` を使います。
 
 ```bash
-szzbench validate --simulate --json scenarios/SZZ-0001/scenario.yml
+szzbench validate --simulate --json scenarios/SZZ-0006/scenario.yml
 ```
 
 ### generate
@@ -856,19 +856,19 @@ szzbench validate --simulate --json scenarios/SZZ-0001/scenario.yml
 `scenario.yml` から実際の Git リポジトリを生成します。
 
 ```bash
-szzbench generate   scenarios/SZZ-0001/scenario.yml   --out generated-input-repos/SZZ-0001/default   --force
+szzbench generate   scenarios/SZZ-0006/scenario.yml   --out generated-input-repos/SZZ-0006/default   --force
 ```
 
 `--no-verify` を付けると、生成後の verify をスキップします。
 
 ```bash
-szzbench generate   scenarios/SZZ-0001/scenario.yml   --out generated-input-repos/SZZ-0001/default   --force   --no-verify
+szzbench generate   scenarios/SZZ-0006/scenario.yml   --out generated-input-repos/SZZ-0006/default   --force   --no-verify
 ```
 
 生成されるディレクトリは次のような構成です。
 
 ```text
-generated-input-repos/SZZ-0001/default/
+generated-input-repos/SZZ-0006/default/
 ├── repo/
 │   ├── .git/
 │   └── ...
@@ -885,13 +885,13 @@ generated-input-repos/SZZ-0001/default/
 生成済みリポジトリが `scenario.yml` と対応しているかを検査します。
 
 ```bash
-szzbench verify   generated-input-repos/SZZ-0001/default/repo   --scenario scenarios/SZZ-0001/scenario.yml
+szzbench verify   generated-input-repos/SZZ-0006/default/repo   --scenario scenarios/SZZ-0006/scenario.yml
 ```
 
 必要に応じて `commit-map.json` を明示できます。
 
 ```bash
-szzbench verify   generated-input-repos/SZZ-0001/default/repo   --scenario scenarios/SZZ-0001/scenario.yml   --commit-map generated-input-repos/SZZ-0001/default/metadata/commit-map.json
+szzbench verify   generated-input-repos/SZZ-0006/default/repo   --scenario scenarios/SZZ-0006/scenario.yml   --commit-map generated-input-repos/SZZ-0006/default/metadata/commit-map.json
 ```
 
 ### new-scenario
@@ -991,13 +991,13 @@ szzbench evaluate \
 
 ```jsonl
 {"scenario_id":"SZZ-0047","predictions":[]}
-{"scenario_id":"SZZ-0002","predictions":[{"fix_commit":"<actual hash>","inducing_commit":"<actual hash>"}]}
+{"scenario_id":"SZZ-0006","predictions":[{"fix_commit":"<actual hash>","inducing_commit":"<actual hash>"}]}
 ```
 
 予測 BIC ごとに 1 レコードを書く形式も使えます。
 
 ```jsonl
-{"scenario_id":"SZZ-0002","fix_commit":"<actual hash>","inducing_commit":"<actual hash>"}
+{"scenario_id":"SZZ-0006","fix_commit":"<actual hash>","inducing_commit":"<actual hash>"}
 ```
 
 評価に必須なのは `scenario_id` と `inducing_commit` です。`fix_commit` は任意です。`inducing_commit` には実 Git hash、ユニークな hash prefix、または `commit-map.json` の論理 commit id を指定できます。
