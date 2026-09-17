@@ -3,7 +3,12 @@ meta:
   id: SZZ-0110
   title: Large noisy intermediate history
   slug: large-noisy-intermediate
-  description: This scenario is intended to stress implementation robustness under noisy or repetitive code conditions.
+  description: >
+    Between the bug-introducing and the bug-fixing commit, a commit adds four
+    column-layout helpers, 27 lines in total, to the same file. The bug-fixing
+    commit replaces only the faulty line and leaves all of them in place, so
+    the volume of intermediate change is what has to be ignored rather than
+    something the fix happens to delete.
   category: "Intermediate noise and history noise"
   factors:
   - single-bic
@@ -11,7 +16,7 @@ meta:
   - line-modification
   - robustness
   - large-noisy-intermediate
-  difficulty: medium
+  difficulty: easy
   status: active
   category_code: "S3"
 repository:
@@ -22,167 +27,128 @@ repository:
   source_root: src/main/java
 commits:
 - id: c0
-  message: Initial implementation
+  message: Add the label formatter used by the report writer
   author: Alice <alice@example.com>
   date: '2024-06-01T10:00:00Z'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0110.java
+    path: src/main/java/com/example/text/LabelFormatter.java
     content: |
-      package example;
+      package com.example.text;
 
-      public class Scenario0110 {
-          public boolean check(String value) {
+      public class LabelFormatter {
+          public boolean hasLabel(String value) {
               return value != null;
+          }
+
+          public String format(String value) {
+              if (hasLabel(value)) {
+                  return value.trim();
+              }
+              return "";
           }
       }
 - id: c1
-  message: Introduce bug
+  message: Fold the empty-label case into hasLabel
   author: Bob <bob@example.com>
   date: '2024-06-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0110.java
-    old: |
-      package example;
-
-      public class Scenario0110 {
-          public boolean check(String value) {
+    path: src/main/java/com/example/text/LabelFormatter.java
+    old: |2
               return value != null;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0110 {
-          public boolean check(String value) {
+    new: |2
               return value == null;
-          }
-      }
     labels:
     - B001
     - fault
 - id: c2
-  message: Add noisy helper methods
+  message: Add padding, truncation and rule helpers for the label column
   author: Carol <carol@example.com>
   date: '2024-06-03T10:00:00Z'
-  role: distractor
+  role: feature_addition
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0110.java
-    old: |
-      package example;
-
-      public class Scenario0110 {
-          public boolean check(String value) {
-              return value == null;
+    path: src/main/java/com/example/text/LabelFormatter.java
+    old: |2
+              return "";
           }
       }
-    new: |
-      package example;
-
-      public class Scenario0110 {
-          public boolean check(String value) {
-              return value == null;
+    new: |2
+              return "";
           }
 
-          public int helper1(int x) {
-                  return x + 1;
+          public String padRight(String text, int width) {
+              StringBuilder padded = new StringBuilder(text);
+              while (padded.length() < width) {
+                  padded.append(' ');
               }
-          public int helper2(int x) {
-                  return x + 2;
+              return padded.toString();
+          }
+
+          public String truncate(String text, int width) {
+              if (width < 0 || text.length() <= width) {
+                  return text;
               }
-          public int helper3(int x) {
-                  return x + 3;
+              return text.substring(0, width);
+          }
+
+          public String column(String text, int width) {
+              return padRight(truncate(text, width), width);
+          }
+
+          public String rule(int width) {
+              StringBuilder line = new StringBuilder();
+              for (int i = 0; i < width; i++) {
+                  line.append('-');
               }
-          public int helper4(int x) {
-                  return x + 4;
-              }
-          public int helper5(int x) {
-                  return x + 5;
-              }
-          public int helper6(int x) {
-                  return x + 6;
-              }
-          public int helper7(int x) {
-                  return x + 7;
-              }
+              return line.toString();
+          }
       }
     labels:
     - non_bug_introducing_change
 - id: c3
-  message: Fix bug
+  message: Format the labels that are actually present again
   author: Alice <alice@example.com>
   date: '2024-06-04T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0110.java
-    old: |
-      package example;
-
-      public class Scenario0110 {
-          public boolean check(String value) {
+    path: src/main/java/com/example/text/LabelFormatter.java
+    old: |2
               return value == null;
-          }
-
-          public int helper1(int x) {
-                  return x + 1;
-              }
-          public int helper2(int x) {
-                  return x + 2;
-              }
-          public int helper3(int x) {
-                  return x + 3;
-              }
-          public int helper4(int x) {
-                  return x + 4;
-              }
-          public int helper5(int x) {
-                  return x + 5;
-              }
-          public int helper6(int x) {
-                  return x + 6;
-              }
-          public int helper7(int x) {
-                  return x + 7;
-              }
-      }
-    new: |
-      package example;
-
-      public class Scenario0110 {
-          public boolean check(String value) {
+    new: |2
               return value != null;
-          }
-      }
     labels:
     - B001
     - fix
 bugs:
 - id: B001
-  title: Large noisy intermediate history
+  title: format() blanks every present label and throws on a missing one
   bug_fixing_commit: c3
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0110.java
+    file: src/main/java/com/example/text/LabelFormatter.java
     entity:
       type: method
-      name: check
-      signature: boolean check(String value)
+      name: hasLabel
+      signature: boolean hasLabel(String value)
     statement: return value == null;
     change_type: line_modification
+    description: >
+      The null check is inverted, so format() returns the empty string for
+      every label that was supplied and dereferences null for a missing one.
   fix:
     commit: c3
-    file: src/main/java/example/Scenario0110.java
+    file: src/main/java/com/example/text/LabelFormatter.java
     entity:
       type: method
-      name: check
-      signature: boolean check(String value)
+      name: hasLabel
+      signature: boolean hasLabel(String value)
     statement: return value != null;
     fix_type: line_modification
   expected_szz:

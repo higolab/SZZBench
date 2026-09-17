@@ -3,7 +3,12 @@ meta:
   id: SZZ-0109
   title: Comment-only intermediate before fix
   slug: comment-only-intermediate
-  description: This scenario is intended to stress implementation robustness under noisy or repetitive code conditions.
+  description: >
+    Between the bug-introducing and the bug-fixing commit, a commit adds a
+    Javadoc block above the faulty method and changes no code. The comment is
+    inserted before the method signature, so the faulty line itself is neither
+    moved in content nor rewritten, and it survives the fix. Plain `git blame`
+    at the BFC parent reaches the BIC.
   category: "Intermediate noise and history noise"
   factors:
   - single-bic
@@ -11,7 +16,7 @@ meta:
   - line-modification
   - robustness
   - comment-only-intermediate
-  difficulty: medium
+  difficulty: easy
   status: active
   category_code: "S3"
 repository:
@@ -22,126 +27,104 @@ repository:
   source_root: src/main/java
 commits:
 - id: c0
-  message: Initial implementation
+  message: Add the per-period request quota guard
   author: Alice <alice@example.com>
   date: '2024-06-01T10:00:00Z'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0109.java
+    path: src/main/java/com/example/quota/QuotaGuard.java
     content: |
-      package example;
+      package com.example.quota;
 
-      public class Scenario0109 {
-          public boolean check(int value, int max) {
-              return value <= max;
+      public class QuotaGuard {
+          private final int maxRequests;
+
+          public QuotaGuard(int maxRequests) {
+              this.maxRequests = maxRequests;
+          }
+
+          public boolean withinQuota(int used) {
+              return used <= maxRequests;
+          }
+
+          public int remaining(int used) {
+              return maxRequests - used;
           }
       }
 - id: c1
-  message: Introduce bug
+  message: Stop serving the request that would reach the quota
   author: Bob <bob@example.com>
   date: '2024-06-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0109.java
-    old: |
-      package example;
-
-      public class Scenario0109 {
-          public boolean check(int value, int max) {
-              return value <= max;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0109 {
-          public boolean check(int value, int max) {
-              return value < max;
-          }
-      }
+    path: src/main/java/com/example/quota/QuotaGuard.java
+    old: |2
+              return used <= maxRequests;
+    new: |2
+              return used < maxRequests;
     labels:
     - B001
     - fault
 - id: c2
-  message: Add comment-only context
+  message: Document what withinQuota answers
   author: Carol <carol@example.com>
   date: '2024-06-03T10:00:00Z'
-  role: distractor
+  role: cleanup
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0109.java
-    old: |
-      package example;
-
-      public class Scenario0109 {
-          public boolean check(int value, int max) {
-              return value < max;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0109 {
-          public boolean check(int value, int max) {
-              // intentionally checking upper boundary
-              return value < max;
-          }
-      }
+    path: src/main/java/com/example/quota/QuotaGuard.java
+    old: |2
+          public boolean withinQuota(int used) {
+    new: |2
+          /**
+           * Answers whether the caller may still be served in this billing period.
+           */
+          public boolean withinQuota(int used) {
     labels:
     - non_bug_introducing_change
 - id: c3
-  message: Fix bug
+  message: Serve the request that exactly reaches the quota
   author: Alice <alice@example.com>
   date: '2024-06-04T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0109.java
-    old: |
-      package example;
-
-      public class Scenario0109 {
-          public boolean check(int value, int max) {
-              // intentionally checking upper boundary
-              return value < max;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0109 {
-          public boolean check(int value, int max) {
-              return value <= max;
-          }
-      }
+    path: src/main/java/com/example/quota/QuotaGuard.java
+    old: |2
+              return used < maxRequests;
+    new: |2
+              return used <= maxRequests;
     labels:
     - B001
     - fix
 bugs:
 - id: B001
-  title: Comment-only intermediate before fix
+  title: The last request inside the quota is rejected
   bug_fixing_commit: c3
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0109.java
+    file: src/main/java/com/example/quota/QuotaGuard.java
     entity:
       type: method
-      name: check
-      signature: boolean check(int value, int max)
-    statement: return value < max;
+      name: withinQuota
+      signature: boolean withinQuota(int used)
+    statement: return used < maxRequests;
     change_type: line_modification
+    description: >
+      The upper bound became exclusive, so the caller is refused while
+      remaining() still reports one request left.
   fix:
     commit: c3
-    file: src/main/java/example/Scenario0109.java
+    file: src/main/java/com/example/quota/QuotaGuard.java
     entity:
       type: method
-      name: check
-      signature: boolean check(int value, int max)
-    statement: return value <= max;
+      name: withinQuota
+      signature: boolean withinQuota(int used)
+    statement: return used <= maxRequests;
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -152,7 +135,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return value < max;
+      - return used < maxRequests;
 checks:
 - type: git_history_contains
   commits:

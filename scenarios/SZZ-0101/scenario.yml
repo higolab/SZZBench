@@ -3,14 +3,19 @@ meta:
   id: SZZ-0101
   title: Throws declaration after BIC
   slug: throws-declaration-after-bic
-  description: This scenario inserts an intermediate language-specific change between the BIC and BFC.
+  description: >
+    Between the bug-introducing and the bug-fixing commit, a commit adds a
+    `throws` declaration to the signature of a neighbouring method and changes
+    nothing else. The faulty line is untouched by that commit, so plain
+    `git blame` at the BFC parent reaches the BIC. The scenario is a control
+    for tools that over-react to signature-level changes in the same file.
   category: "Intermediate noise and history noise"
   factors:
   - single-bic
   - single-bfc
   - line-modification
   - throws-after-bic
-  difficulty: medium
+  difficulty: easy
   status: active
   category_code: "S3"
 repository:
@@ -21,124 +26,108 @@ repository:
   source_root: src/main/java
 commits:
 - id: c0
-  message: Initial correct implementation
+  message: Add profile resolution to the configuration loader
   author: Alice <alice@example.com>
   date: '2024-01-01T10:00:00Z'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0101.java
+    path: src/main/java/com/example/config/ConfigLoader.java
     content: |
-      package example;
+      package com.example.config;
 
-      public class Scenario0101 {
-          public boolean valid(int value) {
-              return value != null;
+      public class ConfigLoader {
+          private final String defaultProfile;
+
+          public ConfigLoader(String defaultProfile) {
+              this.defaultProfile = defaultProfile;
+          }
+
+          public boolean hasProfile(String requested) {
+              return requested != null;
+          }
+
+          public String resolveProfile(String requested) {
+              if (hasProfile(requested)) {
+                  return requested;
+              }
+              if (defaultProfile == null) {
+                  throw new IllegalStateException("no default profile configured");
+              }
+              return defaultProfile;
           }
       }
 - id: c1
-  message: Introduce bug
+  message: Guard resolveProfile against a missing profile name
   author: Bob <bob@example.com>
   date: '2024-01-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0101.java
-    old: |
-      package example;
-
-      public class Scenario0101 {
-          public boolean valid(int value) {
-              return value != null;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0101 {
-          public boolean valid(int value) {
-              return value == null;
-          }
-      }
+    path: src/main/java/com/example/config/ConfigLoader.java
+    old: |2
+              return requested != null;
+    new: |2
+              return requested == null;
     labels:
     - B001
     - fault
 - id: c2
-  message: Apply intermediate rewrite
+  message: Declare the IllegalStateException raised by resolveProfile
   author: Carol <carol@example.com>
   date: '2024-01-03T10:00:00Z'
-  role: distractor
+  role: refactoring
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0101.java
-    old: |
-      package example;
-
-      public class Scenario0101 {
-          public boolean valid(int value) {
-              return value == null;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0101 {
-          public boolean valid(String value) throws IllegalArgumentException {
-                  return value == null;
-              }
-      }
+    path: src/main/java/com/example/config/ConfigLoader.java
+    old: |2
+          public String resolveProfile(String requested) {
+    new: |2
+          public String resolveProfile(String requested) throws IllegalStateException {
     labels:
     - non_bug_introducing_change
 - id: c3
-  message: Fix bug
+  message: Correct the inverted null check in hasProfile
   author: Dave <dave@example.com>
   date: '2024-01-04T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0101.java
-    old: |
-      package example;
-
-      public class Scenario0101 {
-          public boolean valid(String value) throws IllegalArgumentException {
-                  return value == null;
-              }
-      }
-    new: |
-      package example;
-
-      public class Scenario0101 {
-          public boolean valid(int value) {
-              return value != null;
-          }
-      }
+    path: src/main/java/com/example/config/ConfigLoader.java
+    old: |2
+              return requested == null;
+    new: |2
+              return requested != null;
     labels:
     - B001
     - fix
 bugs:
 - id: B001
-  title: Throws declaration after BIC
+  title: hasProfile reports the opposite of what resolveProfile needs
   bug_fixing_commit: c3
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0101.java
+    file: src/main/java/com/example/config/ConfigLoader.java
     entity:
       type: method
-      name: valid
-      signature: boolean valid(int value)
-    statement: return value == null;
+      name: hasProfile
+      signature: boolean hasProfile(String requested)
+    statement: return requested == null;
     change_type: line_modification
+    description: >
+      The null check is inverted, so resolveProfile returns the caller's null
+      profile name and falls back to the default profile for every name that
+      was actually supplied.
   fix:
     commit: c3
-    file: src/main/java/example/Scenario0101.java
+    file: src/main/java/com/example/config/ConfigLoader.java
     entity:
       type: method
-      name: valid
-      signature: boolean valid(int value)
-    statement: return value != null;
+      name: hasProfile
+      signature: boolean hasProfile(String requested)
+    statement: return requested != null;
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -149,7 +138,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return value == null;
+      - return requested == null;
 checks:
 - type: git_history_contains
   commits:
