@@ -3,7 +3,14 @@ meta:
   id: SZZ-0107
   title: Large commit with small bug
   slug: large-commit-small-bug
-  description: 'This scenario evaluates a bug-introducing commit shape: Large commit with small bug.'
+  description: >
+    The bug-introducing commit adds 102 lines of invoice arithmetic in one go
+    and, in the same commit, tightens one pre-existing comparison by a single
+    character; its first-parent diff is +103 -1. The declared fault is that one
+    character; the rest of the commit is unrelated to it and stays in the tree.
+    The bug-fixing commit replaces only the faulty line, so plain `git blame` at
+    the BFC parent reaches the BIC and the difficulty lies in attributing a
+    103-line commit to a one-line fault rather than in finding the commit.
   category: "Intermediate noise and history noise"
   factors:
   - single-bic
@@ -11,7 +18,7 @@ meta:
   - line-modification
   - large-bic
   - tangled-bic
-  difficulty: medium
+  difficulty: easy
   status: active
   category_code: "S3"
 repository:
@@ -22,146 +29,196 @@ repository:
   source_root: src/main/java
 commits:
 - id: c0
-  message: Initial correct implementation
+  message: Add invoice subtotals and the free-shipping check
   author: Alice <alice@example.com>
   date: '2024-01-01T10:00:00Z'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0107.java
+    path: src/main/java/com/example/billing/InvoiceTotals.java
     content: |
-      package example;
+      package com.example.billing;
 
-      public class Scenario0107 {
-          public boolean valid(int value) {
-              return value >= 0;
+      public class InvoiceTotals {
+          private final int subtotalCents;
+
+          public InvoiceTotals(int subtotalCents) {
+              this.subtotalCents = subtotalCents;
+          }
+
+          public int subtotalCents() {
+              return subtotalCents;
+          }
+
+          public boolean qualifiesForFreeShipping(int thresholdCents) {
+              return subtotalCents >= thresholdCents;
           }
       }
 - id: c1
-  message: Introduce bug inside large validation cleanup
+  message: Add discount, tax, rounding and payment arithmetic to invoice totals
   author: Bob <bob@example.com>
   date: '2024-01-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0107.java
-    old: |
-      package example;
-
-      public class Scenario0107 {
-          public boolean valid(int value) {
-              return value >= 0;
+    path: src/main/java/com/example/billing/InvoiceTotals.java
+    old: |2
+          public boolean qualifiesForFreeShipping(int thresholdCents) {
+              return subtotalCents >= thresholdCents;
           }
       }
-    new: |
-      package example;
-
-      public class Scenario0107 {
-          public boolean valid(int value) {
-              return value > 0;
+    new: |2
+          public boolean qualifiesForFreeShipping(int thresholdCents) {
+              return subtotalCents > thresholdCents;
           }
 
-          public int normalize(int value) {
-              return Math.max(value, 0);
+          public int discountCents(int percent) {
+              if (percent <= 0) {
+                  return 0;
+              }
+              int capped = percent < 100 ? percent : 100;
+              return (int) ((long) subtotalCents * capped / 100L);
           }
 
-          public boolean belowLimit(int value, int limit) {
-              return value < limit;
+          public int netCents(int percent) {
+              return subtotalCents - discountCents(percent);
           }
 
-          public String label(int value) {
-              return "value=" + value;
+          public int taxCents(int amountCents, int taxPermille) {
+              if (taxPermille <= 0) {
+                  return 0;
+              }
+              return (int) ((long) amountCents * taxPermille / 1000L);
           }
 
-          public boolean hasValue(String value) {
-              return value != null && !value.isEmpty();
+          public int grossCents(int percent, int taxPermille) {
+              int net = netCents(percent);
+              return clampToInt((long) net + taxCents(net, taxPermille));
+          }
+
+          public int roundToFiveCents(int cents) {
+              long remainder = cents % 5;
+              if (remainder == 0) {
+                  return cents;
+              }
+              long rounded = cents - remainder;
+              if (remainder >= 3) {
+                  rounded += 5;
+              } else if (remainder <= -3) {
+                  rounded -= 5;
+              }
+              return clampToInt(rounded);
+          }
+
+          public int shippingCents(int thresholdCents, int flatCents) {
+              if (qualifiesForFreeShipping(thresholdCents)) {
+                  return 0;
+              }
+              return flatCents;
+          }
+
+          public int payableCents(int percent, int taxPermille, int thresholdCents, int flatCents) {
+              long gross = grossCents(percent, taxPermille);
+              return roundToFiveCents(clampToInt(gross + shippingCents(thresholdCents, flatCents)));
+          }
+
+          public int lineItemCents(int unitCents, int quantity) {
+              if (quantity <= 0) {
+                  return 0;
+              }
+              return clampToInt((long) unitCents * quantity);
+          }
+
+          public int remainingToPayCents(int paidCents, int percent, int taxPermille, int thresholdCents, int flatCents) {
+              int payable = payableCents(percent, taxPermille, thresholdCents, flatCents);
+              if (paidCents >= payable) {
+                  return 0;
+              }
+              return clampToInt((long) payable - paidCents);
+          }
+
+          public boolean isSettled(int paidCents, int percent, int taxPermille, int thresholdCents, int flatCents) {
+              return remainingToPayCents(paidCents, percent, taxPermille, thresholdCents, flatCents) == 0;
+          }
+
+          public String formatAmount(int cents) {
+              int units = cents / 100;
+              int fraction = cents % 100;
+              if (fraction < 0) {
+                  fraction = -fraction;
+              }
+              String padded = fraction < 10 ? "0" + fraction : String.valueOf(fraction);
+              if (cents < 0 && units == 0) {
+                  return "-0." + padded;
+              }
+              return units + "." + padded;
+          }
+
+          public String summary(int percent, int taxPermille, int thresholdCents, int flatCents) {
+              StringBuilder text = new StringBuilder();
+              text.append("subtotal=").append(formatAmount(subtotalCents));
+              text.append(" discount=").append(formatAmount(discountCents(percent)));
+              text.append(" tax=").append(formatAmount(taxCents(netCents(percent), taxPermille)));
+              text.append(" shipping=").append(formatAmount(shippingCents(thresholdCents, flatCents)));
+              text.append(" payable=").append(formatAmount(payableCents(percent, taxPermille, thresholdCents, flatCents)));
+              return text.toString();
+          }
+
+          private int clampToInt(long value) {
+              if (value > Integer.MAX_VALUE) {
+                  return Integer.MAX_VALUE;
+              }
+              if (value < Integer.MIN_VALUE) {
+                  return Integer.MIN_VALUE;
+              }
+              return (int) value;
           }
       }
     labels:
     - B001
     - fault
 - id: c2
-  message: Fix bug
+  message: Grant free shipping when the subtotal exactly reaches the threshold
   author: Alice <alice@example.com>
   date: '2024-01-03T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0107.java
-    old: |
-      package example;
-
-      public class Scenario0107 {
-          public boolean valid(int value) {
-              return value > 0;
-          }
-
-          public int normalize(int value) {
-              return Math.max(value, 0);
-          }
-
-          public boolean belowLimit(int value, int limit) {
-              return value < limit;
-          }
-
-          public String label(int value) {
-              return "value=" + value;
-          }
-
-          public boolean hasValue(String value) {
-              return value != null && !value.isEmpty();
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0107 {
-          public boolean valid(int value) {
-              return value >= 0;
-          }
-
-          public int normalize(int value) {
-              return Math.max(value, 0);
-          }
-
-          public boolean belowLimit(int value, int limit) {
-              return value < limit;
-          }
-
-          public String label(int value) {
-              return "value=" + value;
-          }
-
-          public boolean hasValue(String value) {
-              return value != null && !value.isEmpty();
-          }
-      }
+    path: src/main/java/com/example/billing/InvoiceTotals.java
+    old: |2
+              return subtotalCents > thresholdCents;
+    new: |2
+              return subtotalCents >= thresholdCents;
     labels:
     - B001
     - fix
 bugs:
 - id: B001
-  title: Large commit with small bug
+  title: An order that exactly reaches the free-shipping threshold is charged shipping
   bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0107.java
+    file: src/main/java/com/example/billing/InvoiceTotals.java
     entity:
       type: method
-      name: valid
-      signature: boolean valid(int value)
-    statement: return value > 0;
+      name: qualifiesForFreeShipping
+      signature: boolean qualifiesForFreeShipping(int thresholdCents)
+    statement: return subtotalCents > thresholdCents;
     change_type: line_modification
+    description: >
+      The commit that added the invoice arithmetic also tightened the
+      free-shipping comparison from >= to >, so an order of exactly the
+      threshold amount is charged the flat shipping fee.
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0107.java
+    file: src/main/java/com/example/billing/InvoiceTotals.java
     entity:
       type: method
-      name: valid
-      signature: boolean valid(int value)
-    statement: return value >= 0;
+      name: qualifiesForFreeShipping
+      signature: boolean qualifiesForFreeShipping(int thresholdCents)
+    statement: return subtotalCents >= thresholdCents;
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -170,7 +227,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return value > 0;
+      - return subtotalCents > thresholdCents;
 checks:
 - type: git_history_contains
   commits:
