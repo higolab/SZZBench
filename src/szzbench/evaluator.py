@@ -274,6 +274,16 @@ class EvaluationReport:
                 + " |"
             )
         lines.append("")
+        noted = [item for item in self.scenarios if item.result_notes]
+        if noted:
+            # Per-scenario notes (inferred oracles, unread oracle sections,
+            # ignored allowances, skipped fix-shape classification) must be
+            # visible where people read the result, not only in the JSON.
+            lines.extend(["## Scenario notes", ""])
+            for item in noted:
+                for note in item.result_notes:
+                    lines.append(f"- {item.scenario_id}: {note}")
+            lines.append("")
         return "\n".join(lines)
 
 
@@ -324,6 +334,14 @@ def evaluate_predictions(
                 repo_dir=generated_root / scenario_id / variant / "repo",
             )
         )
+    # Oracle-related notes (inferred required set, unread oracle sections,
+    # ignored allowances, unsupported policies) are promoted to report warnings
+    # so that the plain CLI output and the markdown "Warnings" section show them.
+    for item in evaluations:
+        for note in item.result_notes:
+            if note.startswith("fix_shape not computed"):
+                continue
+            warnings.append(f"{item.scenario_id}: {note}")
     return EvaluationReport(evaluations, errors=errors, warnings=warnings)
 
 
@@ -632,14 +650,37 @@ def _graph_commit_level_policy(
             f"expected_szz also declares {', '.join(unread_sections)}; these sections are not used by commit-level evaluation."
         )
 
+    acceptable_related = _acceptable_related_entries(selected_commit_level.get("acceptable_related"))
+    related_origins = _string_list(selected_commit_level.get("related_origins"))
+    related_but_not_correct = _string_list(selected_commit_level.get("related_but_not_correct"))
+    relevant = _string_list(selected_commit_level.get("relevant"))
+    if expect_no_bic and (acceptable_related or related_origins or related_but_not_correct or relevant):
+        # With an intentionally empty oracle every known prediction is a false
+        # positive; keeping allowances would hide predictions from the FP counts
+        # while the status still fails.
+        ignored = [
+            name
+            for name, values in (
+                ("acceptable_related", acceptable_related),
+                ("related_origins", related_origins),
+                ("related_but_not_correct", related_but_not_correct),
+                ("relevant", relevant),
+            )
+            if values
+        ]
+        notes.append(
+            f"expect_no_bic is true; {', '.join(ignored)} ignored because every known prediction counts as a false positive."
+        )
+        acceptable_related, related_origins, related_but_not_correct, relevant = [], [], [], []
+
     return CommitLevelPolicy(
         evaluation_policy=policy_name,
         evaluation_variant=selected_variant["name"] if selected_variant is not None else None,
         required=required,
-        acceptable_related=_acceptable_related_entries(selected_commit_level.get("acceptable_related")),
-        related_origins=_string_list(selected_commit_level.get("related_origins")),
-        related_but_not_correct=_string_list(selected_commit_level.get("related_but_not_correct")),
-        relevant=_string_list(selected_commit_level.get("relevant")),
+        acceptable_related=acceptable_related,
+        related_origins=related_origins,
+        related_but_not_correct=related_but_not_correct,
+        relevant=relevant,
         minimum_required=_minimum_required_value(selected_commit_level.get("minimum_required"), notes),
         k_values=_k_values(selected_commit_level.get("k_values")),
         status_k=_status_k_value(selected_commit_level.get("status_k"), notes),

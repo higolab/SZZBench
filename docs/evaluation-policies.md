@@ -99,6 +99,16 @@ recommends `expect_no_bic: true`. An empty required set without
 prediction is then a false positive and no prediction passes, which is the
 same outcome but without the explicit intent.
 
+Notes like these are not hidden in the JSON: `evaluate` promotes every
+oracle-related result note (inferred required set, `expected_szz` sections the
+commit-level evaluator does not read, ignored allowances, unsupported policy
+names) to a report warning prefixed with the scenario id, which the plain CLI
+prints and the Markdown report lists under `## Warnings`; in addition the
+Markdown report ends with a `## Scenario notes` section that lists all
+`result_notes` per scenario. A PASS for a scenario such as SZZG-0116 is
+therefore always accompanied by the caveat that its `entity_level` /
+`line_level` oracle was not evaluated.
+
 ## 2. Derived sets
 
 With `E` = required, `A` = acceptable_related commits, `P` = predicted
@@ -228,6 +238,19 @@ table shows `none (expect_no_bic)` as the expected set.
 prediction is a false positive and fails; unknown predictions fail as under any
 policy. If a scenario sets `expect_no_bic: true` *and* a non-empty `required`,
 the flag is ignored with a note (the two are contradictory; `required` wins).
+
+Because every known prediction is a false positive, allowances make no sense
+under this policy: when `expect_no_bic` is effective, `acceptable_related`,
+`related_origins`, `related_but_not_correct` and `relevant` are ignored (a
+note names the ignored lists) so that `false_positives` and
+`hard_false_positives` contain every prediction and agree with the FAIL status.
+
+Such a scenario keeps its bug entry and its bug-fixing commit but declares
+`bug_introducing_commits: []`. The graph validator accepts the empty list when
+`expected_szz.commit_level` (or any evaluation variant) declares
+`expect_no_bic: true` — it reports the informational `GI086` instead of the
+error `GE084` — so the normal workflow `validate-graph → generate-graph →
+evaluate` works. Without the declaration an empty BIC list is still `GE084`.
 
 ## 7. Fix shapes
 
@@ -418,4 +441,6 @@ FAIL (`unknown_predictions`).
 |---|---|
 | per scenario (JSON) | `top_k.status_k`, `known_distractor_hits`, `expect_no_bic`, `fix_shape`, additional `result_notes` |
 | summary (JSON) | `known_distractor_hits`, `fix_shape_counts` |
-| Markdown | `- Known distractor hits:`, `- Fix shapes (per BFC):`; table columns `Top-k`, `Distractor hits`, `Fix shape` |
+| Markdown | `- Known distractor hits:`, `- Fix shapes (per BFC):`; table columns `Top-k`, `Distractor hits`, `Fix shape`; `## Scenario notes` section listing every scenario's `result_notes` |
+| report `warnings` (JSON, Markdown `## Warnings`, CLI stderr) | oracle-related `result_notes` promoted with a `<scenario id>: ` prefix |
+| validator | `GI086` (info) when `bug_introducing_commits` is empty and `expect_no_bic` is declared, instead of `GE084` |
