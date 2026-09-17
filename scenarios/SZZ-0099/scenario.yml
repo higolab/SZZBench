@@ -3,14 +3,22 @@ meta:
   id: SZZ-0099
   title: Synchronized modifier after BIC
   slug: synchronized-after-bic
-  description: This scenario inserts an intermediate language-specific change between the BIC and BFC.
+  description: >
+    The BIC makes the rate limiter's capacity check inclusive, so one request too
+    many is let through. An intermediate commit adds the synchronized modifier to
+    the two methods of the class and changes nothing else; it touches the
+    signature line directly above the fault but not the faulty statement. The
+    bug-fixing commit repairs only the comparison, so plain blame at the BFC
+    parent still reaches the BIC: this is an honest control for the
+    modifier-noise family.
   category: "Intermediate noise and history noise"
   factors:
   - single-bic
   - single-bfc
   - line-modification
   - synchronized-after-bic
-  difficulty: medium
+  - plain-blame-control
+  difficulty: easy
   status: active
   category_code: "S3"
 repository:
@@ -21,124 +29,113 @@ repository:
   source_root: src/main/java
 commits:
 - id: c0
-  message: Initial correct implementation
+  message: Add the request rate limiter for the public API
   author: Alice <alice@example.com>
   date: '2024-01-01T10:00:00Z'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0099.java
+    path: src/main/java/com/example/limits/RateLimiter.java
     content: |
-      package example;
+      package com.example.limits;
 
-      public class Scenario0099 {
-          public boolean valid(int value) {
-              return count < limit;
+      public class RateLimiter {
+          private final int limit;
+          private int used;
+
+          public RateLimiter(int limit) {
+              this.limit = limit;
+          }
+
+          public boolean hasCapacity() {
+              return used < limit;
+          }
+
+          public void acquire() {
+              used++;
+          }
+
+          public int used() {
+              return used;
           }
       }
 - id: c1
-  message: Introduce bug
+  message: Let a request through while the used count has not passed the limit
   author: Bob <bob@example.com>
   date: '2024-01-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0099.java
-    old: |
-      package example;
-
-      public class Scenario0099 {
-          public boolean valid(int value) {
-              return count < limit;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0099 {
-          public boolean valid(int value) {
-              return count <= limit;
-          }
-      }
+    path: src/main/java/com/example/limits/RateLimiter.java
+    old: |2
+              return used < limit;
+    new: |2
+              return used <= limit;
     labels:
     - B001
     - fault
 - id: c2
-  message: Apply intermediate rewrite
+  message: Serialise access to the rate limiter counter
   author: Carol <carol@example.com>
   date: '2024-01-03T10:00:00Z'
-  role: distractor
+  role: refactoring
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0099.java
-    old: |
-      package example;
-
-      public class Scenario0099 {
-          public boolean valid(int value) {
-              return count <= limit;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0099 {
-          public synchronized boolean belowLimit(int count, int limit) {
-                  return count <= limit;
-              }
-      }
+    path: src/main/java/com/example/limits/RateLimiter.java
+    old: |2
+          public boolean hasCapacity() {
+    new: |2
+          public synchronized boolean hasCapacity() {
+  - type: replace
+    path: src/main/java/com/example/limits/RateLimiter.java
+    old: |2
+          public void acquire() {
+    new: |2
+          public synchronized void acquire() {
     labels:
     - non_bug_introducing_change
 - id: c3
-  message: Fix bug
+  message: Stop granting one request beyond the configured limit
   author: Dave <dave@example.com>
   date: '2024-01-04T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0099.java
-    old: |
-      package example;
-
-      public class Scenario0099 {
-          public synchronized boolean belowLimit(int count, int limit) {
-                  return count <= limit;
-              }
-      }
-    new: |
-      package example;
-
-      public class Scenario0099 {
-          public boolean valid(int value) {
-              return count < limit;
-          }
-      }
+    path: src/main/java/com/example/limits/RateLimiter.java
+    old: |2
+              return used <= limit;
+    new: |2
+              return used < limit;
     labels:
     - B001
     - fix
 bugs:
 - id: B001
-  title: Synchronized modifier after BIC
+  title: The rate limiter grants one request more than the configured limit
   bug_fixing_commit: c3
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0099.java
+    file: src/main/java/com/example/limits/RateLimiter.java
     entity:
       type: method
-      name: valid
-      signature: boolean valid(int value)
-    statement: return count <= limit;
+      name: hasCapacity
+      signature: boolean hasCapacity()
+    statement: return used <= limit;
     change_type: line_modification
+    description: >
+      hasCapacity is asked before a request is counted, so the used count must be
+      strictly below the limit; with the inclusive comparison a limit of n admits
+      n + 1 requests.
   fix:
     commit: c3
-    file: src/main/java/example/Scenario0099.java
+    file: src/main/java/com/example/limits/RateLimiter.java
     entity:
       type: method
-      name: valid
-      signature: boolean valid(int value)
-    statement: return count < limit;
+      name: hasCapacity
+      signature: boolean hasCapacity()
+    statement: return used < limit;
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -149,7 +146,11 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return count <= limit;
+      - return used <= limit;
+      note: >
+        c2 adds the synchronized modifier to the two method signatures, including
+        the line directly above the fault; the faulty line itself is untouched,
+        so blame at c3^ returns c1.
 checks:
 - type: git_history_contains
   commits:
