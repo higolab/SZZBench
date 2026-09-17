@@ -44,7 +44,7 @@ Columns: **visible difference** = what a tool sees in the repository (DAG / refs
 |---|---|---|---|---|---|
 | SZZG-0002 → SZZG-0001 | move+fix vs rename+fix in one BFC | directory changes; `package` not updated (bug) | same | T | **keep both as controls** after fixing the package; rename vs move are different rename-detection inputs |
 | SZZG-0004 → SZZG-0010 | move between BIC and BFC | 0010 adds package rename | same | T | **merge** (0010 is the superset) |
-| SZZG-0013 → SZZG-0008 | semantic-preserving rewrite | 0013 lacks `related_but_not_correct` | differs (0013 penalises the rewrite) | N | **merge** after aligning oracle (D5) |
+| SZZG-0013 → SZZG-0008 | semantic-preserving rewrite | 0013 lacks `related_but_not_correct` | **same acceptance condition**: with predictions `{c1, c2}` both FAIL with `false_positives: [c2]` (under `exact_set` a `related_but_not_correct` entry is still a false positive); only the diagnostic bucket differs (related-but-not-correct hit in 0008, hard false positive in 0013) | N | **merge** as a redundant history; give the survivor `related_but_not_correct: [c2]` for the diagnostic (D5) |
 | SZZG-0015 → SZZG-0018 | copy then fix original later | DAG/tree-equivalent | 0018 has two bugs | T | **merge** into 0018 once per-bug oracle is fixed (D9) |
 | SZZG-0020 → SZZG-0022 | direct vs origin | same DAG; 0022 has variants | same | T | **merge** (0022 superset) |
 | SZZG-0021 ↔ SZZG-0109 | file deletion as fix / file deletion | 0021 has clone metadata | similar | T | **merge** into one file-deletion scenario with candidates |

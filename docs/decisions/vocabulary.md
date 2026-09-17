@@ -65,7 +65,17 @@ Status: **proposal for maintainer decision** (2026-09-17). The mechanical defect
 
 ### 2.1 Bug-entry roles (consumed by the evaluator/verifier)
 
-BIC entries: `direct`, `origin`, `contributing`, `reintroducing`. BFC entries: `complete_fix`, `partial_fix`. Everything else (`direct_squash_bic`, `merge_introducing`, `direct_reintroduction`, `origin_bic`, `old_origin_bic`, `related_reintroducing`, `main_fix`, `symptom_fix`, `shared_bfc`, `merge_fix`, `follow_up_fix`, `final_fix`, `attempted_fix`, `backport_fix`, `cherry_picked_release_fix`, `partial_fix_lower_bound`, `complete_fix_upper_bound`, …) is mapped by `normalize_bic_role` (issue #15) and rewritten by the sweep. Narrative detail moves to the entry's `description`.
+**BIC entries** — canonical roles `direct`, `origin`, `contributing`, `reintroducing`. The 23 spellings in use (`direct_squash_bic`, `merge_introducing`, `direct_reintroduction`, `origin_bic`, `old_origin_bic`, `related_reintroducing`, …) are classified by `normalize_bic_role()` (issue #15, PR #27) and rewritten to the canonical spelling by the sweep. `normalize_bic_role()` classifies **BIC roles only**: it returns `other` for every BFC role, including `complete_fix` and `partial_fix`, so it must not be applied to BFC entries.
+
+**BFC entries** — canonical roles `complete_fix` (the commit removes the fault of this bug entry), `partial_fix` (removes part of it; another BFC completes it) and `attempted_fix` (a developer attempt that does **not** remove the fault; kept as context and excluded from the evaluated BFC set). No BFC normalizer exists yet; the sweep applies the table below explicitly, and a `normalize_bfc_role()` should be added next to the BIC one before the migration script runs. Today BFC roles do not influence scoring: the verifier's blame check uses the *last* BFC entry and PR #27's `fix_shape` classifies every listed BFC regardless of role.
+
+| canonical | today (scenarios) |
+|---|---|
+| `complete_fix` | `complete_fix`; `main_fix` (SZZG-0049, 0050, 0054); `merge_fix` (SZZG-0042, 0046); `final_fix` (SZZG-0085); `complete_fix_upper_bound` (SZZG-0032); `follow_up_fix` (SZZG-0030 c3); `cherry_picked_release_fix` (SZZG-0049 r2) and `backport_fix` (SZZG-0050 r2) — the replay is recorded by `cherry_pick_of`/`backport_of`, not by the role; `shared_bfc` (SZZG-0034 c3: one commit that completely fixes each of two bug entries) |
+| `partial_fix` | `partial_fix`; `partial_fix_lower_bound` (SZZG-0032 c2); `symptom_fix` (SZZG-0035 c2 and c3: each removes one symptom of the same bug) |
+| `attempted_fix` | `attempted_fix` (SZZG-0030 c2; under D6 of the origin/direct contract it is also the direct BIC of the new `\|\|` fault) |
+
+Narrative detail ("main-line fix", "release fix", "upper bound") moves to the entry's `description`.
 
 ### 2.2 Commit roles (`commits[].role`)
 

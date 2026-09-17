@@ -40,7 +40,13 @@ Role spellings used today (23 for bug entries) are mapped onto the four canonica
 
 **D3 — every scenario with an origin provides an `origin-aware` variant.** `evaluation_variants` contains `origin-aware` with `evaluation_policy: relaxed_with_related`, the same `required` set, and the origins as `acceptable_related` with `credit: 0.5` (the convention already used by SZZG-0022). Scenarios that want to *require* the origin add a third variant `origin-required` (`exact_set`, `required` = direct ∪ origin). Adapters choose the variant with `--evaluation-variant`.
 
-**D4 — copy and replay commits are direct BICs.** The commit that copies, cherry-picks, rebases, squashes or backports the faulty text into the history of *F* is the direct BIC for *F*; the source commit is the origin. This is the rule SZZG-0020/0022/0047 already follow; SZZG-0025/0027/0028 must be aligned with it (see §5).
+**D4 — copy and replay commits are direct BICs; pure moves are not.** The commit that copies, cherry-picks, rebases, squashes or backports the faulty text into the history of *F* is the direct BIC for *F*; the source commit is the origin. This is the rule SZZG-0020/0022/0047 already follow; SZZG-0025/0027/0028 must be aligned with it (see §5). The boundary between the three kinds of propagation is:
+
+- *Movement* — a rename or move of a file or method after which the source location no longer contains the fault and the number of faulty instances stays one. Behaviour-preserving, therefore **not a BIC** (D5); the original commit remains the direct BIC (SZZG-0003, 0004, 0005, 0010).
+- *Copying into a new instance* — after the commit the fault exists at an additional location, whether or not the source keeps it. The copying commit is the **direct BIC of the new instance**; the source commit is that instance's origin (the SZZG-0014–0028 family).
+- *Replay* — cherry-pick, rebase, squash or backport into another history. The replayed commit is the direct BIC for BFCs in that history; the source commit is the origin (SZZG-0047, 0049, 0050, the G5 scenarios).
+
+A commit that moves *and* duplicates (SZZG-0007: c2 moves `contains` to `RangeUtils.java` and copies the faulty line into `Bounds.within`) is therefore not a BIC for the moved instance but the direct BIC for the duplicated instance. Under D9 the scenario-level `required` of a BFC that fixes both instances is the union `{c1, c2}`. PR #28 keeps SZZG-0007's pre-D4 contract (`required: [c1]`, c2 `related_but_not_correct`), which is consistent with the oracle it states; adopting D4 means migrating it (or splitting the duplicate into its own scenario) — see §5 and open point 4. Scenarios that want the *origin* accepted or required instead of the direct copy express that through the `origin-aware` / `origin-required` variants (D3), never by changing the default.
 
 **D5 — behaviour-preserving rewrites are never BICs.** Formatting, identifier renames, comment insertion, method extraction and similar edits of the faulty line are `related_but_not_correct`. This is the rule SZZG-0008/0013 follow; SZZG-0024 must be aligned with it (its required "direct BIC" r2 only appends a comment; r1 introduced the fault).
 
@@ -58,6 +64,8 @@ Role spellings used today (23 for bug entries) are mapped onto the four canonica
 
 | scenario | today | after D1–D9 |
 |---|---|---|
+| SZZG-0005 (PR #28) | required c1; move commit c2 `related_but_not_correct` | already conforms (pure move, D5) |
+| SZZG-0007 (PR #28) | required c1; move-and-copy commit c2 `related_but_not_correct` | under D4 + D9: `required: [c1, c2]` (c1 for the moved instance, c2 for the duplicated instance) with an `origin-aware` variant — or split the duplicated instance into its own scenario (open point 4) |
 | SZZG-0014, SZZG-0015, SZZG-0017 | origin c0 declared, unlisted | add `related_origins: [c0]`, add `origin-aware` variant |
 | SZZG-0016 | origin as `acceptable_related` in default | move to `related_origins`; keep `acceptable_related` in the `origin-aware` variant |
 | SZZG-0018 | `required: [c1]` for two bugs | `required: [c0, c1]` (D9) until per-bug scoring exists |
@@ -77,3 +85,4 @@ Role spellings used today (23 for bug entries) are mapped onto the four canonica
 1. Credit value for origins in the `origin-aware` variant (0.5 as in SZZG-0022, or 0).
 2. Whether `origin-required` variants are generated for every origin scenario or only where the README argues for root-cause semantics.
 3. Whether the default variant should be renamed from implicit `commit_level` to an explicit `direct-only` variant everywhere (clearer for adapters; larger diff).
+4. Move-and-duplicate histories (SZZG-0007): keep one bug entry with the union oracle `{c1, c2}` under D4/D9, or split the duplicated instance into a separate scenario so that each scenario tests exactly one propagation kind.
