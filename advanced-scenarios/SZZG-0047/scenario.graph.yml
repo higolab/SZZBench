@@ -3,9 +3,9 @@ meta:
   id: SZZG-0047
   title: Squash merge
   slug: squash-merge
-  description: A feature branch introduces a bug and adds feature-specific code. The feature branch is then squash-merged
-    into main as a single-parent commit. The squash commit is the direct BIC on main, while the original feature-branch BIC
-    is kept as origin metadata.
+  description: A feature branch tightens the sample range check and adds a calibration window on top of it. The branch is
+    squash-merged into main as a single-parent commit whose message is the GitHub squash message of the pull request. The
+    squash commit is the direct BIC on main; the feature-branch commit that first wrote the faulty comparison is the origin.
   category: "Branch, merge, cherry-pick, backport, and release branches"
   category_code: "G4"
   factors:
@@ -24,31 +24,44 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial correct implementation on main
+  history_summary: 'c0: add Range with the supported sample window on main
 
-    c1: feature branch introduces range boundary bug
+    c1: feature branch makes the range comparison exclusive
 
-    c2: feature branch adds code that uses the buggy range check
+    c2: feature branch adds the calibration window check that reuses the comparison
 
-    c3: squash-merge feature branch into main as a single-parent commit
+    c3: squash-merge of the feature branch into main (single parent, both feature patches applied)
 
-    c4: fix the squashed range boundary bug on main'
+    c4: main accepts the range bounds again'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial correct implementation'
+  message: Add Range with the supported sample window
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
+    content: |
+      package example;
+
+      public class Range {
+        public static final int LOWEST_SAMPLE = -40;
+        public static final int HIGHEST_SAMPLE = 125;
+
+        public boolean contains(int value, int min, int max) {
+          return value >= min && value <= max;
+        }
+
+        public boolean isSupportedSample(int value) {
+          return contains(value, LOWEST_SAMPLE, HIGHEST_SAMPLE);
+        }
+      }
 - id: c1
   branch: feature
   parents:
   - c0
-  message: 'c1: introduce range boundary bug on feature'
+  message: Require samples strictly inside the range bounds
   role: origin_bug_introducing
   operations:
   - type: replace
@@ -59,38 +72,49 @@ commits:
   branch: feature
   parents:
   - c1
-  message: 'c2: add feature helper using buggy range check'
+  message: Add the calibration window check used by the sampler
   role: intermediate
   operations:
   - type: replace
     path: src/main/java/example/Range.java
-    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n}\n"
-    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
-      \ min, max);\n  }\n}\n"
+    old: public static final int HIGHEST_SAMPLE = 125;
+    new: |-
+      public static final int HIGHEST_SAMPLE = 125;
+        public static final int CALIBRATION_LOW = 0;
+        public static final int CALIBRATION_HIGH = 80;
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: |-
+      public boolean isSupportedSample(int value) {
+          return contains(value, LOWEST_SAMPLE, HIGHEST_SAMPLE);
+        }
+    new: |-
+      public boolean isSupportedSample(int value) {
+          return contains(value, LOWEST_SAMPLE, HIGHEST_SAMPLE);
+        }
+
+        public boolean isWithinCalibrationWindow(int value) {
+          return contains(value, CALIBRATION_LOW, CALIBRATION_HIGH);
+        }
 - id: c3
   branch: main
   parents:
   - c0
-  message: 'c3: squash merge feature branch into main'
+  message: Tighten the range bounds and add the calibration window check (#118)
   role: bug_introducing
   squashes:
   - c1
   - c2
   operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ >= min && value <= max;\n  }\n}\n"
-    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
-      \ min, max);\n  }\n}\n"
+  - type: apply_squash
+    from_commits:
+    - c1
+    - c2
 - id: c4
   branch: main
   parents:
   - c3
-  message: 'c4: fix squashed range boundary bug'
+  message: Accept the range bounds again so min and max stay inside the range
   role: bug_fixing
   operations:
   - type: replace
@@ -99,14 +123,16 @@ commits:
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Range boundary bug introduced through squash merge
+  title: Range.contains rejects the interval bounds after the squash merge
   bug_introducing_commits:
   - commit: c3
-    role: direct_squash_bic
-    description: Direct BIC on main because the squash commit introduces the faulty code into main.
+    role: direct
+    description: Direct BIC on main; the squash commit writes the faulty comparison into main's history as a single-parent
+      commit.
   - commit: c1
-    role: origin_bic
-    description: Origin BIC on the feature branch before squash merge.
+    role: origin
+    description: Origin BIC on the feature branch; it wrote the same comparison before the squash merge and is not an ancestor
+      of the BFC.
   bug_fixing_commits:
   - commit: c4
     role: complete_fix
@@ -115,7 +141,7 @@ bugs:
     commit: c3
     file: src/main/java/example/Range.java
     statement: return value > min && value < max;
-    change_type: squash_propagated_line_modification
+    change_type: line_modification
   origin_faults:
   - id: OF001
     commit: c1
@@ -140,15 +166,20 @@ expected_szz:
 scenario_design:
   purpose: Evaluate how SZZ handles a squash merge where the main-line direct BIC is the squash commit, while the faulty logic
     originated earlier on a feature branch.
-  key_property: Unlike a normal merge, c3 has one parent only. The feature commits c1 and c2 are recorded in `squashes` metadata,
-    but they are not parents of c3.
-  difference_from_SZZG_0030: SZZG-0043 uses a normal merge where the feature branch is merged into main with a two-parent
+  key_property: c3 has one parent only. The feature commits c1 and c2 stay reachable through the `feature` branch and are
+    recorded in `squashes`, but they are not parents of c3. c3 is generated by really applying both feature patches (`apply_squash`),
+    so its diff against c0 is the combined feature diff.
+  difference_from_SZZG_0043: SZZG-0043 uses a normal merge where the feature branch is merged into main with a two-parent
     merge commit. SZZG-0047 uses a single-parent squash commit on main.
+  difference_from_SZZG_0072: SZZG-0072 is an interactive rebase that drops the original faulty commit and keeps only the second
+    feature commit, on a different code base (RetryPolicy) and with the pre-rebase branch deleted. The two repositories differ
+    in trees, patches and refs, not only in commit messages (issue #11).
   evaluation_points:
   - Whether SZZ reports the direct main-line BIC c3.
   - Whether the origin BIC c1 is distinguished from the direct squash BIC.
   - Whether the benchmark can represent squash merge history without making the squash commit a two-parent merge.
 notes:
-- This revision makes the squash merge explicit by giving c3 a single parent c0.
-- The feature branch commits c1 and c2 are retained as source commits and referenced by c3.squashes.
+- c3 carries the GitHub squash subject of the pull request. The generator writes single-line subjects only (the verifier compares
+  `%s` with `message`, GE623), so the bullet list of squashed subjects that GitHub puts in the body is represented by `squashes`
+  and by this README instead.
 - The expected direct BIC is c3; c1 is related origin metadata but not the direct BIC for the main-line fix.
