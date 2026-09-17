@@ -3,14 +3,20 @@ meta:
   id: SZZ-0102
   title: Import reorder after BIC
   slug: import-reorder-after-bic
-  description: This scenario inserts an intermediate intermediate-history change between the BIC and BFC.
+  description: >
+    The file already carries four imports when the bug is introduced. Between
+    the bug-introducing and the bug-fixing commit, a commit sorts those imports
+    alphabetically without adding or removing any of them. The faulty line is
+    far away and untouched, so plain `git blame` at the BFC parent reaches the
+    BIC. The scenario is a control for tools that treat any later change to the
+    file as a candidate.
   category: "Intermediate noise and history noise"
   factors:
   - single-bic
   - single-bfc
   - line-modification
   - import-reorder-after-bic
-  difficulty: medium
+  difficulty: easy
   status: active
   category_code: "S3"
 repository:
@@ -21,130 +27,121 @@ repository:
   source_root: src/main/java
 commits:
 - id: c0
-  message: Initial correct implementation
+  message: Add an in-memory index of order codes
   author: Alice <alice@example.com>
   date: '2024-01-01T10:00:00Z'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0102.java
+    path: src/main/java/com/example/orders/OrderIndex.java
     content: |
-      package example;
+      package com.example.orders;
 
-      public class Scenario0102 {
-          public boolean valid(int value) {
-              return value >= 0;
+      import java.util.List;
+      import java.util.Comparator;
+      import java.util.ArrayList;
+      import java.util.Collections;
+
+      public class OrderIndex {
+          private final List<String> codes = new ArrayList<>();
+
+          public void add(String code) {
+              codes.add(code);
+          }
+
+          public List<String> sortedCodes() {
+              List<String> copy = new ArrayList<>(codes);
+              Collections.sort(copy, Comparator.naturalOrder());
+              return copy;
+          }
+
+          public boolean isTracked(int index) {
+              return index >= 0 && index < codes.size();
+          }
+
+          public String codeAt(int index) {
+              if (!isTracked(index)) {
+                  return null;
+              }
+              return codes.get(index);
           }
       }
 - id: c1
-  message: Introduce bug
+  message: Skip the head slot when checking whether an index is tracked
   author: Bob <bob@example.com>
   date: '2024-01-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0102.java
-    old: |
-      package example;
-
-      public class Scenario0102 {
-          public boolean valid(int value) {
-              return value >= 0;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0102 {
-          public boolean valid(int value) {
-              return value > 0;
-          }
-      }
+    path: src/main/java/com/example/orders/OrderIndex.java
+    old: |2
+              return index >= 0 && index < codes.size();
+    new: |2
+              return index > 0 && index < codes.size();
     labels:
     - B001
     - fault
 - id: c2
-  message: Apply intermediate rewrite
+  message: Sort the imports of OrderIndex alphabetically
   author: Carol <carol@example.com>
   date: '2024-01-03T10:00:00Z'
-  role: distractor
+  role: formatting
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0102.java
+    path: src/main/java/com/example/orders/OrderIndex.java
     old: |
-      package example;
-
-      public class Scenario0102 {
-          public boolean valid(int value) {
-              return value > 0;
-          }
-      }
-    new: |
-      package example;
-
       import java.util.List;
+      import java.util.Comparator;
       import java.util.ArrayList;
-
-      public class Scenario0102 {
-          public boolean valid(int value) {
-              return value > 0;
-          }
-      }
+      import java.util.Collections;
+    new: |
+      import java.util.ArrayList;
+      import java.util.Collections;
+      import java.util.Comparator;
+      import java.util.List;
     labels:
     - non_bug_introducing_change
 - id: c3
-  message: Fix bug
+  message: Treat index 0 as a tracked position again
   author: Dave <dave@example.com>
   date: '2024-01-04T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0102.java
-    old: |
-      package example;
-
-      import java.util.List;
-      import java.util.ArrayList;
-
-      public class Scenario0102 {
-          public boolean valid(int value) {
-              return value > 0;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0102 {
-          public boolean valid(int value) {
-              return value >= 0;
-          }
-      }
+    path: src/main/java/com/example/orders/OrderIndex.java
+    old: |2
+              return index > 0 && index < codes.size();
+    new: |2
+              return index >= 0 && index < codes.size();
     labels:
     - B001
     - fix
 bugs:
 - id: B001
-  title: Import reorder after BIC
+  title: The first order code is reported as untracked
   bug_fixing_commit: c3
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0102.java
+    file: src/main/java/com/example/orders/OrderIndex.java
     entity:
       type: method
-      name: valid
-      signature: boolean valid(int value)
-    statement: return value > 0;
+      name: isTracked
+      signature: boolean isTracked(int index)
+    statement: return index > 0 && index < codes.size();
     change_type: line_modification
+    description: >
+      The lower bound excludes index 0, so the first stored order code is
+      reported as untracked and codeAt(0) returns null.
   fix:
     commit: c3
-    file: src/main/java/example/Scenario0102.java
+    file: src/main/java/com/example/orders/OrderIndex.java
     entity:
       type: method
-      name: valid
-      signature: boolean valid(int value)
-    statement: return value >= 0;
+      name: isTracked
+      signature: boolean isTracked(int index)
+    statement: return index >= 0 && index < codes.size();
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -155,7 +152,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return value > 0;
+      - return index > 0 && index < codes.size();
 checks:
 - type: git_history_contains
   commits:
