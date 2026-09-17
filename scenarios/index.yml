@@ -277,7 +277,9 @@ scenarios:
   - single-bfc
   - line-modification
   - whitespace-preserved-after-bic
-  difficulty: medium
+  - blame-reaches-bic
+  - matched-control
+  difficulty: easy
   status: active
   path: scenarios/SZZ-0084/scenario.yml
 - id: SZZ-0085
@@ -290,7 +292,8 @@ scenarios:
   - single-bfc
   - line-modification
   - comment-insertion-after-bic
-  difficulty: medium
+  - blame-reaches-bic
+  difficulty: easy
   status: active
   path: scenarios/SZZ-0085/scenario.yml
 - id: SZZ-0086
@@ -303,7 +306,8 @@ scenarios:
   - single-bfc
   - line-modification
   - logging-insertion-after-bic
-  difficulty: medium
+  - blame-reaches-bic
+  difficulty: easy
   status: active
   path: scenarios/SZZ-0086/scenario.yml
 - id: SZZ-0087
@@ -316,7 +320,8 @@ scenarios:
   - single-bfc
   - line-modification
   - unrelated-method-after-bic
-  difficulty: medium
+  - blame-reaches-bic
+  difficulty: easy
   status: active
   path: scenarios/SZZ-0087/scenario.yml
 - id: SZZ-0088
@@ -329,7 +334,8 @@ scenarios:
   - single-bfc
   - line-modification
   - class-body-reformat-after-bic
-  difficulty: medium
+  - blame-reaches-bic
+  difficulty: easy
   status: active
   path: scenarios/SZZ-0088/scenario.yml
 - id: SZZ-0089
@@ -342,7 +348,9 @@ scenarios:
   - single-bfc
   - line-modification
   - import-addition-after-bic
-  difficulty: medium
+  - line-number-shift
+  - blame-reaches-bic
+  difficulty: easy
   status: active
   path: scenarios/SZZ-0089/scenario.yml
 - id: SZZ-0090
@@ -355,7 +363,9 @@ scenarios:
   - single-bfc
   - line-modification
   - guard-clause-after-bic
-  difficulty: medium
+  - redundant-guard
+  - blame-reaches-bic
+  difficulty: easy
   status: active
   path: scenarios/SZZ-0090/scenario.yml
 - id: SZZ-0091
@@ -368,7 +378,9 @@ scenarios:
   - single-bfc
   - line-modification
   - dead-code-removal-after-bic
-  difficulty: medium
+  - deletion-only-intermediate
+  - blame-reaches-bic
+  difficulty: easy
   status: active
   path: scenarios/SZZ-0091/scenario.yml
 - id: SZZ-0092
@@ -381,7 +393,8 @@ scenarios:
   - single-bfc
   - line-modification
   - loop-rewrite-after-bic
-  difficulty: medium
+  - basic-blame-distractor
+  difficulty: hard
   status: active
   path: scenarios/SZZ-0092/scenario.yml
 - id: SZZ-0093
@@ -394,7 +407,8 @@ scenarios:
   - single-bfc
   - line-modification
   - guard-clause-after-bic
-  difficulty: medium
+  - plain-blame-control
+  difficulty: easy
   status: active
   path: scenarios/SZZ-0093/scenario.yml
 - id: SZZ-0094
@@ -407,7 +421,8 @@ scenarios:
   - single-bfc
   - line-modification
   - annotation-after-bic
-  difficulty: medium
+  - plain-blame-control
+  difficulty: easy
   status: active
   path: scenarios/SZZ-0094/scenario.yml
 - id: SZZ-0095
@@ -420,7 +435,8 @@ scenarios:
   - single-bfc
   - line-modification
   - generic-type-after-bic
-  difficulty: medium
+  - plain-blame-control
+  difficulty: easy
   status: active
   path: scenarios/SZZ-0095/scenario.yml
 - id: SZZ-0096
@@ -433,7 +449,8 @@ scenarios:
   - single-bfc
   - line-modification
   - lambda-rewrite-after-bic
-  difficulty: medium
+  - basic-blame-distractor
+  difficulty: hard
   status: active
   path: scenarios/SZZ-0096/scenario.yml
 - id: SZZ-0098
@@ -446,7 +463,8 @@ scenarios:
   - single-bfc
   - line-modification
   - enum-change-after-bic
-  difficulty: medium
+  - plain-blame-control
+  difficulty: easy
   status: active
   path: scenarios/SZZ-0098/scenario.yml
 - id: SZZ-0099
@@ -459,7 +477,8 @@ scenarios:
   - single-bfc
   - line-modification
   - synchronized-after-bic
-  difficulty: medium
+  - plain-blame-control
+  difficulty: easy
   status: active
   path: scenarios/SZZ-0099/scenario.yml
 - id: SZZ-0100
@@ -472,7 +491,8 @@ scenarios:
   - single-bfc
   - line-modification
   - try-block-after-bic
-  difficulty: medium
+  - basic-blame-distractor
+  difficulty: hard
   status: active
   path: scenarios/SZZ-0100/scenario.yml
 - id: SZZ-0101
@@ -485,7 +505,7 @@ scenarios:
   - single-bfc
   - line-modification
   - throws-after-bic
-  difficulty: medium
+  difficulty: easy
   status: active
   path: scenarios/SZZ-0101/scenario.yml
 - id: SZZ-0102
@@ -498,7 +518,7 @@ scenarios:
   - single-bfc
   - line-modification
   - import-reorder-after-bic
-  difficulty: medium
+  difficulty: easy
   status: active
   path: scenarios/SZZ-0102/scenario.yml
 - id: SZZ-0103
@@ -524,7 +544,7 @@ scenarios:
   - single-bfc
   - line-modification
   - method-order-change-after-bic
-  difficulty: medium
+  difficulty: easy
   status: active
   path: scenarios/SZZ-0104/scenario.yml
 - id: SZZ-0105
@@ -537,7 +557,7 @@ scenarios:
   - single-bfc
   - line-modification
   - dead-code-after-bic
-  difficulty: medium
+  difficulty: easy
   status: active
   path: scenarios/SZZ-0105/scenario.yml
 - id: SZZ-0107
@@ -551,7 +571,7 @@ scenarios:
   - line-modification
   - large-bic
   - tangled-bic
-  difficulty: medium
+  difficulty: easy
   status: active
   path: scenarios/SZZ-0107/scenario.yml
 - id: SZZ-0108
@@ -565,7 +585,8 @@ scenarios:
   - line-modification
   - robustness
   - line-ending-noise
-  difficulty: medium
+  - full-file-rewrite
+  difficulty: hard
   status: active
   path: scenarios/SZZ-0108/scenario.yml
 - id: SZZ-0109
@@ -579,7 +600,7 @@ scenarios:
   - line-modification
   - robustness
   - comment-only-intermediate
-  difficulty: medium
+  difficulty: easy
   status: active
   path: scenarios/SZZ-0109/scenario.yml
 - id: SZZ-0110
@@ -593,7 +614,7 @@ scenarios:
   - line-modification
   - robustness
   - large-noisy-intermediate
-  difficulty: medium
+  difficulty: easy
   status: active
   path: scenarios/SZZ-0110/scenario.yml
 - id: SZZ-0111
@@ -678,6 +699,7 @@ scenarios:
   - single-bfc
   - line-modification
   - multiple-hunk-bfc
+  - same-origin-hunks
   difficulty: medium
   status: active
   path: scenarios/SZZ-0116/scenario.yml
@@ -769,7 +791,9 @@ scenarios:
   - single-bic
   - single-bfc
   - line-modification
-  - multiple-line-bfc
+  - single-line-bfc
+  - two-faulty-expressions
+  - statement-granularity
   difficulty: medium
   status: active
   path: scenarios/SZZ-0123/scenario.yml
@@ -783,7 +807,8 @@ scenarios:
   - single-bfc
   - line-modification
   - variable-rename-after-bic
-  difficulty: medium
+  - basic-blame-distractor
+  difficulty: hard
   status: active
   path: scenarios/SZZ-0124/scenario.yml
 - id: SZZ-0125
@@ -796,7 +821,8 @@ scenarios:
   - single-bfc
   - line-modification
   - method-rename-after-bic
-  difficulty: medium
+  - matched-control
+  difficulty: easy
   status: active
   path: scenarios/SZZ-0125/scenario.yml
 - id: SZZ-0127
@@ -809,7 +835,8 @@ scenarios:
   - single-bfc
   - line-modification
   - method-signature-change-after-bic
-  difficulty: medium
+  - basic-blame-distractor
+  difficulty: hard
   status: active
   path: scenarios/SZZ-0127/scenario.yml
 - id: SZZ-0128
@@ -822,7 +849,8 @@ scenarios:
   - single-bfc
   - line-modification
   - extract-method-after-bic
-  difficulty: medium
+  - basic-blame-distractor
+  difficulty: hard
   status: active
   path: scenarios/SZZ-0128/scenario.yml
 - id: SZZ-0129
@@ -848,7 +876,8 @@ scenarios:
   - single-bfc
   - line-modification
   - field-extraction-after-bic
-  difficulty: medium
+  - basic-blame-distractor
+  difficulty: hard
   status: active
   path: scenarios/SZZ-0130/scenario.yml
 - id: SZZ-0132
