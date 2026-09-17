@@ -72,7 +72,8 @@ Status: **proposal for maintainer decision** (2026-09-17). The mechanical defect
 | canonical | today (scenarios) |
 |---|---|
 | `complete_fix` | `complete_fix`; `main_fix` (SZZG-0049, 0050, 0054); `merge_fix` (SZZG-0042, 0046); `final_fix` (SZZG-0085); `complete_fix_upper_bound` (SZZG-0032); `follow_up_fix` (SZZG-0030 c3); `cherry_picked_release_fix` (SZZG-0049 r2) and `backport_fix` (SZZG-0050 r2) — the replay is recorded by `cherry_pick_of`/`backport_of`, not by the role; `shared_bfc` (SZZG-0034 c3: one commit that completely fixes each of two bug entries) |
-| `partial_fix` | `partial_fix`; `partial_fix_lower_bound` (SZZG-0032 c2); `symptom_fix` (SZZG-0035 c2 and c3: each removes one symptom of the same bug) |
+| `partial_fix` | `partial_fix`; `partial_fix_lower_bound` (SZZG-0032 c2) |
+| classified per bug entry | `symptom_fix` (SZZG-0035): the scenario declares **two** bug entries — B001 (`acceptImport`, single BFC c2) and B002 (`acceptSearch`, single BFC c3) — and each BFC completely restores its method's inclusive check, so both map to `complete_fix` with the symptom detail kept in `description`. Narrative roles like this are classified by the repair's scope *within its own bug entry*, never by an unconditional string mapping; a `symptom_fix` would be `partial_fix` only where the same bug entry lists another BFC that completes the repair |
 | `attempted_fix` | `attempted_fix` (SZZG-0030 c2; under D6 of the origin/direct contract it is also the direct BIC of the new `\|\|` fault) |
 
 Narrative detail ("main-line fix", "release fix", "upper bound") moves to the entry's `description`.
