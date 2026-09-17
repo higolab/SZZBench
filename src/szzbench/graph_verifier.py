@@ -89,6 +89,18 @@ def _verify_commits(repo_dir: Path, scenario: dict[str, Any], commit_map: dict[s
 def _verify_parents(repo_dir: Path, commit_spec: dict[str, Any], commit_map: dict[str, Any], actual_hash: str, result: ValidationResult, loc: str) -> None:
     expected_parent_ids = [p for p in commit_spec.get("parents", []) or [] if isinstance(p, str)]
     expected_parent_hashes = [commit_map[p]["hash"] for p in expected_parent_ids if p in commit_map and isinstance(commit_map[p], dict)]
+    # A commit that owns commit_generator operations sits on top of its
+    # generated commits: its first parent is the last generated commit, not the
+    # declared logical parent.  Later commits still point at the owner's own
+    # hash, so only the owner's expectation changes.
+    own_entry = commit_map.get(commit_spec.get("id"))
+    generated_ids = own_entry.get("generated_commits") if isinstance(own_entry, dict) else None
+    if isinstance(generated_ids, list) and generated_ids:
+        last_generated = commit_map.get(generated_ids[-1])
+        if isinstance(last_generated, dict) and isinstance(last_generated.get("hash"), str):
+            expected_parent_hashes = [last_generated["hash"], *expected_parent_hashes[1:]]
+        else:
+            result.error("GE629", f"Generated commit '{generated_ids[-1]}' is missing from commit-map.json.", loc)
     try:
         raw = run_git(repo_dir, ["rev-list", "--parents", "-n", "1", actual_hash]).stdout.strip()
     except GitError as exc:
