@@ -1297,3 +1297,18 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0187/scenario.yml
+- id: SZZ-0188
+  title: Fault in a multi-line statement whose lines come from different commits
+  slug: multi-line-statement-mixed-origin
+  category_code: S4
+  category: BFC-side noise and tangled commits
+  factors:
+  - single-bic
+  - single-bfc
+  - line-addition-bic
+  - multi-line-statement
+  - statement-granularity
+  - operator-precedence
+  difficulty: medium
+  status: active
+  path: scenarios/SZZ-0188/scenario.yml

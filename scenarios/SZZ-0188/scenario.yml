@@ -1,0 +1,204 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0188"
+  title: "Fault in a multi-line statement whose lines come from different commits"
+  slug: "multi-line-statement-mixed-origin"
+  description: >
+    A multi-line boolean return statement written by the initial commit is
+    extended by the BIC with one additional line (`|| request.isInternal()`),
+    which changes the meaning of the whole expression because of operator
+    precedence. The fix adds parentheses and therefore touches one line from
+    the initial commit and one line from the BIC. Line-level blame yields two
+    candidates; statement-level reasoning has to decide which of the two
+    edits to the same statement introduced the fault.
+  category: "BFC-side noise and tangled commits"
+  factors:
+    - "single-bic"
+    - "single-bfc"
+    - "line-addition-bic"
+    - "multi-line-statement"
+    - "statement-granularity"
+    - "operator-precedence"
+  difficulty: "medium"
+  status: "active"
+  category_code: "S4"
+
+repository:
+  name: "SZZ-0188-multi-line-statement-mixed-origin"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Add role-based access policy for the editor API"
+    author: "Mei Tanaka <mei.tanaka@example.com>"
+    date: "2023-10-02T09:05:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/com/example/access/Request.java"
+        content: |
+          package com.example.access;
+
+          import java.util.Set;
+
+          public class Request {
+              private final String userId;
+              private final Set<String> roles;
+              private final boolean internal;
+              private final boolean suspended;
+
+              public Request(String userId, Set<String> roles, boolean internal, boolean suspended) {
+                  this.userId = userId;
+                  this.roles = roles;
+                  this.internal = internal;
+                  this.suspended = suspended;
+              }
+
+              public boolean isAuthenticated() {
+                  return userId != null && !userId.isEmpty();
+              }
+
+              public boolean hasRole(String role) {
+                  return roles.contains(role);
+              }
+
+              public boolean isInternal() {
+                  return internal;
+              }
+
+              public boolean isSuspended() {
+                  return suspended;
+              }
+          }
+      - type: "write_file"
+        path: "src/main/java/com/example/access/AccessPolicy.java"
+        content: |
+          package com.example.access;
+
+          public class AccessPolicy {
+              private final String requiredRole;
+
+              public AccessPolicy(String requiredRole) {
+                  this.requiredRole = requiredRole;
+              }
+
+              public boolean isAllowed(Request request) {
+                  return request.isAuthenticated()
+                          && request.hasRole(requiredRole)
+                          && !request.isSuspended();
+              }
+
+              public String denialReason(Request request) {
+                  if (!request.isAuthenticated()) {
+                      return "not authenticated";
+                  }
+                  if (request.isSuspended()) {
+                      return "account suspended";
+                  }
+                  return "missing role " + requiredRole;
+              }
+          }
+
+  - id: "c1"
+    message: "Let internal service requests bypass the role check"
+    author: "Aiko Mori <aiko.mori@example.com>"
+    date: "2023-10-05T14:30:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/access/AccessPolicy.java"
+        old: |2
+                          && request.hasRole(requiredRole)
+                          && !request.isSuspended();
+        new: |2
+                          && request.hasRole(requiredRole)
+                          || request.isInternal()
+                          && !request.isSuspended();
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Expose the user id on requests for audit logging"
+    author: "Jonas Berg <jonas.berg@example.com>"
+    date: "2023-10-11T10:00:00Z"
+    role: "feature_addition"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/access/Request.java"
+        old: |2
+              public boolean isAuthenticated() {
+        new: |2
+              public String getUserId() {
+                  return userId;
+              }
+
+              public boolean isAuthenticated() {
+        labels: ["non_bug_introducing_change"]
+
+  - id: "c3"
+    message: "Require authentication for internal requests as well"
+    author: "Mei Tanaka <mei.tanaka@example.com>"
+    date: "2023-10-17T16:40:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/access/AccessPolicy.java"
+        old: |2
+                          && request.hasRole(requiredRole)
+                          || request.isInternal()
+                          && !request.isSuspended();
+        new: |2
+                          && (request.hasRole(requiredRole)
+                          || request.isInternal())
+                          && !request.isSuspended();
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "Unauthenticated internal requests are allowed because of operator precedence"
+    bug_fixing_commit: "c3"
+    bug_introducing_commits: ["c1"]
+    fault:
+      commit: "c1"
+      file: "src/main/java/com/example/access/AccessPolicy.java"
+      entity:
+        type: "method"
+        name: "isAllowed"
+        signature: "boolean isAllowed(Request request)"
+      statement: "|| request.isInternal()"
+      change_type: "line_addition"
+      description: >
+        The added line turns `auth && role && !suspended` into
+        `(auth && role) || (internal && !suspended)`, so an unauthenticated
+        internal request passes. The fault belongs to the whole statement,
+        but only this line was added by the BIC.
+    fix:
+      commit: "c3"
+      file: "src/main/java/com/example/access/AccessPolicy.java"
+      entity:
+        type: "method"
+        name: "isAllowed"
+        signature: "boolean isAllowed(Request request)"
+      statement: "|| request.isInternal())"
+      fix_type: "line_modification"
+      description: "The BFC adds parentheses, changing the c0 line `&& request.hasRole(requiredRole)` and the c1 line `|| request.isInternal()`."
+    expected_szz:
+      commit_level:
+        true_positives: ["c1"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "|| request.isInternal()"
+        note: >
+          Blame on the BFC's two deleted lines returns c0 (the hasRole line)
+          and c1 (the isInternal line). At statement granularity the whole
+          return statement is the fault location; its lines originate from
+          c0 and c1, and only c1 changed the statement's semantics.
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3"]
