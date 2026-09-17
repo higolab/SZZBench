@@ -1240,3 +1240,45 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0183/scenario.yml
+- id: SZZ-0184
+  title: BFC also modifies existing test lines owned by another commit
+  slug: bfc-modifies-test-lines
+  category_code: S4
+  category: BFC-side noise and tangled commits
+  factors:
+  - single-bic
+  - single-bfc
+  - line-modification
+  - test-line-noise
+  - multi-file-bfc
+  difficulty: medium
+  status: active
+  path: scenarios/SZZ-0184/scenario.yml
+- id: SZZ-0185
+  title: BFC deletes comment and blank lines of a distractor together with the faulty line
+  slug: bfc-deletes-cosmetic-lines-with-fault
+  category_code: S4
+  category: BFC-side noise and tangled commits
+  factors:
+  - single-bic
+  - single-bfc
+  - line-modification
+  - cosmetic-line-noise
+  difficulty: medium
+  status: active
+  path: scenarios/SZZ-0185/scenario.yml
+- id: SZZ-0186
+  title: Multi-hunk BFC whose hunks blame different commits
+  slug: mixed-origin-hunks-bfc
+  category_code: S4
+  category: BFC-side noise and tangled commits
+  factors:
+  - single-bic
+  - single-bfc
+  - line-modification
+  - mixed-origin-hunks
+  - multiple-hunk-bfc
+  - tangled-bfc
+  difficulty: medium
+  status: active
+  path: scenarios/SZZ-0186/scenario.yml

@@ -1,0 +1,164 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0185"
+  title: "BFC deletes comment and blank lines of a distractor together with the faulty line"
+  slug: "bfc-deletes-cosmetic-lines-with-fault"
+  description: >
+    A distractor commit inserts a blank line and an explanatory comment
+    directly above the faulty statement. The bug-fixing commit replaces the
+    faulty statement and removes the blank and comment lines in the same
+    hunk. Plain blame on the deleted lines returns the BIC and the distractor;
+    tools that ignore blank and comment-only lines (MA-SZZ/RA-SZZ style)
+    obtain the exact BIC set.
+  category: "BFC-side noise and tangled commits"
+  factors:
+    - "single-bic"
+    - "single-bfc"
+    - "line-modification"
+    - "cosmetic-line-noise"
+  difficulty: "medium"
+  status: "active"
+  category_code: "S4"
+
+repository:
+  name: "SZZ-0185-bfc-deletes-cosmetic-lines-with-fault"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Add exponential backoff for job retries"
+    author: "Priya Raman <priya.raman@example.com>"
+    date: "2024-08-05T09:30:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/com/example/jobs/RetryBackoff.java"
+        content: |
+          package com.example.jobs;
+
+          public class RetryBackoff {
+              private final long baseDelayMillis;
+              private final long maxDelayMillis;
+              private final int maxAttempts;
+
+              public RetryBackoff(long baseDelayMillis, long maxDelayMillis, int maxAttempts) {
+                  this.baseDelayMillis = baseDelayMillis;
+                  this.maxDelayMillis = maxDelayMillis;
+                  this.maxAttempts = maxAttempts;
+              }
+
+              public boolean canRetry(int attempt) {
+                  return attempt < maxAttempts;
+              }
+
+              public long delayMillis(int attempt) {
+                  if (attempt <= 0) {
+                      return 0;
+                  }
+                  long delay = baseDelayMillis * (1L << (attempt - 1));
+                  return delay;
+              }
+
+              public long totalDelayMillis() {
+                  long total = 0;
+                  for (int attempt = 1; attempt < maxAttempts; attempt++) {
+                      total += delayMillis(attempt);
+                  }
+                  return total;
+              }
+          }
+
+  - id: "c1"
+    message: "Cap the retry delay at the configured maximum"
+    author: "Priya Raman <priya.raman@example.com>"
+    date: "2024-08-08T11:15:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/jobs/RetryBackoff.java"
+        old: |2
+                  long delay = baseDelayMillis * (1L << (attempt - 1));
+                  return delay;
+        new: |2
+                  long delay = baseDelayMillis * (1L << (attempt - 1));
+                  return Math.max(maxDelayMillis, delay);
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Document why the retry delay is capped"
+    author: "Diego Alvarez <diego.alvarez@example.com>"
+    date: "2024-08-14T15:40:00Z"
+    role: "distractor"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/jobs/RetryBackoff.java"
+        old: |2
+                  long delay = baseDelayMillis * (1L << (attempt - 1));
+                  return Math.max(maxDelayMillis, delay);
+        new: |2
+                  long delay = baseDelayMillis * (1L << (attempt - 1));
+
+                  // The cap keeps a long outage from stalling the worker for hours.
+                  return Math.max(maxDelayMillis, delay);
+        labels: ["non_bug_introducing_change"]
+
+  - id: "c3"
+    message: "Use the configured maximum as an upper bound for retry delays"
+    author: "Mei Tanaka <mei.tanaka@example.com>"
+    date: "2024-08-21T10:05:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/jobs/RetryBackoff.java"
+        old: |2
+                  long delay = baseDelayMillis * (1L << (attempt - 1));
+
+                  // The cap keeps a long outage from stalling the worker for hours.
+                  return Math.max(maxDelayMillis, delay);
+        new: |2
+                  long delay = baseDelayMillis * (1L << (attempt - 1));
+                  return Math.min(maxDelayMillis, delay);
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "Retry delay is never shorter than the maximum because min and max are swapped"
+    bug_fixing_commit: "c3"
+    bug_introducing_commits: ["c1"]
+    fault:
+      commit: "c1"
+      file: "src/main/java/com/example/jobs/RetryBackoff.java"
+      entity:
+        type: "method"
+        name: "delayMillis"
+        signature: "long delayMillis(int attempt)"
+      statement: "return Math.max(maxDelayMillis, delay);"
+      change_type: "line_modification"
+    fix:
+      commit: "c3"
+      file: "src/main/java/com/example/jobs/RetryBackoff.java"
+      entity:
+        type: "method"
+        name: "delayMillis"
+        signature: "long delayMillis(int attempt)"
+      statement: "return Math.min(maxDelayMillis, delay);"
+      fix_type: "line_modification"
+      description: "The BFC also deletes the blank line and the comment line that c2 inserted above the faulty statement."
+    expected_szz:
+      commit_level:
+        true_positives: ["c1"]
+        known_distractors: ["c2"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "return Math.max(maxDelayMillis, delay);"
+        note: "Blame on the BFC's three deleted lines returns c2 (blank line), c2 (comment line) and c1 (faulty statement)."
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3"]
