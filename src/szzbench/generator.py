@@ -6,7 +6,7 @@ import shutil
 from datetime import datetime, timezone
 
 from .findings import ValidationResult
-from .gitutils import GitError, commit_all, init_repo
+from .gitutils import GitError, commit_all, init_repo, json_safe_timestamp, resolve_commit_metadata
 from .operations import OperationError, apply_operation_to_filesystem
 from .scenario import load_yaml
 from .validator import validate_scenario_file
@@ -40,17 +40,29 @@ def generate_repository(scenario_path: Path, out_dir: Path, *, force: bool = Fal
         branch = scenario.get("repository", {}).get("default_branch", "main")
         init_repo(repo_dir, branch)
         log(f"Initialized Git repository at {repo_dir}")
-        for commit_spec in scenario.get("commits", []):
+        for index, commit_spec in enumerate(scenario.get("commits", [])):
             cid = commit_spec["id"]
             log(f"Applying commit {cid}: {commit_spec.get('message', '')}")
             for op in commit_spec.get("operations", []):
                 apply_operation_to_filesystem(repo_dir, op)
-            actual_hash = commit_all(repo_dir, message=commit_spec["message"], author=commit_spec.get("author"), date=commit_spec.get("date"))
+            # Missing author/date values are filled deterministically (issue #9)
+            # so that generated metadata never depends on the generation time
+            # or on the commit role.  Explicit values are used verbatim.
+            metadata = resolve_commit_metadata(scenario, commit_spec, index)
+            actual_hash = commit_all(
+                repo_dir,
+                message=commit_spec["message"],
+                author=metadata.author,
+                author_date=metadata.author_date,
+                committer_date=metadata.committer_date,
+            )
             commit_map[cid] = {
                 "hash": actual_hash,
                 "message": commit_spec.get("message"),
-                "author": commit_spec.get("author"),
-                "date": commit_spec.get("date"),
+                "author": metadata.author,
+                "date": json_safe_timestamp(commit_spec.get("date")),
+                "author_date": metadata.author_date,
+                "committer_date": metadata.committer_date,
                 "role": commit_spec.get("role"),
             }
             log(f"Created commit {cid}: {actual_hash}")
