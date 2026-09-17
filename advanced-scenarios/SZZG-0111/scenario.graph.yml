@@ -18,58 +18,68 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial state (write_file scripts/run.sh; write_file src/main/java/example/Range.java)
-
-    c1: apply intermediate change (chmod scripts/run.sh)
-
-    c2: introduce bug (replace src/main/java/example/Range.java)
-
-    c3: fix bug (replace src/main/java/example/Range.java)'
+  history_summary: |
+    c0: add the range containment helper and the build script
+    c1: switch the containment check to exclusive bounds
+    c2: mode-only commit that marks the build script executable (between the BIC and the BFC)
+    c3: restore the inclusive bounds
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_file scripts/run.sh; write_file src/main/java/example/Range.java)'
+  message: 'Add the range containment helper and the build script'
   role: initial
   operations:
   - type: write_file
     path: scripts/run.sh
-    content: '#!/bin/sh
-
-      python -m example.Range
-
-      '
+    content: |
+      #!/bin/sh
+      set -e
+      mkdir -p build/classes
+      javac -d build/classes src/main/java/example/Range.java
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
+    content: |
+      package example;
+
+      public class Range {
+        public boolean contains(int value, int min, int max) {
+          return value >= min && value <= max;
+        }
+      }
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: apply intermediate change (chmod scripts/run.sh)'
-  role: intermediate
-  allow_empty: true
-  operations:
-  - type: chmod
-    path: scripts/run.sh
-    mode: '755'
-- id: c2
-  branch: main
-  parents:
-  - c1
-  message: 'c2: introduce bug (replace src/main/java/example/Range.java)'
+  message: 'Align contains() with the exclusive interval used by the scheduler'
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
     new: return value > min && value < max;
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'Mark scripts/run.sh executable so CI can call it directly'
+  role: intermediate
+  # The generated commit is NOT empty: the generator enables core.filemode for
+  # scenarios that use chmod, so Git records 'mode change 100644 => 100755'.
+  # allow_empty is kept only for the two environments in which the mode change
+  # cannot be recorded: the in-memory simulator of validate-graph --simulate,
+  # which still models chmod as a no-op, and file systems without an
+  # executable bit (most Windows setups).
+  allow_empty: true
+  operations:
+  - type: chmod
+    path: scripts/run.sh
+    mode: '755'
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'c3: fix bug (replace src/main/java/example/Range.java)'
+  message: 'Restore the inclusive bounds of Range.contains()'
   role: bug_fixing
   operations:
   - type: replace
@@ -78,16 +88,16 @@ commits:
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Range.contains() rejects the interval bounds
   bug_introducing_commits:
-  - commit: c2
+  - commit: c1
     role: direct
   bug_fixing_commits:
   - commit: c3
     role: complete_fix
   faults:
   - id: F001
-    commit: c2
+    commit: c1
     file: src/main/java/example/Range.java
     statement: return value > min && value < max;
     change_type: line_modification
@@ -101,16 +111,24 @@ expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - c2
+    - c1
 scenario_design:
-  purpose: Evaluate whether SZZ identifies the real BIC when a chmod-only commit appears in the intermediate history.
+  purpose: Evaluate whether SZZ identifies the real BIC when a mode-only commit sits between the BIC and the BFC.
+  key_property: The chmod commit c2 is the direct parent of the BFC c3. It is a real, non-empty commit (the repository is
+    generated with core.filemode enabled, so Git records 'mode change 100644 => 100755'), but its diff contains no content
+    line, so it can carry no blame.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
   required_extensions_from_source: 'This scenario uses factors: chmod; operations: write_file, chmod, replace.'
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
-  - Whether the chmod-only intermediate commit c1 is not reported as the BIC.
+  - Whether the mode-only commit c2 between the BIC and the BFC is not reported as the BIC.
+  - Whether a tool that reads diffs survives a commit whose only change is a file mode.
   - Whether the expected_szz evaluation policy is applied correctly.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.
+- "Measured on the generated repository: 'git show --stat --summary' of c2 prints 'mode change 100644 => 100755' for
+  scripts/run.sh, and git ls-tree shows 100644 before and 100755 after, so the commit is a real, non-empty commit."
+- c2 keeps allow_empty because validate-graph --simulate still models chmod as a no-op and because file systems without an
+  executable bit cannot record the mode change.
