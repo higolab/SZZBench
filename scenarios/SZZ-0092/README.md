@@ -44,10 +44,10 @@ library call plus conditional), or searching the history for the comparison
 - Behaviour probe over 26 fixed attachment names (empty, `"."`, `".."`, `"..."`,
   `".bashrc"`, `"notes"`, `"notes."`, `"report.txt"`, `"archive.tar.gz"`,
   `"a.b.c"`, non-ASCII, …) plus a 300-character name with the single dot placed
-  at every position 0…299: the `c1` snapshot differs from `c0` for every name
-  whose only dot is at position 0 (4 of the fixed inputs and position 0 of the
-  generated family), and the `c3` snapshot agrees with `c0` on all 326 probe
-  outputs.
+  at every position 0…299: the `c1` snapshot differs from `c0` for exactly the
+  four names whose only dot is at position 0 and is followed by something
+  (`".bashrc"`, `".a"`, `".ab"` and the generated name with the dot at position
+  0), and the `c3` snapshot agrees with `c0` on all 326 probe outputs.
 
 ## Factors
 
