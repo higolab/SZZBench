@@ -1,0 +1,394 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0180"
+  title: "BIC is a large initial import"
+  slug: "initial-import-bic"
+  description: >
+    The fault is part of a large initial import (nine Java files, 232
+    lines) that brings a whole inventory module into the repository. Two
+    small unrelated commits follow, and the BFC changes one line. Plain blame
+    reaches the import commit exactly, but SZZ variants that discard large
+    commits, initial commits, or commits touching many files (MA-SZZ- and
+    RA-SZZ-style filters) drop the only correct answer.
+  category: "Intermediate noise and history noise"
+  factors:
+    - "single-bic"
+    - "single-bfc"
+    - "line-modification"
+    - "initial-import-bic"
+    - "large-bic"
+  difficulty: "easy"
+  status: "active"
+  category_code: "S3"
+
+repository:
+  name: "SZZ-0180-initial-import-bic"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Import the inventory module from the warehouse prototype"
+    author: "Diego Alvarez <diego.alvarez@example.com>"
+    date: "2023-11-06T08:30:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/com/example/inventory/Sku.java"
+        content: |
+          package com.example.inventory;
+
+          public final class Sku {
+              private final String code;
+              private final String name;
+
+              public Sku(String code, String name) {
+                  this.code = code;
+                  this.name = name;
+              }
+
+              public String getCode() {
+                  return code;
+              }
+
+              public String getName() {
+                  return name;
+              }
+
+              @Override
+              public boolean equals(Object other) {
+                  if (!(other instanceof Sku)) {
+                      return false;
+                  }
+                  return code.equals(((Sku) other).code);
+              }
+
+              @Override
+              public int hashCode() {
+                  return code.hashCode();
+              }
+          }
+      - type: "write_file"
+        path: "src/main/java/com/example/inventory/StockLevel.java"
+        content: |
+          package com.example.inventory;
+
+          public class StockLevel {
+              private int onHand;
+              private int reserved;
+
+              public StockLevel(int onHand, int reserved) {
+                  this.onHand = onHand;
+                  this.reserved = reserved;
+              }
+
+              public int getOnHand() {
+                  return onHand;
+              }
+
+              public int getReserved() {
+                  return reserved;
+              }
+
+              public int available() {
+                  return onHand - reserved;
+              }
+
+              void adjustOnHand(int delta) {
+                  onHand += delta;
+              }
+
+              void adjustReserved(int delta) {
+                  reserved += delta;
+              }
+          }
+      - type: "write_file"
+        path: "src/main/java/com/example/inventory/MovementType.java"
+        content: |
+          package com.example.inventory;
+
+          public enum MovementType {
+              RECEIPT,
+              RESERVATION,
+              RELEASE,
+              SHIPMENT
+          }
+      - type: "write_file"
+        path: "src/main/java/com/example/inventory/StockMovement.java"
+        content: |
+          package com.example.inventory;
+
+          public class StockMovement {
+              private final Sku sku;
+              private final MovementType type;
+              private final int quantity;
+              private final String reference;
+
+              public StockMovement(Sku sku, MovementType type, int quantity, String reference) {
+                  this.sku = sku;
+                  this.type = type;
+                  this.quantity = quantity;
+                  this.reference = reference;
+              }
+
+              public Sku getSku() {
+                  return sku;
+              }
+
+              public MovementType getType() {
+                  return type;
+              }
+
+              public int getQuantity() {
+                  return quantity;
+              }
+
+              public String getReference() {
+                  return reference;
+              }
+          }
+      - type: "write_file"
+        path: "src/main/java/com/example/inventory/Warehouse.java"
+        content: |
+          package com.example.inventory;
+
+          import java.util.ArrayList;
+          import java.util.HashMap;
+          import java.util.List;
+          import java.util.Map;
+
+          public class Warehouse {
+              private final String code;
+              private final Map<Sku, StockLevel> levels = new HashMap<>();
+              private final List<StockMovement> journal = new ArrayList<>();
+
+              public Warehouse(String code) {
+                  this.code = code;
+              }
+
+              public String getCode() {
+                  return code;
+              }
+
+              public StockLevel levelFor(Sku sku) {
+                  StockLevel level = levels.get(sku);
+                  if (level == null) {
+                      level = new StockLevel(0, 0);
+                      levels.put(sku, level);
+                  }
+                  return level;
+              }
+
+              public void record(StockMovement movement) {
+                  journal.add(movement);
+              }
+
+              public List<StockMovement> journal() {
+                  return new ArrayList<>(journal);
+              }
+
+              public Iterable<Sku> skus() {
+                  return levels.keySet();
+              }
+          }
+      - type: "write_file"
+        path: "src/main/java/com/example/inventory/ReorderPolicy.java"
+        content: |
+          package com.example.inventory;
+
+          public class ReorderPolicy {
+              private final int threshold;
+              private final int targetLevel;
+
+              public ReorderPolicy(int threshold, int targetLevel) {
+                  this.threshold = threshold;
+                  this.targetLevel = targetLevel;
+              }
+
+              public boolean needsReorder(StockLevel level) {
+                  return level.available() <= threshold;
+              }
+
+              public int reorderQuantity(StockLevel level) {
+                  int shortfall = targetLevel - level.available();
+                  return Math.max(shortfall, 0);
+              }
+          }
+      - type: "write_file"
+        path: "src/main/java/com/example/inventory/InventoryException.java"
+        content: |
+          package com.example.inventory;
+
+          public class InventoryException extends RuntimeException {
+              public InventoryException(String message) {
+                  super(message);
+              }
+          }
+      - type: "write_file"
+        path: "src/main/java/com/example/inventory/InventoryService.java"
+        content: |
+          package com.example.inventory;
+
+          public class InventoryService {
+              private final Warehouse warehouse;
+
+              public InventoryService(Warehouse warehouse) {
+                  this.warehouse = warehouse;
+              }
+
+              public void receive(Sku sku, int quantity, String reference) {
+                  StockLevel level = warehouse.levelFor(sku);
+                  level.adjustOnHand(quantity);
+                  warehouse.record(new StockMovement(sku, MovementType.RECEIPT, quantity, reference));
+              }
+
+              public void reserve(Sku sku, int quantity, String orderId) {
+                  StockLevel level = warehouse.levelFor(sku);
+                  if (quantity > level.getOnHand()) {
+                      throw new InventoryException("not enough stock of " + sku.getCode() + " for " + orderId);
+                  }
+                  level.adjustReserved(quantity);
+                  warehouse.record(new StockMovement(sku, MovementType.RESERVATION, quantity, orderId));
+              }
+
+              public void release(Sku sku, int quantity, String orderId) {
+                  StockLevel level = warehouse.levelFor(sku);
+                  level.adjustReserved(-quantity);
+                  warehouse.record(new StockMovement(sku, MovementType.RELEASE, quantity, orderId));
+              }
+
+              public void ship(Sku sku, int quantity, String orderId) {
+                  StockLevel level = warehouse.levelFor(sku);
+                  level.adjustReserved(-quantity);
+                  level.adjustOnHand(-quantity);
+                  warehouse.record(new StockMovement(sku, MovementType.SHIPMENT, quantity, orderId));
+              }
+          }
+      - type: "write_file"
+        path: "src/main/java/com/example/inventory/LowStockReport.java"
+        content: |
+          package com.example.inventory;
+
+          import java.util.ArrayList;
+          import java.util.List;
+
+          public class LowStockReport {
+              private final Warehouse warehouse;
+              private final ReorderPolicy policy;
+
+              public LowStockReport(Warehouse warehouse, ReorderPolicy policy) {
+                  this.warehouse = warehouse;
+                  this.policy = policy;
+              }
+
+              public List<String> lines() {
+                  List<String> lines = new ArrayList<>();
+                  for (Sku sku : warehouse.skus()) {
+                      StockLevel level = warehouse.levelFor(sku);
+                      if (policy.needsReorder(level)) {
+                          lines.add(sku.getCode() + ": reorder " + policy.reorderQuantity(level));
+                      }
+                  }
+                  return lines;
+              }
+          }
+        labels: ["B001", "fault"]
+
+  - id: "c1"
+    message: "Add a readable toString to Sku"
+    author: "Mei Tanaka <mei.tanaka@example.com>"
+    date: "2023-11-09T14:12:00Z"
+    role: "feature_addition"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/inventory/Sku.java"
+        old: |2
+              @Override
+              public int hashCode() {
+                  return code.hashCode();
+              }
+          }
+        new: |2
+              @Override
+              public int hashCode() {
+                  return code.hashCode();
+              }
+
+              @Override
+              public String toString() {
+                  return code + " (" + name + ")";
+              }
+          }
+        labels: ["non_bug_introducing_change"]
+
+  - id: "c2"
+    message: "Show the available quantity in low-stock report lines"
+    author: "Jonas Berg <jonas.berg@example.com>"
+    date: "2023-11-15T11:45:00Z"
+    role: "feature_addition"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/inventory/LowStockReport.java"
+        old: |2
+                          lines.add(sku.getCode() + ": reorder " + policy.reorderQuantity(level));
+        new: |2
+                          lines.add(sku.getCode() + ": available " + level.available() + ", reorder " + policy.reorderQuantity(level));
+        labels: ["non_bug_introducing_change"]
+
+  - id: "c3"
+    message: "Reserve against available stock instead of on-hand stock"
+    author: "Diego Alvarez <diego.alvarez@example.com>"
+    date: "2023-11-22T16:20:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/inventory/InventoryService.java"
+        old: |2
+                  if (quantity > level.getOnHand()) {
+        new: |2
+                  if (quantity > level.available()) {
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "Reservations ignore already reserved stock and oversell"
+    bug_fixing_commit: "c3"
+    bug_introducing_commits: ["c0"]
+    fault:
+      commit: "c0"
+      file: "src/main/java/com/example/inventory/InventoryService.java"
+      entity:
+        type: "method"
+        name: "reserve"
+        signature: "void reserve(Sku sku, int quantity, String orderId)"
+      statement: "if (quantity > level.getOnHand()) {"
+      change_type: "line_modification"
+      description: "The check compares against on-hand stock instead of available (on-hand minus reserved) stock, so a second order can reserve units that are already reserved."
+    fix:
+      commit: "c3"
+      file: "src/main/java/com/example/inventory/InventoryService.java"
+      entity:
+        type: "method"
+        name: "reserve"
+        signature: "void reserve(Sku sku, int quantity, String orderId)"
+      statement: "if (quantity > level.available()) {"
+      fix_type: "line_modification"
+    expected_szz:
+      commit_level:
+        true_positives: ["c0"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "if (quantity > level.getOnHand()) {"
+        note: >
+          Blame at c3^ returns c0 directly. The difficulty is not in blame but
+          in candidate filtering: c0 is the initial commit, touches nine files
+          and adds 232 lines.
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3"]

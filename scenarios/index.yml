@@ -1153,3 +1153,47 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0177/scenario.yml
+- id: SZZ-0178
+  title: Faulty line rewritten twice before the fix (depth-2 line history)
+  slug: deep-line-history-depth-2
+  category_code: S3
+  category: Intermediate noise and history noise
+  factors:
+  - single-bic
+  - single-bfc
+  - line-modification
+  - deep-line-history
+  - rewrite-depth-2
+  - basic-blame-distractor
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0178/scenario.yml
+- id: SZZ-0179
+  title: Last of two rewrites of a line is the BIC (control for depth-2 line history)
+  slug: deep-line-history-control-last-rewrite-is-bic
+  category_code: S3
+  category: Intermediate noise and history noise
+  factors:
+  - single-bic
+  - single-bfc
+  - line-modification
+  - deep-line-history
+  - matched-control
+  - last-rewrite-is-bic
+  difficulty: easy
+  status: active
+  path: scenarios/SZZ-0179/scenario.yml
+- id: SZZ-0180
+  title: BIC is a large initial import
+  slug: initial-import-bic
+  category_code: S3
+  category: Intermediate noise and history noise
+  factors:
+  - single-bic
+  - single-bfc
+  - line-modification
+  - initial-import-bic
+  - large-bic
+  difficulty: easy
+  status: active
+  path: scenarios/SZZ-0180/scenario.yml

@@ -1,0 +1,182 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0179"
+  title: "Last of two rewrites of a line is the BIC (control for depth-2 line history)"
+  slug: "deep-line-history-control-last-rewrite-is-bic"
+  description: >
+    Matched control for SZZ-0178. The history has the same shape: a commit
+    changes the shipping cost formula to grams, a rename rewrites the line,
+    and a "make precedence explicit" cleanup rewrites it again. Here the
+    formula was correct until the last rewrite, which silently drops the
+    round-up term. The oracle is the last rewrite, so a tool that always
+    follows the line history to its origin over-shoots.
+  category: "Intermediate noise and history noise"
+  factors:
+    - "single-bic"
+    - "single-bfc"
+    - "line-modification"
+    - "deep-line-history"
+    - "matched-control"
+    - "last-rewrite-is-bic"
+  difficulty: "easy"
+  status: "active"
+  category_code: "S3"
+
+repository:
+  name: "SZZ-0179-deep-line-history-control-last-rewrite-is-bic"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Add shipping cost calculation for the checkout page"
+    author: "Aiko Mori <aiko.mori@example.com>"
+    date: "2025-01-13T09:20:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/com/example/checkout/ShippingCostCalculator.java"
+        content: |
+          package com.example.checkout;
+
+          public class ShippingCostCalculator {
+              private static final long FREE_SHIPPING_THRESHOLD_CENTS = 5000;
+              private static final long BASE_RATE_CENTS = 499;
+              private static final long PER_KG_RATE_CENTS = 120;
+
+              private final long expressSurchargeCents;
+
+              public ShippingCostCalculator(long expressSurchargeCents) {
+                  this.expressSurchargeCents = expressSurchargeCents;
+              }
+
+              public long cost(long orderTotalCents, int weightKg, boolean express) {
+                  if (orderTotalCents >= FREE_SHIPPING_THRESHOLD_CENTS && !express) {
+                      return 0;
+                  }
+                  long total = BASE_RATE_CENTS + PER_KG_RATE_CENTS * weightKg;
+                  if (express) {
+                      total += expressSurchargeCents;
+                  }
+                  return total;
+              }
+
+              public boolean qualifiesForFreeShipping(long orderTotalCents) {
+                  return orderTotalCents >= FREE_SHIPPING_THRESHOLD_CENTS;
+              }
+          }
+
+  - id: "c1"
+    message: "Accept parcel weight in grams from the warehouse scale"
+    author: "Hana Sato <hana.sato@example.com>"
+    date: "2025-01-16T15:10:00Z"
+    role: "feature_addition"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/checkout/ShippingCostCalculator.java"
+        old: |2
+              public long cost(long orderTotalCents, int weightKg, boolean express) {
+        new: |2
+              public long cost(long orderTotalCents, int weightGrams, boolean express) {
+      - type: "replace"
+        path: "src/main/java/com/example/checkout/ShippingCostCalculator.java"
+        old: |2
+                  long total = BASE_RATE_CENTS + PER_KG_RATE_CENTS * weightKg;
+        new: |2
+                  long total = BASE_RATE_CENTS + PER_KG_RATE_CENTS * ((weightGrams + 999) / 1000);
+        labels: ["non_bug_introducing_change"]
+
+  - id: "c2"
+    message: "Rename the running total in cost() for clarity"
+    author: "Jonas Berg <jonas.berg@example.com>"
+    date: "2025-01-22T10:35:00Z"
+    role: "refactoring"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/checkout/ShippingCostCalculator.java"
+        old: |2
+                  long total = BASE_RATE_CENTS + PER_KG_RATE_CENTS * ((weightGrams + 999) / 1000);
+                  if (express) {
+                      total += expressSurchargeCents;
+                  }
+                  return total;
+        new: |2
+                  long amount = BASE_RATE_CENTS + PER_KG_RATE_CENTS * ((weightGrams + 999) / 1000);
+                  if (express) {
+                      amount += expressSurchargeCents;
+                  }
+                  return amount;
+        labels: ["non_bug_introducing_change"]
+
+  - id: "c3"
+    message: "Make operator precedence explicit in the shipping cost formula"
+    author: "Tom Becker <tom.becker@example.com>"
+    date: "2025-01-28T13:50:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/checkout/ShippingCostCalculator.java"
+        old: |2
+                  long amount = BASE_RATE_CENTS + PER_KG_RATE_CENTS * ((weightGrams + 999) / 1000);
+        new: |2
+                  long amount = BASE_RATE_CENTS + (PER_KG_RATE_CENTS * (weightGrams / 1000));
+        labels: ["B001", "fault"]
+
+  - id: "c4"
+    message: "Charge every started kilogram of parcel weight"
+    author: "Aiko Mori <aiko.mori@example.com>"
+    date: "2025-02-04T09:05:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/checkout/ShippingCostCalculator.java"
+        old: |2
+                  long amount = BASE_RATE_CENTS + (PER_KG_RATE_CENTS * (weightGrams / 1000));
+        new: |2
+                  long amount = BASE_RATE_CENTS + (PER_KG_RATE_CENTS * ((weightGrams + 999) / 1000));
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "Parcel weight is truncated to whole kilograms after the precedence cleanup"
+    bug_fixing_commit: "c4"
+    bug_introducing_commits: ["c3"]
+    fault:
+      commit: "c3"
+      file: "src/main/java/com/example/checkout/ShippingCostCalculator.java"
+      entity:
+        type: "method"
+        name: "cost"
+        signature: "long cost(long orderTotalCents, int weightGrams, boolean express)"
+      statement: "long amount = BASE_RATE_CENTS + (PER_KG_RATE_CENTS * (weightGrams / 1000));"
+      change_type: "line_modification"
+      description: "The cleanup that adds parentheses also drops the `+ 999` round-up term that c1 had introduced correctly."
+    fix:
+      commit: "c4"
+      file: "src/main/java/com/example/checkout/ShippingCostCalculator.java"
+      entity:
+        type: "method"
+        name: "cost"
+        signature: "long cost(long orderTotalCents, int weightGrams, boolean express)"
+      statement: "long amount = BASE_RATE_CENTS + (PER_KG_RATE_CENTS * ((weightGrams + 999) / 1000));"
+      fix_type: "line_modification"
+    expected_szz:
+      commit_level:
+        true_positives: ["c3"]
+        known_distractors: ["c1", "c2"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "long amount = BASE_RATE_CENTS + (PER_KG_RATE_CENTS * (weightGrams / 1000));"
+        note: >
+          Blame at c4^ returns c3, which is correct here. Following the line
+          history further back reaches c2 and c1, which are both correct
+          versions of the line and must not be reported.
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3", "c4"]
