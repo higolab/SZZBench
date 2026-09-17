@@ -3,13 +3,19 @@ meta:
   id: SZZ-0123
   title: BFC with two faulty expressions fixed
   slug: bfc-fixes-two-expressions
-  description: 'This scenario evaluates SZZ behavior when the bug-fixing commit has the shape: BFC with two faulty expressions fixed.'
+  description: >
+    The bug-introducing commit turns both bounds of an inclusive range check
+    into strict comparisons, and the bug-fixing commit repairs both faulty
+    expressions in the same line. The BFC therefore has a single hunk of one
+    deleted and one added line, but two faulty expressions.
   category: "BFC-side noise and tangled commits"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - multiple-line-bfc
+  - single-line-bfc
+  - two-faulty-expressions
+  - statement-granularity
   difficulty: medium
   status: active
   category_code: "S4"
@@ -21,7 +27,7 @@ repository:
   source_root: src/main/java
 commits:
 - id: c0
-  message: Initial correct implementation
+  message: Add an inclusive range check helper
   author: Alice <alice@example.com>
   date: '2024-01-01T10:00:00Z'
   role: initial
@@ -37,7 +43,7 @@ commits:
           }
       }
 - id: c1
-  message: Introduce bug
+  message: Treat the range bounds of contains() as exclusive
   author: Bob <bob@example.com>
   date: '2024-01-02T10:00:00Z'
   role: bug_introducing
@@ -64,7 +70,7 @@ commits:
     - B001
     - fault
 - id: c2
-  message: Fix bug
+  message: Make contains() inclusive again; both bounds were off by one
   author: Carol <carol@example.com>
   date: '2024-01-03T10:00:00Z'
   role: bug_fixing
@@ -122,6 +128,10 @@ bugs:
       available: true
       faulty_statements:
       - return value > min && value < max;
+      note: >
+        One deleted line carries two faulty expressions, `value > min` and
+        `value < max`. A line-level oracle sees one line; an
+        expression-level tool has to report both comparisons.
 checks:
 - type: git_history_contains
   commits:
