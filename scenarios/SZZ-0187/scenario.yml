@@ -1,0 +1,239 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0187"
+  title: "BFC touching three files with a single BIC"
+  slug: "three-file-bfc-single-bic"
+  description: >
+    The BIC changes the contract of DiscountPolicy.rate() from a percentage
+    to a fraction without updating its two callers, which keep computing with
+    percentages. The BFC renames the method to make the unit explicit and
+    rewrites both call sites, so it touches three files. Only the hunk in
+    DiscountPolicy blames the BIC; the caller hunks blame the initial commit.
+  category: "BFC-side noise and tangled commits"
+  factors:
+    - "single-bic"
+    - "single-bfc"
+    - "line-modification"
+    - "multi-file-bfc"
+    - "three-file-bfc"
+    - "caller-update-in-bfc"
+  difficulty: "medium"
+  status: "active"
+  category_code: "S4"
+
+repository:
+  name: "SZZ-0187-three-file-bfc-single-bic"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Add member discounts to checkout and quotes"
+    author: "Hana Sato <hana.sato@example.com>"
+    date: "2024-04-01T09:15:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/com/example/pricing/Customer.java"
+        content: |
+          package com.example.pricing;
+
+          public class Customer {
+              private final String id;
+              private final boolean member;
+
+              public Customer(String id, boolean member) {
+                  this.id = id;
+                  this.member = member;
+              }
+
+              public String getId() {
+                  return id;
+              }
+
+              public boolean isMember() {
+                  return member;
+              }
+          }
+      - type: "write_file"
+        path: "src/main/java/com/example/pricing/DiscountPolicy.java"
+        content: |
+          package com.example.pricing;
+
+          public class DiscountPolicy {
+              private final int memberPercent;
+
+              public DiscountPolicy(int memberPercent) {
+                  this.memberPercent = memberPercent;
+              }
+
+              public int rate(Customer customer) {
+                  if (customer.isMember()) {
+                      return memberPercent;
+                  }
+                  return 0;
+              }
+          }
+      - type: "write_file"
+        path: "src/main/java/com/example/pricing/CheckoutService.java"
+        content: |
+          package com.example.pricing;
+
+          public class CheckoutService {
+              private final DiscountPolicy policy;
+
+              public CheckoutService(DiscountPolicy policy) {
+                  this.policy = policy;
+              }
+
+              public long payableCents(long subtotalCents, Customer customer) {
+                  double rate = policy.rate(customer);
+                  return Math.round(subtotalCents * (100 - rate) / 100.0);
+              }
+          }
+      - type: "write_file"
+        path: "src/main/java/com/example/pricing/QuoteBuilder.java"
+        content: |
+          package com.example.pricing;
+
+          public class QuoteBuilder {
+              private final DiscountPolicy policy;
+
+              public QuoteBuilder(DiscountPolicy policy) {
+                  this.policy = policy;
+              }
+
+              public String line(String item, long priceCents, Customer customer) {
+                  double rate = policy.rate(customer);
+                  long discounted = Math.round(priceCents * (100 - rate) / 100.0);
+                  return item + ": " + discounted + " (" + customer.getId() + ")";
+              }
+          }
+
+  - id: "c1"
+    message: "Express the member discount as a fraction"
+    author: "Luca Moretti <luca.moretti@example.com>"
+    date: "2024-04-04T13:40:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/pricing/DiscountPolicy.java"
+        old: |2
+              private final int memberPercent;
+
+              public DiscountPolicy(int memberPercent) {
+                  this.memberPercent = memberPercent;
+              }
+
+              public int rate(Customer customer) {
+                  if (customer.isMember()) {
+                      return memberPercent;
+                  }
+                  return 0;
+              }
+        new: |2
+              private final double memberFraction;
+
+              public DiscountPolicy(double memberFraction) {
+                  this.memberFraction = memberFraction;
+              }
+
+              public double rate(Customer customer) {
+                  if (customer.isMember()) {
+                      return memberFraction;
+                  }
+                  return 0.0;
+              }
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Show the customer id in brackets in quote lines"
+    author: "Jonas Berg <jonas.berg@example.com>"
+    date: "2024-04-10T10:50:00Z"
+    role: "feature_addition"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/pricing/QuoteBuilder.java"
+        old: |2
+                  return item + ": " + discounted + " (" + customer.getId() + ")";
+        new: |2
+                  return item + ": " + discounted + " [" + customer.getId() + "]";
+        labels: ["non_bug_introducing_change"]
+
+  - id: "c3"
+    message: "Apply the member discount as a fraction at every call site"
+    author: "Hana Sato <hana.sato@example.com>"
+    date: "2024-04-17T15:25:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/pricing/DiscountPolicy.java"
+        old: |2
+              public double rate(Customer customer) {
+        new: |2
+              public double discountFraction(Customer customer) {
+        labels: ["B001", "fix"]
+      - type: "replace"
+        path: "src/main/java/com/example/pricing/CheckoutService.java"
+        old: |2
+                  double rate = policy.rate(customer);
+                  return Math.round(subtotalCents * (100 - rate) / 100.0);
+        new: |2
+                  double fraction = policy.discountFraction(customer);
+                  return Math.round(subtotalCents * (1 - fraction));
+        labels: ["B001", "fix"]
+      - type: "replace"
+        path: "src/main/java/com/example/pricing/QuoteBuilder.java"
+        old: |2
+                  double rate = policy.rate(customer);
+                  long discounted = Math.round(priceCents * (100 - rate) / 100.0);
+        new: |2
+                  double fraction = policy.discountFraction(customer);
+                  long discounted = Math.round(priceCents * (1 - fraction));
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "Member discount is almost ignored because callers treat the fraction as a percentage"
+    bug_fixing_commit: "c3"
+    bug_introducing_commits: ["c1"]
+    fault:
+      commit: "c1"
+      file: "src/main/java/com/example/pricing/DiscountPolicy.java"
+      entity:
+        type: "method"
+        name: "rate"
+        signature: "double rate(Customer customer)"
+      statement: "public double rate(Customer customer) {"
+      change_type: "line_modification"
+      description: "c1 changes rate() to return a fraction (0.10) while CheckoutService and QuoteBuilder still compute (100 - rate) / 100.0, so a 10 % discount becomes 0.1 %."
+    fix:
+      commit: "c3"
+      file: "src/main/java/com/example/pricing/DiscountPolicy.java"
+      entity:
+        type: "method"
+        name: "discountFraction"
+        signature: "double discountFraction(Customer customer)"
+      statement: "public double discountFraction(Customer customer) {"
+      fix_type: "line_modification"
+      description: "The BFC renames the method and rewrites both call sites (CheckoutService.java, QuoteBuilder.java); the caller lines were written by c0."
+    expected_szz:
+      commit_level:
+        true_positives: ["c1"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "public double rate(Customer customer) {"
+        note: >
+          Blame on the BFC's deleted lines returns c1 for DiscountPolicy.java
+          and c0 for the four caller lines in CheckoutService.java and
+          QuoteBuilder.java. c0 is not a BIC: its callers were correct for
+          the percentage contract that existed at the time.
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3"]

@@ -1282,3 +1282,18 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0186/scenario.yml
+- id: SZZ-0187
+  title: BFC touching three files with a single BIC
+  slug: three-file-bfc-single-bic
+  category_code: S4
+  category: BFC-side noise and tangled commits
+  factors:
+  - single-bic
+  - single-bfc
+  - line-modification
+  - multi-file-bfc
+  - three-file-bfc
+  - caller-update-in-bfc
+  difficulty: medium
+  status: active
+  path: scenarios/SZZ-0187/scenario.yml
