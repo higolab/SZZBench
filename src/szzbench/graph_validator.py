@@ -155,7 +155,14 @@ def validate_graph_static(data: dict[str, Any], *, scenario_path: Path | None = 
         bic_entries = graph_bic_entries(bug)
         bfc_entries = graph_bfc_entries(bug)
         if not bic_entries:
-            result.error("GE084", f"bug {bid} must define bug_introducing_commits.", f"{loc}.bug_introducing_commits")
+            if _declares_expect_no_bic(data.get("expected_szz")):
+                result.info(
+                    "GI086",
+                    f"bug {bid} declares no bug-introducing commits; accepted because expected_szz declares expect_no_bic.",
+                    f"{loc}.bug_introducing_commits",
+                )
+            else:
+                result.error("GE084", f"bug {bid} must define bug_introducing_commits.", f"{loc}.bug_introducing_commits")
         if not bfc_entries:
             result.error("GE085", f"bug {bid} must define bug_fixing_commits or bug_fixing_commit.", f"{loc}.bug_fixing_commits")
         for j, entry in enumerate(bic_entries):
@@ -235,6 +242,27 @@ def _validate_location_entry(entry: dict[str, Any], commit_by_id: dict[str, dict
         result.error("GE104", "Location entry requires a statement.", f"{loc}.statement")
     if "entity" in entry and not isinstance(entry.get("entity"), dict):
         result.error("GE105", "Location entity must be an object when present.", f"{loc}.entity")
+
+
+def _declares_expect_no_bic(expected: Any) -> bool:
+    """True when expected_szz.commit_level or any evaluation variant sets expect_no_bic: true.
+
+    Such a scenario intentionally has no bug-introducing commit in the repository
+    (an externally caused fault), so an empty bug_introducing_commits list is valid.
+    """
+    if not isinstance(expected, dict):
+        return False
+    commit_level = expected.get("commit_level")
+    if isinstance(commit_level, dict) and commit_level.get("expect_no_bic") is True:
+        return True
+    variants = expected.get("evaluation_variants")
+    if isinstance(variants, list):
+        for variant in variants:
+            if isinstance(variant, dict):
+                cl = variant.get("commit_level")
+                if isinstance(cl, dict) and cl.get("expect_no_bic") is True:
+                    return True
+    return False
 
 
 def _validate_expected_szz(expected: Any, commit_by_id: dict[str, dict[str, Any]], result: ValidationResult) -> None:

@@ -199,8 +199,8 @@ def _verify_basic_blame(repo_dir: Path, commit_map: dict[str, Any], bug: dict[st
         return
     expected_hashes = {
         commit_map[entry["commit"]]["hash"]
-        for entry in graph_bic_entries(bug)
-        if entry.get("commit") in commit_map and entry.get("role") in {"direct", "reintroducing", "contributing"}
+        for entry in graph_bic_entries(bug, roles={"direct", "reintroducing", "contributing"})
+        if entry.get("commit") in commit_map
     }
     if blamed_hash in expected_hashes:
         result.info("GI703", f"bug {bug_id}: basic git blame reaches an expected graph BIC.", loc)
