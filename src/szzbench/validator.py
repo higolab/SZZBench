@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from copy import deepcopy
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
+import difflib
+import re
 
 from .findings import ValidationResult
 from .operations import SUPPORTED_OPERATIONS, FUTURE_OPERATIONS, OperationError, apply_operation_to_memory, find_all_occurrences
@@ -14,17 +16,62 @@ ALLOWED_ROLES = {
     "formatting", "test_change", "merge", "revert", "cleanup", "feature_addition",
 }
 
-def validate_scenario_file(path: Path, *, simulate: bool = False) -> tuple[dict[str, Any] | None, ValidationResult, dict[str, dict[str, str]] | None]:
+# --- opt-in lint vocabulary (shared with graph_validator) -------------------
+
+# Schema keys and operation names that must not be used as scenario factors.
+RESERVED_FACTOR_WORDS = frozenset({
+    "expected_szz", "faults", "fixes", "fault", "fix", "bug_fixing_commits",
+    "bug_introducing_commits", "issues", "work_items", "clone_relationships",
+    "bug_instances", "evaluation_variants", "developer_hints", "allow_empty",
+    "commit_generators", "commit_generator", "write_file", "replace", "rename_file",
+    "move_file", "copy_file", "delete_file", "move_entity", "copy_entity",
+    "write_binary_file", "write_generated_text_file", "chmod", "insert_after",
+    "cherry_pick_of", "backport_of", "rebase_of", "edit", "drop",
+})
+
+# Explicit answer cues that disclose a commit's oracle role (issue #8).
+LEAK_ROLE_RE = re.compile(
+    r"introduc\w*\s+(\w+\s+){0,3}bug|bug[- ]introduc|\bBIC\b|\bBFC\b|distractor|"
+    r"intermediate change|initial state|\bnoise\b|\bunrelated\b|\breplay|reintroduc",
+    re.IGNORECASE,
+)
+LOGICAL_ID_PREFIX_RE = re.compile(r"^[a-z]{1,2}\d+:")
+# operation type -> field whose text is written into the repository
+LEAK_CONTENT_FIELDS = {"write_file": "content", "replace": "new", "insert_after": "content"}
+
+# Declared ghost classes (issue #7): checked only when a scenario opts in.
+ADD_ONLY_FIX_FACTORS = frozenset({"addition-only-fix", "ghost-fix", "add_only_fix"})
+DELETE_ONLY_BIC_FACTORS = frozenset({"deletion-only-bic", "line-deletion-bic"})
+ADD_ONLY_FIX_TYPES = frozenset({"line_addition", "file_creation"})
+
+# Factors that declare a legitimate rewrite of the fault line / a tangled BFC.
+FAULT_REWRITE_FACTOR_RE = re.compile(r"after-bic|rewrite|refactor|format|whitespace|rename|move|inline|extract")
+TANGLED_BFC_FACTOR_RE = re.compile(r"tangled|distractor|candidate")
+
+
+def validate_scenario_file(
+    path: Path,
+    *,
+    simulate: bool = False,
+    lint: bool = False,
+) -> tuple[dict[str, Any] | None, ValidationResult, dict[str, dict[str, str]] | None]:
+    """Validate a classic scenario.yml.
+
+    ``lint`` enables the opt-in W4xx lints; the snapshot-based lints need the
+    in-memory simulation, so ``lint`` implies ``simulate``.
+    """
     data, result = load_yaml(path)
     if data is None:
         return None, result, None
     result.extend(validate_static(data, scenario_path=path))
     snapshots = None
-    if simulate and not result.has_errors():
+    if (simulate or lint) and not result.has_errors():
         snapshots, sim_result = simulate_commits(data)
         result.extend(sim_result)
         if snapshots is not None and not sim_result.has_errors():
             result.extend(validate_oracle_against_snapshots(data, snapshots))
+    if lint and not result.has_errors():
+        result.extend(lint_scenario(data, snapshots))
     return data, result, snapshots
 
 def validate_static(data: dict[str, Any], *, scenario_path: Path | None = None) -> ValidationResult:
@@ -255,4 +302,329 @@ def validate_oracle_against_snapshots(data: dict[str, Any], snapshots: dict[str,
                 result.warning("W350", f"bug {bid} is omission, but fault.statement is present.", f"{loc}.fault.statement")
             if "missing_statement" not in fault:
                 result.error("E351", f"bug {bid} is omission, but fault.missing_statement is missing.", f"{loc}.fault.missing_statement")
+    return result
+
+
+# --- opt-in lints (shared helpers) ------------------------------------------
+
+def lint_factors(factors: Any, result: ValidationResult, *, prefix: str, location: str = "meta.factors") -> None:
+    """Vocabulary lint for meta.factors.
+
+    Emits ``<prefix>400`` (factor is a schema key / operation name),
+    ``<prefix>401`` (empty factor list) and ``<prefix>402`` (hyphen and
+    underscore styles mixed within one scenario).
+    """
+    if not isinstance(factors, list):
+        return
+    if not factors:
+        result.warning(f"{prefix}401", "meta.factors is empty; declare at least one semantic factor.", location)
+        return
+    names = [f for f in factors if isinstance(f, str)]
+    for i, name in enumerate(names):
+        if name in RESERVED_FACTOR_WORDS:
+            result.warning(f"{prefix}400", f"Factor '{name}' is a schema key or operation name, not a semantic factor.", f"{location}[{i}]")
+    if any("-" in n for n in names) and any("_" in n for n in names):
+        result.warning(f"{prefix}402", "Factors mix hyphen and underscore styles; use one convention per scenario.", location)
+
+
+def lint_leakage(commits: Iterable[Any], bfc_ids: set[str], result: ValidationResult, *, prefix: str) -> None:
+    """Answer-cue lint for commit messages and written file contents (issue #8).
+
+    Emits ``<prefix>410`` (role wording in a non-BFC message), ``<prefix>411``
+    (logical-id prefix in any message) and ``<prefix>412`` (role wording in
+    text written by write_file / replace.new / insert_after.content).
+    """
+    for i, commit in enumerate(commits):
+        if not isinstance(commit, dict):
+            continue
+        cid = commit.get("id", f"<commit[{i}]>")
+        loc = f"commits[{i}]"
+        message = commit.get("message")
+        if isinstance(message, str):
+            prefix_match = LOGICAL_ID_PREFIX_RE.match(message)
+            if prefix_match:
+                result.warning(f"{prefix}411", f"Commit '{cid}' message starts with the logical-id prefix '{prefix_match.group(0)}'.", f"{loc}.message")
+            if cid not in bfc_ids:
+                leak = LEAK_ROLE_RE.search(message)
+                if leak:
+                    result.warning(f"{prefix}410", f"Commit '{cid}' is not a bug-fixing commit, but its message discloses a role: '{leak.group(0)}'.", f"{loc}.message")
+        operations = commit.get("operations")
+        if not isinstance(operations, list):
+            continue
+        for j, op in enumerate(operations):
+            if not isinstance(op, dict):
+                continue
+            field = LEAK_CONTENT_FIELDS.get(op.get("type"))
+            if field is None or not isinstance(op.get(field), str):
+                continue
+            leak = LEAK_ROLE_RE.search(op[field])
+            if leak:
+                path = op.get("path", "?")
+                result.warning(f"{prefix}412", f"Commit '{cid}' writes role wording '{leak.group(0)}' into '{path}' ({op.get('type')}.{field}).", f"{loc}.operations[{j}].{field}")
+
+
+def factor_matches(factors: Any, pattern: re.Pattern[str]) -> bool:
+    return isinstance(factors, list) and any(isinstance(f, str) and pattern.search(f) for f in factors)
+
+
+# --- opt-in lints (classic suite) -------------------------------------------
+
+def lint_scenario(data: dict[str, Any], snapshots: dict[str, dict[str, str]] | None) -> ValidationResult:
+    """Run the W4xx lints on a statically valid classic scenario.
+
+    ``snapshots`` (from :func:`simulate_commits`) enables the ghost-invariant
+    and fault-line-integrity lints; without it only the vocabulary and
+    leakage lints run.
+    """
+    result = ValidationResult()
+    meta = data.get("meta") if isinstance(data.get("meta"), dict) else {}
+    factors = meta.get("factors")
+    commits = [c for c in (data.get("commits") or []) if isinstance(c, dict)]
+    bugs = [b for b in (data.get("bugs") or []) if isinstance(b, dict)]
+    bfc_ids = {b.get("bug_fixing_commit") for b in bugs if isinstance(b.get("bug_fixing_commit"), str)}
+
+    lint_factors(factors, result, prefix="W")
+    lint_leakage(commits, bfc_ids, result, prefix="W")
+    if snapshots is not None:
+        result.extend(_lint_ghost_invariants(commits, bugs, factors, snapshots))
+        result.extend(_lint_fault_line_integrity(commits, bugs, factors, snapshots))
+    return result
+
+
+def _parent_snapshot(commits: list[dict[str, Any]], index: int, snapshots: dict[str, dict[str, str]]) -> dict[str, str]:
+    if index <= 0:
+        return {}
+    return snapshots.get(commits[index - 1].get("id"), {})
+
+
+def _removed_lines(before: dict[str, str], after: dict[str, str]) -> dict[str, list[tuple[int, str]]]:
+    """Lines of ``before`` that are deleted or modified in ``after``, per path.
+
+    Each entry is ``(line_index_in_before, text)``.
+    """
+    removed: dict[str, list[tuple[int, str]]] = {}
+    for path, old in before.items():
+        new = after.get(path)
+        if new == old:
+            continue
+        old_lines = old.splitlines()
+        if new is None:
+            removed[path] = list(enumerate(old_lines))
+            continue
+        matcher = difflib.SequenceMatcher(None, old_lines, new.splitlines(), autojunk=False)
+        hits = [(k, old_lines[k]) for tag, i1, i2, _, _ in matcher.get_opcodes() if tag in {"delete", "replace"} for k in range(i1, i2)]
+        if hits:
+            removed[path] = hits
+    return removed
+
+
+def _added_lines(before: dict[str, str], after: dict[str, str]) -> dict[str, list[str]]:
+    """Lines of ``after`` that do not come from ``before``, per path."""
+    added: dict[str, list[str]] = {}
+    for path, new in after.items():
+        old = before.get(path)
+        if new == old:
+            continue
+        new_lines = new.splitlines()
+        if old is None:
+            if new_lines:
+                added[path] = new_lines
+            continue
+        matcher = difflib.SequenceMatcher(None, old.splitlines(), new_lines, autojunk=False)
+        hits = [new_lines[k] for tag, _, _, j1, j2 in matcher.get_opcodes() if tag in {"insert", "replace"} for k in range(j1, j2)]
+        if hits:
+            added[path] = hits
+    return added
+
+
+def _lint_ghost_invariants(
+    commits: list[dict[str, Any]],
+    bugs: list[dict[str, Any]],
+    factors: Any,
+    snapshots: dict[str, dict[str, str]],
+) -> ValidationResult:
+    """W420/W421: declared add-only BFCs and delete-only BICs must be exactly that."""
+    result = ValidationResult()
+    factor_set = {f for f in factors if isinstance(f, str)} if isinstance(factors, list) else set()
+    add_only_declared = bool(factor_set & ADD_ONLY_FIX_FACTORS)
+    delete_only_declared = bool(factor_set & DELETE_ONLY_BIC_FACTORS)
+    index_by_commit = {c.get("id"): i for i, c in enumerate(commits)}
+    for i, bug in enumerate(bugs):
+        loc = f"bugs[{i}]"
+        bid = bug.get("id", f"<bug[{i}]>")
+        fault = bug.get("fault") if isinstance(bug.get("fault"), dict) else {}
+        fix = bug.get("fix") if isinstance(bug.get("fix"), dict) else {}
+        bfc = bug.get("bug_fixing_commit")
+        bics = [b for b in (bug.get("bug_introducing_commits") or []) if isinstance(b, str)]
+        omission_add_only = fault.get("change_type") == "omission" and fix.get("fix_type") in ADD_ONLY_FIX_TYPES
+        if (add_only_declared or omission_add_only) and bfc in index_by_commit and bfc in snapshots:
+            reason = "declared as an addition-only fix" if add_only_declared else "an omission bug with an addition-only fix_type"
+            before = _parent_snapshot(commits, index_by_commit[bfc], snapshots)
+            for path, hits in sorted(_removed_lines(before, snapshots[bfc]).items()):
+                first = hits[0][1].strip()
+                result.warning("W420", f"bug {bid} is {reason}, but BFC '{bfc}' deletes or modifies {len(hits)} existing line(s) in '{path}' (first: '{first}').", loc)
+        if delete_only_declared:
+            for bic in bics:
+                if bic not in index_by_commit or bic not in snapshots:
+                    continue
+                before = _parent_snapshot(commits, index_by_commit[bic], snapshots)
+                for path, lines in sorted(_added_lines(before, snapshots[bic]).items()):
+                    result.warning("W421", f"bug {bid} is declared as a deletion-only BIC, but BIC '{bic}' adds {len(lines)} line(s) in '{path}' (first: '{lines[0].strip()}').", loc)
+    return result
+
+
+def _track_line_authors(commits: list[dict[str, Any]], snapshots: dict[str, dict[str, str]]) -> dict[str, dict[str, list[str]]]:
+    """Per commit, the commit id that last changed each line of each file.
+
+    A simple difflib-based blame over the linear history: equal blocks keep
+    their author, inserted or replaced lines are attributed to the commit.
+    """
+    authors: dict[str, list[str]] = {}
+    previous: dict[str, str] = {}
+    by_commit: dict[str, dict[str, list[str]]] = {}
+    for commit in commits:
+        cid = commit.get("id")
+        current = snapshots.get(cid)
+        if current is None:
+            continue
+        next_authors: dict[str, list[str]] = {}
+        for path, content in current.items():
+            new_lines = content.splitlines()
+            old_content = previous.get(path)
+            if old_content is None or path not in authors:
+                next_authors[path] = [cid] * len(new_lines)
+                continue
+            old_authors = authors[path]
+            merged: list[str] = []
+            matcher = difflib.SequenceMatcher(None, old_content.splitlines(), new_lines, autojunk=False)
+            for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+                if tag == "equal":
+                    merged.extend(old_authors[i1:i2])
+                elif tag in {"insert", "replace"}:
+                    merged.extend([cid] * (j2 - j1))
+            next_authors[path] = merged
+        authors = next_authors
+        previous = current
+        by_commit[cid] = {p: list(a) for p, a in authors.items()}
+    return by_commit
+
+
+def _lint_fault_line_integrity(
+    commits: list[dict[str, Any]],
+    bugs: list[dict[str, Any]],
+    factors: Any,
+    snapshots: dict[str, dict[str, str]],
+) -> ValidationResult:
+    """W430/W431: the fault line survives to the BFC and the BFC only removes BIC lines."""
+    result = ValidationResult()
+    index_by_commit = {c.get("id"): i for i, c in enumerate(commits)}
+    rewrite_declared = factor_matches(factors, FAULT_REWRITE_FACTOR_RE)
+    tangled_declared = factor_matches(factors, TANGLED_BFC_FACTOR_RE)
+    authors_by_commit = _track_line_authors(commits, snapshots) if not tangled_declared else {}
+    for i, bug in enumerate(bugs):
+        loc = f"bugs[{i}]"
+        bid = bug.get("id", f"<bug[{i}]>")
+        fault = bug.get("fault") if isinstance(bug.get("fault"), dict) else {}
+        bfc = bug.get("bug_fixing_commit")
+        bics = {b for b in (bug.get("bug_introducing_commits") or []) if isinstance(b, str)}
+        if bfc not in index_by_commit:
+            continue
+        bfc_index = index_by_commit[bfc]
+        stmt = fault.get("statement")
+        ffile = fault.get("file")
+        fcommit = fault.get("commit")
+        if (
+            not rewrite_declared
+            and fault.get("change_type") != "omission"
+            and isinstance(stmt, str) and isinstance(ffile, str)
+            and fcommit in index_by_commit
+        ):
+            for k in range(index_by_commit[fcommit] + 1, bfc_index):
+                cid = commits[k].get("id")
+                if cid in bics or cid not in snapshots:
+                    continue
+                before = _parent_snapshot(commits, k, snapshots)
+                after = snapshots[cid]
+                if ffile in before and stmt in before[ffile] and stmt not in after.get(ffile, ""):
+                    result.warning("W430", f"bug {bid}: intermediate non-BIC commit '{cid}' removes the fault statement from '{ffile}' before BFC '{bfc}'; declare the rewrite with a factor if intended.", f"commits[{k}]")
+        if not tangled_declared and bfc_index > 0 and bfc in snapshots:
+            parent_id = commits[bfc_index - 1].get("id")
+            before = snapshots.get(parent_id, {})
+            parent_authors = authors_by_commit.get(parent_id, {})
+            for path, hits in sorted(_removed_lines(before, snapshots[bfc]).items()):
+                line_authors = parent_authors.get(path, [])
+                foreign = sorted({line_authors[k] for k, _ in hits if k < len(line_authors) and line_authors[k] not in bics})
+                if foreign:
+                    first = next(text for k, text in hits if k < len(line_authors) and line_authors[k] in foreign).strip()
+                    result.warning("W431", f"bug {bid} BFC '{bfc}' deletes or modifies line(s) in '{path}' last changed by non-BIC commit(s) {foreign} (first: '{first}'); declare a tangled BFC with a factor if intended.", loc)
+    return result
+
+
+# --- index consistency ------------------------------------------------------
+
+def validate_index_file(index_path: Path, root: Path, scenario_filename: str) -> ValidationResult:
+    """Check one index.yml against the scenario directories under ``root``.
+
+    IE codes are errors, IW codes warnings; locations are prefixed with the
+    index path so that results for several indexes can be merged.
+    """
+    result = ValidationResult()
+    prefix = index_path.as_posix()
+    data, load_result = load_yaml(index_path)
+    if data is None:
+        for finding in load_result.findings:
+            result.error("IE001", f"Cannot load index: {finding.message}", prefix)
+        return result
+    entries = data.get("scenarios")
+    if not isinstance(entries, list):
+        result.error("IE002", "'scenarios' must be a list.", f"{prefix}:scenarios")
+        return result
+    if not root.is_dir():
+        result.error("IE003", f"Scenario root '{root.as_posix()}' is not a directory.", prefix)
+        return result
+    count = data.get("scenario_count")
+    if count is not None and count != len(entries):
+        result.error("IE010", f"scenario_count is {count}, but the index lists {len(entries)} entries.", f"{prefix}:scenario_count")
+
+    expected_rel = lambda sid: f"{root.name}/{sid}/{scenario_filename}"  # noqa: E731
+    seen: set[str] = set()
+    for i, entry in enumerate(entries):
+        loc = f"{prefix}:scenarios[{i}]"
+        if not isinstance(entry, dict) or not isinstance(entry.get("id"), str):
+            result.error("IE020", "Index entry must be an object with a string id.", loc)
+            continue
+        sid = entry["id"]
+        if sid in seen:
+            result.error("IE021", f"Duplicate index entry '{sid}'.", f"{loc}.id")
+            continue
+        seen.add(sid)
+        scenario_file = root / sid / scenario_filename
+        if not scenario_file.is_file():
+            result.error("IE022", f"Index entry '{sid}' has no scenario file at '{expected_rel(sid)}'.", loc)
+            continue
+        path_value = entry.get("path")
+        if isinstance(path_value, str) and Path(path_value).as_posix() != expected_rel(sid):
+            result.warning("IW023", f"Index entry '{sid}' path is '{path_value}', expected '{expected_rel(sid)}'.", f"{loc}.path")
+        scenario_data, scenario_load = load_yaml(scenario_file)
+        if scenario_data is None:
+            detail = "; ".join(f.message for f in scenario_load.findings)
+            result.error("IE042", f"Scenario file for '{sid}' cannot be loaded: {detail}", loc)
+            continue
+        meta = scenario_data.get("meta") if isinstance(scenario_data.get("meta"), dict) else {}
+        if meta.get("id") != sid:
+            result.error("IE040", f"Index entry id '{sid}' does not match meta.id '{meta.get('id')}' in {expected_rel(sid)}.", f"{loc}.id")
+        if "title" in entry and entry.get("title") != meta.get("title"):
+            result.error("IE041", f"Index entry '{sid}' title '{entry.get('title')}' does not match meta.title '{meta.get('title')}'.", f"{loc}.title")
+
+    for child in sorted(root.iterdir()):
+        if child.is_dir() and (child / scenario_filename).is_file() and child.name not in seen:
+            result.error("IE030", f"Scenario directory '{root.name}/{child.name}' has no index entry.", f"{prefix}:scenarios")
+    return result
+
+
+def validate_scenario_indexes(scenarios_root: Path, advanced_scenarios_root: Path) -> ValidationResult:
+    """Validate scenarios/index.yml and advanced-scenarios/index.yml."""
+    result = ValidationResult()
+    result.extend(validate_index_file(scenarios_root / "index.yml", scenarios_root, "scenario.yml"))
+    result.extend(validate_index_file(advanced_scenarios_root / "index.yml", advanced_scenarios_root, "scenario.graph.yml"))
     return result

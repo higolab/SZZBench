@@ -6,21 +6,40 @@ import re
 
 from .findings import ValidationResult
 from .graph_operations import PATH_FIELDS_BY_OPERATION, REQUIRED_FIELDS_BY_OPERATION, SUPPORTED_GRAPH_OPERATIONS
-from .graph_scenario import graph_bfc_entries, graph_bic_entries, graph_faults, graph_fixes, load_graph_scenario
+from .graph_scenario import commit_id_of, graph_bfc_entries, graph_bic_entries, graph_faults, graph_fixes, load_graph_scenario
 from .graph_simulator import simulate_graph_scenario
 from .paths import PathValidationError, validate_repo_relative_path
+from .policies import SUPPORTED_EVALUATION_POLICIES
+from .validator import lint_factors, lint_leakage
 
 GRAPH_ID_RE = re.compile(r"^SZZG-\d{4}$")
 
-ALLOWED_EVALUATION_POLICIES = {
-    "exact_set",
-    "partial_credit",
-    "top_k",
-    "direct_only",
-    "origin_aware",
-    "reintroduction_direct",
-    "relaxed_with_credit",
+# Shared with the evaluator via szzbench.policies (kept under the old name for callers).
+ALLOWED_EVALUATION_POLICIES = SUPPORTED_EVALUATION_POLICIES
+
+# History-rewrite metadata that must point at earlier commits (like GE043 for
+# cherry_pick_of / backport_of).  rebase_of may be a list for squash-rebases.
+REWRITE_REFERENCE_KEYS: dict[str, tuple[type, ...]] = {
+    "rebase_of": (str, list),
+    "squashes": (list,),
+    "revert_of": (str,),
 }
+
+# Consumer-compatible role vocabulary (issue #19); see graph_verifier / evaluator.
+ALLOWED_BIC_ROLES = frozenset({"direct", "origin", "contributing", "reintroducing"})
+ALLOWED_BFC_ROLES = frozenset({"complete_fix", "partial_fix"})
+
+# Operations whose generated result only approximates the declared intent.
+APPROXIMATE_OPERATIONS: dict[str, tuple[str, str]] = {
+    "move_entity": ("GW440", "move_entity is a file-level approximation: the whole source file is copied under a marker header, no entity is extracted."),
+    "copy_entity": ("GW440", "copy_entity is a file-level approximation: the whole source file is copied under a marker header, no entity is extracted."),
+    "commit_generator": ("GW441", "commit_generator only writes a marker file; it does not create additional commits."),
+    "chmod": ("GW442", "chmod is not recorded: generated repositories use core.filemode=false, so the mode change produces no diff."),
+    "apply_patch": ("GW443", "apply_patch is recognized by the schema but not implemented; generation will fail."),
+}
+
+# expected_szz.commit_level lists that may name an origin BIC.
+EXPECTED_SZZ_COMMIT_LISTS = ("required", "acceptable_related", "related_origins", "related_but_not_correct", "relevant")
 
 
 def validate_graph_scenario_file(
@@ -28,13 +47,21 @@ def validate_graph_scenario_file(
     *,
     strict_paths: bool = False,
     simulate: bool = False,
+    lint: bool = False,
 ) -> tuple[dict[str, Any] | None, ValidationResult]:
+    """Validate a scenario.graph.yml.
+
+    ``lint`` enables the opt-in GW4xx lints, which are static (they do not
+    need the simulation) and run only when no error was found.
+    """
     data, result = load_graph_scenario(path)
     if data is None:
         return None, result
     result.extend(validate_graph_static(data, scenario_path=path, strict_paths=strict_paths))
     if simulate and not result.has_errors():
         result.extend(simulate_graph_scenario(data))
+    if lint and not result.has_errors():
+        result.extend(lint_graph_scenario(data))
     return data, result
 
 
@@ -121,6 +148,7 @@ def validate_graph_static(data: dict[str, Any], *, scenario_path: Path | None = 
                     result.error("GE042", f"{ref_key} must be a string when present.", f"{loc}.{ref_key}")
                 elif ref not in commit_by_id:
                     result.error("GE043", f"{ref_key} refers to unknown or later commit '{ref}'.", f"{loc}.{ref_key}")
+        _validate_rewrite_references(commit, cid, commit_by_id, result, loc)
         operations = commit.get("operations", [])
         if operations is None:
             operations = []
@@ -271,6 +299,9 @@ def _validate_expected_szz(expected: Any, commit_by_id: dict[str, dict[str, Any]
             cl = variant.get("commit_level")
             if isinstance(cl, dict):
                 _validate_commit_list(cl.get("required"), commit_by_id, result, f"expected_szz.evaluation_variants[{i}].commit_level.required")
+                variant_policy = cl.get("evaluation_policy")
+                if isinstance(variant_policy, str):
+                    policies.append((variant_policy, f"expected_szz.evaluation_variants[{i}].commit_level.evaluation_policy"))
     for policy, loc in policies:
         if policy not in ALLOWED_EVALUATION_POLICIES:
             result.warning("GW123", f"Unknown evaluation_policy '{policy}'.", loc)
@@ -332,3 +363,101 @@ def _validate_graph_acyclic(commits: list[Any]) -> ValidationResult:
     for cid in parent_map:
         visit(cid)
     return result
+
+
+def _validate_rewrite_references(
+    commit: dict[str, Any],
+    cid: str,
+    commit_by_id: dict[str, dict[str, Any]],
+    result: ValidationResult,
+    loc: str,
+) -> None:
+    """GE046/GE047: rebase_of, squashes and revert_of must name earlier commits."""
+    for ref_key, allowed_types in REWRITE_REFERENCE_KEYS.items():
+        value = commit.get(ref_key)
+        if value is None:
+            continue
+        if not isinstance(value, allowed_types):
+            expected = " or ".join(t.__name__ for t in allowed_types)
+            result.error("GE046", f"{ref_key} must be a {expected} when present.", f"{loc}.{ref_key}")
+            continue
+        refs = value if isinstance(value, list) else [value]
+        for k, ref in enumerate(refs):
+            ref_loc = f"{loc}.{ref_key}[{k}]" if isinstance(value, list) else f"{loc}.{ref_key}"
+            if not isinstance(ref, str):
+                result.error("GE046", f"{ref_key} entries must be commit ids.", ref_loc)
+            elif ref == cid or ref not in commit_by_id:
+                result.error("GE047", f"{ref_key} refers to unknown or later commit '{ref}'.", ref_loc)
+
+
+# --- opt-in lints (graph suite) ---------------------------------------------
+
+def lint_graph_scenario(data: dict[str, Any]) -> ValidationResult:
+    """Run the GW4xx lints on a statically valid graph scenario.
+
+    Ghost invariants (add-only BFC / delete-only BIC) are not implemented for
+    the graph suite because graph_simulator does not expose per-commit
+    snapshots.
+    """
+    result = ValidationResult()
+    meta = data.get("meta") if isinstance(data.get("meta"), dict) else {}
+    commits = [c for c in (data.get("commits") or []) if isinstance(c, dict)]
+    bugs = [b for b in (data.get("bugs") or []) if isinstance(b, dict)]
+    bfc_ids = {e["commit"] for b in bugs for e in graph_bfc_entries(b) if isinstance(e.get("commit"), str)}
+
+    lint_factors(meta.get("factors"), result, prefix="GW")
+    for i, bug in enumerate(bugs):
+        for j, entry in enumerate(graph_bic_entries(bug)):
+            role = entry.get("role")
+            if isinstance(role, str) and role not in ALLOWED_BIC_ROLES:
+                result.warning("GW403", f"BIC role '{role}' is not in {sorted(ALLOWED_BIC_ROLES)}; the evaluator and verifier will not recognize it.", f"bugs[{i}].bug_introducing_commits[{j}].role")
+        for j, entry in enumerate(graph_bfc_entries(bug)):
+            role = entry.get("role")
+            if isinstance(role, str) and role not in ALLOWED_BFC_ROLES:
+                result.warning("GW404", f"BFC role '{role}' is not in {sorted(ALLOWED_BFC_ROLES)}.", f"bugs[{i}].bug_fixing_commits[{j}].role")
+    lint_leakage(commits, bfc_ids, result, prefix="GW")
+    _lint_approximate_operations(commits, result)
+    _lint_origin_coverage(bugs, data.get("expected_szz"), result)
+    return result
+
+
+def _lint_approximate_operations(commits: list[dict[str, Any]], result: ValidationResult) -> None:
+    """GW440-GW443: operations whose generated result only approximates the intent."""
+    for i, commit in enumerate(commits):
+        for j, op in enumerate(commit.get("operations") or []):
+            if not isinstance(op, dict):
+                continue
+            entry = APPROXIMATE_OPERATIONS.get(op.get("type"))
+            if entry is not None:
+                code, message = entry
+                result.warning(code, f"Commit '{commit.get('id', f'<commit[{i}]>')}': {message}", f"commits[{i}].operations[{j}]")
+
+
+def _expected_szz_commit_ids(expected: Any) -> set[str]:
+    """Every commit id named by expected_szz.commit_level or any evaluation variant."""
+    ids: set[str] = set()
+    if not isinstance(expected, dict):
+        return ids
+    levels = [expected.get("commit_level")]
+    for variant in expected.get("evaluation_variants") or []:
+        if isinstance(variant, dict):
+            levels.append(variant.get("commit_level"))
+    for level in levels:
+        if not isinstance(level, dict):
+            continue
+        for key in EXPECTED_SZZ_COMMIT_LISTS:
+            values = level.get(key)
+            if isinstance(values, list):
+                ids.update(cid for cid in (commit_id_of(v) for v in values) if cid is not None)
+    return ids
+
+
+def _lint_origin_coverage(bugs: list[dict[str, Any]], expected: Any, result: ValidationResult) -> None:
+    """GW450: an origin BIC that expected_szz never mentions (in any variant)."""
+    mentioned = _expected_szz_commit_ids(expected)
+    for i, bug in enumerate(bugs):
+        for j, entry in enumerate(graph_bic_entries(bug)):
+            role = entry.get("role")
+            cid = entry.get("commit")
+            if isinstance(role, str) and "origin" in role and isinstance(cid, str) and cid not in mentioned:
+                result.warning("GW450", f"bug {bug.get('id', f'<bug[{i}]>')} BIC '{cid}' has role '{role}' but appears in no expected_szz list (commit_level or any variant).", f"bugs[{i}].bug_introducing_commits[{j}]")
