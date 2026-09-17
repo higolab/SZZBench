@@ -3,14 +3,22 @@ meta:
   id: SZZ-0124
   title: Variable rename after BIC
   slug: variable-rename-after-bic
-  description: This scenario introduces a bug by changing `return value >= min && value <= max;` to `return value > min && value < max;` and later restores the correct implementation.
+  description: >
+    The bug-introducing commit subtracts the units in transit instead of
+    adding them. A later refactoring renames the local variable that the
+    faulty line assigns, so the faulty line itself is rewritten without any
+    behavioural change. The bug-fixing commit repairs the arithmetic and
+    keeps the new name, so plain blame at the BFC parent stops at the
+    rename. SZZ-0125 is the matched control whose rename leaves the faulty
+    line untouched.
   category: "Refactoring, move, and rename after BIC"
   factors:
   - single-bic
   - single-bfc
   - line-modification
   - variable-rename-after-bic
-  difficulty: medium
+  - basic-blame-distractor
+  difficulty: hard
   status: active
   category_code: "S5"
 repository:
@@ -21,122 +29,125 @@ repository:
   source_root: src/main/java
 commits:
 - id: c0
-  message: Initial correct implementation
+  message: Add the reorder planner for warehouse replenishment
   author: Alice <alice@example.com>
   date: '2024-01-01T10:00:00Z'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0124.java
+    path: src/main/java/com/example/inventory/ReorderPlanner.java
     content: |
-      package example;
+      package com.example.inventory;
 
-      public class Scenario0124 {
-          public boolean check(int value, int min, int max) {
-              return value >= min && value <= max;
+      /**
+       * Plans replenishment orders for one article in one warehouse.
+       */
+      public class ReorderPlanner {
+
+          private static final int SAFETY_STOCK_UNITS = 12;
+
+          private final int reorderPointUnits;
+
+          public ReorderPlanner(int reorderPointUnits) {
+              this.reorderPointUnits = reorderPointUnits;
+          }
+
+          /**
+           * Returns how many units to order so that the stock is back at the
+           * reorder point plus the safety stock, or 0 while enough stock is left.
+           */
+          public int unitsToOrder(int onHandUnits, int reservedUnits, int inTransitUnits) {
+              int available = onHandUnits - reservedUnits + inTransitUnits;
+              if (available >= reorderPointUnits) {
+                  return 0;
+              }
+              return reorderPointUnits + SAFETY_STOCK_UNITS - available;
+          }
+
+          public boolean needsReorder(int onHandUnits, int reservedUnits, int inTransitUnits) {
+              return unitsToOrder(onHandUnits, reservedUnits, inTransitUnits) > 0;
           }
       }
 - id: c1
-  message: Introduce bug
+  message: Deduct units in transit from the available stock
   author: Bob <bob@example.com>
   date: '2024-01-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0124.java
-    old: |
-      package example;
-
-      public class Scenario0124 {
-          public boolean check(int value, int min, int max) {
-              return value >= min && value <= max;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0124 {
-          public boolean check(int value, int min, int max) {
-              return value > min && value < max;
-          }
-      }
+    path: src/main/java/com/example/inventory/ReorderPlanner.java
+    old: |2
+              int available = onHandUnits - reservedUnits + inTransitUnits;
+    new: |2
+              int available = onHandUnits - reservedUnits - inTransitUnits;
     labels:
     - B001
     - fault
 - id: c2
-  message: Rename method parameter after bug introduction
+  message: Spell out the unit in the local stock variable of unitsToOrder()
   author: Carol <carol@example.com>
   date: '2024-01-03T10:00:00Z'
   role: refactoring
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0124.java
-    old: |
-      package example;
-
-      public class Scenario0124 {
-          public boolean check(int value, int min, int max) {
-              return value > min && value < max;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0124 {
-          public boolean check(int candidate, int min, int max) {
-              return candidate > min && candidate < max;
-          }
-      }
+    path: src/main/java/com/example/inventory/ReorderPlanner.java
+    old: |2
+              int available = onHandUnits - reservedUnits - inTransitUnits;
+              if (available >= reorderPointUnits) {
+                  return 0;
+              }
+              return reorderPointUnits + SAFETY_STOCK_UNITS - available;
+    new: |2
+              int availableUnits = onHandUnits - reservedUnits - inTransitUnits;
+              if (availableUnits >= reorderPointUnits) {
+                  return 0;
+              }
+              return reorderPointUnits + SAFETY_STOCK_UNITS - availableUnits;
+    labels:
+    - non_bug_introducing_change
 - id: c3
-  message: Fix bug
+  message: Count units in transit as available stock again
   author: Alice <alice@example.com>
   date: '2024-01-04T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0124.java
-    old: |
-      package example;
-
-      public class Scenario0124 {
-          public boolean check(int candidate, int min, int max) {
-              return candidate > min && candidate < max;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0124 {
-          public boolean check(int value, int min, int max) {
-              return value >= min && value <= max;
-          }
-      }
+    path: src/main/java/com/example/inventory/ReorderPlanner.java
+    old: |2
+              int availableUnits = onHandUnits - reservedUnits - inTransitUnits;
+    new: |2
+              int availableUnits = onHandUnits - reservedUnits + inTransitUnits;
     labels:
     - B001
     - fix
 bugs:
 - id: B001
-  title: Variable rename after BIC
+  title: Units in transit are subtracted from the available stock
   bug_fixing_commit: c3
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0124.java
+    file: src/main/java/com/example/inventory/ReorderPlanner.java
     entity:
       type: method
-      name: check
-      signature: boolean check(int value, int min, int max)
-    statement: return value > min && value < max;
+      name: unitsToOrder
+      signature: int unitsToOrder(int onHandUnits, int reservedUnits, int inTransitUnits)
+    statement: onHandUnits - reservedUnits - inTransitUnits
     change_type: line_modification
+    description: >
+      Units already in transit increase the available stock, so subtracting
+      them orders too much. The faulty sub-expression is used as
+      fault.statement because c2 renames the variable the line assigns and
+      thereby rewrites the whole line.
   fix:
     commit: c3
-    file: src/main/java/example/Scenario0124.java
+    file: src/main/java/com/example/inventory/ReorderPlanner.java
     entity:
       type: method
-      name: check
-      signature: boolean check(int value, int min, int max)
-    statement: return value >= min && value <= max;
+      name: unitsToOrder
+      signature: int unitsToOrder(int onHandUnits, int reservedUnits, int inTransitUnits)
+    statement: int availableUnits = onHandUnits - reservedUnits + inTransitUnits;
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -147,7 +158,12 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return value > min && value < max;
+      - int available = onHandUnits - reservedUnits - inTransitUnits;
+      note: >
+        c2 rewrites the faulty line to `int availableUnits = onHandUnits -
+        reservedUnits - inTransitUnits;` without changing its behaviour.
+        Blame at c3^ on the deleted line returns c2; the BIC is one step
+        further back in the line history.
 checks:
 - type: git_history_contains
   commits:

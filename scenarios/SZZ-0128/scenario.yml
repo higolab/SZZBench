@@ -3,14 +3,21 @@ meta:
   id: SZZ-0128
   title: Extract helper after BIC
   slug: extract-helper-after-bic
-  description: This scenario inserts an intermediate refactoring change between the BIC and BFC.
+  description: >
+    An extract-method refactoring moves the faulty line out of an if-block
+    into a new private helper, which also de-indents it by one level. Plain
+    blame at the BFC parent therefore stops at the extracting commit, while
+    whitespace-insensitive move detection still reaches the BIC. The
+    bug-fixing commit repairs the comparison inside the helper and keeps the
+    extraction.
   category: "Refactoring, move, and rename after BIC"
   factors:
   - single-bic
   - single-bfc
   - line-modification
   - extract-method-after-bic
-  difficulty: medium
+  - basic-blame-distractor
+  difficulty: hard
   status: active
   category_code: "S5"
 repository:
@@ -21,132 +28,120 @@ repository:
   source_root: src/main/java
 commits:
 - id: c0
-  message: Initial correct implementation
+  message: Add the shipment gate for picked warehouse orders
   author: Alice <alice@example.com>
   date: '2024-01-01T10:00:00Z'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0128.java
+    path: src/main/java/com/example/warehouse/ShipmentGate.java
     content: |
-      package example;
+      package com.example.warehouse;
 
-      public class Scenario0128 {
-          public boolean valid(int value) {
-              return value >= min;
+      /**
+       * Decides when a picked order may be handed to the carrier.
+       */
+      public class ShipmentGate {
+
+          private final int minimumUnits;
+
+          public ShipmentGate(int minimumUnits) {
+              this.minimumUnits = minimumUnits;
+          }
+
+          /** Returns true when the order is paid for and holds enough units. */
+          public boolean readyToShip(int pickedUnits, int reservedUnits, boolean paymentCleared) {
+              if (paymentCleared) {
+                  int availableUnits = pickedUnits - reservedUnits;
+                  return availableUnits >= minimumUnits;
+              }
+              return false;
           }
       }
 - id: c1
-  message: Introduce bug
+  message: Hand over an order only above the minimum picked quantity
   author: Bob <bob@example.com>
   date: '2024-01-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0128.java
-    old: |
-      package example;
-
-      public class Scenario0128 {
-          public boolean valid(int value) {
-              return value >= min;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0128 {
-          public boolean valid(int value) {
-              return value > min;
-          }
-      }
+    path: src/main/java/com/example/warehouse/ShipmentGate.java
+    old: |2
+                  return availableUnits >= minimumUnits;
+    new: |2
+                  return availableUnits > minimumUnits;
     labels:
     - B001
     - fault
 - id: c2
-  message: Apply intermediate rewrite
+  message: Extract the stock check of readyToShip() into a helper
   author: Carol <carol@example.com>
   date: '2024-01-03T10:00:00Z'
   role: refactoring
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0128.java
-    old: |
-      package example;
-
-      public class Scenario0128 {
-          public boolean valid(int value) {
-              return value > min;
+    path: src/main/java/com/example/warehouse/ShipmentGate.java
+    old: |2
+                  int availableUnits = pickedUnits - reservedUnits;
+                  return availableUnits > minimumUnits;
+              }
+              return false;
           }
-      }
-    new: |
-      package example;
-
-      public class Scenario0128 {
-          public boolean check(int value, int min) {
-              return greaterThanMin(value, min);
+    new: |2
+                  return hasEnoughUnits(pickedUnits, reservedUnits);
+              }
+              return false;
           }
 
-          public boolean greaterThanMin(int value, int min) {
-              return value > min;
+          private boolean hasEnoughUnits(int pickedUnits, int reservedUnits) {
+              int availableUnits = pickedUnits - reservedUnits;
+              return availableUnits > minimumUnits;
           }
-      }
     labels:
     - non_bug_introducing_change
 - id: c3
-  message: Fix bug
+  message: Ship an order that holds exactly the minimum units
   author: Dave <dave@example.com>
   date: '2024-01-04T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0128.java
-    old: |
-      package example;
-
-      public class Scenario0128 {
-          public boolean check(int value, int min) {
-              return greaterThanMin(value, min);
-          }
-
-          public boolean greaterThanMin(int value, int min) {
-              return value > min;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0128 {
-          public boolean valid(int value) {
-              return value >= min;
-          }
-      }
+    path: src/main/java/com/example/warehouse/ShipmentGate.java
+    old: |2
+              return availableUnits > minimumUnits;
+    new: |2
+              return availableUnits >= minimumUnits;
     labels:
     - B001
     - fix
 bugs:
 - id: B001
-  title: Extract helper after BIC
+  title: An order holding exactly the minimum units is held back
   bug_fixing_commit: c3
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0128.java
+    file: src/main/java/com/example/warehouse/ShipmentGate.java
     entity:
       type: method
-      name: valid
-      signature: boolean valid(int value)
-    statement: return value > min;
+      name: readyToShip
+      signature: boolean readyToShip(int pickedUnits, int reservedUnits, boolean paymentCleared)
+    statement: return availableUnits > minimumUnits;
     change_type: line_modification
+    description: >
+      minimumUnits is the smallest shippable quantity, so the comparison has
+      to include it. c2 moves this line from the if-block of readyToShip()
+      into the extracted helper hasEnoughUnits(), where it loses one level of
+      indentation; the statement text itself is unchanged.
   fix:
     commit: c3
-    file: src/main/java/example/Scenario0128.java
+    file: src/main/java/com/example/warehouse/ShipmentGate.java
     entity:
       type: method
-      name: valid
-      signature: boolean valid(int value)
-    statement: return value >= min;
+      name: hasEnoughUnits
+      signature: boolean hasEnoughUnits(int pickedUnits, int reservedUnits)
+    statement: return availableUnits >= minimumUnits;
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -157,7 +152,12 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return value > min;
+      - return availableUnits > minimumUnits;
+      note: >
+        c2 moves the faulty line into the new helper and de-indents it, so
+        blame at c3^ on the deleted line returns c2. Measured: `git blame
+        -M`, `-C`, `-C -C` and `-C -C -C` also return c2, while `git blame
+        -w -M` and `git blame -w -C -C` return c1.
 checks:
 - type: git_history_contains
   commits:

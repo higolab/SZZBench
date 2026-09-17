@@ -3,7 +3,11 @@ meta:
   id: SZZ-0112
   title: Huge method surrounding small bug
   slug: huge-method-small-bug
-  description: This scenario is intended to stress implementation robustness under noisy or repetitive code conditions.
+  description: >
+    A one-token fault sits in the middle of a 73-line method with eighteen
+    constants and ten rules. The bug-introducing and the bug-fixing commit
+    each change exactly one line of that method, so the scenario tests
+    whether a tool stays precise when the surrounding entity is large.
   category: "Intermediate noise and history noise"
   factors:
   - single-bic
@@ -23,168 +27,201 @@ repository:
   source_root: src/main/java
 commits:
 - id: c0
-  message: Initial large method
+  message: Add the transaction risk scorer used by the payment gateway
   author: Alice <alice@example.com>
   date: '2024-06-01T10:00:00Z'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0112.java
+    path: src/main/java/com/example/risk/TransactionRiskScorer.java
     content: |
-      package example;
+      package com.example.risk;
 
-      public class Scenario0112 {
-          public boolean check(int value, int limit) {
-              int tmp1 = value + 1;
-                  int tmp2 = value + 2;
-                  int tmp3 = value + 3;
-                  int tmp4 = value + 4;
-                  int tmp5 = value + 5;
-                  int tmp6 = value + 6;
-                  int tmp7 = value + 7;
-                  int tmp8 = value + 8;
-                  int tmp9 = value + 9;
-                  int tmp10 = value + 10;
-                  int tmp11 = value + 11;
-                  int tmp12 = value + 12;
-                  int tmp13 = value + 13;
-                  int tmp14 = value + 14;
-                  return value < limit;
+      /**
+       * Heuristic risk score for a single card transaction.
+       *
+       * <p>Every rule that fires adds its penalty to the score; the payment
+       * gateway declines a transaction once the score reaches
+       * {@link #DECLINE_THRESHOLD}.
+       */
+      public class TransactionRiskScorer {
+
+          public static final int DECLINE_THRESHOLD = 60;
+
+          private static final int LARGE_AMOUNT_CENTS = 250000;
+          private static final int HUGE_AMOUNT_CENTS = 1000000;
+          private static final int FRESH_ACCOUNT_DAYS = 7;
+          private static final int YOUNG_ACCOUNT_DAYS = 30;
+          private static final int TRUSTED_ACCOUNT_DAYS = 365;
+          private static final int SUSPICIOUS_TRANSACTIONS_PER_HOUR = 5;
+          private static final int SUSPICIOUS_FAILED_LOGINS = 3;
+          private static final int NIGHT_STARTS_AT_HOUR = 23;
+          private static final int NIGHT_ENDS_AT_HOUR = 5;
+
+          private static final int LARGE_AMOUNT_POINTS = 10;
+          private static final int HUGE_AMOUNT_POINTS = 25;
+          private static final int FRESH_ACCOUNT_POINTS = 20;
+          private static final int YOUNG_ACCOUNT_POINTS = 8;
+          private static final int VELOCITY_POINTS = 15;
+          private static final int FAILED_LOGIN_POINTS = 12;
+          private static final int NEW_DEVICE_POINTS = 9;
+          private static final int NIGHT_POINTS = 4;
+          private static final int FOREIGN_COUNTRY_POINTS = 7;
+          private static final int MAX_SCORE = 100;
+
+          /**
+           * Returns the risk score of one transaction, capped at {@link #MAX_SCORE}.
+           *
+           * @param amountCents         transaction amount in cents
+           * @param accountAgeDays      age of the paying account in days
+           * @param failedLogins        failed logins of the account in the last day
+           * @param transactionsLastHour transactions of the account in the last hour
+           * @param hourOfDay           local hour of the transaction, 0-23
+           * @param newDevice           true when the device is seen for the first time
+           * @param foreignCountry      true when the billing country differs
+           */
+          public int score(int amountCents,
+                           int accountAgeDays,
+                           int failedLogins,
+                           int transactionsLastHour,
+                           int hourOfDay,
+                           boolean newDevice,
+                           boolean foreignCountry) {
+              int points = 0;
+
+              // Amount: two thresholds, the higher one replaces the lower one.
+              if (amountCents >= HUGE_AMOUNT_CENTS) {
+                  points += HUGE_AMOUNT_POINTS;
+              } else if (amountCents >= LARGE_AMOUNT_CENTS) {
+                  points += LARGE_AMOUNT_POINTS;
+              }
+
+              // Account age: freshly created accounts are the riskiest ones.
+              if (accountAgeDays < FRESH_ACCOUNT_DAYS) {
+                  points += FRESH_ACCOUNT_POINTS;
+              } else if (accountAgeDays < YOUNG_ACCOUNT_DAYS) {
+                  points += YOUNG_ACCOUNT_POINTS;
+              }
+
+              // A young account paying a large amount is worse than either alone.
+              if (accountAgeDays < YOUNG_ACCOUNT_DAYS && amountCents >= LARGE_AMOUNT_CENTS) {
+                  points += LARGE_AMOUNT_POINTS;
+              }
+
+              // Velocity: many transactions from the same account within an hour.
+              if (transactionsLastHour >= SUSPICIOUS_TRANSACTIONS_PER_HOUR) {
+                  points += VELOCITY_POINTS;
+              }
+
+              // Repeated failed logins point at stolen credentials.
+              if (failedLogins >= SUSPICIOUS_FAILED_LOGINS) {
+                  points += FAILED_LOGIN_POINTS;
+                  if (accountAgeDays < YOUNG_ACCOUNT_DAYS) {
+                      points += FAILED_LOGIN_POINTS;
+                  }
+              }
+
+              // Device and location signals.
+              if (newDevice) {
+                  points += NEW_DEVICE_POINTS;
+                  if (accountAgeDays < FRESH_ACCOUNT_DAYS) {
+                      points += NEW_DEVICE_POINTS;
+                  }
+              }
+              if (foreignCountry) {
+                  points += FOREIGN_COUNTRY_POINTS;
+                  if (newDevice) {
+                      points += FOREIGN_COUNTRY_POINTS;
+                  }
+              }
+
+              // Night-time transactions are rarer and slightly more often disputed.
+              if (hourOfDay >= NIGHT_STARTS_AT_HOUR || hourOfDay <= NIGHT_ENDS_AT_HOUR) {
+                  points += NIGHT_POINTS;
+              }
+
+              // Long-standing accounts on a known device earn a small discount.
+              if (accountAgeDays >= TRUSTED_ACCOUNT_DAYS && !newDevice && !foreignCountry) {
+                  points -= NIGHT_POINTS;
+                  if (points < 0) {
+                      points = 0;
+                  }
+              }
+
+              if (points > MAX_SCORE) {
+                  points = MAX_SCORE;
+              }
+              return points;
+          }
+
+          /** Returns true when the gateway declines the transaction. */
+          public boolean declines(int amountCents,
+                                  int accountAgeDays,
+                                  int failedLogins,
+                                  int transactionsLastHour,
+                                  int hourOfDay,
+                                  boolean newDevice,
+                                  boolean foreignCountry) {
+              return score(amountCents, accountAgeDays, failedLogins, transactionsLastHour,
+                      hourOfDay, newDevice, foreignCountry) >= DECLINE_THRESHOLD;
           }
       }
 - id: c1
-  message: Introduce small bug in large method
+  message: Charge the velocity penalty only above the hourly transaction limit
   author: Bob <bob@example.com>
   date: '2024-06-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0112.java
-    old: |
-      package example;
-
-      public class Scenario0112 {
-          public boolean check(int value, int limit) {
-              int tmp1 = value + 1;
-                  int tmp2 = value + 2;
-                  int tmp3 = value + 3;
-                  int tmp4 = value + 4;
-                  int tmp5 = value + 5;
-                  int tmp6 = value + 6;
-                  int tmp7 = value + 7;
-                  int tmp8 = value + 8;
-                  int tmp9 = value + 9;
-                  int tmp10 = value + 10;
-                  int tmp11 = value + 11;
-                  int tmp12 = value + 12;
-                  int tmp13 = value + 13;
-                  int tmp14 = value + 14;
-                  return value < limit;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0112 {
-          public boolean check(int value, int limit) {
-              int tmp1 = value + 1;
-                  int tmp2 = value + 2;
-                  int tmp3 = value + 3;
-                  int tmp4 = value + 4;
-                  int tmp5 = value + 5;
-                  int tmp6 = value + 6;
-                  int tmp7 = value + 7;
-                  int tmp8 = value + 8;
-                  int tmp9 = value + 9;
-                  int tmp10 = value + 10;
-                  int tmp11 = value + 11;
-                  int tmp12 = value + 12;
-                  int tmp13 = value + 13;
-                  int tmp14 = value + 14;
-                  return value <= limit;
-          }
-      }
+    path: src/main/java/com/example/risk/TransactionRiskScorer.java
+    old: |2
+              if (transactionsLastHour >= SUSPICIOUS_TRANSACTIONS_PER_HOUR) {
+    new: |2
+              if (transactionsLastHour > SUSPICIOUS_TRANSACTIONS_PER_HOUR) {
     labels:
     - B001
     - fault
 - id: c2
-  message: Fix small bug in large method
+  message: Score the fifth transaction within an hour as a velocity hit again
   author: Alice <alice@example.com>
   date: '2024-06-03T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0112.java
-    old: |
-      package example;
-
-      public class Scenario0112 {
-          public boolean check(int value, int limit) {
-              int tmp1 = value + 1;
-                  int tmp2 = value + 2;
-                  int tmp3 = value + 3;
-                  int tmp4 = value + 4;
-                  int tmp5 = value + 5;
-                  int tmp6 = value + 6;
-                  int tmp7 = value + 7;
-                  int tmp8 = value + 8;
-                  int tmp9 = value + 9;
-                  int tmp10 = value + 10;
-                  int tmp11 = value + 11;
-                  int tmp12 = value + 12;
-                  int tmp13 = value + 13;
-                  int tmp14 = value + 14;
-                  return value <= limit;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0112 {
-          public boolean check(int value, int limit) {
-              int tmp1 = value + 1;
-                  int tmp2 = value + 2;
-                  int tmp3 = value + 3;
-                  int tmp4 = value + 4;
-                  int tmp5 = value + 5;
-                  int tmp6 = value + 6;
-                  int tmp7 = value + 7;
-                  int tmp8 = value + 8;
-                  int tmp9 = value + 9;
-                  int tmp10 = value + 10;
-                  int tmp11 = value + 11;
-                  int tmp12 = value + 12;
-                  int tmp13 = value + 13;
-                  int tmp14 = value + 14;
-                  return value < limit;
-          }
-      }
+    path: src/main/java/com/example/risk/TransactionRiskScorer.java
+    old: |2
+              if (transactionsLastHour > SUSPICIOUS_TRANSACTIONS_PER_HOUR) {
+    new: |2
+              if (transactionsLastHour >= SUSPICIOUS_TRANSACTIONS_PER_HOUR) {
     labels:
     - B001
     - fix
 bugs:
 - id: B001
-  title: Huge method surrounding small bug
+  title: The velocity rule misses the fifth transaction of an hour
   bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0112.java
+    file: src/main/java/com/example/risk/TransactionRiskScorer.java
     entity:
       type: method
-      name: check
-      signature: boolean check(int value, int limit)
-    statement: return value <= limit;
+      name: score
+      signature: int score(int amountCents, int accountAgeDays, int failedLogins, int transactionsLastHour, int hourOfDay, boolean newDevice, boolean foreignCountry)
+    statement: if (transactionsLastHour > SUSPICIOUS_TRANSACTIONS_PER_HOUR) {
     change_type: line_modification
+    description: >
+      SUSPICIOUS_TRANSACTIONS_PER_HOUR is the count from which a transaction
+      counts as suspicious, so the comparison has to include the limit itself.
   fix:
     commit: c2
-    file: src/main/java/example/Scenario0112.java
+    file: src/main/java/com/example/risk/TransactionRiskScorer.java
     entity:
       type: method
-      name: check
-      signature: boolean check(int value, int limit)
-    statement: return value < limit;
+      name: score
+      signature: int score(int amountCents, int accountAgeDays, int failedLogins, int transactionsLastHour, int hourOfDay, boolean newDevice, boolean foreignCountry)
+    statement: if (transactionsLastHour >= SUSPICIOUS_TRANSACTIONS_PER_HOUR) {
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -193,7 +230,11 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return value <= limit;
+      - if (transactionsLastHour > SUSPICIOUS_TRANSACTIONS_PER_HOUR) {
+      note: >
+        The faulty line is line 75 of a 131-line file and line 30 of the
+        73-line method score(); the rest of the method is untouched by both
+        commits.
 checks:
 - type: git_history_contains
   commits:

@@ -3,14 +3,20 @@ meta:
   id: SZZ-0130
   title: Field extraction after BIC
   slug: field-extraction-after-bic
-  description: This scenario inserts an intermediate refactoring change between the BIC and BFC.
+  description: >
+    A repeated literal is extracted into a private constant between the
+    bug-introducing and the bug-fixing commit. The extraction rewrites the
+    faulty line, so plain blame at the BFC parent stops at the extracting
+    commit. The bug-fixing commit repairs the comparison and keeps the new
+    constant.
   category: "Refactoring, move, and rename after BIC"
   factors:
   - single-bic
   - single-bfc
   - line-modification
   - field-extraction-after-bic
-  difficulty: medium
+  - basic-blame-distractor
+  difficulty: hard
   status: active
   category_code: "S5"
 repository:
@@ -21,128 +27,121 @@ repository:
   source_root: src/main/java
 commits:
 - id: c0
-  message: Initial correct implementation
+  message: Add the batch upload quota for the import endpoint
   author: Alice <alice@example.com>
   date: '2024-01-01T10:00:00Z'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0130.java
+    path: src/main/java/com/example/upload/BatchUploadQuota.java
     content: |
-      package example;
+      package com.example.upload;
 
-      public class Scenario0130 {
-          public boolean valid(int value) {
-              return value <= limit;
+      /**
+       * Limits how many files a single batch upload may contain.
+       */
+      public class BatchUploadQuota {
+
+          /** Returns how many slots of the batch are still free. */
+          public int remainingSlots(int uploadedFiles) {
+              return 50 - uploadedFiles;
+          }
+
+          /** Returns true while another file may be added to the batch. */
+          public boolean acceptsMore(int uploadedFiles) {
+              return 50 - uploadedFiles > 0;
           }
       }
 - id: c1
-  message: Introduce bug
+  message: Count the last free slot of a batch as usable
   author: Bob <bob@example.com>
   date: '2024-01-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0130.java
-    old: |
-      package example;
-
-      public class Scenario0130 {
-          public boolean valid(int value) {
-              return value <= limit;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0130 {
-          public boolean valid(int value) {
-              return value < limit;
-          }
-      }
+    path: src/main/java/com/example/upload/BatchUploadQuota.java
+    old: |2
+              return 50 - uploadedFiles > 0;
+    new: |2
+              return 50 - uploadedFiles >= 0;
     labels:
     - B001
     - fault
 - id: c2
-  message: Apply intermediate rewrite
+  message: Name the batch size limit instead of repeating the literal
   author: Carol <carol@example.com>
   date: '2024-01-03T10:00:00Z'
   role: refactoring
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0130.java
-    old: |
-      package example;
+    path: src/main/java/com/example/upload/BatchUploadQuota.java
+    old: |2
+      public class BatchUploadQuota {
 
-      public class Scenario0130 {
-          public boolean valid(int value) {
-              return value < limit;
-          }
-      }
-    new: |
-      package example;
+          /** Returns how many slots of the batch are still free. */
+          public int remainingSlots(int uploadedFiles) {
+              return 50 - uploadedFiles;
+    new: |2
+      public class BatchUploadQuota {
 
-      public class Scenario0130 {
-          private static final int DEFAULT_LIMIT = 10;
+          private static final int MAX_FILES_PER_BATCH = 50;
 
-          public boolean valid(int value) {
-              return value < DEFAULT_LIMIT;
-          }
-      }
+          /** Returns how many slots of the batch are still free. */
+          public int remainingSlots(int uploadedFiles) {
+              return MAX_FILES_PER_BATCH - uploadedFiles;
+    labels:
+    - non_bug_introducing_change
+  - type: replace
+    path: src/main/java/com/example/upload/BatchUploadQuota.java
+    old: |2
+              return 50 - uploadedFiles >= 0;
+    new: |2
+              return MAX_FILES_PER_BATCH - uploadedFiles >= 0;
     labels:
     - non_bug_introducing_change
 - id: c3
-  message: Fix bug
+  message: Stop accepting files once the batch is full
   author: Dave <dave@example.com>
   date: '2024-01-04T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0130.java
-    old: |
-      package example;
-
-      public class Scenario0130 {
-          private static final int DEFAULT_LIMIT = 10;
-
-          public boolean valid(int value) {
-              return value < DEFAULT_LIMIT;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0130 {
-          public boolean valid(int value) {
-              return value <= limit;
-          }
-      }
+    path: src/main/java/com/example/upload/BatchUploadQuota.java
+    old: |2
+              return MAX_FILES_PER_BATCH - uploadedFiles >= 0;
+    new: |2
+              return MAX_FILES_PER_BATCH - uploadedFiles > 0;
     labels:
     - B001
     - fix
 bugs:
 - id: B001
-  title: Field extraction after BIC
+  title: A full batch still accepts one more file
   bug_fixing_commit: c3
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0130.java
+    file: src/main/java/com/example/upload/BatchUploadQuota.java
     entity:
       type: method
-      name: valid
-      signature: boolean valid(int value)
-    statement: return value < limit;
+      name: acceptsMore
+      signature: boolean acceptsMore(int uploadedFiles)
+    statement: uploadedFiles >= 0
     change_type: line_modification
+    description: >
+      Zero remaining slots means the batch is full, so the comparison must
+      be strict. The faulty sub-expression is used as fault.statement
+      because c2 rewrites the rest of the line when it replaces the literal
+      50 with MAX_FILES_PER_BATCH.
   fix:
     commit: c3
-    file: src/main/java/example/Scenario0130.java
+    file: src/main/java/com/example/upload/BatchUploadQuota.java
     entity:
       type: method
-      name: valid
-      signature: boolean valid(int value)
-    statement: return value <= limit;
+      name: acceptsMore
+      signature: boolean acceptsMore(int uploadedFiles)
+    statement: return MAX_FILES_PER_BATCH - uploadedFiles > 0;
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -153,7 +152,12 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return value < limit;
+      - return 50 - uploadedFiles >= 0;
+      note: >
+        c2 rewrites the faulty line to `return MAX_FILES_PER_BATCH -
+        uploadedFiles >= 0;` without changing behaviour. Blame at c3^ on the
+        deleted line returns c2; the BIC is one step further back in the
+        line history.
 checks:
 - type: git_history_contains
   commits:

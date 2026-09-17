@@ -3,14 +3,21 @@ meta:
   id: SZZ-0127
   title: Method signature extension after BIC
   slug: method-signature-extension-after-bic
-  description: This scenario inserts an intermediate refactoring change between the BIC and BFC.
+  description: >
+    Between the bug-introducing and the bug-fixing commit the threshold of
+    the discount rule is turned into a parameter: the method gains one
+    argument and its body reads the parameter instead of the constant. That
+    rewrites the faulty line, so plain blame at the BFC parent stops at the
+    signature change. The bug-fixing commit repairs the faulty term and
+    keeps the extended signature.
   category: "Refactoring, move, and rename after BIC"
   factors:
   - single-bic
   - single-bfc
   - line-modification
   - method-signature-change-after-bic
-  difficulty: medium
+  - basic-blame-distractor
+  difficulty: hard
   status: active
   category_code: "S5"
 repository:
@@ -21,124 +28,118 @@ repository:
   source_root: src/main/java
 commits:
 - id: c0
-  message: Initial correct implementation
+  message: Add the bulk discount rule for order lines
   author: Alice <alice@example.com>
   date: '2024-01-01T10:00:00Z'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0127.java
+    path: src/main/java/com/example/pricing/BulkDiscountRule.java
     content: |
-      package example;
+      package com.example.pricing;
 
-      public class Scenario0127 {
-          public boolean valid(int value) {
-              return value >= min;
+      /**
+       * Decides whether an order line qualifies for the bulk discount.
+       */
+      public class BulkDiscountRule {
+
+          private static final int DEFAULT_MIN_QUANTITY = 10;
+
+          /** Returns true when the ordered quantity qualifies for the discount. */
+          public boolean qualifies(int quantity) {
+              return quantity >= DEFAULT_MIN_QUANTITY;
+          }
+
+          /** Returns how many units are still missing for the discount. */
+          public int missingUnits(int quantity) {
+              if (qualifies(quantity)) {
+                  return 0;
+              }
+              return DEFAULT_MIN_QUANTITY - quantity;
           }
       }
 - id: c1
-  message: Introduce bug
+  message: Exclude the free sample unit from the discounted quantity
   author: Bob <bob@example.com>
   date: '2024-01-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0127.java
-    old: |
-      package example;
-
-      public class Scenario0127 {
-          public boolean valid(int value) {
-              return value >= min;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0127 {
-          public boolean valid(int value) {
-              return value > min;
-          }
-      }
+    path: src/main/java/com/example/pricing/BulkDiscountRule.java
+    old: |2
+              return quantity >= DEFAULT_MIN_QUANTITY;
+    new: |2
+              return quantity - 1 >= DEFAULT_MIN_QUANTITY;
     labels:
     - B001
     - fault
 - id: c2
-  message: Apply intermediate rewrite
+  message: Let callers pass the minimum quantity of their own contract
   author: Carol <carol@example.com>
   date: '2024-01-03T10:00:00Z'
   role: refactoring
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0127.java
-    old: |
-      package example;
-
-      public class Scenario0127 {
-          public boolean valid(int value) {
-              return value > min;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0127 {
-          public boolean check(int value, int min, boolean inclusive) {
-              return value > min;
-          }
-      }
+    path: src/main/java/com/example/pricing/BulkDiscountRule.java
+    old: |2
+          public boolean qualifies(int quantity) {
+              return quantity - 1 >= DEFAULT_MIN_QUANTITY;
+    new: |2
+          public boolean qualifies(int quantity, int minQuantity) {
+              return quantity - 1 >= minQuantity;
+    labels:
+    - non_bug_introducing_change
+  - type: replace
+    path: src/main/java/com/example/pricing/BulkDiscountRule.java
+    old: |2
+              if (qualifies(quantity)) {
+    new: |2
+              if (qualifies(quantity, DEFAULT_MIN_QUANTITY)) {
     labels:
     - non_bug_introducing_change
 - id: c3
-  message: Fix bug
+  message: Count every ordered unit towards the bulk discount
   author: Dave <dave@example.com>
   date: '2024-01-04T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0127.java
-    old: |
-      package example;
-
-      public class Scenario0127 {
-          public boolean check(int value, int min, boolean inclusive) {
-              return value > min;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0127 {
-          public boolean valid(int value) {
-              return value >= min;
-          }
-      }
+    path: src/main/java/com/example/pricing/BulkDiscountRule.java
+    old: |2
+              return quantity - 1 >= minQuantity;
+    new: |2
+              return quantity >= minQuantity;
     labels:
     - B001
     - fix
 bugs:
 - id: B001
-  title: Method signature extension after BIC
+  title: One ordered unit is not counted towards the bulk discount
   bug_fixing_commit: c3
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0127.java
+    file: src/main/java/com/example/pricing/BulkDiscountRule.java
     entity:
       type: method
-      name: valid
-      signature: boolean valid(int value)
-    statement: return value > min;
+      name: qualifies
+      signature: boolean qualifies(int quantity)
+    statement: quantity - 1
     change_type: line_modification
+    description: >
+      Every ordered unit counts towards the bulk discount, so subtracting one
+      unit rejects an order line that is exactly at the threshold. The faulty
+      sub-expression is used as fault.statement because c2 rewrites the rest
+      of the line when it replaces the constant with the new parameter.
   fix:
     commit: c3
-    file: src/main/java/example/Scenario0127.java
+    file: src/main/java/com/example/pricing/BulkDiscountRule.java
     entity:
       type: method
-      name: valid
-      signature: boolean valid(int value)
-    statement: return value >= min;
+      name: qualifies
+      signature: boolean qualifies(int quantity, int minQuantity)
+    statement: return quantity >= minQuantity;
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -149,7 +150,12 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return value > min;
+      - return quantity - 1 >= DEFAULT_MIN_QUANTITY;
+      note: >
+        c2 extends the signature of qualifies() and rewrites the faulty line
+        to `return quantity - 1 >= minQuantity;` without changing behaviour
+        for the existing call site. Blame at c3^ on the deleted line returns
+        c2; the BIC is one step further back in the line history.
 checks:
 - type: git_history_contains
   commits:
