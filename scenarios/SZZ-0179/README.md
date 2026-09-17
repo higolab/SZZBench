@@ -19,9 +19,9 @@ differ only in the oracle-relevant content of `c1` and `c3`.
 - `c0`: Adds `ShippingCostCalculator.cost(...)` taking the weight in
   kilograms.
 - `c1`: Switches the parameter to grams and correctly rounds up to the next
-  started kilogram (`(weightGrams + 999) / 1000`).
+  started kilogram (`(weightGrams + 999L) / 1000`).
 - `c2`: Renames the local `total` to `amount`. Behaviour-preserving.
-- `c3`: Adds explicit parentheses and, while doing so, drops `+ 999`, so
+- `c3`: Adds explicit parentheses and, while doing so, drops `+ 999L`, so
   1500 g are billed as 1 kg. This is the BIC.
 - `c4`: Restores the round-up. This is the BFC.
 
@@ -38,7 +38,7 @@ returns **`c3`**: exact.
 ## What a tool must do
 
 To pass, a tool must stop at `c3`. Recursive line-history tracing has to
-compare the semantics of successive versions of the line (the `+ 999` term
+compare the semantics of successive versions of the line (the `+ 999L` term
 disappears in `c3`) instead of skipping every commit that looks like a
 cleanup.
 

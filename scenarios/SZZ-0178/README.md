@@ -20,7 +20,7 @@ deeper" is not a safe strategy.
   faulty one). Behaviour-preserving.
 - `c3`: Adds explicit parentheses to the same line. Behaviour-preserving.
 - `c4`: Rounds up to the next started kilogram
-  (`(weightGrams + 999) / 1000`). This is the BFC.
+  (`(weightGrams + 999L) / 1000`). This is the BFC.
 
 ## Expected behavior
 
