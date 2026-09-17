@@ -3,9 +3,17 @@ meta:
   id: SZZ-0173
   title: File creation only as fix
   slug: file-creation-only-as-fix
-  description: Evaluates file creation only as fix and checks whether SZZ identifies the expected bug-introducing commit set.
+  description: >-
+    `PluginLoader.loadDefault()` resolves `example.DefaultPlugin` reflectively by class name, but no
+    `DefaultPlugin.java` exists, so the call fails with `ClassNotFoundException` at runtime. The BFC only adds
+    the missing file; it modifies or deletes no existing line. Checks whether SZZ can attribute an
+    addition-only fix to the commit that introduced the dangling reference.
   category: "Non-source, configuration, test-only, and file-level edge cases"
-  factors: []
+  factors:
+  - single-bic
+  - single-bfc
+  - omission-bug
+  - file-creation-fix
   difficulty: hard
   status: active
   category_code: "S8"
@@ -17,7 +25,9 @@ repository:
   source_root: src/main/java
 commits:
 - id: c0
-  message: 'c0: introduce bug (write_file src/main/java/example/PluginLoader.java)'
+  message: Add plugin loader that resolves the default plugin by class name
+  author: Alice <alice@example.com>
+  date: '2024-05-01T10:00:00Z'
   role: bug_introducing
   operations:
   - type: write_file
@@ -26,12 +36,14 @@ commits:
       package example;
 
       public class PluginLoader {
-        public Object loadDefault() {
-          return null;
-        }
+          public Object loadDefault() throws ReflectiveOperationException {
+              return Class.forName("example.DefaultPlugin").getDeclaredConstructor().newInstance();
+          }
       }
 - id: c1
-  message: 'c1: fix bug (write_file src/main/java/example/DefaultPlugin.java)'
+  message: Add the DefaultPlugin class expected by PluginLoader
+  author: Bob <bob@example.com>
+  date: '2024-05-02T10:00:00Z'
   role: bug_fixing
   operations:
   - type: write_file
@@ -40,10 +52,13 @@ commits:
       package example;
 
       public class DefaultPlugin {
-        public String name() {
-          return "default";
-        }
+          public String name() {
+              return "default";
+          }
       }
+    labels:
+    - B001
+    - fix
 bugs:
 - id: B001
   title: Missing DefaultPlugin class is fixed by file creation
@@ -57,7 +72,10 @@ bugs:
       type: class
       name: DefaultPlugin
     change_type: omission
-    description: DefaultPlugin.java is absent before the fix.
+    description: >-
+      PluginLoader.loadDefault() calls Class.forName("example.DefaultPlugin"), but DefaultPlugin.java is
+      absent before the fix, so loadDefault() throws ClassNotFoundException at runtime. The referencing line
+      in PluginLoader.java was written by c0.
     missing_statement: DefaultPlugin
   fix:
     commit: c1
@@ -69,6 +87,10 @@ bugs:
       true_positives:
       - c0
       false_positives_allowed: []
+      notes: >-
+        Addition-only fix by design: the BFC creates a new file and touches no existing line, so a
+        diff-of-the-BFC based blame has nothing to blame. The only pre-existing evidence is the reflective
+        reference in PluginLoader.java, which plain blame attributes to c0.
     line_level:
       available: false
       faulty_statements: []

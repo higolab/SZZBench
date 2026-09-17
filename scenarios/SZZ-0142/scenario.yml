@@ -3,7 +3,11 @@ meta:
   id: SZZ-0142
   title: Authentication and token checks introduced separately
   slug: auth-token-multi-bic
-  description: This scenario requires treating two bug-introducing commits as contributing to the same later fix.
+  description: >-
+    `authorized` combines two named checks, `authOk` and `tokenOk`. One commit hard-codes the authentication
+    check to `true` and a later commit hard-codes the token check to `true`, so `authorized` ends up accepting
+    unauthenticated callers and invalid tokens. A single BFC restores both lines, so both bypass commits are
+    BICs of the same bug.
   category: "Multiple BICs, duplicate faults, and composite faults"
   factors:
   - multi-bic
@@ -20,63 +24,72 @@ repository:
   source_root: src/main/java
 commits:
 - id: c0
-  message: Initial implementation
+  message: Add authorized check combining authentication and token validity
   author: Alice <alice@example.com>
   date: '2024-03-01T10:00:00Z'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Scenario0142.java
-    content: "package example;\n\npublic class Scenario0142 {\n    public boolean authorized(boolean authenticated, boolean tokenValid) {\n        return true;\n    }\n}\n"
+    content: |
+      package example;
+
+      public class Scenario0142 {
+          public boolean authorized(boolean authenticated, boolean tokenValid) {
+              boolean authOk = authenticated;
+              boolean tokenOk = tokenValid;
+              return authOk && tokenOk;
+          }
+      }
 - id: c1
-  message: Introduce first contributing change
+  message: Accept unauthenticated sessions during the login migration
   author: Bob <bob@example.com>
   date: '2024-03-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Scenario0142.java
-    old: "package example;\n\npublic class Scenario0142 {\n    public boolean authorized(boolean authenticated, boolean tokenValid) {\n        return true;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0142 {\n    public boolean authorized(boolean authenticated, boolean tokenValid) {\n        return authenticated;\n    }\n}\n"
+    old: boolean authOk = authenticated;
+    new: boolean authOk = true;
     labels:
     - B001
     - fault
 - id: c2
-  message: Introduce second contributing change
+  message: Skip token validation for the staging rollout
   author: Carol <carol@example.com>
   date: '2024-03-03T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Scenario0142.java
-    old: "package example;\n\npublic class Scenario0142 {\n    public boolean authorized(boolean authenticated, boolean tokenValid) {\n        return authenticated;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0142 {\n    public boolean authorized(boolean authenticated, boolean tokenValid) {\n        return authenticated && tokenValid;\n    }\n}\n"
+    old: boolean tokenOk = tokenValid;
+    new: boolean tokenOk = true;
     labels:
     - B001
     - fault
 - id: c3
-  message: Fix combined bug
+  message: Re-enable authentication and token checks in authorized
   author: Alice <alice@example.com>
   date: '2024-03-04T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/Scenario0142.java
-    old: "package example;\n\npublic class Scenario0142 {\n    public boolean authorized(boolean authenticated, boolean tokenValid) {\n        return authenticated && tokenValid;\n    }\n}\n"
-    new: |
-      package example;
-
-      public class Scenario0142 {
-          public boolean authorized(boolean authenticated, boolean tokenValid) {
-              return true;
-          }
-      }
+    old: boolean authOk = true;
+    new: boolean authOk = authenticated;
+    labels:
+    - B001
+    - fix
+  - type: replace
+    path: src/main/java/example/Scenario0142.java
+    old: boolean tokenOk = true;
+    new: boolean tokenOk = tokenValid;
     labels:
     - B001
     - fix
 bugs:
 - id: B001
-  title: Authentication and token checks introduced separately
+  title: authorized accepts unauthenticated callers and invalid tokens
   bug_fixing_commit: c3
   bug_introducing_commits: &id001
   - c1
@@ -88,7 +101,7 @@ bugs:
       type: method
       name: authorized
       signature: boolean authorized(boolean authenticated, boolean tokenValid)
-    statement: return authenticated;
+    statement: boolean authOk = true;
     change_type: line_modification
   fix:
     commit: c3
@@ -97,16 +110,24 @@ bugs:
       type: method
       name: authorized
       signature: boolean authorized(boolean authenticated, boolean tokenValid)
-    statement: return true;
+    statement: boolean authOk = authenticated;
     fix_type: line_modification
   expected_szz:
     commit_level:
       true_positives: *id001
       false_positives_allowed: []
+      notes: >-
+        Both c1 and c2 are required. c1 hard-coded the authentication check (authorized(false, true) returns
+        true) and c2 hard-coded the token check (authorized(true, false) returns true). The BFC c3 restores
+        both lines in one commit.
     line_level:
       available: true
       faulty_statements:
-      - return authenticated;
+      - boolean authOk = true;
+      - boolean tokenOk = true;
+      note: >-
+        The BFC modifies two lines. `boolean authOk = true;` was last changed by c1 and `boolean tokenOk =
+        true;` by c2, so plain line blame on the two fixed lines reaches both BICs.
 checks:
 - type: git_history_contains
   commits:

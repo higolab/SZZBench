@@ -3,7 +3,11 @@ meta:
   id: SZZ-0137
   title: Null handling and empty handling changed separately
   slug: null-and-empty-handling
-  description: This scenario requires treating two bug-introducing commits as contributing to the same later fix.
+  description: >-
+    `hasText` is implemented with two named checks, `notNull` and `notEmpty`. One commit replaces the null check
+    with a constant and a later commit collapses the emptiness check into the null check, so `hasText` ends up
+    accepting both `null` and `""`. A single BFC restores both lines, so both weakening commits are BICs of the
+    same bug.
   category: "Multiple BICs, duplicate faults, and composite faults"
   factors:
   - multi-bic
@@ -20,63 +24,72 @@ repository:
   source_root: src/main/java
 commits:
 - id: c0
-  message: Initial implementation
+  message: Add hasText helper with null and empty checks
   author: Alice <alice@example.com>
   date: '2024-03-01T10:00:00Z'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Scenario0137.java
-    content: "package example;\n\npublic class Scenario0137 {\n    public boolean hasText(String value) {\n        return true;\n    }\n}\n"
+    content: |
+      package example;
+
+      public class Scenario0137 {
+          public boolean hasText(String value) {
+              boolean notNull = value != null;
+              boolean notEmpty = notNull && !value.isEmpty();
+              return notNull && notEmpty;
+          }
+      }
 - id: c1
-  message: Introduce first contributing change
+  message: Remove redundant null guard from hasText
   author: Bob <bob@example.com>
   date: '2024-03-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Scenario0137.java
-    old: "package example;\n\npublic class Scenario0137 {\n    public boolean hasText(String value) {\n        return true;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0137 {\n    public boolean hasText(String value) {\n        return value != null;\n    }\n}\n"
+    old: boolean notNull = value != null;
+    new: boolean notNull = true;
     labels:
     - B001
     - fault
 - id: c2
-  message: Introduce second contributing change
+  message: Simplify emptiness check in hasText
   author: Carol <carol@example.com>
   date: '2024-03-03T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Scenario0137.java
-    old: "package example;\n\npublic class Scenario0137 {\n    public boolean hasText(String value) {\n        return value != null;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0137 {\n    public boolean hasText(String value) {\n        return value != null && !value.isEmpty();\n    }\n}\n"
+    old: boolean notEmpty = notNull && !value.isEmpty();
+    new: boolean notEmpty = notNull;
     labels:
     - B001
     - fault
 - id: c3
-  message: Fix combined bug
+  message: Restore null and empty checks in hasText
   author: Alice <alice@example.com>
   date: '2024-03-04T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/Scenario0137.java
-    old: "package example;\n\npublic class Scenario0137 {\n    public boolean hasText(String value) {\n        return value != null && !value.isEmpty();\n    }\n}\n"
-    new: |
-      package example;
-
-      public class Scenario0137 {
-          public boolean hasText(String value) {
-              return true;
-          }
-      }
+    old: boolean notNull = true;
+    new: boolean notNull = value != null;
+    labels:
+    - B001
+    - fix
+  - type: replace
+    path: src/main/java/example/Scenario0137.java
+    old: boolean notEmpty = notNull;
+    new: boolean notEmpty = notNull && !value.isEmpty();
     labels:
     - B001
     - fix
 bugs:
 - id: B001
-  title: Null handling and empty handling changed separately
+  title: hasText accepts null and empty input
   bug_fixing_commit: c3
   bug_introducing_commits: &id001
   - c1
@@ -88,7 +101,7 @@ bugs:
       type: method
       name: hasText
       signature: boolean hasText(String value)
-    statement: return value != null;
+    statement: boolean notNull = true;
     change_type: line_modification
   fix:
     commit: c3
@@ -97,16 +110,24 @@ bugs:
       type: method
       name: hasText
       signature: boolean hasText(String value)
-    statement: return true;
+    statement: boolean notNull = value != null;
     fix_type: line_modification
   expected_szz:
     commit_level:
       true_positives: *id001
       false_positives_allowed: []
+      notes: >-
+        Both c1 and c2 are required. c1 replaced the null check with `true` (hasText(null) throws
+        NullPointerException) and c2 collapsed the emptiness check into the null check (hasText("") returns
+        true). The BFC c3 restores both lines in one commit.
     line_level:
       available: true
       faulty_statements:
-      - return value != null;
+      - boolean notNull = true;
+      - boolean notEmpty = notNull;
+      note: >-
+        The BFC modifies two lines. `boolean notNull = true;` was last changed by c1 and `boolean notEmpty
+        = notNull;` by c2, so plain line blame on the two fixed lines reaches both BICs.
 checks:
 - type: git_history_contains
   commits:
