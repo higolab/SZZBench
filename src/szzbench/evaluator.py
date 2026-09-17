@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 import json
 
-from .graph_scenario import graph_bic_entries, load_graph_scenario
+from .graph_scenario import DIRECT_BIC_ROLES, graph_bic_entries, load_graph_scenario
 from .scenario import load_yaml
 
 
@@ -627,14 +627,14 @@ def _evaluation_variant_key(value: Any) -> str | None:
 
 
 def _graph_direct_bic_ids(scenario: dict[str, Any]) -> list[str]:
+    """Infer the required BICs from bug metadata (roles normalized via normalize_bic_role)."""
     expected: set[str] = set()
     for bug in scenario.get("bugs", []) or []:
         if not isinstance(bug, dict):
             continue
-        for entry in graph_bic_entries(bug):
+        for entry in graph_bic_entries(bug, roles=DIRECT_BIC_ROLES):
             commit = entry.get("commit")
-            role = entry.get("role")
-            if isinstance(commit, str) and role in {None, "direct", "reintroducing", "contributing"}:
+            if isinstance(commit, str):
                 expected.add(commit)
     return sorted(expected)
 

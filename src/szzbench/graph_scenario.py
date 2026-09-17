@@ -25,13 +25,57 @@ def commit_id_of(entry: Any) -> str | None:
     return None
 
 
-def graph_bic_entries(bug: dict[str, Any]) -> list[dict[str, Any]]:
+#: Normalized BIC roles whose commits form the inferred `required` set when a
+#: graph scenario declares no explicit commit-level oracle.
+DIRECT_BIC_ROLES: frozenset[str] = frozenset({"direct", "reintroducing", "contributing"})
+
+
+def normalize_bic_role(role: Any) -> str:
+    """Map a bug-entry role spelling to one of the canonical role classes.
+
+    Scenarios use many free-form spellings (``direct_squash_bic``,
+    ``merge_introducing``, ``old_origin_bic``, ...). The evaluator and the
+    verifier only need to know which class a role belongs to:
+
+    - ``direct``: the commit itself introduced the fault (also the default
+      when the role is missing);
+    - ``origin``: the commit is where a copied/replayed fault first appeared;
+    - ``reintroducing``: the commit brought a previously fixed fault back;
+    - ``contributing``: the commit is one of several that jointly caused it;
+    - ``other``: anything not covered above.
+    """
+    if role is None:
+        return "direct"
+    if not isinstance(role, str):
+        return "other"
+    value = role.strip().lower()
+    if not value:
+        return "direct"
+    if "origin" in value:
+        return "origin"
+    if "reintroduc" in value:
+        return "reintroducing"
+    if "contribut" in value:
+        return "contributing"
+    if value.startswith("direct") or "introduc" in value:
+        return "direct"
+    return "other"
+
+
+def graph_bic_entries(bug: dict[str, Any], *, roles: frozenset[str] | set[str] | None = None) -> list[dict[str, Any]]:
+    """Return the bug's BIC entries as dicts.
+
+    When ``roles`` is given, only entries whose normalized role (see
+    :func:`normalize_bic_role`) is in that set are returned.
+    """
     entries = []
     for raw in bug.get("bug_introducing_commits", []) or []:
         if isinstance(raw, str):
             entries.append({"commit": raw, "role": "direct"})
         elif isinstance(raw, dict):
             entries.append(raw)
+    if roles is not None:
+        entries = [entry for entry in entries if normalize_bic_role(entry.get("role")) in roles]
     return entries
 
 
