@@ -22,8 +22,8 @@ which touched the file after the BIC.
   This is the **BIC**: the first stored order code is now reported as
   untracked and `codeAt(0)` returns `null`.
 - `c2`: Sorts the four imports alphabetically (`ArrayList`, `Collections`,
-  `Comparator`, `List`). Its diff is `+4 -4`, all inside the import block;
-  no import is added or removed and no statement changes.
+  `Comparator`, `List`). Git reduces the reorder to `+2 -2`, all inside the
+  import block; no import is added or removed and no statement changes.
 - `c3`: Restores `index >= 0`. This is the **BFC**; its first-parent diff is
   `+1 -1`.
 
