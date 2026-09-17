@@ -70,8 +70,8 @@ scenarios:
   readme: advanced-scenarios/SZZG-0007/README.md
   status: draft
   factors:
-  - move_entity
-  - copy_entity
+  - method_move
+  - copy_propagation
   - bug_instances
 - id: SZZG-0008
   title: Semantically equivalent rewrite
