@@ -7,11 +7,50 @@ from .paths import safe_join
 SUPPORTED_OPERATIONS = {"write_file", "replace"}
 FUTURE_OPERATIONS = {"delete_file", "rename_file", "copy_file", "apply_patch", "format_file"}
 
+LINE_ENDINGS = {"lf": "\n", "crlf": "\r\n"}
+
 class OperationError(RuntimeError):
     pass
 
 def normalize_newlines(text: str) -> str:
     return text.replace("\r\n", "\n").replace("\r", "\n")
+
+def detect_crlf(content: str) -> bool:
+    """Return True when every newline of ``content`` is CRLF (and there is one)."""
+    crlf = content.count("\r\n")
+    return crlf > 0 and crlf == content.count("\n")
+
+def resolve_line_ending(op: dict, existing_content: str | None = None) -> str:
+    """Return the newline sequence an operation must write.
+
+    ``line_ending: lf|crlf`` wins.  Without the key, an existing CRLF file keeps
+    CRLF (detected from its content); everything else is written with LF.
+    """
+    value = op.get("line_ending")
+    if value is None:
+        if existing_content is not None and detect_crlf(existing_content):
+            return "\r\n"
+        return "\n"
+    if not isinstance(value, str) or value.lower() not in LINE_ENDINGS:
+        raise OperationError(f"line_ending must be 'lf' or 'crlf', got {value!r}")
+    return LINE_ENDINGS[value.lower()]
+
+def encode_line_endings(text: str, line_ending: str) -> str:
+    """Normalize ``text`` to LF and re-encode it with ``line_ending``."""
+    normalized = normalize_newlines(text)
+    if line_ending == "\n":
+        return normalized
+    return normalized.replace("\n", line_ending)
+
+def read_text_raw(path: Path, encoding: str = "utf-8") -> str:
+    """Read a text file without newline translation (CRLF stays CRLF)."""
+    with path.open("r", encoding=encoding, newline="") as fh:
+        return fh.read()
+
+def write_text_raw(path: Path, text: str, encoding: str = "utf-8") -> None:
+    """Write ``text`` exactly as given (no newline translation)."""
+    with path.open("w", encoding=encoding, newline="") as fh:
+        fh.write(text)
 
 def find_all_occurrences(text: str, needle: str) -> list[int]:
     if needle == "":
@@ -54,6 +93,8 @@ def insert_after_once(content: str, anchor: str, inserted: str, occurrence: int 
     return content[:end] + inserted + content[end:]
 
 def apply_operation_to_memory(files: dict[str, str], op: dict) -> None:
+    # The in-memory simulator always works on LF-normalized text; line_ending
+    # only affects the bytes written to the generated repository.
     op_type = op.get("type")
     if op_type == "write_file":
         files[op["path"]] = normalize_newlines(op["content"])
@@ -73,16 +114,18 @@ def apply_operation_to_filesystem(repo_dir: Path, op: dict) -> None:
     if op_type == "write_file":
         path = safe_join(repo_dir, op["path"])
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(normalize_newlines(op["content"]), encoding="utf-8", newline="\n")
+        write_text_raw(path, encode_line_endings(op["content"], resolve_line_ending(op)))
         return
     if op_type == "replace":
         path = safe_join(repo_dir, op["path"])
         if not path.exists():
             raise OperationError(f"replace target does not exist: {op['path']}")
-        content = path.read_text(encoding="utf-8")
+        raw = read_text_raw(path)
+        line_ending = resolve_line_ending(op, raw)
+        content = normalize_newlines(raw)
         old = normalize_newlines(op["old"])
         new = normalize_newlines(op["new"])
         new_content = replace_once(content, old, new, op.get("occurrence"))
-        path.write_text(new_content, encoding="utf-8", newline="\n")
+        write_text_raw(path, encode_line_endings(new_content, line_ending))
         return
     raise OperationError(f"unsupported operation: {op_type}")
