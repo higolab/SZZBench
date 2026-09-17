@@ -1093,7 +1093,11 @@ scenarios:
   slug: file-creation-only-as-fix
   category_code: S8
   category: Non-source, configuration, test-only, and file-level edge cases
-  factors: []
+  factors:
+  - single-bic
+  - single-bfc
+  - omission-bug
+  - file-creation-fix
   difficulty: hard
   status: active
   path: scenarios/SZZ-0173/scenario.yml
