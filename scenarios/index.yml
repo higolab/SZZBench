@@ -1101,3 +1101,233 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0173/scenario.yml
+- id: SZZ-0174
+  title: Addition-only fix for a missing null check
+  slug: addition-only-fix-missing-null-check
+  category_code: S2
+  category: Omission and deletion bugs
+  factors:
+  - single-bic
+  - single-bfc
+  - omission-bug
+  - addition-only-fix
+  - missing-null-check
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0174/scenario.yml
+- id: SZZ-0175
+  title: Addition-only fix for a missing break in a switch
+  slug: addition-only-fix-missing-break
+  category_code: S2
+  category: Omission and deletion bugs
+  factors:
+  - single-bic
+  - single-bfc
+  - omission-bug
+  - addition-only-fix
+  - missing-break
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0175/scenario.yml
+- id: SZZ-0176
+  title: Addition-only fix for an unhandled enum branch
+  slug: addition-only-fix-missing-branch
+  category_code: S2
+  category: Omission and deletion bugs
+  factors:
+  - single-bic
+  - single-bfc
+  - omission-bug
+  - addition-only-fix
+  - missing-branch
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0176/scenario.yml
+- id: SZZ-0177
+  title: Deletion-only BIC removes a guard that an addition-only BFC restores
+  slug: deletion-only-bic-addition-only-bfc
+  category_code: S2
+  category: Omission and deletion bugs
+  factors:
+  - single-bic
+  - single-bfc
+  - deletion-only-bic
+  - addition-only-fix
+  - guard-removal
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0177/scenario.yml
+- id: SZZ-0178
+  title: Faulty line rewritten twice before the fix (depth-2 line history)
+  slug: deep-line-history-depth-2
+  category_code: S3
+  category: Intermediate noise and history noise
+  factors:
+  - single-bic
+  - single-bfc
+  - line-modification
+  - deep-line-history
+  - rewrite-depth-2
+  - basic-blame-distractor
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0178/scenario.yml
+- id: SZZ-0179
+  title: Last of two rewrites of a line is the BIC (control for depth-2 line history)
+  slug: deep-line-history-control-last-rewrite-is-bic
+  category_code: S3
+  category: Intermediate noise and history noise
+  factors:
+  - single-bic
+  - single-bfc
+  - line-modification
+  - deep-line-history
+  - matched-control
+  - last-rewrite-is-bic
+  difficulty: easy
+  status: active
+  path: scenarios/SZZ-0179/scenario.yml
+- id: SZZ-0180
+  title: BIC is a large initial import
+  slug: initial-import-bic
+  category_code: S3
+  category: Intermediate noise and history noise
+  factors:
+  - single-bic
+  - single-bfc
+  - line-modification
+  - initial-import-bic
+  - large-bic
+  difficulty: easy
+  status: active
+  path: scenarios/SZZ-0180/scenario.yml
+- id: SZZ-0181
+  title: Omission fix with an adjacent unrelated line edit
+  slug: omission-fix-with-adjacent-edit
+  category_code: S2
+  category: Omission and deletion bugs
+  factors:
+  - single-bic
+  - single-bfc
+  - omission-bug
+  - line-addition-fix
+  - tangled-bfc
+  - adjacent-edit-noise
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0181/scenario.yml
+- id: SZZ-0182
+  title: 'Cross-file ghost: BIC deletes a validation call in one file, BFC adds a check in another'
+  slug: cross-file-ghost-deleted-validation-call
+  category_code: S2
+  category: Omission and deletion bugs
+  factors:
+  - single-bic
+  - single-bfc
+  - deletion-only-bic
+  - addition-only-fix
+  - cross-file-fix
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0182/scenario.yml
+- id: SZZ-0183
+  title: Two-file BFC whose second hunk blames a non-BIC commit
+  slug: two-file-bfc-second-hunk-non-bic
+  category_code: S4
+  category: BFC-side noise and tangled commits
+  factors:
+  - single-bic
+  - single-bfc
+  - line-modification
+  - multi-file-bfc
+  - tangled-bfc
+  difficulty: medium
+  status: active
+  path: scenarios/SZZ-0183/scenario.yml
+- id: SZZ-0184
+  title: BFC also modifies existing test lines owned by another commit
+  slug: bfc-modifies-test-lines
+  category_code: S4
+  category: BFC-side noise and tangled commits
+  factors:
+  - single-bic
+  - single-bfc
+  - line-modification
+  - test-line-noise
+  - multi-file-bfc
+  difficulty: medium
+  status: active
+  path: scenarios/SZZ-0184/scenario.yml
+- id: SZZ-0185
+  title: BFC deletes comment and blank lines of a distractor together with the faulty line
+  slug: bfc-deletes-cosmetic-lines-with-fault
+  category_code: S4
+  category: BFC-side noise and tangled commits
+  factors:
+  - single-bic
+  - single-bfc
+  - line-modification
+  - cosmetic-line-noise
+  difficulty: medium
+  status: active
+  path: scenarios/SZZ-0185/scenario.yml
+- id: SZZ-0186
+  title: Multi-hunk BFC whose hunks blame different commits
+  slug: mixed-origin-hunks-bfc
+  category_code: S4
+  category: BFC-side noise and tangled commits
+  factors:
+  - single-bic
+  - single-bfc
+  - line-modification
+  - mixed-origin-hunks
+  - multiple-hunk-bfc
+  - tangled-bfc
+  difficulty: medium
+  status: active
+  path: scenarios/SZZ-0186/scenario.yml
+- id: SZZ-0187
+  title: BFC touching three files with a single BIC
+  slug: three-file-bfc-single-bic
+  category_code: S4
+  category: BFC-side noise and tangled commits
+  factors:
+  - single-bic
+  - single-bfc
+  - line-modification
+  - multi-file-bfc
+  - three-file-bfc
+  - caller-update-in-bfc
+  difficulty: medium
+  status: active
+  path: scenarios/SZZ-0187/scenario.yml
+- id: SZZ-0188
+  title: Fault in a multi-line statement whose lines come from different commits
+  slug: multi-line-statement-mixed-origin
+  category_code: S4
+  category: BFC-side noise and tangled commits
+  factors:
+  - single-bic
+  - single-bfc
+  - line-addition-bic
+  - multi-line-statement
+  - statement-granularity
+  - operator-precedence
+  difficulty: medium
+  status: active
+  path: scenarios/SZZ-0188/scenario.yml
+- id: SZZ-0189
+  title: Missing close() fixed by an addition whose only deleted line is a distractor's comment
+  slug: missing-close-fix-deletes-only-comment
+  category_code: S2
+  category: Omission and deletion bugs
+  factors:
+  - single-bic
+  - single-bfc
+  - omission-bug
+  - line-addition-fix
+  - missing-close
+  - cosmetic-line-noise
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0189/scenario.yml

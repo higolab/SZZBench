@@ -1,0 +1,182 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0174"
+  title: "Addition-only fix for a missing null check"
+  slug: "addition-only-fix-missing-null-check"
+  description: >
+    A method that resolves display labels from a map dereferences the lookup
+    result without checking for null. The bug-fixing commit only inserts the
+    missing null guard, so its first-parent diff contains no deleted or
+    re-indented line. Line-based SZZ has nothing to blame (a "ghost" BFC).
+  category: "Omission and deletion bugs"
+  factors:
+    - "single-bic"
+    - "single-bfc"
+    - "omission-bug"
+    - "addition-only-fix"
+    - "missing-null-check"
+  difficulty: "hard"
+  status: "active"
+  category_code: "S2"
+
+repository:
+  name: "SZZ-0174-addition-only-fix-missing-null-check"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Add contact formatter for the directory export"
+    author: "Mei Tanaka <mei.tanaka@example.com>"
+    date: "2023-03-06T09:12:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/com/example/directory/ContactFormatter.java"
+        content: |
+          package com.example.directory;
+
+          import java.util.ArrayList;
+          import java.util.List;
+
+          public class ContactFormatter {
+              private final String phoneSeparator;
+
+              public ContactFormatter(String phoneSeparator) {
+                  this.phoneSeparator = phoneSeparator;
+              }
+
+              public String formatName(String givenName, String familyName) {
+                  StringBuilder builder = new StringBuilder();
+                  if (!givenName.isEmpty()) {
+                      builder.append(givenName);
+                  }
+                  if (!familyName.isEmpty()) {
+                      if (builder.length() > 0) {
+                          builder.append(' ');
+                      }
+                      builder.append(familyName);
+                  }
+                  return builder.toString();
+              }
+
+              public String formatPhones(List<String> phones) {
+                  List<String> cleaned = new ArrayList<>();
+                  for (String phone : phones) {
+                      cleaned.add(phone.replace("-", "").replace(" ", ""));
+                  }
+                  return String.join(phoneSeparator, cleaned);
+              }
+          }
+
+  - id: "c1"
+    message: "Show custom field labels in the directory export"
+    author: "Jonas Berg <jonas.berg@example.com>"
+    date: "2023-03-09T14:40:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/directory/ContactFormatter.java"
+        old: |2
+          import java.util.List;
+        new: |2
+          import java.util.List;
+          import java.util.Map;
+      - type: "replace"
+        path: "src/main/java/com/example/directory/ContactFormatter.java"
+        old: |2
+                  return String.join(phoneSeparator, cleaned);
+              }
+          }
+        new: |2
+                  return String.join(phoneSeparator, cleaned);
+              }
+
+              public String displayLabel(Map<String, String> labels, String key) {
+                  String label = labels.get(key);
+                  return label.toUpperCase();
+              }
+          }
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Skip empty phone entries in the export"
+    author: "Priya Raman <priya.raman@example.com>"
+    date: "2023-03-15T11:05:00Z"
+    role: "feature_addition"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/directory/ContactFormatter.java"
+        old: |2
+                  for (String phone : phones) {
+                      cleaned.add(phone.replace("-", "").replace(" ", ""));
+        new: |2
+                  for (String phone : phones) {
+                      if (phone.isEmpty()) {
+                          continue;
+                      }
+                      cleaned.add(phone.replace("-", "").replace(" ", ""));
+        labels: ["non_bug_introducing_change"]
+
+  - id: "c3"
+    message: "Fall back to the raw key when a field has no display label"
+    author: "Mei Tanaka <mei.tanaka@example.com>"
+    date: "2023-03-21T16:30:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/directory/ContactFormatter.java"
+        old: |2
+                  String label = labels.get(key);
+                  return label.toUpperCase();
+        new: |2
+                  String label = labels.get(key);
+                  if (label == null) {
+                      return key;
+                  }
+                  return label.toUpperCase();
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "displayLabel throws NullPointerException for unlabeled fields"
+    bug_fixing_commit: "c3"
+    bug_introducing_commits: ["c1"]
+    fault:
+      commit: "c1"
+      file: "src/main/java/com/example/directory/ContactFormatter.java"
+      entity:
+        type: "method"
+        name: "displayLabel"
+        signature: "String displayLabel(Map<String, String> labels, String key)"
+      change_type: "omission"
+      missing_statement: |2
+        if (label == null) {
+            return key;
+        }
+    fix:
+      commit: "c3"
+      file: "src/main/java/com/example/directory/ContactFormatter.java"
+      entity:
+        type: "method"
+        name: "displayLabel"
+        signature: "String displayLabel(Map<String, String> labels, String key)"
+      added_statement: |2
+                if (label == null) {
+                    return key;
+                }
+      fix_type: "line_addition"
+    expected_szz:
+      commit_level:
+        true_positives: ["c1"]
+        false_positives_allowed: []
+      line_level:
+        available: false
+        reason: "The fault is an omitted null guard; the BFC adds lines only, so no deleted line exists to blame."
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3"]

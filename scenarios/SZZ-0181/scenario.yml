@@ -1,0 +1,168 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0181"
+  title: "Omission fix with an adjacent unrelated line edit"
+  slug: "omission-fix-with-adjacent-edit"
+  description: >
+    The fault is a missing bounds check on a split result. The bug-fixing
+    commit inserts the check and, in the same hunk, also edits the adjacent
+    line that a later rename commit last touched. The only deleted line of
+    the BFC therefore belongs to a non-BIC commit: plain blame returns the
+    rename commit and misses the BIC.
+  category: "Omission and deletion bugs"
+  factors:
+    - "single-bic"
+    - "single-bfc"
+    - "omission-bug"
+    - "line-addition-fix"
+    - "tangled-bfc"
+    - "adjacent-edit-noise"
+  difficulty: "hard"
+  status: "active"
+  category_code: "S2"
+
+repository:
+  name: "SZZ-0181-omission-fix-with-adjacent-edit"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Add session token parsing for the gateway"
+    author: "Tom Becker <tom.becker@example.com>"
+    date: "2023-09-04T09:40:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/com/example/auth/SessionTokenParser.java"
+        content: |
+          package com.example.auth;
+
+          public class SessionTokenParser {
+              private static final String PREFIX = "Bearer ";
+
+              private final String issuer;
+
+              public SessionTokenParser(String issuer) {
+                  this.issuer = issuer;
+              }
+
+              public String tokenFrom(String authorizationHeader) {
+                  if (authorizationHeader == null || !authorizationHeader.startsWith(PREFIX)) {
+                      throw new IllegalArgumentException("missing bearer token");
+                  }
+                  return authorizationHeader.substring(PREFIX.length());
+              }
+
+              public boolean issuedByUs(String token) {
+                  return token.startsWith(issuer + ".");
+              }
+          }
+
+  - id: "c1"
+    message: "Read the expiry timestamp from session tokens"
+    author: "Diego Alvarez <diego.alvarez@example.com>"
+    date: "2023-09-08T13:15:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/auth/SessionTokenParser.java"
+        old: |2
+              public boolean issuedByUs(String token) {
+                  return token.startsWith(issuer + ".");
+              }
+          }
+        new: |2
+              public boolean issuedByUs(String token) {
+                  return token.startsWith(issuer + ".");
+              }
+
+              public long expiresAt(String token) {
+                  String[] parts = token.split("\\.");
+                  String payload = parts[1];
+                  return Long.parseLong(payload);
+              }
+          }
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Name the expiry segment explicitly in expiresAt"
+    author: "Mei Tanaka <mei.tanaka@example.com>"
+    date: "2023-09-13T10:25:00Z"
+    role: "refactoring"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/auth/SessionTokenParser.java"
+        old: |2
+                  String payload = parts[1];
+                  return Long.parseLong(payload);
+        new: |2
+                  String expirySegment = parts[1];
+                  return Long.parseLong(expirySegment);
+        labels: ["non_bug_introducing_change"]
+
+  - id: "c3"
+    message: "Reject malformed session tokens and tolerate padded expiry segments"
+    author: "Tom Becker <tom.becker@example.com>"
+    date: "2023-09-19T15:00:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/auth/SessionTokenParser.java"
+        old: |2
+                  String[] parts = token.split("\\.");
+                  String expirySegment = parts[1];
+        new: |2
+                  String[] parts = token.split("\\.");
+                  if (parts.length < 2) {
+                      throw new IllegalArgumentException("malformed session token");
+                  }
+                  String expirySegment = parts[1].trim();
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "expiresAt fails with an index error on tokens without an expiry segment"
+    bug_fixing_commit: "c3"
+    bug_introducing_commits: ["c1"]
+    fault:
+      commit: "c1"
+      file: "src/main/java/com/example/auth/SessionTokenParser.java"
+      entity:
+        type: "method"
+        name: "expiresAt"
+        signature: "long expiresAt(String token)"
+      change_type: "omission"
+      missing_statement: |2
+        if (parts.length < 2) {
+            throw new IllegalArgumentException("malformed session token");
+        }
+      description: "expiresAt indexes parts[1] without checking that the token contains a second segment."
+    fix:
+      commit: "c3"
+      file: "src/main/java/com/example/auth/SessionTokenParser.java"
+      entity:
+        type: "method"
+        name: "expiresAt"
+        signature: "long expiresAt(String token)"
+      added_statement: |2
+                if (parts.length < 2) {
+                    throw new IllegalArgumentException("malformed session token");
+                }
+      fix_type: "line_addition"
+      description: "The BFC also changes the adjacent line `String expirySegment = parts[1];` (last touched by c2) to add `.trim()`; that edit is unrelated to the fault."
+    expected_szz:
+      commit_level:
+        true_positives: ["c1"]
+        known_distractors: ["c2"]
+        false_positives_allowed: []
+      line_level:
+        available: false
+        reason: "The fault is an omitted guard. The only line the BFC deletes is an unrelated adjacent line owned by c2."
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3"]

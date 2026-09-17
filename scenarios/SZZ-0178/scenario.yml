@@ -1,0 +1,182 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0178"
+  title: "Faulty line rewritten twice before the fix (depth-2 line history)"
+  slug: "deep-line-history-depth-2"
+  description: >
+    The BIC introduces an integer-division fault in the shipping cost formula.
+    Two later commits rewrite the same line without changing its behaviour: a
+    local-variable rename and an explicit-parentheses cleanup. Plain blame at
+    the BFC parent stops at the last rewrite; the BIC is reachable only by
+    following the line history two steps further back. SZZ-0179 is the
+    matched control in which the last rewrite is the BIC.
+  category: "Intermediate noise and history noise"
+  factors:
+    - "single-bic"
+    - "single-bfc"
+    - "line-modification"
+    - "deep-line-history"
+    - "rewrite-depth-2"
+    - "basic-blame-distractor"
+  difficulty: "hard"
+  status: "active"
+  category_code: "S3"
+
+repository:
+  name: "SZZ-0178-deep-line-history-depth-2"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Add shipping cost calculation for the checkout page"
+    author: "Aiko Mori <aiko.mori@example.com>"
+    date: "2024-09-02T09:20:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/com/example/checkout/ShippingCostCalculator.java"
+        content: |
+          package com.example.checkout;
+
+          public class ShippingCostCalculator {
+              private static final long FREE_SHIPPING_THRESHOLD_CENTS = 5000;
+              private static final long BASE_RATE_CENTS = 499;
+              private static final long PER_KG_RATE_CENTS = 120;
+
+              private final long expressSurchargeCents;
+
+              public ShippingCostCalculator(long expressSurchargeCents) {
+                  this.expressSurchargeCents = expressSurchargeCents;
+              }
+
+              public long cost(long orderTotalCents, int weightKg, boolean express) {
+                  if (orderTotalCents >= FREE_SHIPPING_THRESHOLD_CENTS && !express) {
+                      return 0;
+                  }
+                  long total = BASE_RATE_CENTS + PER_KG_RATE_CENTS * weightKg;
+                  if (express) {
+                      total += expressSurchargeCents;
+                  }
+                  return total;
+              }
+
+              public boolean qualifiesForFreeShipping(long orderTotalCents) {
+                  return orderTotalCents >= FREE_SHIPPING_THRESHOLD_CENTS;
+              }
+          }
+
+  - id: "c1"
+    message: "Accept parcel weight in grams from the warehouse scale"
+    author: "Hana Sato <hana.sato@example.com>"
+    date: "2024-09-05T15:10:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/checkout/ShippingCostCalculator.java"
+        old: |2
+              public long cost(long orderTotalCents, int weightKg, boolean express) {
+        new: |2
+              public long cost(long orderTotalCents, int weightGrams, boolean express) {
+      - type: "replace"
+        path: "src/main/java/com/example/checkout/ShippingCostCalculator.java"
+        old: |2
+                  long total = BASE_RATE_CENTS + PER_KG_RATE_CENTS * weightKg;
+        new: |2
+                  long total = BASE_RATE_CENTS + PER_KG_RATE_CENTS * (weightGrams / 1000);
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Rename the running total in cost() for clarity"
+    author: "Jonas Berg <jonas.berg@example.com>"
+    date: "2024-09-11T10:35:00Z"
+    role: "refactoring"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/checkout/ShippingCostCalculator.java"
+        old: |2
+                  long total = BASE_RATE_CENTS + PER_KG_RATE_CENTS * (weightGrams / 1000);
+                  if (express) {
+                      total += expressSurchargeCents;
+                  }
+                  return total;
+        new: |2
+                  long amount = BASE_RATE_CENTS + PER_KG_RATE_CENTS * (weightGrams / 1000);
+                  if (express) {
+                      amount += expressSurchargeCents;
+                  }
+                  return amount;
+        labels: ["non_bug_introducing_change"]
+
+  - id: "c3"
+    message: "Make operator precedence explicit in the shipping cost formula"
+    author: "Tom Becker <tom.becker@example.com>"
+    date: "2024-09-17T13:50:00Z"
+    role: "formatting"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/checkout/ShippingCostCalculator.java"
+        old: |2
+                  long amount = BASE_RATE_CENTS + PER_KG_RATE_CENTS * (weightGrams / 1000);
+        new: |2
+                  long amount = BASE_RATE_CENTS + (PER_KG_RATE_CENTS * (weightGrams / 1000));
+        labels: ["non_bug_introducing_change"]
+
+  - id: "c4"
+    message: "Charge every started kilogram of parcel weight"
+    author: "Aiko Mori <aiko.mori@example.com>"
+    date: "2024-09-24T09:05:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/checkout/ShippingCostCalculator.java"
+        old: |2
+                  long amount = BASE_RATE_CENTS + (PER_KG_RATE_CENTS * (weightGrams / 1000));
+        new: |2
+                  long amount = BASE_RATE_CENTS + (PER_KG_RATE_CENTS * ((weightGrams + 999L) / 1000));
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "Parcel weight is truncated to whole kilograms, undercharging shipping"
+    bug_fixing_commit: "c4"
+    bug_introducing_commits: ["c1"]
+    fault:
+      commit: "c1"
+      file: "src/main/java/com/example/checkout/ShippingCostCalculator.java"
+      entity:
+        type: "method"
+        name: "cost"
+        signature: "long cost(long orderTotalCents, int weightGrams, boolean express)"
+      statement: "PER_KG_RATE_CENTS * (weightGrams / 1000)"
+      change_type: "line_modification"
+      description: "Integer division truncates 1500 g to 1 kg. The sub-expression is used as fault.statement because c2 and c3 rewrite the surrounding line."
+    fix:
+      commit: "c4"
+      file: "src/main/java/com/example/checkout/ShippingCostCalculator.java"
+      entity:
+        type: "method"
+        name: "cost"
+        signature: "long cost(long orderTotalCents, int weightGrams, boolean express)"
+      statement: "long amount = BASE_RATE_CENTS + (PER_KG_RATE_CENTS * ((weightGrams + 999L) / 1000));"
+      fix_type: "line_modification"
+    expected_szz:
+      commit_level:
+        true_positives: ["c1"]
+        known_distractors: ["c2", "c3"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "long total = BASE_RATE_CENTS + PER_KG_RATE_CENTS * (weightGrams / 1000);"
+        note: >
+          The faulty line is rewritten by c2 (variable rename) and again by c3
+          (explicit parentheses). Blame at c4^ returns c3; one step of line
+          history returns c2; two steps return c1.
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3", "c4"]

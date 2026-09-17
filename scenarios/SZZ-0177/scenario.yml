@@ -1,0 +1,193 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0177"
+  title: "Deletion-only BIC removes a guard that an addition-only BFC restores"
+  slug: "deletion-only-bic-addition-only-bfc"
+  description: >
+    The bug-introducing commit deletes a three-line guard and touches nothing
+    else (deletion-only diff, no re-indentation). The bug-fixing commit
+    re-inserts the guard and touches nothing else (addition-only diff). The
+    BFC therefore deletes no line, and the BIC added no line, so neither
+    deleted-line blame nor added-line heuristics reach the BIC directly.
+  category: "Omission and deletion bugs"
+  factors:
+    - "single-bic"
+    - "single-bfc"
+    - "deletion-only-bic"
+    - "addition-only-fix"
+    - "guard-removal"
+  difficulty: "hard"
+  status: "active"
+  category_code: "S2"
+
+repository:
+  name: "SZZ-0177-deletion-only-bic-addition-only-bfc"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Add account transfers with balance and limit checks"
+    author: "Luca Moretti <luca.moretti@example.com>"
+    date: "2024-05-02T09:00:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/com/example/banking/Account.java"
+        content: |
+          package com.example.banking;
+
+          public class Account {
+              private final String id;
+              private long balanceCents;
+
+              public Account(String id, long balanceCents) {
+                  this.id = id;
+                  this.balanceCents = balanceCents;
+              }
+
+              public String getId() {
+                  return id;
+              }
+
+              public long getBalanceCents() {
+                  return balanceCents;
+              }
+
+              void deposit(long amountCents) {
+                  balanceCents += amountCents;
+              }
+
+              void withdraw(long amountCents) {
+                  balanceCents -= amountCents;
+              }
+          }
+      - type: "write_file"
+        path: "src/main/java/com/example/banking/TransferService.java"
+        content: |
+          package com.example.banking;
+
+          public class TransferService {
+              private final long dailyLimitCents;
+
+              public TransferService(long dailyLimitCents) {
+                  this.dailyLimitCents = dailyLimitCents;
+              }
+
+              public void transfer(Account from, Account to, long amountCents) {
+                  if (amountCents <= 0) {
+                      throw new IllegalArgumentException("transfer amount must be positive");
+                  }
+                  if (amountCents > dailyLimitCents) {
+                      throw new IllegalArgumentException("transfer exceeds the daily limit");
+                  }
+                  if (from.getBalanceCents() < amountCents) {
+                      throw new IllegalStateException("insufficient funds in " + from.getId());
+                  }
+                  from.withdraw(amountCents);
+                  to.deposit(amountCents);
+              }
+          }
+
+  - id: "c1"
+    message: "Remove the amount check that the request validator already performs"
+    author: "Diego Alvarez <diego.alvarez@example.com>"
+    date: "2024-05-07T14:22:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/banking/TransferService.java"
+        old: |2
+              public void transfer(Account from, Account to, long amountCents) {
+                  if (amountCents <= 0) {
+                      throw new IllegalArgumentException("transfer amount must be positive");
+                  }
+                  if (amountCents > dailyLimitCents) {
+        new: |2
+              public void transfer(Account from, Account to, long amountCents) {
+                  if (amountCents > dailyLimitCents) {
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Expose the configured daily limit"
+    author: "Hana Sato <hana.sato@example.com>"
+    date: "2024-05-13T10:40:00Z"
+    role: "feature_addition"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/banking/TransferService.java"
+        old: |2
+                  this.dailyLimitCents = dailyLimitCents;
+              }
+        new: |2
+                  this.dailyLimitCents = dailyLimitCents;
+              }
+
+              public long getDailyLimitCents() {
+                  return dailyLimitCents;
+              }
+        labels: ["non_bug_introducing_change"]
+
+  - id: "c3"
+    message: "Reject non-positive transfer amounts in the service layer"
+    author: "Luca Moretti <luca.moretti@example.com>"
+    date: "2024-05-20T17:05:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/banking/TransferService.java"
+        old: |2
+              public void transfer(Account from, Account to, long amountCents) {
+                  if (amountCents > dailyLimitCents) {
+        new: |2
+              public void transfer(Account from, Account to, long amountCents) {
+                  if (amountCents <= 0) {
+                      throw new IllegalArgumentException("transfer amount must be positive");
+                  }
+                  if (amountCents > dailyLimitCents) {
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "Negative transfer amounts move money in the reverse direction"
+    bug_fixing_commit: "c3"
+    bug_introducing_commits: ["c1"]
+    fault:
+      commit: "c1"
+      file: "src/main/java/com/example/banking/TransferService.java"
+      entity:
+        type: "method"
+        name: "transfer"
+        signature: "void transfer(Account from, Account to, long amountCents)"
+      change_type: "omission"
+      missing_statement: |2
+        if (amountCents <= 0) {
+            throw new IllegalArgumentException("transfer amount must be positive");
+        }
+      description: "The guard existed in c0 and was deleted by c1 without any other change; its absence is the fault."
+    fix:
+      commit: "c3"
+      file: "src/main/java/com/example/banking/TransferService.java"
+      entity:
+        type: "method"
+        name: "transfer"
+        signature: "void transfer(Account from, Account to, long amountCents)"
+      added_statement: |2
+                if (amountCents <= 0) {
+                    throw new IllegalArgumentException("transfer amount must be positive");
+                }
+      fix_type: "line_addition"
+    expected_szz:
+      commit_level:
+        true_positives: ["c1"]
+        false_positives_allowed: []
+      line_level:
+        available: false
+        reason: "The BIC only deletes lines and the BFC only adds lines; there is no faulty deleted line at the BFC."
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3"]

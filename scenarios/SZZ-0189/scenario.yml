@@ -1,0 +1,203 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0189"
+  title: "Missing close() fixed by an addition whose only deleted line is a distractor's comment"
+  slug: "missing-close-fix-deletes-only-comment"
+  description: >
+    A method opens a writer and never closes it. The bug-fixing commit adds
+    the missing `writer.close()` and, in the same commit, removes a stale
+    comment line that a distractor commit had placed above the method. The
+    BFC therefore deletes exactly one line, and that line is a comment owned
+    by a non-BIC commit. This is the inverse of SZZ-0185: there is no
+    semantic deleted line at all.
+  category: "Omission and deletion bugs"
+  factors:
+    - "single-bic"
+    - "single-bfc"
+    - "omission-bug"
+    - "line-addition-fix"
+    - "missing-close"
+    - "cosmetic-line-noise"
+  difficulty: "hard"
+  status: "active"
+  category_code: "S2"
+
+repository:
+  name: "SZZ-0189-missing-close-fix-deletes-only-comment"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Add CSV export for generated reports"
+    author: "Diego Alvarez <diego.alvarez@example.com>"
+    date: "2024-10-07T09:00:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/com/example/reports/Report.java"
+        content: |
+          package com.example.reports;
+
+          import java.util.List;
+
+          public class Report {
+              private final String title;
+              private final List<String> rows;
+
+              public Report(String title, List<String> rows) {
+                  this.title = title;
+                  this.rows = rows;
+              }
+
+              public String getTitle() {
+                  return title;
+              }
+
+              public List<String> getRows() {
+                  return rows;
+              }
+
+              public int rowCount() {
+                  return rows.size();
+              }
+          }
+      - type: "write_file"
+        path: "src/main/java/com/example/reports/ReportExporter.java"
+        content: |
+          package com.example.reports;
+
+          import java.io.BufferedWriter;
+          import java.io.IOException;
+          import java.nio.file.Files;
+          import java.nio.file.Path;
+
+          public class ReportExporter {
+              private final String delimiter;
+
+              public ReportExporter(String delimiter) {
+                  this.delimiter = delimiter;
+              }
+
+              public void exportRows(Report report, Path target) throws IOException {
+                  try (BufferedWriter writer = Files.newBufferedWriter(target)) {
+                      for (String row : report.getRows()) {
+                          writer.write(row.replace(",", delimiter));
+                          writer.newLine();
+                      }
+                  }
+              }
+          }
+
+  - id: "c1"
+    message: "Write a summary file next to each exported report"
+    author: "Jonas Berg <jonas.berg@example.com>"
+    date: "2024-10-10T13:30:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/reports/ReportExporter.java"
+        old: |2
+                          writer.write(row.replace(",", delimiter));
+                          writer.newLine();
+                      }
+                  }
+              }
+        new: |2
+                          writer.write(row.replace(",", delimiter));
+                          writer.newLine();
+                      }
+                  }
+              }
+
+              public void exportSummary(Report report, Path target) throws IOException {
+                  BufferedWriter writer = Files.newBufferedWriter(target);
+                  writer.write(report.getTitle());
+                  writer.newLine();
+                  writer.write("rows" + delimiter + report.rowCount());
+                  writer.newLine();
+              }
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Note the consumer of the summary file"
+    author: "Tom Becker <tom.becker@example.com>"
+    date: "2024-10-16T10:20:00Z"
+    role: "distractor"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/reports/ReportExporter.java"
+        old: |2
+              public void exportSummary(Report report, Path target) throws IOException {
+        new: |2
+              // Consumed by the nightly archive job.
+              public void exportSummary(Report report, Path target) throws IOException {
+        labels: ["non_bug_introducing_change"]
+
+  - id: "c3"
+    message: "Close the summary writer so the file is flushed; drop the stale consumer note"
+    author: "Diego Alvarez <diego.alvarez@example.com>"
+    date: "2024-10-22T15:10:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/reports/ReportExporter.java"
+        old: |2
+              // Consumed by the nightly archive job.
+              public void exportSummary(Report report, Path target) throws IOException {
+        new: |2
+              public void exportSummary(Report report, Path target) throws IOException {
+        labels: ["non_bug_introducing_change"]
+      - type: "replace"
+        path: "src/main/java/com/example/reports/ReportExporter.java"
+        old: |2
+                  writer.write("rows" + delimiter + report.rowCount());
+                  writer.newLine();
+              }
+        new: |2
+                  writer.write("rows" + delimiter + report.rowCount());
+                  writer.newLine();
+                  writer.close();
+              }
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "Summary writer is never closed, so the summary file stays empty and the handle leaks"
+    bug_fixing_commit: "c3"
+    bug_introducing_commits: ["c1"]
+    fault:
+      commit: "c1"
+      file: "src/main/java/com/example/reports/ReportExporter.java"
+      entity:
+        type: "method"
+        name: "exportSummary"
+        signature: "void exportSummary(Report report, Path target)"
+      change_type: "omission"
+      missing_statement: "writer.close();"
+      description: "exportSummary opens a BufferedWriter outside try-with-resources and never closes or flushes it."
+    fix:
+      commit: "c3"
+      file: "src/main/java/com/example/reports/ReportExporter.java"
+      entity:
+        type: "method"
+        name: "exportSummary"
+        signature: "void exportSummary(Report report, Path target)"
+      added_statement: "writer.close();"
+      fix_type: "line_addition"
+      description: "The BFC also deletes the comment line `// Consumed by the nightly archive job.` written by c2; that is the only deleted line of the BFC."
+    expected_szz:
+      commit_level:
+        true_positives: ["c1"]
+        known_distractors: ["c2"]
+        false_positives_allowed: []
+      line_level:
+        available: false
+        reason: "The fault is an omitted close(); the only line the BFC deletes is a comment owned by c2."
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3"]

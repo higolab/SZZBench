@@ -1,0 +1,214 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0182"
+  title: "Cross-file ghost: BIC deletes a validation call in one file, BFC adds a check in another"
+  slug: "cross-file-ghost-deleted-validation-call"
+  description: >
+    The bug-introducing commit removes the call to the order validator from
+    the checkout flow (a deletion-only change in CheckoutService). The
+    bug-fixing commit does not restore that call; it adds a defensive check
+    inside PaymentGateway instead (an addition-only change in a different
+    file). Neither the BIC's file nor the BFC's file offers a deleted line
+    that blame could follow to the BIC.
+  category: "Omission and deletion bugs"
+  factors:
+    - "single-bic"
+    - "single-bfc"
+    - "deletion-only-bic"
+    - "addition-only-fix"
+    - "cross-file-fix"
+  difficulty: "hard"
+  status: "active"
+  category_code: "S2"
+
+repository:
+  name: "SZZ-0182-cross-file-ghost-deleted-validation-call"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Add checkout flow with order validation and payment"
+    author: "Priya Raman <priya.raman@example.com>"
+    date: "2024-06-03T09:10:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/com/example/orders/Order.java"
+        content: |
+          package com.example.orders;
+
+          import java.util.List;
+
+          public class Order {
+              private final String id;
+              private final List<String> lineItems;
+              private final long totalCents;
+
+              public Order(String id, List<String> lineItems, long totalCents) {
+                  this.id = id;
+                  this.lineItems = lineItems;
+                  this.totalCents = totalCents;
+              }
+
+              public String getId() {
+                  return id;
+              }
+
+              public List<String> getLineItems() {
+                  return lineItems;
+              }
+
+              public long getTotalCents() {
+                  return totalCents;
+              }
+          }
+      - type: "write_file"
+        path: "src/main/java/com/example/orders/OrderValidator.java"
+        content: |
+          package com.example.orders;
+
+          public class OrderValidator {
+              public void validate(Order order) {
+                  if (order.getLineItems().isEmpty()) {
+                      throw new IllegalArgumentException("order " + order.getId() + " has no line items");
+                  }
+                  if (order.getTotalCents() <= 0) {
+                      throw new IllegalArgumentException("order " + order.getId() + " has a non-positive total");
+                  }
+              }
+          }
+      - type: "write_file"
+        path: "src/main/java/com/example/orders/PaymentGateway.java"
+        content: |
+          package com.example.orders;
+
+          import java.util.ArrayList;
+          import java.util.List;
+
+          public class PaymentGateway {
+              private final List<String> charges = new ArrayList<>();
+
+              public String charge(Order order) {
+                  String reference = "PAY-" + order.getId();
+                  charges.add(reference + ":" + order.getTotalCents());
+                  return reference;
+              }
+
+              public List<String> charges() {
+                  return new ArrayList<>(charges);
+              }
+          }
+      - type: "write_file"
+        path: "src/main/java/com/example/orders/CheckoutService.java"
+        content: |
+          package com.example.orders;
+
+          public class CheckoutService {
+              private final OrderValidator validator;
+              private final PaymentGateway gateway;
+
+              public CheckoutService(OrderValidator validator, PaymentGateway gateway) {
+                  this.validator = validator;
+                  this.gateway = gateway;
+              }
+
+              public String checkout(Order order) {
+                  validator.validate(order);
+                  String paymentReference = gateway.charge(order);
+                  return paymentReference;
+              }
+          }
+
+  - id: "c1"
+    message: "Drop the second validation pass from checkout"
+    author: "Mei Tanaka <mei.tanaka@example.com>"
+    date: "2024-06-06T14:30:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/orders/CheckoutService.java"
+        old: |2
+              public String checkout(Order order) {
+                  validator.validate(order);
+                  String paymentReference = gateway.charge(order);
+        new: |2
+              public String checkout(Order order) {
+                  String paymentReference = gateway.charge(order);
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Record the order id with each charge"
+    author: "Luca Moretti <luca.moretti@example.com>"
+    date: "2024-06-12T11:00:00Z"
+    role: "feature_addition"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/orders/PaymentGateway.java"
+        old: |2
+                  charges.add(reference + ":" + order.getTotalCents());
+        new: |2
+                  charges.add(reference + ":" + order.getId() + ":" + order.getTotalCents());
+        labels: ["non_bug_introducing_change"]
+
+  - id: "c3"
+    message: "Refuse to charge orders with a non-positive total"
+    author: "Priya Raman <priya.raman@example.com>"
+    date: "2024-06-18T16:45:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/orders/PaymentGateway.java"
+        old: |2
+              public String charge(Order order) {
+                  String reference = "PAY-" + order.getId();
+        new: |2
+              public String charge(Order order) {
+                  if (order.getTotalCents() <= 0) {
+                      throw new IllegalStateException("cannot charge order " + order.getId() + " with a non-positive total");
+                  }
+                  String reference = "PAY-" + order.getId();
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "Orders with a zero or negative total are charged"
+    bug_fixing_commit: "c3"
+    bug_introducing_commits: ["c1"]
+    fault:
+      commit: "c1"
+      file: "src/main/java/com/example/orders/CheckoutService.java"
+      entity:
+        type: "method"
+        name: "checkout"
+        signature: "String checkout(Order order)"
+      change_type: "omission"
+      missing_statement: "validator.validate(order);"
+      description: "c1 deletes the only call to OrderValidator.validate on the checkout path, so unvalidated orders reach PaymentGateway.charge."
+    fix:
+      commit: "c3"
+      file: "src/main/java/com/example/orders/PaymentGateway.java"
+      entity:
+        type: "method"
+        name: "charge"
+        signature: "String charge(Order order)"
+      added_statement: |2
+                if (order.getTotalCents() <= 0) {
+                    throw new IllegalStateException("cannot charge order " + order.getId() + " with a non-positive total");
+                }
+      fix_type: "line_addition"
+      description: "The fix hardens the callee in a different file instead of restoring the deleted call."
+    expected_szz:
+      commit_level:
+        true_positives: ["c1"]
+        false_positives_allowed: []
+      line_level:
+        available: false
+        reason: "The BIC only deletes a line in CheckoutService.java and the BFC only adds lines in PaymentGateway.java."
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3"]

@@ -1,0 +1,192 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0184"
+  title: "BFC also modifies existing test lines owned by another commit"
+  slug: "bfc-modifies-test-lines"
+  description: >
+    The bug-fixing commit repairs the production code and, in the same
+    commit, strengthens an existing test case whose lines were written by a
+    test-only commit. Plain blame on the BFC's deleted lines returns the BIC
+    for the production line and the test-only commit for the test line. Tools
+    that filter test files (or test-only commits) obtain the exact BIC set.
+  category: "BFC-side noise and tangled commits"
+  factors:
+    - "single-bic"
+    - "single-bfc"
+    - "line-modification"
+    - "test-line-noise"
+    - "multi-file-bfc"
+  difficulty: "medium"
+  status: "active"
+  category_code: "S4"
+
+repository:
+  name: "SZZ-0184-bfc-modifies-test-lines"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Add word counter with a small test harness"
+    author: "Aiko Mori <aiko.mori@example.com>"
+    date: "2023-05-08T09:00:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/com/example/text/WordCounter.java"
+        content: |
+          package com.example.text;
+
+          public class WordCounter {
+              private final boolean ignoreNumbers;
+
+              public WordCounter(boolean ignoreNumbers) {
+                  this.ignoreNumbers = ignoreNumbers;
+              }
+
+              public int count(String text) {
+                  String trimmed = text.trim();
+                  if (trimmed.isEmpty()) {
+                      return 0;
+                  }
+                  String[] tokens = trimmed.split("\\s+");
+                  int words = 0;
+                  for (String token : tokens) {
+                      if (ignoreNumbers && isNumber(token)) {
+                          continue;
+                      }
+                      words++;
+                  }
+                  return words;
+              }
+
+              private boolean isNumber(String token) {
+                  for (int i = 0; i < token.length(); i++) {
+                      if (!Character.isDigit(token.charAt(i))) {
+                          return false;
+                      }
+                  }
+                  return !token.isEmpty();
+              }
+          }
+      - type: "write_file"
+        path: "src/test/java/com/example/text/WordCounterTest.java"
+        content: |
+          package com.example.text;
+
+          public class WordCounterTest {
+              public void countsSingleSpacedWords() {
+                  WordCounter counter = new WordCounter(false);
+                  assertEquals(3, counter.count("one two three"));
+              }
+
+              public void skipsNumbersWhenConfigured() {
+                  WordCounter counter = new WordCounter(true);
+                  assertEquals(2, counter.count("chapter 12 begins"));
+              }
+
+              private static void assertEquals(int expected, int actual) {
+                  if (expected != actual) {
+                      throw new AssertionError("expected " + expected + " but was " + actual);
+                  }
+              }
+          }
+
+  - id: "c1"
+    message: "Split on plain spaces to avoid the regex engine"
+    author: "Hana Sato <hana.sato@example.com>"
+    date: "2023-05-11T14:20:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/text/WordCounter.java"
+        old: |2
+                  String[] tokens = trimmed.split("\\s+");
+        new: |2
+                  String[] tokens = trimmed.split(" ");
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Cover blank input in the word counter test"
+    author: "Tom Becker <tom.becker@example.com>"
+    date: "2023-05-16T10:10:00Z"
+    role: "test_change"
+    operations:
+      - type: "replace"
+        path: "src/test/java/com/example/text/WordCounterTest.java"
+        old: |2
+                  assertEquals(2, counter.count("chapter 12 begins"));
+              }
+        new: |2
+                  assertEquals(2, counter.count("chapter 12 begins"));
+              }
+
+              public void blankInputHasNoWords() {
+                  WordCounter counter = new WordCounter(false);
+                  assertEquals(0, counter.count(""));
+              }
+        labels: ["non_bug_introducing_change"]
+
+  - id: "c3"
+    message: "Treat runs of whitespace as a single word separator again"
+    author: "Aiko Mori <aiko.mori@example.com>"
+    date: "2023-05-23T16:00:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/text/WordCounter.java"
+        old: |2
+                  String[] tokens = trimmed.split(" ");
+        new: |2
+                  String[] tokens = trimmed.split("\\s+");
+        labels: ["B001", "fix"]
+      - type: "replace"
+        path: "src/test/java/com/example/text/WordCounterTest.java"
+        old: |2
+                  assertEquals(0, counter.count(""));
+        new: |2
+                  assertEquals(0, counter.count(" \t "));
+        labels: ["non_bug_introducing_change"]
+
+bugs:
+  - id: "B001"
+    title: "Consecutive spaces are counted as words"
+    bug_fixing_commit: "c3"
+    bug_introducing_commits: ["c1"]
+    fault:
+      commit: "c1"
+      file: "src/main/java/com/example/text/WordCounter.java"
+      entity:
+        type: "method"
+        name: "count"
+        signature: "int count(String text)"
+      statement: "String[] tokens = trimmed.split(\" \");"
+      change_type: "line_modification"
+      description: "Splitting on a single space yields empty tokens for consecutive spaces and does not split on tabs; each empty token is counted as a word."
+    fix:
+      commit: "c3"
+      file: "src/main/java/com/example/text/WordCounter.java"
+      entity:
+        type: "method"
+        name: "count"
+        signature: "int count(String text)"
+      statement: "String[] tokens = trimmed.split(\"\\\\s+\");"
+      fix_type: "line_modification"
+      description: "The BFC also changes one assertion line in WordCounterTest.java that c2 wrote (blank input becomes whitespace-only input)."
+    expected_szz:
+      commit_level:
+        true_positives: ["c1"]
+        known_distractors: ["c2"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "String[] tokens = trimmed.split(\" \");"
+        note: "Blame on the BFC's deleted lines returns c1 (WordCounter.java) and c2 (WordCounterTest.java)."
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3"]
