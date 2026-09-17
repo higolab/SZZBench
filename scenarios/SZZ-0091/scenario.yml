@@ -1,124 +1,152 @@
-schema_version: '1.0'
+schema_version: "1.0"
+
 meta:
-  id: SZZ-0091
-  title: Dead code removal after BIC
-  slug: dead-code-removal-after-bic
-  description: This scenario introduces a bug by changing `return value >= min && value <= max;` to `return value > min && value < max;` and later restores the correct implementation.
+  id: "SZZ-0091"
+  title: "Dead code removal after BIC"
+  slug: "dead-code-removal-after-bic"
+  description: >
+    A range check is changed from inclusive to exclusive bounds, which is the
+    fault. A later commit deletes dead code from the same class: a private
+    helper that no caller ever reached. The intermediate commit is therefore
+    a pure deletion; it adds no line and does not touch the faulty line. The
+    fixing commit repairs only the faulty line and does not resurrect the
+    deleted helper.
   category: "Intermediate noise and history noise"
   factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - dead-code-removal-after-bic
-  difficulty: medium
-  status: active
+    - "single-bic"
+    - "single-bfc"
+    - "line-modification"
+    - "dead-code-removal-after-bic"
+    - "deletion-only-intermediate"
+    - "blame-reaches-bic"
+  difficulty: "easy"
+  status: "active"
   category_code: "S3"
+
 repository:
-  name: SZZ-0091-dead-code-removal-after-bic
-  default_branch: main
-  language: java
-  build_system: none
-  source_root: src/main/java
+  name: "SZZ-0091-dead-code-removal-after-bic"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
 commits:
-- id: c0
-  message: Initial correct implementation
-  author: Alice <alice@example.com>
-  date: '2024-01-01T10:00:00Z'
-  role: initial
-  operations:
-  - type: write_file
-    path: src/main/java/example/Scenario0091.java
-    content: "package example;\n\npublic class Scenario0091 {\n    public boolean check(int value, int min, int max) {\n        return value >= min && value <= max;\n    }\n}\n"
-- id: c1
-  message: Introduce bug
-  author: Bob <bob@example.com>
-  date: '2024-01-02T10:00:00Z'
-  role: bug_introducing
-  operations:
-  - type: replace
-    path: src/main/java/example/Scenario0091.java
-    old: "package example;\n\npublic class Scenario0091 {\n    public boolean check(int value, int min, int max) {\n        return value >= min && value <= max;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0091 {\n    public boolean check(int value, int min, int max) {\n        return value > min && value < max;\n    }\n}\n"
-    labels:
-    - B001
-    - fault
-- id: c2
-  message: Remove dead code after bug introduction
-  author: Carol <carol@example.com>
-  date: '2024-01-03T10:00:00Z'
-  role: cleanup
-  operations:
-  - type: replace
-    path: src/main/java/example/Scenario0091.java
-    old: "package example;\n\npublic class Scenario0091 {\n    public boolean check(int value, int min, int max) {\n        return value > min && value < max;\n    }\n}\n"
-    new: |
-      package example;
+  - id: "c0"
+    message: "Add a range check helper"
+    author: "Alice <alice@example.com>"
+    date: "2024-01-01T10:00:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/example/Scenario0091.java"
+        content: |
+          package example;
 
-      public class Scenario0091 {
-          public boolean check(int value, int min, int max) {
-              // dead code removed; boundary remains faulty
-              return value > min && value < max;
-          }
-      }
-- id: c3
-  message: Fix bug
-  author: Alice <alice@example.com>
-  date: '2024-01-04T10:00:00Z'
-  role: bug_fixing
-  operations:
-  - type: replace
-    path: src/main/java/example/Scenario0091.java
-    old: |
-      package example;
+          public class Scenario0091 {
+              public boolean check(int value, int min, int max) {
+                  return value >= min && value <= max;
+              }
 
-      public class Scenario0091 {
-          public boolean check(int value, int min, int max) {
-              // dead code removed; boundary remains faulty
-              return value > min && value < max;
+              private static boolean isPositive(int value) {
+                  return value > 0;
+              }
           }
-      }
-    new: "package example;\n\npublic class Scenario0091 {\n    public boolean check(int value, int min, int max) {\n        return value >= min && value <= max;\n    }\n}\n"
-    labels:
-    - B001
-    - fix
+
+  - id: "c1"
+    message: "Make the range bounds exclusive in check()"
+    author: "Bob <bob@example.com>"
+    date: "2024-01-02T10:00:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/Scenario0091.java"
+        old: "return value >= min && value <= max;"
+        new: "return value > min && value < max;"
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Drop the isPositive helper, which nothing calls"
+    author: "Carol <carol@example.com>"
+    date: "2024-01-03T10:00:00Z"
+    role: "cleanup"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/Scenario0091.java"
+        old: |
+          package example;
+
+          public class Scenario0091 {
+              public boolean check(int value, int min, int max) {
+                  return value > min && value < max;
+              }
+
+              private static boolean isPositive(int value) {
+                  return value > 0;
+              }
+          }
+        new: |
+          package example;
+
+          public class Scenario0091 {
+              public boolean check(int value, int min, int max) {
+                  return value > min && value < max;
+              }
+          }
+        labels: ["non_bug_introducing_change"]
+
+  - id: "c3"
+    message: "Include both range bounds in check() again"
+    author: "Alice <alice@example.com>"
+    date: "2024-01-04T10:00:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/Scenario0091.java"
+        old: "return value > min && value < max;"
+        new: "return value >= min && value <= max;"
+        labels: ["B001", "fix"]
+
 bugs:
-- id: B001
-  title: Dead code removal after BIC
-  bug_fixing_commit: c3
-  bug_introducing_commits: &id001
-  - c1
-  fault:
-    commit: c1
-    file: src/main/java/example/Scenario0091.java
-    entity:
-      type: method
-      name: check
-      signature: boolean check(int value, int min, int max)
-    statement: return value > min && value < max;
-    change_type: line_modification
-  fix:
-    commit: c3
-    file: src/main/java/example/Scenario0091.java
-    entity:
-      type: method
-      name: check
-      signature: boolean check(int value, int min, int max)
-    statement: return value >= min && value <= max;
-    fix_type: line_modification
-  expected_szz:
-    commit_level:
-      true_positives: *id001
-      false_positives_allowed: []
-      known_distractors:
-      - c2
-    line_level:
-      available: true
-      faulty_statements:
-      - return value > min && value < max;
+  - id: "B001"
+    title: "Range bounds are excluded from the containment check"
+    bug_fixing_commit: "c3"
+    bug_introducing_commits: ["c1"]
+
+    fault:
+      commit: "c1"
+      file: "src/main/java/example/Scenario0091.java"
+      entity:
+        type: "method"
+        name: "check"
+        signature: "boolean check(int value, int min, int max)"
+      statement: "return value > min && value < max;"
+      change_type: "line_modification"
+
+    fix:
+      commit: "c3"
+      file: "src/main/java/example/Scenario0091.java"
+      entity:
+        type: "method"
+        name: "check"
+        signature: "boolean check(int value, int min, int max)"
+      statement: "return value >= min && value <= max;"
+      fix_type: "line_modification"
+
+    expected_szz:
+      commit_level:
+        true_positives: ["c1"]
+        false_positives_allowed: []
+        known_distractors: ["c2"]
+      line_level:
+        available: true
+        faulty_statements:
+          - "return value > min && value < max;"
+        note: >
+          c2 only deletes the unused private helper; it adds no line and does
+          not touch the faulty line, so plain `git blame` at c3^ on the single
+          deleted line returns c1. c2 is a candidate only for tools that treat
+          a deleting commit as suspicious per se.
+
 checks:
-- type: git_history_contains
-  commits:
-  - c0
-  - c1
-  - c2
-  - c3
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3"]
