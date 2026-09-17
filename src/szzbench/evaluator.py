@@ -5,7 +5,8 @@ from pathlib import Path
 from typing import Any
 import json
 
-from .graph_scenario import DIRECT_BIC_ROLES, graph_bic_entries, load_graph_scenario
+from .gitutils import GitError, git_parent, run_git
+from .graph_scenario import DIRECT_BIC_ROLES, graph_bfc_entries, graph_bic_entries, load_graph_scenario
 from .scenario import load_yaml
 
 
@@ -64,7 +65,14 @@ class CommitLevelPolicy:
     relevant: list[str] = field(default_factory=list)
     minimum_required: int | None = None
     k_values: list[int] = field(default_factory=list)
+    status_k: int | None = None
+    expect_no_bic: bool = False
+    known_distractors: list[str] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
+
+
+#: Outcome classes of a bug-fixing commit's first-parent diff (see docs/evaluation-policies.md).
+FIX_SHAPES = ("empty_first_parent", "addition_only", "modifies")
 
 
 @dataclass
@@ -97,6 +105,9 @@ class ScenarioEvaluation:
     recall: float | None = None
     scenario_path: str | None = None
     result_notes: list[str] = field(default_factory=list)
+    known_distractor_hits: list[str] = field(default_factory=list)
+    expect_no_bic: bool = False
+    fix_shape: dict[str, str] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -128,6 +139,9 @@ class ScenarioEvaluation:
             "recall": self.recall,
             "scenario_path": self.scenario_path,
             "result_notes": self.result_notes,
+            "known_distractor_hits": self.known_distractor_hits,
+            "expect_no_bic": self.expect_no_bic,
+            "fix_shape": self.fix_shape,
         }
 
 
@@ -148,6 +162,11 @@ class EvaluationReport:
         hard_fp = sum(len(item.hard_false_positives) for item in self.scenarios)
         related_origin_hits = sum(len(item.related_origin_hits) for item in self.scenarios)
         related_but_not_correct_hits = sum(len(item.related_but_not_correct_hits) for item in self.scenarios)
+        known_distractor_hits = sum(len(item.known_distractor_hits) for item in self.scenarios)
+        fix_shape_counts = {shape: 0 for shape in FIX_SHAPES}
+        for item in self.scenarios:
+            for shape in (item.fix_shape or {}).values():
+                fix_shape_counts[shape] = fix_shape_counts.get(shape, 0) + 1
         possible_credit = sum(item.possible_credit for item in self.scenarios if item.possible_credit is not None)
         weighted_credit = sum(item.weighted_credit for item in self.scenarios if item.weighted_credit is not None)
         precision = _ratio(tp, tp + fp)
@@ -171,6 +190,8 @@ class EvaluationReport:
             "hard_false_positives": hard_fp,
             "related_origin_hits": related_origin_hits,
             "related_but_not_correct_hits": related_but_not_correct_hits,
+            "known_distractor_hits": known_distractor_hits,
+            "fix_shape_counts": fix_shape_counts,
             "weighted_credit": weighted_credit if possible_credit else None,
             "possible_credit": possible_credit if possible_credit else None,
             "credit_ratio": _float_ratio(weighted_credit, possible_credit),
@@ -204,6 +225,8 @@ class EvaluationReport:
             f"- Hard false positives: {summary['hard_false_positives']}",
             f"- Related origin hits: {summary['related_origin_hits']}",
             f"- Related-but-not-correct hits: {summary['related_but_not_correct_hits']}",
+            f"- Known distractor hits: {summary['known_distractor_hits']}",
+            f"- Fix shapes (per BFC): {_format_fix_shape_counts(summary['fix_shape_counts'])}",
             f"- Weighted credit: {_format_credit(summary['weighted_credit'], summary['possible_credit'])}",
             f"- Precision: {_format_ratio(summary['precision'])}",
             f"- Recall: {_format_ratio(summary['recall'])}",
@@ -221,8 +244,8 @@ class EvaluationReport:
             [
                 "## Results",
                 "",
-                "| Scenario | Status | Suite | Policy | Variant | Category | Expected BICs | Actual BICs | TP | FP | FN | Allowed FP | Predictions |",
-                "|---|---:|---|---|---|---|---|---|---|---|---|---|---:|",
+                "| Scenario | Status | Suite | Policy | Variant | Category | Expected BICs | Actual BICs | TP | FP | FN | Allowed FP | Predictions | Top-k | Distractor hits | Fix shape |",
+                "|---|---:|---|---|---|---|---|---|---|---|---|---|---:|---|---|---|",
             ]
         )
         for item in self.scenarios:
@@ -236,13 +259,16 @@ class EvaluationReport:
                         item.evaluation_policy or "-",
                         item.evaluation_variant or "-",
                         item.category or "-",
-                        _join_ids(item.expected_bics),
+                        "none (expect_no_bic)" if item.expect_no_bic else _join_ids(item.expected_bics),
                         _join_ids(item.actual_bics),
                         _join_ids(item.true_positives),
                         _join_ids(item.false_positives),
                         _join_ids(item.false_negatives),
                         _join_ids(item.allowed_false_positives),
                         str(item.prediction_count),
+                        _format_top_k(item.top_k),
+                        _join_ids(item.known_distractor_hits),
+                        _format_fix_shape(item.fix_shape),
                     ]
                 )
                 + " |"
@@ -295,6 +321,7 @@ def evaluate_predictions(
                 commit_map,
                 predictions_by_scenario.get(scenario_id, []),
                 evaluation_variant=evaluation_variant,
+                repo_dir=generated_root / scenario_id / variant / "repo",
             )
         )
     return EvaluationReport(evaluations, errors=errors, warnings=warnings)
@@ -317,8 +344,17 @@ def evaluate_scenario(
     predictions: list[Prediction],
     *,
     evaluation_variant: str | None = None,
+    repo_dir: Path | None = None,
 ) -> ScenarioEvaluation:
+    """Score one scenario's predictions against its commit-level oracle.
+
+    ``repo_dir`` is the generated repository (``.../<scenario>/<variant>/repo``).
+    When it is given, each bug-fixing commit's first-parent diff is classified
+    into a fix shape; when it is missing or Git fails, the classification is
+    skipped with a result note.
+    """
     policy = _commit_level_policy(scenario, suite, evaluation_variant)
+    notes = list(policy.notes)
     hash_to_id = _hash_to_logical_id(commit_map)
     ranked_actual_ids, unknown_predictions = _ranked_actual_ids(predictions, commit_map, hash_to_id)
 
@@ -334,6 +370,7 @@ def evaluate_scenario(
     related_but_not_correct = set(policy.related_but_not_correct)
     related_origin_hits = sorted(actual & related_origins)
     related_but_not_correct_hits = sorted(actual & related_but_not_correct)
+    known_distractor_hits = sorted(actual & set(policy.known_distractors))
     hard_false_positives = sorted(actual - expected - allowed - related_origins - related_but_not_correct)
     acceptable_related_hits = [
         allowed_map[commit].to_dict()
@@ -354,10 +391,12 @@ def evaluate_scenario(
         unknown_predictions=unknown_predictions,
         minimum_required_met=minimum_required_met,
         top_k=top_k,
+        actual_count=len(actual),
     )
     precision = _ratio(len(true_positives), len(true_positives) + len(false_positives))
     recall = _ratio(len(true_positives), len(true_positives) + len(false_negatives))
     category = _scenario_category(scenario)
+    fix_shape = _classify_fix_shapes(scenario, commit_map, repo_dir, notes) if repo_dir is not None else None
     return ScenarioEvaluation(
         scenario_id=scenario_id,
         suite=suite,
@@ -386,7 +425,10 @@ def evaluate_scenario(
         precision=precision,
         recall=recall,
         scenario_path=str(scenario_path),
-        result_notes=policy.notes,
+        result_notes=notes,
+        known_distractor_hits=known_distractor_hits,
+        expect_no_bic=policy.expect_no_bic,
+        fix_shape=fix_shape,
     )
 
 
@@ -530,12 +572,13 @@ def _commit_level_policy(
 ) -> CommitLevelPolicy:
     if suite == "advanced-scenarios":
         return _graph_commit_level_policy(scenario, evaluation_variant)
-    expected, allowed, notes = _expected_classic_commit_ids(scenario)
+    expected, allowed, distractors, notes = _expected_classic_commit_ids(scenario)
     return CommitLevelPolicy(
         evaluation_policy="exact_set",
         evaluation_variant=None,
         required=expected,
         acceptable_related=[AcceptableRelated(commit=commit) for commit in allowed],
+        known_distractors=distractors,
         notes=notes,
     )
 
@@ -567,8 +610,27 @@ def _graph_commit_level_policy(
         policy_name = "exact_set"
 
     required = _string_list(selected_commit_level.get("required"))
-    if not required:
+    expect_no_bic = selected_commit_level.get("expect_no_bic") is True
+    if expect_no_bic and required:
+        notes.append("expect_no_bic is true but required is non-empty; ignoring expect_no_bic.")
+        expect_no_bic = False
+    if not required and not expect_no_bic:
         required = _graph_direct_bic_ids(scenario)
+        if required:
+            notes.append(
+                "commit_level.required is missing or empty; required BICs inferred from "
+                f"bugs[].bug_introducing_commits (roles {'/'.join(sorted(DIRECT_BIC_ROLES))}): {', '.join(required)}."
+            )
+        else:
+            notes.append(
+                "commit_level.required is missing or empty and no BICs could be inferred from bugs[]; "
+                "the required set is empty (declare expect_no_bic: true for an intentionally empty oracle)."
+            )
+    unread_sections = sorted(key for key in expected_szz if key in _UNREAD_GRAPH_ORACLE_SECTIONS)
+    if unread_sections:
+        notes.append(
+            f"expected_szz also declares {', '.join(unread_sections)}; these sections are not used by commit-level evaluation."
+        )
 
     return CommitLevelPolicy(
         evaluation_policy=policy_name,
@@ -580,8 +642,22 @@ def _graph_commit_level_policy(
         relevant=_string_list(selected_commit_level.get("relevant")),
         minimum_required=_minimum_required_value(selected_commit_level.get("minimum_required"), notes),
         k_values=_k_values(selected_commit_level.get("k_values")),
+        status_k=_status_k_value(selected_commit_level.get("status_k"), notes),
+        expect_no_bic=expect_no_bic,
+        known_distractors=_string_list(selected_commit_level.get("known_distractors")),
         notes=notes,
     )
+
+
+#: Oracle sections the commit-level evaluator does not read (reported as a note).
+_UNREAD_GRAPH_ORACLE_SECTIONS = {
+    "bug_level",
+    "branch_level",
+    "entity_level",
+    "line_level",
+    "bug_instances",
+    "work_item_level",
+}
 
 
 _SUPPORTED_GRAPH_POLICIES = {
@@ -678,6 +754,15 @@ def _k_values(value: Any) -> list[int]:
     return sorted({item for item in value if isinstance(item, int) and item > 0})
 
 
+def _status_k_value(value: Any, notes: list[str]) -> int | None:
+    if value is None:
+        return None
+    if isinstance(value, int) and not isinstance(value, bool) and value > 0:
+        return value
+    notes.append("status_k must be a positive integer; ignoring it.")
+    return None
+
+
 def _ranked_actual_ids(
     predictions: list[Prediction],
     commit_map: dict[str, Any],
@@ -734,6 +819,10 @@ def _top_k_metrics(policy: CommitLevelPolicy, ranked_actual_ids: list[str]) -> d
         return None
     relevant = set(policy.relevant or policy.required)
     k_values = policy.k_values or [1, 3, 5]
+    if policy.status_k is not None:
+        status_k = policy.status_k
+    else:
+        status_k = max(policy.k_values) if policy.k_values else 1
     best_rank = None
     for index, commit in enumerate(ranked_actual_ids, start=1):
         if commit in relevant:
@@ -741,6 +830,7 @@ def _top_k_metrics(policy: CommitLevelPolicy, ranked_actual_ids: list[str]) -> d
             break
     return {
         "k_values": k_values,
+        "status_k": status_k,
         "relevant": sorted(relevant),
         "ranked_actual_bics": ranked_actual_ids,
         "best_rank": best_rank,
@@ -759,11 +849,16 @@ def _evaluation_status(
     unknown_predictions: list[str],
     minimum_required_met: bool | None,
     top_k: dict[str, Any] | None,
+    actual_count: int,
 ) -> str:
     if unknown_predictions:
         return "FAIL"
+    if policy.expect_no_bic:
+        return "PASS" if actual_count == 0 else "FAIL"
     if policy.evaluation_policy == "top_k":
-        return "PASS" if top_k is not None and top_k["best_rank"] is not None else "FAIL"
+        if top_k is None or top_k["best_rank"] is None:
+            return "FAIL"
+        return "PASS" if top_k["best_rank"] <= top_k["status_k"] else "FAIL"
     if policy.evaluation_policy == "partial_credit":
         return "PASS" if minimum_required_met and not false_positives else "FAIL"
     if _allows_related_context(policy):
@@ -781,9 +876,10 @@ def _allows_related_context(policy: CommitLevelPolicy) -> bool:
     return "origin" in variant or "related" in variant
 
 
-def _expected_classic_commit_ids(scenario: dict[str, Any]) -> tuple[list[str], list[str], list[str]]:
+def _expected_classic_commit_ids(scenario: dict[str, Any]) -> tuple[list[str], list[str], list[str], list[str]]:
     expected: set[str] = set()
     allowed: set[str] = set()
+    distractors: set[str] = set()
     notes: list[str] = []
     for bug in scenario.get("bugs", []) or []:
         if not isinstance(bug, dict):
@@ -797,7 +893,74 @@ def _expected_classic_commit_ids(scenario: dict[str, Any]) -> tuple[list[str], l
             expected.update(item for item in bics if isinstance(item, str))
         false_positives_allowed = commit_level.get("false_positives_allowed") or []
         allowed.update(item for item in false_positives_allowed if isinstance(item, str))
-    return sorted(expected), sorted(allowed), notes
+        distractors.update(_string_list(commit_level.get("known_distractors")))
+    return sorted(expected), sorted(allowed), sorted(distractors), notes
+
+
+def _scenario_bfc_ids(scenario: dict[str, Any]) -> list[str]:
+    """Logical ids of every bug-fixing commit declared in bugs[] (classic or graph shape)."""
+    ids: list[str] = []
+    for bug in scenario.get("bugs", []) or []:
+        if not isinstance(bug, dict):
+            continue
+        for entry in graph_bfc_entries(bug):
+            commit = entry.get("commit")
+            if isinstance(commit, str) and commit not in ids:
+                ids.append(commit)
+    return ids
+
+
+def _classify_fix_shapes(
+    scenario: dict[str, Any],
+    commit_map: dict[str, Any],
+    repo_dir: Path,
+    notes: list[str],
+) -> dict[str, str] | None:
+    """Classify each BFC's first-parent diff; return None when nothing could be classified."""
+    if not (repo_dir / ".git").exists():
+        notes.append(f"fix_shape not computed: generated repository not found at {repo_dir}.")
+        return None
+    bfc_ids = _scenario_bfc_ids(scenario)
+    if not bfc_ids:
+        notes.append("fix_shape not computed: the scenario declares no bug-fixing commits.")
+        return None
+    shapes: dict[str, str] = {}
+    for bfc_id in bfc_ids:
+        entry = commit_map.get(bfc_id)
+        bfc_hash = entry.get("hash") if isinstance(entry, dict) else None
+        if not isinstance(bfc_hash, str) or not bfc_hash:
+            notes.append(f"fix_shape not computed for '{bfc_id}': not present in commit-map.json.")
+            continue
+        try:
+            shapes[bfc_id] = _classify_first_parent_diff(repo_dir, bfc_hash)
+        except GitError as exc:
+            notes.append(f"fix_shape not computed for '{bfc_id}': {exc}")
+    return shapes or None
+
+
+def _classify_first_parent_diff(repo_dir: Path, commit_hash: str) -> str:
+    parent_hash = git_parent(repo_dir, commit_hash)
+    if parent_hash:
+        diff = run_git(repo_dir, ["diff", "--no-color", "--no-ext-diff", "--unified=0", "--no-renames", parent_hash, commit_hash]).stdout
+    else:
+        # Root commit: `git show` diffs against the empty tree (a root commit is never a merge).
+        diff = run_git(repo_dir, ["show", "--format=", "--no-color", "--no-ext-diff", "--unified=0", "--no-renames", commit_hash]).stdout
+    return classify_diff_text(diff)
+
+
+def classify_diff_text(diff: str) -> str:
+    """Return the fix shape of a unified diff: empty_first_parent, addition_only, or modifies."""
+    if not diff.strip():
+        return "empty_first_parent"
+    in_hunk = False
+    for line in diff.splitlines():
+        if line.startswith("diff --git"):
+            in_hunk = False
+        elif line.startswith("@@"):
+            in_hunk = True
+        elif in_hunk and line.startswith("-"):
+            return "modifies"
+    return "addition_only"
 
 
 def _hash_to_logical_id(commit_map: dict[str, Any]) -> dict[str, str]:
@@ -855,3 +1018,21 @@ def _join_ids(values: list[str]) -> str:
     if not values:
         return "-"
     return ", ".join(values)
+
+
+def _format_top_k(top_k: dict[str, Any] | None) -> str:
+    if top_k is None:
+        return "-"
+    best_rank = top_k.get("best_rank")
+    hit = f"rank {best_rank}" if best_rank is not None else "miss"
+    return f"{hit} (k={top_k.get('status_k')})"
+
+
+def _format_fix_shape(fix_shape: dict[str, str] | None) -> str:
+    if not fix_shape:
+        return "-"
+    return ", ".join(f"{commit}:{shape}" for commit, shape in fix_shape.items())
+
+
+def _format_fix_shape_counts(counts: dict[str, int]) -> str:
+    return ", ".join(f"{shape} {counts.get(shape, 0)}" for shape in FIX_SHAPES)

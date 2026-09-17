@@ -448,6 +448,7 @@ def test_evaluate_graph_top_k_reports_ranked_hits(tmp_path):
     assert result.status == "PASS"
     assert result.top_k == {
         "k_values": [1, 3],
+        "status_k": 3,
         "relevant": ["c2"],
         "ranked_actual_bics": ["c1", "c2"],
         "best_rank": 2,
