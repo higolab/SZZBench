@@ -1,0 +1,176 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0175"
+  title: "Addition-only fix for a missing break in a switch"
+  slug: "addition-only-fix-missing-break"
+  description: >
+    A new switch case is added without a trailing break, so the new priority
+    falls through into the next case. The bug-fixing commit inserts the single
+    missing `break;` line. Its first-parent diff is addition-only, so
+    deleted-line-based SZZ has nothing to blame.
+  category: "Omission and deletion bugs"
+  factors:
+    - "single-bic"
+    - "single-bfc"
+    - "omission-bug"
+    - "addition-only-fix"
+    - "missing-break"
+  difficulty: "hard"
+  status: "active"
+  category_code: "S2"
+
+repository:
+  name: "SZZ-0175-addition-only-fix-missing-break"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Map support ticket priorities to escalation levels"
+    author: "Hana Sato <hana.sato@example.com>"
+    date: "2023-07-03T08:45:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/com/example/support/EscalationLevels.java"
+        content: |
+          package com.example.support;
+
+          public class EscalationLevels {
+              public static final int NONE = 0;
+              public static final int LOW = 1;
+              public static final int STANDARD = 2;
+              public static final int HIGH = 3;
+
+              private final int defaultLevel;
+
+              public EscalationLevels(int defaultLevel) {
+                  this.defaultLevel = defaultLevel;
+              }
+
+              public int levelFor(String priority) {
+                  int level;
+                  switch (priority) {
+                      case "low":
+                          level = LOW;
+                          break;
+                      case "normal":
+                          level = STANDARD;
+                          break;
+                      case "high":
+                          level = HIGH;
+                          break;
+                      default:
+                          level = defaultLevel;
+                          break;
+                  }
+                  return level;
+              }
+
+              public boolean requiresManager(int level) {
+                  return level >= HIGH;
+              }
+          }
+
+  - id: "c1"
+    message: "Add an urgent priority that pages the on-call manager"
+    author: "Mei Tanaka <mei.tanaka@example.com>"
+    date: "2023-07-07T13:20:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/support/EscalationLevels.java"
+        old: |2
+              public static final int HIGH = 3;
+        new: |2
+              public static final int HIGH = 3;
+              public static final int URGENT = 4;
+      - type: "replace"
+        path: "src/main/java/com/example/support/EscalationLevels.java"
+        old: |2
+                      case "high":
+                          level = HIGH;
+        new: |2
+                      case "urgent":
+                          level = URGENT;
+                      case "high":
+                          level = HIGH;
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Treat blank priorities as the default level"
+    author: "Luca Moretti <luca.moretti@example.com>"
+    date: "2023-07-12T10:02:00Z"
+    role: "feature_addition"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/support/EscalationLevels.java"
+        old: |2
+              public int levelFor(String priority) {
+                  int level;
+        new: |2
+              public int levelFor(String priority) {
+                  if (priority.isBlank()) {
+                      return defaultLevel;
+                  }
+                  int level;
+        labels: ["non_bug_introducing_change"]
+
+  - id: "c3"
+    message: "Stop urgent tickets from falling through to the high level"
+    author: "Hana Sato <hana.sato@example.com>"
+    date: "2023-07-18T15:55:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/support/EscalationLevels.java"
+        old: |2
+                          level = URGENT;
+                      case "high":
+        new: |2
+                          level = URGENT;
+                          break;
+                      case "high":
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "Urgent tickets are escalated as high because the urgent case falls through"
+    bug_fixing_commit: "c3"
+    bug_introducing_commits: ["c1"]
+    fault:
+      commit: "c1"
+      file: "src/main/java/com/example/support/EscalationLevels.java"
+      entity:
+        type: "method"
+        name: "levelFor"
+        signature: "int levelFor(String priority)"
+      change_type: "omission"
+      missing_statement: "break;"
+      description: "The `urgent` case added in c1 has no `break;`, so control falls through into the `high` case."
+    fix:
+      commit: "c3"
+      file: "src/main/java/com/example/support/EscalationLevels.java"
+      entity:
+        type: "method"
+        name: "levelFor"
+        signature: "int levelFor(String priority)"
+      added_statement: |2
+                        level = URGENT;
+                        break;
+      fix_type: "line_addition"
+      description: "Only the `break;` line is added; `level = URGENT;` is listed to anchor the added line to the urgent case."
+    expected_szz:
+      commit_level:
+        true_positives: ["c1"]
+        false_positives_allowed: []
+      line_level:
+        available: false
+        reason: "The fault is a missing break statement; the BFC adds one line and deletes nothing."
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3"]

@@ -1,0 +1,179 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0176"
+  title: "Addition-only fix for an unhandled enum branch"
+  slug: "addition-only-fix-missing-branch"
+  description: >
+    A method that builds customer notifications handles three of the four
+    notifiable shipment states and silently returns an empty body for the
+    fourth. The commit that added the incomplete if-chain is the BIC. The
+    bug-fixing commit adds the missing branch and nothing else, so its
+    first-parent diff has no deleted line.
+  category: "Omission and deletion bugs"
+  factors:
+    - "single-bic"
+    - "single-bfc"
+    - "omission-bug"
+    - "addition-only-fix"
+    - "missing-branch"
+  difficulty: "hard"
+  status: "active"
+  category_code: "S2"
+
+repository:
+  name: "SZZ-0176-addition-only-fix-missing-branch"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Add shipment states and notification subjects"
+    author: "Tom Becker <tom.becker@example.com>"
+    date: "2024-02-05T10:15:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/com/example/shipping/ShipmentState.java"
+        content: |
+          package com.example.shipping;
+
+          public enum ShipmentState {
+              CREATED,
+              PACKED,
+              SHIPPED,
+              DELIVERED,
+              RETURNED
+          }
+      - type: "write_file"
+        path: "src/main/java/com/example/shipping/ShipmentNotifier.java"
+        content: |
+          package com.example.shipping;
+
+          public class ShipmentNotifier {
+              private final String storeName;
+
+              public ShipmentNotifier(String storeName) {
+                  this.storeName = storeName;
+              }
+
+              public String subject(ShipmentState state, String orderId) {
+                  return storeName + " order " + orderId + ": " + state.name().toLowerCase();
+              }
+
+              public boolean shouldNotify(ShipmentState state) {
+                  return state != ShipmentState.CREATED;
+              }
+          }
+
+  - id: "c1"
+    message: "Add customer-facing message bodies for shipment updates"
+    author: "Priya Raman <priya.raman@example.com>"
+    date: "2024-02-08T16:48:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/shipping/ShipmentNotifier.java"
+        old: |2
+              public boolean shouldNotify(ShipmentState state) {
+                  return state != ShipmentState.CREATED;
+              }
+          }
+        new: |2
+              public boolean shouldNotify(ShipmentState state) {
+                  return state != ShipmentState.CREATED;
+              }
+
+              public String body(ShipmentState state) {
+                  if (state == ShipmentState.PACKED) {
+                      return "Your order has been packed and is waiting for pickup.";
+                  }
+                  if (state == ShipmentState.SHIPPED) {
+                      return "Your order is on its way.";
+                  }
+                  if (state == ShipmentState.DELIVERED) {
+                      return "Your order has been delivered.";
+                  }
+                  return "";
+              }
+          }
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Put the store name in brackets in notification subjects"
+    author: "Aiko Mori <aiko.mori@example.com>"
+    date: "2024-02-14T09:30:00Z"
+    role: "feature_addition"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/shipping/ShipmentNotifier.java"
+        old: |2
+                  return storeName + " order " + orderId + ": " + state.name().toLowerCase();
+        new: |2
+                  return "[" + storeName + "] order " + orderId + ": " + state.name().toLowerCase();
+        labels: ["non_bug_introducing_change"]
+
+  - id: "c3"
+    message: "Send a message body for returned shipments"
+    author: "Priya Raman <priya.raman@example.com>"
+    date: "2024-02-20T11:10:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/shipping/ShipmentNotifier.java"
+        old: |2
+                      return "Your order has been delivered.";
+                  }
+                  return "";
+        new: |2
+                      return "Your order has been delivered.";
+                  }
+                  if (state == ShipmentState.RETURNED) {
+                      return "Your return has been received and is being processed.";
+                  }
+                  return "";
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "Returned shipments are notified with an empty message body"
+    bug_fixing_commit: "c3"
+    bug_introducing_commits: ["c1"]
+    fault:
+      commit: "c1"
+      file: "src/main/java/com/example/shipping/ShipmentNotifier.java"
+      entity:
+        type: "method"
+        name: "body"
+        signature: "String body(ShipmentState state)"
+      change_type: "omission"
+      missing_statement: |2
+        if (state == ShipmentState.RETURNED) {
+            return "Your return has been received and is being processed.";
+        }
+      description: "The if-chain added in c1 covers PACKED, SHIPPED and DELIVERED but not RETURNED, although shouldNotify() is true for RETURNED."
+    fix:
+      commit: "c3"
+      file: "src/main/java/com/example/shipping/ShipmentNotifier.java"
+      entity:
+        type: "method"
+        name: "body"
+        signature: "String body(ShipmentState state)"
+      added_statement: |2
+                if (state == ShipmentState.RETURNED) {
+                    return "Your return has been received and is being processed.";
+                }
+      fix_type: "line_addition"
+    expected_szz:
+      commit_level:
+        true_positives: ["c1"]
+        false_positives_allowed: []
+      line_level:
+        available: false
+        reason: "The fault is a missing branch; the BFC adds three lines and deletes nothing."
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3"]

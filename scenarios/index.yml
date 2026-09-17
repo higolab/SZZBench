@@ -1097,3 +1097,59 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0173/scenario.yml
+- id: SZZ-0174
+  title: Addition-only fix for a missing null check
+  slug: addition-only-fix-missing-null-check
+  category_code: S2
+  category: Omission and deletion bugs
+  factors:
+  - single-bic
+  - single-bfc
+  - omission-bug
+  - addition-only-fix
+  - missing-null-check
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0174/scenario.yml
+- id: SZZ-0175
+  title: Addition-only fix for a missing break in a switch
+  slug: addition-only-fix-missing-break
+  category_code: S2
+  category: Omission and deletion bugs
+  factors:
+  - single-bic
+  - single-bfc
+  - omission-bug
+  - addition-only-fix
+  - missing-break
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0175/scenario.yml
+- id: SZZ-0176
+  title: Addition-only fix for an unhandled enum branch
+  slug: addition-only-fix-missing-branch
+  category_code: S2
+  category: Omission and deletion bugs
+  factors:
+  - single-bic
+  - single-bfc
+  - omission-bug
+  - addition-only-fix
+  - missing-branch
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0176/scenario.yml
+- id: SZZ-0177
+  title: Deletion-only BIC removes a guard that an addition-only BFC restores
+  slug: deletion-only-bic-addition-only-bfc
+  category_code: S2
+  category: Omission and deletion bugs
+  factors:
+  - single-bic
+  - single-bfc
+  - deletion-only-bic
+  - addition-only-fix
+  - guard-removal
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0177/scenario.yml
