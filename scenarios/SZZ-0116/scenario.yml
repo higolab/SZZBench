@@ -3,13 +3,18 @@ meta:
   id: SZZ-0116
   title: Multiple-hunk bug-fixing commit
   slug: multiple-hunk-bfc
-  description: 'This scenario evaluates SZZ behavior when the bug-fixing commit has the shape: Multiple-hunk bug-fixing commit.'
+  description: >
+    The bug-introducing commit changes the progress counter convention in two
+    places, and the bug-fixing commit restores both of them. The BFC diff has
+    two hunks in one file, and both of them blame the same commit, which makes
+    this the same-origin control for SZZ-0186 (mixed-origin hunks).
   category: "BFC-side noise and tangled commits"
   factors:
   - single-bic
   - single-bfc
   - line-modification
   - multiple-hunk-bfc
+  - same-origin-hunks
   difficulty: medium
   status: active
   category_code: "S4"
@@ -21,7 +26,7 @@ repository:
   source_root: src/main/java
 commits:
 - id: c0
-  message: Initial correct implementation
+  message: Add counter helpers for the progress widget
   author: Alice <alice@example.com>
   date: '2024-01-01T10:00:00Z'
   role: initial
@@ -36,83 +41,68 @@ commits:
               return value >= 0;
           }
 
+          public int clampToZero(int value) {
+              if (value < 0) {
+                  return 0;
+              }
+              return value;
+          }
+
           public int next(int value) {
               return value + 1;
           }
       }
 - id: c1
-  message: Introduce bug
+  message: Start the progress counter at one and advance it in double steps
   author: Bob <bob@example.com>
   date: '2024-01-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Scenario0116.java
-    old: |
-      package example;
-
-      public class Scenario0116 {
-          public boolean isNonNegative(int value) {
+    old: |2
               return value >= 0;
-          }
-
-          public int next(int value) {
-              return value + 1;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0116 {
-          public boolean isNonNegative(int value) {
+    new: |2
               return value > 0;
-          }
-
-          public int next(int value) {
-              return value + 2;
-          }
-      }
     labels:
     - B001
     - fault
+  - type: replace
+    path: src/main/java/example/Scenario0116.java
+    old: |2
+              return value + 1;
+    new: |2
+              return value + 2;
+    labels:
+    - B002
+    - fault
 - id: c2
-  message: Fix bug
+  message: Count progress from zero again and advance one step at a time
   author: Carol <carol@example.com>
   date: '2024-01-03T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/Scenario0116.java
-    old: |
-      package example;
-
-      public class Scenario0116 {
-          public boolean isNonNegative(int value) {
+    old: |2
               return value > 0;
-          }
-
-          public int next(int value) {
-              return value + 2;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0116 {
-          public boolean isNonNegative(int value) {
+    new: |2
               return value >= 0;
-          }
-
-          public int next(int value) {
-              return value + 1;
-          }
-      }
     labels:
     - B001
     - fix
+  - type: replace
+    path: src/main/java/example/Scenario0116.java
+    old: |2
+              return value + 2;
+    new: |2
+              return value + 1;
+    labels:
+    - B002
+    - fix
 bugs:
 - id: B001
-  title: Multiple-hunk bug-fixing commit
+  title: Zero is rejected as a counter value
   bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
@@ -142,6 +132,42 @@ bugs:
       available: true
       faulty_statements:
       - return value > 0;
+      note: >
+        First hunk of the two-hunk BFC. Blame at c2^ returns c1 for this line.
+- id: B002
+  title: The counter advances by two instead of one
+  bug_fixing_commit: c2
+  bug_introducing_commits: &id002
+  - c1
+  fault:
+    commit: c1
+    file: src/main/java/example/Scenario0116.java
+    entity:
+      type: method
+      name: next
+      signature: int next(int value)
+    statement: return value + 2;
+    change_type: line_modification
+  fix:
+    commit: c2
+    file: src/main/java/example/Scenario0116.java
+    entity:
+      type: method
+      name: next
+      signature: int next(int value)
+    statement: return value + 1;
+    fix_type: line_modification
+  expected_szz:
+    commit_level:
+      true_positives: *id002
+      false_positives_allowed: []
+    line_level:
+      available: true
+      faulty_statements:
+      - return value + 2;
+      note: >
+        Second hunk of the two-hunk BFC. Blame at c2^ returns c1 for this line
+        as well, so the union over both hunks is exactly the required BIC set.
 checks:
 - type: git_history_contains
   commits:
