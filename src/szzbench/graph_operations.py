@@ -3,10 +3,19 @@ from __future__ import annotations
 import base64
 import os
 import shutil
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
-from .operations import OperationError, insert_after_once, normalize_newlines, replace_once
+from .operations import (
+    OperationError,
+    encode_line_endings,
+    insert_after_once,
+    normalize_newlines,
+    read_text_raw,
+    replace_once,
+    resolve_line_ending,
+    write_text_raw,
+)
 from .paths import safe_join
 
 SUPPORTED_GRAPH_OPERATIONS = {
@@ -78,7 +87,9 @@ def apply_graph_operation_to_filesystem(repo_dir: Path, op: dict[str, Any]) -> N
         path = safe_join(repo_dir, op["path"])
         path.parent.mkdir(parents=True, exist_ok=True)
         encoding = op.get("encoding") or "utf-8"
-        path.write_text(normalize_newlines(str(op["content"])), encoding=encoding, newline="\n")
+        # line_ending: lf (default) | crlf.  Text is normalized to LF first and
+        # re-encoded, so YAML content may use either convention.
+        write_text_raw(path, encode_line_endings(str(op["content"]), resolve_line_ending(op)), encoding)
         return
 
     if op_type == "replace":
@@ -86,10 +97,13 @@ def apply_graph_operation_to_filesystem(repo_dir: Path, op: dict[str, Any]) -> N
         if not path.exists():
             raise OperationError(f"replace target does not exist: {op['path']}")
         encoding = op.get("encoding") or "utf-8"
-        content = path.read_text(encoding=encoding)
+        raw = read_text_raw(path, encoding)
+        # Explicit line_ending wins; otherwise an existing CRLF file stays CRLF.
+        line_ending = resolve_line_ending(op, raw)
+        content = normalize_newlines(raw)
         old = normalize_newlines(str(op["old"]))
         new = normalize_newlines(str(op["new"]))
-        path.write_text(replace_once(content, old, new, op.get("occurrence")), encoding=encoding, newline="\n")
+        write_text_raw(path, encode_line_endings(replace_once(content, old, new, op.get("occurrence")), line_ending), encoding)
         return
 
     if op_type == "insert_after":
@@ -97,10 +111,12 @@ def apply_graph_operation_to_filesystem(repo_dir: Path, op: dict[str, Any]) -> N
         if not path.exists():
             raise OperationError(f"insert_after target does not exist: {op['path']}")
         encoding = op.get("encoding") or "utf-8"
-        content = path.read_text(encoding=encoding)
+        raw = read_text_raw(path, encoding)
+        line_ending = resolve_line_ending(op, raw)
+        content = normalize_newlines(raw)
         anchor = normalize_newlines(str(op["anchor"]))
         inserted = normalize_newlines(str(op["content"]))
-        path.write_text(insert_after_once(content, anchor, inserted, op.get("occurrence")), encoding=encoding, newline="\n")
+        write_text_raw(path, encode_line_endings(insert_after_once(content, anchor, inserted, op.get("occurrence")), line_ending), encoding)
         return
 
     if op_type == "delete_file":
@@ -176,22 +192,14 @@ def apply_graph_operation_to_filesystem(repo_dir: Path, op: dict[str, Any]) -> N
         path.parent.mkdir(parents=True, exist_ok=True)
         lines = int(op["lines"])
         template = str(op["template"])
-        content = "\n".join(_render_template_line(template, line_no) for line_no in range(1, lines + 1)) + "\n"
+        body = "\n".join(_render_template_line(template, line_no) for line_no in range(1, lines + 1)) + "\n"
+        # Optional header/footer wrap the generated lines (e.g. a Java class).
+        content = _block_text(op.get("header")) + body + _block_text(op.get("footer"))
         path.write_text(content, encoding=op.get("encoding") or "utf-8", newline="\n")
         return
 
     if op_type == "commit_generator":
-        # Placeholder materialization for scalability scenarios. A future graph
-        # generator may expand this into many real commits. For now it records
-        # the intended generator in the repository so the logical commit is not empty.
-        path = safe_join(repo_dir, op.get("path", "generated/unrelated-changes.txt"))
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(
-            f"generator={op.get('generator')}\ncount={op.get('count')}\nfiles={op.get('files', '')}\n",
-            encoding="utf-8",
-            newline="\n",
-        )
-        return
+        raise OperationError("commit_generator must be handled by the graph generator, not the generic operation layer")
 
     if op_type == "format_file":
         path = safe_join(repo_dir, op["path"])
@@ -216,6 +224,38 @@ def apply_graph_operation_to_filesystem(repo_dir: Path, op: dict[str, Any]) -> N
 
 def _render_template_line(template: str, line_no: int) -> str:
     return template.replace("${line}", str(line_no)).replace("{line}", str(line_no))
+
+
+def _block_text(value: Any) -> str:
+    """Normalize an optional header/footer block and make it end with a newline."""
+    if value is None:
+        return ""
+    text = normalize_newlines(str(value))
+    if text and not text.endswith("\n"):
+        text += "\n"
+    return text
+
+
+DEFAULT_COMMIT_GENERATOR_DIRECTORY = "generated"
+
+
+def commit_generator_directory(path: Any) -> str:
+    """Return the directory generated files live in for a ``commit_generator``.
+
+    ``path`` is a directory.  For backward compatibility a file-like value such
+    as ``generated/unrelated-batch-1.txt`` (the old placeholder file) means its
+    parent directory.  An empty string denotes the repository root.
+    """
+    if path is None or str(path).strip() == "":
+        return DEFAULT_COMMIT_GENERATOR_DIRECTORY
+    text = str(path).strip().replace("\\", "/").rstrip("/")
+    if not text:
+        return ""
+    candidate = PurePosixPath(text)
+    if candidate.suffix:
+        parent = candidate.parent.as_posix()
+        return "" if parent == "." else parent
+    return candidate.as_posix()
 
 
 def _entity_operation_header(op_type: str, op: dict[str, Any]) -> str:
