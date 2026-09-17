@@ -3,8 +3,11 @@ meta:
   id: SZZG-0103
   title: Caller-side context is needed to identify the BIC
   slug: caller-context-needed
-  description: Evaluates caller-side context is needed to identify the bic and checks whether SZZ identifies the expected
-    bug-introducing commit set.
+  description: >-
+    The caller LoginController.canLogin negates the result of AccountService.active at c1, so active accounts
+    can no longer log in. The BFC c2 repairs the behaviour on the callee side by inverting the condition in
+    AccountService.active, which cancels the caller-side negation. The fixed line lives in a file the BIC never
+    touched, so identifying c1 requires caller-side context.
   category: "Issue, message, context, and non-local evidence"
   category_code: "G7"
   factors:
@@ -21,31 +24,46 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: c0: create account service and caller
+  history_summary: 'c0: create AccountService.active and LoginController.canLogin
 
-    c1: c1: introduce caller-side inversion bug
+    c1: negate the callee result in LoginController.canLogin (BIC)
 
-    c2: c2: fix login behavior by changing callee condition'
+    c2: invert the condition in AccountService.active so that the double negation restores the original behaviour
+    (BFC)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create account service and caller'
+  message: Add account status check and login controller
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/AccountService.java
-    content: "package example;\npublic class AccountService {\n  public boolean active(String status) {\n    return \"ACTIVE\"\
-      .equals(status);\n  }\n\n}\n"
+    content: |
+      package example;
+
+      public class AccountService {
+        public boolean active(String status) {
+          return "ACTIVE".equals(status);
+        }
+      }
   - type: write_file
     path: src/main/java/example/LoginController.java
-    content: "package example;\npublic class LoginController {\n  private final AccountService service = new AccountService();\n\
-      \  public boolean canLogin(String status) {\n    return service.active(status);\n  }\n\n}\n"
+    content: |
+      package example;
+
+      public class LoginController {
+        private final AccountService service = new AccountService();
+
+        public boolean canLogin(String status) {
+          return service.active(status);
+        }
+      }
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce caller-side inversion bug'
+  message: Block login for accounts that are not active
   role: bug_introducing
   operations:
   - type: replace
@@ -56,16 +74,16 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: fix login behavior by changing callee condition'
+  message: Fix login being rejected for active accounts
   role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/AccountService.java
     old: return "ACTIVE".equals(status);
-    new: return !"DISABLED".equals(status);
+    new: return !"ACTIVE".equals(status);
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Active accounts cannot log in after the caller negates the status check
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -78,28 +96,47 @@ bugs:
     file: src/main/java/example/LoginController.java
     statement: return !service.active(status);
     change_type: line_modification
+    entity:
+      type: method
+      signature: boolean canLogin(String status)
   fixes:
   - id: X001
     commit: c2
     file: src/main/java/example/AccountService.java
-    statement: return !"DISABLED".equals(status);
+    statement: return !"ACTIVE".equals(status);
     fix_type: line_modification
+    entity:
+      type: method
+      signature: boolean active(String status)
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
     - c1
+    notes: >-
+      The BFC changes a line in AccountService.java that was written by c0 and never touched by the BIC.
+      Plain blame on the fixed line therefore reaches c0, not c1. Identifying c1 requires looking at the
+      caller LoginController.canLogin, whose negation the callee-side change compensates.
 scenario_design:
-  purpose: Evaluate caller-side context is needed to identify the bic and whether SZZ identifies the expected bug-introducing
-    commit set.
+  purpose: >-
+    Evaluate whether SZZ can identify a BIC that lives at the call site when the BFC repairs the observed
+    behaviour in the callee instead.
+  key_property: >-
+    After c1, canLogin(status) == !"ACTIVE".equals(status) (active accounts are rejected). After c2,
+    canLogin(status) == !!"ACTIVE".equals(status) == "ACTIVE".equals(status), i.e. the c0 behaviour is
+    restored by a double negation split across two files. The BIC and BFC touch different files.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
   required_extensions_from_source: 'This scenario uses factors: context_dependent, caller_callee, not_directly_local; operations:
     replace, write_file.'
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether SZZ identifies c1 (the caller-side negation) as the BIC.
+  - Whether SZZ avoids reporting c0, which plain blame on the fixed line returns.
   - Whether the expected_szz evaluation policy is applied correctly.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.
+- >-
+  2026-09 revision (issue 1): the BFC previously changed the callee to `!"DISABLED".equals(status)`, which left
+  canLogin true only for DISABLED accounts. It now uses `!"ACTIVE".equals(status)` so the double negation restores
+  the c0 behaviour.
