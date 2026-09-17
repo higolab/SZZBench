@@ -1197,3 +1197,46 @@ scenarios:
   difficulty: easy
   status: active
   path: scenarios/SZZ-0180/scenario.yml
+- id: SZZ-0181
+  title: Omission fix with an adjacent unrelated line edit
+  slug: omission-fix-with-adjacent-edit
+  category_code: S2
+  category: Omission and deletion bugs
+  factors:
+  - single-bic
+  - single-bfc
+  - omission-bug
+  - line-addition-fix
+  - tangled-bfc
+  - adjacent-edit-noise
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0181/scenario.yml
+- id: SZZ-0182
+  title: 'Cross-file ghost: BIC deletes a validation call in one file, BFC adds a check in another'
+  slug: cross-file-ghost-deleted-validation-call
+  category_code: S2
+  category: Omission and deletion bugs
+  factors:
+  - single-bic
+  - single-bfc
+  - deletion-only-bic
+  - addition-only-fix
+  - cross-file-fix
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0182/scenario.yml
+- id: SZZ-0183
+  title: Two-file BFC whose second hunk blames a non-BIC commit
+  slug: two-file-bfc-second-hunk-non-bic
+  category_code: S4
+  category: BFC-side noise and tangled commits
+  factors:
+  - single-bic
+  - single-bfc
+  - line-modification
+  - multi-file-bfc
+  - tangled-bfc
+  difficulty: medium
+  status: active
+  path: scenarios/SZZ-0183/scenario.yml

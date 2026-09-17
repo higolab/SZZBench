@@ -1,0 +1,174 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0183"
+  title: "Two-file BFC whose second hunk blames a non-BIC commit"
+  slug: "two-file-bfc-second-hunk-non-bic"
+  description: >
+    The bug-fixing commit modifies two existing files. The hunk in
+    CurrencyConverter repairs the rounding fault introduced by the BIC; the
+    hunk in PriceDisplay is an unrelated formatting tweak of a line that a
+    later feature commit last touched. Plain blame on the BFC's deleted lines
+    returns both commits, only one of which is the BIC.
+  category: "BFC-side noise and tangled commits"
+  factors:
+    - "single-bic"
+    - "single-bfc"
+    - "line-modification"
+    - "multi-file-bfc"
+    - "tangled-bfc"
+  difficulty: "medium"
+  status: "active"
+  category_code: "S4"
+
+repository:
+  name: "SZZ-0183-two-file-bfc-second-hunk-non-bic"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Add currency conversion and price display helpers"
+    author: "Jonas Berg <jonas.berg@example.com>"
+    date: "2024-03-04T10:00:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/com/example/money/CurrencyConverter.java"
+        content: |
+          package com.example.money;
+
+          import java.util.HashMap;
+          import java.util.Map;
+
+          public class CurrencyConverter {
+              private final Map<String, Double> ratesToBase = new HashMap<>();
+
+              public void setRate(String currency, double rateToBase) {
+                  ratesToBase.put(currency, rateToBase);
+              }
+
+              public long toBaseCents(long amountCents, String currency) {
+                  Double rate = ratesToBase.get(currency);
+                  if (rate == null) {
+                      throw new IllegalArgumentException("no rate for " + currency);
+                  }
+                  return Math.round(amountCents * rate);
+              }
+
+              public boolean supports(String currency) {
+                  return ratesToBase.containsKey(currency);
+              }
+          }
+      - type: "write_file"
+        path: "src/main/java/com/example/money/PriceDisplay.java"
+        content: |
+          package com.example.money;
+
+          public class PriceDisplay {
+              private final String baseCurrency;
+
+              public PriceDisplay(String baseCurrency) {
+                  this.baseCurrency = baseCurrency;
+              }
+
+              public String format(long cents) {
+                  long units = cents / 100;
+                  long fraction = Math.abs(cents % 100);
+                  return String.format("%d.%02d %s", units, fraction, baseCurrency);
+              }
+
+              public String formatRange(long lowCents, long highCents) {
+                  return format(lowCents) + " - " + format(highCents);
+              }
+          }
+
+  - id: "c1"
+    message: "Replace Math.round with a cast in the conversion path"
+    author: "Jonas Berg <jonas.berg@example.com>"
+    date: "2024-03-07T15:20:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/money/CurrencyConverter.java"
+        old: |2
+                  return Math.round(amountCents * rate);
+        new: |2
+                  return (long) (amountCents * rate);
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Show the currency code before the amount"
+    author: "Aiko Mori <aiko.mori@example.com>"
+    date: "2024-03-12T09:50:00Z"
+    role: "feature_addition"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/money/PriceDisplay.java"
+        old: |2
+                  return String.format("%d.%02d %s", units, fraction, baseCurrency);
+        new: |2
+                  return String.format("%s %d.%02d", baseCurrency, units, fraction);
+        labels: ["non_bug_introducing_change"]
+
+  - id: "c3"
+    message: "Round converted amounts to the nearest cent; use a non-breaking space in prices"
+    author: "Hana Sato <hana.sato@example.com>"
+    date: "2024-03-19T13:35:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/com/example/money/CurrencyConverter.java"
+        old: |2
+                  return (long) (amountCents * rate);
+        new: |2
+                  return Math.round(amountCents * rate);
+        labels: ["B001", "fix"]
+      - type: "replace"
+        path: "src/main/java/com/example/money/PriceDisplay.java"
+        old: |2
+                  return String.format("%s %d.%02d", baseCurrency, units, fraction);
+        new: |2
+                  return String.format("%s %d.%02d", baseCurrency, units, fraction);
+        labels: ["non_bug_introducing_change"]
+
+bugs:
+  - id: "B001"
+    title: "Converted amounts are truncated instead of rounded"
+    bug_fixing_commit: "c3"
+    bug_introducing_commits: ["c1"]
+    fault:
+      commit: "c1"
+      file: "src/main/java/com/example/money/CurrencyConverter.java"
+      entity:
+        type: "method"
+        name: "toBaseCents"
+        signature: "long toBaseCents(long amountCents, String currency)"
+      statement: "return (long) (amountCents * rate);"
+      change_type: "line_modification"
+    fix:
+      commit: "c3"
+      file: "src/main/java/com/example/money/CurrencyConverter.java"
+      entity:
+        type: "method"
+        name: "toBaseCents"
+        signature: "long toBaseCents(long amountCents, String currency)"
+      statement: "return Math.round(amountCents * rate);"
+      fix_type: "line_modification"
+      description: "The BFC also changes the price format string in PriceDisplay.java, a line last touched by c2 and unrelated to the rounding fault."
+    expected_szz:
+      commit_level:
+        true_positives: ["c1"]
+        known_distractors: ["c2"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "return (long) (amountCents * rate);"
+        note: "Blame on the BFC's deleted lines returns c1 (CurrencyConverter.java) and c2 (PriceDisplay.java)."
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3"]
