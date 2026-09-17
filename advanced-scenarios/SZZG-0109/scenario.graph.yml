@@ -3,7 +3,8 @@ meta:
   id: SZZG-0109
   title: File deletion
   slug: file-deletion
-  description: Evaluates a deletion-based fix where the initial commit creates a buggy file and the fix deletes that file.
+  description: Evaluates a deletion-based fix where the faulty file is removed by the BFC, so every line of that file enters
+    deleted-line blame and the tool has to pick the commit that wrote the faulty one.
   category: "Non-source, binary, generated, and scalability edge cases"
   category_code: "G8"
   factors:
@@ -18,65 +19,174 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial buggy file (write_file src/main/java/example/Buggy.java)
-
-    c1: fix bug (delete_file src/main/java/example/Buggy.java)'
+  history_summary: |
+    c0: add the value filter interface, the legacy range filter and the registry
+    c1: change the description string of the legacy filter
+    c2: add the interval filter used by the new pipeline
+    c3: reject inverted intervals in the registry
+    c4: remove the legacy range filter and hand out the interval filter instead
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial buggy file (write_file src/main/java/example/Buggy.java)'
+  message: 'Add the value filter interface, the legacy range filter and the registry'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Buggy.java
-    content: "package example;\npublic class Buggy {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value > min && value < max;\n  }\n}\n"
+    path: src/main/java/example/ValueFilter.java
+    content: |
+      package example;
+
+      public interface ValueFilter {
+        boolean accepts(int value);
+      }
+  - type: write_file
+    path: src/main/java/example/LegacyRangeFilter.java
+    content: |
+      package example;
+
+      public class LegacyRangeFilter implements ValueFilter {
+        private final int min;
+        private final int max;
+
+        public LegacyRangeFilter(int min, int max) {
+          this.min = min;
+          this.max = max;
+        }
+
+        @Override
+        public boolean accepts(int value) {
+          return value > min && value < max;
+        }
+
+        public String describe() {
+          return "range " + min + ".." + max;
+        }
+      }
+  - type: write_file
+    path: src/main/java/example/FilterRegistry.java
+    content: |
+      package example;
+
+      public class FilterRegistry {
+        public ValueFilter filterFor(int min, int max) {
+          return new LegacyRangeFilter(min, max);
+        }
+      }
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: fix bug (delete_file src/main/java/example/Buggy.java)'
+  message: 'Include the filter id in the legacy filter description'
+  role: intermediate
+  operations:
+  - type: replace
+    path: src/main/java/example/LegacyRangeFilter.java
+    old: 'return "range " + min + ".." + max;'
+    new: 'return "legacy-range:" + min + ":" + max;'
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'Add the interval filter for the new ingest pipeline'
+  role: intermediate
+  operations:
+  - type: write_file
+    path: src/main/java/example/IntervalFilter.java
+    content: |
+      package example;
+
+      public class IntervalFilter implements ValueFilter {
+        private final int min;
+        private final int max;
+
+        public IntervalFilter(int min, int max) {
+          this.min = min;
+          this.max = max;
+        }
+
+        @Override
+        public boolean accepts(int value) {
+          return value >= min && value <= max;
+        }
+      }
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'Reject inverted intervals in the filter registry'
+  role: intermediate
+  operations:
+  - type: replace
+    path: src/main/java/example/FilterRegistry.java
+    old: |-
+      public ValueFilter filterFor(int min, int max) {
+          return new LegacyRangeFilter(min, max);
+    new: |-
+      public ValueFilter filterFor(int min, int max) {
+          if (min > max) {
+            throw new IllegalArgumentException("min must not exceed max");
+          }
+          return new LegacyRangeFilter(min, max);
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: 'Remove the legacy range filter, which excluded the interval bounds'
   role: bug_fixing
   operations:
+  - type: replace
+    path: src/main/java/example/FilterRegistry.java
+    old: return new LegacyRangeFilter(min, max);
+    new: return new IntervalFilter(min, max);
   - type: delete_file
-    path: src/main/java/example/Buggy.java
+    path: src/main/java/example/LegacyRangeFilter.java
 bugs:
 - id: B001
-  title: Bug removed by deleting Buggy.java
+  title: The legacy range filter rejects the interval bounds
   bug_introducing_commits:
   - commit: c0
     role: direct
   bug_fixing_commits:
-  - commit: c1
+  - commit: c4
     role: complete_fix
   faults:
   - id: F001
     commit: c0
-    file: src/main/java/example/Buggy.java
+    file: src/main/java/example/LegacyRangeFilter.java
     statement: return value > min && value < max;
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c1
-    file: src/main/java/example/Buggy.java
+    commit: c4
+    file: src/main/java/example/LegacyRangeFilter.java
     fix_type: file_deletion
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
     - c0
+    related_but_not_correct:
+    - c1
+    - c3
 scenario_design:
-  purpose: Evaluate whether SZZ traces a deletion-based fix back to the initial commit c0 that created the buggy file.
-  key_property: The BFC c1 deletes Buggy.java entirely. The required BIC is c0 because that initial commit introduced the
-    buggy file and faulty return statement.
+  purpose: Evaluate whether SZZ traces a deletion-based fix back to the commit that wrote the faulty line, rather than to
+    every commit that ever touched the deleted file.
+  key_property: The BFC deletes LegacyRangeFilter.java completely, so deleted-line blame covers all 19 lines of the file plus
+    the registry line. Those lines were written by c0 (the faulty accepts()) and by c1 (the description string); the registry
+    line the BFC rewrites also dates back to c0. Only c0 wrote the faulty statement, so a tool that returns every commit
+    reached by the deleted lines over-reports c1.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: delete_file; operations: write_file, delete_file.'
+  required_extensions_from_source: 'This scenario uses factors: delete_file; operations: write_file, replace, delete_file.'
   evaluation_points:
-  - Whether SZZ identifies c0 as the BIC for the deleted buggy file.
-  - Whether SZZ handles file deletion as the complete fix.
+  - Whether SZZ identifies c0 as the BIC for the deleted faulty file.
+  - Whether SZZ handles a file deletion as the complete fix at all.
+  - Whether the cosmetic change c1 to the deleted file and the guard c3 in the registry are excluded.
   - Whether the expected_szz evaluation policy is applied correctly.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.
+- 'Category note (issue #4): the scenario is about the shape of the BFC (a fix by removal), not about non-source or
+  scalability edge cases, so G8 fits it only loosely. The category code is kept unchanged here; re-categorizing is a separate
+  decision.'
