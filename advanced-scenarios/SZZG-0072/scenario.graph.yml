@@ -174,7 +174,7 @@ scenario_design:
     an ancestor of the BFC nor reachable from a ref.
   difference_from_SZZG_0047: SZZG-0047 is a squash merge that keeps both feature patches in one single-parent commit on a
     branch that still exists. Here one patch is dropped, only the other is replayed, and the source branch is deleted, so
-    the two repositories differ in trees, patches and refs, not only in commit messages (issue #11).
+    the two repositories differ in trees, patches and refs, not only in commit messages (GitHub issue 11).
   difference_from_SZZG_0064: SZZG-0064 covers a rebased BIC followed by a non-BIC rebased intermediate commit; here the first
     commit of the branch is dropped instead of rebased.
   evaluation_points:

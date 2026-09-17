@@ -173,7 +173,7 @@ scenario_design:
     merge commit. SZZG-0047 uses a single-parent squash commit on main.
   difference_from_SZZG_0072: SZZG-0072 is an interactive rebase that drops the original faulty commit and keeps only the second
     feature commit, on a different code base (RetryPolicy) and with the pre-rebase branch deleted. The two repositories differ
-    in trees, patches and refs, not only in commit messages (issue #11).
+    in trees, patches and refs, not only in commit messages (GitHub issue 11).
   evaluation_points:
   - Whether SZZ reports the direct main-line BIC c3.
   - Whether the origin BIC c1 is distinguished from the direct squash BIC.
