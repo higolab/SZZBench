@@ -196,14 +196,25 @@ def test_rewrite_reference_with_wrong_type_is_an_error(key, value):
     assert "GE047" not in codes(result)
 
 
-def test_szzg_0067_dangling_rebase_of_is_detected():
-    _, result = validate_graph_scenario_file(Path("advanced-scenarios/SZZG-0067/scenario.graph.yml"), simulate=True, strict_paths=True)
+def test_dangling_rebase_of_references_are_reported_per_commit():
+    # This is the shape SZZG-0067 had before its repair in this PR: two replayed
+    # commits whose rebase_of names feature commits that do not exist.
+    data = graph_scenario()
+    data["commits"][1]["rebase_of"] = "f1"
+    data["commits"][2]["rebase_of"] = "f2"
+    result = validate_graph_static(data)
     ge047 = [f for f in result.findings if f.code == "GE047"]
     assert result.has_errors()
     assert sorted(f.message for f in ge047) == [
         "rebase_of refers to unknown or later commit 'f1'.",
         "rebase_of refers to unknown or later commit 'f2'.",
     ]
+
+
+def test_szzg_0067_repaired_scenario_is_accepted():
+    _, result = validate_graph_scenario_file(Path("advanced-scenarios/SZZG-0067/scenario.graph.yml"), simulate=True, strict_paths=True)
+    assert not result.has_errors()
+    assert "GE047" not in codes(result)
 
 
 def test_szzg_0064_valid_rebase_of_is_still_accepted():

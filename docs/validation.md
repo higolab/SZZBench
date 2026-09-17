@@ -238,7 +238,7 @@ With `--simulate`:
 | GW400 | warning | a factor is a schema key or operation name (same list as W400) |
 | GW401 | warning | `meta.factors` is empty |
 | GW402 | warning | factors mix hyphen and underscore styles |
-| GW403 | warning | a BIC entry role is not in {`direct`, `origin`, `contributing`, `reintroducing`} (the evaluator and verifier recognise only these) |
+| GW403 | warning | a BIC entry role is a non-canonical spelling; canonical roles are {`direct`, `origin`, `contributing`, `reintroducing`}. Consumers may normalize known aliases (the evaluator/verifier role normalization of #27 does), but the canonical spelling is recommended |
 | GW404 | warning | a BFC entry role is not in {`complete_fix`, `partial_fix`} |
 | GW410 | warning | a commit that is not a BFC (of any bug) has a role-disclosing message (same pattern as W410) |
 | GW411 | warning | a message starts with a logical-id prefix (`c1:`, `r2:`, ...) |

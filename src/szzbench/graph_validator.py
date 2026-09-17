@@ -410,7 +410,12 @@ def lint_graph_scenario(data: dict[str, Any]) -> ValidationResult:
         for j, entry in enumerate(graph_bic_entries(bug)):
             role = entry.get("role")
             if isinstance(role, str) and role not in ALLOWED_BIC_ROLES:
-                result.warning("GW403", f"BIC role '{role}' is not in {sorted(ALLOWED_BIC_ROLES)}; the evaluator and verifier will not recognize it.", f"bugs[{i}].bug_introducing_commits[{j}].role")
+                result.warning(
+                    "GW403",
+                    f"BIC role '{role}' is a non-canonical spelling; canonical roles are {sorted(ALLOWED_BIC_ROLES)}. "
+                    "Consumers may normalize known aliases, but the canonical spelling is recommended.",
+                    f"bugs[{i}].bug_introducing_commits[{j}].role",
+                )
         for j, entry in enumerate(graph_bfc_entries(bug)):
             role = entry.get("role")
             if isinstance(role, str) and role not in ALLOWED_BFC_ROLES:

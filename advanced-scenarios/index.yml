@@ -1,6 +1,6 @@
 schema_version: graph-index-0.1-draft
 description: Index of draft advanced graph scenarios for SZZBench.
-scenario_count: 116
+scenario_count: 109
 scenarios:
 - id: SZZG-0001
   title: BFC performs rename and fix in the same commit
