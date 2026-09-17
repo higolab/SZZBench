@@ -47,7 +47,9 @@ scenarios:
   readme: advanced-scenarios/SZZG-0005/README.md
   status: draft
   factors:
-  - move_entity
+  - refactoring
+  - method_move
+  - post_bic_refactoring
 - id: SZZG-0006
   title: Extract class after BIC
   category_code: G1
