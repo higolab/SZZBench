@@ -30,7 +30,7 @@ from .graph_scenario import load_graph_scenario
 from .graph_validator import validate_graph_scenario_file
 from .operations import OperationError, normalize_newlines
 from .graph_verifier import verify_graph_generated_repo
-from .paths import safe_join
+from .paths import PathValidationError, safe_join
 
 
 class GraphGenerationError(RuntimeError):
@@ -195,7 +195,7 @@ def generate_graph_repository(
         log("Graph generation completed successfully.")
         (metadata_dir / "generation.log").write_text("\n".join(generation_log) + "\n", encoding="utf-8")
         return commit_map, verify_result
-    except (OperationError, GitError, OSError, GraphGenerationError) as exc:
+    except (OperationError, PathValidationError, GitError, OSError, GraphGenerationError) as exc:
         log(f"ERROR: {exc}")
         error_info = {"error": str(exc), "timestamp": datetime.now(timezone.utc).isoformat()}
         (metadata_dir / "generation-error.json").write_text(json.dumps(error_info, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
@@ -608,10 +608,51 @@ def _expand_commit_generators(
     if total == 0:
         return []
 
-    # Generated commits are dated inside the day before the owning commit so
-    # that history stays chronological: parent < generated < owner.
-    owner_date = parse_timestamp(owner_metadata.author_date)
-    step_seconds = max(1, 86400 // (total + 1))
+    # The `<owner>.g<N>` namespace is reserved for generated commits.  Refuse
+    # to run when a scenario commit (declared before *or* after the owner) or
+    # an already generated commit uses one of the ids we are about to allocate;
+    # silently overwriting a logical id would corrupt commit-map/graph-map.
+    planned_ids = [f"{owner_id}.g{n}" for n in range(1, total + 1)]
+    scenario_ids = {str(c.get("id")) for c in scenario.get("commits", []) or [] if isinstance(c, dict) and c.get("id") is not None}
+    collisions = [gid for gid in planned_ids if gid in scenario_ids or gid in commit_map]
+    if collisions:
+        raise GraphGenerationError(
+            f"commit_generator of commit '{owner_id}' would allocate generated commit id(s) {collisions} that are already "
+            "used by scenario commits; the '<owner>.g<N>' namespace is reserved for generated commits, rename those commits."
+        )
+
+    # Generated commits are placed strictly inside the interval between the
+    # actual parent (the later of its author/committer dates) and the owner
+    # (the earlier of its author/committer dates) so that history stays
+    # chronological: parent < generated < owner for both date kinds.  Without a
+    # parent the day before the owner is used.  When the interval is shorter
+    # than total + 1 seconds a strict order is impossible at Git's one-second
+    # resolution: the dates are then clamped to the parent's timestamp
+    # (non-decreasing, never after the owner) and the placement is recorded.
+    upper = min(parse_timestamp(owner_metadata.author_date), parse_timestamp(owner_metadata.committer_date))
+    lower: datetime | None = None
+    if parents and parents[0] in commit_map:
+        parent_entry = commit_map[parents[0]]
+        parent_dates = [parse_timestamp(value) for value in (parent_entry.get("author_date"), parent_entry.get("committer_date"), parent_entry.get("date")) if value]
+        if parent_dates:
+            lower = max(parent_dates)
+    if lower is None:
+        lower = upper - timedelta(days=1)
+    interval_seconds = int((upper - lower).total_seconds())
+    if interval_seconds >= total + 1:
+        step = interval_seconds / (total + 1)
+        generated_dates = [lower + timedelta(seconds=int(step * n)) for n in range(1, total + 1)]
+        placement = "spaced"
+    else:
+        placement = "clamped"
+        log(
+            f"commit_generator of commit {owner_id}: only {interval_seconds}s between parent and owner for {total} generated "
+            "commit(s); timestamps clamped to the parent's date (non-decreasing)"
+        )
+        if interval_seconds < 0:
+            generated_dates = [upper for _ in range(total)]
+        else:
+            generated_dates = [lower + timedelta(seconds=min(n, interval_seconds)) for n in range(1, total + 1)]
 
     parent_hash = run_git(repo_dir, ["rev-parse", "--verify", "-q", "HEAD"]).stdout.strip() if parents else ""
     file_contents: dict[str, str] = {}
@@ -622,15 +663,19 @@ def _expand_commit_generators(
     for generator, directory, count, files in plan:
         for k in range(1, count + 1):
             sequence += 1
-            gid = f"{owner_id}.g{sequence}"
+            gid = planned_ids[sequence - 1]
             file_index = (k - 1) % files + 1
-            rel_path = f"{directory}/{generator}-{file_index:02d}.txt"
+            file_name = f"{generator}-{file_index:02d}.txt"
+            rel_path = f"{directory}/{file_name}" if directory else file_name
             if rel_path not in file_contents:
-                existing = safe_join(repo_dir, rel_path)
+                try:
+                    existing = safe_join(repo_dir, rel_path)
+                except PathValidationError as exc:
+                    raise GraphGenerationError(f"commit_generator of commit '{owner_id}' produced an invalid path '{rel_path}': {exc}") from exc
                 file_contents[rel_path] = existing.read_text(encoding="utf-8") if existing.exists() else ""
             file_contents[rel_path] = _append_generated_line(file_contents[rel_path], f"{gid}: {generator} change {sequence}")
             author = deterministic_author(scenario_id, gid)
-            date = format_timestamp(owner_date - timedelta(seconds=step_seconds * (total - sequence + 1)))
+            date = format_timestamp(generated_dates[sequence - 1])
             message = f"Update {rel_path} ({generator} {sequence}/{total})"
             stream.append(_fast_import_commit(sequence, message, author, date, parent_hash if sequence == 1 else None, rel_path, file_contents[rel_path]))
             generated.append(
@@ -640,6 +685,7 @@ def _expand_commit_generators(
                     "author": author,
                     "author_date": date,
                     "committer_date": date,
+                    "timestamp_placement": placement,
                     "role": "generated",
                     "branch": branch,
                     "parents": [previous_id] if previous_id else [],

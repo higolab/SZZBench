@@ -337,9 +337,14 @@ def git_author_date(repo_dir: Path, revision: str) -> str:
 
 
 def git_unmerged_paths(repo_dir: Path) -> list[str]:
-    """Return the paths with unmerged index entries (conflicts), sorted."""
-    out = run_git(repo_dir, ["diff", "--name-only", "--diff-filter=U"]).stdout
-    return sorted({line.strip() for line in out.splitlines() if line.strip()})
+    """Return the paths with unmerged index entries (conflicts), sorted.
+
+    ``-z`` makes Git emit the paths verbatim, NUL-separated, instead of the
+    quoted/escaped display form it uses for non-ASCII or special characters,
+    so the result can be compared with the keys of a ``resolution`` mapping.
+    """
+    out = run_git(repo_dir, ["diff", "--name-only", "--diff-filter=U", "-z"]).stdout
+    return sorted({path for path in out.split("\0") if path})
 
 
 def git_refs(repo_dir: Path) -> dict[str, dict[str, str]]:

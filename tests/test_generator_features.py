@@ -711,3 +711,128 @@ def test_conflicting_cherry_pick_is_resolved_with_resolution(tmp_path):
     assert _log_line(repo, r1, "%b").strip() == f"(cherry picked from commit {commit_map['c1']['hash']})"
     assert not (repo / ".git" / "CHERRY_PICK_HEAD").exists()
     assert commit_map["r1"]["resolved_conflicts"] == [RANGE]
+
+
+# ---------------------------------------------------------------------------
+# PR #31 review follow-up: reserved generated ids, root-level legacy path,
+# parent/owner timestamp interval, non-ASCII conflict paths
+# ---------------------------------------------------------------------------
+
+
+def _colliding_commits(colliding_id: str, position: str) -> tuple[list[dict], list[dict]]:
+    """A commit_generator owner `c2` plus a scenario commit that already uses one of its generated ids."""
+    c0 = {"id": "c0", "branch": "main", "parents": [], "message": "c0: initial", "role": "initial", "operations": [{"type": "write_file", "path": RANGE, "content": _range_java(False)}]}
+    bic = {"id": "c1", "branch": "main", "parents": ["c0"], "message": "c1: bug", "role": "bug_introducing", "operations": [{"type": "replace", "path": RANGE, "old": FIXED, "new": BUGGY}]}
+    owner = {"id": "c2", "branch": "main", "parents": ["c1"], "message": "c2: churn", "role": "intermediate", "operations": [{"type": "commit_generator", "generator": "unrelated_changes", "count": 2, "path": "generated"}]}
+    fix = {"id": "c3", "branch": "main", "parents": ["c2"], "message": "c3: fix", "role": "bug_fixing", "operations": [{"type": "replace", "path": RANGE, "old": BUGGY, "new": FIXED}]}
+    if position == "before":
+        bic["id"] = colliding_id
+        owner["parents"] = [colliding_id]
+    else:
+        fix["id"] = colliding_id
+    commits = [c0, bic, owner, fix]
+    bugs = [
+        {
+            "id": "B001",
+            "bug_introducing_commits": [{"commit": bic["id"], "role": "direct"}],
+            "bug_fixing_commits": [{"commit": fix["id"], "role": "complete_fix"}],
+            "faults": [{"commit": bic["id"], "file": RANGE, "statement": BUGGY}],
+            "fixes": [{"commit": fix["id"], "file": RANGE, "statement": FIXED}],
+        }
+    ]
+    return commits, bugs
+
+
+@pytest.mark.parametrize("position", ["before", "after"])
+def test_commit_generator_refuses_ids_that_collide_with_scenario_commits(tmp_path, position):
+    commits, bugs = _colliding_commits("c2.g1", position)
+    scenario = _write_graph_scenario(tmp_path / "s.graph.yml", commits, bugs=bugs)
+    out = tmp_path / "out"
+    with pytest.raises(GraphGenerationError, match=r"c2\.g1.*reserved"):
+        generate_graph_repository(scenario, out, force=True)
+    # Nothing was generated and nothing was overwritten: no commit map was written.
+    assert not (out / "metadata" / "commit-map.json").exists()
+
+
+def test_commit_generator_does_not_collide_with_unrelated_dotted_ids(tmp_path):
+    # An id in another owner's namespace (c1.g1) is fine; both maps stay consistent.
+    commits, bugs = _colliding_commits("c1.g1", "before")
+    scenario = _write_graph_scenario(tmp_path / "s.graph.yml", commits, bugs=bugs)
+    out = tmp_path / "out"
+    commit_map, verify = generate_graph_repository(scenario, out, force=True)
+    assert not verify.has_errors(), verify.to_dict()
+    repo = out / "repo"
+    assert commit_map["c2"]["generated_commits"] == ["c2.g1", "c2.g2"]
+    assert commit_map["c1.g1"]["role"] == "bug_introducing"
+    assert _graph_map(out)["commits"]["c1.g1"]["hash"] == commit_map["c1.g1"]["hash"]
+    assert _log_line(repo, commit_map["c2.g1"]["hash"], "%P") == commit_map["c1.g1"]["hash"]
+
+
+def test_commit_generator_legacy_root_level_path_generates_and_verifies(tmp_path):
+    commits = _commit_generator_commits(2, files=1, path="notes.txt")
+    scenario = _write_graph_scenario(tmp_path / "s.graph.yml", commits, bugs=_commit_generator_bugs())
+    out = tmp_path / "out"
+    commit_map, verify = generate_graph_repository(scenario, out, force=True)
+    assert not verify.has_errors(), verify.to_dict()
+    repo = out / "repo"
+    for gid in commit_map["c2"]["generated_commits"]:
+        assert _git(repo, "show", "--name-only", "--format=", commit_map[gid]["hash"]).split() == ["unrelated_changes-01.txt"]
+        assert commit_map[gid]["path"] == "unrelated_changes-01.txt"
+    assert "unrelated_changes-01.txt" in _git(repo, "ls-tree", "--name-only", commit_map["c2"]["hash"]).split()
+
+
+def test_commit_generator_dates_stay_inside_the_parent_owner_interval(tmp_path):
+    commits = _commit_generator_commits(2)
+    commits[1]["date"] = "2024-01-01T10:01:00Z"
+    commits[2]["date"] = "2024-01-01T10:02:00Z"
+    scenario = _write_graph_scenario(tmp_path / "s.graph.yml", commits, bugs=_commit_generator_bugs())
+    out = tmp_path / "out"
+    commit_map, verify = generate_graph_repository(scenario, out, force=True)
+    assert not verify.has_errors(), verify.to_dict()
+    repo = out / "repo"
+    ids = ["c1", "c2.g1", "c2.g2", "c2"]
+    for fmt in ("%at", "%ct"):
+        stamps = [int(_log_line(repo, commit_map[cid]["hash"], fmt)) for cid in ids]
+        assert stamps == sorted(stamps) and len(set(stamps)) == len(stamps), (fmt, stamps)
+        assert stamps[0] == 1704103260 and stamps[-1] == 1704103320  # 10:01:00Z .. 10:02:00Z
+    assert commit_map["c2.g1"]["timestamp_placement"] == "spaced"
+
+
+def test_commit_generator_dates_are_clamped_when_the_interval_is_too_short(tmp_path):
+    commits = _commit_generator_commits(3)
+    commits[1]["date"] = "2024-01-01T10:00:00Z"
+    commits[2]["date"] = "2024-01-01T10:00:01Z"
+    scenario = _write_graph_scenario(tmp_path / "s.graph.yml", commits, bugs=_commit_generator_bugs())
+    out = tmp_path / "out"
+    commit_map, verify = generate_graph_repository(scenario, out, force=True)
+    assert not verify.has_errors(), verify.to_dict()
+    repo = out / "repo"
+    ids = ["c1", "c2.g1", "c2.g2", "c2.g3", "c2"]
+    stamps = [int(_log_line(repo, commit_map[cid]["hash"], "%at")) for cid in ids]
+    assert stamps == sorted(stamps), stamps  # non-decreasing, never before the parent or after the owner
+    assert stamps[0] == 1704103200 and stamps[-1] == 1704103201
+    assert all(commit_map[gid]["timestamp_placement"] == "clamped" for gid in commit_map["c2"]["generated_commits"])
+    assert "timestamps clamped" in (out / "metadata" / "generation.log").read_text(encoding="utf-8")
+
+
+def test_conflicting_merge_with_non_ascii_path_is_resolved(tmp_path):
+    path = "src/main/java/example/範囲.java"
+    resolved = _range_java(False).replace(FIXED, "return value >= min && value <= max; // resolved")
+    commits = _conflict_commits(resolution={path: resolved})
+    for commit in commits:
+        for op in commit.get("operations", []):
+            if op.get("path") == RANGE:
+                op["path"] = path
+    bugs = _conflict_bugs()
+    for bug in bugs:
+        for entry in bug["faults"] + bug["fixes"]:
+            entry["file"] = path
+    scenario = _write_graph_scenario(tmp_path / "s.graph.yml", commits, bugs=bugs)
+    out = tmp_path / "out"
+    commit_map, verify = generate_graph_repository(scenario, out, force=True)
+    assert not verify.has_errors(), verify.to_dict()
+    repo = out / "repo"
+    m1 = commit_map["m1"]["hash"]
+    assert commit_map["m1"]["resolved_conflicts"] == [path]
+    assert _git(repo, "show", f"{m1}:{path}") == resolved
+    assert _git(repo, "status", "--porcelain").strip() == ""

@@ -186,8 +186,20 @@ Behaviour:
 * Generated commit *k* appends one line to file
   `<path>/<generator>-<NN>.txt` where `NN = (k-1) mod files + 1`; a file keeps
   at most 50 lines so blobs stay small. Content, authors (pool) and dates are
-  deterministic. The dates are spread over the 24 hours before the owning
-  commit's author date, so `parent < g1 < ... < gN < owner` holds.
+  deterministic. The dates are spaced evenly *strictly inside* the interval
+  between the actual parent (the later of its author/committer dates) and the
+  owner (the earlier of its author/committer dates), so
+  `parent < g1 < ... < gN < owner` holds for both date kinds even when the two
+  commits are only minutes apart; without a parent the day before the owner
+  is used. When the interval is shorter than `count + 1` seconds a strict
+  order is impossible at Git's one-second resolution: the dates are then
+  clamped to the parent's timestamp (non-decreasing, never after the owner),
+  `generation.log` says so, and every generated entry records
+  `timestamp_placement: clamped` instead of `spaced`.
+* The ids `<owner>.g1 … <owner>.g<count>` are **reserved**. If a scenario
+  commit (declared before or after the owner) already uses one of them,
+  generation fails before touching the repository instead of overwriting the
+  logical commit in `commit-map.json`.
 * Messages are neutral: `Update generated/unrelated_changes-03.txt (unrelated_changes 3/500)`.
 * The owning commit is created afterwards with its remaining operations; when
   it has none it is committed with `--allow-empty` automatically.
@@ -208,7 +220,9 @@ point at that parent's own hash.
 
 Defaults and compatibility: `path` defaults to `generated`; a file-like
 value such as `generated/unrelated-batch-1.txt` (the old placeholder file)
-means its parent directory. `files` defaults to 1. `count` larger than 2000
+means its parent directory, and a root-level file such as `notes.txt` means
+the repository root (files are then named `<generator>-<NN>.txt` without a
+directory). `files` defaults to 1. `count` larger than 2000
 is capped (a note is written to `generation.log`). The simulator still models
 the old placeholder file, so `validate-graph --simulate` does not report the
 owning commit as empty.
@@ -378,8 +392,11 @@ When `git merge`, the implicit `git cherry-pick` of a `cherry_pick_of` /
 the generator writes every `resolution` entry, runs `git add -A` and continues
 with the remaining operations and the commit. Every conflicted path must be
 covered by `resolution`; otherwise, or when the key is absent, generation
-fails with a message that lists the conflicted paths. Merges stay merge
-commits (both parents), cherry-picks/reverts become ordinary commits and no
+fails with a message that lists the conflicted paths. Conflicted paths are
+read from Git NUL-separated (`--name-only -z`) and compared verbatim with the
+`resolution` keys, so non-ASCII names such as `src/main/java/example/範囲.java`
+or names containing spaces work. Merges stay merge commits (both parents),
+cherry-picks/reverts become ordinary commits and no
 `CHERRY_PICK_HEAD`/`REVERT_HEAD` is left behind. `commit-map.json` records
 `resolved_conflicts: [paths]`.
 
