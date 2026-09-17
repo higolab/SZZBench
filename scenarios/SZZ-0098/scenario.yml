@@ -3,14 +3,20 @@ meta:
   id: SZZ-0098
   title: Enum case addition after BIC
   slug: enum-case-after-bic
-  description: This scenario inserts an intermediate language-specific change between the BIC and BFC.
+  description: >
+    The BIC replaces the "every mode except OFF" power check with an explicit
+    comparison against a single mode and forgets COOL. An intermediate commit
+    adds a new constant to the enum and changes nothing else. The bug-fixing
+    commit repairs only the boolean expression, so plain blame at the BFC parent
+    still reaches the BIC: this is an honest control for the enum-noise family.
   category: "Intermediate noise and history noise"
   factors:
   - single-bic
   - single-bfc
   - line-modification
   - enum-change-after-bic
-  difficulty: medium
+  - plain-blame-control
+  difficulty: easy
   status: active
   category_code: "S3"
 repository:
@@ -21,128 +27,111 @@ repository:
   source_root: src/main/java
 commits:
 - id: c0
-  message: Initial correct implementation
+  message: Add the thermostat controller with its operating modes
   author: Alice <alice@example.com>
   date: '2024-01-01T10:00:00Z'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0098.java
+    path: src/main/java/com/example/devices/ThermostatController.java
     content: |
-      package example;
+      package com.example.devices;
 
-      public class Scenario0098 {
-          public boolean valid(int value) {
-              return code == 1 ? Mode.ON : Mode.OFF;
+      public class ThermostatController {
+          public enum Mode {
+              OFF,
+              HEAT,
+              COOL
+          }
+
+          private Mode mode = Mode.OFF;
+
+          public void setMode(Mode mode) {
+              this.mode = mode;
+          }
+
+          public Mode mode() {
+              return mode;
+          }
+
+          public boolean drawsPower() {
+              return mode != Mode.OFF;
           }
       }
 - id: c1
-  message: Introduce bug
+  message: State explicitly which mode draws power
   author: Bob <bob@example.com>
   date: '2024-01-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0098.java
-    old: |
-      package example;
-
-      public class Scenario0098 {
-          public boolean valid(int value) {
-              return code == 1 ? Mode.ON : Mode.OFF;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0098 {
-          public boolean valid(int value) {
-              return code == 1 ? Mode.OFF : Mode.ON;
-          }
-      }
+    path: src/main/java/com/example/devices/ThermostatController.java
+    old: |2
+              return mode != Mode.OFF;
+    new: |2
+              return mode == Mode.HEAT;
     labels:
     - B001
     - fault
 - id: c2
-  message: Apply intermediate rewrite
+  message: Add the automatic mode to the thermostat modes
   author: Carol <carol@example.com>
   date: '2024-01-03T10:00:00Z'
-  role: distractor
+  role: feature_addition
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0098.java
-    old: |
-      package example;
-
-      public class Scenario0098 {
-          public boolean valid(int value) {
-              return code == 1 ? Mode.OFF : Mode.ON;
+    path: src/main/java/com/example/devices/ThermostatController.java
+    old: |2
+              COOL
           }
-      }
-    new: |
-      package example;
-
-      public class Scenario0098 {
-          enum Mode { ON, OFF, UNKNOWN }
-
-          public String mode(int code) {
-              return code == 1 ? Mode.OFF.name() : Mode.ON.name();
+    new: |2
+              COOL,
+              AUTO
           }
-      }
     labels:
     - non_bug_introducing_change
 - id: c3
-  message: Fix bug
+  message: Treat every mode except off as drawing power
   author: Dave <dave@example.com>
   date: '2024-01-04T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0098.java
-    old: |
-      package example;
-
-      public class Scenario0098 {
-          enum Mode { ON, OFF, UNKNOWN }
-
-          public String mode(int code) {
-              return code == 1 ? Mode.OFF.name() : Mode.ON.name();
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0098 {
-          public boolean valid(int value) {
-              return code == 1 ? Mode.ON : Mode.OFF;
-          }
-      }
+    path: src/main/java/com/example/devices/ThermostatController.java
+    old: |2
+              return mode == Mode.HEAT;
+    new: |2
+              return mode != Mode.OFF;
     labels:
     - B001
     - fix
 bugs:
 - id: B001
-  title: Enum case addition after BIC
+  title: A cooling thermostat is reported as drawing no power
   bug_fixing_commit: c3
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0098.java
+    file: src/main/java/com/example/devices/ThermostatController.java
     entity:
       type: method
-      name: valid
-      signature: boolean valid(int value)
-    statement: 'return code == 1 ? Mode.OFF : Mode.ON;'
+      name: drawsPower
+      signature: boolean drawsPower()
+    statement: return mode == Mode.HEAT;
     change_type: line_modification
+    description: >
+      Listing the powered modes explicitly dropped COOL, so a cooling thermostat
+      is reported as idle. The enumeration also does not survive the arrival of a
+      new mode, which is why the fix returns to the negative form.
   fix:
     commit: c3
-    file: src/main/java/example/Scenario0098.java
+    file: src/main/java/com/example/devices/ThermostatController.java
     entity:
       type: method
-      name: valid
-      signature: boolean valid(int value)
-    statement: 'return code == 1 ? Mode.ON : Mode.OFF;'
+      name: drawsPower
+      signature: boolean drawsPower()
+    statement: return mode != Mode.OFF;
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -153,7 +142,10 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - 'return code == 1 ? Mode.OFF : Mode.ON;'
+      - return mode == Mode.HEAT;
+      note: >
+        c2 only adds a constant to the enum body; the faulty line is untouched,
+        so blame at c3^ returns c1.
 checks:
 - type: git_history_contains
   commits:

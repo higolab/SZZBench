@@ -3,14 +3,21 @@ meta:
   id: SZZ-0094
   title: Annotation addition after BIC
   slug: annotation-addition-after-bic
-  description: This scenario inserts an intermediate language-specific change between the BIC and BFC.
+  description: >
+    The BIC extracts the low-stock threshold into a constant and swaps the
+    operands of the comparison while doing so, inverting the check. An
+    intermediate commit adds a single @Deprecated annotation to the legacy alias
+    four lines above the fault and changes nothing else. The bug-fixing commit
+    repairs only the comparison, so plain blame at the BFC parent still reaches
+    the BIC: this is an honest control for the annotation-noise family.
   category: "Intermediate noise and history noise"
   factors:
   - single-bic
   - single-bfc
   - line-modification
   - annotation-after-bic
-  difficulty: medium
+  - plain-blame-control
+  difficulty: easy
   status: active
   category_code: "S3"
 repository:
@@ -21,126 +28,107 @@ repository:
   source_root: src/main/java
 commits:
 - id: c0
-  message: Initial correct implementation
+  message: Add the stock level check used by the replenishment report
   author: Alice <alice@example.com>
   date: '2024-01-01T10:00:00Z'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0094.java
+    path: src/main/java/com/example/catalog/StockLevel.java
     content: |
-      package example;
+      package com.example.catalog;
 
-      public class Scenario0094 {
-          public boolean valid(int value) {
-              return value != null;
+      public class StockLevel {
+          public boolean lowStock(int onHand) {
+              return needsRestock(onHand);
+          }
+
+          public boolean needsRestock(int onHand) {
+              return onHand < 5;
           }
       }
 - id: c1
-  message: Introduce bug
+  message: Name the low stock threshold constant
   author: Bob <bob@example.com>
   date: '2024-01-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0094.java
-    old: |
-      package example;
+    path: src/main/java/com/example/catalog/StockLevel.java
+    old: |2
+      public class StockLevel {
+          public boolean lowStock(int onHand) {
+    new: |2
+      public class StockLevel {
+          private static final int LOW_STOCK_THRESHOLD = 5;
 
-      public class Scenario0094 {
-          public boolean valid(int value) {
-              return value != null;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0094 {
-          public boolean valid(int value) {
-              return value == null;
-          }
-      }
+          public boolean lowStock(int onHand) {
+  - type: replace
+    path: src/main/java/com/example/catalog/StockLevel.java
+    old: |2
+              return onHand < 5;
+    new: |2
+              return LOW_STOCK_THRESHOLD < onHand;
     labels:
     - B001
     - fault
 - id: c2
-  message: Apply intermediate rewrite
+  message: Mark the lowStock alias as deprecated
   author: Carol <carol@example.com>
   date: '2024-01-03T10:00:00Z'
-  role: distractor
+  role: cleanup
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0094.java
-    old: |
-      package example;
-
-      public class Scenario0094 {
-          public boolean valid(int value) {
-              return value == null;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0094 {
+    path: src/main/java/com/example/catalog/StockLevel.java
+    old: |2
+          public boolean lowStock(int onHand) {
+    new: |2
           @Deprecated
-              public boolean hasValue(String value) {
-              return value == null;
-          }
-      }
+          public boolean lowStock(int onHand) {
     labels:
     - non_bug_introducing_change
 - id: c3
-  message: Fix bug
+  message: Compare the on-hand count against the low stock threshold, not the other way round
   author: Dave <dave@example.com>
   date: '2024-01-04T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0094.java
-    old: |
-      package example;
-
-      public class Scenario0094 {
-          @Deprecated
-              public boolean hasValue(String value) {
-              return value == null;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0094 {
-          public boolean valid(int value) {
-              return value != null;
-          }
-      }
+    path: src/main/java/com/example/catalog/StockLevel.java
+    old: |2
+              return LOW_STOCK_THRESHOLD < onHand;
+    new: |2
+              return onHand < LOW_STOCK_THRESHOLD;
     labels:
     - B001
     - fix
 bugs:
 - id: B001
-  title: Annotation addition after BIC
+  title: The low stock check is inverted, so only well-stocked items are restocked
   bug_fixing_commit: c3
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0094.java
+    file: src/main/java/com/example/catalog/StockLevel.java
     entity:
       type: method
-      name: valid
-      signature: boolean valid(int value)
-    statement: return value == null;
+      name: needsRestock
+      signature: boolean needsRestock(int onHand)
+    statement: return LOW_STOCK_THRESHOLD < onHand;
     change_type: line_modification
+    description: >
+      Extracting the literal 5 into LOW_STOCK_THRESHOLD swapped the operands, so
+      needsRestock reports true for every item with more than five units on hand
+      and false for the items that actually have to be reordered.
   fix:
     commit: c3
-    file: src/main/java/example/Scenario0094.java
+    file: src/main/java/com/example/catalog/StockLevel.java
     entity:
       type: method
-      name: valid
-      signature: boolean valid(int value)
-    statement: return value != null;
+      name: needsRestock
+      signature: boolean needsRestock(int onHand)
+    statement: return onHand < LOW_STOCK_THRESHOLD;
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -151,7 +139,10 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return value == null;
+      - return LOW_STOCK_THRESHOLD < onHand;
+      note: >
+        c2 only inserts an annotation line above the deprecated alias; the faulty
+        line is untouched, so blame at c3^ returns c1.
 checks:
 - type: git_history_contains
   commits:

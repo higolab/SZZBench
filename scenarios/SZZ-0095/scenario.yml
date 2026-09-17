@@ -3,14 +3,21 @@ meta:
   id: SZZ-0095
   title: Generic type change after BIC
   slug: generic-type-change-after-bic
-  description: This scenario inserts an intermediate language-specific change between the BIC and BFC.
+  description: >
+    The BIC makes the tag limit check count the tag that is about to be added, so
+    the last allowed tag is rejected. An intermediate commit narrows the type
+    argument of the join() parameter from List<Object> to List<String> and adapts
+    the loop variable; it does not touch the faulty method. The bug-fixing commit
+    repairs only the limit check, so plain blame at the BFC parent still reaches
+    the BIC: this is an honest control for the generic-type-noise family.
   category: "Intermediate noise and history noise"
   factors:
   - single-bic
   - single-bfc
   - line-modification
   - generic-type-after-bic
-  difficulty: medium
+  - plain-blame-control
+  difficulty: easy
   status: active
   category_code: "S3"
 repository:
@@ -21,130 +28,114 @@ repository:
   source_root: src/main/java
 commits:
 - id: c0
-  message: Initial correct implementation
+  message: Add the tag index used by the catalogue search
   author: Alice <alice@example.com>
   date: '2024-01-01T10:00:00Z'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0095.java
+    path: src/main/java/com/example/search/TagIndex.java
     content: |
-      package example;
+      package com.example.search;
 
-      public class Scenario0095 {
-          public boolean valid(int value) {
-              return item != null;
+      import java.util.List;
+
+      public class TagIndex {
+          private static final int MAX_TAGS = 8;
+
+          public boolean acceptsMore(int currentCount) {
+              return currentCount < MAX_TAGS;
+          }
+
+          public String join(List<Object> tags) {
+              StringBuilder joined = new StringBuilder();
+              for (Object tag : tags) {
+                  if (joined.length() > 0) {
+                      joined.append(", ");
+                  }
+                  joined.append(tag);
+              }
+              return joined.toString();
           }
       }
 - id: c1
-  message: Introduce bug
+  message: Include the tag that is about to be added in the limit check
   author: Bob <bob@example.com>
   date: '2024-01-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0095.java
-    old: |
-      package example;
-
-      public class Scenario0095 {
-          public boolean valid(int value) {
-              return item != null;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0095 {
-          public boolean valid(int value) {
-              return item == null;
-          }
-      }
+    path: src/main/java/com/example/search/TagIndex.java
+    old: |2
+              return currentCount < MAX_TAGS;
+    new: |2
+              return currentCount + 1 < MAX_TAGS;
     labels:
     - B001
     - fault
 - id: c2
-  message: Apply intermediate rewrite
+  message: Type the tag list of join() as a list of strings
   author: Carol <carol@example.com>
   date: '2024-01-03T10:00:00Z'
-  role: distractor
+  role: refactoring
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0095.java
-    old: |
-      package example;
-
-      public class Scenario0095 {
-          public boolean valid(int value) {
-              return item == null;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0095 {
-          public static class Box<T> {
-              }
-
-          public boolean hasItem(T item) {
-              return item == null;
-          }
-      }
+    path: src/main/java/com/example/search/TagIndex.java
+    old: |2
+          public String join(List<Object> tags) {
+    new: |2
+          public String join(List<String> tags) {
+  - type: replace
+    path: src/main/java/com/example/search/TagIndex.java
+    old: |2
+              for (Object tag : tags) {
+    new: |2
+              for (String tag : tags) {
     labels:
     - non_bug_introducing_change
 - id: c3
-  message: Fix bug
+  message: Accept the eighth tag on a catalogue entry again
   author: Dave <dave@example.com>
   date: '2024-01-04T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0095.java
-    old: |
-      package example;
-
-      public class Scenario0095 {
-          public static class Box<T> {
-              }
-
-          public boolean hasItem(T item) {
-              return item == null;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0095 {
-          public boolean valid(int value) {
-              return item != null;
-          }
-      }
+    path: src/main/java/com/example/search/TagIndex.java
+    old: |2
+              return currentCount + 1 < MAX_TAGS;
+    new: |2
+              return currentCount < MAX_TAGS;
     labels:
     - B001
     - fix
 bugs:
 - id: B001
-  title: Generic type change after BIC
+  title: The tag limit check is off by one and rejects the last allowed tag
   bug_fixing_commit: c3
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0095.java
+    file: src/main/java/com/example/search/TagIndex.java
     entity:
       type: method
-      name: valid
-      signature: boolean valid(int value)
-    statement: return item == null;
+      name: acceptsMore
+      signature: boolean acceptsMore(int currentCount)
+    statement: return currentCount + 1 < MAX_TAGS;
     change_type: line_modification
+    description: >
+      acceptsMore reports the number of tags that may still be added, so the
+      count must not be incremented; with the increment an entry can only carry
+      seven tags instead of eight, and the increment also overflows at
+      Integer.MAX_VALUE.
   fix:
     commit: c3
-    file: src/main/java/example/Scenario0095.java
+    file: src/main/java/com/example/search/TagIndex.java
     entity:
       type: method
-      name: valid
-      signature: boolean valid(int value)
-    statement: return item != null;
+      name: acceptsMore
+      signature: boolean acceptsMore(int currentCount)
+    statement: return currentCount < MAX_TAGS;
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -155,7 +146,10 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return item == null;
+      - return currentCount + 1 < MAX_TAGS;
+      note: >
+        c2 changes the type argument of join()'s parameter and the type of the
+        loop variable; the faulty line is untouched, so blame at c3^ returns c1.
 checks:
 - type: git_history_contains
   commits:
