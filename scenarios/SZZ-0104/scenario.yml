@@ -3,14 +3,20 @@ meta:
   id: SZZ-0104
   title: Method order change after BIC
   slug: method-order-change-after-bic
-  description: This scenario inserts an intermediate intermediate-history change between the BIC and BFC.
+  description: >
+    The class holds three methods from the start. Between the bug-introducing
+    and the bug-fixing commit, a commit changes the order in which two of them
+    are declared, without adding, removing or rewriting a statement. The moved
+    block is not the one that contains the fault, so plain `git blame` at the
+    BFC parent still reaches the BIC; the measured outcome is recorded in the
+    README because blame follows content, not method identity.
   category: "Intermediate noise and history noise"
   factors:
   - single-bic
   - single-bfc
   - line-modification
   - method-order-change-after-bic
-  difficulty: medium
+  difficulty: easy
   status: active
   category_code: "S3"
 repository:
@@ -21,132 +27,129 @@ repository:
   source_root: src/main/java
 commits:
 - id: c0
-  message: Initial correct implementation
+  message: Add the volume discount table
   author: Alice <alice@example.com>
   date: '2024-01-01T10:00:00Z'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0104.java
+    path: src/main/java/com/example/pricing/DiscountTable.java
     content: |
-      package example;
+      package com.example.pricing;
 
-      public class Scenario0104 {
-          public boolean valid(int value) {
-              return value >= 0;
+      public class DiscountTable {
+          public boolean qualifies(int quantity, int threshold) {
+              return quantity >= threshold;
+          }
+
+          public int tierFor(int quantity) {
+              if (quantity >= 100) {
+                  return 3;
+              }
+              if (quantity >= 50) {
+                  return 2;
+              }
+              return 1;
+          }
+
+          public int percentFor(int tier) {
+              return tier * 5;
           }
       }
 - id: c1
-  message: Introduce bug
+  message: Require the order quantity to pass the threshold before discounting
   author: Bob <bob@example.com>
   date: '2024-01-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0104.java
-    old: |
-      package example;
-
-      public class Scenario0104 {
-          public boolean valid(int value) {
-              return value >= 0;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0104 {
-          public boolean valid(int value) {
-              return value > 0;
-          }
-      }
+    path: src/main/java/com/example/pricing/DiscountTable.java
+    old: |2
+              return quantity >= threshold;
+    new: |2
+              return quantity > threshold;
     labels:
     - B001
     - fault
 - id: c2
-  message: Apply intermediate rewrite
+  message: Declare percentFor next to qualifies so the two lookups sit together
   author: Carol <carol@example.com>
   date: '2024-01-03T10:00:00Z'
-  role: distractor
+  role: refactoring
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0104.java
-    old: |
-      package example;
-
-      public class Scenario0104 {
-          public boolean valid(int value) {
-              return value > 0;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0104 {
-          public int next(int value) {
-              return value + 1;
+    path: src/main/java/com/example/pricing/DiscountTable.java
+    old: |2
+          public int tierFor(int quantity) {
+              if (quantity >= 100) {
+                  return 3;
+              }
+              if (quantity >= 50) {
+                  return 2;
+              }
+              return 1;
           }
 
-          public boolean valid(int value) {
-              return value > 0;
+          public int percentFor(int tier) {
+              return tier * 5;
           }
-      }
+    new: |2
+          public int percentFor(int tier) {
+              return tier * 5;
+          }
+
+          public int tierFor(int quantity) {
+              if (quantity >= 100) {
+                  return 3;
+              }
+              if (quantity >= 50) {
+                  return 2;
+              }
+              return 1;
+          }
     labels:
     - non_bug_introducing_change
 - id: c3
-  message: Fix bug
+  message: Let an order that exactly meets the threshold qualify again
   author: Dave <dave@example.com>
   date: '2024-01-04T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0104.java
-    old: |
-      package example;
-
-      public class Scenario0104 {
-          public int next(int value) {
-              return value + 1;
-          }
-
-          public boolean valid(int value) {
-              return value > 0;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0104 {
-          public boolean valid(int value) {
-              return value >= 0;
-          }
-      }
+    path: src/main/java/com/example/pricing/DiscountTable.java
+    old: |2
+              return quantity > threshold;
+    new: |2
+              return quantity >= threshold;
     labels:
     - B001
     - fix
 bugs:
 - id: B001
-  title: Method order change after BIC
+  title: An order that exactly meets the threshold gets no discount
   bug_fixing_commit: c3
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0104.java
+    file: src/main/java/com/example/pricing/DiscountTable.java
     entity:
       type: method
-      name: valid
-      signature: boolean valid(int value)
-    statement: return value > 0;
+      name: qualifies
+      signature: boolean qualifies(int quantity, int threshold)
+    statement: return quantity > threshold;
     change_type: line_modification
+    description: >
+      The comparison excludes the threshold itself, so an order of exactly the
+      threshold quantity is refused the discount that the tier table grants it.
   fix:
     commit: c3
-    file: src/main/java/example/Scenario0104.java
+    file: src/main/java/com/example/pricing/DiscountTable.java
     entity:
       type: method
-      name: valid
-      signature: boolean valid(int value)
-    statement: return value >= 0;
+      name: qualifies
+      signature: boolean qualifies(int quantity, int threshold)
+    statement: return quantity >= threshold;
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -157,7 +160,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return value > 0;
+      - return quantity > threshold;
 checks:
 - type: git_history_contains
   commits:
