@@ -1312,3 +1312,18 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0188/scenario.yml
+- id: SZZ-0189
+  title: Missing close() fixed by an addition whose only deleted line is a distractor's comment
+  slug: missing-close-fix-deletes-only-comment
+  category_code: S2
+  category: Omission and deletion bugs
+  factors:
+  - single-bic
+  - single-bfc
+  - omission-bug
+  - line-addition-fix
+  - missing-close
+  - cosmetic-line-noise
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0189/scenario.yml
