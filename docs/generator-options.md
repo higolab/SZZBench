@@ -186,16 +186,19 @@ Behaviour:
 * Generated commit *k* appends one line to file
   `<path>/<generator>-<NN>.txt` where `NN = (k-1) mod files + 1`; a file keeps
   at most 50 lines so blobs stay small. Content, authors (pool) and dates are
-  deterministic. The dates are spaced evenly *strictly inside* the interval
-  between the actual parent (the later of its author/committer dates) and the
-  owner (the earlier of its author/committer dates), so
-  `parent < g1 < ... < gN < owner` holds for both date kinds even when the two
-  commits are only minutes apart; without a parent the day before the owner
-  is used. When the interval is shorter than `count + 1` seconds a strict
-  order is impossible at Git's one-second resolution: the dates are then
-  clamped to the parent's timestamp (non-decreasing, never after the owner),
-  `generation.log` says so, and every generated entry records
-  `timestamp_placement: clamped` instead of `spaced`.
+  deterministic. Author dates and committer dates are placed **separately**,
+  each spaced evenly *strictly inside* the interval between the actual
+  parent's and the owner's *effective* date of that kind (the
+  `author_date` / `committer_date` recorded in commit-map, including an
+  inherited author date), so `parent < g1 < ... < gN < owner` holds for the
+  author sequence and for the committer sequence even when the two intervals
+  do not overlap or the commits are only minutes apart; without a parent the
+  day before the owner is used. When an interval is shorter than `count + 1`
+  seconds a strict order is impossible at Git's one-second resolution: that
+  date kind is clamped to the parent's timestamp (non-decreasing, never after
+  the owner), `generation.log` says so, and every generated entry records
+  `timestamp_placement: clamped` (with the per-kind detail in
+  `timestamp_placement_detail: {author, committer}`) instead of `spaced`.
 * The ids `<owner>.g1 … <owner>.g<count>` are **reserved**. If a scenario
   commit (declared before or after the owner) already uses one of them,
   generation fails before touching the repository instead of overwriting the

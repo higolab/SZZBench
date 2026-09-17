@@ -812,7 +812,7 @@ def test_commit_generator_dates_are_clamped_when_the_interval_is_too_short(tmp_p
     assert stamps == sorted(stamps), stamps  # non-decreasing, never before the parent or after the owner
     assert stamps[0] == 1704103200 and stamps[-1] == 1704103201
     assert all(commit_map[gid]["timestamp_placement"] == "clamped" for gid in commit_map["c2"]["generated_commits"])
-    assert "timestamps clamped" in (out / "metadata" / "generation.log").read_text(encoding="utf-8")
+    assert "dates clamped to the parent" in (out / "metadata" / "generation.log").read_text(encoding="utf-8")
 
 
 def test_conflicting_merge_with_non_ascii_path_is_resolved(tmp_path):
@@ -836,3 +836,83 @@ def test_conflicting_merge_with_non_ascii_path_is_resolved(tmp_path):
     assert commit_map["m1"]["resolved_conflicts"] == [path]
     assert _git(repo, "show", f"{m1}:{path}") == resolved
     assert _git(repo, "status", "--porcelain").strip() == ""
+
+
+def _stamps(repo: Path, commit_map: dict, ids: list[str], fmt: str) -> list[int]:
+    return [int(_log_line(repo, commit_map[cid]["hash"], fmt)) for cid in ids]
+
+
+def test_commit_generator_places_author_and_committer_dates_in_their_own_intervals(tmp_path):
+    # Reviewer case: the author and committer intervals do not overlap (parent 10:01/11:01, owner 10:02/11:02).
+    commits = _commit_generator_commits(2)
+    commits[1]["author_date"] = "2024-01-01T10:01:00Z"
+    commits[1]["committer_date"] = "2024-01-01T11:01:00Z"
+    commits[2]["author_date"] = "2024-01-01T10:02:00Z"
+    commits[2]["committer_date"] = "2024-01-01T11:02:00Z"
+    scenario = _write_graph_scenario(tmp_path / "s.graph.yml", commits, bugs=_commit_generator_bugs())
+    out = tmp_path / "out"
+    commit_map, verify = generate_graph_repository(scenario, out, force=True)
+    assert not verify.has_errors(), verify.to_dict()
+    repo = out / "repo"
+    ids = ["c1", "c2.g1", "c2.g2", "c2"]
+    author = _stamps(repo, commit_map, ids, "%at")
+    committer = _stamps(repo, commit_map, ids, "%ct")
+    assert author == sorted(author) and len(set(author)) == 4, author
+    assert committer == sorted(committer) and len(set(committer)) == 4, committer
+    assert author[0] == 1704103260 and author[-1] == 1704103320  # 10:01:00Z .. 10:02:00Z
+    assert committer[0] == 1704106860 and committer[-1] == 1704106920  # 11:01:00Z .. 11:02:00Z
+    assert commit_map["c2.g1"]["timestamp_placement"] == "spaced"
+    assert commit_map["c2.g1"]["timestamp_placement_detail"] == {"author": "spaced", "committer": "spaced"}
+    assert "clamped" not in (out / "metadata" / "generation.log").read_text(encoding="utf-8")
+
+
+def test_commit_generator_uses_the_inherited_author_date_of_the_owner(tmp_path):
+    # The owner is a rebased commit whose author date is inherited from f1 (10:01:00Z)
+    # while its committer date is explicit (12:00:00Z); the parent c0 is at 09:00:00Z.
+    commits = [
+        {"id": "c0", "branch": "main", "parents": [], "message": "c0: initial", "role": "initial", "date": "2024-01-01T09:00:00Z", "operations": [{"type": "write_file", "path": RANGE, "content": _range_java(False)}]},
+        {"id": "f1", "branch": "feature", "parents": ["c0"], "message": "f1: strict bounds", "role": "origin_bug_introducing", "date": "2024-01-01T10:01:00Z", "operations": [{"type": "replace", "path": RANGE, "old": FIXED, "new": BUGGY}]},
+        {"id": "r1", "branch": "main", "parents": ["c0"], "message": "r1: replayed strict bounds", "role": "bug_introducing", "rebase_of": "f1", "inherit_author_date": True, "committer_date": "2024-01-01T12:00:00Z",
+         "operations": [{"type": "commit_generator", "generator": "unrelated_changes", "count": 2, "path": "generated"}, {"type": "replace", "path": RANGE, "old": FIXED, "new": BUGGY}]},
+        {"id": "c3", "branch": "main", "parents": ["r1"], "message": "c3: fix", "role": "bug_fixing", "date": "2024-01-01T13:00:00Z", "operations": [{"type": "replace", "path": RANGE, "old": BUGGY, "new": FIXED}]},
+    ]
+    bugs = [
+        {
+            "id": "B001",
+            "bug_introducing_commits": [{"commit": "r1", "role": "direct"}, {"commit": "f1", "role": "origin"}],
+            "bug_fixing_commits": [{"commit": "c3", "role": "complete_fix"}],
+            "faults": [{"commit": "r1", "file": RANGE, "statement": BUGGY}],
+            "fixes": [{"commit": "c3", "file": RANGE, "statement": FIXED}],
+        }
+    ]
+    scenario = _write_graph_scenario(tmp_path / "s.graph.yml", commits, bugs=bugs, extra={"expected_szz": {"commit_level": {"evaluation_policy": "exact_set", "required": ["r1"]}}})
+    out = tmp_path / "out"
+    commit_map, verify = generate_graph_repository(scenario, out, force=True)
+    assert not verify.has_errors(), verify.to_dict()
+    repo = out / "repo"
+    assert _log_line(repo, commit_map["r1"]["hash"], "%at") == "1704103260"  # inherited 10:01:00Z
+    assert _log_line(repo, commit_map["r1"]["hash"], "%ct") == "1704110400"  # explicit 12:00:00Z
+    ids = ["c0", "r1.g1", "r1.g2", "r1"]
+    author = _stamps(repo, commit_map, ids, "%at")
+    committer = _stamps(repo, commit_map, ids, "%ct")
+    assert author == sorted(author) and len(set(author)) == 4, author  # 09:00 < g1 < g2 < 10:01 (inherited)
+    assert committer == sorted(committer) and len(set(committer)) == 4, committer  # 09:00 < g1 < g2 < 12:00
+    assert commit_map["r1.g1"]["timestamp_placement_detail"] == {"author": "spaced", "committer": "spaced"}
+
+
+def test_commit_generator_ignores_an_overridden_parent_date_fallback(tmp_path):
+    # The parent's original `date` is overridden by explicit author/committer dates and must not act as a bound.
+    commits = _commit_generator_commits(2)
+    commits[1]["date"] = "2024-01-10T10:01:00Z"
+    commits[1]["author_date"] = "2024-01-01T10:01:00Z"
+    commits[1]["committer_date"] = "2024-01-01T10:01:00Z"
+    commits[2]["date"] = "2024-01-01T10:02:00Z"
+    scenario = _write_graph_scenario(tmp_path / "s.graph.yml", commits, bugs=_commit_generator_bugs())
+    out = tmp_path / "out"
+    commit_map, verify = generate_graph_repository(scenario, out, force=True)
+    assert not verify.has_errors(), verify.to_dict()
+    repo = out / "repo"
+    assert _stamps(repo, commit_map, ["c1"], "%at") == [1704103260]  # the effective parent date, not 2024-01-10
+    assert _stamps(repo, commit_map, ["c2.g1", "c2.g2"], "%at") == [1704103280, 1704103300]  # 10:01:20Z, 10:01:40Z
+    assert _stamps(repo, commit_map, ["c2.g1", "c2.g2"], "%ct") == [1704103280, 1704103300]
+    assert commit_map["c2.g1"]["timestamp_placement"] == "spaced"

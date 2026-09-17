@@ -621,38 +621,25 @@ def _expand_commit_generators(
             "used by scenario commits; the '<owner>.g<N>' namespace is reserved for generated commits, rename those commits."
         )
 
-    # Generated commits are placed strictly inside the interval between the
-    # actual parent (the later of its author/committer dates) and the owner
-    # (the earlier of its author/committer dates) so that history stays
-    # chronological: parent < generated < owner for both date kinds.  Without a
-    # parent the day before the owner is used.  When the interval is shorter
+    # Generated commits are dated strictly inside the interval between the
+    # actual parent and the owner, separately for the author and the committer
+    # date, so that both sequences stay chronological
+    # (parent < g1 < ... < gN < owner).  The bounds are the *effective* dates
+    # recorded in commit-map (author_date / committer_date; the original
+    # ``date`` is only a fallback for entries that lack them).  Without a
+    # parent the day before the owner is used.  When an interval is shorter
     # than total + 1 seconds a strict order is impossible at Git's one-second
-    # resolution: the dates are then clamped to the parent's timestamp
+    # resolution: that date kind is clamped to the parent's timestamp
     # (non-decreasing, never after the owner) and the placement is recorded.
-    upper = min(parse_timestamp(owner_metadata.author_date), parse_timestamp(owner_metadata.committer_date))
-    lower: datetime | None = None
-    if parents and parents[0] in commit_map:
-        parent_entry = commit_map[parents[0]]
-        parent_dates = [parse_timestamp(value) for value in (parent_entry.get("author_date"), parent_entry.get("committer_date"), parent_entry.get("date")) if value]
-        if parent_dates:
-            lower = max(parent_dates)
-    if lower is None:
-        lower = upper - timedelta(days=1)
-    interval_seconds = int((upper - lower).total_seconds())
-    if interval_seconds >= total + 1:
-        step = interval_seconds / (total + 1)
-        generated_dates = [lower + timedelta(seconds=int(step * n)) for n in range(1, total + 1)]
-        placement = "spaced"
-    else:
-        placement = "clamped"
-        log(
-            f"commit_generator of commit {owner_id}: only {interval_seconds}s between parent and owner for {total} generated "
-            "commit(s); timestamps clamped to the parent's date (non-decreasing)"
-        )
-        if interval_seconds < 0:
-            generated_dates = [upper for _ in range(total)]
-        else:
-            generated_dates = [lower + timedelta(seconds=min(n, interval_seconds)) for n in range(1, total + 1)]
+    parent_entry = commit_map[parents[0]] if parents and parents[0] in commit_map else None
+    author_dates, author_placement = _place_generated_dates(
+        _effective_parent_date(parent_entry, "author_date"), parse_timestamp(owner_metadata.author_date), total, "author", owner_id, log
+    )
+    committer_dates, committer_placement = _place_generated_dates(
+        _effective_parent_date(parent_entry, "committer_date"), parse_timestamp(owner_metadata.committer_date), total, "committer", owner_id, log
+    )
+    placement = "spaced" if author_placement == committer_placement == "spaced" else "clamped"
+    placement_detail = {"author": author_placement, "committer": committer_placement}
 
     parent_hash = run_git(repo_dir, ["rev-parse", "--verify", "-q", "HEAD"]).stdout.strip() if parents else ""
     file_contents: dict[str, str] = {}
@@ -675,17 +662,21 @@ def _expand_commit_generators(
                 file_contents[rel_path] = existing.read_text(encoding="utf-8") if existing.exists() else ""
             file_contents[rel_path] = _append_generated_line(file_contents[rel_path], f"{gid}: {generator} change {sequence}")
             author = deterministic_author(scenario_id, gid)
-            date = format_timestamp(generated_dates[sequence - 1])
+            author_date = format_timestamp(author_dates[sequence - 1])
+            committer_date = format_timestamp(committer_dates[sequence - 1])
             message = f"Update {rel_path} ({generator} {sequence}/{total})"
-            stream.append(_fast_import_commit(sequence, message, author, date, parent_hash if sequence == 1 else None, rel_path, file_contents[rel_path]))
+            stream.append(
+                _fast_import_commit(sequence, message, author, author_date, committer_date, parent_hash if sequence == 1 else None, rel_path, file_contents[rel_path])
+            )
             generated.append(
                 {
                     "id": gid,
                     "message": message,
                     "author": author,
-                    "author_date": date,
-                    "committer_date": date,
+                    "author_date": author_date,
+                    "committer_date": committer_date,
                     "timestamp_placement": placement,
+                    "timestamp_placement_detail": dict(placement_detail),
                     "role": "generated",
                     "branch": branch,
                     "parents": [previous_id] if previous_id else [],
@@ -731,16 +722,66 @@ def _append_generated_line(content: str, line: str) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _fast_import_commit(mark: int, message: str, author: str, date: str, from_hash: str | None, rel_path: str, content: str) -> bytes:
+def _effective_parent_date(parent_entry: dict[str, Any] | None, kind: str) -> datetime | None:
+    """The parent's effective author/committer date from commit-map (``date`` only as a fallback)."""
+    if parent_entry is None:
+        return None
+    value = parent_entry.get(kind) or parent_entry.get("date")
+    return parse_timestamp(value) if value else None
+
+
+def _place_generated_dates(
+    lower: datetime | None,
+    upper: datetime,
+    total: int,
+    kind: str,
+    owner_id: str,
+    log,
+) -> tuple[list[datetime], str]:
+    """Return ``total`` timestamps strictly inside ``(lower, upper)`` and how they were placed.
+
+    ``lower`` is the parent's effective date of this kind (``None`` without a
+    parent: the day before ``upper`` is used).  With at least ``total + 1``
+    seconds available the dates are spaced evenly ("spaced").  Otherwise they
+    are clamped to the parent's timestamp, non-decreasing and never after the
+    owner ("clamped"); when the owner is not later than the parent at all, the
+    owner's date is used for every generated commit.
+    """
+    if lower is None:
+        lower = upper - timedelta(days=1)
+    interval_seconds = int((upper - lower).total_seconds())
+    if interval_seconds >= total + 1:
+        step = interval_seconds / (total + 1)
+        return [lower + timedelta(seconds=int(step * n)) for n in range(1, total + 1)], "spaced"
+    log(
+        f"commit_generator of commit {owner_id}: only {interval_seconds}s between the parent's and the owner's {kind} date "
+        f"for {total} generated commit(s); {kind} dates clamped to the parent's {kind} date (non-decreasing, never after the owner)"
+    )
+    if interval_seconds < 0:
+        return [upper for _ in range(total)], "clamped"
+    return [lower + timedelta(seconds=min(n, interval_seconds)) for n in range(1, total + 1)], "clamped"
+
+
+def _fast_import_commit(
+    mark: int,
+    message: str,
+    author: str,
+    author_date: str,
+    committer_date: str,
+    from_hash: str | None,
+    rel_path: str,
+    content: str,
+) -> bytes:
     name, email = parse_author(author)
-    identity = f"{name} <{email}> {timestamp_to_git_raw(date)}"
+    author_identity = f"{name} <{email}> {timestamp_to_git_raw(author_date)}"
+    committer_identity = f"{name} <{email}> {timestamp_to_git_raw(committer_date)}"
     message_bytes = message.encode("utf-8")
     content_bytes = content.encode("utf-8")
     parts = [
         f"commit {_GENERATED_IMPORT_REF}\n".encode("utf-8"),
         f"mark :{mark}\n".encode("utf-8"),
-        f"author {identity}\n".encode("utf-8"),
-        f"committer {identity}\n".encode("utf-8"),
+        f"author {author_identity}\n".encode("utf-8"),
+        f"committer {committer_identity}\n".encode("utf-8"),
         f"data {len(message_bytes)}\n".encode("utf-8"),
         message_bytes,
         b"\n",
