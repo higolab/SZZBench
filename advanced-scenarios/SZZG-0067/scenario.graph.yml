@@ -3,7 +3,10 @@ meta:
   id: SZZG-0067
   title: Rebase conflict resolution fixes bug
   slug: rebase-conflict-resolution-fixes-bug
-  description: A rebase conflict resolution commit acts as the BFC.
+  description: A feature branch introduces a range bug (f1) and then adds a constant (f2). Meanwhile main adds a
+    different constant at the same place (m1). Rebasing the feature branch onto main replays f1 cleanly as r1 (the
+    direct BIC) but f2 conflicts with m1; the developer resolves the conflict in r2 and, while doing so, restores the
+    inclusive bounds. The conflict-resolution commit r2 is therefore the BFC.
   category: "Rebase-specific history rewriting"
   category_code: "G5"
   factors:
@@ -22,67 +25,128 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial correct implementation
+  history_summary: 'c0: initial Range with inclusive bounds (main)
 
-    r1: rebase feature bug commit onto main
+    m1: add MAX_SPAN constant at the top of Range (main)
 
-    m1: main change before conflict-resolution fix
+    f1: switch Range.contains to strict comparisons (feature, off c0) - origin BIC
 
-    r2: resolve rebase conflict and fix range bug'
+    f2: add DEFAULT_MIN constant at the top of Range (feature)
+
+    r1: replay of f1 onto m1 - direct BIC
+
+    r2: replay of f2; conflicts with m1 on the constant block, resolution keeps both constants and restores inclusive
+    bounds - BFC'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial correct implementation'
+  message: Add Range.contains with inclusive bounds
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
-- id: r1
+    content: |
+      package example;
+
+      public class Range {
+
+          public boolean contains(int value, int min, int max) {
+              return value >= min && value <= max;
+          }
+      }
+- id: m1
   branch: main
   parents:
   - c0
-  message: 'r1: rebase feature bug commit onto main'
-  role: bug_introducing
+  message: Add MAX_SPAN constant for range validation
+  role: intermediate
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: |-
+      public class Range {
+
+          public boolean contains
+    new: |-
+      public class Range {
+
+          public static final int MAX_SPAN = 1_000_000;
+
+          public boolean contains
+- id: f1
+  branch: feature
+  parents:
+  - c0
+  message: Use strict comparisons in Range.contains
+  role: origin_bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
     new: return value > min && value < max;
-  rebase_of: f1
-- id: m1
-  branch: main
+- id: f2
+  branch: feature
   parents:
-  - r1
-  message: 'm1: main change before conflict-resolution fix'
+  - f1
+  message: Add DEFAULT_MIN constant for range validation
   role: intermediate
-  operations:
-  - type: write_file
-    path: docs/main.md
-    content: 'before fix
-
-      '
-- id: r2
-  branch: main
-  parents:
-  - m1
-  message: 'r2: resolve rebase conflict and fix range bug'
-  role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    old: |-
+      public class Range {
+
+          public boolean contains
+    new: |-
+      public class Range {
+
+          public static final int DEFAULT_MIN = 0;
+
+          public boolean contains
+- id: r1
+  branch: main
+  parents:
+  - m1
+  message: Use strict comparisons in Range.contains
+  role: bug_introducing
+  rebase_of: f1
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+- id: r2
+  branch: main
+  parents:
+  - r1
+  message: Add DEFAULT_MIN constant and restore inclusive bounds after rebase conflict
+  role: bug_fixing
   rebase_of: f2
   rebase_conflict_resolution: true
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: |
+      package example;
+
+      public class Range {
+
+          public static final int MAX_SPAN = 1_000_000;
+          public static final int DEFAULT_MIN = 0;
+
+          public boolean contains(int value, int min, int max) {
+              return value >= min && value <= max;
+          }
+      }
 bugs:
 - id: B001
-  title: Bug fixed by rebase conflict resolution
+  title: Strict comparisons in Range.contains, fixed while resolving a rebase conflict
   bug_introducing_commits:
   - commit: r1
     role: direct
+  - commit: f1
+    role: origin
   bug_fixing_commits:
   - commit: r2
     role: complete_fix
@@ -92,6 +156,12 @@ bugs:
     file: src/main/java/example/Range.java
     statement: return value > min && value < max;
     change_type: line_modification
+  origin_faults:
+  - id: OF001
+    commit: f1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: origin_line_modification
   fixes:
   - id: X001
     commit: r2
@@ -103,15 +173,24 @@ expected_szz:
     evaluation_policy: exact_set
     required:
     - r1
-    notes: The BFC is r2; the BIC is r1.
+    related_but_not_correct:
+    - f1
+    - f2
+    notes: The BFC r2 is a rebase conflict-resolution commit; the direct BIC is the replayed commit r1. The pre-rebase
+      commits f1 and f2 stay reachable on the feature branch and are related but not the answer for a main-line BFC.
 scenario_design:
-  purpose: Evaluate whether SZZ can handle a BFC that is itself a rebase conflict resolution commit.
-  key_property: The fix is introduced by r2 during rebase conflict resolution.
-  difference_from_SZZG_0064: SZZG-0064 covers a rebased BIC followed by a non-BIC rebased intermediate commit. This scenario
-    adds a distinct rebase-related complication.
+  purpose: Evaluate whether SZZ can handle a BFC that is itself a rebase conflict-resolution commit.
+  key_property: The fix is introduced by r2 while resolving the conflict between f2 and m1; f2 itself did not touch the
+    faulty line.
+  conflict_model: The generator writes r2's resolved content directly (no git rebase is executed). f2 and m1 both insert a
+    constant at the same position, which is what would conflict during a real rebase; r2 keeps both constants and fixes
+    the comparison. Executing the conflict for real requires the generator's `resolution` support (issue #17).
+  difference_from_SZZG_0058: SZZG-0058 rebases a feature bug and a feature fix without conflicts. Here the fix does not
+    exist on the feature branch at all; it appears only in the conflict-resolution commit.
   evaluation_points:
-  - Start from r2.
-  - Return r1.
+  - Start from r2 and return r1.
+  - Do not return f1 or f2 (pre-rebase commits) for the main-line BFC.
+  - Do not return m1 (its constant is unrelated to the fault).
 notes:
-- This scenario models a rebase-related development history for SZZ evaluation.
-- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.
+- Rebase relationships are recorded with rebase_of and rebase_conflict_resolution; the replayed commits are ordinary
+  commits in the generated repository.

@@ -16,7 +16,7 @@ from .generator import GenerationError, generate_repository
 from .graph_generator import GraphGenerationError, generate_graph_repository
 from .scenario_builder import DEFAULT_SCENARIOS_ROOT, NewScenarioError, create_new_scenario
 from .graph_scenario_builder import DEFAULT_GRAPH_SCENARIOS_ROOT, NewGraphScenarioError, create_new_graph_scenario
-from .validator import validate_scenario_file
+from .validator import validate_scenario_file, validate_scenario_indexes
 from .graph_validator import validate_graph_scenario_file
 from .verifier import verify_generated_repo
 from .graph_verifier import verify_graph_generated_repo
@@ -32,7 +32,7 @@ def print_result(result, *, json_output: bool = False) -> None:
     print(f"Summary: {result.error_count()} error(s), {result.warning_count()} warning(s), {result.info_count()} info item(s)")
 
 def cmd_validate(args) -> int:
-    _, result, _ = validate_scenario_file(Path(args.scenario), simulate=args.simulate)
+    _, result, _ = validate_scenario_file(Path(args.scenario), simulate=args.simulate, lint=args.lint)
     print_result(result, json_output=args.json)
     if result.has_errors():
         return 1
@@ -63,13 +63,18 @@ def cmd_verify(args) -> int:
     return 0
 
 def cmd_validate_graph(args) -> int:
-    _, result = validate_graph_scenario_file(Path(args.scenario), strict_paths=args.strict_paths, simulate=args.simulate)
+    _, result = validate_graph_scenario_file(Path(args.scenario), strict_paths=args.strict_paths, simulate=args.simulate, lint=args.lint)
     print_result(result, json_output=args.json)
     if result.has_errors():
         return 1
     if args.strict and result.warning_count() > 0:
         return 1
     return 0
+
+def cmd_validate_index(args) -> int:
+    result = validate_scenario_indexes(Path(args.scenarios_root), Path(args.advanced_scenarios_root))
+    print_result(result, json_output=args.json)
+    return 1 if result.has_errors() else 0
 
 def cmd_generate_graph(args) -> int:
     try:
@@ -260,6 +265,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_validate.add_argument("scenario")
     p_validate.add_argument("--simulate", action="store_true", help="Also simulate operations in memory")
     p_validate.add_argument("--strict", action="store_true", help="Treat warnings as failures")
+    p_validate.add_argument("--lint", action="store_true", help="Run opt-in lints (W4xx warnings; implies --simulate)")
     p_validate.add_argument("--json", action="store_true", help="Print JSON output")
     p_validate.set_defaults(func=cmd_validate)
     p_generate = sub.add_parser("generate", help="Generate a synthetic Git repository from scenario.yml")
@@ -280,8 +286,15 @@ def build_parser() -> argparse.ArgumentParser:
     p_validate_graph.add_argument("--strict", action="store_true", help="Treat warnings as failures")
     p_validate_graph.add_argument("--strict-paths", action="store_true", help="Run additional strict path/entity-shape checks")
     p_validate_graph.add_argument("--simulate", action="store_true", help="Also simulate graph operations in memory")
+    p_validate_graph.add_argument("--lint", action="store_true", help="Run opt-in lints (GW4xx warnings)")
     p_validate_graph.add_argument("--json", action="store_true", help="Print JSON output")
     p_validate_graph.set_defaults(func=cmd_validate_graph)
+
+    p_validate_index = sub.add_parser("validate-index", help="Check scenarios/index.yml and advanced-scenarios/index.yml against the scenario directories")
+    p_validate_index.add_argument("--scenarios-root", default=str(DEFAULT_SCENARIOS_ROOT), help="Root directory for classic scenarios")
+    p_validate_index.add_argument("--advanced-scenarios-root", default=str(DEFAULT_ADVANCED_SCENARIOS_ROOT), help="Root directory for graph scenarios")
+    p_validate_index.add_argument("--json", action="store_true", help="Print JSON output")
+    p_validate_index.set_defaults(func=cmd_validate_index)
 
     p_generate_graph = sub.add_parser("generate-graph", help="Generate a synthetic Git repository from scenario.graph.yml")
     p_generate_graph.add_argument("scenario")
