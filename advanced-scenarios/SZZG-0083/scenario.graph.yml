@@ -3,16 +3,19 @@ meta:
   id: SZZG-0083
   title: Huge noisy rebased commit
   slug: huge-noisy-rebased-commit
-  description: A rebased BIC contains the relevant source change plus many unrelated files.
+  description: The rebased bug-introducing commit changes one line of application code and, in the same commit, regenerates a machine-written
+    status code table of about 7000 lines. The one relevant line has to be found inside a very large patch.
   category: "Rebase-specific history rewriting"
   category_code: "G5"
   factors:
   - branch
   - rebase
   - large_noisy_commit
+  - generated_file
   - multi_file
   - robustness
   - direct_bic
+  - origin_bic
   difficulty: advanced
   status: draft
 repository:
@@ -23,154 +26,77 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial correct implementation
+  history_summary: 'c0: Add the Range class with an inclusive contains check
 
-    f1: introduce bug and noisy feature files
+    f1: Regenerate the status code table and use strict interval bounds (feature; ~7000 generated lines plus one source line)
 
-    r1: rebase huge noisy feature commit
+    r1: rebased f1 onto main, with the whole generated table
 
-    c2: fix bug from huge noisy commit'
+    c2: Restore the inclusive comparison in Range.contains'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial correct implementation'
+  message: Add the Range class with an inclusive contains check
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ >= min && value <= max;\n  }\n}\n"
 - id: f1
   branch: feature
   parents:
   - c0
-  message: 'f1: introduce bug and noisy feature files'
+  message: Regenerate the status code table and use strict interval bounds
   role: origin_bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
     new: return value > min && value < max;
-  - type: write_file
-    path: docs/noise-1.md
-    content: 'noise 1
-
-      '
-  - type: write_file
-    path: docs/noise-2.md
-    content: 'noise 2
-
-      '
-  - type: write_file
-    path: docs/noise-3.md
-    content: 'noise 3
-
-      '
-  - type: write_file
-    path: docs/noise-4.md
-    content: 'noise 4
-
-      '
-  - type: write_file
-    path: docs/noise-5.md
-    content: 'noise 5
-
-      '
-  - type: write_file
-    path: docs/noise-6.md
-    content: 'noise 6
-
-      '
-  - type: write_file
-    path: docs/noise-7.md
-    content: 'noise 7
-
-      '
-  - type: write_file
-    path: docs/noise-8.md
-    content: 'noise 8
-
-      '
-  - type: write_file
-    path: docs/noise-9.md
-    content: 'noise 9
-
-      '
-  - type: write_file
-    path: docs/noise-10.md
-    content: 'noise 10
-
-      '
+  - type: write_generated_text_file
+    path: src/main/java/example/StatusCodes.java
+    lines: 5000
+    template: '  public static final int CODE_${line} = ${line};'
+    header: "package example;\n\npublic final class StatusCodes {\n  private StatusCodes() {\n  }\n\n"
+    footer: '}'
+  - type: write_generated_text_file
+    path: src/main/resources/status-labels.properties
+    lines: 2000
+    template: status.${line}=generated label ${line}
 - id: r1
   branch: main
   parents:
   - c0
-  message: 'r1: rebase huge noisy feature commit'
   role: bug_introducing
+  rebase_of: f1
+  inherit_message: true
+  inherit_author_date: true
+  committer_date: '2024-01-05T07:55:00Z'
+  large_noisy_rebased_commit: true
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
     new: return value > min && value < max;
-  - type: write_file
-    path: docs/noise-1.md
-    content: 'noise 1
-
-      '
-  - type: write_file
-    path: docs/noise-2.md
-    content: 'noise 2
-
-      '
-  - type: write_file
-    path: docs/noise-3.md
-    content: 'noise 3
-
-      '
-  - type: write_file
-    path: docs/noise-4.md
-    content: 'noise 4
-
-      '
-  - type: write_file
-    path: docs/noise-5.md
-    content: 'noise 5
-
-      '
-  - type: write_file
-    path: docs/noise-6.md
-    content: 'noise 6
-
-      '
-  - type: write_file
-    path: docs/noise-7.md
-    content: 'noise 7
-
-      '
-  - type: write_file
-    path: docs/noise-8.md
-    content: 'noise 8
-
-      '
-  - type: write_file
-    path: docs/noise-9.md
-    content: 'noise 9
-
-      '
-  - type: write_file
-    path: docs/noise-10.md
-    content: 'noise 10
-
-      '
-  rebase_of: f1
-  large_noisy_rebased_commit: true
+  - type: write_generated_text_file
+    path: src/main/java/example/StatusCodes.java
+    lines: 5000
+    template: '  public static final int CODE_${line} = ${line};'
+    header: "package example;\n\npublic final class StatusCodes {\n  private StatusCodes() {\n  }\n\n"
+    footer: '}'
+  - type: write_generated_text_file
+    path: src/main/resources/status-labels.properties
+    lines: 2000
+    template: status.${line}=generated label ${line}
 - id: c2
   branch: main
   parents:
   - r1
-  message: 'c2: fix bug from huge noisy commit'
+  message: Restore the inclusive comparison in Range.contains
   role: bug_fixing
+  date: '2024-01-09T12:40:00Z'
   operations:
   - type: replace
     path: src/main/java/example/Range.java
@@ -178,7 +104,7 @@ commits:
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Bug introduced inside huge noisy rebased commit
+  title: Bug hidden in a very large rebased commit
   bug_introducing_commits:
   - commit: r1
     role: direct
@@ -212,14 +138,19 @@ expected_szz:
     - r1
     related_but_not_correct:
     - f1
+    notes: r1 is the direct BIC. Its patch is about 7000 lines long, but only one of them is the fault; the generated files are
+      never touched by the fix and therefore never enter deleted-line blame.
 scenario_design:
-  purpose: Evaluate SZZ behavior on a large noisy rebased commit.
-  key_property: r1 contains one relevant source change and many unrelated files.
-  difference_from_SZZG_0064: SZZG-0064 covers a rebased BIC followed by a non-BIC rebased intermediate commit. This scenario
-    adds a distinct rebase-related complication.
+  purpose: Evaluate how robust a tool is when the bug-introducing commit is very large.
+  key_property: r1 adds a 5006-line generated Java table and a 2000-line generated properties file next to the single faulty source
+    line. Deleted-line blame is unaffected by the size; whole-patch consumers and repository-scanning tools are the ones that pay
+    for it.
+  difference_from_SZZG_0064: SZZG-0064 replays two small commits; here a single replayed commit carries thousands of generated
+    lines around the one relevant change.
   evaluation_points:
   - Report r1.
-  - Remain robust.
+  - Stay within time and memory limits on a commit whose patch is about 7000 lines.
 notes:
-- This scenario models a rebase-related development history for SZZ evaluation.
-- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.
+- The generated files are written with write_generated_text_file; header and footer make StatusCodes.java a compilable Java class.
+- 'The size burdens tools that read whole patches (diff parsers, LLM prompts, commit-level classifiers) or that scan the repository
+  at each commit, not line-level blame: the fix deletes exactly one line, and that line is in Range.java.'
