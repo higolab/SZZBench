@@ -101,6 +101,23 @@ Use `scenario.graph.yml` when the scenario needs graph-specific history, relatio
 
 In short, `scenario.yml` is treated as a restricted subset of `scenario.graph.yml`: linear `main` history plus a simple commit-level exact-set oracle. Anything that needs graph structure or richer evaluation metadata stays in `scenario.graph.yml`.
 
+### What the generated repositories do not reveal
+
+A tool is given a generated repository and the bug-fixing commit. Nothing inside
+that repository identifies a commit's role in the oracle: commit messages
+describe the change from the author's point of view and never carry a scenario
+id, a role word or an operation list; authors and dates are derived from the
+scenario id and the commit index, never from the role; and no file content or
+path states which commit is the answer. Bug-fixing commits keep natural fix
+wording, because the BFC is an input to SZZ rather than part of the answer.
+
+Scenario ids, titles and the directory a repository is generated into do
+describe the scenario, and a fix necessarily names what it repairs. The full
+policy, including what is deliberately not hidden and how predictions may name a
+commit (`evaluate --reference-format`), is in
+[docs/decisions/oracle-leakage.md](docs/decisions/oracle-leakage.md); it is
+checked by `validate --lint` and by `tests/test_no_oracle_leakage.py`.
+
 ## Directory structure
 
 The current main directory structure is as follows.

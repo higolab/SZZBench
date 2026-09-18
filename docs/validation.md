@@ -141,6 +141,9 @@ With `--simulate`:
 | W400 | warning | a factor is a schema key or operation name (`expected_szz`, `faults`, `write_file`, `replace`, `edit`, `drop`, ...; see `RESERVED_FACTOR_WORDS`) | – |
 | W401 | warning | `meta.factors` is empty | – |
 | W402 | warning | factors mix hyphen and underscore styles within one scenario | – |
+The W41x / GW41x lints implement the leakage policy in
+[decisions/oracle-leakage.md](decisions/oracle-leakage.md); `tests/test_no_oracle_leakage.py` enforces it over the shipped scenarios.
+
 | W410 | warning | a commit that is **not** the BFC has a message disclosing its role: `introduce ... bug`, `bug-introducing`, `BIC`, `BFC`, `distractor`, `intermediate change`, `initial state`, `noise`, `unrelated`, `replay...`, `reintroduc...` (case-insensitive). Natural "fix" wording in the BFC is never flagged. | – |
 | W411 | warning | any message starts with a logical-id prefix such as `c1:` (`^[a-z]{1,2}\d+:`) | – |
 | W412 | warning | text written into the repository (`write_file.content`, `replace.new`, `insert_after.content`) matches the W410 role wording | – |

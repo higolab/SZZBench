@@ -221,3 +221,39 @@ def test_oracle_notes_are_rendered_in_markdown_and_promoted_to_warnings(tmp_path
     assert "## Scenario notes" in markdown
     assert "- SZZG-0116: commit_level.required is missing or empty" in markdown
     assert "## Warnings" in markdown
+
+
+# ---------------------------------------------------------------------------
+# Prediction reference format (issue #8): what a tool may name a commit with
+# ---------------------------------------------------------------------------
+
+
+def test_reference_format_restricts_how_predictions_name_commits():
+    from szzbench.evaluator import REFERENCE_FORMATS, _normalize_commit_ref
+
+    commit_map = {"c0": {"hash": "a" * 40}, "c1": {"hash": "b" * 40}}
+    hash_to_id = {"a" * 40: "c0", "b" * 40: "c1"}
+    logical, full, short = "c1", "b" * 40, "b" * 8
+
+    assert REFERENCE_FORMATS == ("auto", "hash", "logical")
+
+    # auto (the default) keeps accepting every form
+    for ref in (logical, full, short):
+        assert _normalize_commit_ref(ref, commit_map, hash_to_id) == "c1"
+
+    # hash: only what a tool reading the repository can produce
+    assert _normalize_commit_ref(logical, commit_map, hash_to_id, reference_format="hash") is None
+    assert _normalize_commit_ref(full, commit_map, hash_to_id, reference_format="hash") == "c1"
+    assert _normalize_commit_ref(short, commit_map, hash_to_id, reference_format="hash") == "c1"
+
+    # logical: only scenario ids, for adapters and fixtures
+    assert _normalize_commit_ref(logical, commit_map, hash_to_id, reference_format="logical") == "c1"
+    assert _normalize_commit_ref(full, commit_map, hash_to_id, reference_format="logical") is None
+    assert _normalize_commit_ref(short, commit_map, hash_to_id, reference_format="logical") is None
+
+    try:
+        _normalize_commit_ref(logical, commit_map, hash_to_id, reference_format="hashes")
+    except ValueError as exc:
+        assert "reference_format" in str(exc)
+    else:  # pragma: no cover - the call above must raise
+        raise AssertionError("an unknown reference_format must be rejected")

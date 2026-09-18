@@ -31,11 +31,17 @@ Commits with explicit `author` and `date` keep byte-identical hashes.
 | commit has `author` | used verbatim |
 | commit has no `author` | one of six pool authors, chosen by a stable hash of `(meta.id, commit index)` |
 | commit has `date` | used verbatim for both author and committer date |
-| commit has no `date` | `repository.base_date` (default `2024-01-01T10:00:00Z`) + *commit index* days |
+| commit has no `date` | the scenario's base date plus irregular weekday gaps (see below) |
 
-The commit index is the 0-based position of the commit in the `commits` list,
-so the first commit of a scenario without dates is dated on the base date, the
-second one day later, and so on. The author pool is
+The commit index is the 0-based position of the commit in the `commits` list.
+The first commit of a scenario without dates sits **exactly** on the base date;
+each later commit adds one to nine days, skips weekends, and takes a
+working-hour time (08:00-18:00). All of it is derived from a stable hash of the
+scenario id, so dates are reproducible, strictly increasing in the commit index
+- a commit is always newer than its parents - and no longer the one-per-day ramp
+at a single time that every scenario used to share. Without `repository.base_date`
+the base date itself is derived from the scenario id inside a 2023..mid-2025
+window, so repositories do not all start on the same day. The author pool is
 
 ```
 Aiko Tanaka <aiko.tanaka@example.com>     Dana Okafor <dana.okafor@example.com>
@@ -46,6 +52,7 @@ Chen Wei <chen.wei@example.com>           Farid Haddad <farid.haddad@example.com
 The hash only uses the scenario id and the commit index, never the role, so a
 predictor cannot infer "bug-introducing" from the author. Generation is fully
 reproducible: two runs of the same scenario yield identical commit hashes.
+The policy behind this is [docs/decisions/oracle-leakage.md](decisions/oracle-leakage.md).
 
 ### `repository.base_date` (*both*)
 
@@ -56,7 +63,10 @@ repository:
   base_date: "2024-06-01T10:00:00Z"   # ISO 8601, quote it so YAML keeps a string
 ```
 
-Default: `2024-01-01T10:00:00Z`. Only used for commits without `date`.
+Default: derived from the scenario id (a weekday between 2023-01-09 and
+mid-2025). Only used for commits without `date`. The first commit of the
+scenario reproduces this timestamp verbatim; later ones add the gaps described
+above.
 
 ### `author_date` / `committer_date` (*both*)
 

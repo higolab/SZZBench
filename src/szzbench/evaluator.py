@@ -296,6 +296,7 @@ def evaluate_predictions(
     variant: str = "default",
     include_generated: bool = False,
     evaluation_variant: str | None = None,
+    reference_format: str = "auto",
 ) -> EvaluationReport:
     if predictions_path is None:
         predictions_by_scenario: dict[str, list[Prediction]] = {}
@@ -332,6 +333,7 @@ def evaluate_predictions(
                 predictions_by_scenario.get(scenario_id, []),
                 evaluation_variant=evaluation_variant,
                 repo_dir=generated_root / scenario_id / variant / "repo",
+                reference_format=reference_format,
             )
         )
     # Oracle-related notes (inferred required set, unread oracle sections,
@@ -363,6 +365,7 @@ def evaluate_scenario(
     *,
     evaluation_variant: str | None = None,
     repo_dir: Path | None = None,
+    reference_format: str = "auto",
 ) -> ScenarioEvaluation:
     """Score one scenario's predictions against its commit-level oracle.
 
@@ -374,7 +377,7 @@ def evaluate_scenario(
     policy = _commit_level_policy(scenario, suite, evaluation_variant)
     notes = list(policy.notes)
     hash_to_id = _hash_to_logical_id(commit_map)
-    ranked_actual_ids, unknown_predictions = _ranked_actual_ids(predictions, commit_map, hash_to_id)
+    ranked_actual_ids, unknown_predictions = _ranked_actual_ids(predictions, commit_map, hash_to_id, reference_format=reference_format)
 
     expected = set(policy.required)
     allowed_map = {item.commit: item for item in policy.acceptable_related}
@@ -808,6 +811,8 @@ def _ranked_actual_ids(
     predictions: list[Prediction],
     commit_map: dict[str, Any],
     hash_to_id: dict[str, str],
+    *,
+    reference_format: str = "auto",
 ) -> tuple[list[str], list[str]]:
     indexed_predictions = list(enumerate(predictions))
     if any(prediction.rank is not None for prediction in predictions):
@@ -822,7 +827,7 @@ def _ranked_actual_ids(
     seen: set[str] = set()
     unknown_predictions: list[str] = []
     for _, prediction in indexed_predictions:
-        normalized = _normalize_commit_ref(prediction.inducing_commit, commit_map, hash_to_id)
+        normalized = _normalize_commit_ref(prediction.inducing_commit, commit_map, hash_to_id, reference_format=reference_format)
         if normalized is None:
             unknown_predictions.append(prediction.inducing_commit)
             continue
@@ -1012,9 +1017,28 @@ def _hash_to_logical_id(commit_map: dict[str, Any]) -> dict[str, str]:
     return lookup
 
 
-def _normalize_commit_ref(ref: str, commit_map: dict[str, Any], hash_to_id: dict[str, str]) -> str | None:
-    if ref in commit_map:
+#: Prediction reference formats accepted by ``evaluate`` (issue #8).
+#:
+#: ``hash`` is the format a tool that reads the generated repository can
+#: actually produce; ``logical`` is for adapters, fixtures and the tests, which
+#: know the scenario; ``auto`` accepts both and stays the default so that
+#: existing prediction files keep working.
+REFERENCE_FORMATS = ("auto", "hash", "logical")
+
+
+def _normalize_commit_ref(
+    ref: str,
+    commit_map: dict[str, Any],
+    hash_to_id: dict[str, str],
+    *,
+    reference_format: str = "auto",
+) -> str | None:
+    if reference_format not in REFERENCE_FORMATS:
+        raise ValueError(f"reference_format must be one of {REFERENCE_FORMATS}, got {reference_format!r}")
+    if reference_format != "hash" and ref in commit_map:
         return ref
+    if reference_format == "logical":
+        return None
     if ref in hash_to_id:
         return hash_to_id[ref]
     if len(ref) >= 7:
