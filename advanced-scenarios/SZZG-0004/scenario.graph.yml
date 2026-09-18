@@ -12,6 +12,7 @@ meta:
   - move_file
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0004-file-move-between-bic-and-bfc
   default_branch: main

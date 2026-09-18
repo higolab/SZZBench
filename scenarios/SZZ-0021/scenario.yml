@@ -12,6 +12,7 @@ meta:
   - wrong-constant
   difficulty: easy
   status: active
+  tier: control
   category_code: "S1"
 repository:
   name: SZZ-0021-wrong-threshold-constant

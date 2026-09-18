@@ -11,6 +11,7 @@ meta:
   - root_cause
   difficulty: hard
   status: active
+  tier: control
   category_code: "S7"
 repository:
   name: SZZ-0169-root-cause-not-in-changed-lines

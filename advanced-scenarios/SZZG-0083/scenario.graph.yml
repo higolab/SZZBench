@@ -18,6 +18,7 @@ meta:
   - origin_bic
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0083-huge-noisy-rebased-commit
   default_branch: main

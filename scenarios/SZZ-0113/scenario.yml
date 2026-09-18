@@ -17,6 +17,7 @@ meta:
   - bfc-message
   difficulty: medium
   status: active
+  tier: control
   category_code: "S3"
 repository:
   name: SZZ-0113-malformed-commit-message

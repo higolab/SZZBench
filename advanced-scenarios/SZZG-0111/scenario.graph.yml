@@ -10,6 +10,7 @@ meta:
   - chmod
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0111-chmod-only-intermediate
   default_branch: main

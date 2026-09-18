@@ -13,6 +13,7 @@ meta:
   - origin_and_direct_bic
   difficulty: advanced
   status: draft
+  tier: discriminating
 repository:
   name: SZZG-0028-origin-and-direct-clone-bics
   default_branch: main

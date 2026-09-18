@@ -12,6 +12,7 @@ meta:
   - faults
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0101-caller-callee
   default_branch: main

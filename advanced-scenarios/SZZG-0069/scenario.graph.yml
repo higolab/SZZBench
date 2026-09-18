@@ -15,6 +15,7 @@ meta:
   - direct_bic
   difficulty: advanced
   status: draft
+  tier: discriminating
 repository:
   name: SZZG-0069-rebase-splits-original-bic-into-multiple-commits
   default_branch: main

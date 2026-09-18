@@ -16,6 +16,7 @@ meta:
     - "tangled-bic"
   difficulty: "medium"
   status: "active"
+  tier: "control"
   category_code: "S4"
 
 repository:

@@ -21,6 +21,7 @@ meta:
     - "last-rewrite-is-bic"
   difficulty: "easy"
   status: "active"
+  tier: "control"
   category_code: "S3"
 
 repository:

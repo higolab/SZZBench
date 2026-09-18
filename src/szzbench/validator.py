@@ -361,6 +361,22 @@ def lint_factors(factors: Any, result: ValidationResult, *, prefix: str, locatio
         result.warning(f"{prefix}402", "Factors mix hyphen and underscore styles; use one convention per scenario.", location)
 
 
+#: What a scenario is for (issue #14).  ``control`` verifies that a method
+#: handles a specific input condition and may well be solvable by a cheap rule;
+#: ``discriminating`` is designed so the declared baselines do not solve it.
+#: ``szzbench baselines`` checks the declaration against the measurement.
+SCENARIO_TIERS = ("control", "discriminating")
+
+
+def lint_tier(meta: Any, result: ValidationResult, *, prefix: str) -> None:
+    """``<prefix>460``: every scenario declares a tier from the vocabulary."""
+    tier = meta.get("tier") if isinstance(meta, dict) else None
+    if tier is None:
+        result.warning(f"{prefix}460", "meta.tier is missing; declare 'control' or 'discriminating'.", "meta.tier")
+    elif tier not in SCENARIO_TIERS:
+        result.warning(f"{prefix}460", f"meta.tier '{tier}' is not one of {SCENARIO_TIERS}.", "meta.tier")
+
+
 def lint_leakage(commits: Iterable[Any], bfc_ids: set[str], result: ValidationResult, *, prefix: str) -> None:
     """Answer-cue lint for commit messages and written file contents (issue #8).
 
@@ -420,6 +436,7 @@ def lint_scenario(data: dict[str, Any], snapshots: dict[str, dict[str, str]] | N
     bfc_ids = {b.get("bug_fixing_commit") for b in bugs if isinstance(b.get("bug_fixing_commit"), str)}
 
     lint_factors(factors, result, prefix="W")
+    lint_tier(data.get("meta"), result, prefix="W")
     lint_leakage(commits, bfc_ids, result, prefix="W")
     if snapshots is not None:
         result.extend(_lint_ghost_invariants(commits, bugs, factors, snapshots))

@@ -63,6 +63,7 @@ class Scenario:
     scenario_id: str
     suite: str
     category: str | None
+    tier: str | None
     commits: list[CommitInfo]
     bfc_hashes: set[str]
     repo_dir: Path
@@ -332,6 +333,7 @@ def _load_scenarios(generated_root: Path, scenarios_root: Path, advanced_scenari
             scenario_id=scenario_id,
             suite=suite,
             category=(data.get("meta") or {}).get("category_code"),
+            tier=(data.get("meta") or {}).get("tier"),
             commits=commits,
             bfc_hashes={hash_of[b] for b in bfc_ids if b in hash_of},
             repo_dir=repo_dir,
@@ -391,6 +393,19 @@ def run_baselines(
         if scenario.scenario_id in solved_any:
             bucket["solved"] += 1
 
+    # A declared tier is a claim about the scenario; the measurement checks it.
+    #
+    # The two directions need different evidence.  Finding *a* solver refutes a
+    # `discriminating` declaration whichever families ran.  Claiming that none
+    # exists - which is what a promotion candidate asserts - needs every
+    # declared family, so a filtered run does not assess it at all.
+    complete = set(selected) == set(FAMILIES)
+    declared = Counter(s.tier or "undeclared" for s in scenarios)
+    wrongly_discriminating = sorted(s.scenario_id for s in scenarios
+                                    if s.tier == "discriminating" and s.scenario_id in solved_any)
+    unsolved_controls = sorted(s.scenario_id for s in scenarios
+                               if s.tier == "control" and s.scenario_id not in solved_any) if complete else None
+
     best_per_family = {}
     for family in selected:
         family_results = [r for r in results if r.family == family]
@@ -409,6 +424,11 @@ def run_baselines(
             for sid in unsolved
         ],
         "per_category": per_category,
+        "families_run": list(selected),
+        "complete": complete,
+        "tiers": dict(sorted(declared.items())),
+        "declared_discriminating_but_solved": wrongly_discriminating,
+        "declared_control_but_unsolved": unsolved_controls,
         "errors": errors + git.failures,
     }
 
@@ -425,10 +445,24 @@ def format_report(report: dict[str, Any]) -> str:
         lines.append(f"  {item['name']:28s} {item['family']:9s} {share:>12s}")
     lines.append("")
     solved = report["solved_by_any_baseline"]
-    lines.append(f"  solved by at least one baseline: {solved}/{total} = {100 * solved / total:.1f}%" if total else "")
-    lines.append(f"  solved by none:                  {len(report['unsolved'])}")
+    scope = "baseline" if report.get("complete", True) else "selected baseline"
+    lines.append(f"  solved by at least one {scope}: {solved}/{total} = {100 * solved / total:.1f}%" if total else "")
+    lines.append(f"  solved by no {scope}: {len(report['unsolved'])}")
     for item in report["unsolved_detail"]:
         lines.append(f"      {item['scenario_id']} [{item['category']}] {item['commits']} commits")
+    lines.append("")
+    lines.append(f"  declared tiers: " + ", ".join(f"{k} {v}" for k, v in report["tiers"].items()))
+    wrong = report["declared_discriminating_but_solved"]
+    if wrong:
+        lines.append(f"  [WARNING] declared discriminating but solved by a cheap rule: {', '.join(wrong)}")
+    promote = report["declared_control_but_unsolved"]
+    if promote is None:
+        lines.append(f"  promotion candidates: not assessed - only the "
+                     f"{', '.join(report['families_run'])} famil"
+                     f"{'y' if len(report['families_run']) == 1 else 'ies'} ran; "
+                     f"a control can only be promoted when no declared family solves it")
+    elif promote:
+        lines.append(f"  declared control but solved by no cheap rule (promotion candidates): {', '.join(promote)}")
     lines.append("")
     lines.append("  per category (solved by any baseline / total)")
     for category in sorted(report["per_category"]):

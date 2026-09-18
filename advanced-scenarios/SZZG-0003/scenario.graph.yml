@@ -11,6 +11,7 @@ meta:
   - rename_file
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0003-file-rename-between-bic-and-bfc
   default_branch: main

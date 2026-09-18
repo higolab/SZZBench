@@ -17,6 +17,7 @@ meta:
   - same-origin-hunks
   difficulty: medium
   status: active
+  tier: control
   category_code: "S4"
 repository:
   name: SZZ-0116-multiple-hunk-bfc

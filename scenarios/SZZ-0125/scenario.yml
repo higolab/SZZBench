@@ -18,6 +18,7 @@ meta:
   - matched-control
   difficulty: easy
   status: active
+  tier: control
   category_code: "S5"
 repository:
   name: SZZ-0125-method-rename-after-bic

@@ -11,6 +11,7 @@ meta:
   - delete_file
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0109-file-deletion
   default_branch: main

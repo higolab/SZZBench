@@ -9,6 +9,7 @@ meta:
   factors: []
   difficulty: hard
   status: active
+  tier: control
   category_code: "S6"
 repository:
   name: SZZ-0156-multiple-overloaded-methods

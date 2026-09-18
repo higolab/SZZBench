@@ -19,6 +19,7 @@ meta:
   - revert_footer
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0084-partial-revert
   default_branch: main

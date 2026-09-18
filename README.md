@@ -113,6 +113,12 @@ which opens no file at all, solves 146/210 — more than the classic
 seven it does not reach all have a multi-commit oracle. The metadata family
 is at chance, which is the leakage guarantee below holding.
 
+Every scenario declares `meta.tier`: **203 are `control`** — they check that a
+method handles a specific input condition, and a cheap rule may well solve them
+— and **7 are `discriminating`**, designed so that no declared cheap baseline
+does. A control being cheaply solvable is not a defect; what the tier prevents
+is reading a control as evidence that a method discriminates.
+
 `szzbench coverage` is the companion command: it measures each scenario's
 oracle size, the depth of its bug-introducing commit, how many distractors
 touch the fault file, and the size and branchiness of its history, then groups

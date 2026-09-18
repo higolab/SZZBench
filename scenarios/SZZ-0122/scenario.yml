@@ -12,6 +12,7 @@ meta:
   - multi-file-bfc
   difficulty: medium
   status: active
+  tier: control
   category_code: "S4"
 repository:
   name: SZZ-0122-bfc-with-extra-file

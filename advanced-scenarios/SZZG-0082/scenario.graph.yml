@@ -14,6 +14,7 @@ meta:
   - direct_bic
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0082-rebase-with-generated-file-update
   default_branch: main

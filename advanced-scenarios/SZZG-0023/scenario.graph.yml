@@ -17,6 +17,7 @@ meta:
   - origin_bic
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0023-rebase-with-copy-propagation
   default_branch: main

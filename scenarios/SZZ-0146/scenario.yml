@@ -13,6 +13,7 @@ meta:
   - duplicate-statement
   difficulty: medium
   status: active
+  tier: control
   category_code: "S6"
 repository:
   name: SZZ-0146-duplicate-boundary-checks

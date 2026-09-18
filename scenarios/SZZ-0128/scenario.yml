@@ -19,6 +19,7 @@ meta:
   - basic-blame-distractor
   difficulty: hard
   status: active
+  tier: control
   category_code: "S5"
 repository:
   name: SZZ-0128-extract-helper-after-bic

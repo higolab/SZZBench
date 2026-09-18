@@ -13,6 +13,7 @@ meta:
   - context_dependent
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0104-config-bic-fixed-in-code
   default_branch: main

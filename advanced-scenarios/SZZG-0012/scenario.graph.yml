@@ -13,6 +13,7 @@ meta:
   - mixed_bfc
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0012-bfc-extract-method-and-fix
   default_branch: main

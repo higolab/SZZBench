@@ -15,6 +15,7 @@ meta:
   - origin_bic
   difficulty: advanced
   status: draft
+  tier: discriminating
 repository:
   name: SZZG-0076-multiple-bics-replayed-by-rebase
   default_branch: main

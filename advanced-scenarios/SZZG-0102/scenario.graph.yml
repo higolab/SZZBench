@@ -14,6 +14,7 @@ meta:
   - context
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0102-issue-description
   default_branch: main

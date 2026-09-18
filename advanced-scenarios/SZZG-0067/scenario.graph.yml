@@ -17,6 +17,7 @@ meta:
   - rebased_bic
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0067-rebase-conflict-resolution-fixes-bug
   default_branch: main

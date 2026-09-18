@@ -13,6 +13,7 @@ meta:
   - non_linear_history
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0061-cherry-picked-bic-duplicates
   default_branch: main

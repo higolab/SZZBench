@@ -15,6 +15,7 @@ meta:
   - bug_instances
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0050-backport-fix
   default_branch: main

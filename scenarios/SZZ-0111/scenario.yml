@@ -14,6 +14,7 @@ meta:
   - duplicate-statement
   difficulty: medium
   status: active
+  tier: control
   category_code: "S3"
 repository:
   name: SZZ-0111-generated-looking-repetitive-code

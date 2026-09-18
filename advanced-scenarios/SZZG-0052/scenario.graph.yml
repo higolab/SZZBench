@@ -14,6 +14,7 @@ meta:
   - multiple_merge_bases
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0052-criss-cross-merge
   default_branch: main

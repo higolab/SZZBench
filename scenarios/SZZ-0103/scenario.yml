@@ -12,6 +12,7 @@ meta:
   - comment-deletion-after-bic
   difficulty: medium
   status: active
+  tier: control
   category_code: "S3"
 repository:
   name: SZZ-0103-comment-deletion-after-bic

@@ -10,6 +10,7 @@ meta:
   - clone_relationships
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0021-clone-removal-as-fix
   default_branch: main

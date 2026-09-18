@@ -104,6 +104,40 @@ report, per baseline, the scenarios it solved, plus the union across families,
 the scenarios nothing solves, and a per-category breakdown. The exit code is
 non-zero only when a scenario or commit map could not be read.
 
+## The two tiers
+
+Every scenario declares `meta.tier`, which says what it is for:
+
+| tier | meaning | count |
+|---|---|---|
+| `control` | checks that a method handles a specific input condition; a cheap rule may well solve it | **203** |
+| `discriminating` | designed so that none of the declared cheap baselines solves it | **7** |
+
+The seven are SZZ-0132, SZZ-0136, SZZG-0028, SZZG-0038, SZZG-0040, SZZG-0069
+and SZZG-0076 — every one of them with a multi-commit oracle.
+
+A control being cheaply solvable is not a defect: a benchmark needs cases that
+verify the basics, and a method that fails one of them is broken on that input
+condition. What the tier does is stop a control from being read as evidence
+that a method *discriminates*.
+
+`szzbench baselines` checks the declaration against the measurement and reports
+any scenario declared `discriminating` that a cheap rule solves, and any
+`control` that no cheap rule solves — the latter is a promotion candidate. The
+vocabulary is in [decisions/vocabulary.md](decisions/vocabulary.md) and
+`validate --lint` enforces it (`W460` / `GW460`).
+
+The two checks need different evidence, so `--family` affects them differently.
+Finding *a* solver refutes a `discriminating` declaration whichever families
+ran, so that check stays valid in a filtered run. A promotion candidate asserts
+that **no** declared baseline solves the scenario, which only a complete run can
+establish: a filtered run reports `declared_control_but_unsolved: null` and says
+the assessment was not made, and its "solved by no selected baseline" count is
+scoped to the families that ran.
+
+Raising the discriminating count is the work tracked in issues #13, #14 and
+#35; the measured axis is oracle size.
+
 ## Coverage: what each scenario contributes
 
 `szzbench coverage` measures every scenario along the dimensions that decide

@@ -11,6 +11,7 @@ meta:
   - expected_szz
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0116-entity-level-only-expected-szz
   default_branch: main

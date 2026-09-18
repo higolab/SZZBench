@@ -9,6 +9,7 @@ meta:
   - context
   difficulty: hard
   status: active
+  tier: control
   category_code: "S7"
 repository:
   name: SZZ-0167-patch-context

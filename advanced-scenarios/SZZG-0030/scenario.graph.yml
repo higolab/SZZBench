@@ -14,6 +14,7 @@ meta:
   - incorrect_fix
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0030-follow-up-fix-bfc
   default_branch: main

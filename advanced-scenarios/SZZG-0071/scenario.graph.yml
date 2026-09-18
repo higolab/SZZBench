@@ -16,6 +16,7 @@ meta:
   - origin_bic
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0071-interactive-rebase-edits-bic-commit
   default_branch: main

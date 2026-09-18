@@ -17,6 +17,7 @@ meta:
     - "line-addition-fix"
   difficulty: "medium"
   status: "active"
+  tier: "control"
   category_code: "S2"
 
 repository:

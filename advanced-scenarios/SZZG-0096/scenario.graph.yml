@@ -12,6 +12,7 @@ meta:
   - expected_szz
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0096-work-item-bic
   default_branch: main

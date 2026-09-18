@@ -12,6 +12,7 @@ meta:
   - boolean-negation
   difficulty: easy
   status: active
+  tier: control
   category_code: "S1"
 repository:
   name: SZZ-0014-negated-boolean-condition

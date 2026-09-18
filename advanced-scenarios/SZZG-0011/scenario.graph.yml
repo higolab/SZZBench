@@ -13,6 +13,7 @@ meta:
   - rename_method
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0011-bug-introduced-inside-refactoring
   default_branch: main

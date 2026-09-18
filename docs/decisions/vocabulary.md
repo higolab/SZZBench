@@ -126,3 +126,29 @@ Legacy README labels map as follows: "BFC shape scenarios" → S4/G1 by content;
 2. Regenerate README files from YAML (single template per suite); remove boilerplate (`Evaluates <title> and checks whether…`, `Draft status`, `c0: c0:` prefixes, stale `difference_from_*` keys, garbled text in SZZG-0046).
 3. Run `validate --strict --lint` and `validate-index`; fix residuals; flip `status` to `active` for scenarios that pass.
 4. Turn the `--lint` vocabulary warnings into errors.
+
+## 7. `meta.tier`: what a scenario is for (issue #14)
+
+Added 2026-09-18. Every scenario declares one of two values.
+
+| tier | meaning |
+|---|---|
+| `control` | The scenario checks that a method handles a specific input condition. A cheap rule may well solve it; that is expected of a control, and failing it means the method is broken on that condition. |
+| `discriminating` | The scenario is designed so that none of the declared cheap baselines solves it, so it separates methods rather than only checking them. |
+
+The tier is a **declaration**, not a measurement: it says what the scenario is
+for. `szzbench baselines` then checks the declaration against the suite and
+reports any scenario declared `discriminating` that a cheap rule solves, and
+any `control` that no cheap rule solves (a promotion candidate).
+`validate --lint` requires the field and the vocabulary (`W460` / `GW460`).
+
+The initial assignment followed the measurement at `6ed60a0`: **203 control and
+7 discriminating** — SZZ-0132, SZZ-0136, SZZG-0028, SZZG-0038, SZZG-0040,
+SZZG-0069 and SZZG-0076, all of which have a multi-commit oracle.
+
+The tier is **not** mirrored in `index.yml`. The index is not checked against
+it, and a second copy of a field that changes with the scenario is how the
+index drifted before (issue #19). The scenario file is the single source of
+truth; `szzbench coverage --json` joins the tier with the difficulty
+dimensions for anyone who wants to select on it.
+

@@ -11,6 +11,7 @@ meta:
   - context
   difficulty: hard
   status: active
+  tier: control
   category_code: "S7"
 repository:
   name: SZZ-0168-test-failure

@@ -11,6 +11,7 @@ meta:
   - line-modification
   difficulty: medium
   status: active
+  tier: discriminating
   category_code: "S6"
 repository:
   name: SZZ-0136-range-min-max-changed-separately

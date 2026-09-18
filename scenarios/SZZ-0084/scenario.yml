@@ -22,6 +22,7 @@ meta:
     - "matched-control"
   difficulty: "easy"
   status: "active"
+  tier: "control"
   category_code: "S3"
 
 repository:

@@ -12,6 +12,7 @@ meta:
   - arithmetic-error
   difficulty: easy
   status: active
+  tier: control
   category_code: "S1"
 repository:
   name: SZZ-0006-arithmetic-sign-error

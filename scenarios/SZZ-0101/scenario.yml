@@ -17,6 +17,7 @@ meta:
   - throws-after-bic
   difficulty: easy
   status: active
+  tier: control
   category_code: "S3"
 repository:
   name: SZZ-0101-throws-declaration-after-bic

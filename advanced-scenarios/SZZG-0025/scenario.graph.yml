@@ -13,6 +13,7 @@ meta:
   - origin_bic_policy
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0025-clone-origin-versus-direct-bic
   default_branch: main

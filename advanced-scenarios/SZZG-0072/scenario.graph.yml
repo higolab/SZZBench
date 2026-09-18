@@ -19,6 +19,7 @@ meta:
   - origin_bic
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0072-interactive-rebase-drops-original-bic-but-bug-remains
   default_branch: main

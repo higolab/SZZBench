@@ -18,6 +18,7 @@ meta:
     - "missing-break"
   difficulty: "hard"
   status: "active"
+  tier: "control"
   category_code: "S2"
 
 repository:

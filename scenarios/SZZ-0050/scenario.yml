@@ -12,6 +12,7 @@ meta:
   - comparison-error
   difficulty: easy
   status: active
+  tier: control
   category_code: "S2"
 repository:
   name: SZZ-0050-index-lower-bound-error

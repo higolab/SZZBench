@@ -13,6 +13,7 @@ meta:
   - context_dependent
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0105-defensive-check-masks-root-cause
   default_branch: main

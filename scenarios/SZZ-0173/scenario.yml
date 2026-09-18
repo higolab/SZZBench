@@ -16,6 +16,7 @@ meta:
   - file-creation-fix
   difficulty: hard
   status: active
+  tier: control
   category_code: "S8"
 repository:
   name: SZZ-0173-file-creation-only-as-fix

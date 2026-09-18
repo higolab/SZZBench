@@ -16,6 +16,7 @@ meta:
   - post_bic_refactoring
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0005-method-move-between-classes
   default_branch: main

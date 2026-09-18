@@ -29,6 +29,7 @@ class ScenarioShape:
     scenario_id: str
     suite: str
     category: str | None
+    tier: str | None
     commit_count: int
     ref_count: int
     oracle_size: int
@@ -41,7 +42,7 @@ class ScenarioShape:
 
     def to_dict(self) -> dict[str, Any]:
         return {field: getattr(self, field) for field in
-                ("scenario_id", *SIGNATURE_FIELDS, "factors")}
+                ("scenario_id", "tier", *SIGNATURE_FIELDS, "factors")}
 
 
 def _oracle_ids(data: dict[str, Any], suite: str) -> set[str]:
@@ -93,6 +94,7 @@ def _shape(scenario: Scenario, data: dict[str, Any], git: GitProbe) -> ScenarioS
         scenario_id=scenario.scenario_id,
         suite=scenario.suite,
         category=scenario.category,
+        tier=(data.get("meta") or {}).get("tier"),
         commit_count=len(order),
         ref_count=len(refs),
         oracle_size=len(required),
@@ -131,7 +133,8 @@ def run_coverage(
     distributions = {
         field: dict(sorted(collections.Counter(getattr(s, field) for s in shapes).items(),
                            key=lambda kv: (kv[0] is None, str(kv[0]))))
-        for field in ("oracle_size", "bic_depth", "fault_file_distractors", "commit_count", "ref_count")
+        for field in ("tier", "oracle_size", "bic_depth", "fault_file_distractors",
+                      "commit_count", "ref_count")
     }
     redundant = sorted((sorted(v) for v in groups.values() if len(v) > 1), key=len, reverse=True)
     return {

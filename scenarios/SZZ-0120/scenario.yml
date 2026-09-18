@@ -12,6 +12,7 @@ meta:
   - tangled-bfc
   difficulty: medium
   status: active
+  tier: control
   category_code: "S4"
 repository:
   name: SZZ-0120-bfc-with-unrelated-helper

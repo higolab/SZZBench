@@ -12,6 +12,7 @@ meta:
   - bfc-logging
   difficulty: medium
   status: active
+  tier: control
   category_code: "S4"
 repository:
   name: SZZ-0119-bfc-with-logging-addition

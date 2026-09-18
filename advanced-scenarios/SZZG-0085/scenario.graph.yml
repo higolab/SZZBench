@@ -15,6 +15,7 @@ meta:
   - evaluation_variants
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0085-old-bic-and-re-bic-plausible
   default_branch: main

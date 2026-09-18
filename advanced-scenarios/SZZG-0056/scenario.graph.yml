@@ -15,6 +15,7 @@ meta:
   - bug_fixing_commits
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0056-main-fix-rebased-onto-release-branch
   default_branch: main

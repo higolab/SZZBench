@@ -16,6 +16,7 @@ meta:
   - bug_instances
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0007-line-moved-and-duplicated
   default_branch: main

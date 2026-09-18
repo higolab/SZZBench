@@ -14,6 +14,7 @@ meta:
   - main_branch_bfc
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0043-bic-on-feature-branch-bfc-on-main
   default_branch: main

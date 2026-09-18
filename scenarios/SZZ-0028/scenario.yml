@@ -11,6 +11,7 @@ meta:
   - line-deletion-fix
   difficulty: medium
   status: active
+  tier: control
   category_code: "S1"
 repository:
   name: SZZ-0028-bfc-removes-erroneous-guard

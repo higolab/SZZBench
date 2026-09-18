@@ -13,6 +13,7 @@ meta:
   - direct_bic_in_copy
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0026-copy-then-copied-bic
   default_branch: main

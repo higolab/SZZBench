@@ -15,6 +15,7 @@ meta:
   - line-modification
   difficulty: medium
   status: active
+  tier: control
   category_code: "S6"
 repository:
   name: SZZ-0137-null-and-empty-handling

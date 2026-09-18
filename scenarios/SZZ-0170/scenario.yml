@@ -10,6 +10,7 @@ meta:
   - expected_szz
   difficulty: hard
   status: active
+  tier: control
   category_code: "S8"
 repository:
   name: SZZ-0170-bic-test-only-commit

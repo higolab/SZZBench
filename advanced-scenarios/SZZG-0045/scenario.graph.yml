@@ -12,6 +12,7 @@ meta:
   - merge_commit_bic
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0045-bic-in-merge-commit
   default_branch: main
