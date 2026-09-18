@@ -3,16 +3,19 @@ meta:
   id: SZZG-0072
   title: Interactive rebase drops original BIC but bug remains
   slug: interactive-rebase-drops-original-bic-but-bug-remains
-  description: The original BIC is dropped, but a later replayed commit still introduces the buggy code.
+  description: A feature branch tightens two independent windows of the retry policy. The interactive rebase onto main drops
+    the first commit and replays only the second one, so the fault of the dropped commit disappears while the second window
+    keeps its faulty comparison. The pre-rebase branch is deleted, so the dropped commit and the replay source are unreachable.
   category: "Rebase-specific history rewriting"
   category_code: "G5"
   factors:
   - branch
   - rebase
   - interactive_rebase
-  - drop
   - dropped_origin_bic
+  - deleted_branch
   - direct_bic
+  - origin_bic
   difficulty: advanced
   status: draft
 repository:
@@ -23,107 +26,135 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial correct implementation
+  ref_lifecycle:
+    delete_branches:
+    - feature
+  history_summary: 'c0: add RetryPolicy with the accepted delay and backoff windows on main
 
-    f1: introduce bug that will be dropped
+    f1: feature branch makes the delay window exclusive (dropped by the rebase)
 
-    f2: add helper retaining buggy logic
+    f2: feature branch makes the backoff window exclusive
 
-    r2: replay helper after dropping original BIC
+    r2: interactive rebase onto main keeps only f2 and applies its patch to c0
 
-    c3: fix bug retained by helper'
+    c3: main accepts the backoff window bounds again
+
+    after generation: the feature branch is deleted, so f1 and f2 are unreachable'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial correct implementation'
+  message: Add RetryPolicy with the accepted delay and backoff windows
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
+    path: src/main/java/example/RetryPolicy.java
+    content: |
+      package example;
+
+      public class RetryPolicy {
+        public static final int MIN_DELAY_MS = 100;
+        public static final int MAX_DELAY_MS = 30000;
+        public static final int MIN_BACKOFF_MS = 250;
+        public static final int MAX_BACKOFF_MS = 60000;
+
+        public boolean acceptsDelay(int delayMs) {
+          return delayMs >= MIN_DELAY_MS && delayMs <= MAX_DELAY_MS;
+        }
+
+        public boolean acceptsBackoff(int backoffMs) {
+          return backoffMs >= MIN_BACKOFF_MS && backoffMs <= MAX_BACKOFF_MS;
+        }
+      }
 - id: f1
   branch: feature
   parents:
   - c0
-  message: 'f1: introduce bug that will be dropped'
+  message: Require retry delays strictly inside the delay window
   role: origin_bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
+    path: src/main/java/example/RetryPolicy.java
+    old: return delayMs >= MIN_DELAY_MS && delayMs <= MAX_DELAY_MS;
+    new: return delayMs > MIN_DELAY_MS && delayMs < MAX_DELAY_MS;
 - id: f2
   branch: feature
   parents:
   - f1
-  message: 'f2: add helper retaining buggy logic'
-  role: intermediate
+  message: Require backoff values strictly inside the backoff window
+  role: origin_bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n}\n"
-    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
-      \ min, max);\n  }\n}\n"
+    path: src/main/java/example/RetryPolicy.java
+    old: return backoffMs >= MIN_BACKOFF_MS && backoffMs <= MAX_BACKOFF_MS;
+    new: return backoffMs > MIN_BACKOFF_MS && backoffMs < MAX_BACKOFF_MS;
 - id: r2
   branch: main
   parents:
   - c0
-  message: 'r2: replay helper after dropping original BIC'
   role: bug_introducing
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ >= min && value <= max;\n  }\n}\n"
-    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
-      \ min, max);\n  }\n}\n"
   rebase_of: f2
   interactive_rebase: drop_f1
+  inherit_message: true
+  inherit_author_date: true
+  operations:
+  - type: replace
+    path: src/main/java/example/RetryPolicy.java
+    old: return backoffMs >= MIN_BACKOFF_MS && backoffMs <= MAX_BACKOFF_MS;
+    new: return backoffMs > MIN_BACKOFF_MS && backoffMs < MAX_BACKOFF_MS;
 - id: c3
   branch: main
   parents:
   - r2
-  message: 'c3: fix bug retained by helper'
+  message: Accept the backoff window bounds again so 250 ms and 60 s stay valid
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/RetryPolicy.java
+    old: return backoffMs > MIN_BACKOFF_MS && backoffMs < MAX_BACKOFF_MS;
+    new: return backoffMs >= MIN_BACKOFF_MS && backoffMs <= MAX_BACKOFF_MS;
 bugs:
 - id: B001
-  title: Bug retained after dropping origin BIC
+  title: The backoff window rejects its own bounds after the interactive rebase
   bug_introducing_commits:
   - commit: r2
     role: direct
+    description: Direct BIC on main; the rebase applied f2's patch to c0, which writes the faulty backoff comparison into
+      the rewritten history.
+  - commit: f2
+    role: origin
+    description: Origin BIC; the pre-rebase commit whose patch r2 applies. It is unreachable after generation because the
+      feature branch is deleted.
   - commit: f1
     role: origin
+    description: The original faulty commit of the branch, dropped by the interactive rebase. Its fault (the delay window)
+      is absent from the rewritten history; it is unreachable after generation.
   bug_fixing_commits:
   - commit: c3
     role: complete_fix
   faults:
   - id: F001
     commit: r2
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/RetryPolicy.java
+    statement: return backoffMs > MIN_BACKOFF_MS && backoffMs < MAX_BACKOFF_MS;
     change_type: line_modification
+  origin_faults:
+  - id: OF001
+    commit: f2
+    file: src/main/java/example/RetryPolicy.java
+    statement: return backoffMs > MIN_BACKOFF_MS && backoffMs < MAX_BACKOFF_MS;
+    change_type: origin_line_modification
+  - id: OF002
+    commit: f1
+    file: src/main/java/example/RetryPolicy.java
+    statement: return delayMs > MIN_DELAY_MS && delayMs < MAX_DELAY_MS;
+    change_type: origin_line_modification
   fixes:
   - id: X001
     commit: c3
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
+    file: src/main/java/example/RetryPolicy.java
+    statement: return backoffMs >= MIN_BACKOFF_MS && backoffMs <= MAX_BACKOFF_MS;
     fix_type: line_modification
-  origin_faults:
-  - id: OF001
-    commit: f1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
-    change_type: origin_line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
@@ -131,13 +162,26 @@ expected_szz:
     - r2
     related_but_not_correct:
     - f1
+    - f2
+    notes: r2 is the only bug-introducing commit in the rewritten history. f1 (dropped) and f2 (the replay source) are not
+      reachable from any ref after generation; they stay in the oracle as the pre-rewrite origins that a tool with access
+      to the pre-rebase branch must not report.
 scenario_design:
-  purpose: Evaluate dropped origin BIC with surviving buggy change.
-  key_property: f1 is dropped; r2 is reachable direct BIC.
-  difference_from_SZZG_0064: SZZG-0064 covers a rebased BIC followed by a non-BIC rebased intermediate commit. This scenario
-    adds a distinct rebase-related complication.
+  purpose: Evaluate whether SZZ finds the surviving fault when an interactive rebase drops the commit that first introduced
+    the faulty pattern and keeps a later commit that applied the same pattern elsewhere.
+  key_property: r2 is an honest replay of f2 — it makes exactly the change f2 made (the same removed and added line) and
+    nothing else, so the delay window of the rewritten history is correct and only the backoff window is faulty. f1 is neither
+    an ancestor of the BFC nor reachable from a ref.
+  difference_from_SZZG_0047: SZZG-0047 is a squash merge that keeps both feature patches in one single-parent commit on a
+    branch that still exists. Here one patch is dropped, only the other is replayed, and the source branch is deleted, so
+    the two repositories differ in trees, patches and refs, not only in commit messages (GitHub issue 11).
+  difference_from_SZZG_0064: SZZG-0064 covers a rebased BIC followed by a non-BIC rebased intermediate commit; here the first
+    commit of the branch is dropped instead of rebased.
   evaluation_points:
-  - Report r2.
+  - Whether SZZ reports r2, the commit that carries the surviving fault into the rewritten history.
+  - Whether a tool that has access to the pre-rebase commits reports f1 or f2 although they are unreachable.
 notes:
-- This scenario models a rebase-related development history for SZZ evaluation.
-- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.
+- The interactive rebase is recorded with rebase_of (f2), interactive_rebase (drop_f1) and inherit_message / inherit_author_date,
+  so r2 keeps f2's subject and author date while its committer date is the rebase date.
+- graph.ref_lifecycle.delete_branches removes the feature branch after generation; f1 and f2 keep valid hashes in commit-map.json
+  but are not reachable from any ref.
