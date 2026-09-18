@@ -1015,7 +1015,7 @@ def test_mixed_explicit_and_default_timelines_stay_ordered(tmp_path):
 def test_every_shipped_scenario_resolves_to_an_ordered_timeline():
     """No scenario in either suite may resolve to a child older than a parent."""
     import yaml
-    from szzbench.gitutils import resolve_commit_metadata
+    from szzbench.gitutils import parse_timestamp, resolve_commit_metadata
 
     root = Path(__file__).resolve().parents[1]
     offenders = []
@@ -1031,8 +1031,68 @@ def test_every_shipped_scenario_resolves_to_an_ordered_timeline():
                 if not isinstance(parents, list):          # classic suite: the previous commit
                     parents = [order[i - 1]] if i else []
                 for parent in parents:
-                    if parent in meta and meta[parent].committer_date > meta[cid].committer_date:
+                    # compare instants, not ISO text: the offsets may differ
+                    if parent in meta and parse_timestamp(meta[parent].committer_date) > parse_timestamp(meta[cid].committer_date):
                         offenders.append(
                             f"{data['meta']['id']}: {cid} {meta[cid].committer_date} < {parent} {meta[parent].committer_date}"
                         )
     assert offenders == []
+
+
+def _dated_history(tmp_path, name, *, c0, c1, c1_committer=None):
+    """A three-commit history whose timestamps are written with explicit offsets."""
+    commits = [
+        {"id": "c0", "branch": "main", "parents": [], "message": "add the range check", "role": "initial",
+         "date": c0,
+         "operations": [{"type": "write_file", "path": RANGE, "content": _range_java(False)}]},
+        {"id": "c1", "branch": "main", "parents": ["c0"], "message": "make the range check exclusive",
+         "role": "bug_introducing",
+         **({"author_date": c1, "committer_date": c1_committer} if c1_committer else {"date": c1}),
+         "operations": [{"type": "replace", "path": RANGE, "old": FIXED, "new": BUGGY}]},
+        {"id": "c2", "branch": "main", "parents": ["c1"], "message": "accept the range bounds again",
+         "role": "bug_fixing", "date": "2024-06-01T10:00:00Z",
+         "operations": [{"type": "replace", "path": RANGE, "old": BUGGY, "new": FIXED}]},
+    ]
+    bugs = [{"id": "B001",
+             "bug_introducing_commits": [{"commit": "c1", "role": "direct"}],
+             "bug_fixing_commits": [{"commit": "c2", "role": "complete_fix"}]}]
+    scenario = _write_graph_scenario(tmp_path / f"{name}.graph.yml", commits, bugs=bugs, scenario_id="SZZG-9903")
+    out = tmp_path / name
+    try:
+        _, verify = generate_graph_repository(scenario, out, force=True)
+    except GraphGenerationError:
+        # the CLI turns a failed verification into this; read the recorded result
+        verify = None
+    if verify is None:
+        data = json.loads((out / "metadata" / "verify-result.json").read_text(encoding="utf-8"))
+        return [f["code"] for f in data.get("findings", [])]
+    return [f.code for f in verify.findings]
+
+
+def test_commit_date_checks_compare_instants_not_iso_text(tmp_path):
+    """GE630 / GW631 must respect UTC offsets (PR #34 re-review).
+
+    ``2024-01-01T10:00:00+09:00`` is 01:00 UTC, an hour *before*
+    ``2024-01-01T02:00:00Z``, but sorts after it as text.
+    """
+    # parent 01:00 UTC written as +09:00, child 02:00 UTC -> chronologically fine
+    codes = _dated_history(tmp_path, "ok", c0="2024-01-01T10:00:00+09:00", c1="2024-01-01T02:00:00Z")
+    assert "GE630" not in codes
+
+    # parent 01:00 UTC, child 00:00 UTC written as +09:00 -> a real inversion
+    codes = _dated_history(tmp_path, "bad", c0="2024-01-01T01:00:00Z", c1="2024-01-01T09:00:00+09:00")
+    assert "GE630" in codes
+
+    # author 01:00 UTC written as +09:00, committed 02:00 UTC -> the rebase signature
+    codes = _dated_history(tmp_path, "author_ok", c0="2024-01-01T00:00:00Z",
+                           c1="2024-01-01T10:00:00+09:00", c1_committer="2024-01-01T02:00:00Z")
+    assert "GW631" not in codes and "GE630" not in codes
+
+    # authored 02:00 UTC, committed 00:00 UTC written as +09:00 -> authored after committing
+    codes = _dated_history(tmp_path, "author_bad", c0="2024-01-01T00:00:00Z",
+                           c1="2024-01-01T02:00:00Z", c1_committer="2024-01-01T09:00:00+09:00")
+    assert "GW631" in codes
+
+    # a UTC-only inversion is still caught
+    codes = _dated_history(tmp_path, "utc_bad", c0="2024-01-02T10:00:00Z", c1="2024-01-01T10:00:00Z")
+    assert "GE630" in codes

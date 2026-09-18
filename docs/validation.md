@@ -267,7 +267,9 @@ actions such as `squash` or `reorder`) and `reverts` (free-form: commit ids,
 |---|---|---|
 | GE630 | error | a commit is committed **before one of its parents**. A scenario that pins some timestamps and leaves the rest to the generator can otherwise invert its own history, which changes what date-based candidate filters and recency heuristics see (issue #9, PR #34 re-review) |
 | GW631 | warning | a commit's author date is **after** its committer date. An author date *before* the committer date is the normal signature of a rebase and is not flagged |
-| GW632 | warning | the commit-date check could not run (Git failed) |
+| GW632 | warning | the commit-date check could not run (Git failed, or a timestamp was unreadable) |
+
+Both comparisons use Git's epoch seconds (`%ct` / `%at`), not the ISO strings: `%cI` / `%aI` keep each timestamp's UTC offset, so `2024-01-01T10:00:00+09:00` sorts after `2024-01-01T02:00:00Z` as text although it is an hour earlier. The ISO forms appear only in the finding message.
 
 ## Index (`validate-index`)
 

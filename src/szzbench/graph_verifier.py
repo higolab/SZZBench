@@ -65,32 +65,50 @@ def _verify_commit_dates(repo_dir: Path, result: ValidationResult) -> None:
     changes what date-based candidate filters and recency heuristics see.  An
     author date *before* the committer date is the normal signature of a rebase
     and is not flagged; the other way round is an anomaly.
+
+    Ordering is decided on the epoch seconds (``%ct`` / ``%at``), never on the
+    ISO strings: Git keeps each timestamp's UTC offset in ``%cI`` / ``%aI``, so
+    comparing those as text makes ``2024-01-01T10:00:00+09:00`` look later than
+    ``2024-01-01T02:00:00Z`` although it is an hour earlier.  The ISO forms are
+    kept for the message.
     """
     try:
-        raw = run_git(repo_dir, ["log", "--all", "--format=%H|%P|%cI|%aI"]).stdout
+        raw = run_git(repo_dir, ["log", "--all", "--format=%H|%P|%ct|%cI|%at|%aI"]).stdout
     except GitError as exc:
         result.warning("GW632", f"Commit date check skipped: {exc}", "commits")
         return
-    dates: dict[str, tuple[list[str], str, str]] = {}
+    commits: dict[str, dict[str, Any]] = {}
     for line in raw.splitlines():
         if not line.strip():
             continue
-        commit_hash, parents, committer_date, author_date = line.split("|")
-        dates[commit_hash] = (parents.split(), committer_date, author_date)
-    for commit_hash, (parents, committer_date, author_date) in dates.items():
-        for parent in parents:
-            parent_entry = dates.get(parent)
-            if parent_entry is not None and parent_entry[1] > committer_date:
+        commit_hash, parents, committed_at, committed_iso, authored_at, authored_iso = line.split("|")
+        try:
+            committed, authored = int(committed_at), int(authored_at)
+        except ValueError:
+            result.warning("GW632", f"Commit {commit_hash[:8]} has an unreadable timestamp.", "commits")
+            continue
+        commits[commit_hash] = {
+            "parents": parents.split(),
+            "committed": committed,
+            "committed_iso": committed_iso,
+            "authored": authored,
+            "authored_iso": authored_iso,
+        }
+    for commit_hash, entry in commits.items():
+        for parent in entry["parents"]:
+            parent_entry = commits.get(parent)
+            if parent_entry is not None and parent_entry["committed"] > entry["committed"]:
                 result.error(
                     "GE630",
-                    f"Commit {commit_hash[:8]} was committed at {committer_date}, before its parent "
-                    f"{parent[:8]} at {parent_entry[1]}.",
+                    f"Commit {commit_hash[:8]} was committed at {entry['committed_iso']}, before its parent "
+                    f"{parent[:8]} at {parent_entry['committed_iso']}.",
                     "commits",
                 )
-        if author_date > committer_date:
+        if entry["authored"] > entry["committed"]:
             result.warning(
                 "GW631",
-                f"Commit {commit_hash[:8]} was authored at {author_date}, after it was committed at {committer_date}.",
+                f"Commit {commit_hash[:8]} was authored at {entry['authored_iso']}, "
+                f"after it was committed at {entry['committed_iso']}.",
                 "commits",
             )
 
