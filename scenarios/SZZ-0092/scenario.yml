@@ -3,14 +3,21 @@ meta:
   id: SZZ-0092
   title: Loop to conditional rewrite after BIC
   slug: loop-to-conditional-after-bic
-  description: This scenario inserts an intermediate refactoring change between the BIC and BFC.
+  description: >
+    The BIC tightens the bound of a backwards scan that looks for the extension
+    separator of an attachment name, so a name whose only dot is the first
+    character loses its extension. An intermediate refactoring replaces the scan
+    with String.lastIndexOf and carries the same comparison into a conditional.
+    The bug-fixing commit corrects the comparison in its rewritten form, so plain
+    blame at the BFC parent stops at the refactoring and never reaches the BIC.
   category: "Intermediate noise and history noise"
   factors:
   - single-bic
   - single-bfc
   - line-modification
   - loop-rewrite-after-bic
-  difficulty: medium
+  - basic-blame-distractor
+  difficulty: hard
   status: active
   category_code: "S3"
 repository:
@@ -21,102 +28,111 @@ repository:
   source_root: src/main/java
 commits:
 - id: c0
-  message: Initial correct implementation
+  message: Add attachment name helpers for the upload service
   author: Alice <alice@example.com>
   date: '2024-01-01T10:00:00Z'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0092.java
+    path: src/main/java/com/example/storage/AttachmentName.java
     content: |
-      package example;
+      package com.example.storage;
 
-      public class Scenario0092 {
-          public boolean enough(int count, int required) {
-              for (int ignored = 0; ignored < 1; ignored++) {
-                  return count >= required;
+      public class AttachmentName {
+          public String extension(String fileName) {
+              for (int index = fileName.length() - 1; index >= 0; index--) {
+                  if (fileName.charAt(index) == '.') {
+                      return fileName.substring(index + 1);
+                  }
               }
-              return false;
+              return "";
+          }
+
+          public boolean hasExtension(String fileName) {
+              return !extension(fileName).isEmpty();
           }
       }
 - id: c1
-  message: Introduce bug
+  message: Ignore a leading dot when detecting the attachment extension
   author: Bob <bob@example.com>
   date: '2024-01-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0092.java
-    old: return count >= required;
-    new: return count > required;
+    path: src/main/java/com/example/storage/AttachmentName.java
+    old: |2
+              for (int index = fileName.length() - 1; index >= 0; index--) {
+    new: |2
+              for (int index = fileName.length() - 1; index > 0; index--) {
     labels:
     - B001
     - fault
 - id: c2
-  message: Rewrite loop to conditional after bug introduction
+  message: Look up the extension separator with lastIndexOf
   author: Carol <carol@example.com>
   date: '2024-01-03T10:00:00Z'
   role: refactoring
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0092.java
-    old: |
-      package example;
-
-      public class Scenario0092 {
-          public boolean enough(int count, int required) {
-              for (int ignored = 0; ignored < 1; ignored++) {
-                  return count > required;
+    path: src/main/java/com/example/storage/AttachmentName.java
+    old: |2
+              for (int index = fileName.length() - 1; index > 0; index--) {
+                  if (fileName.charAt(index) == '.') {
+                      return fileName.substring(index + 1);
+                  }
               }
-              return false;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0092 {
-          public boolean enough(int count, int required) {
-              return count > required;
-          }
-      }
+              return "";
+    new: |2
+              int index = fileName.lastIndexOf('.');
+              if (index > 0) {
+                  return fileName.substring(index + 1);
+              }
+              return "";
     labels:
     - non_bug_introducing_change
 - id: c3
-  message: Fix bug
+  message: Report the extension of dot-prefixed attachment names again
   author: Dave <dave@example.com>
   date: '2024-01-04T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0092.java
-    old: return count > required;
-    new: return count >= required;
+    path: src/main/java/com/example/storage/AttachmentName.java
+    old: |2
+              if (index > 0) {
+    new: |2
+              if (index >= 0) {
     labels:
     - B001
     - fix
 bugs:
 - id: B001
-  title: Loop to conditional rewrite after BIC
+  title: Attachment names whose only dot is the first character lose their extension
   bug_fixing_commit: c3
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0092.java
+    file: src/main/java/com/example/storage/AttachmentName.java
     entity:
       type: method
-      name: enough
-      signature: boolean enough(int count, int required)
-    statement: return count > required;
+      name: extension
+      signature: String extension(String fileName)
+    statement: index > 0
     change_type: line_modification
+    description: >
+      The scan bound excludes position 0, so ".bashrc" reports no extension
+      instead of "bashrc". The sub-expression is used as fault.statement because
+      c2 rewrites the surrounding line, moving the same comparison from the loop
+      header into the conditional.
   fix:
     commit: c3
-    file: src/main/java/example/Scenario0092.java
+    file: src/main/java/com/example/storage/AttachmentName.java
     entity:
       type: method
-      name: enough
-      signature: boolean enough(int count, int required)
-    statement: return count >= required;
+      name: extension
+      signature: String extension(String fileName)
+    statement: if (index >= 0) {
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -127,7 +143,11 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return count > required;
+      - for (int index = fileName.length() - 1; index > 0; index--) {
+      note: >
+        The faulty line is rewritten by c2, which replaces the backwards scan
+        with lastIndexOf and keeps the comparison in the conditional. Blame at
+        c3^ returns c2; one step of line history returns c1.
 checks:
 - type: git_history_contains
   commits:

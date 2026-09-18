@@ -3,14 +3,19 @@ meta:
   id: SZZ-0105
   title: Dead code addition after BIC
   slug: dead-code-addition-after-bic
-  description: This scenario inserts an intermediate intermediate-history change between the BIC and BFC.
+  description: >
+    Between the bug-introducing and the bug-fixing commit, a commit adds a
+    constant and a private method that nothing calls. The dead code stays in
+    the file after the fix; the bug-fixing commit only replaces the faulty
+    comparison. The added code does not re-indent or rewrite the faulty line,
+    so plain `git blame` at the BFC parent reaches the BIC.
   category: "Intermediate noise and history noise"
   factors:
   - single-bic
   - single-bfc
   - line-modification
   - dead-code-after-bic
-  difficulty: medium
+  difficulty: easy
   status: active
   category_code: "S3"
 repository:
@@ -21,126 +26,118 @@ repository:
   source_root: src/main/java
 commits:
 - id: c0
-  message: Initial correct implementation
+  message: Add the stock level checks used by the order service
   author: Alice <alice@example.com>
   date: '2024-01-01T10:00:00Z'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0105.java
+    path: src/main/java/com/example/inventory/StockLevel.java
     content: |
-      package example;
+      package com.example.inventory;
 
-      public class Scenario0105 {
-          public boolean valid(int value) {
-              return value >= 0;
+      public class StockLevel {
+          private final int onHand;
+
+          public StockLevel(int onHand) {
+              this.onHand = onHand;
+          }
+
+          public boolean isAvailable(int requested) {
+              return onHand >= requested;
+          }
+
+          public int remainingAfter(int requested) {
+              return onHand - requested;
           }
       }
 - id: c1
-  message: Introduce bug
+  message: Keep one unit of head room when answering availability
   author: Bob <bob@example.com>
   date: '2024-01-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0105.java
-    old: |
-      package example;
-
-      public class Scenario0105 {
-          public boolean valid(int value) {
-              return value >= 0;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0105 {
-          public boolean valid(int value) {
-              return value > 0;
-          }
-      }
+    path: src/main/java/com/example/inventory/StockLevel.java
+    old: |2
+              return onHand >= requested;
+    new: |2
+              return onHand > requested;
     labels:
     - B001
     - fault
 - id: c2
-  message: Apply intermediate rewrite
+  message: Carry the reorder point over for the replenishment job
   author: Carol <carol@example.com>
   date: '2024-01-03T10:00:00Z'
-  role: distractor
+  role: cleanup
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0105.java
-    old: |
-      package example;
-
-      public class Scenario0105 {
-          public boolean valid(int value) {
-              return value > 0;
+    path: src/main/java/com/example/inventory/StockLevel.java
+    old: |2
+          private final int onHand;
+    new: |2
+          private final int onHand;
+          private static final int REORDER_POINT = 5;
+  - type: replace
+    path: src/main/java/com/example/inventory/StockLevel.java
+    old: |2
+          public int remainingAfter(int requested) {
+              return onHand - requested;
           }
       }
-    new: |
-      package example;
+    new: |2
+          public int remainingAfter(int requested) {
+              return onHand - requested;
+          }
 
-      public class Scenario0105 {
-          public boolean valid(int value) {
-              int unused = 1;
-                  return value > 0;
+          private int unitsBelowReorderPoint() {
+              return REORDER_POINT - onHand;
           }
       }
     labels:
     - non_bug_introducing_change
 - id: c3
-  message: Fix bug
+  message: Report stock as available when it exactly covers the request
   author: Dave <dave@example.com>
   date: '2024-01-04T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0105.java
-    old: |
-      package example;
-
-      public class Scenario0105 {
-          public boolean valid(int value) {
-              int unused = 1;
-                  return value > 0;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0105 {
-          public boolean valid(int value) {
-              return value >= 0;
-          }
-      }
+    path: src/main/java/com/example/inventory/StockLevel.java
+    old: |2
+              return onHand > requested;
+    new: |2
+              return onHand >= requested;
     labels:
     - B001
     - fix
 bugs:
 - id: B001
-  title: Dead code addition after BIC
+  title: A request that exactly matches the stock on hand is refused
   bug_fixing_commit: c3
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0105.java
+    file: src/main/java/com/example/inventory/StockLevel.java
     entity:
       type: method
-      name: valid
-      signature: boolean valid(int value)
-    statement: return value > 0;
+      name: isAvailable
+      signature: boolean isAvailable(int requested)
+    statement: return onHand > requested;
     change_type: line_modification
+    description: >
+      The comparison excludes equality, so the last available unit can never be
+      sold although remainingAfter() correctly reports zero for it.
   fix:
     commit: c3
-    file: src/main/java/example/Scenario0105.java
+    file: src/main/java/com/example/inventory/StockLevel.java
     entity:
       type: method
-      name: valid
-      signature: boolean valid(int value)
-    statement: return value >= 0;
+      name: isAvailable
+      signature: boolean isAvailable(int requested)
+    statement: return onHand >= requested;
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -151,7 +148,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return value > 0;
+      - return onHand > requested;
 checks:
 - type: git_history_contains
   commits:

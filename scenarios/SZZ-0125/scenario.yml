@@ -3,14 +3,20 @@ meta:
   id: SZZ-0125
   title: Method rename after BIC
   slug: method-rename-after-bic
-  description: This scenario introduces a bug by changing `return value >= min && value <= max;` to `return value > min && value < max;` and later restores the correct implementation.
+  description: >
+    A method is renamed between the bug-introducing and the bug-fixing
+    commit, but the rename only rewrites the signature and the call site,
+    not the faulty line in the method body. Plain blame at the BFC parent
+    therefore reaches the BIC, which makes this the honest control for
+    SZZ-0124, where the rename does rewrite the faulty line.
   category: "Refactoring, move, and rename after BIC"
   factors:
   - single-bic
   - single-bfc
   - line-modification
   - method-rename-after-bic
-  difficulty: medium
+  - matched-control
+  difficulty: easy
   status: active
   category_code: "S5"
 repository:
@@ -21,122 +27,123 @@ repository:
   source_root: src/main/java
 commits:
 - id: c0
-  message: Initial correct implementation
+  message: Add the idle timeout policy for signed-in sessions
   author: Alice <alice@example.com>
   date: '2024-01-01T10:00:00Z'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0125.java
+    path: src/main/java/com/example/session/SessionPolicy.java
     content: |
-      package example;
+      package com.example.session;
 
-      public class Scenario0125 {
-          public boolean check(int value, int min, int max) {
-              return value >= min && value <= max;
+      /**
+       * Decides whether a signed-in session may still be used.
+       */
+      public class SessionPolicy {
+
+          private final int idleTimeoutMinutes;
+
+          public SessionPolicy(int idleTimeoutMinutes) {
+              this.idleTimeoutMinutes = idleTimeoutMinutes;
+          }
+
+          /** Returns true while the session is still usable. */
+          public boolean isAlive(int idleMinutes, boolean revoked) {
+              if (revoked) {
+                  return false;
+              }
+              return withinTimeout(idleMinutes);
+          }
+
+          /** Returns the minutes left before the session goes idle. */
+          public int remainingMinutes(int idleMinutes) {
+              return idleTimeoutMinutes - idleMinutes;
+          }
+
+          private boolean withinTimeout(int idleMinutes) {
+              return idleMinutes <= idleTimeoutMinutes;
           }
       }
 - id: c1
-  message: Introduce bug
+  message: Expire a session as soon as it reaches the idle timeout
   author: Bob <bob@example.com>
   date: '2024-01-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0125.java
-    old: |
-      package example;
-
-      public class Scenario0125 {
-          public boolean check(int value, int min, int max) {
-              return value >= min && value <= max;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0125 {
-          public boolean check(int value, int min, int max) {
-              return value > min && value < max;
-          }
-      }
+    path: src/main/java/com/example/session/SessionPolicy.java
+    old: |2
+              return idleMinutes <= idleTimeoutMinutes;
+    new: |2
+              return idleMinutes < idleTimeoutMinutes;
     labels:
     - B001
     - fault
 - id: c2
-  message: Rename method after bug introduction
+  message: Rename withinTimeout() to say which timeout it checks
   author: Carol <carol@example.com>
   date: '2024-01-03T10:00:00Z'
   role: refactoring
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0125.java
-    old: |
-      package example;
-
-      public class Scenario0125 {
-          public boolean check(int value, int min, int max) {
-              return value > min && value < max;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0125 {
-          public boolean contains(int value, int min, int max) {
-              return value > min && value < max;
-          }
-      }
+    path: src/main/java/com/example/session/SessionPolicy.java
+    old: |2
+              return withinTimeout(idleMinutes);
+    new: |2
+              return isWithinIdleTimeout(idleMinutes);
+    labels:
+    - non_bug_introducing_change
+  - type: replace
+    path: src/main/java/com/example/session/SessionPolicy.java
+    old: |2
+          private boolean withinTimeout(int idleMinutes) {
+    new: |2
+          private boolean isWithinIdleTimeout(int idleMinutes) {
+    labels:
+    - non_bug_introducing_change
 - id: c3
-  message: Fix bug
+  message: Keep a session alive at exactly the idle timeout
   author: Alice <alice@example.com>
   date: '2024-01-04T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0125.java
-    old: |
-      package example;
-
-      public class Scenario0125 {
-          public boolean contains(int value, int min, int max) {
-              return value > min && value < max;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0125 {
-          public boolean check(int value, int min, int max) {
-              return value >= min && value <= max;
-          }
-      }
+    path: src/main/java/com/example/session/SessionPolicy.java
+    old: |2
+              return idleMinutes < idleTimeoutMinutes;
+    new: |2
+              return idleMinutes <= idleTimeoutMinutes;
     labels:
     - B001
     - fix
 bugs:
 - id: B001
-  title: Method rename after BIC
+  title: A session is dropped at exactly the idle timeout
   bug_fixing_commit: c3
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0125.java
+    file: src/main/java/com/example/session/SessionPolicy.java
     entity:
       type: method
-      name: check
-      signature: boolean check(int value, int min, int max)
-    statement: return value > min && value < max;
+      name: withinTimeout
+      signature: boolean withinTimeout(int idleMinutes)
+    statement: return idleMinutes < idleTimeoutMinutes;
     change_type: line_modification
+    description: >
+      The timeout is the last minute a session survives, so the comparison
+      has to be inclusive. c2 renames the enclosing method to
+      isWithinIdleTimeout but leaves this line unchanged.
   fix:
     commit: c3
-    file: src/main/java/example/Scenario0125.java
+    file: src/main/java/com/example/session/SessionPolicy.java
     entity:
       type: method
-      name: check
-      signature: boolean check(int value, int min, int max)
-    statement: return value >= min && value <= max;
+      name: isWithinIdleTimeout
+      signature: boolean isWithinIdleTimeout(int idleMinutes)
+    statement: return idleMinutes <= idleTimeoutMinutes;
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -147,7 +154,10 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return value > min && value < max;
+      - return idleMinutes < idleTimeoutMinutes;
+      note: >
+        c2 rewrites the signature of the enclosing method and its call site,
+        but not this line, so blame at c3^ returns c1.
 checks:
 - type: git_history_contains
   commits:

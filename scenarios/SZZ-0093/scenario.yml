@@ -3,14 +3,22 @@ meta:
   id: SZZ-0093
   title: If-else to guard clause after BIC
   slug: if-else-to-guard-after-bic
-  description: This scenario inserts an intermediate refactoring change between the BIC and BFC.
+  description: >
+    The BIC changes the threshold comparison of a volume discount from "below the
+    minimum" to "at or below the minimum", so an order that exactly meets the
+    minimum loses its discount. An intermediate refactoring turns the if-else of
+    the same method into a guard clause without touching the faulty condition
+    line. The bug-fixing commit repairs only the comparison, so plain blame at
+    the BFC parent still reaches the BIC: this is an honest control for the
+    refactoring-after-BIC family.
   category: "Intermediate noise and history noise"
   factors:
   - single-bic
   - single-bfc
   - line-modification
   - guard-clause-after-bic
-  difficulty: medium
+  - plain-blame-control
+  difficulty: easy
   status: active
   category_code: "S3"
 repository:
@@ -21,130 +29,105 @@ repository:
   source_root: src/main/java
 commits:
 - id: c0
-  message: Initial correct implementation
+  message: Add the volume discount calculation for the checkout total
   author: Alice <alice@example.com>
   date: '2024-01-01T10:00:00Z'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0093.java
+    path: src/main/java/com/example/pricing/DiscountCalculator.java
     content: |
-      package example;
+      package com.example.pricing;
 
-      public class Scenario0093 {
-          public boolean valid(int value) {
-              return value >= 0;
+      public class DiscountCalculator {
+          private static final int MIN_ORDER_CENTS = 5000;
+          private static final int DISCOUNT_PERCENT = 10;
+
+          public int discountCents(int orderTotalCents) {
+              if (orderTotalCents < MIN_ORDER_CENTS) {
+                  return 0;
+              } else {
+                  return orderTotalCents * DISCOUNT_PERCENT / 100;
+              }
+          }
+
+          public int payableCents(int orderTotalCents) {
+              return orderTotalCents - discountCents(orderTotalCents);
           }
       }
 - id: c1
-  message: Introduce bug
+  message: Grant the volume discount only above the minimum order value
   author: Bob <bob@example.com>
   date: '2024-01-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0093.java
-    old: |
-      package example;
-
-      public class Scenario0093 {
-          public boolean valid(int value) {
-              return value >= 0;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0093 {
-          public boolean valid(int value) {
-              return value > 0;
-          }
-      }
+    path: src/main/java/com/example/pricing/DiscountCalculator.java
+    old: |2
+              if (orderTotalCents < MIN_ORDER_CENTS) {
+    new: |2
+              if (orderTotalCents <= MIN_ORDER_CENTS) {
     labels:
     - B001
     - fault
 - id: c2
-  message: Apply intermediate rewrite
+  message: Return early from discountCents instead of using an else branch
   author: Carol <carol@example.com>
   date: '2024-01-03T10:00:00Z'
   role: refactoring
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0093.java
-    old: |
-      package example;
-
-      public class Scenario0093 {
-          public boolean valid(int value) {
-              return value > 0;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0093 {
-          public boolean valid(int value) {
-              if (value <= 0) {
-                      return false;
-                  }
-                  return true;
-          }
-      }
+    path: src/main/java/com/example/pricing/DiscountCalculator.java
+    old: |2
+              } else {
+                  return orderTotalCents * DISCOUNT_PERCENT / 100;
+              }
+    new: |2
+              }
+              return orderTotalCents * DISCOUNT_PERCENT / 100;
     labels:
     - non_bug_introducing_change
 - id: c3
-  message: Fix bug
+  message: Discount orders that exactly meet the minimum order value
   author: Dave <dave@example.com>
   date: '2024-01-04T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0093.java
-    old: |
-      package example;
-
-      public class Scenario0093 {
-          public boolean valid(int value) {
-              if (value <= 0) {
-                      return false;
-                  }
-                  return true;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0093 {
-          public boolean valid(int value) {
-              return value >= 0;
-          }
-      }
+    path: src/main/java/com/example/pricing/DiscountCalculator.java
+    old: |2
+              if (orderTotalCents <= MIN_ORDER_CENTS) {
+    new: |2
+              if (orderTotalCents < MIN_ORDER_CENTS) {
     labels:
     - B001
     - fix
 bugs:
 - id: B001
-  title: If-else to guard clause after BIC
+  title: An order that exactly meets the minimum order value gets no volume discount
   bug_fixing_commit: c3
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0093.java
+    file: src/main/java/com/example/pricing/DiscountCalculator.java
     entity:
       type: method
-      name: valid
-      signature: boolean valid(int value)
-    statement: return value > 0;
+      name: discountCents
+      signature: int discountCents(int orderTotalCents)
+    statement: if (orderTotalCents <= MIN_ORDER_CENTS) {
     change_type: line_modification
+    description: >
+      The guard excludes the minimum order value itself, so an order of exactly
+      5000 cents is charged the full price.
   fix:
     commit: c3
-    file: src/main/java/example/Scenario0093.java
+    file: src/main/java/com/example/pricing/DiscountCalculator.java
     entity:
       type: method
-      name: valid
-      signature: boolean valid(int value)
-    statement: return value >= 0;
+      name: discountCents
+      signature: int discountCents(int orderTotalCents)
+    statement: if (orderTotalCents < MIN_ORDER_CENTS) {
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -155,7 +138,11 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return value > 0;
+      - if (orderTotalCents <= MIN_ORDER_CENTS) {
+      note: >
+        The guard-clause conversion in c2 removes the else branch and re-indents
+        the discount expression, but leaves the faulty condition line byte
+        identical, so blame at c3^ returns c1.
 checks:
 - type: git_history_contains
   commits:

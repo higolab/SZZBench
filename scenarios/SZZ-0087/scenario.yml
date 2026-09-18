@@ -1,169 +1,146 @@
-schema_version: '1.0'
+schema_version: "1.0"
+
 meta:
-  id: SZZ-0087
-  title: Unrelated method addition after BIC
-  slug: unrelated-method-after-bic
-  description: This scenario introduces a bug by changing `return value >= min && value <= max;` to `return value > min && value < max;` and later restores the correct implementation.
+  id: "SZZ-0087"
+  title: "Unrelated method addition after BIC"
+  slug: "unrelated-method-after-bic"
+  description: >
+    A range check is changed from inclusive to exclusive bounds, which is the
+    fault. A later commit adds a second, unrelated method to the same class.
+    The fixing commit repairs only the faulty line and keeps the new method,
+    so the added method is still there after the fix and a line-based tool has
+    no reason to blame the commit that added it.
   category: "Intermediate noise and history noise"
   factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - unrelated-method-after-bic
-  difficulty: medium
-  status: active
+    - "single-bic"
+    - "single-bfc"
+    - "line-modification"
+    - "unrelated-method-after-bic"
+    - "blame-reaches-bic"
+  difficulty: "easy"
+  status: "active"
   category_code: "S3"
+
 repository:
-  name: SZZ-0087-unrelated-method-after-bic
-  default_branch: main
-  language: java
-  build_system: none
-  source_root: src/main/java
+  name: "SZZ-0087-unrelated-method-after-bic"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
 commits:
-- id: c0
-  message: Initial correct implementation
-  author: Alice <alice@example.com>
-  date: '2024-01-01T10:00:00Z'
-  role: initial
-  operations:
-  - type: write_file
-    path: src/main/java/example/Scenario0087.java
-    content: |
-      package example;
+  - id: "c0"
+    message: "Add a range check helper"
+    author: "Alice <alice@example.com>"
+    date: "2024-01-01T10:00:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/example/Scenario0087.java"
+        content: |
+          package example;
 
-      public class Scenario0087 {
-          public boolean check(int value, int min, int max) {
-              return value >= min && value <= max;
+          public class Scenario0087 {
+              public boolean check(int value, int min, int max) {
+                  return value >= min && value <= max;
+              }
           }
-      }
-- id: c1
-  message: Introduce bug
-  author: Bob <bob@example.com>
-  date: '2024-01-02T10:00:00Z'
-  role: bug_introducing
-  operations:
-  - type: replace
-    path: src/main/java/example/Scenario0087.java
-    old: |
-      package example;
 
-      public class Scenario0087 {
-          public boolean check(int value, int min, int max) {
-              return value >= min && value <= max;
+  - id: "c1"
+    message: "Make the range bounds exclusive in check()"
+    author: "Bob <bob@example.com>"
+    date: "2024-01-02T10:00:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/Scenario0087.java"
+        old: "return value >= min && value <= max;"
+        new: "return value > min && value < max;"
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Add width() for the range column of the report"
+    author: "Carol <carol@example.com>"
+    date: "2024-01-03T10:00:00Z"
+    role: "feature_addition"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/Scenario0087.java"
+        old: |
+          package example;
+
+          public class Scenario0087 {
+              public boolean check(int value, int min, int max) {
+                  return value > min && value < max;
+              }
           }
-      }
-    new: |
-      package example;
+        new: |
+          package example;
 
-      public class Scenario0087 {
-          public boolean check(int value, int min, int max) {
-              return value > min && value < max;
-          }
-      }
-    labels:
-    - B001
-    - fault
-- id: c2
-  message: Add unrelated helper method
-  author: Carol <carol@example.com>
-  date: '2024-01-03T10:00:00Z'
-  role: distractor
-  operations:
-  - type: replace
-    path: src/main/java/example/Scenario0087.java
-    old: |
-      package example;
+          public class Scenario0087 {
+              public boolean check(int value, int min, int max) {
+                  return value > min && value < max;
+              }
 
-      public class Scenario0087 {
-          public boolean check(int value, int min, int max) {
-              return value > min && value < max;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0087 {
-          public boolean check(int value, int min, int max) {
-              return value > min && value < max;
               public int width(int min, int max) {
-              return max - min;
+                  return max - min;
+              }
           }
-      }
-          public int width(int min, int max) {
-              return max - min;
-          }
-      }
-- id: c3
-  message: Fix bug
-  author: Alice <alice@example.com>
-  date: '2024-01-04T10:00:00Z'
-  role: bug_fixing
-  operations:
-  - type: replace
-    path: src/main/java/example/Scenario0087.java
-    old: |
-      package example;
+        labels: ["non_bug_introducing_change"]
 
-      public class Scenario0087 {
-          public boolean check(int value, int min, int max) {
-              return value > min && value < max;
-              public int width(int min, int max) {
-              return max - min;
-          }
-      }
-          public int width(int min, int max) {
-              return max - min;
-          }
-      }
-    new: |
-      package example;
+  - id: "c3"
+    message: "Include both range bounds in check() again"
+    author: "Alice <alice@example.com>"
+    date: "2024-01-04T10:00:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/Scenario0087.java"
+        old: "return value > min && value < max;"
+        new: "return value >= min && value <= max;"
+        labels: ["B001", "fix"]
 
-      public class Scenario0087 {
-          public boolean check(int value, int min, int max) {
-              return value >= min && value <= max;
-          }
-      }
-    labels:
-    - B001
-    - fix
 bugs:
-- id: B001
-  title: Unrelated method addition after BIC
-  bug_fixing_commit: c3
-  bug_introducing_commits: &id001
-  - c1
-  fault:
-    commit: c1
-    file: src/main/java/example/Scenario0087.java
-    entity:
-      type: method
-      name: check
-      signature: boolean check(int value, int min, int max)
-    statement: return value > min && value < max;
-    change_type: line_modification
-  fix:
-    commit: c3
-    file: src/main/java/example/Scenario0087.java
-    entity:
-      type: method
-      name: check
-      signature: boolean check(int value, int min, int max)
-    statement: return value >= min && value <= max;
-    fix_type: line_modification
-  expected_szz:
-    commit_level:
-      true_positives: *id001
-      false_positives_allowed: []
-      known_distractors:
-      - c2
-    line_level:
-      available: true
-      faulty_statements:
-      - return value > min && value < max;
+  - id: "B001"
+    title: "Range bounds are excluded from the containment check"
+    bug_fixing_commit: "c3"
+    bug_introducing_commits: ["c1"]
+
+    fault:
+      commit: "c1"
+      file: "src/main/java/example/Scenario0087.java"
+      entity:
+        type: "method"
+        name: "check"
+        signature: "boolean check(int value, int min, int max)"
+      statement: "return value > min && value < max;"
+      change_type: "line_modification"
+
+    fix:
+      commit: "c3"
+      file: "src/main/java/example/Scenario0087.java"
+      entity:
+        type: "method"
+        name: "check"
+        signature: "boolean check(int value, int min, int max)"
+      statement: "return value >= min && value <= max;"
+      fix_type: "line_modification"
+
+    expected_szz:
+      commit_level:
+        true_positives: ["c1"]
+        false_positives_allowed: []
+        known_distractors: ["c2"]
+      line_level:
+        available: true
+        faulty_statements:
+          - "return value > min && value < max;"
+        note: >
+          The method added by c2 sits below the faulty method and survives the
+          fix, so plain `git blame` at c3^ on the single deleted line returns
+          c1. c2 is only a candidate for tools that work at file or class
+          granularity.
+
 checks:
-- type: git_history_contains
-  commits:
-  - c0
-  - c1
-  - c2
-  - c3
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3"]

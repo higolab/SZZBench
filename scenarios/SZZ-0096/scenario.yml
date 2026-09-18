@@ -3,14 +3,20 @@ meta:
   id: SZZ-0096
   title: Lambda rewrite after BIC
   slug: lambda-rewrite-after-bic
-  description: This scenario inserts an intermediate language-specific change between the BIC and BFC.
+  description: >
+    The BIC excludes the minimum age itself from the adult-member count. An
+    intermediate refactoring replaces the counting loop with a stream and moves
+    the faulty predicate into a lambda. The bug-fixing commit repairs the
+    predicate inside the lambda, so plain blame at the BFC parent stops at the
+    refactoring and never reaches the BIC.
   category: "Intermediate noise and history noise"
   factors:
   - single-bic
   - single-bfc
   - line-modification
   - lambda-rewrite-after-bic
-  difficulty: medium
+  - basic-blame-distractor
+  difficulty: hard
   status: active
   category_code: "S3"
 repository:
@@ -21,130 +27,116 @@ repository:
   source_root: src/main/java
 commits:
 - id: c0
-  message: Initial correct implementation
+  message: Add membership statistics for the yearly report
   author: Alice <alice@example.com>
   date: '2024-01-01T10:00:00Z'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0096.java
+    path: src/main/java/com/example/membership/MembershipStats.java
     content: |
-      package example;
+      package com.example.membership;
 
-      public class Scenario0096 {
-          public boolean valid(int value) {
-              return value >= 0;
+      public class MembershipStats {
+          private static final int MIN_AGE = 18;
+
+          public int adultCount(int[] ages) {
+              int count = 0;
+              for (int age : ages) {
+                  if (age >= MIN_AGE) {
+                      count++;
+                  }
+              }
+              return count;
           }
       }
 - id: c1
-  message: Introduce bug
+  message: Count members who are older than the minimum age
   author: Bob <bob@example.com>
   date: '2024-01-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0096.java
-    old: |
-      package example;
-
-      public class Scenario0096 {
-          public boolean valid(int value) {
-              return value >= 0;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0096 {
-          public boolean valid(int value) {
-              return value > 0;
-          }
-      }
+    path: src/main/java/com/example/membership/MembershipStats.java
+    old: |2
+                  if (age >= MIN_AGE) {
+    new: |2
+                  if (age > MIN_AGE) {
     labels:
     - B001
     - fault
 - id: c2
-  message: Apply intermediate rewrite
+  message: Count adult members with a stream instead of a loop
   author: Carol <carol@example.com>
   date: '2024-01-03T10:00:00Z'
-  role: distractor
+  role: refactoring
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0096.java
-    old: |
-      package example;
+    path: src/main/java/com/example/membership/MembershipStats.java
+    old: |2
+      package com.example.membership;
 
-      public class Scenario0096 {
-          public boolean valid(int value) {
-              return value > 0;
-          }
-      }
-    new: |
-      package example;
+    new: |2
+      package com.example.membership;
 
-      import java.util.function.IntPredicate;
+      import java.util.stream.IntStream;
 
-      public class Scenario0096 {
-          public boolean valid(int value) {
-              java.util.function.IntPredicate p = x -> x > 0;
-                  return p.test(value);
-          }
-      }
+  - type: replace
+    path: src/main/java/com/example/membership/MembershipStats.java
+    old: |2
+              int count = 0;
+              for (int age : ages) {
+                  if (age > MIN_AGE) {
+                      count++;
+                  }
+              }
+              return count;
+    new: |2
+              return (int) IntStream.of(ages).filter(age -> age > MIN_AGE).count();
     labels:
     - non_bug_introducing_change
 - id: c3
-  message: Fix bug
+  message: Count members who have just reached the minimum age as adults
   author: Dave <dave@example.com>
   date: '2024-01-04T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0096.java
-    old: |
-      package example;
-
-      import java.util.function.IntPredicate;
-
-      public class Scenario0096 {
-          public boolean valid(int value) {
-              java.util.function.IntPredicate p = x -> x > 0;
-                  return p.test(value);
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0096 {
-          public boolean valid(int value) {
-              return value >= 0;
-          }
-      }
+    path: src/main/java/com/example/membership/MembershipStats.java
+    old: |2
+              return (int) IntStream.of(ages).filter(age -> age > MIN_AGE).count();
+    new: |2
+              return (int) IntStream.of(ages).filter(age -> age >= MIN_AGE).count();
     labels:
     - B001
     - fix
 bugs:
 - id: B001
-  title: Lambda rewrite after BIC
+  title: Members who have just reached the minimum age are not counted as adults
   bug_fixing_commit: c3
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0096.java
+    file: src/main/java/com/example/membership/MembershipStats.java
     entity:
       type: method
-      name: valid
-      signature: boolean valid(int value)
-    statement: return value > 0;
+      name: adultCount
+      signature: int adultCount(int[] ages)
+    statement: age > MIN_AGE
     change_type: line_modification
+    description: >
+      The predicate excludes the minimum age itself, so a member of exactly 18 is
+      not counted. The sub-expression is used as fault.statement because c2 moves
+      the same predicate from the if statement into a lambda.
   fix:
     commit: c3
-    file: src/main/java/example/Scenario0096.java
+    file: src/main/java/com/example/membership/MembershipStats.java
     entity:
       type: method
-      name: valid
-      signature: boolean valid(int value)
-    statement: return value >= 0;
+      name: adultCount
+      signature: int adultCount(int[] ages)
+    statement: age >= MIN_AGE
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -155,7 +147,10 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return value > 0;
+      - if (age > MIN_AGE) {
+      note: >
+        The faulty predicate is moved into a lambda by c2, so blame at c3^
+        returns c2; one step of line history returns c1.
 checks:
 - type: git_history_contains
   commits:

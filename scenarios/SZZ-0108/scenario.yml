@@ -3,7 +3,13 @@ meta:
   id: SZZ-0108
   title: CRLF-like full file rewrite
   slug: crlf-like-full-file-rewrite
-  description: This scenario is intended to stress implementation robustness under noisy or repetitive code conditions.
+  description: >
+    Between the bug-introducing and the bug-fixing commit, a commit adds an
+    editor configuration and stores the Java source with CRLF line endings.
+    Every line of the file, including the faulty one, is rewritten in that
+    commit, so plain `git blame` at the BFC parent reaches the line-ending
+    commit and misses the BIC. A tool has to ignore the carriage returns, for
+    example by following the line through the rewrite.
   category: "Intermediate noise and history noise"
   factors:
   - single-bic
@@ -11,7 +17,8 @@ meta:
   - line-modification
   - robustness
   - line-ending-noise
-  difficulty: medium
+  - full-file-rewrite
+  difficulty: hard
   status: active
   category_code: "S3"
 repository:
@@ -22,110 +29,150 @@ repository:
   source_root: src/main/java
 commits:
 - id: c0
-  message: Initial implementation
+  message: Add the page line budget used by the export writer
   author: Alice <alice@example.com>
   date: '2024-06-01T10:00:00Z'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0108.java
+    path: src/main/java/com/example/io/LineBudget.java
     content: |
-      package example;
+      package com.example.io;
 
-      public class Scenario0108 {
-          public boolean check(int value) {
-              return value >= 0;
+      public class LineBudget {
+          private final int maxLines;
+
+          public LineBudget(int maxLines) {
+              this.maxLines = maxLines;
+          }
+
+          public boolean fits(int lineCount) {
+              return lineCount <= maxLines;
+          }
+
+          public int overflow(int lineCount) {
+              if (fits(lineCount)) {
+                  return 0;
+              }
+              return lineCount - maxLines;
           }
       }
 - id: c1
-  message: Introduce bug
+  message: Reserve the last line of the budget for the page footer
   author: Bob <bob@example.com>
   date: '2024-06-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0108.java
-    old: |
-      package example;
-
-      public class Scenario0108 {
-          public boolean check(int value) {
-              return value >= 0;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0108 {
-          public boolean check(int value) {
-              return value > 0;
-          }
-      }
+    path: src/main/java/com/example/io/LineBudget.java
+    old: |2
+              return lineCount <= maxLines;
+    new: |2
+              return lineCount < maxLines;
     labels:
     - B001
     - fault
 - id: c2
-  message: Fix bug after line-ending-like rewrite
-  author: Alice <alice@example.com>
+  message: Add an editor configuration and store the Java sources with CRLF endings
+  author: Carol <carol@example.com>
   date: '2024-06-03T10:00:00Z'
+  role: formatting
+  operations:
+  - type: write_file
+    path: .editorconfig
+    content: |
+      root = true
+
+      [*]
+      charset = utf-8
+      insert_final_newline = true
+
+      [*.java]
+      end_of_line = crlf
+      indent_style = space
+      indent_size = 4
+  - type: write_file
+    path: src/main/java/com/example/io/LineBudget.java
+    line_ending: crlf
+    content: |
+      package com.example.io;
+
+      public class LineBudget {
+          private final int maxLines;
+
+          public LineBudget(int maxLines) {
+              this.maxLines = maxLines;
+          }
+
+          public boolean fits(int lineCount) {
+              return lineCount < maxLines;
+          }
+
+          public int overflow(int lineCount) {
+              if (fits(lineCount)) {
+                  return 0;
+              }
+              return lineCount - maxLines;
+          }
+      }
+    labels:
+    - non_bug_introducing_change
+- id: c3
+  message: Count the last permitted line as fitting the budget
+  author: Alice <alice@example.com>
+  date: '2024-06-04T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0108.java
-    old: |
-      package example;
-
-      public class Scenario0108 {
-          public boolean check(int value) {
-              return value > 0;
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0108 {
-          public boolean check(int value) {
-              return value >= 0;
-          }
-      }
+    path: src/main/java/com/example/io/LineBudget.java
+    old: |2
+              return lineCount < maxLines;
+    new: |2
+              return lineCount <= maxLines;
     labels:
     - B001
     - fix
 bugs:
 - id: B001
-  title: CRLF-like full file rewrite
-  bug_fixing_commit: c2
+  title: A page that exactly fills the line budget is reported as overflowing
+  bug_fixing_commit: c3
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0108.java
+    file: src/main/java/com/example/io/LineBudget.java
     entity:
       type: method
-      name: check
-      signature: boolean check(int value)
-    statement: return value > 0;
+      name: fits
+      signature: boolean fits(int lineCount)
+    statement: return lineCount < maxLines;
     change_type: line_modification
+    description: >
+      The bound became exclusive, so a page of exactly maxLines lines is
+      reported as not fitting although overflow() computes zero for it.
   fix:
-    commit: c2
-    file: src/main/java/example/Scenario0108.java
+    commit: c3
+    file: src/main/java/com/example/io/LineBudget.java
     entity:
       type: method
-      name: check
-      signature: boolean check(int value)
-    statement: return value >= 0;
+      name: fits
+      signature: boolean fits(int lineCount)
+    statement: return lineCount <= maxLines;
     fix_type: line_modification
   expected_szz:
     commit_level:
       true_positives: *id001
       false_positives_allowed: []
+      known_distractors:
+      - c2
     line_level:
       available: true
       faulty_statements:
-      - return value > 0;
+      - return lineCount < maxLines;
 checks:
 - type: git_history_contains
   commits:
   - c0
   - c1
   - c2
+  - c3

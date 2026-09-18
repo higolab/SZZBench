@@ -3,14 +3,22 @@ meta:
   id: SZZ-0100
   title: Try block rewrite after BIC
   slug: try-block-rewrite-after-bic
-  description: This scenario inserts an intermediate language-specific change between the BIC and BFC.
+  description: >
+    The BIC clamps the configured timeout against the millisecond maximum before
+    converting it from seconds, so the maximum is effectively never applied. An
+    intermediate commit wraps the method body in a try block that falls back to
+    the default timeout for non-numeric settings, which re-indents the faulty
+    statement. The bug-fixing commit repairs the statement inside the try block,
+    so plain blame at the BFC parent stops at that commit and never reaches the
+    BIC.
   category: "Intermediate noise and history noise"
   factors:
   - single-bic
   - single-bfc
   - line-modification
   - try-block-after-bic
-  difficulty: medium
+  - basic-blame-distractor
+  difficulty: hard
   status: active
   category_code: "S3"
 repository:
@@ -21,132 +29,107 @@ repository:
   source_root: src/main/java
 commits:
 - id: c0
-  message: Initial correct implementation
+  message: Read the request timeout from the deployment settings
   author: Alice <alice@example.com>
   date: '2024-01-01T10:00:00Z'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0100.java
+    path: src/main/java/com/example/config/TimeoutSetting.java
     content: |
-      package example;
+      package com.example.config;
 
-      public class Scenario0100 {
-          public int length(String value) {
-              return value.length();
+      public class TimeoutSetting {
+          private static final int DEFAULT_TIMEOUT_MS = 3000;
+          private static final int MAX_TIMEOUT_MS = 60000;
+
+          public int timeoutMillis(String rawSeconds) {
+              int seconds = Integer.parseInt(rawSeconds.trim());
+              return Math.min(seconds * 1000, MAX_TIMEOUT_MS);
+          }
+
+          public int defaultTimeoutMillis() {
+              return DEFAULT_TIMEOUT_MS;
           }
       }
 - id: c1
-  message: Introduce bug
+  message: Clamp the configured timeout before converting it to milliseconds
   author: Bob <bob@example.com>
   date: '2024-01-02T10:00:00Z'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0100.java
-    old: |
-      package example;
-
-      public class Scenario0100 {
-          public int length(String value) {
-              return value.length();
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0100 {
-          public int length(String value) {
-              return value.trim().length();
-          }
-      }
+    path: src/main/java/com/example/config/TimeoutSetting.java
+    old: |2
+              return Math.min(seconds * 1000, MAX_TIMEOUT_MS);
+    new: |2
+              return Math.min(seconds, MAX_TIMEOUT_MS) * 1000;
     labels:
     - B001
     - fault
 - id: c2
-  message: Apply intermediate rewrite
+  message: Fall back to the default timeout when the setting is not a number
   author: Carol <carol@example.com>
   date: '2024-01-03T10:00:00Z'
-  role: distractor
+  role: feature_addition
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0100.java
-    old: |
-      package example;
-
-      public class Scenario0100 {
-          public int length(String value) {
-              return value.trim().length();
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0100 {
-          public int length(String value) {
+    path: src/main/java/com/example/config/TimeoutSetting.java
+    old: |2
+              int seconds = Integer.parseInt(rawSeconds.trim());
+              return Math.min(seconds, MAX_TIMEOUT_MS) * 1000;
+    new: |2
               try {
-                      return value.trim().length();
-                  } catch (RuntimeException e) {
-                      return 0;
-                  }
-          }
-      }
+                  int seconds = Integer.parseInt(rawSeconds.trim());
+                  return Math.min(seconds, MAX_TIMEOUT_MS) * 1000;
+              } catch (NumberFormatException e) {
+                  return DEFAULT_TIMEOUT_MS;
+              }
     labels:
     - non_bug_introducing_change
 - id: c3
-  message: Fix bug
+  message: Apply the timeout maximum in milliseconds, not in seconds
   author: Dave <dave@example.com>
   date: '2024-01-04T10:00:00Z'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0100.java
-    old: |
-      package example;
-
-      public class Scenario0100 {
-          public int length(String value) {
-              try {
-                      return value.trim().length();
-                  } catch (RuntimeException e) {
-                      return 0;
-                  }
-          }
-      }
-    new: |
-      package example;
-
-      public class Scenario0100 {
-          public int length(String value) {
-              return value.length();
-          }
-      }
+    path: src/main/java/com/example/config/TimeoutSetting.java
+    old: |2
+                  return Math.min(seconds, MAX_TIMEOUT_MS) * 1000;
+    new: |2
+                  return Math.min(seconds * 1000, MAX_TIMEOUT_MS);
     labels:
     - B001
     - fix
 bugs:
 - id: B001
-  title: Try block rewrite after BIC
+  title: The configured request timeout is never capped at the allowed maximum
   bug_fixing_commit: c3
   bug_introducing_commits: &id001
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0100.java
+    file: src/main/java/com/example/config/TimeoutSetting.java
     entity:
       type: method
-      name: length
-      signature: int length(String value)
-    statement: return value.trim().length();
+      name: timeoutMillis
+      signature: int timeoutMillis(String rawSeconds)
+    statement: Math.min(seconds, MAX_TIMEOUT_MS) * 1000
     change_type: line_modification
+    description: >
+      The clamp compares a value in seconds with a maximum in milliseconds, so
+      any setting below 60000 seconds passes unclamped and is then multiplied by
+      1000. The sub-expression is used as fault.statement because c2 re-indents
+      the surrounding line when it wraps the body in a try block.
   fix:
     commit: c3
-    file: src/main/java/example/Scenario0100.java
+    file: src/main/java/com/example/config/TimeoutSetting.java
     entity:
       type: method
-      name: length
-      signature: int length(String value)
-    statement: return value.length();
+      name: timeoutMillis
+      signature: int timeoutMillis(String rawSeconds)
+    statement: return Math.min(seconds * 1000, MAX_TIMEOUT_MS);
     fix_type: line_modification
   expected_szz:
     commit_level:
@@ -157,7 +140,12 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return value.trim().length();
+      - return Math.min(seconds, MAX_TIMEOUT_MS) * 1000;
+      note: >
+        c2 moves the faulty statement into a try block, which changes its
+        indentation, so blame at c3^ returns c2; one step of line history returns
+        c1. git blame -w reaches c1 directly, because c2's change to this
+        particular line is whitespace-only.
 checks:
 - type: git_history_contains
   commits:
