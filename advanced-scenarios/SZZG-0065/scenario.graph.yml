@@ -3,7 +3,9 @@ meta:
   id: SZZG-0065
   title: Rebase conflict resolution introduces bug
   slug: rebase-conflict-resolution-introduces-bug
-  description: A rebase conflict resolution commit introduces the actual bug.
+  description: 'The feature commit and the main-line commit edit the same line, so replaying the feature commit onto main conflicts.
+    The fault exists in neither source commit: it is written by the developer while resolving the conflict, so the resolved commit
+    is the only bug-introducing commit.'
   category: "Rebase-specific history rewriting"
   category_code: "G5"
   factors:
@@ -12,6 +14,7 @@ meta:
   - rebase_conflict_resolution
   - conflict_resolution_bic
   - direct_bic
+  - fault_in_neither_parent
   difficulty: advanced
   status: draft
 repository:
@@ -22,77 +25,84 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial correct implementation
+  history_summary: 'c0: Add the Range class with an inclusive contains check
 
-    m1: add main-line documentation
+    m1: Reject inverted bounds and read the comparison from low to high (main)
 
-    f1: add feature documentation
+    f1: Extract the bounds comparison into a helper method (feature, same line as m1)
 
-    r1: resolve rebase conflict and introduce range bug
+    r1: Combine the inverted-bounds guard with the extracted bounds helper (conflicted replay of f1 onto m1, resolved by hand)
 
-    c2: fix range bug from conflict resolution'
+    c2: Restore the inclusive comparison inside Range.withinBounds'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial correct implementation'
+  message: Add the Range class with an inclusive contains check
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ >= min && value <= max;\n  }\n}\n"
 - id: m1
   branch: main
   parents:
   - c0
-  message: 'm1: add main-line documentation'
+  message: Reject inverted bounds and read the comparison from low to high
   role: intermediate
   operations:
-  - type: write_file
-    path: docs/main.md
-    content: 'main note
-
-      '
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ >= min && value <= max;\n  }\n}\n"
+    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    if (min > max)\
+      \ {\n      return false;\n    }\n    return min <= value && value <= max;\n  }\n}\n"
 - id: f1
   branch: feature
   parents:
   - c0
-  message: 'f1: add feature documentation'
+  message: Extract the bounds comparison into a helper method
   role: intermediate
   operations:
-  - type: write_file
-    path: docs/feature.md
-    content: 'feature note
-
-      '
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ >= min && value <= max;\n  }\n}\n"
+    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return withinBounds(value,\
+      \ min, max);\n  }\n\n  private boolean withinBounds(int value, int min, int max) {\n    return value >= min && value <= max;\n\
+      \  }\n}\n"
 - id: r1
   branch: main
   parents:
   - m1
-  message: 'r1: resolve rebase conflict and introduce range bug'
+  message: Combine the inverted-bounds guard with the extracted bounds helper
   role: bug_introducing
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
   rebase_of: f1
+  cherry_pick_of: f1
   rebase_conflict_resolution: true
+  allow_empty: true
+  committer_date: '2024-01-05T15:10:00Z'
+  resolution:
+    src/main/java/example/Range.java: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min,\
+      \ int max) {\n    if (min > max) {\n      return false;\n    }\n    return withinBounds(value, min, max);\n  }\n\n  private\
+      \ boolean withinBounds(int value, int min, int max) {\n    return value > min && value < max;\n  }\n}\n"
 - id: c2
   branch: main
   parents:
   - r1
-  message: 'c2: fix range bug from conflict resolution'
+  message: Restore the inclusive comparison inside Range.withinBounds
   role: bug_fixing
+  date: '2024-01-09T09:45:00Z'
   operations:
-  - type: replace
+  - type: write_file
     path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    if (min >\
+      \ max) {\n      return false;\n    }\n    return withinBounds(value, min, max);\n  }\n\n  private boolean withinBounds(int\
+      \ value, int min, int max) {\n    return value >= min && value <= max;\n  }\n}\n"
 bugs:
 - id: B001
-  title: Bug introduced by rebase conflict resolution
+  title: Bug written while resolving a rebase conflict
   bug_introducing_commits:
   - commit: r1
     role: direct
@@ -104,7 +114,7 @@ bugs:
     commit: r1
     file: src/main/java/example/Range.java
     statement: return value > min && value < max;
-    change_type: line_modification
+    change_type: conflict_resolution
   fixes:
   - id: X001
     commit: c2
@@ -116,14 +126,21 @@ expected_szz:
     evaluation_policy: exact_set
     required:
     - r1
-    notes: The conflict resolution commit r1 is the direct BIC.
+    notes: 'r1 is the only bug-introducing commit: neither m1 nor f1 contains the faulty statement, which was written by hand while
+      resolving the conflict. There is no origin BIC, so no commit of the feature branch belongs in the answer.'
 scenario_design:
-  purpose: Evaluate a bug introduced by conflict resolution during rebase.
-  key_property: The feature commit is not the BIC; the conflict resolution commit is.
-  difference_from_SZZG_0064: SZZG-0064 covers a rebased BIC followed by a non-BIC rebased intermediate commit. This scenario
-    adds a distinct rebase-related complication.
+  purpose: Evaluate a bug that is introduced by the manual resolution of a rebase conflict.
+  key_property: 'The faulty statement exists in no ancestor: m1 and f1 both edit the same line of Range.java and neither of them
+    contains ''return value > min && value < max;''. Git really reports the conflict during generation and the scenario''s resolution
+    block supplies the resolved file; commit-map.json records resolved_conflicts.'
+  difference_from_SZZG_0064: SZZG-0064 replays a series cleanly and asks which of the replayed commits is the BIC. Here the replay
+    conflicts and the fault belongs to the resolution itself, not to any replayed source.
   evaluation_points:
   - Report r1.
+  - 'Do not follow the rebase_of link to f1: f1 never contained the fault.'
 notes:
-- This scenario models a rebase-related development history for SZZ evaluation.
-- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.
+- 'r1 declares rebase_of (the rewrite relation) and cherry_pick_of (the mechanism: a rebase replays a commit by cherry-picking
+  it). Because r1 has no operations, the generator really runs git cherry-pick --no-commit, Git reports the conflict and the resolution
+  block is written, staged and committed.'
+- 'validate-graph --simulate does not model cherry-picks, so r1 carries allow_empty: true for the in-memory simulation; in the
+  generated repository r1 is a normal, non-empty commit.'
