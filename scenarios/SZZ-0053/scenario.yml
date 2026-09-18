@@ -65,7 +65,7 @@ commits:
   - type: replace
     path: src/main/java/example/Scenario0053.java
     old: "package example;\n\npublic class Scenario0053 {\n    public boolean isValidIndex(int index, int size) {\n        return true;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0053 {\n    public boolean isValidIndex(int index, int size) {\n        if (index < 0 || index >= size) {\n                return false;\n            }\n            return true;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0053 {\n    public boolean isValidIndex(int index, int size) {\n        if (index < 0 || index >= size) {\n            return false;\n        }\n        return true;\n    }\n}\n"
     labels:
     - B001
     - fix
@@ -93,8 +93,8 @@ bugs:
       signature: boolean isValidIndex(int index, int size)
     added_statement: |
       if (index < 0 || index >= size) {
-                      return false;
-                  }
+                  return false;
+              }
     fix_type: line_addition
   expected_szz:
     commit_level:

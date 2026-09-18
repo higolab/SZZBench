@@ -29,26 +29,26 @@ oracles being a single commit it succeeds by coincidence rather than by signal.
 
 ## Measured on the shipped suite
 
-210 generated scenarios, measured at `06799cc` (2026-09-18):
+210 generated scenarios, measured on this branch (2026-09-18):
 
 | baseline | family | solves |
 |---|---|---|
-| `blame-deleted-lines` | blame | **148/210 = 70.5%** |
 | `position-second` | position | **147/210 = 70.0%** |
+| `blame-deleted-lines` | blame | 141/210 = 67.1% |
 | `shape-last-toucher` | shape | 107/210 = 51.0% |
 | `position-before-fix` | position | 92/210 = 43.8% |
 | `position-third` | position | 17/210 = 8.1% |
 | `position-first` | position | 7/210 = 3.3% |
 | `position-all-non-fix` | position | 6/210 = 2.9% |
-| best `author:…` | metadata | 11/210 = 5.2% |
+| best `author:…` | metadata | 11/210 = 5.2% (chance) |
 | `message-admits-fault` | metadata | **0/210** |
 
 Read this table before reading any result reported on SZZBench:
 
-- **A rule that opens no file is within one scenario of the classic B-SZZ
-  baseline.** "Report the second commit of the history" solves 70.0% against
-  B-SZZ's 70.5%, because most scenarios are four commits long with a
-  single-commit oracle in second position.
+- **A rule that opens no file beats the classic B-SZZ baseline.** "Report the
+  second commit of the history" solves 70.0% against B-SZZ's 67.1%, because
+  most scenarios are four commits long with a single-commit oracle in second
+  position.
 - **203 of 210 scenarios are solved by at least one baseline.** Seven resist all
   of them: SZZ-0132, SZZ-0136, SZZG-0028, SZZG-0038, SZZG-0040, SZZG-0069,
   SZZG-0076 — and every one of them has a **multi-commit oracle**.

@@ -29,7 +29,7 @@ commits:
   operations:
   - type: write_file
     path: src/main/java/example/Scenario0080.java
-    content: "package example;\n\npublic class Scenario0080 {\n    public int divide(int total, int denominator) {\n        if (denominator == 0) {\n                return 0;\n            }\n            return total / denominator;\n    }\n}\n"
+    content: "package example;\n\npublic class Scenario0080 {\n    public int divide(int total, int denominator) {\n        if (denominator == 0) {\n            return 0;\n        }\n        return total / denominator;\n    }\n}\n"
 - id: c1
   message: 'Divide without the zero-denominator branch'
   author: Luca Moretti <luca.moretti@example.com>
@@ -38,7 +38,7 @@ commits:
   operations:
   - type: replace
     path: src/main/java/example/Scenario0080.java
-    old: "package example;\n\npublic class Scenario0080 {\n    public int divide(int total, int denominator) {\n        if (denominator == 0) {\n                return 0;\n            }\n            return total / denominator;\n    }\n}\n"
+    old: "package example;\n\npublic class Scenario0080 {\n    public int divide(int total, int denominator) {\n        if (denominator == 0) {\n            return 0;\n        }\n        return total / denominator;\n    }\n}\n"
     new: "package example;\n\npublic class Scenario0080 {\n    public int divide(int total, int denominator) {\n        return total / denominator;\n    }\n}\n"
     labels:
     - B001
@@ -52,7 +52,7 @@ commits:
   - type: replace
     path: src/main/java/example/Scenario0080.java
     old: "package example;\n\npublic class Scenario0080 {\n    public int divide(int total, int denominator) {\n        return total / denominator;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0080 {\n    public int divide(int total, int denominator) {\n        if (denominator == 0) {\n                return 0;\n            }\n            return total / denominator;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0080 {\n    public int divide(int total, int denominator) {\n        if (denominator == 0) {\n            return 0;\n        }\n        return total / denominator;\n    }\n}\n"
     labels:
     - B001
     - fix
