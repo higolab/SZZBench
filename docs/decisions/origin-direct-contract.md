@@ -1,6 +1,6 @@
 # Decision: the direct / origin BIC contract (issue #3)
 
-Status: **decided** (2026-09-18; proposed 2026-09-17). D1-D9 are adopted as written and the four open points of §6 are answered in §7. The scenario migration is being carried out in two steps: the semantic corrections of §5 first, then the mechanical `related_origins` / `origin-aware` sweep across the remaining scenarios and the D10 lint.
+Status: **decided and applied** (2026-09-18; proposed 2026-09-17). D1-D9 are adopted as written and the four open points of §6 are answered in §7. The migration is complete: the semantic corrections of §5 landed first, then the `related_origins` / `origin-aware` sweep across the remaining scenarios together with the D10 lint. All 42 scenarios that declare an origin now conform, checked as behaviour rather than as shape — see §8.
 
 ## 1. Problem
 
@@ -58,7 +58,7 @@ A commit that moves *and* duplicates (SZZG-0007: c2 moves `contains` to `RangeUt
 
 **D9 — multiple bugs sharing a BFC.** Until the evaluator scores per bug, the scenario-level `required` set is the union of the per-bug direct BICs of the evaluated BFC(s) (SZZG-0018 → `{c0, c1}`; SZZG-0034 already conforms).
 
-**D10 — validation.** The lint of issue #16 flags a BIC entry with role `origin*` that is covered by no `expected_szz` list; after D2/D3 it should additionally require that origins appear in `related_origins` of the default commit level and that an `origin-aware` variant exists.
+**D10 — validation.** Implemented as four graph lints: `GW450` (an origin covered by no `expected_szz` list), `GW451` (an origin the *default* variant does not list under `related_origins`), `GW452` (a scenario with an origin and no `origin-aware` variant) and `GW453` (an `origin-aware` variant that does not accept the origin). An origin that is itself `required` is exempt from GW451-GW453; it is the answer, not context. Before the sweep these fired on 3, 31, 31 and 1 scenarios respectively; afterwards none fires.
 
 ## 5. Migration table
 
@@ -66,19 +66,19 @@ A commit that moves *and* duplicates (SZZG-0007: c2 moves `contains` to `RangeUt
 |---|---|---|
 | SZZG-0005 (PR #28) | required c1; move commit c2 `related_but_not_correct` | already conforms (pure move, D5) |
 | SZZG-0007 (PR #28) | required c1; move-and-copy commit c2 `related_but_not_correct` | **done**: `required: [c1, c2]` (c1 for the moved instance, c2 for the duplicated instance); not split (§7.4) |
-| SZZG-0014, SZZG-0015, SZZG-0017 | origin c0 declared, unlisted | add `related_origins: [c0]`, add `origin-aware` variant |
-| SZZG-0016 | origin as `acceptable_related` in default | move to `related_origins`; keep `acceptable_related` in the `origin-aware` variant |
+| SZZG-0014, SZZG-0015, SZZG-0017 | origin c0 declared, unlisted | **done**: `related_origins: [c0]` and an `origin-aware` variant |
+| SZZG-0016 | origin as `acceptable_related` in default | **done**: moved to `related_origins`, kept as `acceptable_related` in the `origin-aware` variant |
 | SZZG-0018 | `required: [c1]` for two bugs | **done**: `required: [c0, c1]` (D9) until per-bug scoring exists; no origin-aware variant, the origin is required (§7) |
-| SZZG-0019, SZZG-0020 | `related_origins` | already conform; add `origin-aware` variant where missing |
+| SZZG-0019, SZZG-0020 | `related_origins` | **done**: `origin-aware` variant added to both. SZZG-0020 already had one *named* `origin_aware`, but its commit level neither used `relaxed_with_related` nor listed the origin as `acceptable_related`, so it accepted nothing; rebuilt, and `GW453` now catches that shape |
 | SZZG-0022 | direct-only / origin-aware / relaxed-with-credit variants | reference implementation; drop the redundant `relaxed-with-credit` variant or keep as alias |
 | SZZG-0024 | required r2 (comment-only rewrite), r1 not correct | **done**: required r1; `related_origins: [f1]`; r2 and f2 → `related_but_not_correct` (D5) |
 | SZZG-0025 | required c1 (origin) | **done**: required c2 (copy), `related_origins: [c1]`, `origin-aware` variant (D4) |
 | SZZG-0027 | required c1; c2 (copy) and c3 (rename) unlisted | **done**: required c2, `related_origins: [c1]`, `related_but_not_correct: [c3]` |
 | SZZG-0028 | required {c1, c3}; copy c2 unlisted | **done**: required {c2, c3}, `related_origins: [c1]`, `origin-aware` variant; no `origin-required` variant (§7.2) |
 | SZZG-0030 | c2 (attempted fix writing the fixed line) unlisted | **done**: second bug entry B002 (BIC c2, BFC c3); `required: [c1, c2]` by D9 |
-| SZZG-0047, SZZG-0055–0058, SZZG-0064–0083 | pre-rewrite commits as `related_but_not_correct` | move to `related_origins`; add `origin-aware` variant (D8) |
+| SZZG-0047, SZZG-0055–0058, SZZG-0064–0083 | pre-rewrite commits as `related_but_not_correct` | **done**: moved to `related_origins`, `origin-aware` variant added (D8) |
 | SZZG-0061 | manual cherry-pick, origin c1 unlisted | **done**: `cherry_pick_of: c1` (inert - the generated trees and messages are unchanged), `related_origins: [c1]`, `origin-aware` variant |
-| SZZG-0084–0091 (reintroduction) | mixed | reintroducing commit required; original BIC `related_origins`; original fix `related_but_not_correct` (D7) |
+| SZZG-0084–0091 (reintroduction) | mixed | **done**: original BIC moved to `related_origins`, `origin-aware` variant added (D7) |
 
 ## 6. Open points for the maintainers
 
@@ -98,3 +98,20 @@ Two clarifications the migration produced, which are part of the decision:
 
 - **An origin that is already `required` needs no `origin-aware` variant.** SZZG-0018's `c0` is the direct BIC of one bug entry and the origin of the other; the variant would be identical to the default, so D3 does not apply when the origin is in `required`.
 - **D6 splits a bug only when both effects are observable.** SZZG-0030's `c2` was measured to repair one fault (`contains(5,5,7)`: false to true) and introduce another (`contains(99,5,7)`: false to true) in the same commit, which is what makes the second bug entry a measurement rather than a reading of the diff.
+
+## 8. What the migration is checked against
+
+The sweep is verified as behaviour, through the evaluator, not by reading the
+YAML. For every scenario that declares an origin:
+
+- predicting the default `required` set passes the default variant;
+- predicting `required` together with the origins fails the default, but the
+  origins are **not** hard false positives — the D2 consequence, and the one
+  that changed: before the sweep an unlisted origin was a hard false positive
+  (SZZG-0014, measured);
+- predicting `required` together with the origins **passes** the `origin-aware`
+  variant, and the origin alone earns credit 0.5 without passing.
+
+All 42 scenarios satisfy this. The check is the argument for the contract: a
+tool that reports origins as context is now scored the same way everywhere,
+which is what issue #3 asked for.

@@ -350,11 +350,22 @@ def test_factor_vocabulary_lints_graph():
     assert lint_graph(data).findings == []
 
 
+ORIGIN_AWARE_VARIANT = {
+    "name": "origin-aware",
+    "commit_level": {
+        "evaluation_policy": "relaxed_with_related",
+        "required": ["c1"],
+        "acceptable_related": [{"commit": "c0", "reason": "origin_bic", "credit": 0.5}],
+    },
+}
+
+
 def test_graph_role_vocabulary_lint():
     data = graph_scenario()
     data["bugs"][0]["bug_introducing_commits"] = [{"commit": "c1", "role": "direct_squash_bic"}, {"commit": "c0", "role": "origin"}]
     data["bugs"][0]["bug_fixing_commits"] = [{"commit": "c2", "role": "main_fix"}]
     data["expected_szz"]["commit_level"]["related_origins"] = ["c0"]
+    data["expected_szz"]["evaluation_variants"] = [deepcopy(ORIGIN_AWARE_VARIANT)]
     result = lint_graph(data)
     assert codes(result) == ["GW403", "GW404"]
     assert result.findings[0].location == "bugs[0].bug_introducing_commits[0].role"
@@ -526,22 +537,60 @@ def test_approximate_operations_warn_with_explanations():
 
 
 def test_origin_bic_must_be_mentioned_by_expected_szz():
+    """GW450: an origin named nowhere in expected_szz."""
     data = graph_scenario()
     data["bugs"][0]["bug_introducing_commits"].append({"commit": "c0", "role": "origin"})
     result = lint_graph(data)
-    assert codes(result) == ["GW450"]
+    assert "GW450" in codes(result)
     assert result.findings[0].location == "bugs[0].bug_introducing_commits[1]"
 
-    in_variant = deepcopy(data)
-    in_variant["expected_szz"]["evaluation_variants"] = [{
-        "name": "origin-aware",
-        "commit_level": {"required": ["c1"], "acceptable_related": [{"commit": "c0", "reason": "origin_bic", "credit": 0.5}]},
-    }]
-    assert lint_graph(in_variant).findings == []
 
-    in_commit_level = deepcopy(data)
-    in_commit_level["expected_szz"]["commit_level"]["related_but_not_correct"] = ["c0"]
-    assert lint_graph(in_commit_level).findings == []
+def test_origin_must_be_related_origins_in_the_default_variant():
+    """GW451: mentioning the origin somewhere is not enough (contract D2).
+
+    Both shapes below satisfied the old "mentioned anywhere" rule and are what
+    most of the suite carried before the direct/origin contract was decided.
+    """
+    data = graph_scenario()
+    data["bugs"][0]["bug_introducing_commits"].append({"commit": "c0", "role": "origin"})
+
+    only_in_variant = deepcopy(data)
+    only_in_variant["expected_szz"]["evaluation_variants"] = [deepcopy(ORIGIN_AWARE_VARIANT)]
+    assert codes(only_in_variant := lint_graph(only_in_variant)) == ["GW451"]
+    assert only_in_variant.findings[0].location == "bugs[0].bug_introducing_commits[1]"
+
+    as_not_correct = deepcopy(data)
+    as_not_correct["expected_szz"]["commit_level"]["related_but_not_correct"] = ["c0"]
+    assert codes(lint_graph(as_not_correct)) == ["GW451", "GW452"]
+
+    conforming = deepcopy(data)
+    conforming["expected_szz"]["commit_level"]["related_origins"] = ["c0"]
+    conforming["expected_szz"]["evaluation_variants"] = [deepcopy(ORIGIN_AWARE_VARIANT)]
+    assert lint_graph(conforming).findings == []
+
+
+def test_required_origin_needs_no_variant():
+    """An origin that is itself the answer is exempt (SZZG-0018)."""
+    data = graph_scenario()
+    data["bugs"][0]["bug_introducing_commits"].append({"commit": "c0", "role": "origin"})
+    data["expected_szz"]["commit_level"]["required"] = ["c0", "c1"]
+    assert lint_graph(data).findings == []
+
+
+def test_origin_aware_variant_must_actually_accept_the_origin():
+    """GW453: a variant whose name promises what its policy does not deliver."""
+    data = graph_scenario()
+    data["bugs"][0]["bug_introducing_commits"].append({"commit": "c0", "role": "origin"})
+    data["expected_szz"]["commit_level"]["related_origins"] = ["c0"]
+    # the shape SZZG-0020 carried: named origin-aware, but the origin is only
+    # repeated as related_origins under a policy that does not accept it
+    data["expected_szz"]["evaluation_variants"] = [{
+        "name": "origin-aware",
+        "commit_level": {"required": ["c1"], "related_origins": ["c0"]},
+    }]
+    result = lint_graph(data)
+    assert codes(result) == ["GW453"]
+    assert result.findings[0].location == "expected_szz.evaluation_variants[0]"
 
 
 def test_origin_coverage_ignores_non_origin_roles():

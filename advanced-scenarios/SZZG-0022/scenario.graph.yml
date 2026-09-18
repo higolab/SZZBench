@@ -121,6 +121,8 @@ expected_szz:
       evaluation_policy: exact_set
       required:
       - c2
+      related_origins:
+      - c1
   - name: origin-aware
     description: The direct BIC is required, while the origin BIC is accepted as related context.
     commit_level:

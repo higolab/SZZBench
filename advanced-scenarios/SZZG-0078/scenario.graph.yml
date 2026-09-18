@@ -118,11 +118,22 @@ expected_szz:
     evaluation_policy: exact_set
     required:
     - r1
-    related_but_not_correct:
+    notes: The direct BIC stays r1 even though its message names f1. A message-aware tool can resolve the '(cherry
+      picked from commit <hash>)' footer of r1 to f1 on the review branch, but f1 is not an ancestor of the fix
+      and must not replace r1 in the answer.
+    related_origins:
     - f1
-    notes: The direct BIC stays r1 even though its message names f1. A message-aware tool can resolve the '(cherry picked from
-      commit <hash>)' footer of r1 to f1 on the review branch, but f1 is not an ancestor of the fix and must not replace r1 in
-      the answer.
+  evaluation_variants:
+  - name: origin-aware
+    description: The direct BIC is required; the origin is accepted as related context.
+    commit_level:
+      evaluation_policy: relaxed_with_related
+      required:
+      - r1
+      acceptable_related:
+      - commit: f1
+        reason: origin_bic
+        credit: 0.5
 scenario_design:
   purpose: Evaluate whether an origin reference in the commit message helps or misleads SZZ in a rebase scenario.
   key_property: 'The origin reference lives in the generated repository: the subject of r1 quotes the subject of f1 verbatim and

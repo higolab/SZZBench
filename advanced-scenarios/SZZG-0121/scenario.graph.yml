@@ -161,13 +161,24 @@ expected_szz:
     required:
     - r1
     - c2
-    related_but_not_correct:
-    - c1
     notes: >
-      The bug-fixing commit c3 is on main, whose history contains the
-      cherry-pick r1 but not the feature commit c1. r1 is therefore the
-      bug-introducing commit in scope and c1 its origin; a tool that reports c1
-      has named a commit that is not an ancestor of the fix.
+      The bug-fixing commit c3 is on main, whose history contains the cherry-pick r1 but not the feature commit
+      c1. r1 is therefore the bug-introducing commit in scope and c1 its origin; a tool that reports c1 has named
+      a commit that is not an ancestor of the fix.
+    related_origins:
+    - c1
+  evaluation_variants:
+  - name: origin-aware
+    description: The direct BIC is required; the origin is accepted as related context.
+    commit_level:
+      evaluation_policy: relaxed_with_related
+      required:
+      - r1
+      - c2
+      acceptable_related:
+      - commit: c1
+        reason: origin_bic
+        credit: 0.5
 scenario_design:
   purpose: >
     Combine a two-commit answer whose unreachable half is in a file the fix

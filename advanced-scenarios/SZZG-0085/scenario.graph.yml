@@ -134,7 +134,7 @@ expected_szz:
       evaluation_policy: exact_set
       required:
       - c3
-      related_but_not_correct:
+      related_origins:
       - c1
   - name: origin-aware
     description: The reintroducing commit is required, and the old origin BIC is accepted as related context.

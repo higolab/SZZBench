@@ -139,10 +139,22 @@ expected_szz:
     evaluation_policy: reintroduction_direct
     required:
     - c3
-    related_but_not_correct:
+    notes: c3 is the direct BIC for the final fix c4. Its message and its footer claim a full revert of c2, but
+      its diff undoes only the boundary change; the clamp simplification of c2 survives. c1 is the original BIC
+      of the same faulty statement.
+    related_origins:
     - c1
-    notes: c3 is the direct BIC for the final fix c4. Its message and its footer claim a full revert of c2, but its diff undoes
-      only the boundary change; the clamp simplification of c2 survives. c1 is the original BIC of the same faulty statement.
+  evaluation_variants:
+  - name: origin-aware
+    description: The direct BIC is required; the origin is accepted as related context.
+    commit_level:
+      evaluation_policy: relaxed_with_related
+      required:
+      - c3
+      acceptable_related:
+      - commit: c1
+        reason: origin_bic
+        credit: 0.5
 scenario_design:
   purpose: 'Evaluate a partial revert: c3 reintroduces the boundary bug and is the expected direct BIC for the final fix.'
   key_property: c2 carries two independent changes and c3 is produced by a real git revert --no-commit of c2 followed by restoring

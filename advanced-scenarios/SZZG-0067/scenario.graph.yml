@@ -175,10 +175,25 @@ expected_szz:
     required:
     - r1
     related_but_not_correct:
-    - f1
     - f2
     notes: The BFC r2 is a rebase conflict-resolution commit; the direct BIC is the replayed commit r1. The pre-rebase
-      commits f1 and f2 stay reachable on the feature branch and are related but not the answer for a main-line BFC.
+      commits f1 and f2 stay reachable on the feature branch and are related but not the answer for a main-line
+      BFC.
+    related_origins:
+    - f1
+  evaluation_variants:
+  - name: origin-aware
+    description: The direct BIC is required; the origin is accepted as related context.
+    commit_level:
+      evaluation_policy: relaxed_with_related
+      required:
+      - r1
+      acceptable_related:
+      - commit: f1
+        reason: origin_bic
+        credit: 0.5
+      related_but_not_correct:
+      - f2
 scenario_design:
   purpose: Evaluate whether SZZ can handle a BFC that is itself a rebase conflict-resolution commit.
   key_property: The fix is introduced by r2 while resolving the conflict between f2 and m1; f2 itself did not touch the

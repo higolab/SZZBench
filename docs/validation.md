@@ -253,6 +253,9 @@ With `--simulate`:
 | ~~GW442~~ | retired | `chmod` is now recorded: the generator enables `core.filemode` for scenarios that use it |
 | GW443 | warning | `apply_patch`: recognised by the schema but not implemented, generation fails |
 | GW450 | warning | a BIC whose role contains `origin` is named in none of `expected_szz` lists (`required`, `acceptable_related`, `related_origins`, `related_but_not_correct`, `relevant`) of `commit_level` or of any evaluation variant |
+| GW451 | warning | an origin BIC that the **default** variant does not list under `related_origins`, so predicting it is a plain false positive instead of a recognised origin ([decisions/origin-direct-contract.md](decisions/origin-direct-contract.md) D2) |
+| GW452 | warning | a scenario with an origin BIC and no `origin-aware` evaluation variant, so a tool that reports origins as context cannot be scored (D3) |
+| GW453 | warning | an `origin-aware` variant that does not accept the origin, so the variant's name promises what its policy does not deliver (D3) |
 
 Ghost invariants (the graph counterparts of W420/W421) are **not**
 implemented: `graph_simulator.simulate_graph_scenario` does not expose

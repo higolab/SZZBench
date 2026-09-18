@@ -117,9 +117,23 @@ expected_szz:
     required:
     - c3
     related_but_not_correct:
-    - c1
     - c2
     notes: Only the partial revert c3 is the direct BIC for the later upper-bound fix.
+    related_origins:
+    - c1
+  evaluation_variants:
+  - name: origin-aware
+    description: The direct BIC is required; the origin is accepted as related context.
+    commit_level:
+      evaluation_policy: relaxed_with_related
+      required:
+      - c3
+      acceptable_related:
+      - commit: c1
+        reason: origin_bic
+        credit: 0.5
+      related_but_not_correct:
+      - c2
 scenario_design:
   purpose: Evaluate a partial revert where only part of a previous fix is undone.
   key_property: The direct BIC reintroduces only one of the previously fixed faults.

@@ -171,10 +171,27 @@ expected_szz:
     evaluation_policy: exact_set
     required:
     - r2
-    related_but_not_correct:
+    related_origins:
     - r1
-    - f1
     - f2
+    - f1
+  evaluation_variants:
+  - name: origin-aware
+    description: The direct BIC is required; the origin is accepted as related context.
+    commit_level:
+      evaluation_policy: relaxed_with_related
+      required:
+      - r2
+      acceptable_related:
+      - commit: r1
+        reason: origin_bic
+        credit: 0.5
+      - commit: f2
+        reason: origin_bic
+        credit: 0.5
+      - commit: f1
+        reason: origin_bic
+        credit: 0.5
 scenario_design:
   purpose: Evaluate copy propagation across a rebase. The fixed instance is the copy, so the direct BIC is the commit that
     created the copy, not the commit that first wrote the comparison.

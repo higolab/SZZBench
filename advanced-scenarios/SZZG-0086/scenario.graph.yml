@@ -127,9 +127,23 @@ expected_szz:
     required:
     - c3
     related_but_not_correct:
-    - c1
     - c2
     notes: c3 is the direct re-BIC for c4; c1 is the older origin BIC and c2 is the reverted prior fix.
+    related_origins:
+    - c1
+  evaluation_variants:
+  - name: origin-aware
+    description: The direct BIC is required; the origin is accepted as related context.
+    commit_level:
+      evaluation_policy: relaxed_with_related
+      required:
+      - c3
+      acceptable_related:
+      - commit: c1
+        reason: origin_bic
+        credit: 0.5
+      related_but_not_correct:
+      - c2
 scenario_design:
   purpose: Evaluate whether SZZ returns the revert commit that reintroduced the bug rather than the original historical BIC.
   key_property: The bug was fixed once, but reverting that fix creates the direct BIC for the later BFC.

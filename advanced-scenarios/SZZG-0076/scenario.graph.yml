@@ -147,9 +147,24 @@ expected_szz:
     required:
     - r1
     - r2
-    related_but_not_correct:
+    related_origins:
     - f1
     - f2
+  evaluation_variants:
+  - name: origin-aware
+    description: The direct BIC is required; the origin is accepted as related context.
+    commit_level:
+      evaluation_policy: relaxed_with_related
+      required:
+      - r1
+      - r2
+      acceptable_related:
+      - commit: f1
+        reason: origin_bic
+        credit: 0.5
+      - commit: f2
+        reason: origin_bic
+        credit: 0.5
 scenario_design:
   purpose: Evaluate multiple-BIC handling when BICs are introduced by rebase replay.
   key_property: Origin BIC set maps to direct BIC set.
