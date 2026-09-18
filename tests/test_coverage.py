@@ -123,6 +123,66 @@ def test_oracle_size_separates_scenarios_of_the_same_shape(tmp_path):
     shapes = {s["scenario_id"]: s for s in report["shapes"]}
     assert shapes["SZZG-9120"]["oracle_size"] == 1
     assert shapes["SZZG-9121"]["oracle_size"] == 2
+    # the depth is the distance to the *farthest* required BIC: c1, not c2
+    assert shapes["SZZG-9121"]["bic_depth"] == 2
+    assert shapes["SZZG-9120"]["bic_depth"] == 2
     assert report["redundant_groups"] == []
     assert json.dumps(report)                      # serialisable for --json / --out
     assert "distinct signatures" in format_report(report)
+
+
+# ---------------------------------------------------------------------------
+# Regressions from the PR #38 review
+# ---------------------------------------------------------------------------
+
+
+def test_the_oracle_is_resolved_exactly_as_the_evaluator_resolves_it():
+    """Every shipped scenario must agree with the evaluator's required set.
+
+    Reading the YAML fields directly missed a graph scenario's default
+    evaluation variant and the inferred direct BICs of a scenario that omits
+    `required`, which made four shipped scenarios look like empty oracles.
+    """
+    from szzbench.coverage import _oracle_ids
+    from szzbench.evaluator import _commit_level_policy, _find_scenario_path, _load_scenario_for_evaluation
+
+    root = Path(__file__).resolve().parents[1]
+    checked = disagreements = 0
+    for pattern, suite in ((f"scenarios/SZZ-*/scenario.yml", "scenarios"),
+                           (f"advanced-scenarios/SZZG-*/scenario.graph.yml", "advanced-scenarios")):
+        for path in sorted(root.glob(pattern)):
+            scenario_id = path.parent.name
+            found, found_suite = _find_scenario_path(scenario_id, root / "scenarios",
+                                                     root / "advanced-scenarios")
+            assert found == path and found_suite == suite
+            data, errors = _load_scenario_for_evaluation(path, suite)
+            assert data is not None and not errors
+            checked += 1
+            if _oracle_ids(data, suite) != set(_commit_level_policy(data, suite, None).required):
+                disagreements += 1
+    assert checked > 200
+    assert disagreements == 0
+
+
+def test_a_default_evaluation_variant_and_an_inferred_bic_are_both_picked_up(tmp_path):
+    from szzbench.coverage import _oracle_ids
+
+    # `required` omitted: the direct BICs are inferred
+    inferred = {"bugs": [{"id": "B001",
+                          "bug_introducing_commits": [{"commit": "c1", "role": "direct"},
+                                                      {"commit": "c0", "role": "origin"}],
+                          "bug_fixing_commits": [{"commit": "c2", "role": "complete_fix"}],
+                          "expected_szz": {"commit_level": {"evaluation_policy": "exact_set"}}}]}
+    assert _oracle_ids(inferred, "advanced-scenarios") == {"c1"}
+
+    # a default variant selects the required set
+    variant = {"bugs": [{"id": "B001",
+                         "bug_introducing_commits": [{"commit": "c1", "role": "origin"},
+                                                     {"commit": "c2", "role": "direct"}],
+                         "bug_fixing_commits": [{"commit": "c3", "role": "complete_fix"}],
+                         "expected_szz": {"commit_level": {
+                             "default_variant": "direct-only",
+                             "evaluation_variants": {
+                                 "direct-only": {"evaluation_policy": "exact_set", "required": ["c2"]},
+                                 "with-origin": {"evaluation_policy": "exact_set", "required": ["c1", "c2"]}}}}}]}
+    assert _oracle_ids(variant, "advanced-scenarios") == {"c2"}

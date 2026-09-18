@@ -15,9 +15,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
-import yaml
-
 from .baselines import GitProbe, Scenario, _load_scenarios
+from .evaluator import _commit_level_policy, _load_scenario_for_evaluation
 
 #: The dimensions a scenario is grouped by.  ``category`` keeps scenarios that
 #: test different failure modes apart even when their shape agrees.
@@ -45,13 +44,15 @@ class ScenarioShape:
                 ("scenario_id", *SIGNATURE_FIELDS, "factors")}
 
 
-def _oracle_ids(data: dict[str, Any]) -> set[str]:
-    required: set[str] = set()
-    for bug in data.get("bugs") or []:
-        level = (bug.get("expected_szz") or {}).get("commit_level") or {}
-        required |= set(level.get("true_positives") or []) | set(level.get("required") or [])
-    level = (data.get("expected_szz") or {}).get("commit_level") or {}
-    return required | set(level.get("required") or [])
+def _oracle_ids(data: dict[str, Any], suite: str) -> set[str]:
+    """The required set the evaluator would use.
+
+    Reading the YAML fields directly is not enough: a graph scenario can select
+    its required set through a default evaluation variant, and a scenario that
+    omits ``required`` has its direct BICs inferred.  Four shipped scenarios
+    looked like empty oracles that way (PR #38 review).
+    """
+    return set(_commit_level_policy(data, suite, None).required)
 
 
 def _fault_files(data: dict[str, Any]) -> set[str]:
@@ -69,7 +70,7 @@ def _fault_files(data: dict[str, Any]) -> set[str]:
 
 
 def _shape(scenario: Scenario, data: dict[str, Any], git: GitProbe) -> ScenarioShape:
-    required = _oracle_ids(data)
+    required = _oracle_ids(data, scenario.suite)
     files = _fault_files(data)
     order = scenario.hashes
     index_of = {h: i for i, h in enumerate(order)}
@@ -95,7 +96,8 @@ def _shape(scenario: Scenario, data: dict[str, Any], git: GitProbe) -> ScenarioS
         commit_count=len(order),
         ref_count=len(refs),
         oracle_size=len(required),
-        bic_depth=(last_bfc - max(bic_positions)) if bic_positions else None,
+        # the *farthest* required BIC: the deepest one a tool has to reach
+        bic_depth=(last_bfc - min(bic_positions)) if bic_positions else None,
         fault_file_distractors=distractors,
         factors=sorted((data.get("meta") or {}).get("factors") or []),
     )
@@ -116,7 +118,11 @@ def run_coverage(
         path = scenarios_root / scenario.scenario_id / "scenario.yml"
         if not path.exists():
             path = advanced_scenarios_root / scenario.scenario_id / "scenario.graph.yml"
-        shapes.append(_shape(scenario, yaml.safe_load(path.read_text(encoding="utf-8")), git))
+        data, _ = _load_scenario_for_evaluation(path, scenario.suite)
+        if data is None:
+            errors.append(f"{scenario.scenario_id}: cannot read the scenario for coverage.")
+            continue
+        shapes.append(_shape(scenario, data, git))
 
     groups: dict[tuple[Any, ...], list[str]] = collections.defaultdict(list)
     for shape in shapes:

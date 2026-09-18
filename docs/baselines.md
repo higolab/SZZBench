@@ -75,13 +75,14 @@ Read this table before reading any result reported on SZZBench:
 
   | | best fixed rule | union over all rules |
   |---|---|---|
-  | 190 scenarios with a one-commit oracle | 144/190 = 75.8% | **190/190** |
+  | 194 scenarios with a one-commit oracle | 145/194 = 74.7% | **194/194** |
   | 16 scenarios with a two-commit oracle | 1/16 | 9/16 |
 
   A one-commit answer inside a three- or four-commit history is reachable by
-  *some* cheap rule in every single case; the depth of the bug-introducing
-  commit does not change that (scenarios at depth 3 and 4+ are equally
-  reachable). Oracle size is the dimension that separates them.
+  *some* cheap rule in every single case, at every depth — 94/94 at depth 1,
+  82/82 at depth 2, 14/14 at depth 3 and 4/4 beyond. Oracle size is the
+  dimension that separates them, and a longer or deeper history on its own
+  will not raise the floor.
 - **Thirteen of the seventeen categories are 100% solvable** by a cheap
   baseline (S1, S2, S3, S4, S5, S7, S8, G1, G4, G6, G7, G8, G9); only G2
   (93.3%), G3 (84.6%), G5 (88.2%) and S6 (80.0%) have any headroom at all.
@@ -120,22 +121,27 @@ szzbench coverage --out studies/coverage
 | `oracle_size` | how many commits the answer contains |
 | `bic_depth` | commits between the deepest required BIC and the fix |
 | `fault_file_distractors` | commits before the fix that touch a file the fault lives in and are **not** the answer |
+
+`oracle_size` and `bic_depth` come from the evaluator's own policy resolution
+(`_commit_level_policy`), so a default evaluation variant and an inferred
+direct BIC are read the same way a scored run reads them. `bic_depth` measures
+the **farthest** required BIC — the deepest commit a tool has to reach.
 | `commit_count`, `ref_count` | size and branchiness of the history |
 
 Measured on the shipped suite (210 scenarios):
 
 ```text
-oracle_size            0:4, 1:190, 2:16
-bic_depth              1:107, 2:82, 3:13, 4:1, 5:1, 6:1, 1003:1, none:4
-fault_file_distractors 0:8, 1:100, 2:71, 3:23, 4:7, 5:1
+oracle_size            1:194, 2:16
+bic_depth              1:94, 2:97, 3:15, 4:1, 5:1, 6:1, 1003:1
+fault_file_distractors 0:9, 1:99, 2:73, 3:22, 4:6, 5:1
 commit_count           2:4, 3:55, 4:98, 5:39, 6:10, 7:2, 8:1, 1005:1
 ref_count              1:171, 2:36, 3:3
 
-82 distinct signatures; 39 groups of two or more, covering 167 scenarios
+81 distinct signatures; 39 groups of two or more, covering 168 scenarios
 ```
 
-The largest groups are 27 S3, 10 S4, 9 S2 and 8 S1 scenarios that agree on
-every dimension. Read together with the baseline table, the suite concentrates
+The largest groups are 27 S3, 10 S4, 9 S2, 8 S1 and 8 G1 scenarios that agree
+on every dimension; 42 scenarios have a signature of their own. Read together with the baseline table, the suite concentrates
 in one cell — a one-commit answer, one or two commits before the fix, in a
 three- or four-commit single-branch history — and **that cell is where the
 cheap rules win**.
