@@ -65,7 +65,7 @@ return value >= min && value <= max;
 Expected BIC:
 
 ```text
-c1
+c1, c2
 ```
 
 Bug-fixing commits:

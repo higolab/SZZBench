@@ -116,8 +116,15 @@ Read this table before reading any result reported on SZZBench:
   Eleven of the twelve two-commit oracles a cheap rule solves fall to the same
   rule, `blame-deleted-lines`, and for the same reason: their fix deletes one
   line from each of the two commits, so naive blame returns both. That is the
-  shape the discriminating tier is built to avoid. The twelfth is solved only
-  by `shape-last-toucher`.
+  shape the discriminating tier is built to avoid.
+
+  The twelfth is **SZZG-0007**, and blame cannot reach it: both files the fix
+  touches were created by `c2`, so blame answers `{c2}` and misses `c1`. It
+  falls instead to `position-all-non-fix` and to `author:Aiko Tanaka`, each of
+  which predicts `{c1, c2}` — the history is three commits long and the two
+  non-fix commits *are* the answer, and the same two commits happen to share an
+  author. `shape-last-toucher` does **not** solve it (it answers `{c2}`); the
+  five two-commit scenarios it does solve are all solved by blame as well.
 
   (An earlier revision of this table reported `1/21` as the best fixed rule on
   two-commit oracles. That figure was wrong: recomputed on the same 215-scenario

@@ -53,14 +53,19 @@ Each BFC deletes exactly one line (`git diff -U0 <bfc>^ <bfc>`):
 | `B001-B` (scored) | `c3` | `B.java:5` | `c1` | `c1` | `c0`, via `A.java` | `c1` |
 | `B001-A` | `c2` | `A.java:5` | `c0` | `c0` | `c0` | `c0` |
 
-For the scored bug `B001-B` the plain-blame outcome at `c3^` is **exact**: plain blame returns `c1`, which is
-the required set. `git blame -C -C -L5,5` also returns `c1` (the one-line chunk stays below the copy-detection
-score threshold); only whole-file copy detection rewrites the answer to the origin `c0`, which is **not** in
-`expected_szz` and would therefore be a miss.
+Per bug, blame is exact. For `B001-B` plain blame at `c3^` returns `c1`; `git blame -C -C -L5,5` also returns
+`c1` (the one-line chunk stays below the copy-detection score threshold), and only whole-file copy detection
+rewrites it to `c0`. For `B001-A` blame at `c2^` returns `c0`.
 
-The graph verifier reports `GI703` for `B001-B` and `GW703` for `B001-A`. The `GW703` is expected and
-pre-existing. `B001-A`'s BIC now carries the role `direct`, which is what it is: `c0` wrote the fault into
-`A.java` that `c2` fixes.
+The **scenario** oracle is not either of those answers on its own: it is their union `{c0, c1}`, because both
+bug-fixing commits are in scope (contract D9). So a tool that scores one bug at a time reaches each answer by
+blame alone, while a tool that reports one set for the scenario has to report both commits — predicting `{c1}`
+fails with `c0` missing.
+
+The graph verifier reports `GI703` for **both** bugs — "basic git blame reaches an expected graph BIC" — now
+that `B001-A`'s BIC carries the role `direct`, which is what it is: `c0` wrote the fault into `A.java` that
+`c2` fixes. (Before that role change it reported `GW703` for `B001-A`, because the verifier's blame check
+only accepts `direct`, `reintroducing` and `contributing`.)
 
 ## What a tool must do to pass
 

@@ -3,8 +3,9 @@ meta:
   id: SZZG-0028
   title: The copy and the later edit are both required; the origin is not
   slug: origin-and-direct-clone-bics
-  description: Evaluates origin bic and direct copied-code bic are both required and checks whether SZZ identifies the expected
-    bug-introducing commit set.
+  description: >-
+    Evaluates whether SZZ reports the copy that carried a fault into the fixed file, and the later commit that
+    added a second fault to it, without reporting the origin the copy came from.
   category: "Clone, copy propagation, and origin-vs-direct BIC"
   category_code: "G2"
   factors:

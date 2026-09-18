@@ -6,7 +6,8 @@
 
 ## Purpose
 
-Evaluate origin bic and direct copied-code bic are both required and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate whether SZZ reports the copy that carried a fault into the fixed file, and the later commit that
+added a second fault to it, **without** reporting the origin the copy came from.
 
 ## Expected history
 

@@ -69,9 +69,11 @@ Both lines modified by the BFC live in files created by `c2`. Checked on the gen
 | `git blame -C -C -C1` (copy detection across files created in the same commit, low threshold) | `c1`, via `Range.java` | `c1`, via `Range.java` |
 | `git log -S'return value > min && value < max;'` | `c3`, `c2`, `c1` (oldest hit is `c1`) | same |
 
-Plain blame therefore returns the move/copy commit `c2` for both fixed lines, not the BIC. Reaching `c1`
-requires refactoring- or clone-aware tracing: recognising that `c2` moved the line from `Range.java` into
-`RangeUtils.java` and copied it into `Bounds.java`, then continuing the line history in `Range.java`. That is
+Plain blame therefore returns `{c2}` for both fixed lines. That is not a wrong commit — `c2` *is* a required
+BIC, as the direct BIC of the instance its copy created — it is an **incomplete** answer, missing `c1`.
+Reaching `c1` requires refactoring- or clone-aware tracing: recognising that `c2` moved the line from
+`Range.java` into `RangeUtils.java` and copied it into `Bounds.java`, then continuing the line history in
+`Range.java`. That is
 the intended difficulty. The graph verifier reports `GW701` ("fault.statement not present in final BFC
 parent") for the same reason: the fault text is no longer in `Range.java` at `c3^`.
 
