@@ -740,3 +740,36 @@ def test_index_factors_must_match_the_scenario(tmp_path):
     stale = validate_index_file(index(["boundary_condition"]), root, "scenario.yml")
     assert [f.code for f in stale.findings] == ["IE043"]
     assert "boundary_condition" in stale.findings[0].message
+
+
+def test_index_factors_of_the_wrong_type_are_reported_not_coerced(tmp_path):
+    """IE044: neither side is validated before this check runs.
+
+    `list()` on an int raises and aborts the whole command, and `list()` on a
+    mapping silently compares its keys, so a wrong value passes (PR #46 review).
+    """
+    from szzbench.validator import validate_index_file
+
+    root = tmp_path / "scenarios"
+    (root / "SZZ-0001").mkdir(parents=True)
+
+    def write(meta_factors):
+        scenario = graph_scenario()
+        scenario["meta"] = {"id": "SZZ-0001", "title": "A scenario", "factors": meta_factors}
+        (root / "SZZ-0001" / "scenario.yml").write_text(yaml.safe_dump(scenario, sort_keys=False))
+
+    def index(factors):
+        path = tmp_path / "index.yml"
+        path.write_text(yaml.safe_dump(
+            {"scenarios": [{"id": "SZZ-0001", "title": "A scenario", "factors": factors}]}, sort_keys=False))
+        return path
+
+    # an int on the index side used to raise TypeError
+    write(["boundary-condition"])
+    assert [f.code for f in validate_index_file(index(1), root, "scenario.yml").findings] == ["IE044"]
+    # a mapping used to compare equal, because list() keeps only its keys
+    assert [f.code for f in validate_index_file(index({"boundary-condition": "incorrect-value"}),
+                                                root, "scenario.yml").findings] == ["IE044"]
+    # and the scenario side is just as unvalidated
+    write(True)
+    assert [f.code for f in validate_index_file(index(["boundary-condition"]), root, "scenario.yml").findings] == ["IE044"]

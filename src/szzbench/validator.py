@@ -669,10 +669,21 @@ def validate_index_file(index_path: Path, root: Path, scenario_filename: str) ->
             result.error("IE040", f"Index entry id '{sid}' does not match meta.id '{meta.get('id')}' in {expected_rel(sid)}.", f"{loc}.id")
         if "title" in entry and entry.get("title") != meta.get("title"):
             result.error("IE041", f"Index entry '{sid}' title '{entry.get('title')}' does not match meta.title '{meta.get('title')}'.", f"{loc}.title")
-        if "factors" in entry and list(entry.get("factors") or []) != list(meta.get("factors") or []):
+        if "factors" in entry:
             # The index repeats a field that changes with the scenario, which is
-            # how it drifted before (issue #19); the copy has to be checked.
-            result.error("IE043", f"Index entry '{sid}' factors {list(entry.get('factors') or [])} do not match meta.factors {list(meta.get('factors') or [])}.", f"{loc}.factors")
+            # how it drifted before (issue #19); the copy has to be checked.  Both
+            # sides are unvalidated input here - validate_index_file does not run
+            # scenario validation first - so a non-list is reported rather than
+            # coerced: list() on an int raises, and list() on a mapping silently
+            # compares its keys (PR #46 review).
+            index_factors, meta_factors = entry.get("factors"), meta.get("factors")
+            bad = [(name, value) for name, value in (("index entry", index_factors), ("meta.factors", meta_factors))
+                   if value is not None and not isinstance(value, list)]
+            if bad:
+                for name, value in bad:
+                    result.error("IE044", f"Index entry '{sid}': {name} factors must be a list, got {type(value).__name__}.", f"{loc}.factors")
+            elif list(index_factors or []) != list(meta_factors or []):
+                result.error("IE043", f"Index entry '{sid}' factors {list(index_factors or [])} do not match meta.factors {list(meta_factors or [])}.", f"{loc}.factors")
 
     for child in sorted(root.iterdir()):
         if child.is_dir() and (child / scenario_filename).is_file() and child.name not in seen:
