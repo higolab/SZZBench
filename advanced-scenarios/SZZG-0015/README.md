@@ -9,19 +9,19 @@
 Evaluate a copy-propagated bug whose two instances are fixed in two different commits. `A.java` already contains
 an exclusive range check when the repository is created. `c1` copies that file to `B.java`, so the faulty
 statement enters `B.java` verbatim; only the class declaration is adapted so that both classes compile in the
-same package. `c2` fixes the *original* instance in `A.java`, and only `c3` fixes the *copied* instance in
+same package. `c2` fixes the *copied* instance in `B.java`, and only `c3`, later, fixes the *original* in
 `B.java`.
 
 For the `B.java` fix the expected direct BIC is the copy commit `c1`. `c0` is origin context, and the earlier
-`A.java` fix `c2` is not the BFC of the copied instance.
+later `A.java` fix `c3` is not the BFC of the copied instance.
 
 ## Commit history
 
 ```text
 c0: add A with an exclusive range check
 c1: copy A.java to B.java and rename the copied class (direct BIC for B.java)
-c2: include the bounds in A.contains
-c3: include the bounds in B.contains (BFC)
+c2: include the bounds in B.contains (BFC)
+c3: include the bounds in A.contains, later than the copy
 ```
 
 ## Commit table
@@ -30,8 +30,8 @@ c3: include the bounds in B.contains (BFC)
 |---|---|---|---|---|
 | `c0` | `main` | none | initial | Creates `example.A` with `contains(int, int, int)` returning `value > min && value < max` (bounds excluded). |
 | `c1` | `main` | `c0` | bug_introducing | `copy_file A.java -> B.java`, then one `replace` that turns `public class A {` into `public class B {`. The faulty statement is copied byte-for-byte. |
-| `c2` | `main` | `c1` | bug_fixing | Fixes the original instance: `A.java` gets `return value >= min && value <= max;`. `B.java` is untouched. |
-| `c3` | `main` | `c2` | bug_fixing | Fixes the copied instance in `B.java`. This is the BFC of the recorded bug. |
+| `c2` | `main` | `c1` | bug_fixing | Fixes the copied instance in `B.java`. This is the BFC of the recorded bug. `A.java` is untouched. |
+| `c3` | `main` | `c2` | origin_bug_fixing | Fixes the original instance in `A.java`, later than the scored fix. |
 
 `git show -C -C` on `c1` reports `copy from src/main/java/example/A.java` with `similarity index 87%`: the two
 files differ only in the class declaration line.
@@ -40,26 +40,26 @@ files differ only in the class declaration line.
 
 - Expected BIC: `c1` (exact set)
 - Origin BIC: `c0` (role `origin`, deliberately not listed in `expected_szz`; see issue #3)
-- Bug-fixing commit: `c3` (the `A.java` fix `c2` is *not* the BFC of this bug)
+- Bug-fixing commit: `c2` (the later `A.java` fix `c3` is *not* the BFC of this bug)
 - Fault: `return value > min && value < max;` in `B.java` (`c1`)
-- Fix: `return value >= min && value <= max;` in `B.java` (`c3`)
+- Fix: `return value >= min && value <= max;` in `B.java` (`c2`)
 
-## Measured plain-blame behaviour at `c3^`
+## Measured plain-blame behaviour at `c2^`
 
-`git diff -U0 c3^ c3` deletes exactly one line, `src/main/java/example/B.java:5`. Measured on the generated
+`git diff -U0 c2^ c2` deletes exactly one line, `src/main/java/example/B.java:5`. Measured on the generated
 repository:
 
 | Command | Result for the deleted line | Verdict |
 |---|---|---|
-| `git blame c3^ -- B.java` (plain) | `c1` | **exact** |
-| `git blame -L5,5 c3^ -- B.java` | `c1` | exact |
-| `git blame -C c3^ -- B.java` | `c1` | exact |
-| `git blame -C -C c3^ -- B.java` (whole file) | `c0`, via `src/main/java/example/A.java` | origin instead of the direct BIC |
-| `git blame -C -C -C c3^ -- B.java` (whole file) | `c0`, via `src/main/java/example/A.java` | origin instead of the direct BIC |
-| `git blame -C -C -L5,5 c3^ -- B.java` | `c1` | the one-line chunk stays below the copy-detection score threshold |
+| `git blame c2^ -- B.java` (plain) | `c1` | **exact** |
+| `git blame -L5,5 c2^ -- B.java` | `c1` | exact |
+| `git blame -C c2^ -- B.java` | `c1` | exact |
+| `git blame -C -C c2^ -- B.java` (whole file) | `c0`, via `src/main/java/example/A.java` | origin instead of the direct BIC |
+| `git blame -C -C -C c2^ -- B.java` (whole file) | `c0`, via `src/main/java/example/A.java` | origin instead of the direct BIC |
+| `git blame -C -C -L5,5 c2^ -- B.java` | `c1` | the one-line chunk stays below the copy-detection score threshold |
 | `git log -L5,5:src/main/java/example/B.java` | `c1` | exact |
 
-The plain-blame outcome at `c3^` is **exact**. The graph verifier confirms this with `GI703`; there is no
+The plain-blame outcome at `c2^` is **exact**. The graph verifier confirms this with `GI703`; there is no
 designed blame miss in this scenario.
 
 ## What a tool must do to pass
@@ -68,7 +68,7 @@ designed blame miss in this scenario.
 - Do not answer with the origin `c0`: whole-file copy detection (`git blame -C -C`) follows the copied block
   into `A.java` and reaches `c0`, which is related history but not the commit that introduced the fault into the
   fixed file.
-- Do not pair the `B.java` fault with the earlier `A.java` fix `c2`. `c2` touches the same statement text in a
+- Do not pair the `B.java` fault with the later `A.java` fix `c3`. `c3` touches the same statement text in a
   different file and is a plausible but wrong BFC for this bug; a tool that starts from `c2` would blame `c0`.
 
 ## Compilation
@@ -118,3 +118,9 @@ SZZG-0015/
   class to `B` in the same commit, so every snapshot compiles and both files coexist in package `example`. The
   copied faulty statement, the oracle (`c1` direct, `c0` origin, `c3` BFC) and the factors are unchanged; the
   commit messages were rewritten to realistic, role-neutral text.
+
+## Difference from SZZG-0018
+
+SZZG-0018 fixes the original first and the clone afterwards. This scenario reverses that order, so the
+original is the instance that stays faulty longest. Before the 2026-09 repair both scenarios generated
+byte-identical repositories (issue #11).
