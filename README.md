@@ -107,7 +107,7 @@ In short, `scenario.yml` is treated as a restricted subset of `scenario.graph.ym
 only, history position only, file-touch shape, and the classic blame baseline —
 with the ordinary evaluator, so every result on SZZBench can be read against a
 floor. Measured on the shipped suite: **"report the second commit of the history",
-which opens no file at all, solves 147/210 — more than the classic
+which opens no file at all, solves 146/210 — more than the classic
 `blame-deleted-lines` baseline at 141/210**; 203 of 210 scenarios are solved by
 at least one baseline, and the seven that are not all have a multi-commit
 oracle. The metadata family

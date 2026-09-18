@@ -40,19 +40,36 @@ FAMILIES = ("metadata", "position", "shape", "blame")
 
 
 @dataclass
+class CommitInfo:
+    """One materialized Git commit, as a predictor sees it."""
+
+    hash: str
+    logical_id: str | None
+    author: str
+    subject: str
+
+
+@dataclass
 class Scenario:
-    """Everything a baseline predictor may look at."""
+    """Everything a baseline predictor may look at.
+
+    The commits are the **materialized** history, in
+    ``git rev-list --all --topo-order --reverse`` order, so parents come before
+    children and commits expanded by ``commit_generator`` are present.  A
+    predictor names a commit by its hash; mapping that back to a logical id is
+    the evaluator's job.
+    """
 
     scenario_id: str
     suite: str
     category: str | None
-    commit_ids: list[str]
-    bfc_ids: list[str]
-    authors: dict[str, str]
-    messages: dict[str, str]
-    hash_of: dict[str, str]
-    id_of: dict[str, str]
+    commits: list[CommitInfo]
+    bfc_hashes: set[str]
     repo_dir: Path
+
+    @property
+    def hashes(self) -> list[str]:
+        return [c.hash for c in self.commits]
 
 
 @dataclass
@@ -94,98 +111,113 @@ Predictor = Callable[[Scenario], Iterable[str]]
 ADMITS_FAULT = re.compile(r"\b(bugs?|buggy|faulty|faults?|defects?|broken|BIC|distractor|noise)\b", re.I)
 
 
-def _non_bfc(scenario: Scenario) -> list[str]:
-    return [c for c in scenario.commit_ids if c not in scenario.bfc_ids]
+def _non_bfc(scenario: Scenario) -> list[CommitInfo]:
+    return [c for c in scenario.commits if c.hash not in scenario.bfc_hashes]
 
 
 def _by_author(author: str) -> Predictor:
     def predict(scenario: Scenario) -> list[str]:
-        return [c for c in scenario.commit_ids if scenario.authors.get(c) == author]
+        return [c.hash for c in scenario.commits if c.author == author]
     return predict
 
 
 def _message_admits_fault(scenario: Scenario) -> list[str]:
-    return [c for c in _non_bfc(scenario) if ADMITS_FAULT.search(scenario.messages.get(c, ""))]
+    return [c.hash for c in _non_bfc(scenario) if ADMITS_FAULT.search(c.subject)]
 
 
 def _at_index(index: int) -> Predictor:
     def predict(scenario: Scenario) -> list[str]:
-        ids = scenario.commit_ids
-        return [ids[index]] if len(ids) > index else []
+        hashes = scenario.hashes
+        return [hashes[index]] if len(hashes) > index else []
     return predict
 
 
 def _before_bfc(scenario: Scenario) -> list[str]:
-    positions = [i for i, c in enumerate(scenario.commit_ids) if c in scenario.bfc_ids]
+    positions = [i for i, c in enumerate(scenario.commits) if c.hash in scenario.bfc_hashes]
     if not positions or positions[-1] == 0:
         return []
-    return [scenario.commit_ids[positions[-1] - 1]]
+    return [scenario.commits[positions[-1] - 1].hash]
 
 
 def _all_non_bfc(scenario: Scenario) -> list[str]:
-    return _non_bfc(scenario)
+    return [c.hash for c in _non_bfc(scenario)]
 
 
-def _git(repo: Path, *args: str) -> str:
-    try:
-        return run_git(repo, list(args)).stdout
-    except GitError:
-        return ""
+class GitProbe:
+    """Runs Git for the predictors and keeps every failure visible.
+
+    A failed Git call must not look like "this baseline found nothing": that
+    would silently lower the published floor.
+    """
+
+    def __init__(self) -> None:
+        self.failures: list[str] = []
+
+    def __call__(self, repo: Path, *args: str) -> str:
+        try:
+            return run_git(repo, list(args)).stdout
+        except GitError as exc:
+            self.failures.append(f"{repo.parent.parent.name}: git {' '.join(args[:2])} failed: {exc}")
+            return ""
+
+    def paths_touched(self, repo: Path, commit: str) -> list[str]:
+        """Paths a commit changes, read NUL-delimited so no quoting is involved."""
+        out = self(repo, "diff", "--name-only", "--no-renames", "-z", f"{commit}^", commit)
+        return [p for p in out.split("\0") if p]
 
 
 def _bfc_hashes(scenario: Scenario) -> list[str]:
-    return [scenario.hash_of[b] for b in scenario.bfc_ids if b in scenario.hash_of]
+    return [h for h in scenario.hashes if h in scenario.bfc_hashes]
 
 
-def _files_touched(repo: Path, commit: str) -> list[str]:
-    out = _git(repo, "diff", "--name-only", "--no-renames", f"{commit}^", commit)
-    return [line for line in out.splitlines() if line.strip()]
-
-
-def _last_toucher(scenario: Scenario) -> list[str]:
+def _last_toucher(git: GitProbe) -> Predictor:
     """The newest commit before the fix that touched any file the fix touches."""
-    found: list[str] = []
-    for bfc_hash in _bfc_hashes(scenario):
-        for path in _files_touched(scenario.repo_dir, bfc_hash):
-            out = _git(scenario.repo_dir, "log", "-1", "--format=%H", f"{bfc_hash}^", "--", path)
-            commit_hash = out.strip()
-            if commit_hash and scenario.id_of.get(commit_hash):
-                found.append(scenario.id_of[commit_hash])
-    return sorted(set(found))
+    def predict(scenario: Scenario) -> list[str]:
+        found: list[str] = []
+        for bfc_hash in _bfc_hashes(scenario):
+            for path in git.paths_touched(scenario.repo_dir, bfc_hash):
+                out = git(scenario.repo_dir, "log", "-1", "--format=%H", f"{bfc_hash}^", "--", path)
+                if out.strip():
+                    found.append(out.strip())
+        return sorted(set(found))
+    return predict
 
 
 _HUNK_RE = re.compile(r"@@ -(\d+)")
 
 
-def _blame_deleted_lines(scenario: Scenario) -> list[str]:
-    """Naive B-SZZ: blame every line the fix deletes, against its first parent."""
-    found: list[str] = []
-    for bfc_hash in _bfc_hashes(scenario):
-        diff = _git(scenario.repo_dir, "diff", "-U0", "--no-renames", f"{bfc_hash}^", bfc_hash)
-        path: str | None = None
-        line_no: int | None = None
-        for line in diff.splitlines():
-            if line.startswith("--- a/"):
-                path = line[6:]
-            elif line.startswith("--- /dev/null"):
-                path = None
-            elif line.startswith("@@"):
-                match = _HUNK_RE.match(line)
-                line_no = int(match.group(1)) if match else None
-            elif line.startswith("-") and not line.startswith("---") and path and line_no is not None:
-                porcelain = _git(scenario.repo_dir, "blame", "--line-porcelain",
-                                 "-L", f"{line_no},{line_no}", f"{bfc_hash}^", "--", path)
-                if porcelain:
-                    commit_hash = porcelain.split("\n", 1)[0].split()[0]
-                    if scenario.id_of.get(commit_hash):
-                        found.append(scenario.id_of[commit_hash])
-                line_no += 1
-            elif line.startswith(" ") and line_no is not None:
-                line_no += 1
-    return sorted(set(found))
+def _blame_deleted_lines(git: GitProbe) -> Predictor:
+    """Naive B-SZZ: blame every line the fix deletes, against its first parent.
+
+    The diff is taken one file at a time, with the path coming from the
+    NUL-delimited file list rather than from a ``--- a/`` header: Git
+    terminates that header with a tab when the path contains a space and
+    quotes paths with special characters.
+    """
+    def predict(scenario: Scenario) -> list[str]:
+        found: list[str] = []
+        for bfc_hash in _bfc_hashes(scenario):
+            for path in git.paths_touched(scenario.repo_dir, bfc_hash):
+                diff = git(scenario.repo_dir, "diff", "-U0", "--no-renames",
+                           f"{bfc_hash}^", bfc_hash, "--", path)
+                line_no: int | None = None
+                for line in diff.splitlines():
+                    if line.startswith("@@"):
+                        match = _HUNK_RE.match(line)
+                        line_no = int(match.group(1)) if match else None
+                    elif line.startswith("-") and not line.startswith("---") and line_no is not None:
+                        porcelain = git(scenario.repo_dir, "blame", "--line-porcelain",
+                                        "-L", f"{line_no},{line_no}", f"{bfc_hash}^", "--", path)
+                        if porcelain:
+                            found.append(porcelain.split("\n", 1)[0].split()[0])
+                        line_no += 1
+                    elif line.startswith(" ") and line_no is not None:
+                        line_no += 1
+        return sorted(set(found))
+    return predict
 
 
-def build_predictors(scenarios: list[Scenario]) -> list[tuple[str, str, str, Predictor]]:
+def build_predictors(scenarios: list[Scenario], git: GitProbe) -> list[tuple[str, str, str, Predictor]]:
     """(name, family, description, predictor), including one rule per author.
 
     The author rules are enumerated over the whole suite and only their best is
@@ -193,25 +225,25 @@ def build_predictors(scenarios: list[Scenario]) -> list[tuple[str, str, str, Pre
     choosing the matching author per scenario would need the oracle.
     """
     predictors: list[tuple[str, str, str, Predictor]] = []
-    for author in sorted({a for s in scenarios for a in s.authors.values()}):
+    for author in sorted({c.author for s in scenarios for c in s.commits}):
         name = author.split("<")[0].strip() or author
         predictors.append((f"author:{name}", "metadata",
                            f"report every commit written by {name}", _by_author(author)))
     predictors.append(("message-admits-fault", "metadata",
-                       "report the non-fixing commits whose message admits a fault",
+                       "report the non-fixing commits whose subject admits a fault",
                        _message_admits_fault))
     for index, ordinal in ((0, "first"), (1, "second"), (2, "third")):
         predictors.append((f"position-{ordinal}", "position",
                            f"report the {ordinal} commit of the history", _at_index(index)))
     predictors.append(("position-before-fix", "position",
-                       "report the commit listed immediately before the fix", _before_bfc))
+                       "report the commit immediately before the fix", _before_bfc))
     predictors.append(("position-all-non-fix", "position",
                        "report every commit that is not a fix", _all_non_bfc))
     predictors.append(("shape-last-toucher", "shape",
                        "report the newest commit before the fix that touched a file the fix touches",
-                       _last_toucher))
+                       _last_toucher(git)))
     predictors.append(("blame-deleted-lines", "blame",
-                       "naive B-SZZ: blame every line the fix deletes", _blame_deleted_lines))
+                       "naive B-SZZ: blame every line the fix deletes", _blame_deleted_lines(git)))
     return predictors
 
 
@@ -220,8 +252,35 @@ def build_predictors(scenarios: list[Scenario]) -> list[tuple[str, str, str, Pre
 # ---------------------------------------------------------------------------
 
 
+#: Field and record separators for the one-shot `git log` read.
+_FS, _RS = "\x1f", "\x1e"
+
+
+def _read_history(repo_dir: Path, hash_to_id: dict[str, str], git: GitProbe) -> list[CommitInfo]:
+    """The materialized history, parents before children.
+
+    ``--topo-order --reverse`` is the documented order: it is deterministic,
+    it puts a parent before its children, and it includes the commits that
+    ``commit_generator`` expanded, which never appear in the scenario's YAML.
+    """
+    out = git(repo_dir, "log", "--all", "--topo-order", "--reverse",
+              f"--format=%H{_FS}%an <%ae>{_FS}%s{_RS}")
+    commits: list[CommitInfo] = []
+    for record in out.split(_RS):
+        record = record.strip("\n")
+        if not record:
+            continue
+        parts = record.split(_FS)
+        if len(parts) < 3:
+            continue
+        commit_hash, author, subject = parts[0], parts[1], parts[2]
+        commits.append(CommitInfo(hash=commit_hash, logical_id=hash_to_id.get(commit_hash),
+                                  author=author, subject=subject))
+    return commits
+
+
 def _load_scenarios(generated_root: Path, scenarios_root: Path, advanced_scenarios_root: Path,
-                    variant: str) -> tuple[list[Scenario], list[str]]:
+                    variant: str, git: GitProbe) -> tuple[list[Scenario], list[str]]:
     from .evaluator import _find_scenario_path, _load_commit_map, _load_scenario_for_evaluation
 
     scenarios: list[Scenario] = []
@@ -242,7 +301,6 @@ def _load_scenarios(generated_root: Path, scenarios_root: Path, advanced_scenari
         errors.extend(map_errors)
         if commit_map is None:
             continue
-        commits = data.get("commits") or []
         bfc_ids: list[str] = []
         for bug in data.get("bugs") or []:
             if bug.get("bug_fixing_commit"):
@@ -253,17 +311,16 @@ def _load_scenarios(generated_root: Path, scenarios_root: Path, advanced_scenari
                     bfc_ids.append(value)
         hash_of = {cid: entry["hash"] for cid, entry in commit_map.items()
                    if isinstance(entry, dict) and isinstance(entry.get("hash"), str)}
-        authors = {cid: entry.get("author", "") for cid, entry in commit_map.items() if isinstance(entry, dict)}
+        commits = _read_history(repo_dir, {h: cid for cid, h in hash_of.items()}, git)
+        if not commits:
+            errors.append(f"{scenario_id}: could not read the generated history.")
+            continue
         scenarios.append(Scenario(
             scenario_id=scenario_id,
             suite=suite,
             category=(data.get("meta") or {}).get("category_code"),
-            commit_ids=[c.get("id") for c in commits if isinstance(c, dict) and c.get("id")],
-            bfc_ids=list(dict.fromkeys(bfc_ids)),
-            authors=authors,
-            messages={c.get("id"): c.get("message") or "" for c in commits if isinstance(c, dict)},
-            hash_of=hash_of,
-            id_of={h: cid for cid, h in hash_of.items()},
+            commits=commits,
+            bfc_hashes={hash_of[b] for b in bfc_ids if b in hash_of},
             repo_dir=repo_dir,
         ))
     return scenarios, errors
@@ -279,10 +336,11 @@ def run_baselines(
 ) -> dict[str, Any]:
     """Score every baseline and report the best of each family."""
     selected = [f for f in FAMILIES if f in set(families)]
-    scenarios, errors = _load_scenarios(generated_root, scenarios_root, advanced_scenarios_root, variant)
+    git = GitProbe()
+    scenarios, errors = _load_scenarios(generated_root, scenarios_root, advanced_scenarios_root, variant, git)
     by_id = {s.scenario_id: s for s in scenarios}
     results: list[BaselineResult] = []
-    for name, family, description, predictor in build_predictors(scenarios):
+    for name, family, description, predictor in build_predictors(scenarios, git):
         if family not in selected:
             continue
         predictions: dict[str, list[Prediction]] = {}
@@ -334,11 +392,11 @@ def run_baselines(
         "solved_by_any_baseline": len(solved_any),
         "unsolved": unsolved,
         "unsolved_detail": [
-            {"scenario_id": sid, "category": by_id[sid].category, "commits": len(by_id[sid].commit_ids)}
+            {"scenario_id": sid, "category": by_id[sid].category, "commits": len(by_id[sid].commits)}
             for sid in unsolved
         ],
         "per_category": per_category,
-        "errors": errors,
+        "errors": errors + git.failures,
     }
 
 

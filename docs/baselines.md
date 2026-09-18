@@ -22,6 +22,19 @@ Ordered by how much of the repository each one reads.
 | `shape` | which files the commits touch, without interpreting them | as above |
 | `blame` | `git blame` on the lines the fix deletes — the classic SZZ baseline | the reference point |
 
+## What a predictor sees
+
+A predictor is handed the **materialized Git history**, not the scenario file:
+the commits of `git rev-list --all --topo-order --reverse`, each with the
+author and subject Git records. That order is deterministic and puts a parent
+before its children, and it includes the commits `commit_generator` expands,
+which never appear in a scenario's `commits:` list — SZZG-0114 has five of
+those entries and 1005 real commits. Messages likewise come from Git, so a
+rebased commit that inherits its source's subject is read with that subject.
+
+A predictor names a commit by its **hash**; mapping a hash back to a logical id
+is the evaluator's job, which is also what a real tool run does.
+
 The `metadata` family enumerates one rule per author in the suite and reports
 each separately. An attacker picks **one** rule and applies it everywhere;
 choosing the matching author per scenario would need the oracle, and with most
@@ -33,11 +46,11 @@ oracles being a single commit it succeeds by coincidence rather than by signal.
 
 | baseline | family | solves |
 |---|---|---|
-| `position-second` | position | **147/210 = 70.0%** |
+| `position-second` | position | **146/210 = 69.5%** |
 | `blame-deleted-lines` | blame | 141/210 = 67.1% |
 | `shape-last-toucher` | shape | 107/210 = 51.0% |
-| `position-before-fix` | position | 92/210 = 43.8% |
-| `position-third` | position | 17/210 = 8.1% |
+| `position-before-fix` | position | 95/210 = 45.2% |
+| `position-third` | position | 18/210 = 8.6% |
 | `position-first` | position | 7/210 = 3.3% |
 | `position-all-non-fix` | position | 6/210 = 2.9% |
 | best `author:…` | metadata | 11/210 = 5.2% (chance) |
@@ -46,7 +59,7 @@ oracles being a single commit it succeeds by coincidence rather than by signal.
 Read this table before reading any result reported on SZZBench:
 
 - **A rule that opens no file beats the classic B-SZZ baseline.** "Report the
-  second commit of the history" solves 70.0% against B-SZZ's 67.1%, because
+  second commit of the history" solves 69.5% against B-SZZ's 67.1%, because
   most scenarios are four commits long with a single-commit oracle in second
   position.
 - **203 of 210 scenarios are solved by at least one baseline.** Seven resist all
