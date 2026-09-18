@@ -1,0 +1,157 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0119
+  title: A move that inlines two named conditions takes ownership of an earlier fault
+  slug: move-and-inline-takes-ownership
+  description: >
+    One bound of a paging test is made exclusive, then the class is moved to
+    another package and its two named conditions are inlined into a single
+    expression, and only later is the other bound made inclusive. The move
+    rewrote the line that carried the first fault, so blaming what the fix
+    deletes returns the last commit to touch that one line and nothing else:
+    the first fault is on no line that still exists, and its file is at a path
+    the fix never names.
+  category: "Refactoring, move, rename, and semantic rewrite"
+  category_code: "G1"
+  factors:
+  - multiple_bic
+  - file_move
+  - inline_refactoring
+  - behaviour_preserving_rewrite
+  - blame_unreachable_bic
+  difficulty: advanced
+  status: active
+  tier: discriminating
+repository:
+  name: SZZG-0119-move-and-inline-takes-ownership
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'Add the paging test'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Pager.java
+    content: |
+      package example;
+
+      public class Pager {
+          public boolean onPage(int index, int pageStart, int pageSize) {
+              boolean atOrAfterStart = index >= pageStart;
+              boolean beforeEnd = index < pageStart + pageSize;
+              return atOrAfterStart && beforeEnd;
+          }
+      }
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'Start each page after its first index'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Pager.java
+    old: boolean atOrAfterStart = index >= pageStart;
+    new: boolean atOrAfterStart = index > pageStart;
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'Move the pager into its own package and inline the bounds'
+  role: refactor
+  operations:
+  - type: move_file
+    from: src/main/java/example/Pager.java
+    to: src/main/java/example/paging/Pager.java
+  - type: write_file
+    path: src/main/java/example/paging/Pager.java
+    content: |
+      package example.paging;
+
+      public class Pager {
+          public boolean onPage(int index, int pageStart, int pageSize) {
+              return index > pageStart && index < pageStart + pageSize;
+          }
+      }
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'Let a page reach the index one past its size'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/paging/Pager.java
+    old: return index > pageStart && index < pageStart + pageSize;
+    new: return index > pageStart && index <= pageStart + pageSize;
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: 'Page from the first index up to the page size'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/paging/Pager.java
+    old: return index > pageStart && index <= pageStart + pageSize;
+    new: return index >= pageStart && index < pageStart + pageSize;
+bugs:
+- id: B001
+  title: Each page drops its first index and reaches one index too far
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  - commit: c3
+    role: direct
+  bug_fixing_commits:
+  - commit: c4
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/Pager.java
+    statement: boolean atOrAfterStart = index > pageStart;
+    change_type: line_modification
+  - id: F002
+    commit: c3
+    file: src/main/java/example/paging/Pager.java
+    statement: return index > pageStart && index <= pageStart + pageSize;
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c4
+    file: src/main/java/example/paging/Pager.java
+    statement: return index >= pageStart && index < pageStart + pageSize;
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+    - c3
+scenario_design:
+  purpose: >
+    Break the line-level link between a fault and the fix with an inline
+    refactoring, and move the file at the same time, so that neither the line
+    nor the path the first fault was written at survives to the fix.
+  key_property: >
+    c2 preserves behaviour and writes a single expression carrying both bounds;
+    c3 then edits that expression. Blaming the line the fix deletes therefore
+    returns c3 alone - c1 is on no line that still exists. The move compounds
+    it: inlining leaves the moved file only 36% similar to its source, below
+    git's default rename threshold, so `git log --follow` on the fixed path
+    stops at c2 and never lists c1 at all. Lowering the threshold
+    (--find-renames=20%) reaches it, which is what a tool has to do.
+  evaluation_points:
+  - Whether the expected BIC set is reported exactly.
+  - Whether a fault whose line was rewritten by a behaviour-preserving commit is still found.
+  - Whether the file is followed across the move.
+notes:
+- The inline in c2 is behaviour-preserving; it is not a bug-introducing commit and must not be reported.

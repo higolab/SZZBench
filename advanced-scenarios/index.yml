@@ -1,6 +1,6 @@
 schema_version: graph-index-0.1-draft
 description: Index of draft advanced graph scenarios for SZZBench.
-scenario_count: 109
+scenario_count: 114
 scenarios:
 - id: SZZG-0001
   title: BFC performs rename and fix in the same commit
@@ -1258,5 +1258,70 @@ scenarios:
   status: draft
   factors:
   - expected_szz
+- id: SZZG-0117
+  title: The unit change arrives through a merge, the consumer is written after it
+  category_code: G4
+  category: Branch, merge, cherry-pick, backport, and release branches
+  path: advanced-scenarios/SZZG-0117/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0117/README.md
+  status: active
+  factors:
+  - multiple_bic
+  - merge
+  - release_branch
+  - value_flow
+  - blame_unreachable_bic
+- id: SZZG-0118
+  title: A reduced copy of a helper, and a later call routed through it
+  category_code: G2
+  category: Clone, copy propagation, and origin-vs-direct BIC
+  path: advanced-scenarios/SZZG-0118/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0118/README.md
+  status: active
+  factors:
+  - multiple_bic
+  - clone
+  - origin_and_direct_bic
+  - caller_callee_interaction
+  - blame_unreachable_bic
+- id: SZZG-0119
+  title: A move that inlines two named conditions takes ownership of an earlier fault
+  category_code: G1
+  category: Refactoring, move, rename, and semantic rewrite
+  path: advanced-scenarios/SZZG-0119/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0119/README.md
+  status: active
+  factors:
+  - multiple_bic
+  - file_move
+  - inline_refactoring
+  - behaviour_preserving_rewrite
+  - blame_unreachable_bic
+- id: SZZG-0120
+  title: Two branches that are each harmless, and a merge that is not
+  category_code: G3
+  category: Multiple BICs, multiple BFCs, and partial fixes
+  path: advanced-scenarios/SZZG-0120/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0120/README.md
+  status: active
+  factors:
+  - multiple_bic
+  - merge
+  - guard_removal
+  - caller_callee_interaction
+  - blame_unreachable_bic
+- id: SZZG-0121
+  title: A cherry-picked unit change in a file the fix never opens
+  category_code: G4
+  category: Branch, merge, cherry-pick, backport, and release branches
+  path: advanced-scenarios/SZZG-0121/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0121/README.md
+  status: active
+  factors:
+  - multiple_bic
+  - cherry_pick
+  - origin_and_direct_bic
+  - value_flow
+  - blame_unreachable_bic
 notes:
 - Scenario IDs are ordered by the SZZBench scenario taxonomy.

@@ -1,0 +1,181 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0118
+  title: A reduced copy of a helper, and a later call routed through it
+  slug: reduced-copy-called-later
+  description: >
+    The normalizer is copied for imported labels, and the copy drops the
+    lower-casing step because imported labels already arrive lower-cased. That
+    is correct for its one intended use and changes nothing that existed
+    before. A later commit routes user-typed input through the copy, so a typed
+    tag no longer matches. The fix calls the full normalizer instead, so the
+    line it deletes belongs to the later commit; the reduced copy is reachable
+    only by resolving which helper that line calls.
+  category: "Clone, copy propagation, and origin-vs-direct BIC"
+  category_code: "G2"
+  factors:
+  - multiple_bic
+  - clone
+  - origin_and_direct_bic
+  - caller_callee_interaction
+  - blame_unreachable_bic
+  difficulty: advanced
+  status: active
+  tier: discriminating
+repository:
+  name: SZZG-0118-reduced-copy-called-later
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'Add the label normalizer and the tag matcher'
+  author: Aiko Tanaka <aiko.tanaka@example.com>
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Normalizer.java
+    content: |
+      package example;
+
+      public class Normalizer {
+          public static String normalize(String raw) {
+              return raw.trim().toLowerCase();
+          }
+      }
+  - type: write_file
+    path: src/main/java/example/TagMatcher.java
+    content: |
+      package example;
+
+      public class TagMatcher {
+          public boolean matchesStoredTag(String stored, String tag) {
+              return Normalizer.normalize(stored).equals(tag);
+          }
+      }
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'Copy the normalizer for already lower-cased imports'
+  author: Bruno Fischer <bruno.fischer@example.com>
+  role: bug_introducing
+  operations:
+  - type: copy_file
+    from: src/main/java/example/Normalizer.java
+    to: src/main/java/example/ImportNormalizer.java
+  - type: replace
+    path: src/main/java/example/ImportNormalizer.java
+    old: public class Normalizer {
+    new: public class ImportNormalizer {
+  - type: replace
+    path: src/main/java/example/ImportNormalizer.java
+    old: return raw.trim().toLowerCase();
+    new: return raw.trim();
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'Say which normalizer imports use'
+  author: Chen Wei <chen.wei@example.com>
+  role: intermediate
+  operations:
+  - type: replace
+    path: src/main/java/example/ImportNormalizer.java
+    old: public class ImportNormalizer {
+    new: |
+      /** Normalizes labels that arrive from the import pipeline. */
+      public class ImportNormalizer {
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'Match a tag typed by the user against an imported one'
+  author: Dana Okafor <dana.okafor@example.com>
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/TagMatcher.java
+    old: |
+      public boolean matchesStoredTag(String stored, String tag) {
+              return Normalizer.normalize(stored).equals(tag);
+          }
+    new: |
+      public boolean matchesStoredTag(String stored, String tag) {
+              return Normalizer.normalize(stored).equals(tag);
+          }
+
+          public boolean matchesTypedTag(String typed, String tag) {
+              return ImportNormalizer.normalize(typed).equals(tag);
+          }
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: 'Normalize a typed tag the way stored tags are normalized'
+  author: Elena Rossi <elena.rossi@example.com>
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/TagMatcher.java
+    old: return ImportNormalizer.normalize(typed).equals(tag);
+    new: return Normalizer.normalize(typed).equals(tag);
+bugs:
+- id: B001
+  title: A tag typed in capitals no longer matches the tag it names
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  - commit: c3
+    role: direct
+  bug_fixing_commits:
+  - commit: c4
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/ImportNormalizer.java
+    statement: return raw.trim();
+    change_type: line_modification
+  - id: F002
+    commit: c3
+    file: src/main/java/example/TagMatcher.java
+    statement: return ImportNormalizer.normalize(typed).equals(tag);
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c4
+    file: src/main/java/example/TagMatcher.java
+    statement: return Normalizer.normalize(typed).equals(tag);
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+    - c3
+scenario_design:
+  purpose: >
+    Make the blame-unreachable half of a two-commit answer a reduced copy, so
+    that a tool has to resolve the call in the fixed line to the copy, and then
+    resist attributing the copy's line to the file it was copied from.
+  key_property: >
+    c1 changes nothing that existed before it: it adds a class. c3 is the first
+    commit to send user input through that class. Blaming the line the fix
+    deletes returns c3 alone, under every blame variant, so the scenario turns
+    on one step: resolving the call in the fixed line into the copied class.
+    Blame is measured to be reliable once that step is taken - the copy's
+    reduced line is attributed to c1 even by -C -C, because the line was
+    modified in the copying commit rather than carried over unchanged - so what
+    the scenario isolates is the call resolution, not a blame failure.
+  evaluation_points:
+  - Whether the expected BIC set is reported exactly.
+  - Whether the call in the fixed line is resolved to the copied helper.
+  - Whether a commit that only adds a class is considered bug-introducing at all.
+notes:
+- The reduced copy is correct for the input it was written for; only the later call makes it a fault.

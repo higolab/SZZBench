@@ -144,7 +144,16 @@ any `control` that no cheap rule solves (a promotion candidate).
 
 The initial assignment followed the measurement at `6ed60a0`: **203 control and
 7 discriminating** — SZZ-0132, SZZ-0136, SZZG-0028, SZZG-0038, SZZG-0040,
-SZZG-0069 and SZZG-0076, all of which have a multi-commit oracle.
+SZZG-0069 and SZZG-0076, all of which have a multi-commit oracle. Fifteen
+scenarios designed against that axis have been added since, so the suite now
+declares **203 control and 22 discriminating**; the list and the reasons are in
+[baselines.md](../baselines.md#the-two-tiers).
+
+A declaration is a claim the measurement can refuse, and has. SZZG-0118 was
+declared `discriminating` and `szzbench baselines` reported it solved: the
+generator's author rotation had given its two bug-introducing commits the same
+author and no other commit that author, so an author rule returned exactly the
+oracle by coincidence. The scenario was changed, not the declaration.
 
 The tier is **not** mirrored in `index.yml`. The index is not checked against
 it, and a second copy of a field that changes with the scenario is how the
