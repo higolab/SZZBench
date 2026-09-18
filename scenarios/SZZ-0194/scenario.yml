@@ -54,7 +54,7 @@ commits:
               private final TaxTable table = new TaxTable();
 
               public int taxCents(int amountCents, String region) {
-                  return amountCents * table.rate(region) / 100;
+                  return (int) ((long) amountCents * table.rate(region) / 100);
               }
           }
 
@@ -71,8 +71,8 @@ commits:
         labels: ["B001", "fault"]
       - type: "replace"
         path: "src/main/java/example/Invoice.java"
-        old: "return amountCents * table.rate(region) / 100;"
-        new: "return amountCents * table.rate(region) / 1000;"
+        old: "return (int) ((long) amountCents * table.rate(region) / 100);"
+        new: "return (int) ((long) amountCents * table.rate(region) / 1000);"
 
   - id: "c2"
     message: "Note where the invoice totals are used"
@@ -98,11 +98,11 @@ commits:
         path: "src/main/java/example/Invoice.java"
         old: |
           public int taxCents(int amountCents, String region) {
-                  return amountCents * table.rate(region) / 1000;
+                  return (int) ((long) amountCents * table.rate(region) / 1000);
               }
         new: |
           public int taxCents(int amountCents, String region) {
-                  return amountCents * table.rate(region) / 1000;
+                  return (int) ((long) amountCents * table.rate(region) / 1000);
               }
 
               public int displayedRatePercent(String region) {

@@ -135,12 +135,18 @@ def position_indices(scenarios: list[Scenario], answer_hashes: dict[str, set[str
     because its answer sits deeper.
 
     Enumerating a thousand rules that provably score nothing is wasteful.
-    ``position-k`` predicts exactly one commit, so it can only be credited when
-    the commit at index k is part of that scenario's answer; the enumeration is
-    therefore restricted to those indices, plus 0, 1 and 2 so the report always
-    shows the shallow rules. The omitted indices score zero by construction, so
-    the numbers are the ones a full enumeration would produce - which
-    ``test_restricting_the_position_indices_changes_nothing`` checks.
+``position-k`` predicts exactly one commit, so it can only be credited
+    when the commit at index k is a commit the scorer knows about; the
+    enumeration is restricted to those indices, plus 0, 1 and 2 so the report
+    always shows the shallow rules.
+
+    "Knows about" is deliberately every set the commit-level policy mentions,
+    not just ``required``: under ``top_k`` a prediction passes when it hits
+    ``relevant``, which need not overlap ``required`` at all, and an earlier
+    version of this restriction dropped the only passing rule of such a
+    scenario (PR #40 review). ``test_the_restriction_keeps_every_passing_rule``
+    compares the restricted enumeration against a full sweep through the real
+    evaluator, across policies, rather than re-asserting this reasoning.
 
     ``answer_hashes`` is used only to decide which rules to *enumerate*; no
     predictor ever sees it.
@@ -372,10 +378,13 @@ def _load_scenarios(generated_root: Path, scenarios_root: Path, advanced_scenari
 
 def _answer_hashes(scenarios: list[Scenario], scenarios_root: Path,
                    advanced_scenarios_root: Path) -> dict[str, set[str]]:
-    """Per scenario, the hashes of the commits its oracle requires.
+    """Per scenario, the hashes of every commit its commit-level policy names.
 
-    Only :func:`position_indices` reads this, to decide which ``position-k``
-    rules are worth running; the predictors are never given it.
+    Not only ``required``: a ``top_k`` scenario passes on a hit in
+    ``relevant``, and the allowance lists can carry credit under the relaxed
+    policies, so a single prediction naming any of them may be scored. Only
+    :func:`position_indices` reads this, to decide which ``position-k`` rules
+    are worth running; the predictors are never given it.
     """
     from .evaluator import _commit_level_policy, _find_scenario_path, _load_scenario_for_evaluation
 
@@ -387,9 +396,12 @@ def _answer_hashes(scenarios: list[Scenario], scenarios_root: Path,
         data, _ = _load_scenario_for_evaluation(path, suite)
         if data is None:
             continue
-        required = set(_commit_level_policy(data, suite, None).required)
+        policy = _commit_level_policy(data, suite, None)
+        named = set(policy.required) | set(policy.relevant) | set(policy.related_origins)
+        named |= set(policy.related_but_not_correct) | set(policy.known_distractors)
+        named |= {entry.commit for entry in policy.acceptable_related}
         hash_of_id = {c.logical_id: c.hash for c in scenario.commits if c.logical_id}
-        answers[scenario.scenario_id] = {hash_of_id[r] for r in required if r in hash_of_id}
+        answers[scenario.scenario_id] = {hash_of_id[r] for r in named if r in hash_of_id}
     return answers
 
 

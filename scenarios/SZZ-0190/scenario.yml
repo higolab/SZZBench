@@ -6,7 +6,8 @@ meta:
   slug: "unit-change-later-consumer"
   description: >
     The cache TTL constant is converted from seconds to milliseconds together
-    with its only consumer, which preserves behaviour. A later commit adds a
+    with its only consumer, so every caller in the repository keeps its answer.
+    A later commit adds a
     second consumer that divides the constant as if it were still seconds, and
     only then does the bug appear. The fix repairs the new consumer, so the
     line it deletes belongs to the second commit; the unit change is reachable

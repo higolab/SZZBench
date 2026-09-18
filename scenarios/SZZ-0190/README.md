@@ -17,9 +17,13 @@ c3  Report when the session should be refreshed adds refreshAfterSeconds() = TTL
 c4  Convert the refresh interval back to seconds TTL / 2000                       <- BFC
 ```
 
-`c1` is behaviour-preserving on its own: it converts the constant and its only
-consumer together, so nothing is wrong yet. `c3` adds a second consumer that
-divides as if the constant were still seconds, and only then does
+`c1` converts the constant and its only consumer together, so a caller that
+passes milliseconds gets the same answer as before and nothing else reads `TTL`
+yet. (It is not behaviour-preserving in the narrow sense: `expired(int)` keeps
+its signature while its parameter changes unit, so the same numeric argument
+means something different — 6 of the 24 probes below change at `c1`. Nothing in
+the repository passes the old unit.) `c3` adds a second consumer that divides
+as if the constant were still seconds, and only then does
 `refreshAfterSeconds()` return 30000 instead of 30.
 
 ## Expected BIC / BFC

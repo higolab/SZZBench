@@ -16,9 +16,10 @@ c3  Accept a tag typed by the user                adds knownFromInput(typed)    
 c4  Normalize the typed tag before looking it up  known(typed.trim().toLowerCase())  <- BFC
 ```
 
-`c1` is harmless while the only caller, `knownFromMenu`, passes values that are
-already normalized. `c3` adds a caller that passes raw user input, and only
-then is a tag such as `" Release "` rejected.
+`c1` changes what `known()` accepts for input that is not already normalized;
+the only caller at that point, `knownFromMenu`, passes normalized values, so no
+caller in the repository is affected. `c3` adds a caller that passes raw user
+input, and only then is a tag such as `" Release "` rejected.
 
 ## Expected BIC / BFC
 

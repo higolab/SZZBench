@@ -86,7 +86,8 @@ def test_every_predictor_declares_a_known_family():
         assert fixed in names
 
 
-def _generate(tmp_path: Path, scenario_id: str, commits, bugs, tier: str = "control") -> None:
+def _generate(tmp_path: Path, scenario_id: str, commits, bugs, tier: str = "control",
+              expected_szz: dict | None = None) -> None:
     data = {
         "schema_version": "graph-0.1-draft",
         "meta": {"id": scenario_id, "title": "baseline fixture", "category": "test",
@@ -97,6 +98,8 @@ def _generate(tmp_path: Path, scenario_id: str, commits, bugs, tier: str = "cont
         "commits": commits,
         "bugs": bugs,
     }
+    if expected_szz is not None:
+        data["expected_szz"] = expected_szz
     directory = tmp_path / "advanced-scenarios" / scenario_id
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / "scenario.graph.yml"
@@ -333,43 +336,78 @@ def test_a_filtered_run_does_not_claim_promotion_candidates(tmp_path):
     assert position_only["declared_discriminating_but_solved"] == ["SZZG-9004"]
 
 
-def test_restricting_the_position_indices_changes_nothing(tmp_path):
-    """The enumeration skips `position-k` rules that cannot score, and only those.
+def test_the_restriction_keeps_every_passing_rule(tmp_path):
+    """Skipping `position-k` rules must never drop one that would have passed.
 
-    `position-k` predicts a single commit, so it can only be credited when the
-    commit at index k is part of the answer. The restricted enumeration is
-    compared here against a full 0..n-1 sweep.
+    The first version of this check asserted that omitted predictions do not
+    intersect `required`, which is the same reasoning the restriction was built
+    on - and that reasoning was wrong: under `top_k` a prediction passes on a
+    hit in `relevant`, which need not overlap `required`. This sweeps every
+    index through the real evaluator instead (PR #40 review).
     """
     from szzbench.baselines import GitProbe, _answer_hashes, _load_scenarios, position_indices
+    from szzbench.evaluator import Prediction, evaluate_prediction_map
 
-    _generate(tmp_path, "SZZG-9005", _range_commits(), _range_bugs())
-    long_history = _range_commits()
-    for extra in range(3):
-        long_history.insert(1, {"id": f"n{extra}", "branch": "main", "parents": [],
-                                "message": f"unrelated note {extra}", "role": "intermediate",
-                                "operations": [{"type": "write_file", "path": f"docs/n{extra}.md",
-                                                "content": f"note {extra}\n"}]})
-    for i, commit in enumerate(long_history):
-        commit["parents"] = [] if i == 0 else [long_history[i - 1]["id"]]
-    _generate(tmp_path, "SZZG-9006", long_history, _range_bugs())
+    def op(old_text, new_text):
+        return {"type": "replace", "path": RANGE_PATH, "old": old_text, "new": new_text}
+
+    faulty, fixed = "return v > lo;", "return v >= lo;"
+    java = ("package example;\npublic class Range {\n  public boolean contains(int v, int lo) {\n"
+            "    return v >= lo;\n  }\n}\n")
+    commits = [
+        {"id": "c0", "branch": "main", "parents": [], "message": "add the range check", "role": "initial",
+         "operations": [{"type": "write_file", "path": RANGE_PATH, "content": java}]},
+        {"id": "c1", "branch": "main", "parents": ["c0"], "message": "document the range check",
+         "role": "intermediate",
+         "operations": [{"type": "write_file", "path": "docs/a.md", "content": "a\n"}]},
+        {"id": "c2", "branch": "main", "parents": ["c1"], "message": "document the caller",
+         "role": "intermediate",
+         "operations": [{"type": "write_file", "path": "docs/b.md", "content": "b\n"}]},
+        {"id": "c3", "branch": "main", "parents": ["c2"], "message": "require values above the minimum",
+         "role": "bug_introducing", "operations": [op(fixed, faulty)]},
+        {"id": "c4", "branch": "main", "parents": ["c3"], "message": "accept the lower bound again",
+         "role": "bug_fixing", "operations": [op(faulty, fixed)]},
+        {"id": "c5", "branch": "main", "parents": ["c4"], "message": "require it above the minimum once more",
+         "role": "bug_introducing", "operations": [op(fixed, faulty)]},
+        {"id": "c6", "branch": "main", "parents": ["c5"], "message": "accept the lower bound once more",
+         "role": "bug_fixing", "operations": [op(faulty, fixed)]},
+    ]
+    bugs = [{"id": "B001",
+             "bug_introducing_commits": [{"commit": "c3", "role": "origin"},
+                                         {"commit": "c5", "role": "reintroducing"}],
+             "bug_fixing_commits": [{"commit": "c6", "role": "complete_fix"}]}]
+
+    # top_k credits a hit in `relevant`, which here is the origin and not the
+    # required commit, so the passing rule is position-3 rather than position-5
+    _generate(tmp_path, "SZZG-9200", commits, bugs, expected_szz={
+        "commit_level": {"evaluation_policy": "top_k", "required": ["c5"],
+                         "related_origins": ["c3"], "relevant": ["c3"], "status_k": 1}})
+    # a plain exact-set scenario alongside it
+    _generate(tmp_path, "SZZG-9201", commits, bugs, expected_szz={
+        "commit_level": {"evaluation_policy": "exact_set", "required": ["c5"]}})
 
     git = GitProbe()
     scenarios, _ = _load_scenarios(tmp_path / "repos", tmp_path, tmp_path / "advanced-scenarios",
                                    "default", git)
-    answers = _answer_hashes(scenarios, tmp_path, tmp_path / "advanced-scenarios")
-    restricted = position_indices(scenarios, answers)
+    retained = position_indices(scenarios, _answer_hashes(scenarios, tmp_path,
+                                                          tmp_path / "advanced-scenarios"))
+
+    passing: dict[str, set[int]] = {s.scenario_id: set() for s in scenarios}
     longest = max(len(s.commits) for s in scenarios)
-    assert restricted != list(range(longest)), "the fixture must exercise the restriction"
+    for index in range(longest):
+        predictor = _at_index(index)
+        predictions = {s.scenario_id: [Prediction(scenario_id=s.scenario_id, inducing_commit=h)
+                                       for h in predictor(s)] for s in scenarios}
+        report = evaluate_prediction_map(
+            {k: v for k, v in predictions.items() if v},
+            generated_root=tmp_path / "repos", scenarios_root=tmp_path,
+            advanced_scenarios_root=tmp_path / "advanced-scenarios", include_generated=True)
+        for item in report.scenarios:
+            if item.status == "PASS":
+                passing[item.scenario_id].add(index)
 
-    def solved_by_index(indices):
-        out = {}
-        for index in indices:
-            predictor = _at_index(index)
-            out[index] = {s.scenario_id for s in scenarios if predictor(s)}
-        return out
-
-    # every omitted index predicts a commit that is in no answer, so it scores nothing
-    for index in set(range(longest)) - set(restricted):
-        for scenario in scenarios:
-            predicted = _at_index(index)(scenario)
-            assert not (set(predicted) & answers.get(scenario.scenario_id, set())), index
+    assert passing["SZZG-9200"] == {3}, "the fixture must exercise a relevant-only pass"
+    assert passing["SZZG-9201"] == {5}
+    for scenario_id, indices in passing.items():
+        assert indices <= set(retained), f"{scenario_id}: dropped passing rule(s) {sorted(indices - set(retained))}"
+    assert set(retained) != set(range(longest)), "the fixture must exercise the restriction"
