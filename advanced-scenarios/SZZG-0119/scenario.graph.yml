@@ -14,11 +14,11 @@ meta:
   category: "Refactoring, move, rename, and semantic rewrite"
   category_code: "G1"
   factors:
-  - multiple_bic
-  - file_move
-  - inline_refactoring
-  - behaviour_preserving_rewrite
-  - blame_unreachable_bic
+  - multi-bic
+  - file-move
+  - inline-refactoring
+  - behaviour-preserving-rewrite
+  - blame-unreachable-bic
   difficulty: advanced
   status: active
   tier: discriminating

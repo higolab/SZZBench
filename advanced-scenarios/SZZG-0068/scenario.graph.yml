@@ -9,9 +9,9 @@ meta:
   factors:
   - branch
   - rebase
-  - patch_modified_during_rebase
-  - origin_bic
-  - direct_bic
+  - patch-modified-during-rebase
+  - origin-bic
+  - direct-bic
   difficulty: advanced
   status: draft
   tier: control

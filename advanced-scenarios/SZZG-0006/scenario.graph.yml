@@ -10,9 +10,9 @@ meta:
   category_code: "G1"
   factors:
   - refactoring
-  - extract_class
-  - move_entity
-  - post_bic_refactoring
+  - extract-class
+  - method-move
+  - post-bic-refactoring
   difficulty: advanced
   status: draft
   tier: control
@@ -122,7 +122,7 @@ scenario_design:
     before the BFC.
   key_property: 'The BIC and BFC are in different files: the fault is introduced in RangeService.java, then moved to RangeValidator.java,
     and finally fixed there.'
-  difference_from_SZZG_0011: 'SZZG-0005 represents a method move between classes. This scenario represents extract class:
+  difference_from_SZZG_0005: 'SZZG-0005 represents a method move between classes. This scenario represents extract class:
     a new class is created after the BIC, responsibilities are split, and the BFC occurs in the extracted class.'
   evaluation_points:
   - Whether SZZ follows the bug across extract-class refactoring.

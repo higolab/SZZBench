@@ -10,7 +10,7 @@ scenarios:
   readme: advanced-scenarios/SZZG-0001/README.md
   status: draft
   factors:
-  - rename_file
+  - file-rename
 - id: SZZG-0002
   title: BFC performs file move and fix in the same commit
   category_code: G1
@@ -19,7 +19,7 @@ scenarios:
   readme: advanced-scenarios/SZZG-0002/README.md
   status: draft
   factors:
-  - move_file
+  - file-move
 - id: SZZG-0003
   title: File rename between BIC and BFC
   category_code: G1
@@ -28,7 +28,7 @@ scenarios:
   readme: advanced-scenarios/SZZG-0003/README.md
   status: draft
   factors:
-  - rename_file
+  - file-rename
 - id: SZZG-0004
   title: File move between BIC and BFC
   category_code: G1
@@ -37,8 +37,8 @@ scenarios:
   readme: advanced-scenarios/SZZG-0004/README.md
   status: draft
   factors:
-  - rename_file
-  - move_file
+  - file-rename
+  - file-move
 - id: SZZG-0005
   title: Method move between classes
   category_code: G1
@@ -48,8 +48,8 @@ scenarios:
   status: draft
   factors:
   - refactoring
-  - method_move
-  - post_bic_refactoring
+  - method-move
+  - post-bic-refactoring
 - id: SZZG-0006
   title: Extract class after BIC
   category_code: G1
@@ -59,9 +59,9 @@ scenarios:
   status: draft
   factors:
   - refactoring
-  - extract_class
-  - move_entity
-  - post_bic_refactoring
+  - extract-class
+  - method-move
+  - post-bic-refactoring
 - id: SZZG-0007
   title: Line moved and duplicated
   category_code: G1
@@ -70,9 +70,8 @@ scenarios:
   readme: advanced-scenarios/SZZG-0007/README.md
   status: draft
   factors:
-  - method_move
-  - copy_propagation
-  - bug_instances
+  - method-move
+  - copy-propagation
 - id: SZZG-0008
   title: Semantically equivalent rewrite
   category_code: G1
@@ -81,8 +80,8 @@ scenarios:
   readme: advanced-scenarios/SZZG-0008/README.md
   status: draft
   factors:
-  - semantic_rewrite
-  - related_but_not_correct
+  - semantic-rewrite
+  - related-but-not-correct
 - id: SZZG-0009
   title: Intermediate method extraction between BIC and BFC
   category_code: G1
@@ -91,9 +90,9 @@ scenarios:
   readme: advanced-scenarios/SZZG-0009/README.md
   status: draft
   factors:
-  - intermediate_refactoring
-  - extract_method
-  - line_history_break
+  - intermediate-refactoring
+  - extract-method
+  - line-history-break
 - id: SZZG-0010
   title: Intermediate file move and package rename between BIC and BFC
   category_code: G1
@@ -102,10 +101,10 @@ scenarios:
   readme: advanced-scenarios/SZZG-0010/README.md
   status: draft
   factors:
-  - rename_file
-  - move_file
-  - package_rename
-  - intermediate_refactoring
+  - file-rename
+  - file-move
+  - package-rename
+  - intermediate-refactoring
 - id: SZZG-0011
   title: Bug introduced inside a refactoring commit
   category_code: G1
@@ -114,9 +113,9 @@ scenarios:
   readme: advanced-scenarios/SZZG-0011/README.md
   status: draft
   factors:
-  - bug_introducing_refactoring
-  - mixed_change
-  - rename_method
+  - bug-introducing-refactoring
+  - mixed-change
+  - rename-method
 - id: SZZG-0012
   title: BFC performs method extraction and bug fix in the same commit
   category_code: G1
@@ -125,9 +124,9 @@ scenarios:
   readme: advanced-scenarios/SZZG-0012/README.md
   status: draft
   factors:
-  - bfc_refactoring
-  - extract_method
-  - mixed_bfc
+  - bfc-refactoring
+  - extract-method
+  - mixed-bfc
 - id: SZZG-0013
   title: Semantic-preserving rewrite between BIC and BFC
   category_code: G1
@@ -136,9 +135,9 @@ scenarios:
   readme: advanced-scenarios/SZZG-0013/README.md
   status: draft
   factors:
-  - intermediate_rewrite
+  - intermediate-rewrite
   - formatting
-  - line_history_break
+  - line-history-break
 - id: SZZG-0014
   title: Buggy code copied to a new file
   category_code: G2
@@ -147,7 +146,7 @@ scenarios:
   readme: advanced-scenarios/SZZG-0014/README.md
   status: draft
   factors:
-  - copy_file
+  - copy-propagation
 - id: SZZG-0015
   title: Buggy code copied while original is fixed later
   category_code: G2
@@ -156,8 +155,8 @@ scenarios:
   readme: advanced-scenarios/SZZG-0015/README.md
   status: draft
   factors:
-  - copy_file
-  - faults
+  - copy-propagation
+  - boundary-condition
 - id: SZZG-0016
   title: Original and clone fixed together
   category_code: G2
@@ -166,8 +165,8 @@ scenarios:
   readme: advanced-scenarios/SZZG-0016/README.md
   status: draft
   factors:
-  - faults
-  - clone_relationships
+  - boundary-condition
+  - copy-propagation
 - id: SZZG-0017
   title: Clone diverges before fix
   category_code: G2
@@ -176,7 +175,7 @@ scenarios:
   readme: advanced-scenarios/SZZG-0017/README.md
   status: draft
   factors:
-  - clone_relationships
+  - copy-propagation
 - id: SZZG-0018
   title: Only one clone instance is fixed first
   category_code: G2
@@ -185,8 +184,7 @@ scenarios:
   readme: advanced-scenarios/SZZG-0018/README.md
   status: draft
   factors:
-  - clone_relationships
-  - bug_instances
+  - copy-propagation
 - id: SZZG-0019
   title: Bug propagates into generated code
   category_code: G2
@@ -194,7 +192,12 @@ scenarios:
   path: advanced-scenarios/SZZG-0019/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0019/README.md
   status: draft
-  factors: []
+  factors:
+  - single-bic
+  - single-bfc
+  - copy-propagation
+  - generated-file
+  - boundary-condition
 - id: SZZG-0020
   title: Explicit evaluation of direct BIC vs origin BIC
   category_code: G2
@@ -203,10 +206,10 @@ scenarios:
   readme: advanced-scenarios/SZZG-0020/README.md
   status: draft
   factors:
-  - copy_file
-  - expected_szz
-  - direct_bic
-  - origin_bic
+  - copy-propagation
+  - evaluation-variant
+  - direct-bic
+  - origin-bic
 - id: SZZG-0021
   title: Clone removal as fix
   category_code: G2
@@ -215,7 +218,7 @@ scenarios:
   readme: advanced-scenarios/SZZG-0021/README.md
   status: draft
   factors:
-  - clone_relationships
+  - copy-propagation
 - id: SZZG-0022
   title: Copy propagation with direct and origin BIC evaluation variants
   category_code: G2
@@ -224,11 +227,11 @@ scenarios:
   readme: advanced-scenarios/SZZG-0022/README.md
   status: draft
   factors:
-  - copy_propagation
-  - direct_bic
-  - origin_bic
-  - evaluation_variants
-  - relaxed_with_credit
+  - copy-propagation
+  - direct-bic
+  - origin-bic
+  - evaluation-variant
+  - relaxed-with-credit
 - id: SZZG-0023
   title: Rebase with copy propagation
   category_code: G2
@@ -239,10 +242,10 @@ scenarios:
   factors:
   - branch
   - rebase
-  - copy_propagation
-  - duplicate_code
-  - direct_bic
-  - origin_bic
+  - copy-propagation
+  - duplicate-code
+  - direct-bic
+  - origin-bic
 - id: SZZG-0024
   title: Clone diverges before rebase
   category_code: G2
@@ -253,10 +256,10 @@ scenarios:
   factors:
   - branch
   - rebase
-  - clone_relationships
-  - clone_divergence
-  - direct_bic
-  - origin_bic
+  - copy-propagation
+  - clone-divergence
+  - direct-bic
+  - origin-bic
 - id: SZZG-0025
   title: Clone origin versus copied direct BIC
   category_code: G2
@@ -266,8 +269,8 @@ scenarios:
   status: draft
   factors:
   - clone
-  - copy_file
-  - origin_bic_policy
+  - copy-propagation
+  - origin-bic-policy
 - id: SZZG-0026
   title: Copy followed by bug introduction only in the copied code
   category_code: G2
@@ -276,9 +279,9 @@ scenarios:
   readme: advanced-scenarios/SZZG-0026/README.md
   status: draft
   factors:
-  - copy_file
-  - clone_divergence
-  - direct_bic_in_copy
+  - copy-propagation
+  - clone-divergence
+  - direct-bic-in-copy
 - id: SZZG-0027
   title: Clone divergence before fixing one clone
   category_code: G2
@@ -288,8 +291,8 @@ scenarios:
   status: draft
   factors:
   - clone
-  - clone_divergence
-  - ambiguous_blame
+  - clone-divergence
+  - ambiguous-blame
 - id: SZZG-0028
   title: The copy and the later edit are both required; the origin is not
   category_code: G2
@@ -299,8 +302,8 @@ scenarios:
   status: draft
   factors:
   - clone
-  - multiple_bic
-  - origin_and_direct_bic
+  - multi-bic
+  - origin-and-direct-bic
 - id: SZZG-0029
   title: Partial fix followed by complete fix
   category_code: G3
@@ -309,7 +312,7 @@ scenarios:
   readme: advanced-scenarios/SZZG-0029/README.md
   status: draft
   factors:
-  - bug_fixing_commits
+  - multi-bfc
 - id: SZZG-0030
   title: Attempted fix followed by follow-up fix
   category_code: G3
@@ -318,10 +321,10 @@ scenarios:
   readme: advanced-scenarios/SZZG-0030/README.md
   status: draft
   factors:
-  - bug_fixing_commits
-  - attempted_fix
-  - follow_up_fix
-  - incorrect_fix
+  - multi-bfc
+  - attempted-fix
+  - follow-up-fix
+  - incorrect-fix
 - id: SZZG-0031
   title: One BIC fixed by multiple BFCs
   category_code: G3
@@ -330,7 +333,7 @@ scenarios:
   readme: advanced-scenarios/SZZG-0031/README.md
   status: draft
   factors:
-  - bug_fixing_commits
+  - multi-bfc
 - id: SZZG-0032
   title: Multiple BFCs progressively fix the same bug
   category_code: G3
@@ -339,11 +342,11 @@ scenarios:
   readme: advanced-scenarios/SZZG-0032/README.md
   status: draft
   factors:
-  - multiple_bfc
-  - progressive_fix
-  - same_bug
-  - partial_fix
-  - complete_fix
+  - multi-bfc
+  - progressive-fix
+  - same-bug
+  - partial-fix
+  - complete-fix
 - id: SZZG-0033
   title: Partial credit when only some BICs are returned
   category_code: G3
@@ -352,9 +355,9 @@ scenarios:
   readme: advanced-scenarios/SZZG-0033/README.md
   status: draft
   factors:
-  - multiple_bic
-  - partial_credit
-  - expected_szz
+  - multi-bic
+  - partial-credit
+  - evaluation-variant
 - id: SZZG-0034
   title: One BFC fixes multiple independent bugs
   category_code: G3
@@ -363,10 +366,10 @@ scenarios:
   readme: advanced-scenarios/SZZG-0034/README.md
   status: draft
   factors:
-  - multiple_bug
-  - single_bfc
-  - independent_faults
-  - different_files
+  - multiple-bug
+  - single-bfc
+  - independent-faults
+  - different-files
 - id: SZZG-0035
   title: One BIC causes multiple bug symptoms
   category_code: G3
@@ -375,7 +378,7 @@ scenarios:
   readme: advanced-scenarios/SZZG-0035/README.md
   status: draft
   factors:
-  - root_cause
+  - root-cause
 - id: SZZG-0036
   title: Fix split across multiple commits
   category_code: G3
@@ -384,7 +387,7 @@ scenarios:
   readme: advanced-scenarios/SZZG-0036/README.md
   status: draft
   factors:
-  - bug_fixing_commits
+  - multi-bfc
 - id: SZZG-0037
   title: One BFC fixes multiple BICs across multiple files
   category_code: G3
@@ -393,9 +396,9 @@ scenarios:
   readme: advanced-scenarios/SZZG-0037/README.md
   status: draft
   factors:
-  - multiple_bic
-  - multiple_file
-  - single_bfc
+  - multi-bic
+  - multiple-file
+  - single-bfc
 - id: SZZG-0038
   title: One directly blamed BIC and one context-only BIC
   category_code: G3
@@ -404,9 +407,9 @@ scenarios:
   readme: advanced-scenarios/SZZG-0038/README.md
   status: draft
   factors:
-  - multiple_bic
-  - context_dependent
-  - partial_observability
+  - multi-bic
+  - context-dependent
+  - partial-observability
 - id: SZZG-0039
   title: Prerequisite BIC and symptom BIC fixed together
   category_code: G3
@@ -415,9 +418,9 @@ scenarios:
   readme: advanced-scenarios/SZZG-0039/README.md
   status: draft
   factors:
-  - multiple_bic
-  - causal_chain
-  - single_bfc
+  - multi-bic
+  - causal-chain
+  - single-bfc
 - id: SZZG-0040
   title: Multiple BICs where one true BIC is not directly touched by the BFC
   category_code: G3
@@ -426,9 +429,9 @@ scenarios:
   readme: advanced-scenarios/SZZG-0040/README.md
   status: draft
   factors:
-  - multiple_bic
-  - not_directly_touched_by_fix
-  - context_dependent
+  - multi-bic
+  - not-directly-touched-by-fix
+  - context-dependent
 - id: SZZG-0041
   title: Ambiguous blame with duplicate faulty lines
   category_code: G3
@@ -437,9 +440,9 @@ scenarios:
   readme: advanced-scenarios/SZZG-0041/README.md
   status: draft
   factors:
-  - ambiguous_blame
-  - duplicate_code
-  - same_statement_multiple_locations
+  - ambiguous-blame
+  - duplicate-code
+  - same-statement-multiple-locations
 - id: SZZG-0042
   title: BFC is a merge commit
   category_code: G4
@@ -448,8 +451,8 @@ scenarios:
   readme: advanced-scenarios/SZZG-0042/README.md
   status: draft
   factors:
-  - merge_commit
-  - bug_fixing_commit
+  - merge-commit
+  - bug-fixing-commit
   - branch
 - id: SZZG-0043
   title: BIC on feature branch, BFC on main
@@ -461,8 +464,8 @@ scenarios:
   factors:
   - branch
   - merge
-  - feature_branch_bic
-  - main_branch_bfc
+  - feature-branch-bic
+  - main-branch-bfc
 - id: SZZG-0044
   title: BIC before merge, BFC after merge
   category_code: G4
@@ -473,8 +476,8 @@ scenarios:
   factors:
   - branch
   - merge
-  - pre_merge_bic
-  - post_merge_bfc
+  - pre-merge-bic
+  - post-merge-bfc
 - id: SZZG-0045
   title: BIC in merge commit
   category_code: G4
@@ -485,7 +488,7 @@ scenarios:
   factors:
   - branch
   - merge
-  - merge_commit_bic
+  - merge-commit-bic
 - id: SZZG-0046
   title: BFC in merge commit
   category_code: G4
@@ -496,8 +499,8 @@ scenarios:
   factors:
   - branch
   - merge
-  - merge_commit_bfc
-  - partial_fix
+  - merge-commit-bfc
+  - partial-fix
 - id: SZZG-0047
   title: Squash merge
   category_code: G4
@@ -507,10 +510,10 @@ scenarios:
   status: draft
   factors:
   - branch
-  - squash_merge
-  - squashed_bic
-  - direct_bic
-  - origin_bic
+  - squash-merge
+  - squashed-bic
+  - direct-bic
+  - origin-bic
 - id: SZZG-0048
   title: Cherry-pick BIC
   category_code: G4
@@ -520,10 +523,10 @@ scenarios:
   status: draft
   factors:
   - branch
-  - cherry_pick
-  - release_branch
-  - direct_bic
-  - origin_bic
+  - cherry-pick
+  - release-branch
+  - direct-bic
+  - origin-bic
 - id: SZZG-0049
   title: Cherry-pick BFC
   category_code: G4
@@ -533,10 +536,10 @@ scenarios:
   status: draft
   factors:
   - branch
-  - cherry_pick_of
-  - bug_fixing_commits
-  - bug_instances
-  - backport_like_fix
+  - cherry-pick
+  - multi-bfc
+  - copy-propagation
+  - backport-like-fix
 - id: SZZG-0050
   title: Backport fix
   category_code: G4
@@ -546,10 +549,10 @@ scenarios:
   status: draft
   factors:
   - branch
-  - backport_of
-  - release_branch
-  - release_specific_changes
-  - bug_instances
+  - backport
+  - release-branch
+  - release-specific-changes
+  - copy-propagation
 - id: SZZG-0051
   title: Backport introduces release-specific bug
   category_code: G4
@@ -559,7 +562,7 @@ scenarios:
   status: draft
   factors:
   - branch
-  - backport_of
+  - backport
 - id: SZZG-0052
   title: Criss-cross merge
   category_code: G4
@@ -570,8 +573,8 @@ scenarios:
   factors:
   - branch
   - merge
-  - criss_cross_merge
-  - multiple_merge_bases
+  - criss-cross-merge
+  - multiple-merge-bases
 - id: SZZG-0053
   title: Release-branch-only bug
   category_code: G4
@@ -580,8 +583,8 @@ scenarios:
   readme: advanced-scenarios/SZZG-0053/README.md
   status: draft
   factors:
-  - release_branch
-  - branch_only_bug
+  - release-branch
+  - branch-only-bug
 - id: SZZG-0054
   title: Fixed on main but unfixed on release
   category_code: G4
@@ -590,9 +593,9 @@ scenarios:
   readme: advanced-scenarios/SZZG-0054/README.md
   status: draft
   factors:
-  - release_branch
-  - partial_fix_propagation
-  - unfixed_release
+  - release-branch
+  - partial-fix-propagation
+  - unfixed-release
 - id: SZZG-0055
   title: Release branch change rebased onto main
   category_code: G4
@@ -603,10 +606,10 @@ scenarios:
   factors:
   - branch
   - rebase
-  - release_branch
-  - release_to_main
-  - direct_bic
-  - origin_bic
+  - release-branch
+  - release-to-main
+  - direct-bic
+  - origin-bic
 - id: SZZG-0056
   title: Main fix rebased onto release branch
   category_code: G4
@@ -617,10 +620,10 @@ scenarios:
   factors:
   - branch
   - rebase
-  - release_branch
-  - main_fix_to_release
-  - rebased_bfc
-  - bug_fixing_commits
+  - release-branch
+  - main-fix-to-release
+  - rebased-bfc
+  - multi-bfc
 - id: SZZG-0057
   title: Rebase old feature branch after unrelated main changes
   category_code: G4
@@ -631,10 +634,10 @@ scenarios:
   factors:
   - branch
   - rebase
-  - old_base
-  - unrelated_main_changes
-  - direct_bic
-  - origin_bic
+  - old-base
+  - unrelated-main-changes
+  - direct-bic
+  - origin-bic
 - id: SZZG-0058
   title: Bug-fixing commit is rebased onto main
   category_code: G4
@@ -645,10 +648,10 @@ scenarios:
   factors:
   - branch
   - rebase
-  - rebased_bic
-  - rebased_bfc
-  - direct_bic
-  - origin_bic
+  - rebased-bic
+  - rebased-bfc
+  - direct-bic
+  - origin-bic
 - id: SZZG-0059
   title: Merge commit itself is the BIC
   category_code: G4
@@ -657,9 +660,9 @@ scenarios:
   readme: advanced-scenarios/SZZG-0059/README.md
   status: draft
   factors:
-  - merge_commit
-  - bug_introducing_merge
-  - non_linear_history
+  - merge-commit
+  - bug-introducing-merge
+  - non-linear-history
 - id: SZZG-0060
   title: BFC on main after feature-branch BIC is merged
   category_code: G4
@@ -668,9 +671,9 @@ scenarios:
   readme: advanced-scenarios/SZZG-0060/README.md
   status: draft
   factors:
-  - feature_branch
-  - merge_commit
-  - bfc_after_merge
+  - feature-branch
+  - merge-commit
+  - bfc-after-merge
 - id: SZZG-0061
   title: Cherry-picked BIC appears as duplicate commits on two branches
   category_code: G4
@@ -679,9 +682,9 @@ scenarios:
   readme: advanced-scenarios/SZZG-0061/README.md
   status: draft
   factors:
-  - cherry_pick
-  - duplicate_patch
-  - non_linear_history
+  - cherry-pick
+  - duplicate-patch
+  - non-linear-history
 - id: SZZG-0062
   title: Backported fix on maintenance branch traces to original mainline BIC
   category_code: G4
@@ -691,8 +694,8 @@ scenarios:
   status: draft
   factors:
   - backport
-  - maintenance_branch
-  - cross_branch_bic
+  - maintenance-branch
+  - cross-branch-bic
 - id: SZZG-0064
   title: Rebase with non-BIC intermediate commit
   category_code: G5
@@ -703,11 +706,11 @@ scenarios:
   factors:
   - branch
   - rebase
-  - rebased_bic
-  - intermediate_commit
-  - direct_bic
-  - origin_bic
-  - inherited_commit_metadata
+  - rebased-bic
+  - intermediate-commit
+  - direct-bic
+  - origin-bic
+  - inherited-commit-metadata
 - id: SZZG-0065
   title: Rebase conflict resolution introduces bug
   category_code: G5
@@ -718,10 +721,10 @@ scenarios:
   factors:
   - branch
   - rebase
-  - rebase_conflict_resolution
-  - conflict_resolution_bic
-  - direct_bic
-  - fault_in_neither_parent
+  - rebase-conflict-resolution
+  - conflict-resolution-bic
+  - direct-bic
+  - fault-in-neither-parent
 - id: SZZG-0066
   title: Rebase conflict resolution propagates existing bug
   category_code: G5
@@ -732,9 +735,9 @@ scenarios:
   factors:
   - branch
   - rebase
-  - rebase_conflict_resolution
-  - origin_bic
-  - direct_bic
+  - rebase-conflict-resolution
+  - origin-bic
+  - direct-bic
 - id: SZZG-0067
   title: Rebase conflict resolution fixes bug
   category_code: G5
@@ -745,9 +748,9 @@ scenarios:
   factors:
   - branch
   - rebase
-  - rebase_conflict_resolution
-  - conflict_resolution_bfc
-  - rebased_bic
+  - rebase-conflict-resolution
+  - conflict-resolution-bfc
+  - rebased-bic
 - id: SZZG-0068
   title: Rebase changes patch content during replay
   category_code: G5
@@ -758,9 +761,9 @@ scenarios:
   factors:
   - branch
   - rebase
-  - patch_modified_during_rebase
-  - origin_bic
-  - direct_bic
+  - patch-modified-during-rebase
+  - origin-bic
+  - direct-bic
 - id: SZZG-0069
   title: Rebase splits original BIC into multiple commits
   category_code: G5
@@ -771,10 +774,10 @@ scenarios:
   factors:
   - branch
   - rebase
-  - split_bic
-  - multiple_bic
-  - origin_bic
-  - direct_bic
+  - split-bic
+  - multi-bic
+  - origin-bic
+  - direct-bic
 - id: SZZG-0070
   title: Rebase combines multiple BICs into one commit
   category_code: G5
@@ -785,10 +788,10 @@ scenarios:
   factors:
   - branch
   - rebase
-  - interactive_rebase
+  - interactive-rebase
   - squash
-  - multiple_origin_bic
-  - direct_bic
+  - multiple-origin-bic
+  - direct-bic
 - id: SZZG-0071
   title: Interactive rebase edits BIC commit
   category_code: G5
@@ -799,11 +802,10 @@ scenarios:
   factors:
   - branch
   - rebase
-  - interactive_rebase
-  - edit
-  - patch_modified_during_rebase
-  - direct_bic
-  - origin_bic
+  - interactive-rebase
+  - patch-modified-during-rebase
+  - direct-bic
+  - origin-bic
 - id: SZZG-0072
   title: Interactive rebase drops original BIC but bug remains
   category_code: G5
@@ -814,11 +816,11 @@ scenarios:
   factors:
   - branch
   - rebase
-  - interactive_rebase
-  - dropped_origin_bic
-  - deleted_branch
-  - direct_bic
-  - origin_bic
+  - interactive-rebase
+  - dropped-origin-bic
+  - deleted-branch
+  - direct-bic
+  - origin-bic
 - id: SZZG-0073
   title: Interactive rebase reorders commits before BIC
   category_code: G5
@@ -829,11 +831,11 @@ scenarios:
   factors:
   - branch
   - rebase
-  - interactive_rebase
+  - interactive-rebase
   - reorder
-  - direct_bic
-  - origin_bic
-  - inherited_commit_metadata
+  - direct-bic
+  - origin-bic
+  - inherited-commit-metadata
 - id: SZZG-0075
   title: Interactive rebase squashes BIC and BFC into neutral commit
   category_code: G5
@@ -844,11 +846,11 @@ scenarios:
   factors:
   - branch
   - rebase
-  - interactive_rebase
+  - interactive-rebase
   - squash
-  - transient_bug
-  - scope_boundary
-  - no_main_line_bfc
+  - transient-bug
+  - scope-boundary
+  - no-main-line-bfc
 - id: SZZG-0076
   title: Multiple BICs replayed by rebase
   category_code: G5
@@ -859,10 +861,10 @@ scenarios:
   factors:
   - branch
   - rebase
-  - multiple_bic
-  - rebased_bic
-  - direct_bic
-  - origin_bic
+  - multi-bic
+  - rebased-bic
+  - direct-bic
+  - origin-bic
 - id: SZZG-0077
   title: Rebased BIC fixed by multiple BFCs
   category_code: G5
@@ -873,10 +875,10 @@ scenarios:
   factors:
   - branch
   - rebase
-  - rebased_bic
-  - multiple_bfc
-  - partial_fix
-  - complete_fix
+  - rebased-bic
+  - multi-bfc
+  - partial-fix
+  - complete-fix
 - id: SZZG-0078
   title: Rebase commit message reveals origin
   category_code: G5
@@ -887,10 +889,10 @@ scenarios:
   factors:
   - branch
   - rebase
-  - commit_messages
-  - message_trailer
-  - origin_bic
-  - direct_bic
+  - commit-messages
+  - message-trailer
+  - origin-bic
+  - direct-bic
 - id: SZZG-0081
   title: Rebase with formatting rewrite noise
   category_code: G5
@@ -901,11 +903,11 @@ scenarios:
   factors:
   - branch
   - rebase
-  - formatting_rewrite
-  - whitespace_only_change
-  - blame_stops_at_formatting
-  - direct_bic
-  - origin_bic
+  - formatting-rewrite
+  - whitespace-only-change
+  - blame-stops-at-formatting
+  - direct-bic
+  - origin-bic
 - id: SZZG-0082
   title: Rebase with generated file update
   category_code: G5
@@ -916,9 +918,9 @@ scenarios:
   factors:
   - branch
   - rebase
-  - generated_files
-  - generated_code_noise
-  - direct_bic
+  - generated-files
+  - generated-code-noise
+  - direct-bic
 - id: SZZG-0083
   title: Huge noisy rebased commit
   category_code: G5
@@ -929,12 +931,12 @@ scenarios:
   factors:
   - branch
   - rebase
-  - large_noisy_commit
-  - generated_file
-  - multi_file
+  - large-noisy-commit
+  - generated-file
+  - multi-file
   - robustness
-  - direct_bic
-  - origin_bic
+  - direct-bic
+  - origin-bic
 - id: SZZG-0084
   title: Partial revert reintroduces bug
   category_code: G6
@@ -943,13 +945,13 @@ scenarios:
   readme: advanced-scenarios/SZZG-0084/README.md
   status: draft
   factors:
-  - linear_history
+  - linear-history
   - revert
-  - partial_revert
-  - reintroduced_bug
-  - re_bic
-  - origin_bic
-  - revert_footer
+  - partial-revert
+  - reintroduced-bug
+  - re-bic
+  - origin-bic
+  - revert-footer
 - id: SZZG-0085
   title: Old BIC and re-BIC are both plausible
   category_code: G6
@@ -959,9 +961,9 @@ scenarios:
   status: draft
   factors:
   - reintroduction
-  - partial_revert
-  - origin_bic
-  - evaluation_variants
+  - partial-revert
+  - origin-bic
+  - evaluation-variant
 - id: SZZG-0086
   title: Revert of fix reintroduces bug
   category_code: G6
@@ -971,10 +973,10 @@ scenarios:
   status: draft
   factors:
   - revert
-  - revert_of_fix
-  - reintroduced_bug
-  - re_bic
-  - origin_bic
+  - revert-of-fix
+  - reintroduced-bug
+  - re-bic
+  - origin-bic
 - id: SZZG-0088
   title: Partial revert of fix reintroduces one fault
   category_code: G6
@@ -984,10 +986,10 @@ scenarios:
   status: draft
   factors:
   - revert
-  - partial_revert
-  - reintroduced_bug
-  - single_fault_reintroduced
-  - re_bic
+  - partial-revert
+  - reintroduced-bug
+  - single-fault-reintroduced
+  - re-bic
 - id: SZZG-0089
   title: Revert of revert with conflict resolution
   category_code: G6
@@ -997,10 +999,10 @@ scenarios:
   status: draft
   factors:
   - revert
-  - revert_of_revert
-  - conflict_resolution
-  - intermediate_change
-  - re_bic
+  - revert-of-revert
+  - conflict-resolution
+  - intermediate-change
+  - re-bic
 - id: SZZG-0090
   title: Repeated revert toggling before final fix
   category_code: G6
@@ -1010,10 +1012,10 @@ scenarios:
   status: draft
   factors:
   - revert
-  - revert_of_revert
-  - repeated_toggling
-  - reintroduced_bug
-  - re_bic
+  - revert-of-revert
+  - repeated-toggling
+  - reintroduced-bug
+  - re-bic
 - id: SZZG-0091
   title: Multiple BICs with partial revert reintroducing one fault
   category_code: G6
@@ -1023,10 +1025,10 @@ scenarios:
   status: draft
   factors:
   - revert
-  - partial_revert
-  - multiple_bic
-  - single_fault_reintroduced
-  - re_bic
+  - partial-revert
+  - multi-bic
+  - single-fault-reintroduced
+  - re-bic
 - id: SZZG-0093
   title: BIC occurs during feature work
   category_code: G7
@@ -1035,10 +1037,10 @@ scenarios:
   readme: advanced-scenarios/SZZG-0093/README.md
   status: draft
   factors:
-  - work_items
-  - feature_work
-  - bic_inside_work_item
-  - commit_series
+  - work-item
+  - feature-work
+  - bic-inside-work-item
+  - commit-series
 - id: SZZG-0094
   title: BIC and BFC belong to the same issue commit series
   category_code: G7
@@ -1047,7 +1049,7 @@ scenarios:
   readme: advanced-scenarios/SZZG-0094/README.md
   status: draft
   factors:
-  - issues
+  - issue-evidence
 - id: SZZG-0095
   title: BIC separated from BFC by an intermediate work-item commit
   category_code: G7
@@ -1056,9 +1058,9 @@ scenarios:
   readme: advanced-scenarios/SZZG-0095/README.md
   status: draft
   factors:
-  - work_items
-  - intermediate_commit
-  - related_but_not_correct
+  - work-item
+  - intermediate-commit
+  - related-but-not-correct
 - id: SZZG-0096
   title: Multiple candidate BICs inside a work item
   category_code: G7
@@ -1067,8 +1069,8 @@ scenarios:
   readme: advanced-scenarios/SZZG-0096/README.md
   status: draft
   factors:
-  - work_items
-  - expected_szz
+  - work-item
+  - evaluation-variant
 - id: SZZG-0097
   title: Work item inference without issue ID
   category_code: G7
@@ -1077,11 +1079,11 @@ scenarios:
   readme: advanced-scenarios/SZZG-0097/README.md
   status: draft
   factors:
-  - work_items
-  - work_item_inference
-  - no_issue_id
-  - commit_series
-  - related_but_not_correct
+  - work-item
+  - work-item-inference
+  - no-issue-id
+  - commit-series
+  - related-but-not-correct
 - id: SZZG-0098
   title: Commit message names the regressed region
   category_code: G7
@@ -1091,7 +1093,7 @@ scenarios:
   status: draft
   factors:
   - context
-  - commit_messages
+  - commit-messages
 - id: SZZG-0099
   title: BFC message references the wrong commit
   category_code: G7
@@ -1100,8 +1102,8 @@ scenarios:
   readme: advanced-scenarios/SZZG-0099/README.md
   status: draft
   factors:
-  - developer_hints
-  - misleading_commit_message
+  - message-evidence
+  - misleading-commit-message
 - id: SZZG-0100
   title: Unrelated commits mixed in the same issue
   category_code: G7
@@ -1110,8 +1112,8 @@ scenarios:
   readme: advanced-scenarios/SZZG-0100/README.md
   status: draft
   factors:
-  - work_items
-  - issues
+  - work-item
+  - issue-evidence
 - id: SZZG-0101
   title: Caller/callee interaction bug
   category_code: G7
@@ -1120,9 +1122,9 @@ scenarios:
   readme: advanced-scenarios/SZZG-0101/README.md
   status: draft
   factors:
-  - caller_callee
+  - caller-callee
   - context
-  - faults
+  - api-misuse
 - id: SZZG-0102
   title: Issue text names the regressed column
   category_code: G7
@@ -1131,7 +1133,7 @@ scenarios:
   readme: advanced-scenarios/SZZG-0102/README.md
   status: draft
   factors:
-  - issues
+  - issue-evidence
   - context
 - id: SZZG-0103
   title: Caller-side context is needed to identify the BIC
@@ -1141,9 +1143,9 @@ scenarios:
   readme: advanced-scenarios/SZZG-0103/README.md
   status: draft
   factors:
-  - context_dependent
-  - caller_callee
-  - not_directly_local
+  - context-dependent
+  - caller-callee
+  - not-directly-local
 - id: SZZG-0104
   title: Configuration BIC is fixed by code-side normalization
   category_code: G7
@@ -1152,9 +1154,9 @@ scenarios:
   readme: advanced-scenarios/SZZG-0104/README.md
   status: draft
   factors:
-  - configuration_change
-  - cross_artifact_fix
-  - context_dependent
+  - configuration-change
+  - cross-artifact-fix
+  - context-dependent
 - id: SZZG-0105
   title: Defensive check BFC masks an earlier root-cause BIC
   category_code: G7
@@ -1163,9 +1165,9 @@ scenarios:
   readme: advanced-scenarios/SZZG-0105/README.md
   status: draft
   factors:
-  - defensive_fix
-  - root_cause_not_touched
-  - context_dependent
+  - defensive-fix
+  - root-cause-not-touched
+  - context-dependent
 - id: SZZG-0107
   title: BFC includes generated files
   category_code: G8
@@ -1174,7 +1176,7 @@ scenarios:
   readme: advanced-scenarios/SZZG-0107/README.md
   status: draft
   factors:
-  - generated_files
+  - generated-files
 - id: SZZG-0108
   title: Binary file change
   category_code: G8
@@ -1183,7 +1185,7 @@ scenarios:
   readme: advanced-scenarios/SZZG-0108/README.md
   status: draft
   factors:
-  - write_binary_file
+  - binary-file
 - id: SZZG-0109
   title: File deletion
   category_code: G8
@@ -1192,7 +1194,7 @@ scenarios:
   readme: advanced-scenarios/SZZG-0109/README.md
   status: draft
   factors:
-  - delete_file
+  - file-deletion
 - id: SZZG-0110
   title: Empty intermediate commit
   category_code: G8
@@ -1201,7 +1203,9 @@ scenarios:
   readme: advanced-scenarios/SZZG-0110/README.md
   status: draft
   factors:
-  - allow_empty
+  - single-bic
+  - single-bfc
+  - boundary-condition
 - id: SZZG-0111
   title: Chmod-only intermediate
   category_code: G8
@@ -1210,7 +1214,7 @@ scenarios:
   readme: advanced-scenarios/SZZG-0111/README.md
   status: draft
   factors:
-  - chmod
+  - file-mode-change
 - id: SZZG-0112
   title: Non-UTF-8 file
   category_code: G8
@@ -1220,8 +1224,8 @@ scenarios:
   status: draft
   factors:
   - encoding
-  - non_utf8_file
-  - write_binary_file
+  - non-utf8-file
+  - binary-file
 - id: SZZG-0113
   title: Huge file
   category_code: G8
@@ -1230,7 +1234,7 @@ scenarios:
   readme: advanced-scenarios/SZZG-0113/README.md
   status: draft
   factors:
-  - write_generated_text_file
+  - generated-file
 - id: SZZG-0114
   title: Huge history
   category_code: G8
@@ -1239,7 +1243,7 @@ scenarios:
   readme: advanced-scenarios/SZZG-0114/README.md
   status: draft
   factors:
-  - commit_generators
+  - generated-history
 - id: SZZG-0115
   title: Top-k evaluation
   category_code: G9
@@ -1248,7 +1252,7 @@ scenarios:
   readme: advanced-scenarios/SZZG-0115/README.md
   status: draft
   factors:
-  - expected_szz
+  - evaluation-variant
 - id: SZZG-0116
   title: Entity-level-only expected SZZ policy
   category_code: G9
@@ -1257,7 +1261,7 @@ scenarios:
   readme: advanced-scenarios/SZZG-0116/README.md
   status: draft
   factors:
-  - expected_szz
+  - evaluation-variant
 - id: SZZG-0117
   title: The unit change arrives through a merge, the consumer is written after it
   category_code: G4
@@ -1266,11 +1270,11 @@ scenarios:
   readme: advanced-scenarios/SZZG-0117/README.md
   status: active
   factors:
-  - multiple_bic
+  - multi-bic
   - merge
-  - release_branch
-  - value_flow
-  - blame_unreachable_bic
+  - release-branch
+  - value-flow
+  - blame-unreachable-bic
 - id: SZZG-0118
   title: A reduced copy of a helper, and a later call routed through it
   category_code: G2
@@ -1279,11 +1283,11 @@ scenarios:
   readme: advanced-scenarios/SZZG-0118/README.md
   status: active
   factors:
-  - multiple_bic
+  - multi-bic
   - clone
-  - origin_and_direct_bic
-  - caller_callee_interaction
-  - blame_unreachable_bic
+  - origin-and-direct-bic
+  - caller-callee-interaction
+  - blame-unreachable-bic
 - id: SZZG-0119
   title: A move that inlines two named conditions takes ownership of an earlier fault
   category_code: G1
@@ -1292,11 +1296,11 @@ scenarios:
   readme: advanced-scenarios/SZZG-0119/README.md
   status: active
   factors:
-  - multiple_bic
-  - file_move
-  - inline_refactoring
-  - behaviour_preserving_rewrite
-  - blame_unreachable_bic
+  - multi-bic
+  - file-move
+  - inline-refactoring
+  - behaviour-preserving-rewrite
+  - blame-unreachable-bic
 - id: SZZG-0120
   title: Two branches that are each harmless, and a merge that is not
   category_code: G3
@@ -1305,11 +1309,11 @@ scenarios:
   readme: advanced-scenarios/SZZG-0120/README.md
   status: active
   factors:
-  - multiple_bic
+  - multi-bic
   - merge
-  - guard_removal
-  - caller_callee_interaction
-  - blame_unreachable_bic
+  - guard-removal
+  - caller-callee-interaction
+  - blame-unreachable-bic
 - id: SZZG-0121
   title: A cherry-picked unit change in a file the fix never opens
   category_code: G4
@@ -1318,10 +1322,10 @@ scenarios:
   readme: advanced-scenarios/SZZG-0121/README.md
   status: active
   factors:
-  - multiple_bic
-  - cherry_pick
-  - origin_and_direct_bic
-  - value_flow
-  - blame_unreachable_bic
+  - multi-bic
+  - cherry-pick
+  - origin-and-direct-bic
+  - value-flow
+  - blame-unreachable-bic
 notes:
 - Scenario IDs are ordered by the SZZBench scenario taxonomy.

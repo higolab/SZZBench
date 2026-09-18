@@ -6,7 +6,11 @@ meta:
   description: Evaluates same bug introduced independently and checks whether SZZ identifies the expected bug-introducing
     commit set.
   category: "Multiple BICs, duplicate faults, and composite faults"
-  factors: []
+  factors:
+  - multi-bic
+  - single-bfc
+  - boundary-condition
+  - duplicate-statement
   difficulty: hard
   status: active
   tier: control

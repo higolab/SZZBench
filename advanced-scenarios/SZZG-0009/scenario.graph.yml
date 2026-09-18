@@ -8,9 +8,9 @@ meta:
   category: "Refactoring, move, rename, and semantic rewrite"
   category_code: "G1"
   factors:
-  - intermediate_refactoring
-  - extract_method
-  - line_history_break
+  - intermediate-refactoring
+  - extract-method
+  - line-history-break
   difficulty: advanced
   status: draft
   tier: control
@@ -22,13 +22,13 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: c0: create shipping fee calculation
+  history_summary: 'c0: create shipping fee calculation
 
-    c1: c1: introduce free-shipping threshold bug
+    c1: introduce free-shipping threshold bug
 
-    c2: c2: extract free-shipping predicate
+    c2: extract free-shipping predicate
 
-    c3: c3: fix extracted threshold predicate'
+    c3: fix extracted threshold predicate'
 commits:
 - id: c0
   branch: main

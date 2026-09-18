@@ -8,9 +8,9 @@ meta:
   category: "Clone, copy propagation, and origin-vs-direct BIC"
   category_code: "G2"
   factors:
-  - copy_file
-  - clone_divergence
-  - direct_bic_in_copy
+  - copy-propagation
+  - clone-divergence
+  - direct-bic-in-copy
   difficulty: advanced
   status: draft
   tier: control
@@ -22,13 +22,13 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: c0: create original formatter
+  history_summary: 'c0: create original formatter
 
-    c1: c1: copy formatter to report formatter
+    c1: copy formatter to report formatter
 
-    c2: c2: introduce copied-code null handling bug
+    c2: introduce copied-code null handling bug
 
-    c3: c3: fix copied formatter null handling'
+    c3: fix copied formatter null handling'
 commits:
 - id: c0
   branch: main

@@ -7,11 +7,11 @@ Evaluate direct-vs-origin BIC behavior when conflict resolution propagates an ex
 ## Commit history
 
 ```text
-c0: c0: create initial correct implementation
-f1: f1: introduce range bug on feature
-m1: m1: add main-line documentation
-r1: r1: resolve rebase conflict by taking buggy feature logic
-c2: c2: fix propagated rebase bug
+c0: create initial correct implementation
+f1: introduce range bug on feature
+m1: add main-line documentation
+r1: resolve rebase conflict by taking buggy feature logic
+c2: fix propagated rebase bug
 ```
 
 ## Commit table

@@ -8,9 +8,9 @@ meta:
   category: "Multiple BICs, multiple BFCs, and partial fixes"
   category_code: "G3"
   factors:
-  - multiple_bic
-  - context_dependent
-  - partial_observability
+  - multi-bic
+  - context-dependent
+  - partial-observability
   difficulty: advanced
   status: draft
   tier: discriminating
@@ -22,13 +22,13 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: c0: create discount service
+  history_summary: 'c0: create discount service
 
-    c1: c1: introduce wrong threshold
+    c1: introduce wrong threshold
 
-    c2: c2: introduce wrong base discount
+    c2: introduce wrong base discount
 
-    c3: c3: fix customer discount behavior by restoring threshold only'
+    c3: fix customer discount behavior by restoring threshold only'
 commits:
 - id: c0
   branch: main

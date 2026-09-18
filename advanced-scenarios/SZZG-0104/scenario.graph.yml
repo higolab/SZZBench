@@ -8,9 +8,9 @@ meta:
   category: "Issue, message, context, and non-local evidence"
   category_code: "G7"
   factors:
-  - configuration_change
-  - cross_artifact_fix
-  - context_dependent
+  - configuration-change
+  - cross-artifact-fix
+  - context-dependent
   difficulty: advanced
   status: draft
   tier: control
@@ -22,11 +22,11 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: c0: create endpoint resolver and config
+  history_summary: 'c0: create endpoint resolver and config
 
-    c1: c1: introduce trailing slash in configuration
+    c1: introduce trailing slash in configuration
 
-    c2: c2: fix endpoint construction in code'
+    c2: fix endpoint construction in code'
 commits:
 - id: c0
   branch: main

@@ -7,11 +7,11 @@ Evaluate rebase from release branch to main.
 ## Commit history
 
 ```text
-c0: c0: create initial correct implementation
-rel1: rel1: introduce release-specific range bug
-m1: m1: continue main development
-r1: r1: rebase release change onto main
-c2: c2: fix release-origin bug on main
+c0: create initial correct implementation
+rel1: introduce release-specific range bug
+m1: continue main development
+r1: rebase release change onto main
+c2: fix release-origin bug on main
 ```
 
 ## Commit table

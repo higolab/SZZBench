@@ -8,10 +8,10 @@ meta:
   category_code: "G6"
   factors:
   - revert
-  - revert_of_revert
-  - conflict_resolution
-  - intermediate_change
-  - re_bic
+  - revert-of-revert
+  - conflict-resolution
+  - intermediate-change
+  - re-bic
   difficulty: advanced
   status: draft
   tier: control

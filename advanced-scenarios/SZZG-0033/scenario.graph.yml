@@ -8,9 +8,9 @@ meta:
   category: "Multiple BICs, multiple BFCs, and partial fixes"
   category_code: "G3"
   factors:
-  - multiple_bic
-  - partial_credit
-  - expected_szz
+  - multi-bic
+  - partial-credit
+  - evaluation-variant
   difficulty: advanced
   status: draft
   tier: control

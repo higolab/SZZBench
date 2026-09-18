@@ -8,9 +8,9 @@ meta:
   category: "Refactoring, move, rename, and semantic rewrite"
   category_code: "G1"
   factors:
-  - intermediate_rewrite
+  - intermediate-rewrite
   - formatting
-  - line_history_break
+  - line-history-break
   difficulty: advanced
   status: draft
   tier: control
@@ -22,13 +22,13 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: c0: create age gate
+  history_summary: 'c0: create age gate
 
-    c1: c1: introduce boundary bug
+    c1: introduce boundary bug
 
-    c2: c2: rewrite condition into explicit if statement
+    c2: rewrite condition into explicit if statement
 
-    c3: c3: fix adult boundary after rewrite'
+    c3: fix adult boundary after rewrite'
 commits:
 - id: c0
   branch: main

@@ -7,7 +7,7 @@ meta:
   category: "Non-source, binary, generated, and scalability edge cases"
   category_code: "G8"
   factors:
-  - write_binary_file
+  - binary-file
   difficulty: advanced
   status: draft
   tier: control

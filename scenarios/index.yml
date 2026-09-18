@@ -975,11 +975,11 @@ scenarios:
   category_code: S6
   category: Multiple BICs, duplicate faults, and composite faults
   factors:
-  - multiple_bic
-  - single_bfc
-  - composite_bug
-  - same_bug
-  - multiple_fault_locations
+  - multi-bic
+  - single-bfc
+  - composite-bug
+  - same-bug
+  - multiple-fault-locations
   difficulty: hard
   status: active
   path: scenarios/SZZ-0154/scenario.yml
@@ -988,7 +988,11 @@ scenarios:
   slug: same-bug-introduced-independently
   category_code: S6
   category: Multiple BICs, duplicate faults, and composite faults
-  factors: []
+  factors:
+  - multi-bic
+  - single-bfc
+  - boundary-condition
+  - duplicate-statement
   difficulty: hard
   status: active
   path: scenarios/SZZ-0155/scenario.yml
@@ -997,7 +1001,11 @@ scenarios:
   slug: multiple-overloaded-methods
   category_code: S6
   category: Multiple BICs, duplicate faults, and composite faults
-  factors: []
+  factors:
+  - single-bic
+  - single-bfc
+  - boundary-condition
+  - duplicate-statement
   difficulty: hard
   status: active
   path: scenarios/SZZ-0156/scenario.yml
@@ -1069,7 +1077,7 @@ scenarios:
   category_code: S7
   category: Context, message, and non-local evidence
   factors:
-  - test_context
+  - test-context
   - context
   difficulty: hard
   status: active
@@ -1080,7 +1088,7 @@ scenarios:
   category_code: S7
   category: Context, message, and non-local evidence
   factors:
-  - root_cause
+  - root-cause
   difficulty: hard
   status: active
   path: scenarios/SZZ-0169/scenario.yml
@@ -1090,8 +1098,8 @@ scenarios:
   category_code: S8
   category: Non-source, configuration, test-only, and file-level edge cases
   factors:
-  - test_only_bic
-  - expected_szz
+  - test-only-bic
+  - evaluation-variant
   difficulty: hard
   status: active
   path: scenarios/SZZ-0170/scenario.yml
@@ -1100,7 +1108,11 @@ scenarios:
   slug: bic-dependency-update
   category_code: S8
   category: Non-source, configuration, test-only, and file-level edge cases
-  factors: []
+  factors:
+  - single-bic
+  - single-bfc
+  - config-bic
+  - api-misuse
   difficulty: hard
   status: active
   path: scenarios/SZZ-0171/scenario.yml
@@ -1111,9 +1123,9 @@ scenarios:
   category: Non-source, configuration, test-only, and file-level edge cases
   factors:
   - config
-  - code_interaction
+  - code-interaction
   - context
-  - faults
+  - config-value
   difficulty: hard
   status: active
   path: scenarios/SZZ-0172/scenario.yml

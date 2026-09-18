@@ -8,9 +8,9 @@ meta:
   category: "Multiple BICs, multiple BFCs, and partial fixes"
   category_code: "G3"
   factors:
-  - multiple_bic
-  - not_directly_touched_by_fix
-  - context_dependent
+  - multi-bic
+  - not-directly-touched-by-fix
+  - context-dependent
   difficulty: advanced
   status: draft
   tier: discriminating
@@ -22,13 +22,13 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: c0: create retry policy
+  history_summary: 'c0: create retry policy
 
-    c1: c1: introduce excessive retry limit
+    c1: introduce excessive retry limit
 
-    c2: c2: introduce retry on client errors
+    c2: introduce retry on client errors
 
-    c3: c3: fix retry condition without touching retry limit'
+    c3: fix retry condition without touching retry limit'
 commits:
 - id: c0
   branch: main

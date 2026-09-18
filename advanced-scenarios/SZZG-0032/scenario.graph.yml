@@ -9,11 +9,11 @@ meta:
   category: "Multiple BICs, multiple BFCs, and partial fixes"
   category_code: "G3"
   factors:
-  - multiple_bfc
-  - progressive_fix
-  - same_bug
-  - partial_fix
-  - complete_fix
+  - multi-bfc
+  - progressive-fix
+  - same-bug
+  - partial-fix
+  - complete-fix
   difficulty: advanced
   status: draft
   tier: control
@@ -89,9 +89,11 @@ bugs:
     role: direct
   bug_fixing_commits:
   - commit: c2
-    role: partial_fix_lower_bound
+    role: partial_fix
+    description: Fixes the lower bound only.
   - commit: c3
-    role: complete_fix_upper_bound
+    role: complete_fix
+    description: Fixes the remaining upper bound, completing the repair.
   faults:
   - id: F001
     commit: c1
@@ -125,7 +127,7 @@ scenario_design:
   purpose: Evaluate whether SZZ identifies the original BIC when the same bug is repaired progressively by multiple BFCs.
   key_property: 'Two BFCs are required to fully repair the same bug: c2 fixes the lower-bound helper, and c3 fixes the upper-bound
     helper.'
-  difference_from_SZZG_0003: SZZG-0029 represents a single partial-fix sequence on one condition expression. SZZG-0032 represents
+  difference_from_SZZG_0029: SZZG-0029 represents a single partial-fix sequence on one condition expression. SZZG-0032 represents
     multiple BFCs for one bug with two distinct faulty helper methods.
   evaluation_points:
   - Whether SZZ identifies c1 rather than either fixing commit.

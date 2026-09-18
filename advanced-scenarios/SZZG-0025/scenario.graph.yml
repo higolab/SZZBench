@@ -9,8 +9,8 @@ meta:
   category_code: "G2"
   factors:
   - clone
-  - copy_file
-  - origin_bic_policy
+  - copy-propagation
+  - origin-bic-policy
   difficulty: advanced
   status: draft
   tier: control
@@ -22,13 +22,13 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: c0: create original sanitizer
+  history_summary: 'c0: create original sanitizer
 
-    c1: c1: introduce bug in original sanitizer
+    c1: introduce bug in original sanitizer
 
-    c2: c2: copy sanitizer into admin module
+    c2: copy sanitizer into admin module
 
-    c3: c3: fix copied sanitizer only'
+    c3: fix copied sanitizer only'
 commits:
 - id: c0
   branch: main

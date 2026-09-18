@@ -11,11 +11,11 @@ meta:
   factors:
   - branch
   - rebase
-  - interactive_rebase
+  - interactive-rebase
   - squash
-  - transient_bug
-  - scope_boundary
-  - no_main_line_bfc
+  - transient-bug
+  - scope-boundary
+  - no-main-line-bfc
   difficulty: advanced
   status: draft
   tier: control

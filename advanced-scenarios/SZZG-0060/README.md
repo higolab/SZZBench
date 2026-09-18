@@ -11,11 +11,11 @@ Evaluate bfc on main after feature-branch bic is merged and whether SZZ identifi
 ## Expected history
 
 ```text
-c0: c0: create quota checker
-c1: c1: feature branch introduces quota boundary bug
-c2: c2: main branch updates comments only
-c3: c3: merge feature branch
-c4: c4: fix quota boundary on main
+c0: create quota checker
+c1: feature branch introduces quota boundary bug
+c2: main branch updates comments only
+c3: merge feature branch
+c4: fix quota boundary on main
 ```
 
 ## Why this needs `scenario.graph.yml`

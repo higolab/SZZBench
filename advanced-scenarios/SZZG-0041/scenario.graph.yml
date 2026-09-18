@@ -12,9 +12,9 @@ meta:
   category: "Multiple BICs, multiple BFCs, and partial fixes"
   category_code: "G3"
   factors:
-  - ambiguous_blame
-  - duplicate_code
-  - same_statement_multiple_locations
+  - ambiguous-blame
+  - duplicate-code
+  - same-statement-multiple-locations
   difficulty: advanced
   status: draft
   tier: control

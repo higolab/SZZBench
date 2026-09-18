@@ -9,10 +9,10 @@ meta:
   category_code: "G6"
   factors:
   - revert
-  - revert_of_revert
-  - repeated_toggling
-  - reintroduced_bug
-  - re_bic
+  - revert-of-revert
+  - repeated-toggling
+  - reintroduced-bug
+  - re-bic
   difficulty: advanced
   status: draft
   tier: control
@@ -124,7 +124,8 @@ bugs:
   - commit: c5
     role: direct
   - commit: c3
-    role: related_reintroducing
+    role: reintroducing
+    description: Reverts the bounds change and reintroduces the fault.
   - commit: c1
     role: origin
   bug_fixing_commits:

@@ -8,9 +8,9 @@ meta:
   category: "Branch, merge, cherry-pick, backport, and release branches"
   category_code: "G4"
   factors:
-  - release_branch
-  - partial_fix_propagation
-  - unfixed_release
+  - release-branch
+  - partial-fix-propagation
+  - unfixed-release
   difficulty: advanced
   status: draft
   tier: control
@@ -96,7 +96,8 @@ bugs:
     role: direct
   bug_fixing_commits:
   - commit: c3
-    role: main_fix
+    role: complete_fix
+    description: Fixes the fault on main.
   faults:
   - id: F001
     commit: c1

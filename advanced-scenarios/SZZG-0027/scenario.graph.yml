@@ -9,8 +9,8 @@ meta:
   category_code: "G2"
   factors:
   - clone
-  - clone_divergence
-  - ambiguous_blame
+  - clone-divergence
+  - ambiguous-blame
   difficulty: advanced
   status: draft
   tier: control
@@ -22,15 +22,15 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: c0: create base permission check
+  history_summary: 'c0: create base permission check
 
-    c1: c1: introduce permissive delete check
+    c1: introduce permissive delete check
 
-    c2: c2: clone policy to group policy
+    c2: clone policy to group policy
 
-    c3: c3: diverge copied clone by renaming parameters
+    c3: diverge copied clone by renaming parameters
 
-    c4: c4: fix copied clone after divergence'
+    c4: fix copied clone after divergence'
 commits:
 - id: c0
   branch: main

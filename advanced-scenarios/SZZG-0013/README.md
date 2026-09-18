@@ -11,10 +11,10 @@ Evaluate semantic-preserving rewrite between bic and bfc and whether SZZ identif
 ## Expected history
 
 ```text
-c0: c0: create age gate
-c1: c1: introduce boundary bug
-c2: c2: rewrite condition into explicit if statement
-c3: c3: fix adult boundary after rewrite
+c0: create age gate
+c1: introduce boundary bug
+c2: rewrite condition into explicit if statement
+c3: fix adult boundary after rewrite
 ```
 
 ## Why this needs `scenario.graph.yml`

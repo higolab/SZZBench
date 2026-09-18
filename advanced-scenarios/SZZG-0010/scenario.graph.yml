@@ -8,10 +8,10 @@ meta:
   category: "Refactoring, move, rename, and semantic rewrite"
   category_code: "G1"
   factors:
-  - rename_file
-  - move_file
-  - package_rename
-  - intermediate_refactoring
+  - file-rename
+  - file-move
+  - package-rename
+  - intermediate-refactoring
   difficulty: advanced
   status: draft
   tier: control
@@ -23,13 +23,13 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: c0: create legacy parser
+  history_summary: 'c0: create legacy parser
 
-    c1: c1: introduce parser trimming bug
+    c1: introduce parser trimming bug
 
-    c2: c2: move parser to core package
+    c2: move parser to core package
 
-    c3: c3: fix parser whitespace handling'
+    c3: fix parser whitespace handling'
 commits:
 - id: c0
   branch: main

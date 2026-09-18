@@ -7,7 +7,7 @@ meta:
   category: "Evaluation policy variants"
   category_code: "G9"
   factors:
-  - expected_szz
+  - evaluation-variant
   difficulty: advanced
   status: draft
   tier: control

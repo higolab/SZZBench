@@ -8,9 +8,9 @@ meta:
   category: "Issue, message, context, and non-local evidence"
   category_code: "G7"
   factors:
-  - work_items
-  - intermediate_commit
-  - related_but_not_correct
+  - work-item
+  - intermediate-commit
+  - related-but-not-correct
   difficulty: advanced
   status: draft
   tier: control

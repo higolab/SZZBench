@@ -11,11 +11,11 @@ meta:
   factors:
   - branch
   - rebase
-  - formatting_rewrite
-  - whitespace_only_change
-  - blame_stops_at_formatting
-  - direct_bic
-  - origin_bic
+  - formatting-rewrite
+  - whitespace-only-change
+  - blame-stops-at-formatting
+  - direct-bic
+  - origin-bic
   difficulty: advanced
   status: draft
   tier: control

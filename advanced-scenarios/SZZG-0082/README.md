@@ -7,11 +7,11 @@ Evaluate generated-file noise during rebase.
 ## Commit history
 
 ```text
-c0: c0: create initial correct implementation
-f1: f1: introduce range bug
-r1: r1: rebase bug onto main
-r2: r2: regenerate derived range metadata during rebase
-c3: c3: fix source range bug
+c0: create initial correct implementation
+f1: introduce range bug
+r1: rebase bug onto main
+r2: regenerate derived range metadata during rebase
+c3: fix source range bug
 ```
 
 ## Commit table

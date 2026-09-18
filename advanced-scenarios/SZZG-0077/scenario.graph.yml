@@ -9,10 +9,10 @@ meta:
   factors:
   - branch
   - rebase
-  - rebased_bic
-  - multiple_bfc
-  - partial_fix
-  - complete_fix
+  - rebased-bic
+  - multi-bfc
+  - partial-fix
+  - complete-fix
   difficulty: advanced
   status: draft
   tier: control

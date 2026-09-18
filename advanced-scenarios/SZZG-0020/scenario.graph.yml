@@ -8,10 +8,10 @@ meta:
   category: "Clone, copy propagation, and origin-vs-direct BIC"
   category_code: "G2"
   factors:
-  - copy_file
-  - expected_szz
-  - direct_bic
-  - origin_bic
+  - copy-propagation
+  - evaluation-variant
+  - direct-bic
+  - origin-bic
   difficulty: advanced
   status: draft
   tier: control

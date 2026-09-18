@@ -8,7 +8,7 @@ meta:
   category: "Multiple BICs, multiple BFCs, and partial fixes"
   category_code: "G3"
   factors:
-  - bug_fixing_commits
+  - multi-bfc
   difficulty: advanced
   status: draft
   tier: control

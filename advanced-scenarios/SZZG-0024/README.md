@@ -13,12 +13,12 @@ was replayed from, and is therefore the origin (D2).
 ## Commit history
 
 ```text
-c0: c0: create initial correct implementation
-f1: f1: create buggy clone
-f2: f2: diverge cloned buggy logic
-r1: r1: rebase buggy clone creation
-r2: r2: rebase clone divergence
-c4: c4: fix diverged clone
+c0: create initial correct implementation
+f1: create buggy clone
+f2: diverge cloned buggy logic
+r1: rebase buggy clone creation
+r2: rebase clone divergence
+c4: fix diverged clone
 ```
 
 ## Commit table

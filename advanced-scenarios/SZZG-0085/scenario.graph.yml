@@ -10,9 +10,9 @@ meta:
   category_code: "G6"
   factors:
   - reintroduction
-  - partial_revert
-  - origin_bic
-  - evaluation_variants
+  - partial-revert
+  - origin-bic
+  - evaluation-variant
   difficulty: advanced
   status: draft
   tier: control
@@ -98,15 +98,16 @@ bugs:
   title: Reintroduced range boundary bug with old and new plausible BICs
   bug_introducing_commits:
   - commit: c3
-    role: direct_reintroduction
+    role: reintroducing
     description: Direct BIC for the final bug instance fixed by c4.
     reverts: c2
   - commit: c1
-    role: old_origin_bic
+    role: origin
     description: Original BIC where the same faulty logic first appeared.
   bug_fixing_commits:
   - commit: c4
-    role: final_fix
+    role: complete_fix
+    description: Accepts the bounds again after the reintroduction.
   faults:
   - id: F001
     commit: c3
@@ -150,7 +151,7 @@ scenario_design:
   purpose: Evaluate a reintroduced bug where the direct re-BIC and the old origin BIC are both plausible depending on the
     evaluation policy.
   key_property: c3 partially reverts c2 by restoring only the faulty boundary condition, while keeping c2's unrelated refactoring.
-  difference_from_SZZG_0028: SZZG-0084 should focus on direct reintroduction. SZZG-0085 keeps the same reintroduction theme
+  difference_from_SZZG_0084: SZZG-0084 should focus on direct reintroduction. SZZG-0085 keeps the same reintroduction theme
     but adds explicit evaluation variants for old-origin-aware evaluation.
   evaluation_points:
   - Whether SZZ identifies c3 as the direct reintroducing BIC for c4.

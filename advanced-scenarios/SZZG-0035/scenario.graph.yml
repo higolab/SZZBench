@@ -8,7 +8,7 @@ meta:
   category: "Multiple BICs, multiple BFCs, and partial fixes"
   category_code: "G3"
   factors:
-  - root_cause
+  - root-cause
   difficulty: advanced
   status: draft
   tier: control
@@ -83,7 +83,8 @@ bugs:
     role: direct
   bug_fixing_commits:
   - commit: c2
-    role: symptom_fix
+    role: complete_fix
+    description: Fixes this symptom at its call site; the other symptom has its own bug entry.
   faults:
   - id: F001
     commit: c1
@@ -103,7 +104,8 @@ bugs:
     role: direct
   bug_fixing_commits:
   - commit: c3
-    role: symptom_fix
+    role: complete_fix
+    description: Fixes this symptom at the remaining call site.
   faults:
   - id: F002
     commit: c1

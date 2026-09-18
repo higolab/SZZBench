@@ -11,9 +11,9 @@ Evaluate bug introduced inside a refactoring commit and whether SZZ identifies t
 ## Expected history
 
 ```text
-c0: c0: create normalizer
-c1: c1: rename method and accidentally remove lower-case conversion
-c2: c2: fix normalization after refactoring
+c0: create normalizer
+c1: rename method and accidentally remove lower-case conversion
+c2: fix normalization after refactoring
 ```
 
 ## Why this needs `scenario.graph.yml`

@@ -8,8 +8,8 @@ meta:
   category: "Issue, message, context, and non-local evidence"
   category_code: "G7"
   factors:
-  - developer_hints
-  - misleading_commit_message
+  - message-evidence
+  - misleading-commit-message
   difficulty: advanced
   status: draft
   tier: control

@@ -7,10 +7,10 @@ Evaluate interactive rebase edit of a BIC.
 ## Commit history
 
 ```text
-c0: c0: create initial correct implementation
-f1: f1: introduce exclusive range bug
-r1: r1: edit feature bug during interactive rebase
-c2: c2: fix edited rebased bug
+c0: create initial correct implementation
+f1: introduce exclusive range bug
+r1: edit feature bug during interactive rebase
+c2: fix edited rebased bug
 ```
 
 ## Commit table

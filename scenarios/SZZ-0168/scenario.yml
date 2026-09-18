@@ -7,7 +7,7 @@ meta:
     message.
   category: "Context, message, and non-local evidence"
   factors:
-  - test_context
+  - test-context
   - context
   difficulty: hard
   status: active

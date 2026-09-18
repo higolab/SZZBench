@@ -8,10 +8,10 @@ meta:
   category_code: "G6"
   factors:
   - revert
-  - partial_revert
-  - multiple_bic
-  - single_fault_reintroduced
-  - re_bic
+  - partial-revert
+  - multi-bic
+  - single-fault-reintroduced
+  - re-bic
   difficulty: advanced
   status: draft
   tier: control

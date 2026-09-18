@@ -11,10 +11,10 @@ Evaluate intermediate file move and package rename between bic and bfc and wheth
 ## Expected history
 
 ```text
-c0: c0: create legacy parser
-c1: c1: introduce parser trimming bug
-c2: c2: move parser to core package
-c3: c3: fix parser whitespace handling
+c0: create legacy parser
+c1: introduce parser trimming bug
+c2: move parser to core package
+c3: fix parser whitespace handling
 ```
 
 ## Why this needs `scenario.graph.yml`

@@ -10,12 +10,12 @@ meta:
   factors:
   - branch
   - rebase
-  - large_noisy_commit
-  - generated_file
-  - multi_file
+  - large-noisy-commit
+  - generated-file
+  - multi-file
   - robustness
-  - direct_bic
-  - origin_bic
+  - direct-bic
+  - origin-bic
   difficulty: advanced
   status: draft
   tier: control

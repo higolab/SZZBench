@@ -7,9 +7,9 @@ meta:
   category: "Issue, message, context, and non-local evidence"
   category_code: "G7"
   factors:
-  - caller_callee
+  - caller-callee
   - context
-  - faults
+  - api-misuse
   difficulty: advanced
   status: draft
   tier: control

@@ -11,11 +11,11 @@ Evaluate backported fix on maintenance branch traces to original mainline bic an
 ## Expected history
 
 ```text
-c0: c0: create lock timeout
-c1: c1: introduce too-short timeout on main
-c2: c2: release branch cut from buggy main
-c3: c3: fix timeout on main
-c4: c4: backport timeout fix to release branch
+c0: create lock timeout
+c1: introduce too-short timeout on main
+c2: release branch cut from buggy main
+c3: fix timeout on main
+c4: backport timeout fix to release branch
 ```
 
 ## Why this needs `scenario.graph.yml`

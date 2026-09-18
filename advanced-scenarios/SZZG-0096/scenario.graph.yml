@@ -8,8 +8,8 @@ meta:
   category: "Issue, message, context, and non-local evidence"
   category_code: "G7"
   factors:
-  - work_items
-  - expected_szz
+  - work-item
+  - evaluation-variant
   difficulty: advanced
   status: draft
   tier: control

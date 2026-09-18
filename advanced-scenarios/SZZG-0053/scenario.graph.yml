@@ -7,8 +7,8 @@ meta:
   category: "Branch, merge, cherry-pick, backport, and release branches"
   category_code: "G4"
   factors:
-  - release_branch
-  - branch_only_bug
+  - release-branch
+  - branch-only-bug
   difficulty: advanced
   status: draft
   tier: control

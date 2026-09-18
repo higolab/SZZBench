@@ -9,8 +9,8 @@ meta:
   factors:
   - branch
   - merge
-  - pre_merge_bic
-  - post_merge_bfc
+  - pre-merge-bic
+  - post-merge-bfc
   difficulty: advanced
   status: draft
   tier: control

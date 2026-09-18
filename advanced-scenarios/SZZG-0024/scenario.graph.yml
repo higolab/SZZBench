@@ -9,10 +9,10 @@ meta:
   factors:
   - branch
   - rebase
-  - clone_relationships
-  - clone_divergence
-  - direct_bic
-  - origin_bic
+  - copy-propagation
+  - clone-divergence
+  - direct-bic
+  - origin-bic
   difficulty: advanced
   status: draft
   tier: control

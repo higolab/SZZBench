@@ -11,9 +11,9 @@ Evaluate configuration bic is fixed by code-side normalization and whether SZZ i
 ## Expected history
 
 ```text
-c0: c0: create endpoint resolver and config
-c1: c1: introduce trailing slash in configuration
-c2: c2: fix endpoint construction in code
+c0: create endpoint resolver and config
+c1: introduce trailing slash in configuration
+c2: fix endpoint construction in code
 ```
 
 ## Why this needs `scenario.graph.yml`

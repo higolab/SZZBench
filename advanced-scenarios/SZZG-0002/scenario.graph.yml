@@ -8,7 +8,7 @@ meta:
   category: "Refactoring, move, rename, and semantic rewrite"
   category_code: "G1"
   factors:
-  - move_file
+  - file-move
   difficulty: advanced
   status: draft
   tier: control

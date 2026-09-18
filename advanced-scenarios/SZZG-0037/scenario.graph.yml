@@ -8,9 +8,9 @@ meta:
   category: "Multiple BICs, multiple BFCs, and partial fixes"
   category_code: "G3"
   factors:
-  - multiple_bic
-  - multiple_file
-  - single_bfc
+  - multi-bic
+  - multiple-file
+  - single-bfc
   difficulty: advanced
   status: draft
   tier: control
@@ -22,13 +22,13 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: c0: create initial calculator and validator
+  history_summary: 'c0: create initial calculator and validator
 
-    c1: c1: introduce rounding bug in calculator
+    c1: introduce rounding bug in calculator
 
-    c2: c2: introduce zero-quantity validation bug
+    c2: introduce zero-quantity validation bug
 
-    c3: c3: fix both pricing and validation bugs'
+    c3: fix both pricing and validation bugs'
 commits:
 - id: c0
   branch: main

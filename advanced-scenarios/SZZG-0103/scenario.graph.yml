@@ -11,9 +11,9 @@ meta:
   category: "Issue, message, context, and non-local evidence"
   category_code: "G7"
   factors:
-  - context_dependent
-  - caller_callee
-  - not_directly_local
+  - context-dependent
+  - caller-callee
+  - not-directly-local
   difficulty: advanced
   status: draft
   tier: control

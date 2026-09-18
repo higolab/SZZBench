@@ -10,10 +10,10 @@ meta:
   category_code: "G4"
   factors:
   - branch
-  - squash_merge
-  - squashed_bic
-  - direct_bic
-  - origin_bic
+  - squash-merge
+  - squashed-bic
+  - direct-bic
+  - origin-bic
   difficulty: advanced
   status: draft
   tier: control

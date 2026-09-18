@@ -14,11 +14,11 @@ meta:
   category: "Branch, merge, cherry-pick, backport, and release branches"
   category_code: "G4"
   factors:
-  - multiple_bic
-  - cherry_pick
-  - origin_and_direct_bic
-  - value_flow
-  - blame_unreachable_bic
+  - multi-bic
+  - cherry-pick
+  - origin-and-direct-bic
+  - value-flow
+  - blame-unreachable-bic
   difficulty: advanced
   status: active
   tier: discriminating

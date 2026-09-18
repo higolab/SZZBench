@@ -14,11 +14,11 @@ meta:
   category: "Multiple BICs, multiple BFCs, and partial fixes"
   category_code: "G3"
   factors:
-  - multiple_bic
+  - multi-bic
   - merge
-  - guard_removal
-  - caller_callee_interaction
-  - blame_unreachable_bic
+  - guard-removal
+  - caller-callee-interaction
+  - blame-unreachable-bic
   difficulty: advanced
   status: active
   tier: discriminating

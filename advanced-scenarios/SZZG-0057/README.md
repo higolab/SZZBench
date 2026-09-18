@@ -7,12 +7,12 @@ Evaluate rebase after unrelated main-line changes.
 ## Commit history
 
 ```text
-c0: c0: create initial correct implementation
-f1: f1: introduce bug on old feature base
-m1: m1: unrelated main change
-m2: m2: second unrelated main change
-r1: r1: rebase old feature BIC onto latest main
-c3: c3: fix bug after rebase onto latest main
+c0: create initial correct implementation
+f1: introduce bug on old feature base
+m1: unrelated main change
+m2: second unrelated main change
+r1: rebase old feature BIC onto latest main
+c3: fix bug after rebase onto latest main
 ```
 
 ## Commit table
