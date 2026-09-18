@@ -3,8 +3,8 @@ meta:
   id: SZZG-0102
   title: Issue description required
   slug: issue-description
-  description: Evaluates a case where the issue description is needed to distinguish the true BIC from nearby data-cleanup
-    commits.
+  description: Evaluates a case where the issue identifier in the fix message and the issue text behind it are needed to
+    distinguish the true BIC from nearby importer cleanups that line-based blame reaches.
   category: "Issue, message, context, and non-local evidence"
   category_code: "G7"
   factors:
@@ -21,15 +21,16 @@ repository:
 graph:
   model: commit_dag
   history_summary: |
-    c0: create CSV contact importer
-    c1: introduce null handling for blank middle names
-    c2: change postal-code whitespace cleanup
-    c3: fix blank middle-name import using issue description
+    c0: create the CSV contact importer
+    c1: store missing optional columns as null
+    c2: strip the spaces from imported postal codes
+    c3: move the field normalizers into a nested helper
+    c4: restore empty strings for blank middle names, referencing the issue
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create CSV contact importer'
+  message: 'Add the CSV contact importer'
   role: initial
   operations:
   - type: write_file
@@ -54,7 +55,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: normalize blank optional contact fields as null'
+  message: 'Store missing optional contact columns as null'
   role: bug_introducing
   operations:
   - type: replace
@@ -65,7 +66,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: strip spaces from imported postal codes'
+  message: 'ISSUE-377 strip the spaces from imported postal codes'
   role: intermediate
   operations:
   - type: replace
@@ -76,7 +77,30 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: keep blank middle names as empty strings'
+  message: 'ISSUE-510 group the CSV field normalizers in a nested helper'
+  role: intermediate
+  operations:
+  - type: replace
+    path: src/main/java/example/CsvContactImporter.java
+    old: return normalizeOptional(row[1]);
+    new: return Fields.normalizeOptional(row[1]);
+  - type: replace
+    path: src/main/java/example/CsvContactImporter.java
+    old: |-
+      private String normalizeOptional(String value) {
+          return value == null || value.trim().isEmpty() ? null : value.trim();
+        }
+    new: |-
+      private static final class Fields {
+          static String normalizeOptional(String value) {
+            return value == null || value.trim().isEmpty() ? null : value.trim();
+          }
+        }
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: 'ISSUE-482 keep blank middle names as empty strings'
   role: bug_fixing
   operations:
   - type: replace
@@ -90,7 +114,7 @@ bugs:
   - commit: c1
     role: direct
   bug_fixing_commits:
-  - commit: c3
+  - commit: c4
     role: complete_fix
   faults:
   - id: F001
@@ -100,7 +124,7 @@ bugs:
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c3
+    commit: c4
     file: src/main/java/example/CsvContactImporter.java
     statement: 'return value == null ? "" : value.trim();'
     fix_type: line_modification
@@ -111,26 +135,40 @@ expected_szz:
     - c1
     related_but_not_correct:
     - c2
+    - c3
 scenario_design:
-  purpose: Evaluate whether SZZ can use issue text to choose the middle-name normalization BIC instead of a nearby importer
-    cleanup commit.
-  current_schema_limitation: Issue descriptions are represented as graph metadata linked to bugs.
+  purpose: Evaluate whether SZZ can use the issue identifier carried by the fix message, and the issue text behind it, to
+    choose the optional-name normalization BIC over the importer cleanups that line-based blame reaches.
+  key_property: |
+    c3 moves the normalization helper into a nested class, which changes the indentation of the faulty line without changing
+    its text or its behaviour, so git blame at BFC^ attributes that line to c3. The BFC message carries ISSUE-482, so a
+    Git-only tool can find the issue at all; the issue text says that blank optional values started to be stored as null,
+    which only the message of c1 claims. The neighbouring commits carry their own, different issue identifiers
+    (ISSUE-377, ISSUE-510).
+  current_schema_limitation: Issue descriptions are represented as graph metadata linked to bugs; the repository carries only
+    the identifiers in the commit messages.
   required_extensions_from_source: 'This scenario uses factors: issues, context; operations: write_file, replace.'
   evaluation_points:
   - Whether SZZ identifies c1 as the BIC.
-  - Whether the issue description rules out the postal-code cleanup c2.
+  - Whether the issue text rules out the postal-code cleanup c2 and the helper restructuring c3 that blame reaches.
   - Whether the BFC is interpreted as restoring an empty-string contract for optional middle names.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.
+- 'Measured: git blame at BFC^ of the deleted line reaches c3, not c1, so the generator prints GW703 for this scenario by
+  design.'
+- 'Issue context beyond the identifier is scenario metadata: the repository carries ISSUE-482 only in the BFC message. An
+  external context interface is designed in issue #23.'
 issues:
 - id: ISSUE-482
   title: Blank middle names are exported as null after CSV import
-  description: Contacts imported from CSV should preserve a blank middle_name column as an empty string. Postal-code whitespace
-    cleanup is unrelated; the regression is specifically in optional-name normalization.
+  description: Contacts imported from CSV should preserve a blank middle_name column as an empty string. Exports started to
+    contain null for those contacts after the release in which blank optional columns began to be stored as null. The
+    postal-code whitespace cleanup shipped in the same release is a separate change and does not touch optional names.
   linked_bugs:
   - B001
   referenced_commits:
   - c1
   excludes_commits:
   - c2
+  - c3
