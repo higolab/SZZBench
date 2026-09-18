@@ -41,7 +41,7 @@ commits:
           }
       }
 - id: c1
-  message: Introduce context-sensitive caller bug
+  message: Include the boundary value in the caller check
   author: Diego Alvarez <diego.alvarez@example.com>
   date: 2023-02-15T14:25:00Z
   role: bug_introducing

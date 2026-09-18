@@ -58,7 +58,7 @@ commits:
   branch: release
   parents:
   - c1
-  message: 'Rel1: cut release branch with bug'
+  message: 'Cut the 1.0 release branch'
   role: release_branch_point
   operations:
   - type: write_file

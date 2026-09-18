@@ -42,7 +42,7 @@ commits:
           }
       }
 - id: c1
-  message: Introduce ambiguous faulty statement
+  message: Require values above the minimum
   author: Mei Tanaka <mei.tanaka@example.com>
   date: 2024-10-08T14:00:00Z
   role: bug_introducing

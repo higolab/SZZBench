@@ -33,6 +33,13 @@ Commits with explicit `author` and `date` keep byte-identical hashes.
 | commit has `date` | used verbatim for both author and committer date |
 | commit has no `date` | the scenario's base date plus irregular weekday gaps (see below) |
 
+A scenario that pins **any** timestamp (`date`, `author_date` or
+`committer_date` on any commit) keeps the plain schedule, `base_date + commit
+index` days, for the commits it leaves to the generator: spreading only some of
+them over the irregular gaps would place them after the pinned ones and invert
+the history. The schedule below therefore applies to scenarios whose timeline is
+entirely generated, which is most of the graph suite.
+
 The commit index is the 0-based position of the commit in the `commits` list.
 The first commit of a scenario without dates sits **exactly** on the base date;
 each later commit adds one to nine days, skips weekends, and takes a

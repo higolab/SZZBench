@@ -47,7 +47,7 @@ commits:
   branch: release
   parents:
   - c0
-  message: 'Rel1: introduce release-specific range bug'
+  message: 'Make the range check exclusive on the release branch'
   role: origin_bug_introducing
   operations:
   - type: replace

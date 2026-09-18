@@ -8,14 +8,20 @@ date to the commit role, fails here.
 from __future__ import annotations
 
 import collections
+import re
 from pathlib import Path
 
 import yaml
 
 from szzbench.gitutils import resolve_commit_metadata
-from szzbench.validator import LEAK_CONTENT_FIELDS, LEAK_ROLE_RE, LOGICAL_ID_PREFIX_RE
+from szzbench.validator import LEAK_CONTENT_FIELDS, LEAK_ROLE_RE, logical_id_reference
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+#: The attack's own vocabulary. It is deliberately *not* the lint's pattern:
+#: the first version of this guard reused the lint regex, so it reported zero
+#: leaks for the messages the lint could not see (PR #34 re-review).
+ATTACK_WORDS = re.compile(r"\b(bugs?|buggy|faulty|faults?|defects?|broken|BIC|distractor|noise)\b", re.I)
 PATTERNS = ("scenarios/SZZ-*/scenario.yml", "advanced-scenarios/SZZG-*/scenario.graph.yml")
 
 
@@ -55,8 +61,9 @@ def test_no_message_announces_its_role_or_logical_id():
             message = commit.get("message")
             if not isinstance(message, str):
                 continue
-            if LOGICAL_ID_PREFIX_RE.match(message):
-                offenders.append(f"{path.parent.name}/{commit.get('id')}: logical-id prefix in {message!r}")
+            exposed = logical_id_reference(message, [c.get("id") for c in data.get("commits") or []])
+            if exposed:
+                offenders.append(f"{path.parent.name}/{commit.get('id')}: logical id {exposed!r} in {message!r}")
             if commit.get("id") not in bfcs and LEAK_ROLE_RE.search(message):
                 offenders.append(f"{path.parent.name}/{commit.get('id')}: role wording in {message!r}")
     assert offenders == []
@@ -78,9 +85,15 @@ def test_no_commit_writes_its_role_into_the_repository():
 
 
 def test_message_only_predictor_wins_nothing():
-    """"Return the non-BFC commits whose message announces a bug" must score 0."""
-    wins = total = 0
-    for _, data in _scenarios():
+    """"Return the non-BFC commits whose subject admits a bug" must score 0.
+
+    The predictor uses ``ATTACK_WORDS``, not the lint's pattern, so a hole in
+    the lint cannot make this test pass: before the PR #34 re-review it found
+    SZZ-0146, SZZ-0158, SZZ-0159, SZZ-0160, SZZ-0166 and SZZG-0093, all of
+    which the lint's own regex considered clean.
+    """
+    wins, solved, total = 0, [], 0
+    for path, data in _scenarios():
         required = _required(data)
         if not required:
             continue
@@ -89,10 +102,12 @@ def test_message_only_predictor_wins_nothing():
         guess = {c.get("id") for c in data.get("commits") or []
                  if isinstance(c.get("message"), str)
                  and c.get("id") not in bfcs
-                 and LEAK_ROLE_RE.search(c["message"])}
-        wins += bool(guess and guess == required)
+                 and ATTACK_WORDS.search(c["message"])}
+        if guess and guess == required:
+            wins += 1
+            solved.append(path.parent.name)
     assert total > 150, "the suite scan found too few scenarios"
-    assert wins == 0, f"message-only predictor solved {wins}/{total} scenarios"
+    assert wins == 0, f"message-only predictor solved {wins}/{total} scenarios: {solved}"
 
 
 def test_no_single_author_predicts_the_oracle():

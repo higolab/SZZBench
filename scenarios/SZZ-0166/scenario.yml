@@ -37,7 +37,7 @@ commits:
           }
       }
 - id: c1
-  message: Introduce context-sensitive bug
+  message: Include the upper bound in the retry condition
   author: Aiko Mori <aiko.mori@example.com>
   date: 2023-11-08T15:21:00Z
   role: bug_introducing

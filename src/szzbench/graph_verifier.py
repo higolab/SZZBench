@@ -51,9 +51,48 @@ def verify_graph_generated_repo(
         return result
 
     _verify_commits(repo_dir, scenario, commit_map, graph_map, result)
+    _verify_commit_dates(repo_dir, result)
     _verify_bugs(repo_dir, scenario, commit_map, result)
     _verify_expected_szz(scenario, commit_map, result)
     return result
+
+
+def _verify_commit_dates(repo_dir: Path, result: ValidationResult) -> None:
+    """Every commit must be committed no earlier than its parents (issue #9).
+
+    A scenario that pins some timestamps and leaves others to the generator can
+    otherwise end up with a child committed before its parent, which silently
+    changes what date-based candidate filters and recency heuristics see.  An
+    author date *before* the committer date is the normal signature of a rebase
+    and is not flagged; the other way round is an anomaly.
+    """
+    try:
+        raw = run_git(repo_dir, ["log", "--all", "--format=%H|%P|%cI|%aI"]).stdout
+    except GitError as exc:
+        result.warning("GW632", f"Commit date check skipped: {exc}", "commits")
+        return
+    dates: dict[str, tuple[list[str], str, str]] = {}
+    for line in raw.splitlines():
+        if not line.strip():
+            continue
+        commit_hash, parents, committer_date, author_date = line.split("|")
+        dates[commit_hash] = (parents.split(), committer_date, author_date)
+    for commit_hash, (parents, committer_date, author_date) in dates.items():
+        for parent in parents:
+            parent_entry = dates.get(parent)
+            if parent_entry is not None and parent_entry[1] > committer_date:
+                result.error(
+                    "GE630",
+                    f"Commit {commit_hash[:8]} was committed at {committer_date}, before its parent "
+                    f"{parent[:8]} at {parent_entry[1]}.",
+                    "commits",
+                )
+        if author_date > committer_date:
+            result.warning(
+                "GW631",
+                f"Commit {commit_hash[:8]} was authored at {author_date}, after it was committed at {committer_date}.",
+                "commits",
+            )
 
 
 def _verify_commits(repo_dir: Path, scenario: dict[str, Any], commit_map: dict[str, Any], graph_map: dict[str, Any], result: ValidationResult) -> None:

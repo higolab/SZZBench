@@ -30,12 +30,42 @@ RESERVED_FACTOR_WORDS = frozenset({
 })
 
 # Explicit answer cues that disclose a commit's oracle role (issue #8).
+#
+# The words between "introduce" and "bug" may be hyphenated
+# ("introduce context-sensitive bug"), and a commit can admit its role without
+# the word "bug" at all ("introduce ambiguous faulty statement"), so the gap
+# accepts hyphens and the vocabulary includes fault words on their own.
 LEAK_ROLE_RE = re.compile(
-    r"introduc\w*\s+(\w+\s+){0,3}bug|bug[- ]introduc|\bBIC\b|\bBFC\b|distractor|"
-    r"intermediate change|initial state|\bnoise\b|\bunrelated\b|\breplay|reintroduc",
+    r"introduc\w*\s+([\w-]+\s+){0,3}bugs?\b|bug[- ]introduc|\bBIC\b|\bBFC\b|distractor|"
+    r"intermediate change|initial state|\bnoise\b|\bunrelated\b|\breplay|reintroduc|"
+    r"\bbuggy\b|\bfaulty\b|\bfault(?:y|s)?\b\s+(?:statement|line|code|commit)|"
+    r"(?:with|containing|introduces?)\s+(?:a\s+|the\s+)?(?:[\w-]+\s+){0,2}bugs?\b",
     re.IGNORECASE,
 )
-LOGICAL_ID_PREFIX_RE = re.compile(r"^[a-z]{1,2}\d+:")
+#: A message that starts with a scenario logical id (``c1: ...``).  Kept for the
+#: W411 message; :func:`logical_id_reference` is the general check.
+LOGICAL_ID_PREFIX_RE = re.compile(r"^[a-z]{1,2}\d+:", re.IGNORECASE)
+#: An id-shaped token used as a prefix anywhere in the message.  Issue and
+#: work-item identifiers are written ``ISSUE-482`` / ``WI-001`` and keep their
+#: hyphen, so they do not match; ``c2:``, ``Rel1:`` and ``WI-001 c2:`` do.
+LOGICAL_ID_TOKEN_RE = re.compile(r"(?<![\w-])[A-Za-z]{1,4}\d+:")
+
+
+def logical_id_reference(message: str, commit_ids: Iterable[str] = ()) -> str | None:
+    """Return the logical-id prefix a message exposes, or ``None``.
+
+    A commit id of the same scenario counts wherever it appears, because
+    ``WI-001 c2: ...`` discloses exactly as much as ``c2: ...`` and
+    ``suspected c0`` names a commit in the benchmark's own vocabulary.
+    """
+    for commit_id in commit_ids:
+        if not isinstance(commit_id, str) or not commit_id:
+            continue
+        match = re.search(rf"(?<![\w-]){re.escape(commit_id)}(?![\w-])", message, re.IGNORECASE)
+        if match:
+            return match.group(0)
+    match = LOGICAL_ID_TOKEN_RE.search(message)
+    return match.group(0) if match else None
 # operation type -> field whose text is written into the repository
 LEAK_CONTENT_FIELDS = {"write_file": "content", "replace": "new", "insert_after": "content"}
 
@@ -334,6 +364,8 @@ def lint_leakage(commits: Iterable[Any], bfc_ids: set[str], result: ValidationRe
     (logical-id prefix in any message) and ``<prefix>412`` (role wording in
     text written by write_file / replace.new / insert_after.content).
     """
+    commits = list(commits)
+    commit_ids = [c.get("id") for c in commits if isinstance(c, dict) and isinstance(c.get("id"), str)]
     for i, commit in enumerate(commits):
         if not isinstance(commit, dict):
             continue
@@ -341,9 +373,9 @@ def lint_leakage(commits: Iterable[Any], bfc_ids: set[str], result: ValidationRe
         loc = f"commits[{i}]"
         message = commit.get("message")
         if isinstance(message, str):
-            prefix_match = LOGICAL_ID_PREFIX_RE.match(message)
-            if prefix_match:
-                result.warning(f"{prefix}411", f"Commit '{cid}' message starts with the logical-id prefix '{prefix_match.group(0)}'.", f"{loc}.message")
+            exposed = logical_id_reference(message, commit_ids)
+            if exposed:
+                result.warning(f"{prefix}411", f"Commit '{cid}' message exposes the logical-id prefix '{exposed}'.", f"{loc}.message")
             if cid not in bfc_ids:
                 leak = LEAK_ROLE_RE.search(message)
                 if leak:

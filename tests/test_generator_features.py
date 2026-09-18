@@ -176,9 +176,9 @@ def test_classic_generator_assigns_deterministic_metadata_and_records_it(tmp_pat
     assert c0["author_date"] == c0["committer_date"] == "2024-03-01T10:00:00Z"
     assert _log_line(repo, c0["hash"], "%an <%ae>|%aI|%cI") == f"{c0['author']}|2024-03-01T10:00:00Z|2024-03-01T10:00:00Z"
     assert c1["author_date"] == "2024-05-05T05:05:05Z"
-    c1_committer = deterministic_date("2024-03-01T10:00:00Z", 1, "SZZ-9900")
-    assert c1["committer_date"] == c1_committer
-    assert _log_line(repo, c1["hash"], "%aI|%cI") == f"2024-05-05T05:05:05Z|{c1_committer}"
+    # the scenario pins c1's author date, so it keeps the plain schedule
+    assert c1["committer_date"] == "2024-03-02T10:00:00Z"
+    assert _log_line(repo, c1["hash"], "%aI|%cI") == "2024-05-05T05:05:05Z|2024-03-02T10:00:00Z"
     assert c1["date"] is None
 
     # Generating twice yields identical hashes: nothing depends on wall-clock time.
@@ -210,12 +210,11 @@ def test_graph_generator_assigns_deterministic_metadata(tmp_path):
     assert verify is not None and not verify.has_errors()
     repo = out / "repo"
     assert commit_map["c0"]["author"] == deterministic_author("SZZG-9900", 0)
-    c0_date = deterministic_date(None, 0, "SZZG-9900")
-    c1_committer = deterministic_date(None, 1, "SZZG-9900")
-    assert commit_map["c0"]["author_date"] == c0_date
-    assert _log_line(repo, commit_map["c0"]["hash"], "%aI|%cI") == f"{c0_date}|{c0_date}"
-    assert _log_line(repo, commit_map["c1"]["hash"], "%aI|%cI") == f"2024-02-02T02:02:02Z|{c1_committer}"
-    assert commit_map["c1"]["committer_date"] == c1_committer
+    # the scenario pins c1's author date, so it keeps the plain schedule
+    assert commit_map["c0"]["author_date"] == "2024-01-01T10:00:00Z"
+    assert _log_line(repo, commit_map["c0"]["hash"], "%aI|%cI") == "2024-01-01T10:00:00Z|2024-01-01T10:00:00Z"
+    assert _log_line(repo, commit_map["c1"]["hash"], "%aI|%cI") == "2024-02-02T02:02:02Z|2024-01-02T10:00:00Z"
+    assert commit_map["c1"]["committer_date"] == "2024-01-02T10:00:00Z"
 
 
 # ---------------------------------------------------------------------------
@@ -429,11 +428,11 @@ def test_rebase_of_inherit_message_and_author_date(tmp_path):
     r1 = commit_map["r1"]
     assert _log_line(repo, r1["hash"], "%s") == "f1: introduce boundary bug"
     assert _log_line(repo, r1["hash"], "%aI") == "2024-01-02T10:00:00Z"  # inherited from f1
-    r1_committer = deterministic_date(None, 3, "SZZG-9900")  # default for commit index 3
-    assert _log_line(repo, r1["hash"], "%cI") == r1_committer
+    # the scenario pins dates, so the defaults stay on the plain schedule
+    assert _log_line(repo, r1["hash"], "%cI") == "2024-01-04T10:00:00Z"  # base + index 3
     assert r1["message"] == "f1: introduce boundary bug"
     assert r1["author_date"] == "2024-01-02T10:00:00Z"
-    assert r1["committer_date"] == r1_committer
+    assert r1["committer_date"] == "2024-01-04T10:00:00Z"
     assert r1["inherits"] == {"source": "f1", "source_hash": commit_map["f1"]["hash"], "message": True, "author_date": True, "subject": "f1: introduce boundary bug"}
     assert _graph_map(out)["commits"]["r1"]["rebase_of"] == "f1"
     # Without options nothing is inherited (existing behaviour).
@@ -945,3 +944,95 @@ def test_commit_generator_ignores_an_overridden_parent_date_fallback(tmp_path):
     assert _stamps(repo, commit_map, ["c2.g1", "c2.g2"], "%at") == [1704103280, 1704103300]  # 10:01:20Z, 10:01:40Z
     assert _stamps(repo, commit_map, ["c2.g1", "c2.g2"], "%ct") == [1704103280, 1704103300]
     assert commit_map["c2.g1"]["timestamp_placement"] == "spaced"
+
+
+# ---------------------------------------------------------------------------
+# Mixed explicit / default timelines (#9, PR #34 re-review)
+# ---------------------------------------------------------------------------
+
+
+def test_mixed_explicit_and_default_timelines_stay_ordered(tmp_path):
+    """A scenario that pins only some timestamps must not invert its history.
+
+    Four shipped rebase scenarios pinned the replay date and left the earlier
+    commits to the generator; when the defaults moved to a per-scenario base
+    date, the parents landed a year *after* the pinned children. Such scenarios
+    keep the plain one-day-per-commit schedule, and the pinned values are still
+    reproduced verbatim.
+    """
+    commits = [
+        {"id": "c0", "branch": "main", "parents": [], "message": "add the range check", "role": "initial",
+         "operations": [{"type": "write_file", "path": RANGE, "content": _range_java(False)}]},
+        {"id": "f1", "branch": "feature", "parents": ["c0"], "message": "make the range check exclusive",
+         "role": "origin_bug_introducing",
+         "operations": [{"type": "replace", "path": RANGE, "old": FIXED, "new": BUGGY}]},
+        {"id": "r1", "branch": "main", "parents": ["c0"], "role": "bug_introducing", "rebase_of": "f1",
+         "inherit_message": True, "inherit_author_date": True, "committer_date": "2024-01-05T09:30:00Z",
+         "operations": [{"type": "replace", "path": RANGE, "old": FIXED, "new": BUGGY}]},
+        {"id": "c2", "branch": "main", "parents": ["r1"], "message": "accept the range bounds again",
+         "role": "bug_fixing", "date": "2024-01-08T10:00:00Z",
+         "operations": [{"type": "replace", "path": RANGE, "old": BUGGY, "new": FIXED}]},
+    ]
+    bugs = [{"id": "B001",
+             "bug_introducing_commits": [{"commit": "r1", "role": "direct"}],
+             "bug_fixing_commits": [{"commit": "c2", "role": "complete_fix"}]}]
+    scenario = _write_graph_scenario(tmp_path / "s.graph.yml", commits, bugs=bugs, scenario_id="SZZG-9901")
+    out = tmp_path / "out"
+    commit_map, verify = generate_graph_repository(scenario, out, force=True)
+    assert verify is not None and not verify.has_errors()
+    assert [f.code for f in verify.findings if f.code in ("GE630", "GW631")] == []
+
+    repo = out / "repo"
+    committer = {cid: _log_line(repo, entry["hash"], "%cI") for cid, entry in commit_map.items()}
+    author = {cid: _log_line(repo, entry["hash"], "%aI") for cid, entry in commit_map.items()}
+
+    # the pinned values survive
+    assert committer["r1"] == "2024-01-05T09:30:00Z"
+    assert committer["c2"] == author["c2"] == "2024-01-08T10:00:00Z"
+    # the generated parents come first, and the inherited author date is not in the future
+    assert committer["c0"] < committer["r1"] < committer["c2"]
+    assert committer["c0"] <= committer["f1"]
+    assert author["r1"] == author["f1"] <= committer["r1"], "the replayed commit keeps f1's author date"
+
+    # a scenario with no pinned timestamps still gets the spread-out schedule
+    plain = [dict(c) for c in commits]
+    for c in plain:
+        c.pop("committer_date", None)
+        c.pop("date", None)
+    plain[2]["message"] = "make the range check exclusive"
+    plain[2].pop("inherit_message", None)
+    plain[2].pop("inherit_author_date", None)
+    scenario2 = _write_graph_scenario(tmp_path / "s2.graph.yml", plain, bugs=bugs, scenario_id="SZZG-9902")
+    map2, verify2 = generate_graph_repository(scenario2, tmp_path / "out2", force=True)
+    assert verify2 is not None and not verify2.has_errors()
+    repo2 = tmp_path / "out2" / "repo"
+    stamps = [_log_line(repo2, map2[cid]["hash"], "%cI") for cid in ("c0", "f1", "r1", "c2")]
+    assert stamps == sorted(stamps)
+    assert len({s[:10] for s in stamps}) == 4          # four distinct days
+    assert len({s[11:] for s in stamps}) > 1           # not a single time of day
+
+
+def test_every_shipped_scenario_resolves_to_an_ordered_timeline():
+    """No scenario in either suite may resolve to a child older than a parent."""
+    import yaml
+    from szzbench.gitutils import resolve_commit_metadata
+
+    root = Path(__file__).resolve().parents[1]
+    offenders = []
+    for pattern in ("scenarios/SZZ-*/scenario.yml", "advanced-scenarios/SZZG-*/scenario.graph.yml"):
+        for path in sorted(root.glob(pattern)):
+            data = yaml.safe_load(path.read_text())
+            commits = data.get("commits") or []
+            meta = {c.get("id"): resolve_commit_metadata(data, c, i) for i, c in enumerate(commits)}
+            order = [c.get("id") for c in commits]
+            for i, commit in enumerate(commits):
+                cid = commit.get("id")
+                parents = commit.get("parents")
+                if not isinstance(parents, list):          # classic suite: the previous commit
+                    parents = [order[i - 1]] if i else []
+                for parent in parents:
+                    if parent in meta and meta[parent].committer_date > meta[cid].committer_date:
+                        offenders.append(
+                            f"{data['meta']['id']}: {cid} {meta[cid].committer_date} < {parent} {meta[parent].committer_date}"
+                        )
+    assert offenders == []

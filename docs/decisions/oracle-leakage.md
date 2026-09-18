@@ -32,10 +32,14 @@ Accept the range bounds again               (the fix)
 
 Rules:
 
-- **No logical-id prefix.** `c1: ...`, `r2: ...` and similar are scenario
-  bookkeeping, not commit messages (`W411` / `GW411`).
+- **No logical id anywhere in the message.** `c1: ...`, `WI-001 c2: ...`,
+  `Rel1: ...` and `suspected c0` are scenario bookkeeping, not commit messages
+  (`W411` / `GW411`). Issue and work-item identifiers are legitimate and stay:
+  `ISSUE-482`, `PAY-314`, `WI-001` are what a real project writes.
 - **No role words in a non-fixing commit**: `BIC`, `BFC`, `bug-introducing`,
-  `introduce ... bug`, `distractor`, `intermediate change`, `initial state`,
+  `introduce ... bug` — including hyphenated variants such as
+  `introduce context-sensitive bug` — `with ... bug`, `buggy`, `faulty`,
+  `faulty statement`, `distractor`, `intermediate change`, `initial state`,
   `noise`, `unrelated`, `replay...`, `reintroduc...` (`W410` / `GW410`).
 - **No operation lists.** `(replace src/main/java/example/Range.java)` describes
   the scenario schema, not the change.
@@ -61,6 +65,12 @@ never from the role.
   `repository.base_date` always wins, and the first commit sits exactly on the
   base date. Scenarios that need a specific timeline — rebases, where the author
   date precedes the committer date — set it explicitly.
+
+A scenario that **pins any timestamp** keeps the plain one-day-per-commit
+schedule for the commits it leaves to the generator. Spreading only some of them
+over the irregular gaps would place them after the pinned ones; four rebase
+scenarios briefly ended up with a parent committed a year after its child that
+way, and `verify-graph` now rejects that with `GE630`.
 
 Dates remain strictly increasing in the commit index, so a commit is always
 newer than its parents. A date therefore still tells a tool the commit's
@@ -121,7 +131,16 @@ that recognises the benchmark answer in the scenario's own vocabulary.
 - `tests/test_no_oracle_leakage.py` runs over the shipped scenarios: no message
   or written file discloses a role, every commit resolves to an author and a
   date, no author holds more than 45% of any role, and two metadata-only
-  predictors are scored.
+  predictors are scored. **The message predictor uses its own vocabulary, not
+  the lint's pattern.** The first version of this guard reused the lint regex
+  and therefore reported zero leaks for six scenarios whose messages the lint
+  could not see (`Introduce context-sensitive bug` — the lint required the word
+  "bug" within three *unhyphenated* words of "introduce"; `Introduce ambiguous
+  faulty statement` — no "bug" at all; `WI-001 c2: ...` — the prefix check was
+  anchored). A guard measured with the instrument it is guarding proves nothing.
+- `verify-graph`, and therefore `generate-graph`, rejects a commit dated before
+  one of its parents (`GE630`) and warns when an author date is later than its
+  committer date (`GW631`).
 
 Measured on the suite as shipped:
 

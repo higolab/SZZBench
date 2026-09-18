@@ -46,7 +46,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'WI-001 c1: start range filtering feature'
+  message: 'WI-001 start the range filtering feature'
   role: feature_work
   work_item: WI-001
   operations:
@@ -60,7 +60,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'WI-001 c2: implement range feature with boundary bug'
+  message: 'WI-001 filter values strictly inside the range'
   role: bug_introducing
   work_item: WI-001
   operations:
@@ -72,7 +72,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'WI-001 c3: add caller for range filtering feature'
+  message: 'WI-001 add the caller for range filtering'
   role: feature_work
   work_item: WI-001
   operations:

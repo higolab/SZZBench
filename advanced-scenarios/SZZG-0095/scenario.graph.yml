@@ -30,7 +30,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'WI-418 c0: create inventory reservation logic'
+  message: 'WI-418 add the inventory reservation logic'
   role: initial
   operations:
   - type: write_file
@@ -47,7 +47,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'WI-418 c1: reject oversold reservations'
+  message: 'WI-418 reject oversold reservations'
   role: bug_introducing
   operations:
   - type: replace
@@ -58,7 +58,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'WI-418 c2: add inventory audit event names'
+  message: 'WI-418 add the inventory audit event names'
   role: intermediate
   operations:
   - type: write_file
@@ -75,7 +75,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'WI-418 c3: allow reservation when stock exactly matches request'
+  message: 'WI-418 allow a reservation when stock exactly matches the request'
   role: bug_fixing
   operations:
   - type: replace

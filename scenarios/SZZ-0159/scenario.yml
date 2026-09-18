@@ -37,7 +37,7 @@ commits:
           }
       }
 - id: c1
-  message: Introduce context-sensitive bug
+  message: Require a value above the lower bound
   author: Jonas Berg <jonas.berg@example.com>
   date: 2023-10-09T15:19:00Z
   role: bug_introducing

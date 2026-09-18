@@ -37,7 +37,7 @@ commits:
           }
       }
 - id: c1
-  message: Introduce context-sensitive bug
+  message: Exclude the upper bound from the check
   author: Aiko Mori <aiko.mori@example.com>
   date: 2024-01-11T08:20:00Z
   role: bug_introducing
@@ -64,7 +64,7 @@ commits:
     - B001
     - fault
 - id: c2
-  message: Fix bug; suspected c0
+  message: Fix the boundary check; suspected the first version of the comparison
   author: Hana Sato <hana.sato@example.com>
   date: 2024-01-17T11:53:00Z
   role: bug_fixing
