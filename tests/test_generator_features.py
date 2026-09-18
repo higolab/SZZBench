@@ -119,9 +119,34 @@ def test_deterministic_defaults_are_stable_and_role_independent():
     bic = resolve_commit_metadata(scenario, {"role": "bug_introducing"}, 2)
     other = resolve_commit_metadata(scenario, {"role": "intermediate"}, 2)
     assert bic.author == other.author
-    assert bic.author_date == "2024-01-03T10:00:00Z"
-    assert bic.committer_date == "2024-01-03T10:00:00Z"
+    assert bic.author_date == bic.committer_date == deterministic_date(None, 2, "SZZG-0001")
     assert bic.author_is_default and bic.author_date_is_default
+
+
+def test_default_dates_are_irregular_weekday_timestamps_per_scenario():
+    """Issue #9: default dates must not be one shared ramp at a single time."""
+    from datetime import datetime
+
+    def parsed(sid, i):
+        return datetime.fromisoformat(deterministic_date(None, i, sid).replace("Z", "+00:00"))
+
+    for sid in ("SZZG-0001", "SZZG-0050", "SZZ-0123"):
+        stamps = [parsed(sid, i) for i in range(8)]
+        assert stamps == sorted(stamps) and len(set(stamps)) == 8   # strictly increasing
+        assert all(s.weekday() < 5 for s in stamps)                 # weekdays only
+        assert all(8 <= s.hour <= 18 for s in stamps[1:])           # working hours
+        gaps = {(b - a).days for a, b in zip(stamps, stamps[1:])}
+        assert len(gaps) > 1                                        # not a fixed ramp
+        assert deterministic_date(None, 3, sid) == deterministic_date(None, 3, sid)
+
+    # Different scenarios start on different days and use different times.
+    first = {deterministic_date(None, 0, f"SZZG-{i:04d}") for i in range(1, 40)}
+    assert len(first) > 30
+    times = {deterministic_date(None, 2, f"SZZG-{i:04d}")[11:] for i in range(1, 40)}
+    assert len(times) > 20
+
+    # An explicit base_date is reproduced verbatim by the first commit.
+    assert deterministic_date("2024-03-01T10:00:00Z", 0, "SZZ-9900") == "2024-03-01T10:00:00Z"
 
 
 def test_resolve_commit_metadata_preserves_explicit_values_and_separate_dates():
@@ -136,7 +161,7 @@ def test_resolve_commit_metadata_preserves_explicit_values_and_separate_dates():
     assert split.committer_date == "2024-01-09T12:00:00Z"
     only_author_date = resolve_commit_metadata(scenario, {"author_date": "2024-01-02T10:00:00Z"}, 1)
     assert only_author_date.author_date == "2024-01-02T10:00:00Z"
-    assert only_author_date.committer_date == "2025-02-02T00:00:00Z"  # base_date + 1 day
+    assert only_author_date.committer_date == deterministic_date("2025-02-01T00:00:00Z", 1, "SZZG-0001")
     assert only_author_date.committer_date_is_default
 
 
@@ -151,8 +176,9 @@ def test_classic_generator_assigns_deterministic_metadata_and_records_it(tmp_pat
     assert c0["author_date"] == c0["committer_date"] == "2024-03-01T10:00:00Z"
     assert _log_line(repo, c0["hash"], "%an <%ae>|%aI|%cI") == f"{c0['author']}|2024-03-01T10:00:00Z|2024-03-01T10:00:00Z"
     assert c1["author_date"] == "2024-05-05T05:05:05Z"
-    assert c1["committer_date"] == "2024-03-02T10:00:00Z"
-    assert _log_line(repo, c1["hash"], "%aI|%cI") == "2024-05-05T05:05:05Z|2024-03-02T10:00:00Z"
+    c1_committer = deterministic_date("2024-03-01T10:00:00Z", 1, "SZZ-9900")
+    assert c1["committer_date"] == c1_committer
+    assert _log_line(repo, c1["hash"], "%aI|%cI") == f"2024-05-05T05:05:05Z|{c1_committer}"
     assert c1["date"] is None
 
     # Generating twice yields identical hashes: nothing depends on wall-clock time.
@@ -184,10 +210,12 @@ def test_graph_generator_assigns_deterministic_metadata(tmp_path):
     assert verify is not None and not verify.has_errors()
     repo = out / "repo"
     assert commit_map["c0"]["author"] == deterministic_author("SZZG-9900", 0)
-    assert commit_map["c0"]["author_date"] == "2024-01-01T10:00:00Z"
-    assert _log_line(repo, commit_map["c0"]["hash"], "%aI|%cI") == "2024-01-01T10:00:00Z|2024-01-01T10:00:00Z"
-    assert _log_line(repo, commit_map["c1"]["hash"], "%aI|%cI") == "2024-02-02T02:02:02Z|2024-01-02T10:00:00Z"
-    assert commit_map["c1"]["committer_date"] == "2024-01-02T10:00:00Z"
+    c0_date = deterministic_date(None, 0, "SZZG-9900")
+    c1_committer = deterministic_date(None, 1, "SZZG-9900")
+    assert commit_map["c0"]["author_date"] == c0_date
+    assert _log_line(repo, commit_map["c0"]["hash"], "%aI|%cI") == f"{c0_date}|{c0_date}"
+    assert _log_line(repo, commit_map["c1"]["hash"], "%aI|%cI") == f"2024-02-02T02:02:02Z|{c1_committer}"
+    assert commit_map["c1"]["committer_date"] == c1_committer
 
 
 # ---------------------------------------------------------------------------
@@ -401,10 +429,11 @@ def test_rebase_of_inherit_message_and_author_date(tmp_path):
     r1 = commit_map["r1"]
     assert _log_line(repo, r1["hash"], "%s") == "f1: introduce boundary bug"
     assert _log_line(repo, r1["hash"], "%aI") == "2024-01-02T10:00:00Z"  # inherited from f1
-    assert _log_line(repo, r1["hash"], "%cI") == "2024-01-04T10:00:00Z"  # default: base + index 3
+    r1_committer = deterministic_date(None, 3, "SZZG-9900")  # default for commit index 3
+    assert _log_line(repo, r1["hash"], "%cI") == r1_committer
     assert r1["message"] == "f1: introduce boundary bug"
     assert r1["author_date"] == "2024-01-02T10:00:00Z"
-    assert r1["committer_date"] == "2024-01-04T10:00:00Z"
+    assert r1["committer_date"] == r1_committer
     assert r1["inherits"] == {"source": "f1", "source_hash": commit_map["f1"]["hash"], "message": True, "author_date": True, "subject": "f1: introduce boundary bug"}
     assert _graph_map(out)["commits"]["r1"]["rebase_of"] == "f1"
     # Without options nothing is inherited (existing behaviour).

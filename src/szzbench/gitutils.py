@@ -155,16 +155,58 @@ def timestamp_to_git_raw(value: str) -> str:
     return f"{int(parsed.timestamp())} {parsed.strftime('%z')}"
 
 
-def deterministic_date(base_date: Any, commit_index: int) -> str:
-    """Return ``base_date + commit_index days`` (issue #9 default dates)."""
+def _stable_hash(*parts: Any) -> int:
+    return int(hashlib.sha1(":".join(str(p) for p in parts).encode("utf-8")).hexdigest(), 16)
+
+
+#: Window the per-scenario default base date is spread over (issue #9).  It
+#: starts on a Monday so that the first commit of a scenario is a weekday.
+DEFAULT_BASE_WINDOW_START = "2023-01-09T09:00:00Z"
+DEFAULT_BASE_WINDOW_DAYS = 890
+
+
+def default_base_date(scenario_id: str) -> str:
+    """A per-scenario base date, so repositories do not all start on one day."""
+    start = parse_timestamp(DEFAULT_BASE_WINDOW_START, field="base window")
+    day = start + timedelta(days=_stable_hash(scenario_id, "base") % DEFAULT_BASE_WINDOW_DAYS)
+    while day.weekday() >= 5:
+        day += timedelta(days=1)
+    return format_timestamp(day)
+
+
+def deterministic_date(base_date: Any, commit_index: int, scenario_id: str | None = None) -> str:
+    """Default date of commit ``commit_index`` (issue #9).
+
+    Without a ``scenario_id`` the historical behaviour is kept:
+    ``base_date + commit_index`` days.  With one, the commits of a scenario
+    are spread over irregular gaps of one to nine weekdays at working-hour
+    times, all derived from a stable hash of the scenario id, so that dates
+    remain deterministic across regeneration while no longer being a ramp
+    that every scenario shares.  Dates are strictly increasing in
+    ``commit_index``, so a commit is always newer than its parents.
+    """
+    if base_date is None and scenario_id is not None:
+        base_date = default_base_date(scenario_id)
     base = parse_timestamp(base_date if base_date is not None else DEFAULT_BASE_DATE, field="repository.base_date")
-    return format_timestamp(base + timedelta(days=commit_index))
+    if scenario_id is None:
+        return format_timestamp(base + timedelta(days=commit_index))
+    if commit_index == 0:
+        # The first commit sits exactly on the base date, so an explicit
+        # repository.base_date is reproduced verbatim.
+        return format_timestamp(base)
+    day = base
+    for i in range(1, commit_index + 1):
+        day += timedelta(days=1 + _stable_hash(scenario_id, "gap", i) % 9)
+        while day.weekday() >= 5:
+            day += timedelta(days=1)
+    hour = 8 + _stable_hash(scenario_id, "hour", commit_index) % 11
+    minute = _stable_hash(scenario_id, "minute", commit_index) % 60
+    return format_timestamp(day.replace(hour=hour, minute=minute, second=0, microsecond=0))
 
 
 def deterministic_author(scenario_id: str, key: Any) -> str:
     """Pick an author from the pool by a stable hash of (scenario id, key)."""
-    digest = hashlib.sha1(f"{scenario_id}:{key}".encode("utf-8")).hexdigest()
-    return DEFAULT_AUTHOR_POOL[int(digest, 16) % len(DEFAULT_AUTHOR_POOL)]
+    return DEFAULT_AUTHOR_POOL[_stable_hash(scenario_id, key) % len(DEFAULT_AUTHOR_POOL)]
 
 
 def json_safe_timestamp(value: Any) -> Any:
@@ -244,7 +286,7 @@ def resolve_commit_metadata(scenario: dict[str, Any], commit_spec: dict[str, Any
     def default() -> str:
         nonlocal default_date
         if default_date is None:
-            default_date = deterministic_date(repository.get("base_date"), commit_index)
+            default_date = deterministic_date(repository.get("base_date"), commit_index, scenario_id)
         return default_date
 
     date = commit_spec.get("date")
