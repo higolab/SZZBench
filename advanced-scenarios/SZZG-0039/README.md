@@ -11,10 +11,10 @@ Evaluate prerequisite bic and symptom bic fixed together and whether SZZ identif
 ## Expected history
 
 ```text
-c0: c0: create token verifier
-c1: c1: weaken token trust predicate
-c2: c2: weaken access control condition
-c3: c3: fix access control vulnerability
+c0: create token verifier
+c1: weaken token trust predicate
+c2: weaken access control condition
+c3: fix access control vulnerability
 ```
 
 ## Why this needs `scenario.graph.yml`

@@ -6,8 +6,8 @@ meta:
   description: Evaluates a bug where the bug-introducing commit changes only a test oracle, not production code.
   category: "Non-source, configuration, test-only, and file-level edge cases"
   factors:
-  - test_only_bic
-  - expected_szz
+  - test-only-bic
+  - evaluation-variant
   difficulty: hard
   status: active
   tier: control

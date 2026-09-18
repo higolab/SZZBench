@@ -9,10 +9,10 @@ meta:
   category_code: "G4"
   factors:
   - branch
-  - cherry_pick_of
-  - bug_fixing_commits
-  - bug_instances
-  - backport_like_fix
+  - cherry-pick
+  - multi-bfc
+  - copy-propagation
+  - backport-like-fix
   difficulty: advanced
   status: draft
   tier: control
@@ -96,9 +96,11 @@ bugs:
     role: direct
   bug_fixing_commits:
   - commit: c2
-    role: main_fix
+    role: complete_fix
+    description: Fixes the fault on main.
   - commit: r2
-    role: cherry_picked_release_fix
+    role: complete_fix
+    description: The same fix cherry-picked onto the release branch.
     cherry_pick_of: c2
   faults:
   - id: F001
@@ -145,7 +147,7 @@ scenario_design:
     branch.
   key_property: The cherry-picked commit r2 is a BFC, not a BIC. This distinguishes SZZG-0049 from SZZG-0048, where the cherry-picked
     commit is a BIC.
-  difference_from_SZZG_0035: SZZG-0048 is about cherry-picking the BIC onto another branch. SZZG-0049 is about cherry-picking
+  difference_from_SZZG_0048: SZZG-0048 is about cherry-picking the BIC onto another branch. SZZG-0049 is about cherry-picking
     the BFC onto another branch.
   evaluation_points:
   - Whether SZZ treats the release BFC r2 as a fixing commit.

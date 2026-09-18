@@ -11,10 +11,10 @@ Evaluate clone origin versus copied direct bic and whether SZZ identifies the ex
 ## Expected history
 
 ```text
-c0: c0: create original sanitizer
-c1: c1: introduce bug in original sanitizer
-c2: c2: copy sanitizer into admin module
-c3: c3: fix copied sanitizer only
+c0: create original sanitizer
+c1: introduce bug in original sanitizer
+c2: copy sanitizer into admin module
+c3: fix copied sanitizer only
 ```
 
 ## Why this needs `scenario.graph.yml`

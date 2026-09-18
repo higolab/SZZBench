@@ -8,10 +8,10 @@ meta:
   category: "Multiple BICs, multiple BFCs, and partial fixes"
   category_code: "G3"
   factors:
-  - multiple_bug
-  - single_bfc
-  - independent_faults
-  - different_files
+  - multiple-bug
+  - single-bfc
+  - independent-faults
+  - different-files
   difficulty: advanced
   status: draft
   tier: control
@@ -90,7 +90,8 @@ bugs:
     role: direct
   bug_fixing_commits:
   - commit: c3
-    role: shared_bfc
+    role: complete_fix
+    description: One commit that completely fixes both bugs of this scenario.
   faults:
   - id: F001
     commit: c1
@@ -110,7 +111,8 @@ bugs:
     role: direct
   bug_fixing_commits:
   - commit: c3
-    role: shared_bfc
+    role: complete_fix
+    description: One commit that completely fixes both bugs of this scenario.
   faults:
   - id: F002
     commit: c2
@@ -140,7 +142,7 @@ expected_szz:
 scenario_design:
   purpose: Evaluate a BFC that fixes multiple independent bugs in one commit.
   key_property: 'The two bugs are in different files and different functional areas: range checking and discount calculation.'
-  difference_from_SZZ_0166: SZZ-0154 is one composite bug with multiple BICs. SZZG-0034 is two independent bugs with a shared
+  difference_from_SZZ_0154: SZZ-0154 is one composite bug with multiple BICs. SZZG-0034 is two independent bugs with a shared
     BFC.
   evaluation_points:
   - Whether SZZ can return both BICs for a shared BFC.

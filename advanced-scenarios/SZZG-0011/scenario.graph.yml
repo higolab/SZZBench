@@ -8,9 +8,9 @@ meta:
   category: "Refactoring, move, rename, and semantic rewrite"
   category_code: "G1"
   factors:
-  - bug_introducing_refactoring
-  - mixed_change
-  - rename_method
+  - bug-introducing-refactoring
+  - mixed-change
+  - rename-method
   difficulty: advanced
   status: draft
   tier: control
@@ -22,11 +22,11 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: c0: create normalizer
+  history_summary: 'c0: create normalizer
 
-    c1: c1: rename method and accidentally remove lower-case conversion
+    c1: rename method and accidentally remove lower-case conversion
 
-    c2: c2: fix normalization after refactoring'
+    c2: fix normalization after refactoring'
 commits:
 - id: c0
   branch: main

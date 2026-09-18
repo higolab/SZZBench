@@ -12,9 +12,8 @@ meta:
   category: "Refactoring, move, rename, and semantic rewrite"
   category_code: "G1"
   factors:
-  - method_move
-  - copy_propagation
-  - bug_instances
+  - method-move
+  - copy-propagation
   difficulty: advanced
   status: draft
   tier: control

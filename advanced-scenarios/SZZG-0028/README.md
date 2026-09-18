@@ -12,11 +12,11 @@ added a second fault to it, **without** reporting the origin the copy came from.
 ## Expected history
 
 ```text
-c0: c0: create amount parser
-c1: c1: introduce original parser trim bug
-c2: c2: copy amount parser to invoice parser
-c3: c3: introduce copied parser sign bug
-c4: c4: fix invoice parsing behavior
+c0: create amount parser
+c1: introduce original parser trim bug
+c2: copy amount parser to invoice parser
+c3: introduce copied parser sign bug
+c4: fix invoice parsing behavior
 ```
 
 ## Why this needs `scenario.graph.yml`

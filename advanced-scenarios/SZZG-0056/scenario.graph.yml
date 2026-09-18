@@ -9,10 +9,10 @@ meta:
   factors:
   - branch
   - rebase
-  - release_branch
-  - main_fix_to_release
-  - rebased_bfc
-  - bug_fixing_commits
+  - release-branch
+  - main-fix-to-release
+  - rebased-bfc
+  - multi-bfc
   difficulty: advanced
   status: draft
   tier: control

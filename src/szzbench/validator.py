@@ -669,6 +669,10 @@ def validate_index_file(index_path: Path, root: Path, scenario_filename: str) ->
             result.error("IE040", f"Index entry id '{sid}' does not match meta.id '{meta.get('id')}' in {expected_rel(sid)}.", f"{loc}.id")
         if "title" in entry and entry.get("title") != meta.get("title"):
             result.error("IE041", f"Index entry '{sid}' title '{entry.get('title')}' does not match meta.title '{meta.get('title')}'.", f"{loc}.title")
+        if "factors" in entry and list(entry.get("factors") or []) != list(meta.get("factors") or []):
+            # The index repeats a field that changes with the scenario, which is
+            # how it drifted before (issue #19); the copy has to be checked.
+            result.error("IE043", f"Index entry '{sid}' factors {list(entry.get('factors') or [])} do not match meta.factors {list(meta.get('factors') or [])}.", f"{loc}.factors")
 
     for child in sorted(root.iterdir()):
         if child.is_dir() and (child / scenario_filename).is_file() and child.name not in seen:

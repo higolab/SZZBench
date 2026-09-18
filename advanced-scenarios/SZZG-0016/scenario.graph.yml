@@ -11,8 +11,8 @@ meta:
   category: "Clone, copy propagation, and origin-vs-direct BIC"
   category_code: "G2"
   factors:
-  - faults
-  - clone_relationships
+  - boundary-condition
+  - copy-propagation
   difficulty: advanced
   status: draft
   tier: control

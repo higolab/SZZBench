@@ -8,8 +8,8 @@ meta:
   category_code: "G8"
   factors:
   - encoding
-  - non_utf8_file
-  - write_binary_file
+  - non-utf8-file
+  - binary-file
   difficulty: advanced
   status: draft
   tier: control

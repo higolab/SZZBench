@@ -10,8 +10,8 @@ meta:
   category_code: "G2"
   factors:
   - clone
-  - multiple_bic
-  - origin_and_direct_bic
+  - multi-bic
+  - origin-and-direct-bic
   difficulty: advanced
   status: draft
   tier: discriminating
@@ -23,15 +23,15 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: c0: create amount parser
+  history_summary: 'c0: create amount parser
 
-    c1: c1: introduce original parser trim bug
+    c1: introduce original parser trim bug
 
-    c2: c2: copy amount parser to invoice parser
+    c2: copy amount parser to invoice parser
 
-    c3: c3: introduce copied parser sign bug
+    c3: introduce copied parser sign bug
 
-    c4: c4: fix invoice parsing behavior'
+    c4: fix invoice parsing behavior'
 commits:
 - id: c0
   branch: main

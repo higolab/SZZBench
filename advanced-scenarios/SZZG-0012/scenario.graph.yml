@@ -8,9 +8,9 @@ meta:
   category: "Refactoring, move, rename, and semantic rewrite"
   category_code: "G1"
   factors:
-  - bfc_refactoring
-  - extract_method
-  - mixed_bfc
+  - bfc-refactoring
+  - extract-method
+  - mixed-bfc
   difficulty: advanced
   status: draft
   tier: control
@@ -22,11 +22,11 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: c0: create tax calculator
+  history_summary: 'c0: create tax calculator
 
-    c1: c1: introduce tax rounding bug
+    c1: introduce tax rounding bug
 
-    c2: c2: extract tax rate helper and fix rounding'
+    c2: extract tax rate helper and fix rounding'
 commits:
 - id: c0
   branch: main

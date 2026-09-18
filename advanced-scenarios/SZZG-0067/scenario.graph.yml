@@ -12,9 +12,9 @@ meta:
   factors:
   - branch
   - rebase
-  - rebase_conflict_resolution
-  - conflict_resolution_bfc
-  - rebased_bic
+  - rebase-conflict-resolution
+  - conflict-resolution-bfc
+  - rebased-bic
   difficulty: advanced
   status: draft
   tier: control

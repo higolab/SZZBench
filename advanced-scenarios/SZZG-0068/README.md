@@ -7,11 +7,11 @@ Evaluate direct/origin handling when rebase changes patch content.
 ## Commit history
 
 ```text
-c0: c0: create initial correct implementation
-f1: f1: introduce exclusive bug on feature
-m1: m1: add main note
-r1: r1: rebase feature bug with adjusted patch content
-c2: c2: fix adjusted lower-bound bug
+c0: create initial correct implementation
+f1: introduce exclusive bug on feature
+m1: add main note
+r1: rebase feature bug with adjusted patch content
+c2: fix adjusted lower-bound bug
 ```
 
 ## Commit table

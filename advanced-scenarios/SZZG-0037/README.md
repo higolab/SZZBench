@@ -11,10 +11,10 @@ Evaluate one bfc fixes multiple bics across multiple files and whether SZZ ident
 ## Expected history
 
 ```text
-c0: c0: create initial calculator and validator
-c1: c1: introduce rounding bug in calculator
-c2: c2: introduce zero-quantity validation bug
-c3: c3: fix both pricing and validation bugs
+c0: create initial calculator and validator
+c1: introduce rounding bug in calculator
+c2: introduce zero-quantity validation bug
+c3: fix both pricing and validation bugs
 ```
 
 ## Why this needs `scenario.graph.yml`

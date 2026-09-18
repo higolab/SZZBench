@@ -11,10 +11,10 @@ Evaluate cherry-picked bic appears as duplicate commits on two branches and whet
 ## Expected history
 
 ```text
-c0: c0: create status mapper
-c1: c1: introduce wrong error status on release branch
-c2: c2: cherry-pick wrong error status onto main
-c3: c3: fix wrong error status on main
+c0: create status mapper
+c1: introduce wrong error status on release branch
+c2: cherry-pick wrong error status onto main
+c3: fix wrong error status on main
 ```
 
 ## Why this needs `scenario.graph.yml`

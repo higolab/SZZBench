@@ -10,8 +10,8 @@ meta:
   factors:
   - branch
   - merge
-  - feature_branch_bic
-  - main_branch_bfc
+  - feature-branch-bic
+  - main-branch-bfc
   difficulty: advanced
   status: draft
   tier: control

@@ -8,9 +8,9 @@ meta:
   category: "Branch, merge, cherry-pick, backport, and release branches"
   category_code: "G4"
   factors:
-  - cherry_pick
-  - duplicate_patch
-  - non_linear_history
+  - cherry-pick
+  - duplicate-patch
+  - non-linear-history
   difficulty: advanced
   status: draft
   tier: control
@@ -22,13 +22,13 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: c0: create status mapper
+  history_summary: 'c0: create status mapper
 
-    c1: c1: introduce wrong error status on release branch
+    c1: introduce wrong error status on release branch
 
-    c2: c2: cherry-pick wrong error status onto main
+    c2: cherry-pick wrong error status onto main
 
-    c3: c3: fix wrong error status on main'
+    c3: fix wrong error status on main'
 commits:
 - id: c0
   branch: main

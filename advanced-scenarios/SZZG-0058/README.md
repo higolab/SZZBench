@@ -7,11 +7,11 @@ Evaluate a BFC that is itself a rebased feature fix.
 ## Commit history
 
 ```text
-c0: c0: create initial correct implementation
-f1: f1: introduce bug on feature
-f2: f2: fix bug on feature
-r1: r1: rebase feature bug commit onto main
-r2: r2: rebase feature fix commit onto main
+c0: create initial correct implementation
+f1: introduce bug on feature
+f2: fix bug on feature
+r1: rebase feature bug commit onto main
+r2: rebase feature fix commit onto main
 ```
 
 ## Commit table

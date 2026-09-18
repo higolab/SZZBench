@@ -9,11 +9,11 @@ meta:
   category: "Issue, message, context, and non-local evidence"
   category_code: "G7"
   factors:
-  - work_items
-  - work_item_inference
-  - no_issue_id
-  - commit_series
-  - related_but_not_correct
+  - work-item
+  - work-item-inference
+  - no-issue-id
+  - commit-series
+  - related-but-not-correct
   difficulty: advanced
   status: draft
   tier: control
@@ -163,7 +163,7 @@ scenario_design:
     identify the specific BIC inside that inferred work item.
   key_property: Commit messages intentionally omit issue identifiers. The work item must be inferred from message similarity,
     commit locality, and related file changes.
-  difference_from_SZZG_0046: SZZG-0096 assumes an explicit work item containing multiple candidate BICs. SZZG-0097 removes
+  difference_from_SZZG_0096: SZZG-0096 assumes an explicit work item containing multiple candidate BICs. SZZG-0097 removes
     the explicit issue ID and relies on inference signals.
   evaluation_points:
   - Whether the work item can be inferred from context without issue IDs.

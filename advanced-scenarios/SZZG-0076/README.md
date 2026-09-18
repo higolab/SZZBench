@@ -7,12 +7,12 @@ Evaluate multiple-BIC handling when BICs are introduced by rebase replay.
 ## Commit history
 
 ```text
-c0: c0: create initial correct implementation
-f1: f1: introduce lower-bound bug
-f2: f2: introduce upper-bound bug
-r1: r1: rebase lower-bound BIC
-r2: r2: rebase upper-bound BIC
-c3: c3: fix both rebased BICs
+c0: create initial correct implementation
+f1: introduce lower-bound bug
+f2: introduce upper-bound bug
+r1: rebase lower-bound BIC
+r2: rebase upper-bound BIC
+c3: fix both rebased BICs
 ```
 
 ## Commit table

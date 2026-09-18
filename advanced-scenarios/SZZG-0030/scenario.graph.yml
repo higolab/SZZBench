@@ -8,10 +8,10 @@ meta:
   category: "Multiple BICs, multiple BFCs, and partial fixes"
   category_code: "G3"
   factors:
-  - bug_fixing_commits
-  - attempted_fix
-  - follow_up_fix
-  - incorrect_fix
+  - multi-bfc
+  - attempted-fix
+  - follow-up-fix
+  - incorrect-fix
   difficulty: advanced
   status: draft
   tier: control
@@ -136,7 +136,7 @@ scenario_design:
     c2 changes the code in a fix-like direction and does repair the boundary exclusion, but by using || instead
     of && it writes a second, different fault in the same commit. Both effects are observable, so the scenario
     carries two bug entries and the oracle is the union {c1, c2}.
-  difference_from_SZZG_0003: SZZG-0029 represents a partial fix where one side of the boundary condition is correctly repaired.
+  difference_from_SZZG_0029: SZZG-0029 represents a partial fix where one side of the boundary condition is correctly repaired.
     This scenario represents an attempted fix that introduces wrong boolean logic and requires a follow-up fix.
   evaluation_points:
   - Whether SZZ identifies c1 as the BIC of the boundary-exclusion fault.

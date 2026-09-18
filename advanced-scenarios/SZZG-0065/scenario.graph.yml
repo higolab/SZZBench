@@ -11,10 +11,10 @@ meta:
   factors:
   - branch
   - rebase
-  - rebase_conflict_resolution
-  - conflict_resolution_bic
-  - direct_bic
-  - fault_in_neither_parent
+  - rebase-conflict-resolution
+  - conflict-resolution-bic
+  - direct-bic
+  - fault-in-neither-parent
   difficulty: advanced
   status: draft
   tier: control

@@ -11,11 +11,11 @@ Evaluate merge commit itself is the bic and whether SZZ identifies the expected 
 ## Expected history
 
 ```text
-c0: c0: create feature flag
-c1: c1: main branch hardens feature flag
-c2: c2: feature branch keeps simple flag
-c3: c3: merge feature branch and accidentally drop safety check
-c4: c4: fix dropped safety check
+c0: create feature flag
+c1: main branch hardens feature flag
+c2: feature branch keeps simple flag
+c3: merge feature branch and accidentally drop safety check
+c4: fix dropped safety check
 ```
 
 ## Why this needs `scenario.graph.yml`

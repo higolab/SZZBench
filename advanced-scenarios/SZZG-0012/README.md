@@ -11,9 +11,9 @@ Evaluate bfc performs method extraction and bug fix in the same commit and wheth
 ## Expected history
 
 ```text
-c0: c0: create tax calculator
-c1: c1: introduce tax rounding bug
-c2: c2: extract tax rate helper and fix rounding
+c0: create tax calculator
+c1: introduce tax rounding bug
+c2: extract tax rate helper and fix rounding
 ```
 
 ## Why this needs `scenario.graph.yml`

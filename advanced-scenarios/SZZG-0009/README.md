@@ -11,10 +11,10 @@ Evaluate intermediate method extraction between bic and bfc and whether SZZ iden
 ## Expected history
 
 ```text
-c0: c0: create shipping fee calculation
-c1: c1: introduce free-shipping threshold bug
-c2: c2: extract free-shipping predicate
-c3: c3: fix extracted threshold predicate
+c0: create shipping fee calculation
+c1: introduce free-shipping threshold bug
+c2: extract free-shipping predicate
+c3: fix extracted threshold predicate
 ```
 
 ## Why this needs `scenario.graph.yml`

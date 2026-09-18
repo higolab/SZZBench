@@ -11,10 +11,10 @@ Evaluate copy followed by bug introduction only in the copied code and whether S
 ## Expected history
 
 ```text
-c0: c0: create original formatter
-c1: c1: copy formatter to report formatter
-c2: c2: introduce copied-code null handling bug
-c3: c3: fix copied formatter null handling
+c0: create original formatter
+c1: copy formatter to report formatter
+c2: introduce copied-code null handling bug
+c3: fix copied formatter null handling
 ```
 
 ## Why this needs `scenario.graph.yml`

@@ -10,8 +10,8 @@ meta:
   factors:
   - branch
   - merge
-  - criss_cross_merge
-  - multiple_merge_bases
+  - criss-cross-merge
+  - multiple-merge-bases
   difficulty: advanced
   status: draft
   tier: control

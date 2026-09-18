@@ -8,11 +8,11 @@ meta:
     second BIC breaks the upper-bound helper. A single BFC fixes both faults together.
   category: "Multiple BICs, duplicate faults, and composite faults"
   factors:
-  - multiple_bic
-  - single_bfc
-  - composite_bug
-  - same_bug
-  - multiple_fault_locations
+  - multi-bic
+  - single-bfc
+  - composite-bug
+  - same-bug
+  - multiple-fault-locations
   difficulty: hard
   status: active
   tier: control

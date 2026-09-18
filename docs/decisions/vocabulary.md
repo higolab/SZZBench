@@ -1,6 +1,6 @@
 # Decision: controlled vocabularies for factors, roles, categories, status and difficulty (issue #19)
 
-Status: **proposal for maintainer decision** (2026-09-17). The mechanical defects listed in issue #19 (stale index count, wrong references, garbled text) are fixed independently; this document settles the vocabularies that the metadata sweep and the validator lint (issue #16, `--lint`) will use.
+Status: **decided and applied** (2026-09-19; proposed 2026-09-17; §7 `meta.tier` applied in PR #39). The mechanical defects listed in issue #19 (stale index count, wrong references, garbled text) are fixed independently; this document settles the vocabularies that the metadata sweep and the validator lint (issue #16, `--lint`) will use.
 
 ## 1. Factors
 

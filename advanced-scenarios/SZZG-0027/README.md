@@ -11,11 +11,11 @@ Evaluate clone divergence before fixing one clone and whether SZZ identifies the
 ## Expected history
 
 ```text
-c0: c0: create base permission check
-c1: c1: introduce permissive delete check
-c2: c2: clone policy to group policy
-c3: c3: diverge copied clone by renaming parameters
-c4: c4: fix copied clone after divergence
+c0: create base permission check
+c1: introduce permissive delete check
+c2: clone policy to group policy
+c3: diverge copied clone by renaming parameters
+c4: fix copied clone after divergence
 ```
 
 ## Why this needs `scenario.graph.yml`

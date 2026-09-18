@@ -8,9 +8,9 @@ meta:
   category: "Multiple BICs, multiple BFCs, and partial fixes"
   category_code: "G3"
   factors:
-  - multiple_bic
-  - causal_chain
-  - single_bfc
+  - multi-bic
+  - causal-chain
+  - single-bfc
   difficulty: advanced
   status: draft
   tier: control
@@ -22,13 +22,13 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: c0: create token verifier
+  history_summary: 'c0: create token verifier
 
-    c1: c1: weaken token trust predicate
+    c1: weaken token trust predicate
 
-    c2: c2: weaken access control condition
+    c2: weaken access control condition
 
-    c3: c3: fix access control vulnerability'
+    c3: fix access control vulnerability'
 commits:
 - id: c0
   branch: main

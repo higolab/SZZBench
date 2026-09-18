@@ -8,8 +8,8 @@ meta:
   category: "Refactoring, move, rename, and semantic rewrite"
   category_code: "G1"
   factors:
-  - semantic_rewrite
-  - related_but_not_correct
+  - semantic-rewrite
+  - related-but-not-correct
   difficulty: advanced
   status: draft
   tier: control

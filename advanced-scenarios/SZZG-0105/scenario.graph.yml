@@ -8,9 +8,9 @@ meta:
   category: "Issue, message, context, and non-local evidence"
   category_code: "G7"
   factors:
-  - defensive_fix
-  - root_cause_not_touched
-  - context_dependent
+  - defensive-fix
+  - root-cause-not-touched
+  - context-dependent
   difficulty: advanced
   status: draft
   tier: control

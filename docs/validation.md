@@ -295,4 +295,5 @@ with the index path.
 | IE030 | error | a scenario directory under the root has no index entry |
 | IE040 | error | the entry id differs from the scenario's `meta.id` |
 | IE041 | error | the entry title differs from the scenario's `meta.title` |
+| IE043 | error | an index entry's `factors` differ from the scenario's `meta.factors`; the index repeats a field that changes with the scenario, which is how it drifted before ([issue #19](https://github.com/YoshikiHigo/SZZBench/issues/19)) |
 | IE042 | error | the scenario file of an entry cannot be loaded |

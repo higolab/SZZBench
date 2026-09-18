@@ -36,4 +36,4 @@ Evaluate a BFC that is a merge commit, but with a different shape from SZZG-0042
 
 ## Notes
 
-- This is案B for distinguishing SZZG-0046 from SZZG-0042.
+- Distinguishes SZZG-0046 from SZZG-0042: there the BIC is on the merged feature branch, while here it precedes the branch point, so both branches inherit the fault and the merge is the first commit that can fix it.

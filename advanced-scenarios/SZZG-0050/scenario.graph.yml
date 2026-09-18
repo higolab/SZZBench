@@ -9,10 +9,10 @@ meta:
   category_code: "G4"
   factors:
   - branch
-  - backport_of
-  - release_branch
-  - release_specific_changes
-  - bug_instances
+  - backport
+  - release-branch
+  - release-specific-changes
+  - copy-propagation
   difficulty: advanced
   status: draft
   tier: control
@@ -126,9 +126,11 @@ bugs:
     role: direct
   bug_fixing_commits:
   - commit: c2
-    role: main_fix
+    role: complete_fix
+    description: Fixes the fault on main.
   - commit: r2
-    role: backport_fix
+    role: complete_fix
+    description: The same fix backported to the release branch.
     backport_of: c2
   faults:
   - id: F001
@@ -174,7 +176,7 @@ scenario_design:
   purpose: Evaluate whether SZZ can identify the original BIC when a main-line fix is backported to a release branch.
   key_property: The release branch has release-specific changes before the backport, so the history is not just a linear correct-buggy-fixed
     sequence.
-  difference_from_SZZG_0028_0029: SZZG-0084 and SZZG-0085 are revert/reintroduction scenarios. SZZG-0050 is a branch scenario
+  difference_from_SZZG_0084_0085: SZZG-0084 and SZZG-0085 are revert/reintroduction scenarios. SZZG-0050 is a branch scenario
     where the release fix is a backport of the main-line BFC.
   evaluation_points:
   - Whether SZZ traces the release backport r2 to c1.

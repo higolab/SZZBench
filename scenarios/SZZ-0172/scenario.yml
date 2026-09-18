@@ -9,9 +9,9 @@ meta:
   category: "Non-source, configuration, test-only, and file-level edge cases"
   factors:
   - config
-  - code_interaction
+  - code-interaction
   - context
-  - faults
+  - config-value
   difficulty: hard
   status: active
   tier: control

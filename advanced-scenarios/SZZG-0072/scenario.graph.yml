@@ -12,11 +12,11 @@ meta:
   factors:
   - branch
   - rebase
-  - interactive_rebase
-  - dropped_origin_bic
-  - deleted_branch
-  - direct_bic
-  - origin_bic
+  - interactive-rebase
+  - dropped-origin-bic
+  - deleted-branch
+  - direct-bic
+  - origin-bic
   difficulty: advanced
   status: draft
   tier: control

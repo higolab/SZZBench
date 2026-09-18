@@ -9,9 +9,9 @@ meta:
   factors:
   - branch
   - rebase
-  - generated_files
-  - generated_code_noise
-  - direct_bic
+  - generated-files
+  - generated-code-noise
+  - direct-bic
   difficulty: advanced
   status: draft
   tier: control

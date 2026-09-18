@@ -10,10 +10,10 @@ meta:
   category_code: "G4"
   factors:
   - branch
-  - cherry_pick
-  - release_branch
-  - direct_bic
-  - origin_bic
+  - cherry-pick
+  - release-branch
+  - direct-bic
+  - origin-bic
   difficulty: advanced
   status: draft
   tier: control

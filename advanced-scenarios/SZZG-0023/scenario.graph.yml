@@ -11,10 +11,10 @@ meta:
   factors:
   - branch
   - rebase
-  - copy_propagation
-  - duplicate_code
-  - direct_bic
-  - origin_bic
+  - copy-propagation
+  - duplicate-code
+  - direct-bic
+  - origin-bic
   difficulty: advanced
   status: draft
   tier: control

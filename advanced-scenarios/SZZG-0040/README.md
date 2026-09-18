@@ -11,10 +11,10 @@ Evaluate multiple bics where one true bic is not directly touched by the bfc and
 ## Expected history
 
 ```text
-c0: c0: create retry policy
-c1: c1: introduce excessive retry limit
-c2: c2: introduce retry on client errors
-c3: c3: fix retry condition without touching retry limit
+c0: create retry policy
+c1: introduce excessive retry limit
+c2: introduce retry on client errors
+c3: fix retry condition without touching retry limit
 ```
 
 ## Why this needs `scenario.graph.yml`

@@ -5,7 +5,11 @@ meta:
   slug: bic-dependency-update
   description: Evaluates dependency update as bic and checks whether SZZ identifies the expected bug-introducing commit set.
   category: "Non-source, configuration, test-only, and file-level edge cases"
-  factors: []
+  factors:
+  - single-bic
+  - single-bfc
+  - config-bic
+  - api-misuse
   difficulty: hard
   status: active
   tier: control

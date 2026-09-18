@@ -10,13 +10,13 @@ meta:
   category: "Revert-specific reintroduction"
   category_code: "G6"
   factors:
-  - linear_history
+  - linear-history
   - revert
-  - partial_revert
-  - reintroduced_bug
-  - re_bic
-  - origin_bic
-  - revert_footer
+  - partial-revert
+  - reintroduced-bug
+  - re-bic
+  - origin-bic
+  - revert-footer
   difficulty: advanced
   status: draft
   tier: control

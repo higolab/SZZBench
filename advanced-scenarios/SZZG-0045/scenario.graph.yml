@@ -9,7 +9,7 @@ meta:
   factors:
   - branch
   - merge
-  - merge_commit_bic
+  - merge-commit-bic
   difficulty: advanced
   status: draft
   tier: control
@@ -92,7 +92,8 @@ bugs:
   title: Range boundary bug introduced by merge commit
   bug_introducing_commits:
   - commit: c3
-    role: merge_introducing
+    role: direct
+    description: The merge commit itself writes the faulty line.
   bug_fixing_commits:
   - commit: c4
     role: complete_fix

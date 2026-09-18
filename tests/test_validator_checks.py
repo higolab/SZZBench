@@ -713,3 +713,30 @@ def test_tier_lint_requires_a_declared_vocabulary_value():
     assert "GW460" in codes(lint_graph(graph))
     graph["meta"]["tier"] = "control"
     assert "GW460" not in codes(lint_graph(graph))
+
+
+def test_index_factors_must_match_the_scenario(tmp_path):
+    """IE043: the index repeats meta.factors, so the copy has to be checked.
+
+    Before this check the two drifted silently: a factor sweep over 122
+    scenarios left every index entry stale and `validate-index` still passed
+    (issue #19).
+    """
+    from szzbench.validator import validate_index_file
+
+    root = tmp_path / "scenarios"
+    (root / "SZZ-0001").mkdir(parents=True)
+    scenario = graph_scenario()
+    scenario["meta"] = {"id": "SZZ-0001", "title": "A scenario", "factors": ["boundary-condition"]}
+    (root / "SZZ-0001" / "scenario.yml").write_text(yaml.safe_dump(scenario, sort_keys=False))
+
+    def index(factors):
+        path = tmp_path / "index.yml"
+        path.write_text(yaml.safe_dump(
+            {"scenarios": [{"id": "SZZ-0001", "title": "A scenario", "factors": factors}]}, sort_keys=False))
+        return path
+
+    assert validate_index_file(index(["boundary-condition"]), root, "scenario.yml").findings == []
+    stale = validate_index_file(index(["boundary_condition"]), root, "scenario.yml")
+    assert [f.code for f in stale.findings] == ["IE043"]
+    assert "boundary_condition" in stale.findings[0].message

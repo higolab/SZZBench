@@ -7,7 +7,12 @@ meta:
     commit set.
   category: "Clone, copy propagation, and origin-vs-direct BIC"
   category_code: "G2"
-  factors: []
+  factors:
+  - single-bic
+  - single-bfc
+  - copy-propagation
+  - generated-file
+  - boundary-condition
   difficulty: advanced
   status: draft
   tier: control

@@ -7,11 +7,11 @@ Evaluate one-origin-to-multiple-direct BIC mapping after rebase.
 ## Commit history
 
 ```text
-c0: c0: create initial correct implementation
-f1: f1: introduce both boundary bugs
-r1: r1: rebase lower-bound part
-r2: r2: rebase upper-bound part
-c3: c3: fix both boundary bugs
+c0: create initial correct implementation
+f1: introduce both boundary bugs
+r1: rebase lower-bound part
+r2: rebase upper-bound part
+c3: fix both boundary bugs
 ```
 
 ## Commit table

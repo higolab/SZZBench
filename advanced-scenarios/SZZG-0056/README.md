@@ -7,11 +7,11 @@ Evaluate a release BFC that is a rebased copy of a main fix.
 ## Commit history
 
 ```text
-c0: c0: create initial correct implementation
-c1: c1: introduce range bug on main
-rel1: rel1: cut release branch with bug
-c2: c2: fix bug on main
-r2: r2: rebase main fix onto release
+c0: create initial correct implementation
+c1: introduce range bug on main
+rel1: cut release branch with bug
+c2: fix bug on main
+r2: rebase main fix onto release
 ```
 
 ## Commit table

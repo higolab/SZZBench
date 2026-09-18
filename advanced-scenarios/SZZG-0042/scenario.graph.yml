@@ -8,8 +8,8 @@ meta:
   category: "Branch, merge, cherry-pick, backport, and release branches"
   category_code: "G4"
   factors:
-  - merge_commit
-  - bug_fixing_commit
+  - merge-commit
+  - bug-fixing-commit
   - branch
   difficulty: advanced
   status: draft
@@ -83,7 +83,8 @@ bugs:
     role: direct
   bug_fixing_commits:
   - commit: c3
-    role: merge_fix
+    role: complete_fix
+    description: The merge commit itself carries the fix.
   faults:
   - id: F001
     commit: c1

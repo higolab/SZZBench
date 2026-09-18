@@ -11,10 +11,10 @@ Evaluate one directly blamed bic and one context-only bic and whether SZZ identi
 ## Expected history
 
 ```text
-c0: c0: create discount service
-c1: c1: introduce wrong threshold
-c2: c2: introduce wrong base discount
-c3: c3: fix customer discount behavior by restoring threshold only
+c0: create discount service
+c1: introduce wrong threshold
+c2: introduce wrong base discount
+c3: fix customer discount behavior by restoring threshold only
 ```
 
 ## Why this needs `scenario.graph.yml`

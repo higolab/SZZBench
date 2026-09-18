@@ -11,10 +11,10 @@ meta:
   factors:
   - branch
   - rebase
-  - commit_messages
-  - message_trailer
-  - origin_bic
-  - direct_bic
+  - commit-messages
+  - message-trailer
+  - origin-bic
+  - direct-bic
   difficulty: advanced
   status: draft
   tier: control

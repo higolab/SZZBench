@@ -9,10 +9,10 @@ meta:
   factors:
   - branch
   - rebase
-  - release_branch
-  - release_to_main
-  - direct_bic
-  - origin_bic
+  - release-branch
+  - release-to-main
+  - direct-bic
+  - origin-bic
   difficulty: advanced
   status: draft
   tier: control

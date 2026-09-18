@@ -12,8 +12,8 @@ meta:
   category_code: "G1"
   factors:
   - refactoring
-  - method_move
-  - post_bic_refactoring
+  - method-move
+  - post-bic-refactoring
   difficulty: advanced
   status: draft
   tier: control

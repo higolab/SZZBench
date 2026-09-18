@@ -8,9 +8,9 @@ meta:
   category: "Branch, merge, cherry-pick, backport, and release branches"
   category_code: "G4"
   factors:
-  - feature_branch
-  - merge_commit
-  - bfc_after_merge
+  - feature-branch
+  - merge-commit
+  - bfc-after-merge
   difficulty: advanced
   status: draft
   tier: control
@@ -22,15 +22,15 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: c0: create quota checker
+  history_summary: 'c0: create quota checker
 
-    c1: c1: feature branch introduces quota boundary bug
+    c1: feature branch introduces quota boundary bug
 
-    c2: c2: main branch updates comments only
+    c2: main branch updates comments only
 
-    c3: c3: merge feature branch
+    c3: merge feature branch
 
-    c4: c4: fix quota boundary on main'
+    c4: fix quota boundary on main'
 commits:
 - id: c0
   branch: main

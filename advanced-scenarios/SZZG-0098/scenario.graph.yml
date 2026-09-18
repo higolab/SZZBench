@@ -11,7 +11,7 @@ meta:
   category_code: "G7"
   factors:
   - context
-  - commit_messages
+  - commit-messages
   difficulty: advanced
   status: draft
   tier: control

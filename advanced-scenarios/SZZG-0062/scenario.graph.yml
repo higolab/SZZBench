@@ -9,8 +9,8 @@ meta:
   category_code: "G4"
   factors:
   - backport
-  - maintenance_branch
-  - cross_branch_bic
+  - maintenance-branch
+  - cross-branch-bic
   difficulty: advanced
   status: draft
   tier: control
@@ -22,15 +22,15 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: c0: create lock timeout
+  history_summary: 'c0: create lock timeout
 
-    c1: c1: introduce too-short timeout on main
+    c1: introduce too-short timeout on main
 
-    c2: c2: release branch cut from buggy main
+    c2: release branch cut from buggy main
 
-    c3: c3: fix timeout on main
+    c3: fix timeout on main
 
-    c4: c4: backport timeout fix to release branch'
+    c4: backport timeout fix to release branch'
 commits:
 - id: c0
   branch: main

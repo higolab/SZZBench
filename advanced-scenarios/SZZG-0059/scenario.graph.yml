@@ -8,9 +8,9 @@ meta:
   category: "Branch, merge, cherry-pick, backport, and release branches"
   category_code: "G4"
   factors:
-  - merge_commit
-  - bug_introducing_merge
-  - non_linear_history
+  - merge-commit
+  - bug-introducing-merge
+  - non-linear-history
   difficulty: advanced
   status: draft
   tier: control
@@ -22,15 +22,15 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: c0: create feature flag
+  history_summary: 'c0: create feature flag
 
-    c1: c1: main branch hardens feature flag
+    c1: main branch hardens feature flag
 
-    c2: c2: feature branch keeps simple flag
+    c2: feature branch keeps simple flag
 
-    c3: c3: merge feature branch and accidentally drop safety check
+    c3: merge feature branch and accidentally drop safety check
 
-    c4: c4: fix dropped safety check'
+    c4: fix dropped safety check'
 commits:
 - id: c0
   branch: main

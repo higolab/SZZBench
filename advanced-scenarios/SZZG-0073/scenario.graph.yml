@@ -11,11 +11,11 @@ meta:
   factors:
   - branch
   - rebase
-  - interactive_rebase
+  - interactive-rebase
   - reorder
-  - direct_bic
-  - origin_bic
-  - inherited_commit_metadata
+  - direct-bic
+  - origin-bic
+  - inherited-commit-metadata
   difficulty: advanced
   status: draft
   tier: control

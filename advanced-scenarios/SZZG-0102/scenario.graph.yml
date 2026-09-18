@@ -10,7 +10,7 @@ meta:
   category: "Issue, message, context, and non-local evidence"
   category_code: "G7"
   factors:
-  - issues
+  - issue-evidence
   - context
   difficulty: advanced
   status: draft
