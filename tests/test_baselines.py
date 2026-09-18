@@ -86,11 +86,11 @@ def test_every_predictor_declares_a_known_family():
         assert fixed in names
 
 
-def _generate(tmp_path: Path, scenario_id: str, commits, bugs) -> None:
+def _generate(tmp_path: Path, scenario_id: str, commits, bugs, tier: str = "control") -> None:
     data = {
         "schema_version": "graph-0.1-draft",
         "meta": {"id": scenario_id, "title": "baseline fixture", "category": "test",
-                 "category_code": "G1", "factors": []},
+                 "category_code": "G1", "tier": tier, "factors": []},
         "repository": {"name": scenario_id.lower(), "default_branch": "main",
                        "language": "java", "source_root": "src/main/java"},
         "graph": {"model": "commit_dag"},
@@ -151,7 +151,7 @@ def test_runner_scores_through_the_evaluator(tmp_path):
     assert {item["name"] for item in only_position["baselines"] if item["passed"]} == {
         "position-second", "position-before-fix"}
     text = format_report(report)
-    assert "position-second" in text and "solved by none" in text
+    assert "position-second" in text and "solved by no baseline" in text
     assert json.dumps(report)  # the report is JSON-serialisable for --json / --out
 
 
@@ -273,3 +273,61 @@ def test_a_failing_git_call_is_reported_rather_than_counted_as_no_prediction(tmp
     git = GitProbe()
     assert git(tmp_path, "log", "-1") == ""
     assert len(git.failures) == 1 and "git log -1 failed" in git.failures[0]
+
+
+def test_a_filtered_run_does_not_claim_promotion_candidates(tmp_path):
+    """A control the selected family misses is not "solved by no cheap rule".
+
+    Promotion asserts that *no* declared baseline solves the scenario, which a
+    filtered run cannot establish; refuting a `discriminating` declaration by
+    finding a solver stays valid either way (PR #39 review).
+    """
+    guard = ("package example;\npublic class Range {\n  public boolean valid(int v) {\n"
+             "%s    return true;\n  }\n}\n")
+    with_guard = guard % "    if (v < 0) {\n      return false;\n    }\n"
+    commits = [
+        {"id": "c0", "branch": "main", "parents": [], "message": "add the validity check", "role": "initial",
+         "operations": [{"type": "write_file", "path": RANGE_PATH, "content": with_guard}]},
+        {"id": "c1", "branch": "main", "parents": ["c0"], "message": "drop the negative-value guard",
+         "role": "bug_introducing",
+         "operations": [{"type": "replace", "path": RANGE_PATH,
+                         "old": "    if (v < 0) {\n      return false;\n    }\n", "new": ""}]},
+        {"id": "c2", "branch": "main", "parents": ["c1"], "message": "reject negative values again",
+         "role": "bug_fixing",
+         "operations": [{"type": "replace", "path": RANGE_PATH, "old": "    return true;",
+                         "new": "    if (v < 0) {\n      return false;\n    }\n    return true;"}]},
+    ]
+    bugs = [{"id": "B001",
+             "bug_introducing_commits": [{"commit": "c1", "role": "direct"}],
+             "bug_fixing_commits": [{"commit": "c2", "role": "complete_fix"}],
+             "expected_szz": {"commit_level": {"evaluation_policy": "exact_set", "required": ["c1"]}}}]
+    _generate(tmp_path, "SZZG-9004", commits, bugs, tier="control")
+
+    full = _run(tmp_path)
+    by_name = {i["name"]: i for i in full["baselines"]}
+    # the fix only adds lines, so blame has nothing to go on; position does
+    assert by_name["blame-deleted-lines"]["passed"] == 0
+    assert by_name["position-second"]["passed"] == 1
+    assert full["complete"] is True
+    assert full["declared_control_but_unsolved"] == []
+
+    blame_only = run_baselines(generated_root=tmp_path / "repos", scenarios_root=tmp_path,
+                               advanced_scenarios_root=tmp_path / "advanced-scenarios",
+                               families=["blame"])
+    assert blame_only["complete"] is False
+    assert blame_only["families_run"] == ["blame"]
+    assert blame_only["unsolved"] == ["SZZG-9004"]                 # scoped to the family that ran
+    assert blame_only["declared_control_but_unsolved"] is None     # not assessed
+    text = format_report(blame_only)
+    assert "not assessed" in text and "promotion candidates" in text
+    assert "SZZG-9004" not in text.split("promotion candidates")[1].split("\n")[0]
+
+    # refuting a `discriminating` declaration still works from a partial run
+    scenario_file = tmp_path / "advanced-scenarios" / "SZZG-9004" / "scenario.graph.yml"
+    data = yaml.safe_load(scenario_file.read_text())
+    data["meta"]["tier"] = "discriminating"
+    scenario_file.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+    position_only = run_baselines(generated_root=tmp_path / "repos", scenarios_root=tmp_path,
+                                  advanced_scenarios_root=tmp_path / "advanced-scenarios",
+                                  families=["position"])
+    assert position_only["declared_discriminating_but_solved"] == ["SZZG-9004"]

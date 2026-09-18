@@ -127,6 +127,14 @@ any scenario declared `discriminating` that a cheap rule solves, and any
 vocabulary is in [decisions/vocabulary.md](decisions/vocabulary.md) and
 `validate --lint` enforces it (`W460` / `GW460`).
 
+The two checks need different evidence, so `--family` affects them differently.
+Finding *a* solver refutes a `discriminating` declaration whichever families
+ran, so that check stays valid in a filtered run. A promotion candidate asserts
+that **no** declared baseline solves the scenario, which only a complete run can
+establish: a filtered run reports `declared_control_but_unsolved: null` and says
+the assessment was not made, and its "solved by no selected baseline" count is
+scoped to the families that ran.
+
 Raising the discriminating count is the work tracked in issues #13, #14 and
 #35; the measured axis is oracle size.
 
