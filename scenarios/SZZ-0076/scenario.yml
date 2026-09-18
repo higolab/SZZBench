@@ -66,7 +66,7 @@ commits:
   - type: replace
     path: src/main/java/example/Scenario0076.java
     old: "package example;\n\npublic class Scenario0076 {\n    public boolean safePath(String path) {\n        return true;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0076 {\n    public boolean safePath(String path) {\n        if (path.contains(\"..\")) {\n                return false;\n            }\n            return true;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0076 {\n    public boolean safePath(String path) {\n        if (path.contains(\"..\")) {\n            return false;\n        }\n        return true;\n    }\n}\n"
     labels:
     - B001
     - fix
@@ -94,8 +94,8 @@ bugs:
       signature: boolean safePath(String path)
     added_statement: |
       if (path.contains("..")) {
-                      return false;
-                  }
+                  return false;
+              }
     fix_type: line_addition
   expected_szz:
     commit_level:

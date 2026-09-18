@@ -305,6 +305,43 @@ def evaluate_predictions(
         warnings: list[str] = []
     else:
         predictions_by_scenario, explicit_scenarios, errors, warnings = load_predictions(predictions_path)
+    return evaluate_prediction_map(
+        predictions_by_scenario,
+        generated_root=generated_root,
+        scenarios_root=scenarios_root,
+        advanced_scenarios_root=advanced_scenarios_root,
+        variant=variant,
+        include_generated=include_generated,
+        evaluation_variant=evaluation_variant,
+        reference_format=reference_format,
+        explicit_scenarios=explicit_scenarios,
+        errors=errors,
+        warnings=warnings,
+    )
+
+
+def evaluate_prediction_map(
+    predictions_by_scenario: dict[str, list[Prediction]],
+    *,
+    generated_root: Path,
+    scenarios_root: Path,
+    advanced_scenarios_root: Path,
+    variant: str = "default",
+    include_generated: bool = False,
+    evaluation_variant: str | None = None,
+    reference_format: str = "auto",
+    explicit_scenarios: set[str] | None = None,
+    errors: list[str] | None = None,
+    warnings: list[str] | None = None,
+) -> EvaluationReport:
+    """Score predictions that are already in memory.
+
+    :func:`evaluate_predictions` is the file-based entry point; the baseline
+    predictors of ``szzbench baselines`` call this one so that they are scored
+    by exactly the same policies as a real tool run.
+    """
+    errors = list(errors or [])
+    warnings = list(warnings or [])
     scenario_ids = set(explicit_scenarios or predictions_by_scenario.keys())
     if include_generated:
         scenario_ids.update(_generated_scenario_ids(generated_root, variant))

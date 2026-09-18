@@ -65,7 +65,7 @@ commits:
   - type: replace
     path: src/main/java/example/Scenario0070.java
     old: "package example;\n\npublic class Scenario0070 {\n    public boolean canStart(boolean ready) {\n        return true;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0070 {\n    public boolean canStart(boolean ready) {\n        if (!ready) {\n                return false;\n            }\n            return true;\n    }\n}\n"
+    new: "package example;\n\npublic class Scenario0070 {\n    public boolean canStart(boolean ready) {\n        if (!ready) {\n            return false;\n        }\n        return true;\n    }\n}\n"
     labels:
     - B001
     - fix
@@ -93,8 +93,8 @@ bugs:
       signature: boolean canStart(boolean ready)
     added_statement: |
       if (!ready) {
-                      return false;
-                  }
+                  return false;
+              }
     fix_type: line_addition
   expected_szz:
     commit_level:

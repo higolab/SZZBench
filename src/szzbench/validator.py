@@ -77,6 +77,10 @@ ADD_ONLY_FIX_TYPES = frozenset({"line_addition", "file_creation"})
 # Factors that declare a legitimate rewrite of the fault line / a tangled BFC.
 FAULT_REWRITE_FACTOR_RE = re.compile(r"after-bic|rewrite|refactor|format|whitespace|rename|move|inline|extract")
 TANGLED_BFC_FACTOR_RE = re.compile(r"tangled|distractor|candidate")
+#: A scenario may pair an addition-only fix with deleted lines *on purpose* —
+#: a distractor's comment, an adjacent unrelated edit.  When it declares that,
+#: W420 is not a finding but the scenario's subject (issues #6, #7).
+DECLARED_BFC_NOISE_RE = re.compile(r"tangled|noise|distractor|adjacent-edit")
 
 
 def validate_scenario_file(
@@ -489,7 +493,8 @@ def _lint_ghost_invariants(
         bfc = bug.get("bug_fixing_commit")
         bics = [b for b in (bug.get("bug_introducing_commits") or []) if isinstance(b, str)]
         omission_add_only = fault.get("change_type") == "omission" and fix.get("fix_type") in ADD_ONLY_FIX_TYPES
-        if (add_only_declared or omission_add_only) and bfc in index_by_commit and bfc in snapshots:
+        declared_noise = any(DECLARED_BFC_NOISE_RE.search(f) for f in factor_set)
+        if (add_only_declared or omission_add_only) and not declared_noise and bfc in index_by_commit and bfc in snapshots:
             reason = "declared as an addition-only fix" if add_only_declared else "an omission bug with an addition-only fix_type"
             before = _parent_snapshot(commits, index_by_commit[bfc], snapshots)
             for path, hits in sorted(_removed_lines(before, snapshots[bfc]).items()):

@@ -20,6 +20,7 @@ from .validator import validate_scenario_file, validate_scenario_indexes
 from .graph_validator import validate_graph_scenario_file
 from .verifier import verify_generated_repo
 from .graph_verifier import verify_graph_generated_repo
+from .baselines import FAMILIES as BASELINE_FAMILIES, format_report as format_baselines, run_baselines
 from .evaluator import evaluate_predictions
 
 def print_result(result, *, json_output: bool = False) -> None:
@@ -133,6 +134,27 @@ def cmd_verify_graph(args) -> int:
     if args.strict and result.warning_count() > 0:
         return 1
     return 0
+
+def cmd_baselines(args) -> int:
+    report = run_baselines(
+        generated_root=Path(args.generated_root),
+        scenarios_root=Path(args.scenarios_root),
+        advanced_scenarios_root=Path(args.advanced_scenarios_root),
+        variant=args.variant,
+        families=args.family or BASELINE_FAMILIES,
+    )
+    if not report["scenario_count"]:
+        print("[ERROR] BASELINES_FAILED: no generated repository found; run generate-all-repos first.", file=sys.stderr)
+        return 1
+    text = format_baselines(report)
+    if args.out:
+        out_dir = Path(args.out)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / "baselines.json").write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        (out_dir / "baselines.md").write_text(text + "\n", encoding="utf-8")
+    print(json.dumps(report, indent=2, ensure_ascii=False) if args.json else text)
+    return 1 if report["errors"] else 0
+
 
 def cmd_evaluate(args) -> int:
     if args.predictions is None and not args.include_generated:
@@ -320,6 +342,16 @@ def build_parser() -> argparse.ArgumentParser:
     p_verify_graph.add_argument("--strict", action="store_true", help="Treat warnings as failures")
     p_verify_graph.add_argument("--json", action="store_true", help="Print JSON output")
     p_verify_graph.set_defaults(func=cmd_verify_graph)
+
+    p_baselines = sub.add_parser("baselines", help="Score cheap baselines to show what SZZBench does not test")
+    p_baselines.add_argument("--generated-root", default=str(DEFAULT_GENERATED_INPUT_REPOS_ROOT), help="Root directory for generated repositories")
+    p_baselines.add_argument("--scenarios-root", default=str(DEFAULT_SCENARIOS_ROOT), help="Root directory for classic scenarios")
+    p_baselines.add_argument("--advanced-scenarios-root", default=str(DEFAULT_ADVANCED_SCENARIOS_ROOT), help="Root directory for graph scenarios")
+    p_baselines.add_argument("--variant", default="default", help="Generated repository variant name under each scenario")
+    p_baselines.add_argument("--family", action="append", choices=list(BASELINE_FAMILIES), help="Only run these families (repeatable); default: all")
+    p_baselines.add_argument("--out", help="Write baselines.json and baselines.md to this directory")
+    p_baselines.add_argument("--json", action="store_true", help="Print JSON output")
+    p_baselines.set_defaults(func=cmd_baselines)
 
     p_evaluate = sub.add_parser("evaluate", help="Evaluate SZZ tool predictions against SZZBench oracles")
     p_evaluate.add_argument("--predictions", help="Path to predictions JSON or JSONL")
