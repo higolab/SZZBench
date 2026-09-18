@@ -20,6 +20,8 @@ commits:
 - id: c1
   message: >-
     c1: create initial buggy callee/caller context (write_file src/main/java/example/Range.java; write_file src/main/java/example/Caller.java)
+  author: Hana Sato <hana.sato@example.com>
+  date: 2023-05-18T15:48:00Z
   role: bug_introducing
   operations:
   - type: write_file
@@ -45,6 +47,8 @@ commits:
       }
 - id: c2
   message: 'c2: fix bug (replace src/main/java/example/Range.java)'
+  author: Diego Alvarez <diego.alvarez@example.com>
+  date: 2023-05-25T12:52:00Z
   role: bug_fixing
   operations:
   - type: replace

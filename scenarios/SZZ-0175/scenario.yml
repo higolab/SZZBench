@@ -30,8 +30,8 @@ repository:
 commits:
   - id: "c0"
     message: "Map support ticket priorities to escalation levels"
-    author: "Hana Sato <hana.sato@example.com>"
-    date: "2023-07-03T08:45:00Z"
+    author: "Jonas Berg <jonas.berg@example.com>"
+    date: "2024-12-05T16:52:00Z"
     role: "initial"
     operations:
       - type: "write_file"
@@ -77,8 +77,8 @@ commits:
 
   - id: "c1"
     message: "Add an urgent priority that pages the on-call manager"
-    author: "Mei Tanaka <mei.tanaka@example.com>"
-    date: "2023-07-07T13:20:00Z"
+    author: "Jonas Berg <jonas.berg@example.com>"
+    date: "2024-12-11T08:02:00Z"
     role: "bug_introducing"
     operations:
       - type: "replace"
@@ -102,8 +102,8 @@ commits:
 
   - id: "c2"
     message: "Treat blank priorities as the default level"
-    author: "Luca Moretti <luca.moretti@example.com>"
-    date: "2023-07-12T10:02:00Z"
+    author: "Jonas Berg <jonas.berg@example.com>"
+    date: "2024-12-17T12:32:00Z"
     role: "feature_addition"
     operations:
       - type: "replace"
@@ -121,8 +121,8 @@ commits:
 
   - id: "c3"
     message: "Stop urgent tickets from falling through to the high level"
-    author: "Hana Sato <hana.sato@example.com>"
-    date: "2023-07-18T15:55:00Z"
+    author: "Priya Raman <priya.raman@example.com>"
+    date: "2024-12-19T16:21:00Z"
     role: "bug_fixing"
     operations:
       - type: "replace"

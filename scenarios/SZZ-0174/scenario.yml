@@ -30,8 +30,8 @@ repository:
 commits:
   - id: "c0"
     message: "Add contact formatter for the directory export"
-    author: "Mei Tanaka <mei.tanaka@example.com>"
-    date: "2023-03-06T09:12:00Z"
+    author: "Jonas Berg <jonas.berg@example.com>"
+    date: "2023-05-22T14:01:00Z"
     role: "initial"
     operations:
       - type: "write_file"
@@ -75,7 +75,7 @@ commits:
   - id: "c1"
     message: "Show custom field labels in the directory export"
     author: "Jonas Berg <jonas.berg@example.com>"
-    date: "2023-03-09T14:40:00Z"
+    date: "2023-05-25T15:07:00Z"
     role: "bug_introducing"
     operations:
       - type: "replace"
@@ -105,7 +105,7 @@ commits:
   - id: "c2"
     message: "Skip empty phone entries in the export"
     author: "Priya Raman <priya.raman@example.com>"
-    date: "2023-03-15T11:05:00Z"
+    date: "2023-05-31T14:11:00Z"
     role: "feature_addition"
     operations:
       - type: "replace"
@@ -123,8 +123,8 @@ commits:
 
   - id: "c3"
     message: "Fall back to the raw key when a field has no display label"
-    author: "Mei Tanaka <mei.tanaka@example.com>"
-    date: "2023-03-21T16:30:00Z"
+    author: "Luca Moretti <luca.moretti@example.com>"
+    date: "2023-06-07T18:23:00Z"
     role: "bug_fixing"
     operations:
       - type: "replace"

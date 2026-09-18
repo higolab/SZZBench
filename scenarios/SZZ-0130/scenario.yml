@@ -28,8 +28,8 @@ repository:
 commits:
 - id: c0
   message: Add the batch upload quota for the import endpoint
-  author: Alice <alice@example.com>
-  date: '2024-01-01T10:00:00Z'
+  author: Tom Becker <tom.becker@example.com>
+  date: 2023-07-25T15:04:00Z
   role: initial
   operations:
   - type: write_file
@@ -54,8 +54,8 @@ commits:
       }
 - id: c1
   message: Count the last free slot of a batch as usable
-  author: Bob <bob@example.com>
-  date: '2024-01-02T10:00:00Z'
+  author: Luca Moretti <luca.moretti@example.com>
+  date: 2023-07-26T18:21:00Z
   role: bug_introducing
   operations:
   - type: replace
@@ -69,8 +69,8 @@ commits:
     - fault
 - id: c2
   message: Name the batch size limit instead of repeating the literal
-  author: Carol <carol@example.com>
-  date: '2024-01-03T10:00:00Z'
+  author: Luca Moretti <luca.moretti@example.com>
+  date: 2023-08-04T10:14:00Z
   role: refactoring
   operations:
   - type: replace
@@ -101,8 +101,8 @@ commits:
     - non_bug_introducing_change
 - id: c3
   message: Stop accepting files once the batch is full
-  author: Dave <dave@example.com>
-  date: '2024-01-04T10:00:00Z'
+  author: Jonas Berg <jonas.berg@example.com>
+  date: 2023-08-11T13:39:00Z
   role: bug_fixing
   operations:
   - type: replace

@@ -28,8 +28,8 @@ repository:
 commits:
   - id: "c0"
     message: "Initial safe average calculator"
-    author: "Alice <alice@example.com>"
-    date: "2024-01-01T10:00:00Z"
+    author: "Luca Moretti <luca.moretti@example.com>"
+    date: "2024-09-25T16:30:00Z"
     role: "initial"
     operations:
       - type: "write_file"
@@ -48,8 +48,8 @@ commits:
 
   - id: "c1"
     message: "Add unsafe divide mode"
-    author: "Bob <bob@example.com>"
-    date: "2024-01-02T10:00:00Z"
+    author: "Hana Sato <hana.sato@example.com>"
+    date: "2024-10-02T17:27:00Z"
     role: "bug_introducing"
     operations:
       - type: "replace"
@@ -72,8 +72,8 @@ commits:
 
   - id: "c2"
     message: "Use unsafe divide mode in average"
-    author: "Carol <carol@example.com>"
-    date: "2024-01-03T10:00:00Z"
+    author: "Diego Alvarez <diego.alvarez@example.com>"
+    date: "2024-10-09T16:34:00Z"
     role: "bug_introducing"
     operations:
       - type: "replace"
@@ -100,8 +100,8 @@ commits:
 
   - id: "c3"
     message: "Use safe divide mode in average"
-    author: "Alice <alice@example.com>"
-    date: "2024-01-04T10:00:00Z"
+    author: "Mei Tanaka <mei.tanaka@example.com>"
+    date: "2024-10-18T09:21:00Z"
     role: "bug_fixing"
     operations:
       - type: "replace"

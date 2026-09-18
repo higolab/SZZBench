@@ -25,6 +25,8 @@ repository:
 commits:
 - id: c0
   message: 'c0: create composite range check'
+  author: Jonas Berg <jonas.berg@example.com>
+  date: 2023-03-13T13:03:00Z
   role: initial
   operations:
   - type: write_file
@@ -47,6 +49,8 @@ commits:
       }
 - id: c1
   message: 'c1: introduce lower-bound part of composite bug'
+  author: Jonas Berg <jonas.berg@example.com>
+  date: 2023-03-21T11:40:00Z
   role: bug_introducing
   operations:
   - type: replace
@@ -55,6 +59,8 @@ commits:
     new: return value > min;
 - id: c2
   message: 'c2: introduce upper-bound part of composite bug'
+  author: Jonas Berg <jonas.berg@example.com>
+  date: 2023-03-28T17:18:00Z
   role: bug_introducing
   operations:
   - type: replace
@@ -63,6 +69,8 @@ commits:
     new: return value < max;
 - id: c3
   message: 'c3: fix both parts of composite range bug'
+  author: Hana Sato <hana.sato@example.com>
+  date: 2023-04-06T17:22:00Z
   role: bug_fixing
   operations:
   - type: replace

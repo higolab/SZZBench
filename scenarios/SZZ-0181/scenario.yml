@@ -32,8 +32,8 @@ repository:
 commits:
   - id: "c0"
     message: "Add session token parsing for the gateway"
-    author: "Tom Becker <tom.becker@example.com>"
-    date: "2023-09-04T09:40:00Z"
+    author: "Jonas Berg <jonas.berg@example.com>"
+    date: "2023-01-23T10:29:00Z"
     role: "initial"
     operations:
       - type: "write_file"
@@ -65,7 +65,7 @@ commits:
   - id: "c1"
     message: "Read the expiry timestamp from session tokens"
     author: "Diego Alvarez <diego.alvarez@example.com>"
-    date: "2023-09-08T13:15:00Z"
+    date: "2023-01-30T12:25:00Z"
     role: "bug_introducing"
     operations:
       - type: "replace"
@@ -90,8 +90,8 @@ commits:
 
   - id: "c2"
     message: "Name the expiry segment explicitly in expiresAt"
-    author: "Mei Tanaka <mei.tanaka@example.com>"
-    date: "2023-09-13T10:25:00Z"
+    author: "Diego Alvarez <diego.alvarez@example.com>"
+    date: "2023-02-06T09:48:00Z"
     role: "refactoring"
     operations:
       - type: "replace"
@@ -106,8 +106,8 @@ commits:
 
   - id: "c3"
     message: "Reject malformed session tokens and tolerate padded expiry segments"
-    author: "Tom Becker <tom.becker@example.com>"
-    date: "2023-09-19T15:00:00Z"
+    author: "Diego Alvarez <diego.alvarez@example.com>"
+    date: "2023-02-15T12:32:00Z"
     role: "bug_fixing"
     operations:
       - type: "replace"

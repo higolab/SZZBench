@@ -28,8 +28,8 @@ repository:
 commits:
 - id: c0
   message: Add an in-memory index of order codes
-  author: Alice <alice@example.com>
-  date: '2024-01-01T10:00:00Z'
+  author: Priya Raman <priya.raman@example.com>
+  date: 2023-09-25T15:38:00Z
   role: initial
   operations:
   - type: write_file
@@ -68,8 +68,8 @@ commits:
       }
 - id: c1
   message: Skip the head slot when checking whether an index is tracked
-  author: Bob <bob@example.com>
-  date: '2024-01-02T10:00:00Z'
+  author: Priya Raman <priya.raman@example.com>
+  date: 2023-10-02T09:18:00Z
   role: bug_introducing
   operations:
   - type: replace
@@ -83,8 +83,8 @@ commits:
     - fault
 - id: c2
   message: Sort the imports of OrderIndex alphabetically
-  author: Carol <carol@example.com>
-  date: '2024-01-03T10:00:00Z'
+  author: Luca Moretti <luca.moretti@example.com>
+  date: 2023-10-10T15:28:00Z
   role: formatting
   operations:
   - type: replace
@@ -103,8 +103,8 @@ commits:
     - non_bug_introducing_change
 - id: c3
   message: Treat index 0 as a tracked position again
-  author: Dave <dave@example.com>
-  date: '2024-01-04T10:00:00Z'
+  author: Diego Alvarez <diego.alvarez@example.com>
+  date: 2023-10-16T16:25:00Z
   role: bug_fixing
   operations:
   - type: replace

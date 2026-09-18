@@ -32,7 +32,7 @@ commits:
   - id: "c0"
     message: "Add shipment states and notification subjects"
     author: "Tom Becker <tom.becker@example.com>"
-    date: "2024-02-05T10:15:00Z"
+    date: "2024-07-02T17:49:00Z"
     role: "initial"
     operations:
       - type: "write_file"
@@ -70,8 +70,8 @@ commits:
 
   - id: "c1"
     message: "Add customer-facing message bodies for shipment updates"
-    author: "Priya Raman <priya.raman@example.com>"
-    date: "2024-02-08T16:48:00Z"
+    author: "Jonas Berg <jonas.berg@example.com>"
+    date: "2024-07-11T08:59:00Z"
     role: "bug_introducing"
     operations:
       - type: "replace"
@@ -103,8 +103,8 @@ commits:
 
   - id: "c2"
     message: "Put the store name in brackets in notification subjects"
-    author: "Aiko Mori <aiko.mori@example.com>"
-    date: "2024-02-14T09:30:00Z"
+    author: "Priya Raman <priya.raman@example.com>"
+    date: "2024-07-18T14:45:00Z"
     role: "feature_addition"
     operations:
       - type: "replace"
@@ -117,8 +117,8 @@ commits:
 
   - id: "c3"
     message: "Send a message body for returned shipments"
-    author: "Priya Raman <priya.raman@example.com>"
-    date: "2024-02-20T11:10:00Z"
+    author: "Hana Sato <hana.sato@example.com>"
+    date: "2024-07-19T18:10:00Z"
     role: "bug_fixing"
     operations:
       - type: "replace"

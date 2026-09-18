@@ -28,8 +28,8 @@ repository:
 commits:
 - id: c0
   message: Add an inclusive range check helper
-  author: Alice <alice@example.com>
-  date: '2024-01-01T10:00:00Z'
+  author: Hana Sato <hana.sato@example.com>
+  date: 2024-01-08T13:07:00Z
   role: initial
   operations:
   - type: write_file
@@ -44,8 +44,8 @@ commits:
       }
 - id: c1
   message: Treat the range bounds of contains() as exclusive
-  author: Bob <bob@example.com>
-  date: '2024-01-02T10:00:00Z'
+  author: Tom Becker <tom.becker@example.com>
+  date: 2024-01-11T12:06:00Z
   role: bug_introducing
   operations:
   - type: replace
@@ -71,8 +71,8 @@ commits:
     - fault
 - id: c2
   message: Make contains() inclusive again; both bounds were off by one
-  author: Carol <carol@example.com>
-  date: '2024-01-03T10:00:00Z'
+  author: Tom Becker <tom.becker@example.com>
+  date: 2024-01-15T11:46:00Z
   role: bug_fixing
   operations:
   - type: replace

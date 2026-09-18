@@ -19,6 +19,8 @@ repository:
 commits:
 - id: c0
   message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
+  author: Priya Raman <priya.raman@example.com>
+  date: 2024-05-20T16:27:00Z
   role: initial
   operations:
   - type: write_file
@@ -37,6 +39,8 @@ commits:
       }
 - id: c1
   message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
+  author: Mei Tanaka <mei.tanaka@example.com>
+  date: 2024-05-23T17:10:00Z
   role: bug_introducing
   operations:
   - type: replace
@@ -46,6 +50,8 @@ commits:
     occurrence: 1
 - id: c2
   message: 'c2: fix bug (replace src/main/java/example/Range.java)'
+  author: Priya Raman <priya.raman@example.com>
+  date: 2024-05-27T15:43:00Z
   role: bug_fixing
   operations:
   - type: replace

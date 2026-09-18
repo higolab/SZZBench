@@ -22,8 +22,8 @@ repository:
 commits:
 - id: c0
   message: Initial implementation
-  author: Alice <alice@example.com>
-  date: '2024-05-01T10:00:00Z'
+  author: Diego Alvarez <diego.alvarez@example.com>
+  date: 2023-02-10T08:43:00Z
   role: initial
   operations:
   - type: write_file
@@ -42,8 +42,8 @@ commits:
       }
 - id: c1
   message: Introduce context-sensitive caller bug
-  author: Bob <bob@example.com>
-  date: '2024-05-02T10:00:00Z'
+  author: Diego Alvarez <diego.alvarez@example.com>
+  date: 2023-02-15T14:25:00Z
   role: bug_introducing
   operations:
   - type: replace
@@ -55,8 +55,8 @@ commits:
     - fault
 - id: c2
   message: Fix caller-visible empty-cart acceptance
-  author: Alice <alice@example.com>
-  date: '2024-05-03T10:00:00Z'
+  author: Hana Sato <hana.sato@example.com>
+  date: 2023-02-21T12:34:00Z
   role: bug_fixing
   operations:
   - type: replace

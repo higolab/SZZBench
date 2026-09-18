@@ -22,8 +22,8 @@ repository:
 commits:
 - id: c0
   message: Initial class
-  author: Alice <alice@example.com>
-  date: '2024-02-01T10:00:00Z'
+  author: Hana Sato <hana.sato@example.com>
+  date: 2023-05-12T13:07:00Z
   role: initial
   operations:
   - type: write_file
@@ -38,8 +38,8 @@ commits:
       '
 - id: c1
   message: Add canStart without state transition check
-  author: Bob <bob@example.com>
-  date: '2024-02-02T10:00:00Z'
+  author: Diego Alvarez <diego.alvarez@example.com>
+  date: 2023-05-15T09:22:00Z
   role: bug_introducing
   operations:
   - type: replace
@@ -58,8 +58,8 @@ commits:
     - fault
 - id: c2
   message: Add missing state transition check
-  author: Alice <alice@example.com>
-  date: '2024-02-03T10:00:00Z'
+  author: Luca Moretti <luca.moretti@example.com>
+  date: 2023-05-16T12:41:00Z
   role: bug_fixing
   operations:
   - type: replace

@@ -32,8 +32,8 @@ repository:
 commits:
   - id: "c0"
     message: "Import the inventory module from the warehouse prototype"
-    author: "Diego Alvarez <diego.alvarez@example.com>"
-    date: "2023-11-06T08:30:00Z"
+    author: "Jonas Berg <jonas.berg@example.com>"
+    date: "2023-05-04T13:40:00Z"
     role: "bug_introducing"
     operations:
       - type: "write_file"
@@ -299,8 +299,8 @@ commits:
 
   - id: "c1"
     message: "Add a readable toString to Sku"
-    author: "Mei Tanaka <mei.tanaka@example.com>"
-    date: "2023-11-09T14:12:00Z"
+    author: "Tom Becker <tom.becker@example.com>"
+    date: "2023-05-08T10:06:00Z"
     role: "feature_addition"
     operations:
       - type: "replace"
@@ -326,8 +326,8 @@ commits:
 
   - id: "c2"
     message: "Show the available quantity in low-stock report lines"
-    author: "Jonas Berg <jonas.berg@example.com>"
-    date: "2023-11-15T11:45:00Z"
+    author: "Mei Tanaka <mei.tanaka@example.com>"
+    date: "2023-05-17T11:59:00Z"
     role: "feature_addition"
     operations:
       - type: "replace"
@@ -340,8 +340,8 @@ commits:
 
   - id: "c3"
     message: "Reserve against available stock instead of on-hand stock"
-    author: "Diego Alvarez <diego.alvarez@example.com>"
-    date: "2023-11-22T16:20:00Z"
+    author: "Aiko Mori <aiko.mori@example.com>"
+    date: "2023-05-24T18:52:00Z"
     role: "bug_fixing"
     operations:
       - type: "replace"

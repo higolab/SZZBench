@@ -21,6 +21,8 @@ repository:
 commits:
 - id: c0
   message: 'c0: create correct range and access policy'
+  author: Priya Raman <priya.raman@example.com>
+  date: 2025-05-22T17:49:00Z
   role: initial
   operations:
   - type: write_file
@@ -45,6 +47,8 @@ commits:
       }
 - id: c1
   message: 'c1: introduce boundary bug in Range.contains'
+  author: Priya Raman <priya.raman@example.com>
+  date: 2025-06-02T09:01:00Z
   role: bug_introducing
   operations:
   - type: replace
@@ -53,6 +57,8 @@ commits:
     new: return value > min && value < max;
 - id: c2
   message: 'c2: compensate for boundary bug in AccessPolicy'
+  author: Priya Raman <priya.raman@example.com>
+  date: 2025-06-09T11:14:00Z
   role: bug_fixing
   operations:
   - type: replace

@@ -34,8 +34,8 @@ repository:
 commits:
   - id: "c0"
     message: "Add role-based access policy for the editor API"
-    author: "Mei Tanaka <mei.tanaka@example.com>"
-    date: "2023-10-02T09:05:00Z"
+    author: "Luca Moretti <luca.moretti@example.com>"
+    date: "2024-04-17T17:23:00Z"
     role: "initial"
     operations:
       - type: "write_file"
@@ -105,8 +105,8 @@ commits:
 
   - id: "c1"
     message: "Let internal service requests bypass the role check"
-    author: "Aiko Mori <aiko.mori@example.com>"
-    date: "2023-10-05T14:30:00Z"
+    author: "Priya Raman <priya.raman@example.com>"
+    date: "2024-04-23T15:47:00Z"
     role: "bug_introducing"
     operations:
       - type: "replace"
@@ -122,8 +122,8 @@ commits:
 
   - id: "c2"
     message: "Expose the user id on requests for audit logging"
-    author: "Jonas Berg <jonas.berg@example.com>"
-    date: "2023-10-11T10:00:00Z"
+    author: "Priya Raman <priya.raman@example.com>"
+    date: "2024-04-29T12:53:00Z"
     role: "feature_addition"
     operations:
       - type: "replace"
@@ -140,8 +140,8 @@ commits:
 
   - id: "c3"
     message: "Require authentication for internal requests as well"
-    author: "Mei Tanaka <mei.tanaka@example.com>"
-    date: "2023-10-17T16:40:00Z"
+    author: "Tom Becker <tom.becker@example.com>"
+    date: "2024-05-07T14:18:00Z"
     role: "bug_fixing"
     operations:
       - type: "replace"

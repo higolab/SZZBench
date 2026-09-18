@@ -25,8 +25,8 @@ repository:
 commits:
 - id: c0
   message: Add authorized check combining authentication and token validity
-  author: Alice <alice@example.com>
-  date: '2024-03-01T10:00:00Z'
+  author: Luca Moretti <luca.moretti@example.com>
+  date: 2024-02-14T18:59:00Z
   role: initial
   operations:
   - type: write_file
@@ -43,8 +43,8 @@ commits:
       }
 - id: c1
   message: Accept unauthenticated sessions during the login migration
-  author: Bob <bob@example.com>
-  date: '2024-03-02T10:00:00Z'
+  author: Priya Raman <priya.raman@example.com>
+  date: 2024-02-19T17:10:00Z
   role: bug_introducing
   operations:
   - type: replace
@@ -56,8 +56,8 @@ commits:
     - fault
 - id: c2
   message: Skip token validation for the staging rollout
-  author: Carol <carol@example.com>
-  date: '2024-03-03T10:00:00Z'
+  author: Priya Raman <priya.raman@example.com>
+  date: 2024-02-26T12:39:00Z
   role: bug_introducing
   operations:
   - type: replace
@@ -69,8 +69,8 @@ commits:
     - fault
 - id: c3
   message: Re-enable authentication and token checks in authorized
-  author: Alice <alice@example.com>
-  date: '2024-03-04T10:00:00Z'
+  author: Priya Raman <priya.raman@example.com>
+  date: 2024-03-04T10:23:00Z
   role: bug_fixing
   operations:
   - type: replace

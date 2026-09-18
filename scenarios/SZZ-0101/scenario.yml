@@ -27,8 +27,8 @@ repository:
 commits:
 - id: c0
   message: Add profile resolution to the configuration loader
-  author: Alice <alice@example.com>
-  date: '2024-01-01T10:00:00Z'
+  author: Aiko Mori <aiko.mori@example.com>
+  date: 2024-11-22T14:51:00Z
   role: initial
   operations:
   - type: write_file
@@ -59,8 +59,8 @@ commits:
       }
 - id: c1
   message: Guard resolveProfile against a missing profile name
-  author: Bob <bob@example.com>
-  date: '2024-01-02T10:00:00Z'
+  author: Aiko Mori <aiko.mori@example.com>
+  date: 2024-12-02T15:22:00Z
   role: bug_introducing
   operations:
   - type: replace
@@ -74,8 +74,8 @@ commits:
     - fault
 - id: c2
   message: Declare the IllegalStateException raised by resolveProfile
-  author: Carol <carol@example.com>
-  date: '2024-01-03T10:00:00Z'
+  author: Aiko Mori <aiko.mori@example.com>
+  date: 2024-12-11T18:21:00Z
   role: refactoring
   operations:
   - type: replace
@@ -88,8 +88,8 @@ commits:
     - non_bug_introducing_change
 - id: c3
   message: Correct the inverted null check in hasProfile
-  author: Dave <dave@example.com>
-  date: '2024-01-04T10:00:00Z'
+  author: Aiko Mori <aiko.mori@example.com>
+  date: 2024-12-13T08:29:00Z
   role: bug_fixing
   operations:
   - type: replace

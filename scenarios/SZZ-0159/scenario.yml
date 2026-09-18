@@ -22,8 +22,8 @@ repository:
 commits:
 - id: c0
   message: Initial implementation
-  author: Alice <alice@example.com>
-  date: '2024-05-01T10:00:00Z'
+  author: Hana Sato <hana.sato@example.com>
+  date: 2023-10-05T11:37:00Z
   role: initial
   operations:
   - type: write_file
@@ -38,8 +38,8 @@ commits:
       }
 - id: c1
   message: Introduce context-sensitive bug
-  author: Bob <bob@example.com>
-  date: '2024-05-02T10:00:00Z'
+  author: Jonas Berg <jonas.berg@example.com>
+  date: 2023-10-09T15:19:00Z
   role: bug_introducing
   operations:
   - type: replace
@@ -65,8 +65,8 @@ commits:
     - fault
 - id: c2
   message: Fix exclusive boundary from previous change
-  author: Alice <alice@example.com>
-  date: '2024-05-03T10:00:00Z'
+  author: Jonas Berg <jonas.berg@example.com>
+  date: 2023-10-12T16:24:00Z
   role: bug_fixing
   operations:
   - type: replace

@@ -20,6 +20,8 @@ repository:
 commits:
 - id: c0
   message: 'c0: create correct Range code and boundary test'
+  author: Luca Moretti <luca.moretti@example.com>
+  date: 2023-06-05T12:36:00Z
   role: initial
   operations:
   - type: write_file
@@ -55,6 +57,8 @@ commits:
       }
 - id: c1
   message: 'c1: introduce faulty boundary expectation in test only'
+  author: Tom Becker <tom.becker@example.com>
+  date: 2023-06-13T12:33:00Z
   role: bug_introducing
   operations:
   - type: replace
@@ -63,6 +67,8 @@ commits:
     new: assertFalse(range.contains(0, 0, 10));
 - id: c2
   message: 'c2: fix test oracle for inclusive lower boundary'
+  author: Aiko Mori <aiko.mori@example.com>
+  date: 2023-06-19T17:09:00Z
   role: bug_fixing
   operations:
   - type: replace

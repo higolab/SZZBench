@@ -28,8 +28,8 @@ repository:
 commits:
 - id: c0
   message: Add the thermostat controller with its operating modes
-  author: Alice <alice@example.com>
-  date: '2024-01-01T10:00:00Z'
+  author: Jonas Berg <jonas.berg@example.com>
+  date: 2024-05-01T15:40:00Z
   role: initial
   operations:
   - type: write_file
@@ -60,8 +60,8 @@ commits:
       }
 - id: c1
   message: State explicitly which mode draws power
-  author: Bob <bob@example.com>
-  date: '2024-01-02T10:00:00Z'
+  author: Jonas Berg <jonas.berg@example.com>
+  date: 2024-05-03T15:48:00Z
   role: bug_introducing
   operations:
   - type: replace
@@ -75,8 +75,8 @@ commits:
     - fault
 - id: c2
   message: Add the automatic mode to the thermostat modes
-  author: Carol <carol@example.com>
-  date: '2024-01-03T10:00:00Z'
+  author: Jonas Berg <jonas.berg@example.com>
+  date: 2024-05-09T14:33:00Z
   role: feature_addition
   operations:
   - type: replace
@@ -92,8 +92,8 @@ commits:
     - non_bug_introducing_change
 - id: c3
   message: Treat every mode except off as drawing power
-  author: Dave <dave@example.com>
-  date: '2024-01-04T10:00:00Z'
+  author: Jonas Berg <jonas.berg@example.com>
+  date: 2024-05-10T18:18:00Z
   role: bug_fixing
   operations:
   - type: replace
