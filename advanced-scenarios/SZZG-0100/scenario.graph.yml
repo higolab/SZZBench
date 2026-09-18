@@ -3,8 +3,9 @@ meta:
   id: SZZG-0100
   title: Unrelated commits mixed in the same issue
   slug: issue-commit
-  description: Evaluates unrelated commits mixed in the same issue and checks whether SZZ identifies the expected bug-introducing
-    commit set.
+  description: Evaluates a work item whose commits have different relevance - the change that introduced the defect, a
+    parameter rename, a documentation update and the fix all reference the same identifier - and checks whether SZZ still
+    identifies the expected bug-introducing commit set.
   category: "Issue, message, context, and non-local evidence"
   category_code: "G7"
   factors:
@@ -20,32 +21,42 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial state (write_file src/main/java/example/RangeService.java)
-
-    c1: introduce bug (replace src/main/java/example/RangeService.java)
-
-    c2: add unrelated change (replace src/main/java/example/RangeService.java)
-
-    c3: add unrelated change (write_file docs/issue-10-note.md)
-
-    c4: fix bug (replace src/main/java/example/RangeService.java)'
+  history_summary: |
+    c0: add the range service
+    c1: switch the containment check to an exclusive interval (ISSUE-10)
+    c2: rename the normalize parameter (ISSUE-10)
+    c3: document the range validation rules (ISSUE-10)
+    c4: include the interval bounds in contains() again (ISSUE-10)
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_file src/main/java/example/RangeService.java)'
+  message: 'Add the range service'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/RangeService.java
-    content: "package example;\n\npublic class RangeService {\n  public boolean isEnabled() { return true; }\n  public boolean\
-      \ contains(int value, int min, int max) { return value >= min && value <= max; }\n  public int normalize(int value)\
-      \ { return value; }\n}\n"
+    content: |
+      package example;
+
+      public class RangeService {
+        public boolean isEnabled() {
+          return true;
+        }
+
+        public boolean contains(int value, int min, int max) {
+          return value >= min && value <= max;
+        }
+
+        public int normalize(int value) {
+          return value;
+        }
+      }
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce bug (replace src/main/java/example/RangeService.java)'
+  message: 'ISSUE-10 use an exclusive interval in RangeService.contains'
   role: bug_introducing
   operations:
   - type: replace
@@ -56,30 +67,43 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: add unrelated change (replace src/main/java/example/RangeService.java)'
+  message: 'ISSUE-10 rename the normalize parameter to rawValue'
   role: unrelated
   operations:
   - type: replace
     path: src/main/java/example/RangeService.java
-    old: public int normalize(int value) { return value; }
-    new: public int normalize(int rawValue) { return rawValue; }
+    old: |-
+      public int normalize(int value) {
+          return value;
+        }
+    new: |-
+      public int normalize(int rawValue) {
+          return rawValue;
+        }
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'c3: add unrelated change (write_file docs/issue-10-note.md)'
+  message: 'ISSUE-10 document the range validation rules'
   role: unrelated
   operations:
   - type: write_file
-    path: docs/issue-10-note.md
-    content: 'This note is unrelated to the boundary defect.
+    path: docs/range-validation.md
+    content: |
+      # Range validation
 
-      '
+      `RangeService.contains` decides whether a value belongs to the interval
+      that the caller passes in. `RangeService.normalize` is a placeholder for
+      the value scaling planned for the next release and returns its argument
+      unchanged.
+
+      Callers must pass `min <= max`; the result for an inverted interval is
+      unspecified.
 - id: c4
   branch: main
   parents:
   - c3
-  message: 'c4: fix bug (replace src/main/java/example/RangeService.java)'
+  message: 'ISSUE-10 include the interval bounds in contains() again'
   role: bug_fixing
   operations:
   - type: replace
@@ -88,7 +112,7 @@ commits:
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Issue contains unrelated commits around true BIC
+  title: RangeService.contains rejects the interval bounds
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -110,9 +134,12 @@ expected_szz:
     evaluation_policy: exact_set
     required:
     - c1
+    related_but_not_correct:
+    - c2
+    - c3
 work_items:
 - id: ISSUE-10
-  title: Range validation issue with unrelated commits
+  title: Range validation rework
   commits:
   - commit: c1
     relevance: bug_introducing
@@ -124,20 +151,28 @@ work_items:
     relevance: bug_fixing
 issues:
 - id: ISSUE-10
-  title: Range validation fails on boundaries
-  description: The issue thread also contains cleanup and documentation commits.
+  title: Range validation fails on boundary values
+  description: The ticket collects the whole range-validation rework - the change to the interval semantics, a parameter
+    rename, the documentation update and the final boundary fix - so three of its four commits are not the cause of the
+    reported failure.
   linked_bugs:
   - B001
 scenario_design:
-  purpose: Evaluate Unrelated commits mixed in the same issue and whether SZZ identifies the expected bug-introducing commit
-    set.
+  purpose: Evaluate whether SZZ picks the one commit of a work item that introduced the defect when every commit of that
+    work item carries the same identifier.
+  key_property: |
+    All four commits after the initial one reference ISSUE-10 in their message, so an issue-linked tool collects c1, c2, c3
+    and c4. Only c1 changed the containment semantics; c2 renames a parameter of an unrelated method and c3 only adds a
+    documentation file. The documentation file no longer states what the fix is, so it cannot be used as a shortcut.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
   required_extensions_from_source: 'This scenario uses factors: work_items, issues; operations: write_file, replace.'
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the other commits of the same work item are excluded instead of being reported together with the BIC.
   - Whether the expected_szz evaluation policy is applied correctly.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.
+- The repository carries only the identifier ISSUE-10 in the commit messages; the work-item and issue metadata stay in this
+  file.
