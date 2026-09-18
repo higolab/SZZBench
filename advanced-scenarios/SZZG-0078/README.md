@@ -117,8 +117,10 @@ no footer, January 2024 dates. This scenario is a four commit history over
 `Interval.overlaps(int,int,int,int)` with an explicit subject and a
 machine-readable origin footer, February 2024 dates. Concatenating
 `git show --format= --no-renames -U0` over `rev-list --all --topo-order` gives
-`c6f085ad…` for SZZG-0064 and `ddedfb57…` for SZZG-0078; the two sequences
-share no line (issue #11 flagged the previous versions as patch-identical).
+`c6f085ad…` (2108 bytes) for SZZG-0064 and `ddedfb57…` (1500 bytes) for
+SZZG-0078. No patch and no source line is shared; the only lines the two
+sequences have in common are generic (`package example;`, `}`, `  }` and diff
+headers). Issue #11 flagged the previous versions as patch-identical.
 
 ## Notes
 
