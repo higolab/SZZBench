@@ -1,6 +1,6 @@
 # Decision: the direct / origin BIC contract (issue #3)
 
-Status: **proposal for maintainer decision** (2026-09-17). Nothing in this document changes code or scenarios by itself; it fixes the vocabulary and the default rules that the scenario migration in issue #3 and the validator check in issue #16 will implement.
+Status: **decided** (2026-09-18; proposed 2026-09-17). D1-D9 are adopted as written and the four open points of §6 are answered in §7. The scenario migration is being carried out in two steps: the semantic corrections of §5 first, then the mechanical `related_origins` / `origin-aware` sweep across the remaining scenarios and the D10 lint.
 
 ## 1. Problem
 
@@ -65,19 +65,19 @@ A commit that moves *and* duplicates (SZZG-0007: c2 moves `contains` to `RangeUt
 | scenario | today | after D1–D9 |
 |---|---|---|
 | SZZG-0005 (PR #28) | required c1; move commit c2 `related_but_not_correct` | already conforms (pure move, D5) |
-| SZZG-0007 (PR #28) | required c1; move-and-copy commit c2 `related_but_not_correct` | under D4 + D9: `required: [c1, c2]` (c1 for the moved instance, c2 for the duplicated instance) with an `origin-aware` variant — or split the duplicated instance into its own scenario (open point 4) |
+| SZZG-0007 (PR #28) | required c1; move-and-copy commit c2 `related_but_not_correct` | **done**: `required: [c1, c2]` (c1 for the moved instance, c2 for the duplicated instance); not split (§7.4) |
 | SZZG-0014, SZZG-0015, SZZG-0017 | origin c0 declared, unlisted | add `related_origins: [c0]`, add `origin-aware` variant |
 | SZZG-0016 | origin as `acceptable_related` in default | move to `related_origins`; keep `acceptable_related` in the `origin-aware` variant |
-| SZZG-0018 | `required: [c1]` for two bugs | `required: [c0, c1]` (D9) until per-bug scoring exists |
+| SZZG-0018 | `required: [c1]` for two bugs | **done**: `required: [c0, c1]` (D9) until per-bug scoring exists; no origin-aware variant, the origin is required (§7) |
 | SZZG-0019, SZZG-0020 | `related_origins` | already conform; add `origin-aware` variant where missing |
 | SZZG-0022 | direct-only / origin-aware / relaxed-with-credit variants | reference implementation; drop the redundant `relaxed-with-credit` variant or keep as alias |
-| SZZG-0024 | required r2 (comment-only rewrite), r1 not correct | required r1; r2 → `related_but_not_correct` (D5) |
-| SZZG-0025 | required c1 (origin) | required c2 (copy), `related_origins: [c1]`, `origin-aware` variant (D4) |
-| SZZG-0027 | required c1; c2 (copy) and c3 (rename) unlisted | required c2, `related_origins: [c1]`, `related_but_not_correct: [c3]` |
-| SZZG-0028 | required {c1, c3}; copy c2 unlisted | required {c2, c3}, `related_origins: [c1]`; `origin-required` variant {c1, c2, c3} |
-| SZZG-0030 | c2 (attempted fix writing the fixed line) unlisted | second bug entry B002 (BIC c2, BFC c3) or `contributing` (D6) |
+| SZZG-0024 | required r2 (comment-only rewrite), r1 not correct | **done**: required r1; `related_origins: [f1]`; r2 and f2 → `related_but_not_correct` (D5) |
+| SZZG-0025 | required c1 (origin) | **done**: required c2 (copy), `related_origins: [c1]`, `origin-aware` variant (D4) |
+| SZZG-0027 | required c1; c2 (copy) and c3 (rename) unlisted | **done**: required c2, `related_origins: [c1]`, `related_but_not_correct: [c3]` |
+| SZZG-0028 | required {c1, c3}; copy c2 unlisted | **done**: required {c2, c3}, `related_origins: [c1]`, `origin-aware` variant; no `origin-required` variant (§7.2) |
+| SZZG-0030 | c2 (attempted fix writing the fixed line) unlisted | **done**: second bug entry B002 (BIC c2, BFC c3); `required: [c1, c2]` by D9 |
 | SZZG-0047, SZZG-0055–0058, SZZG-0064–0083 | pre-rewrite commits as `related_but_not_correct` | move to `related_origins`; add `origin-aware` variant (D8) |
-| SZZG-0061 | manual cherry-pick, origin c1 unlisted | add `cherry_pick_of: c1`, `related_origins: [c1]` |
+| SZZG-0061 | manual cherry-pick, origin c1 unlisted | **done**: `cherry_pick_of: c1` (inert - the generated trees and messages are unchanged), `related_origins: [c1]`, `origin-aware` variant |
 | SZZG-0084–0091 (reintroduction) | mixed | reintroducing commit required; original BIC `related_origins`; original fix `related_but_not_correct` (D7) |
 
 ## 6. Open points for the maintainers
@@ -86,3 +86,15 @@ A commit that moves *and* duplicates (SZZG-0007: c2 moves `contains` to `RangeUt
 2. Whether `origin-required` variants are generated for every origin scenario or only where the README argues for root-cause semantics.
 3. Whether the default variant should be renamed from implicit `commit_level` to an explicit `direct-only` variant everywhere (clearer for adapters; larger diff).
 4. Move-and-duplicate histories (SZZG-0007): keep one bug entry with the union oracle `{c1, c2}` under D4/D9, or split the duplicated instance into a separate scenario so that each scenario tests exactly one propagation kind.
+
+## 7. Answers (2026-09-18)
+
+1. **Credit 0.5.** It is already SZZG-0022's convention, and the number is only ever reported as `credit_ratio`, never as a pass; keeping one value means an origin hit reads the same everywhere.
+2. **`origin-required` only where the README argues for root-cause semantics.** Generating it everywhere would publish a third oracle for every copy scenario without any scenario claiming it is the interesting one.
+3. **The default variant stays implicit.** Naming it in all 114 graph scenarios is a large diff for a rename; `expected_szz.commit_level` already *is* the default, and the variants that exist are named.
+4. **SZZG-0007 keeps one bug entry with the union oracle `{c1, c2}`.** Splitting it would lose exactly the property the scenario exists for: that one commit both moves and duplicates, and the contract answers the two halves differently.
+
+Two clarifications the migration produced, which are part of the decision:
+
+- **An origin that is already `required` needs no `origin-aware` variant.** SZZG-0018's `c0` is the direct BIC of one bug entry and the origin of the other; the variant would be identical to the default, so D3 does not apply when the origin is in `required`.
+- **D6 splits a bug only when both effects are observable.** SZZG-0030's `c2` was measured to repair one fault (`contains(5,5,7)`: false to true) and introduce another (`contains(99,5,7)`: false to true) in the same commit, which is what makes the second bug entry a measurement rather than a reading of the diff.

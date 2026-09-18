@@ -1,4 +1,4 @@
-# SZZG-0028: Origin BIC and direct copied-code BIC are both required
+# SZZG-0028: The copy and the later edit are both required; the origin is not
 
 ## Source
 
@@ -6,7 +6,8 @@
 
 ## Purpose
 
-Evaluate origin bic and direct copied-code bic are both required and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate whether SZZ reports the copy that carried a fault into the fixed file, and the later commit that
+added a second fault to it, **without** reporting the origin the copy came from.
 
 ## Expected history
 
@@ -28,16 +29,23 @@ This history requires graph-aware scenario semantics that are difficult to expre
 - Operation types: copy_file, replace, write_file
 - Expected SZZ policy is defined in `expected_szz`.
 
-## Expected BICs
+## Expected SZZ result
 
 ```text
-c1, c3
+Expected BIC(s): c2, c3
+Related origins: c1
 ```
+
+`c2` copied the untrimmed parser into `InvoiceParser.java`, the file the fix repairs, so it is that
+instance's direct BIC under the [direct/origin contract](../../docs/decisions/origin-direct-contract.md) D4;
+`c3` added the sign fault to the same file. `c1` removed the trim from the *source* parser and never touched
+the fixed file, so it is the origin (D2): reporting it is a false positive under the default variant and is
+accepted with credit 0.5 under `origin-aware`.
 
 ## Evaluation points
 
-- Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
+- Whether the copy commit `c2` rather than the origin `c1` is reported.
+- Whether the second, directly written fault `c3` is reported alongside it.
 - Whether the expected_szz evaluation policy is applied correctly.
 
 ---

@@ -76,15 +76,13 @@ commits:
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Attempted boundary fix needs follow-up
+  title: The range check excludes its bounds
   bug_introducing_commits:
   - commit: c1
     role: direct
   bug_fixing_commits:
   - commit: c2
-    role: attempted_fix
-  - commit: c3
-    role: follow_up_fix
+    role: complete_fix
   faults:
   - id: F001
     commit: c1
@@ -96,30 +94,56 @@ bugs:
     commit: c2
     file: src/main/java/example/Range.java
     statement: return value >= min || value <= max;
-    fix_type: attempted_fix_wrong_boolean_operator
+    fix_type: line_modification
+- id: B002
+  title: The repaired range check accepts every value
+  bug_introducing_commits:
+  - commit: c2
+    role: direct
+  bug_fixing_commits:
+  - commit: c3
+    role: complete_fix
+  faults:
+  - id: F002
+    commit: c2
+    file: src/main/java/example/Range.java
+    statement: return value >= min || value <= max;
+    change_type: line_modification
+  fixes:
   - id: X002
     commit: c3
     file: src/main/java/example/Range.java
     statement: return value >= min && value <= max;
-    fix_type: follow_up_fix
+    fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
     - c1
-    notes: c2 is an attempted fix, not the original BIC. It may be considered a misleading candidate, but the expected BIC
-      remains c1.
+    - c2
+    notes: >
+      c2 repairs one fault and writes another, and both are observable:
+      contains(5,5,7) goes false -> true at c2 (the bounds are accepted again)
+      while contains(99,5,7) goes false -> true as well (a value outside the
+      range is now accepted, because || replaced &&). Contract D6 therefore
+      models them as two bug entries, and D9 makes the scenario oracle the
+      union of their direct BICs. Reporting c1 alone leaves the fault c3 fixes
+      unattributed.
 scenario_design:
   purpose: Evaluate an attempted fix followed by a follow-up fix. Unlike a partial fix, the attempted fix in c2 uses an incorrect
     boolean operator and is therefore a failed repair attempt rather than a correct partial repair.
-  key_property: c2 changes the code in a fix-like direction but leaves the behavior wrong by using || instead of &&.
+  key_property: >-
+    c2 changes the code in a fix-like direction and does repair the boundary exclusion, but by using || instead
+    of && it writes a second, different fault in the same commit. Both effects are observable, so the scenario
+    carries two bug entries and the oracle is the union {c1, c2}.
   difference_from_SZZG_0003: SZZG-0029 represents a partial fix where one side of the boundary condition is correctly repaired.
     This scenario represents an attempted fix that introduces wrong boolean logic and requires a follow-up fix.
   evaluation_points:
-  - Whether SZZ identifies c1 as the original BIC rather than c2.
+  - Whether SZZ identifies c1 as the BIC of the boundary-exclusion fault.
+  - Whether SZZ also identifies c2, a fix-like commit, as the BIC of the fault c3 repairs.
   - Whether a failed attempted fix is distinguished from a true partial fix.
   - Whether the follow-up fix c3 is treated as the effective bug-fixing commit.
 notes:
 - This revision changes c2 from the same partial-fix state as SZZG-0029 to an attempted fix with incorrect boolean logic.
 - The attempted fix `value >= min || value <= max` is intentionally wrong because it accepts almost all integer values.
-- The expected BIC remains c1.
+- The expected BIC set is {c1, c2}: c1 introduced the boundary exclusion and c2, while repairing it, wrote the fault c3 fixes.

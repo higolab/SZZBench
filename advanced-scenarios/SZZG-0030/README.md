@@ -6,6 +6,12 @@ This scenario represents an attempted fix followed by a follow-up fix.
 
 The key point is that `c2` is not a correct partial fix. It is a failed repair attempt: it changes the boundary condition, but uses the wrong boolean operator. The follow-up commit `c3` then applies the correct condition.
 
+Both of `c2`'s effects are observable, so the contract models them as two bugs (D6). Measured on the
+generated repository: `contains(5, 5, 7)` goes `false -> true` at `c2` — the bounds are accepted again, which
+is the repair — while `contains(99, 5, 7)` goes `false -> true` as well, because `||` replaced `&&` and a
+value outside the range is now accepted. `c2` therefore fixes `B001` and introduces `B002`, and the scenario
+oracle is the union of the two direct BICs `{c1, c2}` (D9).
+
 This distinguishes `SZZG-0030` from `SZZG-0029`, where `c2` is intended to be a true partial fix.
 
 ## Commit history
@@ -59,7 +65,7 @@ return value >= min && value <= max;
 Expected BIC:
 
 ```text
-c1
+c1, c2
 ```
 
 Bug-fixing commits:
@@ -69,7 +75,9 @@ c2: attempted fix
 c3: follow-up fix
 ```
 
-The expected SZZ result remains `c1`. Commit `c2` is a misleading fix-like commit, but it is not the original bug-introducing commit.
+The expected SZZ result is `{c1, c2}`. `c1` is the original bug-introducing commit; `c2` is a fix-like commit
+that is nonetheless the bug-introducing commit of the fault `c3` repairs. Reporting `c1` alone leaves that
+second fault unattributed.
 
 ## Difference from SZZG-0029
 

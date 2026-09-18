@@ -291,7 +291,7 @@ scenarios:
   - clone_divergence
   - ambiguous_blame
 - id: SZZG-0028
-  title: Origin BIC and direct copied-code BIC are both required
+  title: The copy and the later edit are both required; the origin is not
   category_code: G2
   category: Clone, copy propagation, and origin-vs-direct BIC
   path: advanced-scenarios/SZZG-0028/scenario.graph.yml

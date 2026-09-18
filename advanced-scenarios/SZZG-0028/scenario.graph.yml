@@ -1,10 +1,11 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0028
-  title: Origin BIC and direct copied-code BIC are both required
+  title: The copy and the later edit are both required; the origin is not
   slug: origin-and-direct-clone-bics
-  description: Evaluates origin bic and direct copied-code bic are both required and checks whether SZZ identifies the expected
-    bug-introducing commit set.
+  description: >-
+    Evaluates whether SZZ reports the copy that carried a fault into the fixed file, and the later commit that
+    added a second fault to it, without reporting the origin the copy came from.
   category: "Clone, copy propagation, and origin-vs-direct BIC"
   category_code: "G2"
   factors:
@@ -36,6 +37,7 @@ commits:
   branch: main
   parents: []
   message: 'Add the amount parser'
+  author: Aiko Tanaka <aiko.tanaka@example.com>
   role: initial
   operations:
   - type: write_file
@@ -47,6 +49,7 @@ commits:
   parents:
   - c0
   message: 'Parse the amount without trimming'
+  author: Bruno Fischer <bruno.fischer@example.com>
   role: bug_introducing
   operations:
   - type: replace
@@ -58,7 +61,8 @@ commits:
   parents:
   - c1
   message: 'Copy the amount parser for invoices'
-  role: other
+  author: Chen Wei <chen.wei@example.com>
+  role: bug_introducing
   operations:
   - type: copy_file
     from: src/main/java/example/AmountParser.java
@@ -72,6 +76,7 @@ commits:
   parents:
   - c2
   message: 'Take the absolute value of a parsed invoice amount'
+  author: Dana Okafor <dana.okafor@example.com>
   role: bug_introducing
   operations:
   - type: replace
@@ -83,6 +88,7 @@ commits:
   parents:
   - c3
   message: 'Parse invoice amounts with trimming and sign'
+  author: Elena Rossi <elena.rossi@example.com>
   role: bug_fixing
   operations:
   - type: replace
@@ -93,24 +99,35 @@ bugs:
 - id: B001
   title: Synthetic graph scenario bug
   bug_introducing_commits:
-  - commit: c1
+  - commit: c2
     role: direct
+    description: Copies the untrimmed parser into InvoiceParser.java, the instance the fix repairs.
   - commit: c3
     role: direct
+    description: Adds the sign fault to that same instance.
+  - commit: c1
+    role: origin
+    description: Removed the trim from the source parser; the copy inherited it.
   bug_fixing_commits:
   - commit: c4
     role: complete_fix
   faults:
   - id: F001
-    commit: c1
-    file: src/main/java/example/AmountParser.java
+    commit: c2
+    file: src/main/java/example/InvoiceParser.java
     statement: return Integer.parseInt(s);
-    change_type: line_modification
+    change_type: copy_propagated_line_modification
   - id: F002
     commit: c3
     file: src/main/java/example/InvoiceParser.java
     statement: return Math.abs(Integer.parseInt(s));
     change_type: line_modification
+  origin_faults:
+  - id: OF001
+    commit: c1
+    file: src/main/java/example/AmountParser.java
+    statement: return Integer.parseInt(s);
+    change_type: origin_line_modification
   fixes:
   - id: X001
     commit: c4
@@ -121,18 +138,42 @@ expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - c1
+    - c2
     - c3
+    related_origins:
+    - c1
+    notes: >
+      The fix repairs both faults of InvoiceParser.java. The missing trim
+      reached that file through the copy c2, which is therefore its direct BIC
+      (contract D4); c1, which removed the trim from the source, is the origin
+      (D2). c3 added the sign fault directly.
+  evaluation_variants:
+  - name: origin-aware
+    description: The direct BICs are required; the origin is accepted as related context.
+    commit_level:
+      evaluation_policy: relaxed_with_related
+      required:
+      - c2
+      - c3
+      acceptable_related:
+      - commit: c1
+        reason: origin_bic
+        credit: 0.5
 scenario_design:
-  purpose: Evaluate origin bic and direct copied-code bic are both required and whether SZZ identifies the expected bug-introducing
-    commit set.
+  purpose: Evaluate whether SZZ reports the copy that carried a fault into the fixed file, and the later commit
+    that added a second fault to it, without reporting the origin the copy came from.
+  key_property: >-
+    The fix repairs two faults of InvoiceParser.java. The missing trim reached that file through the copy c2,
+    so c2 is its direct BIC and c1 - which removed the trim from the source AmountParser.java - is the origin.
+    c3 added the sign fault directly. A tool that answers c1 has named a commit that never touched the fixed
+    file.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
   required_extensions_from_source: 'This scenario uses factors: clone, multiple_bic, origin_and_direct_bic; operations: copy_file,
     replace, write_file.'
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the copy commit c2 rather than the origin c1 is reported.
+  - Whether the second, directly written fault c3 is reported alongside it.
   - Whether the expected_szz evaluation policy is applied correctly.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.

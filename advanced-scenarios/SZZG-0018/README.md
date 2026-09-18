@@ -12,8 +12,10 @@ instance). `c1` copies that file to `B.java`, so the faulty statement enters `B.
 declaration is adapted so that both classes compile in the same package. `c2` fixes the original instance and
 `c3` fixes the copied one.
 
-`expected_szz` scores the copied instance (BFC `c3`), whose direct BIC is the copy commit `c1`. The original
-instance (BFC `c2`) traces to the origin `c0`.
+Both bug-fixing commits are in scope, so the scenario oracle is the union of the two bugs' direct BICs
+(contract D9): `c0` wrote the fault into `A.java`, which `c2` fixes, and `c1` copied it into `B.java`, which
+`c3` fixes. `c0` is therefore the *direct* BIC of `B001-A` as well as the origin of `B001-B`; because it is
+already required, no origin-aware variant is offered — it would be identical to the default.
 
 ## Commit history
 
@@ -38,10 +40,9 @@ files differ only in the class declaration line.
 
 ## Oracle
 
-- Expected BIC (scored set): `c1` (exact set)
-- Bug `B001-A`: BIC `c0` (role `origin`), BFC `c2`, fault and fix in `A.java`
+- Expected BIC (scored set): `c0` and `c1` (exact set)
+- Bug `B001-A`: BIC `c0` (role `direct`), BFC `c2`, fault and fix in `A.java`
 - Bug `B001-B`: BICs `c1` (role `direct`) and `c0` (role `origin`), BFC `c3`, fault and fix in `B.java`
-- `c0` is deliberately not listed in `expected_szz` (`GW450`; see issue #3)
 
 ## Measured plain-blame behaviour at each BFC parent
 
@@ -52,21 +53,28 @@ Each BFC deletes exactly one line (`git diff -U0 <bfc>^ <bfc>`):
 | `B001-B` (scored) | `c3` | `B.java:5` | `c1` | `c1` | `c0`, via `A.java` | `c1` |
 | `B001-A` | `c2` | `A.java:5` | `c0` | `c0` | `c0` | `c0` |
 
-For the scored bug `B001-B` the plain-blame outcome at `c3^` is **exact**: plain blame returns `c1`, which is
-the required set. `git blame -C -C -L5,5` also returns `c1` (the one-line chunk stays below the copy-detection
-score threshold); only whole-file copy detection rewrites the answer to the origin `c0`, which is **not** in
-`expected_szz` and would therefore be a miss.
+Per bug, blame is exact. For `B001-B` plain blame at `c3^` returns `c1`; `git blame -C -C -L5,5` also returns
+`c1` (the one-line chunk stays below the copy-detection score threshold), and only whole-file copy detection
+rewrites it to `c0`. For `B001-A` blame at `c2^` returns `c0`.
 
-The graph verifier reports `GI703` for `B001-B` and `GW703` for `B001-A`. The `GW703` is expected and
-pre-existing: `B001-A` only has a BIC with role `origin`, and the verifier's basic blame check only accepts
-`direct`/`reintroducing`/`contributing`. The scenario is not changed to silence it.
+The **scenario** oracle is not either of those answers on its own: it is their union `{c0, c1}`, because both
+bug-fixing commits are in scope (contract D9). So a tool that scores one bug at a time reaches each answer by
+blame alone, while a tool that reports one set for the scenario has to report both commits — predicting `{c1}`
+fails with `c0` missing.
+
+The graph verifier reports `GI703` for **both** bugs — "basic git blame reaches an expected graph BIC" — now
+that `B001-A`'s BIC carries the role `direct`, which is what it is: `c0` wrote the fault into `A.java` that
+`c2` fixes. (Before that role change it reported `GW703` for `B001-A`, because the verifier's blame check
+only accepts `direct`, `reintroducing` and `contributing`.)
 
 ## What a tool must do to pass
 
-- Report exactly `{c1}` for the scored bug; plain line-level blame on the line that `c3` deletes already does
-  this.
-- Keep the two instances apart. The identical statement text is deleted by two different commits; pairing the
-  `B.java` fault with the earlier `A.java` fix `c2`, or following the copy into `A.java`, yields `c0` instead.
+- Report exactly `{c0, c1}`. Both bug-fixing commits are in scope, so the oracle is the union of their direct
+  BICs (contract D9): `c0` for the `A.java` instance that `c2` fixes, `c1` for the `B.java` instance that `c3`
+  fixes.
+- Keep the two instances apart. The identical statement text is deleted by two different commits, and a tool
+  that pairs them the other way round — the `B.java` fault with the earlier `A.java` fix `c2` — reaches the
+  same two commits for the wrong reasons.
 
 ## Compilation
 

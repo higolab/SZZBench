@@ -52,3 +52,14 @@ SZZG-0061/
 |-- scenario.graph.yml
 `-- README.md
 ```
+
+## Expected SZZ result
+
+- Required: `c2` — the copy of the change that lives in `main`, the history the fix belongs to (contract D4).
+- Related origin: `c1` — the `release` commit it was picked from. `c1` is **not** an ancestor of the fix, so
+  reporting it names a commit outside the evaluated history; it is accepted with credit 0.5 under
+  `origin-aware` (D2, D3).
+- Bug-fixing commit: `c3`.
+
+The cherry-pick is manual: the generated commit carries no `(cherry picked from …)` trailer, so the lineage is
+declared with `cherry_pick_of` in the scenario rather than being recoverable from the commit message.

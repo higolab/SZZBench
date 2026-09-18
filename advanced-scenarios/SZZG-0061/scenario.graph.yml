@@ -57,6 +57,7 @@ commits:
   - c0
   message: 'Cherry-pick the error status change onto main'
   role: bug_introducing
+  cherry_pick_of: c1
   operations:
   - type: replace
     path: src/main/java/example/StatusMapper.java
@@ -79,6 +80,10 @@ bugs:
   bug_introducing_commits:
   - commit: c2
     role: direct
+    description: The copy of the change that is in the history the fix belongs to.
+  - commit: c1
+    role: origin
+    description: The release-branch commit the change was picked from; not an ancestor of the fix.
   bug_fixing_commits:
   - commit: c3
     role: complete_fix
@@ -99,6 +104,25 @@ expected_szz:
     evaluation_policy: exact_set
     required:
     - c2
+    related_origins:
+    - c1
+    notes: >
+      c2 is the copy of the change that lives in main, the history the fix
+      belongs to, so it is the direct BIC (contract D4). c1 is on the release
+      branch and is not an ancestor of the fix; it is the origin (D2). The
+      cherry-pick is manual - the generated commit carries no trailer - so the
+      lineage is declared with cherry_pick_of rather than left implicit.
+  evaluation_variants:
+  - name: origin-aware
+    description: The direct BIC is required; the origin is accepted as related context.
+    commit_level:
+      evaluation_policy: relaxed_with_related
+      required:
+      - c2
+      acceptable_related:
+      - commit: c1
+        reason: origin_bic
+        credit: 0.5
 scenario_design:
   purpose: Evaluate cherry-picked bic appears as duplicate commits on two branches and whether SZZ identifies the expected
     bug-introducing commit set.

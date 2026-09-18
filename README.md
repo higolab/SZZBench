@@ -107,8 +107,8 @@ In short, `scenario.yml` is treated as a restricted subset of `scenario.graph.ym
 only, history position only, file-touch shape, and the classic blame baseline —
 with the ordinary evaluator, so every result on SZZBench can be read against a
 floor. Measured on the shipped suite: **"report the second commit of the history",
-which opens no file at all, solves 146/225 — more than the classic
-`blame-deleted-lines` baseline at 141/225**. Some cheap rule solves 203 of the
+which opens no file at all, solves 142/225 — level with the classic
+`blame-deleted-lines` baseline at 143/225**. Some cheap rule solves 203 of the
 225 scenarios, an oracle-aware upper bound rather than an attacker's score; the
 twenty-two it does not reach all have a multi-commit oracle. The metadata
 family is at chance, which is the leakage guarantee below holding.

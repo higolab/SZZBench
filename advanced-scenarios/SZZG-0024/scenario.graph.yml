@@ -73,7 +73,7 @@ commits:
   parents:
   - c0
   message: 'Add the cloned range check'
-  role: intermediate
+  role: bug_introducing
   operations:
   - type: write_file
     path: src/main/java/example/RangeClone.java
@@ -85,7 +85,7 @@ commits:
   parents:
   - r1
   message: 'Annotate the cloned range logic'
-  role: bug_introducing
+  role: intermediate
   operations:
   - type: replace
     path: src/main/java/example/RangeClone.java
@@ -107,23 +107,27 @@ bugs:
 - id: B001
   title: Diverged clone bug introduced by rebase
   bug_introducing_commits:
-  - commit: r2
-    role: direct
   - commit: r1
-    role: origin
+    role: direct
+    description: Replays the faulty clone into main's history, where the fix lives.
   - commit: f1
     role: origin
-  - commit: f2
-    role: origin
+    description: The feature-branch commit the clone was replayed from.
   bug_fixing_commits:
   - commit: c4
     role: complete_fix
   faults:
   - id: F001
-    commit: r2
+    commit: r1
     file: src/main/java/example/RangeClone.java
-    statement: return value > min && value < max; // cloned logic
+    statement: return value > min && value < max;
     change_type: line_modification
+  origin_faults:
+  - id: OF001
+    commit: f1
+    file: src/main/java/example/RangeClone.java
+    statement: return value > min && value < max;
+    change_type: origin_line_modification
   fixes:
   - id: X001
     commit: c4
@@ -134,18 +138,43 @@ expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - r2
-    related_but_not_correct:
     - r1
+    related_origins:
     - f1
+    related_but_not_correct:
+    - r2
     - f2
+    notes: >
+      r1 replays the faulty clone into the history the fix belongs to, so it is
+      the direct BIC (contract D4). r2 and f2 only append a comment to that
+      line and change no behaviour - measured, 0 of 27648 probe answers move
+      across r2 - so they are never BICs (D5). f1 is the commit the clone was
+      replayed from and is therefore the origin (D2).
+  evaluation_variants:
+  - name: origin-aware
+    description: The direct BIC is required; the origin is accepted as related context.
+    commit_level:
+      evaluation_policy: relaxed_with_related
+      required:
+      - r1
+      acceptable_related:
+      - commit: f1
+        reason: origin_bic
+        credit: 0.5
+      related_but_not_correct:
+      - r2
+      - f2
 scenario_design:
   purpose: Evaluate rebase combined with clone divergence.
-  key_property: The fixed instance is the diverged clone line introduced by r2.
+  key_property: >
+    The fixed instance is the cloned line that r1 replayed into main. r2's
+    rebased annotation is the last commit to touch that line, so a method that
+    reports the last textual touch answers r2 and is wrong.
   difference_from_SZZG_0064: SZZG-0064 covers a rebased BIC followed by a non-BIC rebased intermediate commit. This scenario
     adds a distinct rebase-related complication.
   evaluation_points:
-  - Report r2.
+  - Report r1, not the annotation commit r2 that last touched the line.
+  - Whether the replayed commit rather than its feature-branch source is reported.
 notes:
 - This scenario models a rebase-related development history for SZZ evaluation.
 - Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

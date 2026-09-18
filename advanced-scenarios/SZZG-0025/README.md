@@ -30,8 +30,10 @@ This history requires graph-aware scenario semantics that are difficult to expre
 ## Expected BICs
 
 ```text
-c1
+c2
 ```
+
+(`c1` is the origin, not the answer — see [Expected SZZ result](#expected-szz-result).)
 
 ## Evaluation points
 
@@ -52,3 +54,15 @@ SZZG-0025/
 |-- scenario.graph.yml
 `-- README.md
 ```
+
+## Expected SZZ result
+
+- Required: `c2` — the commit that copied the faulty sanitizer into `AdminSanitizer.java`, the instance the
+  fix repairs. Under the [direct/origin contract](../../docs/decisions/origin-direct-contract.md) D4, the
+  copying commit is the direct BIC of the instance it creates.
+- Related origin: `c1` — it made the source sanitizer faulty, and the copy inherited that. Reporting it is a
+  false positive under the default variant and accepted with credit 0.5 under `origin-aware` (D2, D3).
+- Bug-fixing commit: `c3`.
+
+Plain blame on the line the fix deletes returns `c2`, so the default oracle is within a blame-based tool's
+reach; what the scenario tests is whether the tool stops there or walks back to `c1` and reports it as well.

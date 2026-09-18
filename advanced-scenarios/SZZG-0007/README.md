@@ -5,8 +5,11 @@
 Evaluate a bug whose faulty line is introduced in `Range.java`, then moved into a new `RangeUtils.java` and, in
 the same commit, duplicated into a second helper `Bounds.java`, before both copies are fixed by one BFC.
 
-The required BIC remains `c1`. Commit `c2` is propagation history only: it moves and duplicates an already
-buggy line and must not replace the original BIC.
+`c2` does two things in one commit, and the direct/origin contract treats them differently. *Moving*
+`contains` into `RangeUtils` preserves behaviour, so that instance keeps `c1` as its direct BIC (D4,
+movement). *Duplicating* the line into `Bounds.within` creates a second faulty instance that did not exist
+before, so its direct BIC is `c2` itself (D4, copying). The fix repairs both instances, so the oracle is the
+union `{c1, c2}` (D9).
 
 ## Commit history
 
@@ -40,12 +43,13 @@ is `Bounds.java | 2 +-` and `RangeUtils.java | 2 +-`. No faulty copy remains at 
 
 ## Oracle
 
-- Expected BIC: `c1` (exact set)
+- Expected BIC: `c1` and `c2` (exact set)
 - Bug-fixing commit: `c3` (`complete_fix`; it fixes both copies)
 - Fault `F001`: `return value > min && value < max;` in `Range.java` (`c1`)
 - Fix `X001`: `return value >= min && value <= max;` in `RangeUtils.java` (moved copy)
 - Fix `X002`: `return value >= min && value <= max;` in `Bounds.java` (duplicated copy)
-- `c2` is listed as `related_but_not_correct`: it is where plain blame stops for both fixed lines.
+- `c2` is where plain blame stops for both fixed lines, and it is also the direct BIC of the duplicated
+  instance; reporting it alone is still a false negative on `c1`.
 
 Bug instances (`bug_instances` in the YAML):
 
@@ -65,9 +69,11 @@ Both lines modified by the BFC live in files created by `c2`. Checked on the gen
 | `git blame -C -C -C1` (copy detection across files created in the same commit, low threshold) | `c1`, via `Range.java` | `c1`, via `Range.java` |
 | `git log -S'return value > min && value < max;'` | `c3`, `c2`, `c1` (oldest hit is `c1`) | same |
 
-Plain blame therefore returns the move/copy commit `c2` for both fixed lines, not the BIC. Reaching `c1`
-requires refactoring- or clone-aware tracing: recognising that `c2` moved the line from `Range.java` into
-`RangeUtils.java` and copied it into `Bounds.java`, then continuing the line history in `Range.java`. That is
+Plain blame therefore returns `{c2}` for both fixed lines. That is not a wrong commit — `c2` *is* a required
+BIC, as the direct BIC of the instance its copy created — it is an **incomplete** answer, missing `c1`.
+Reaching `c1` requires refactoring- or clone-aware tracing: recognising that `c2` moved the line from
+`Range.java` into `RangeUtils.java` and copied it into `Bounds.java`, then continuing the line history in
+`Range.java`. That is
 the intended difficulty. The graph verifier reports `GW701` ("fault.statement not present in final BFC
 parent") for the same reason: the fault text is no longer in `Range.java` at `c3^`.
 
