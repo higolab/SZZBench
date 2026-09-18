@@ -1083,7 +1083,7 @@ scenarios:
   - commit_series
   - related_but_not_correct
 - id: SZZG-0098
-  title: Only commit message provides the clue
+  title: Commit message names the regressed region
   category_code: G7
   category: Issue, message, context, and non-local evidence
   path: advanced-scenarios/SZZG-0098/scenario.graph.yml
@@ -1124,7 +1124,7 @@ scenarios:
   - context
   - faults
 - id: SZZG-0102
-  title: Issue description required
+  title: Issue text names the regressed column
   category_code: G7
   category: Issue, message, context, and non-local evidence
   path: advanced-scenarios/SZZG-0102/scenario.graph.yml

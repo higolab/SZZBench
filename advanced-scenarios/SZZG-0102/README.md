@@ -1,4 +1,4 @@
-# SZZG-0102: Issue description required
+# SZZG-0102: Issue text names the regressed column
 
 ## Source
 
@@ -18,7 +18,10 @@ Two repairs led to the current history:
 * the first repair moved the faulty line into a nested class **without changing its text**,
   so `git blame -w` recovered `c1` immediately and no context was required (PR #33 review
   finding 1). The refactor now *deletes* the line instead of re-indenting it, and a second
-  commit makes the same change to a second column so that the choice is genuinely ambiguous.
+  commit makes the same change to a second column so that the choice is genuinely ambiguous;
+* that second commit was first spelled with `value.isBlank()`, which is **not** equivalent to
+  a trim-based blank test, so the deduplication silently changed the nickname contract
+  (PR #33 re-review finding 1). See *Why the three spellings are equivalent* below.
 
 ## Commit graph
 
@@ -31,8 +34,8 @@ c0  Add the CSV contact importer
 c1  ISSUE-401 follow the optional-column contract from the importer API docs      <- BIC
     normalizeMiddleName returns null for blank values
 c2  ISSUE-377 apply the same optional-column contract to the profile fields
-    normalizeNickname returns null for blank values, written differently but equivalent
-    -> the rival candidate: same change, same shape, one commit closer to the fix
+    normalizeNickname returns null for blank values, spelled `value.trim().length() == 0`
+    -> the rival candidate: same change, same behaviour, one commit closer to the fix
 c3  ISSUE-510 share one optional-column normalizer between the importer fields
     behaviour-preserving deduplication; the patch deletes the line c1 wrote and the line
     c2 wrote and replaces them with one body whose text matches neither
@@ -93,31 +96,70 @@ were measured on the line the BFC really modifies.
 - Read `ISSUE-482` from the BFC message — `git log` alone suffices to find the identifier —
   and use its **text**: it names the `middle_name` column and says that the same contract was
   applied to the nickname column on purpose.
-- Match that text against the texts of `ISSUE-401` (middle_name) and `ISSUE-377` (nickname),
-  which are the only evidence that separates `c1` from `c2`. The subjects carry the
-  identifiers only; the identifiers themselves are not ordered or otherwise informative
-  (`ISSUE-401` is the BIC, `ISSUE-377` is not, although 377 < 401).
+- Match that text against the texts of `ISSUE-401` (middle_name) and `ISSUE-377` (nickname).
+  The subjects carry the identifiers only; the identifiers themselves are not ordered or
+  otherwise informative (`ISSUE-401` is the BIC, `ISSUE-377` is not, although 377 < 401), and
+  the two commits are indistinguishable by line-based blame.
 - Report exactly `{c1}`, and not `c3`, which every blame variant reaches, nor `c2`.
 
-A tool that reconstructs the call graph across `c3` can also reach `c1`, because `middleName`
-called `normalizeMiddleName` before the deduplication. The scenario claims only that no
-*line-level* evidence separates `c1` from `c2`.
+## What the code still reveals
+
+Issue-text evidence here is **sufficient and direct, not strictly necessary**. A tool that
+reconstructs the call graph across `c3` can also reach `c1`, because `middleName` called
+`normalizeMiddleName` before the deduplication and the BFC repairs the `middleName` path.
+What this scenario establishes is that **every tested blame baseline fails while the issue
+texts succeed**, not that the code is free of clues. The same limitation, with the patch
+context as the alternative code route, is recorded for SZZG-0098.
+
+## Why the three spellings are equivalent
+
+The scenario needs `c1` and `c2` to be textually distinguishable but behaviourally identical,
+and `c3` to be a third spelling that preserves both. The three predicates are
+
+```text
+c1  value == null || value.trim().isEmpty()      ? null : value.trim()
+c2  value == null || value.trim().length() == 0  ? null : value.trim()
+c3  String trimmed = value == null ? "" : value.trim(); trimmed.isEmpty() ? null : trimmed
+```
+
+`isEmpty()` and `length() == 0` are the same test, and `c3` simply names the trimmed value,
+so all three agree on every input. `String.isBlank()` — used in the first version of `c2` —
+does **not** agree with them, because `trim()` removes every character up to `U+0020` while
+`isBlank()` uses `Character.isWhitespace`:
+
+| input | `isBlank()` | `trim().isEmpty()` | `trim().length() == 0` |
+|---|---|---|---|
+| `U+0000` (NUL) | false | **true** | **true** |
+| `U+2003` (em space) | **true** | false | false |
+| `U+3000` (ideographic space) | **true** | false | false |
+| `U+00A0` (no-break space) | false | false | false |
+
+The Java probe grid below therefore includes Unicode whitespace; an ASCII-only grid did not
+show the regression.
 
 ## Behaviour check (measured)
 
-`middleName(String[])` and `nickname(String[])` were run on the values
-`{null, "", " ", "   ", "x", " x ", "Ann", "  Ann  "}` — 16 probes per snapshot.
+`middleName(String[])` and `nickname(String[])` were run on 24 values — 48 probes per
+snapshot:
 
-- `c1` (BIC) differs from `c0` on **4** probes: the four blank or `null` middle names now
-  come back as `null` instead of `""`.
-- `c2` differs from `c1` on **4** probes, all of them nicknames — a real, intended behaviour
-  change written in a different but equivalent form (`value.isBlank()` instead of
-  `value.trim().isEmpty()`).
-- `c3` is **identical to `c2`** on all 16 probes, i.e. the deduplication really preserves
-  behaviour, although its body (`String trimmed = ...; return trimmed.isEmpty() ? null : trimmed;`)
-  is textually a third variant.
-- `c4` (BFC) differs from `c3` on exactly the **4** middle-name probes and restores `c0`'s
-  middle-name contract; it differs from `c0` on exactly the **4** nickname probes, i.e. it
+```text
+null, "", " ", "  ", TAB, LF, CR, FF, U+000B,
+U+0000, U+0001, U+001F, U+00A0, U+2003, U+2007, U+200B, U+3000,
+"x", " x ", "Ann", "  Ann  ", U+3000 + "Ann" + U+3000, NUL + "Ann" + NUL, "A n n"
+```
+
+Twelve of them (`null` and the eleven values that `trim()` empties, i.e. every character up
+to `U+0020`) are blank under the trim-based contract; `U+00A0`, `U+2003`, `U+2007`, `U+200B`
+and `U+3000` are not, and pass through unchanged in every snapshot.
+
+- `c1` (BIC) differs from `c0` on **12** probes: the blank or `null` middle names now come
+  back as `null` instead of `""`.
+- `c2` differs from `c1` on **12** probes, all of them nicknames — a real, intended behaviour
+  change written in a different but equivalent form.
+- `c3` is **identical to `c2`** on all 48 probes, i.e. the deduplication really preserves
+  behaviour, although its body is textually a third variant.
+- `c4` (BFC) differs from `c3` on exactly the **12** middle-name probes and restores `c0`'s
+  middle-name contract; it differs from `c0` on exactly the **12** nickname probes, i.e. it
   keeps `c2`'s intended change and undoes nothing else.
 
 All five commit snapshots compile with `javac` (JDK 25): 0 failures out of 5.

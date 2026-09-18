@@ -1,11 +1,12 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0098
-  title: Only commit message provides the clue
+  title: Commit message names the regressed region
   slug: commit-message
-  description: Evaluates a case where two commits relax the same kind of regional gate in the same way, a later refactor
-    merges both gates into one expression and deletes both changed lines, and the only remaining evidence that ties the BFC
-    to the true BIC is the region named in the commit messages.
+  description: Evaluates a case where two commits relax the same kind of regional gate in the same way and a later refactor
+    merges both gates into one expression, deleting both changed lines. Every tested blame baseline stops at the refactor,
+    so the region named in the commit messages is a direct route to the true BIC. Code-aware analysis can reach it too, from
+    the region name in the patch context or from the behaviour of the two candidates.
   category: "Issue, message, context, and non-local evidence"
   category_code: "G7"
   factors:
@@ -148,22 +149,31 @@ expected_szz:
     - c3
 scenario_design:
   purpose: Evaluate whether a context-aware SZZ method can use commit-message evidence when a behaviour-preserving refactor
-    has deleted the faulty line together with an equally shaped line from a second, innocent commit, so that no line-level
-    evidence separates the two candidates.
+    has deleted the faulty line together with an equally shaped line from a second, innocent commit, so that no line-based
+    blame variant separates the two candidates.
   key_property: |
     c1 relaxes the EU gate and c2 relaxes the CA gate in the same shape; both are plausible causes of a relaxed checkout
     challenge. c3 merges the two branches into one condition and one expression without changing behaviour, and its patch
     deletes both changed lines, so neither survives into the fixed revision. The line the BFC modifies was written by c3,
-    and walking its history back across the merge reaches c1 and c2 together. Only the region named in the messages
-    separates them: c1 says it bypasses the EU challenge (PAY-314) and the BFC says it requires the EU challenge again
-    (PAY-501), while c2 (PAY-330) is about Canada and c3 (PAY-352) only restructures the method.
+    and walking its history back across the merge reaches c1 and c2 together, so plain blame and its -w, -M and -C -C
+    variants all stop at c3 and no line-based baseline can separate the candidates. The messages separate them directly:
+    c1 says it bypasses the EU challenge (PAY-314) and the BFC says it requires the EU challenge again (PAY-501), while c2
+    (PAY-330) is about Canada and c3 (PAY-352) only restructures the method.
+  code_evidence_limitation: |
+    Message evidence is sufficient and direct, not strictly necessary. The BFC names the region it repairs -- its added
+    line contains region.equals("EU") -- and the one-line patch context of c1 contains if (region.equals("EU")) while that
+    of c2 contains if (region.equals("CA")), so a tool that compares the fix hunk with the candidate hunks and their
+    context can pick c1 without reading a single message. The behaviour of the candidates discriminates as well: with
+    merchantRiskFlag=false and riskScore=0 the EU verdict flips at c1 and the CA verdict flips at c2. This is a property of
+    self-contained code repositories in general -- a fix commit names what it repairs -- so what this scenario establishes
+    is that the line-based blame baselines fail here while message evidence succeeds, not that the code is free of clues.
   current_schema_limitation: Commit-message clues are represented as contextual metadata rather than as first-class graph
     edges.
   required_extensions_from_source: 'This scenario uses factors: context, commit_messages; operations: write_file, replace.'
   evaluation_points:
-  - Whether SZZ identifies c1 as the BIC using the PAY-314 EU clue in the commit message.
-  - Whether the behaviour-preserving refactor c3, which line-based blame reaches, is rejected.
-  - Whether the equally shaped but innocent CA relaxation c2 is rejected.
+  - Whether SZZ identifies c1 as the BIC using the PAY-314 EU clue in the commit message, or equivalent non-line evidence.
+  - Whether the behaviour-preserving refactor c3, which every tested blame variant reaches, is rejected.
+  - Whether the equally shaped but innocent CA relaxation c2 is rejected, although it is one commit closer to the fix.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.
@@ -176,10 +186,10 @@ context:
   - commit: c1
     clue: PAY-314 identifies the EU checkout challenge bypass that the BFC restores.
   - commit: c2
-    clue: PAY-330 relaxes the Canadian gate in the same shape, so it is the rival candidate that only the region name rules
-      out.
+    clue: PAY-330 relaxes the Canadian gate in the same shape, so it is the rival candidate that the region name rules out.
   - commit: c3
     clue: PAY-352 describes a pure restructuring of the gate, which is why the line blame reaches it is not the cause.
   ambiguous_code_context: The refactor deleted the EU line and the CA line in the same patch and replaced them with one
-    expression, so the line history of the modified line reaches both candidates and the code says nothing about which
-    region regressed.
+    expression, so the line history of the modified line reaches both candidates and no blame variant separates them. The
+    region name is still present in the patch context of each candidate, which is recorded in
+    scenario_design.code_evidence_limitation.

@@ -1,11 +1,12 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0102
-  title: Issue description required
+  title: Issue text names the regressed column
   slug: issue-description
-  description: Evaluates a case where two commits give the same new contract to two duplicated normalizers, a later commit
-    deduplicates them and deletes both changed lines, and the commit subjects carry only issue identifiers, so the text
-    behind the identifiers is the only evidence that names the column that regressed.
+  description: Evaluates a case where two commits give the same new contract to two duplicated normalizers and a later
+    commit deduplicates them, deleting both changed lines. Every tested blame baseline stops at the deduplication, and the
+    commit subjects carry only issue identifiers, so the text behind the identifiers is what names the column that
+    regressed. A tool that reconstructs the call graph across the deduplication can reach the same answer from code.
   category: "Issue, message, context, and non-local evidence"
   category_code: "G7"
   factors:
@@ -88,7 +89,7 @@ commits:
         }
     new: |-
       private String normalizeNickname(String value) {
-          return value == null || value.isBlank() ? null : value.trim();
+          return value == null || value.trim().length() == 0 ? null : value.trim();
         }
 - id: c3
   branch: main
@@ -113,7 +114,7 @@ commits:
         }
 
         private String normalizeNickname(String value) {
-          return value == null || value.isBlank() ? null : value.trim();
+          return value == null || value.trim().length() == 0 ? null : value.trim();
         }
     new: |-
       private String normalizeOptional(String value) {
@@ -167,18 +168,24 @@ scenario_design:
     two commits that made the same change to two duplicated normalizers, after a deduplication deleted both changed lines.
   key_property: |
     c1 and c2 give the same null-for-blank contract to two duplicated normalizers, one for the middle-name column and one
-    for the nickname column. c3 replaces both with a single shared normalizer whose body text matches neither, so its patch
-    deletes both changed lines and git blame at BFC^ reaches c3 under plain blame and under -w, -M and -C -C. The commit
-    subjects carry issue identifiers and no column names, so neither the code nor the subjects say which column regressed;
-    only the text of ISSUE-401 and ISSUE-377, matched against the text of ISSUE-482, names the middle-name column and
-    selects c1.
+    for the nickname column. The two predicates are spelled differently (value.trim().isEmpty() and
+    value.trim().length() == 0) but are equivalent on every input, including Unicode whitespace, and the shared normalizer
+    c3 writes is a third spelling with the same behaviour. c3's patch therefore deletes both changed lines without changing
+    behaviour, and git blame at BFC^ reaches c3 under plain blame and under -w, -M and -C -C. The commit subjects carry
+    issue identifiers and no column names, so the subjects do not say which column regressed; the text of ISSUE-401 and
+    ISSUE-377, matched against the text of ISSUE-482, names the middle-name column and selects c1.
+  code_evidence_limitation: |
+    Issue-text evidence is sufficient and direct, not strictly necessary. A tool that reconstructs the call graph across
+    the deduplication can also reach c1, because middleName called normalizeMiddleName before c3, and the BFC repairs the
+    middleName path. What this scenario establishes is that the line-based blame baselines fail here while the issue texts
+    succeed, not that the code is free of clues.
   current_schema_limitation: Issue descriptions are represented as graph metadata linked to bugs; the repository carries only
     the identifiers in the commit messages.
   required_extensions_from_source: 'This scenario uses factors: issues, context; operations: write_file, replace.'
   evaluation_points:
-  - Whether SZZ identifies c1 as the BIC.
-  - Whether the issue text rules out the nickname change c2, which is identical in shape and one commit closer to the fix.
-  - Whether the deduplication c3 that blame reaches is rejected.
+  - Whether SZZ identifies c1 as the BIC from the issue texts, or from equivalent non-line evidence.
+  - Whether the nickname change c2 is rejected, although it is equivalent in behaviour and one commit closer to the fix.
+  - Whether the deduplication c3, which every tested blame variant reaches, is rejected.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.
@@ -187,13 +194,18 @@ notes:
 - 'Issue context beyond the identifiers is scenario metadata: the repository carries ISSUE-401, ISSUE-377, ISSUE-510 and
   ISSUE-482 only as identifiers in the commit subjects. An external context interface is designed in issue #23.'
 - A tool that reconstructs the call graph across c3 can also reach c1, because middleName called normalizeMiddleName before
-  the deduplication. The scenario claims only that no line-level evidence separates c1 from c2.
+  the deduplication. The scenario claims only that no line-based blame variant separates c1 from c2; see
+  scenario_design.code_evidence_limitation.
+- 'The two pre-deduplication predicates are equivalent by construction: value.trim().isEmpty() and value.trim().length() == 0
+  agree on every input. An earlier revision spelled c2 with value.isBlank(), which is NOT equivalent to a trim-based test
+  (they disagree on U+0000, U+2003 and U+3000), so the deduplication silently changed the nickname contract.'
 context:
   required_files:
   - src/main/java/example/CsvContactImporter.java
   ambiguous_code_context: The deduplication deleted the middle-name line and the nickname line in the same patch and replaced
-    them with one differently written body, so the line history of the modified line reaches both candidates and the code
-    says nothing about which column regressed.
+    them with one differently written body, so the line history of the modified line reaches both candidates and no blame
+    variant separates them. The call graph before the deduplication still links middleName to c1, which is recorded in
+    scenario_design.code_evidence_limitation.
 issues:
 - id: ISSUE-482
   title: Blank middle names are exported as null after CSV import
