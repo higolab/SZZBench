@@ -107,6 +107,34 @@ class BaselineResult:
 
 Predictor = Callable[[Scenario], Iterable[str]]
 
+
+@dataclass
+class Baseline:
+    """One cheap rule.
+
+    ``scores_on_abstention`` decides what happens on a scenario the rule makes
+    no prediction for. Every rule but :data:`ABSTAIN` is credited **only where
+    it predicts**: letting a rule pass a scenario whose answer is "no commit"
+    merely by staying silent would give every rule the same free pass, and it
+    is what made the ``position-k`` enumeration wrong three times. The one
+    honest version of that strategy is a rule of its own.
+    """
+
+    name: str
+    family: str
+    description: str
+    predict: Predictor
+    scores_on_abstention: bool = False
+
+
+#: The rule that never names a commit. It is the only one credited for silence,
+#: which is a correct answer when a scenario's oracle is empty.
+ABSTAIN = "abstain"
+
+
+def _abstain(scenario: Scenario) -> list[str]:
+    return []
+
 #: Whole words that admit a fault.  Deliberately not the validator's lint
 #: pattern: a guard must not be measured with the instrument it guards.
 ADMITS_FAULT = re.compile(r"\b(bugs?|buggy|faulty|faults?|defects?|broken|BIC|distractor|noise)\b", re.I)
@@ -134,11 +162,12 @@ def position_indices(scenarios: list[Scenario], answer_hashes: dict[str, set[str
     and stopping at k = 2 would let a scenario look discriminating merely
     because its answer sits deeper.
 
-    Enumerating a thousand rules that provably score nothing is wasteful.
-``position-k`` predicts exactly one commit, so it can only be credited
-    when the commit at index k is a commit the scorer knows about; the
-    enumeration is restricted to those indices, plus 0, 1 and 2 so the report
-    always shows the shallow rules.
+    Enumerating a thousand rules that provably score nothing is wasteful, so
+    the enumeration is restricted. ``position-k`` names exactly one commit and
+    is credited only where it names one (see :class:`Baseline`), so it can
+    score only at an index holding a commit the scorer knows about; those
+    indices are enumerated, plus 0, 1 and 2 so the report always shows the
+    shallow rules.
 
     "Knows about" is deliberately every set the commit-level policy mentions,
     not just ``required``: under ``top_k`` a prediction passes when it hits
@@ -147,6 +176,10 @@ def position_indices(scenarios: list[Scenario], answer_hashes: dict[str, set[str
     scenario (PR #40 review). ``test_the_restriction_keeps_every_passing_rule``
     compares the restricted enumeration against a full sweep through the real
     evaluator, across policies, rather than re-asserting this reasoning.
+
+    An index past the end of a history is not a rule this drops: predicting
+    nothing is :data:`ABSTAIN`, enumerated once under its own name instead of
+    once per out-of-range k.
 
     ``answer_hashes`` is used only to decide which rules to *enumerate*; no
     predictor ever sees it.
@@ -266,33 +299,35 @@ def _blame_deleted_lines(git: GitProbe) -> Predictor:
 
 
 def build_predictors(scenarios: list[Scenario], git: GitProbe,
-                     answer_hashes: dict[str, set[str]] | None = None) -> list[tuple[str, str, str, Predictor]]:
-    """(name, family, description, predictor), including one rule per author.
+                     answer_hashes: dict[str, set[str]] | None = None) -> list[Baseline]:
+    """The declared family, including one rule per author.
 
     The author rules are enumerated over the whole suite and only their best is
     reported: an attacker picks one rule and applies it everywhere, and
     choosing the matching author per scenario would need the oracle.
     """
-    predictors: list[tuple[str, str, str, Predictor]] = []
+    predictors: list[Baseline] = []
     for author in sorted({c.author for s in scenarios for c in s.commits}):
         name = author.split("<")[0].strip() or author
-        predictors.append((f"author:{name}", "metadata",
-                           f"report every commit written by {name}", _by_author(author)))
-    predictors.append(("message-admits-fault", "metadata",
-                       "report the non-fixing commits whose subject admits a fault",
-                       _message_admits_fault))
+        predictors.append(Baseline(f"author:{name}", "metadata",
+                                   f"report every commit written by {name}", _by_author(author)))
+    predictors.append(Baseline("message-admits-fault", "metadata",
+                               "report the non-fixing commits whose subject admits a fault",
+                               _message_admits_fault))
     for index in position_indices(scenarios, answer_hashes or {}):
-        predictors.append((f"position-{index}", "position",
-                           f"report the commit at index {index} of the history", _at_index(index)))
-    predictors.append(("position-before-fix", "position",
-                       "report the commit immediately before the fix", _before_bfc))
-    predictors.append(("position-all-non-fix", "position",
-                       "report every commit that is not a fix", _all_non_bfc))
-    predictors.append(("shape-last-toucher", "shape",
-                       "report the newest commit before the fix that touched a file the fix touches",
-                       _last_toucher(git)))
-    predictors.append(("blame-deleted-lines", "blame",
-                       "naive B-SZZ: blame every line the fix deletes", _blame_deleted_lines(git)))
+        predictors.append(Baseline(f"position-{index}", "position",
+                                   f"report the commit at index {index} of the history", _at_index(index)))
+    predictors.append(Baseline("position-before-fix", "position",
+                               "report the commit immediately before the fix", _before_bfc))
+    predictors.append(Baseline("position-all-non-fix", "position",
+                               "report every commit that is not a fix", _all_non_bfc))
+    predictors.append(Baseline(ABSTAIN, "position", "report no commit at all",
+                               _abstain, scores_on_abstention=True))
+    predictors.append(Baseline("shape-last-toucher", "shape",
+                               "report the newest commit before the fix that touched a file the fix touches",
+                               _last_toucher(git)))
+    predictors.append(Baseline("blame-deleted-lines", "blame",
+                               "naive B-SZZ: blame every line the fix deletes", _blame_deleted_lines(git)))
     return predictors
 
 
@@ -420,28 +455,34 @@ def run_baselines(
     by_id = {s.scenario_id: s for s in scenarios}
     results: list[BaselineResult] = []
     answer_hashes = _answer_hashes(scenarios, scenarios_root, advanced_scenarios_root)
-    for name, family, description, predictor in build_predictors(scenarios, git, answer_hashes):
-        if family not in selected:
+    for baseline in build_predictors(scenarios, git, answer_hashes):
+        if baseline.family not in selected:
             continue
         predictions: dict[str, list[Prediction]] = {}
         for scenario in scenarios:
-            guessed = list(predictor(scenario))
+            guessed = list(baseline.predict(scenario))
             if guessed:
                 predictions[scenario.scenario_id] = [
-                    Prediction(scenario_id=scenario.scenario_id, inducing_commit=c, tool=f"baseline:{name}")
+                    Prediction(scenario_id=scenario.scenario_id, inducing_commit=c,
+                               tool=f"baseline:{baseline.name}")
                     for c in guessed
                 ]
+        # Scenarios the rule says nothing about are scored only for the rule
+        # that exists to say nothing; for every other rule they are simply not
+        # solved by it.
         report = evaluate_prediction_map(
             predictions,
             generated_root=generated_root,
             scenarios_root=scenarios_root,
             advanced_scenarios_root=advanced_scenarios_root,
             variant=variant,
-            include_generated=True,
+            include_generated=baseline.scores_on_abstention,
         )
-        result = BaselineResult(name=name, family=family, description=description)
-        for item in report.scenarios:
-            (result.passed if item.status == "PASS" else result.failed).append(item.scenario_id)
+        result = BaselineResult(name=baseline.name, family=baseline.family,
+                                description=baseline.description)
+        result.passed = [item.scenario_id for item in report.scenarios if item.status == "PASS"]
+        solved = set(result.passed)
+        result.failed = [s.scenario_id for s in scenarios if s.scenario_id not in solved]
         results.append(result)
 
     results.sort(key=lambda r: (FAMILIES.index(r.family), -r.rate, r.name))

@@ -40,6 +40,20 @@ each separately. An attacker picks **one** rule and applies it everywhere;
 choosing the matching author per scenario would need the oracle, and with most
 oracles being a single commit it succeeds by coincidence rather than by signal.
 
+## Saying nothing
+
+A rule is credited **only on the scenarios it names a commit for**. A scenario
+it is silent about counts as unsolved by it, even when silence would score:
+under `expect_no_bic` the correct answer *is* the empty set, so a rule that
+never reaches that history — `position-5` on a four-commit one — would
+otherwise pass it for free, and so would every other silent rule.
+
+Predicting nothing is a strategy, so it is published as one: `abstain` is the
+single rule scored on its silence. It is the honest version of that free pass —
+one rule with one number, rather than an invisible bonus spread across the
+family. It scores **0/215** on the shipped suite, because no scenario's default
+evaluation has an empty oracle.
+
 ## Measured on the shipped suite
 
 215 generated scenarios, measured on this branch (2026-09-18):
@@ -54,7 +68,9 @@ oracles being a single commit it succeeds by coincidence rather than by signal.
 | `position-3` | position | 17/215 = 7.9% |
 | `position-0`, `position-4` | position | 7/215 = 3.3% each |
 | `position-all-non-fix` | position | 6/215 = 2.8% |
+| `position-5` | position | 1/215 = 0.5% |
 | best `author:…` | metadata | 11/215 = 5.1% (chance) |
+| `abstain` | position | **0/215** |
 | `message-admits-fault` | metadata | **0/215** |
 
 **A fixed rule versus the union.** Each row is one rule applied to every
@@ -167,14 +183,14 @@ szzbench coverage --out studies/coverage
 | `oracle_size` | how many commits the answer contains |
 | `bic_depth` | commits between the deepest required BIC and the fix |
 | `fault_file_distractors` | commits before the fix that touch a file the fault lives in and are **not** the answer |
+| `commit_count`, `ref_count` | size and branchiness of the history |
 
 `oracle_size` and `bic_depth` come from the evaluator's own policy resolution
 (`_commit_level_policy`), so a default evaluation variant and an inferred
 direct BIC are read the same way a scored run reads them. `bic_depth` measures
 the **farthest** required BIC — the deepest commit a tool has to reach.
-| `commit_count`, `ref_count` | size and branchiness of the history |
 
-Measured on the shipped suite (210 scenarios):
+Measured on the shipped suite (215 scenarios):
 
 ```text
 tier                   control:203, discriminating:12
@@ -188,15 +204,17 @@ ref_count              1:176, 2:36, 3:3
 ```
 
 The largest groups are 27 S3, 10 S4, 9 S2, 8 S1 and 8 G1 scenarios that agree
-on every dimension; 43 scenarios have a signature of their own. Read together with the baseline table, the suite concentrates
-in one cell — a one-commit answer, one or two commits before the fix, in a
+on every dimension; 43 scenarios have a signature of their own. Read together
+with the baseline table, the suite concentrates in one cell — a one-commit answer, one or two commits before the fix, in a
 three- or four-commit single-branch history — and **that cell is where the
 cheap rules win**.
 
 ## Adding a baseline
 
 Add a predictor to `src/szzbench/baselines.py` and register it in
-`build_predictors` with the family whose inputs it stays within. A predictor
-returns logical commit ids; the runner turns them into `Prediction` records and
-hands them to `evaluate_prediction_map`, so nothing in a baseline decides what
-counts as a correct answer.
+`build_predictors` as a `Baseline(name, family, description, predict)`, with the
+family whose inputs it stays within. A predictor returns commit **hashes**; the
+runner turns them into `Prediction` records and hands them to
+`evaluate_prediction_map`, so nothing in a baseline decides what counts as a
+correct answer. Leave `scores_on_abstention` at `False` unless the rule *is*
+silence — see [Saying nothing](#saying-nothing).
