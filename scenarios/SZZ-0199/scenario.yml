@@ -1,0 +1,172 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0199"
+  title: "The unit of a configuration value changes, and a later reader shows it raw"
+  slug: "configuration-unit-change"
+  description: >
+    A limit held in a properties file is restated in bytes rather than
+    kilobytes, together with the only reader that interprets it, so nothing in
+    the repository changes. A later commit adds a screen that shows the raw
+    setting labelled as kilobytes, and only then does the bug appear. The fix
+    repairs the screen, so the line it deletes belongs to that commit; the unit
+    change lives in a non-source file the fix never opens.
+  category: "Non-source, configuration, test-only, and file-level edge cases"
+  factors:
+    - "multi-bic"
+    - "single-bfc"
+    - "non-source-file"
+    - "configuration-change"
+    - "value-flow"
+    - "blame-unreachable-bic"
+  difficulty: "hard"
+  status: "active"
+  tier: "discriminating"
+  category_code: "S8"
+
+repository:
+  name: "SZZ-0199-configuration-unit-change"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Add the upload limit and its setting"
+    author: "Mei Tanaka <mei.tanaka@example.com>"
+    date: "2024-06-03T09:50:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/resources/limits.properties"
+        content: |
+          # Largest upload the server accepts, in kilobytes.
+          upload.max=2048
+      - type: "write_file"
+        path: "src/main/java/example/UploadLimit.java"
+        content: |
+          package example;
+
+          import java.io.InputStream;
+          import java.util.Properties;
+
+          public class UploadLimit {
+              public static String setting(String key) {
+                  Properties properties = new Properties();
+                  try (InputStream in = UploadLimit.class.getResourceAsStream("/limits.properties")) {
+                      properties.load(in);
+                  } catch (Exception e) {
+                      return "";
+                  }
+                  return properties.getProperty(key);
+              }
+
+              public int maxKilobytes() {
+                  return Integer.parseInt(setting("upload.max"));
+              }
+          }
+
+  - id: "c1"
+    message: "State the upload limit in bytes"
+    author: "Jonas Berg <jonas.berg@example.com>"
+    date: "2024-06-06T14:25:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "write_file"
+        path: "src/main/resources/limits.properties"
+        content: |
+          # Largest upload the server accepts, in bytes.
+          upload.max=2097152
+      - type: "replace"
+        path: "src/main/java/example/UploadLimit.java"
+        old: "return Integer.parseInt(setting(\"upload.max\"));"
+        new: "return Integer.parseInt(setting(\"upload.max\")) / 1024;"
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Say where the upload limit is enforced"
+    author: "Jonas Berg <jonas.berg@example.com>"
+    date: "2024-06-10T10:35:00Z"
+    role: "distractor"
+    operations:
+      - type: "write_file"
+        path: "src/main/resources/limits.properties"
+        content: |
+          # Largest upload the server accepts, in bytes.
+          # Enforced by the upload handler before the body is read.
+          upload.max=2097152
+
+  - id: "c3"
+    message: "Show the upload limit on the upload form"
+    author: "Hana Sato <hana.sato@example.com>"
+    date: "2024-06-13T16:15:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/example/UploadForm.java"
+        content: |
+          package example;
+
+          public class UploadForm {
+              public String limitLabel() {
+                  return UploadLimit.setting("upload.max") + " KB";
+              }
+          }
+        labels: ["B001", "fault"]
+
+  - id: "c4"
+    message: "Show the upload limit in the unit the label claims"
+    author: "Tom Becker <tom.becker@example.com>"
+    date: "2024-06-17T12:00:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/UploadForm.java"
+        old: "return UploadLimit.setting(\"upload.max\") + \" KB\";"
+        new: "return new UploadLimit().maxKilobytes() + \" KB\";"
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "The upload form shows a byte count labelled as kilobytes"
+    bug_fixing_commit: "c4"
+    bug_introducing_commits: ["c1", "c3"]
+    fault:
+      commit: "c3"
+      file: "src/main/java/example/UploadForm.java"
+      entity:
+        type: "method"
+        name: "limitLabel"
+        signature: "String limitLabel()"
+      statement: "return UploadLimit.setting(\"upload.max\") + \" KB\";"
+      change_type: "line_modification"
+    fix:
+      commit: "c4"
+      file: "src/main/java/example/UploadForm.java"
+      entity:
+        type: "method"
+        name: "limitLabel"
+        signature: "String limitLabel()"
+      statement: "return new UploadLimit().maxKilobytes() + \" KB\";"
+      fix_type: "line_modification"
+    expected_szz:
+      commit_level:
+        true_positives: ["c1", "c3"]
+        primary_observable_bic: "c3"
+        contributing_bics: ["c1"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "return UploadLimit.setting(\"upload.max\") + \" KB\";"
+        note: >
+          The fix deletes a line written by c3 and opens only the Java file
+          that line lives in. c1 changed the unit of the setting that line
+          reads, in a properties file, and is not reachable from the deleted
+          line by blame; while the setting was in kilobytes the label was
+          correct.
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3", "c4"]

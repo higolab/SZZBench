@@ -1,0 +1,172 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0196"
+  title: "An overload added earlier captures a call written later"
+  slug: "overload-captures-later-call"
+  description: >
+    A formatting helper gains an overload for whole currency units. Every call
+    in the repository passes a long and keeps binding to the original method,
+    so nothing changes. A later commit adds a caller that passes an int amount
+    in cents, which binds to the new overload and prints the cent count as
+    whole units. The fix widens the argument at the call site, so the line it
+    deletes belongs to the later commit; the overload that captured the call is
+    reachable only by resolving which method the fixed line calls.
+  category: "Multiple BICs, duplicate faults, and composite faults"
+  factors:
+    - "multi-bic"
+    - "single-bfc"
+    - "caller-callee-interaction"
+    - "overload-resolution"
+    - "blame-unreachable-bic"
+  difficulty: "hard"
+  status: "active"
+  tier: "discriminating"
+  category_code: "S6"
+
+repository:
+  name: "SZZ-0196-overload-captures-later-call"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Add the money formatter and the receipt line"
+    author: "Aiko Tanaka <aiko.tanaka@example.com>"
+    date: "2024-03-04T10:15:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/example/Money.java"
+        content: |
+          package example;
+
+          public class Money {
+              public static String format(long cents) {
+                  return Math.floorDiv(cents, 100) + "." + String.format("%02d", Math.floorMod(cents, 100));
+              }
+          }
+      - type: "write_file"
+        path: "src/main/java/example/Receipt.java"
+        content: |
+          package example;
+
+          public class Receipt {
+              public String line(long amountCents) {
+                  return Money.format(amountCents);
+              }
+          }
+
+  - id: "c1"
+    message: "Format amounts that are already whole units"
+    author: "Bruno Fischer <bruno.fischer@example.com>"
+    date: "2024-03-07T13:30:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/Money.java"
+        old: |
+          public static String format(long cents) {
+                  return Math.floorDiv(cents, 100) + "." + String.format("%02d", Math.floorMod(cents, 100));
+              }
+        new: |
+          public static String format(long cents) {
+                  return Math.floorDiv(cents, 100) + "." + String.format("%02d", Math.floorMod(cents, 100));
+              }
+
+              public static String format(int wholeUnits) {
+                  return wholeUnits + ".00";
+              }
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Say which formatter takes which unit"
+    author: "Bruno Fischer <bruno.fischer@example.com>"
+    date: "2024-03-11T09:05:00Z"
+    role: "distractor"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/Money.java"
+        old: |
+          public class Money {
+        new: |
+          /** Formats monetary amounts for display. */
+          public class Money {
+
+  - id: "c3"
+    message: "Show the receipt total"
+    author: "Farid Haddad <farid.haddad@example.com>"
+    date: "2024-03-14T16:40:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/Receipt.java"
+        old: |
+          public String line(long amountCents) {
+                  return Money.format(amountCents);
+              }
+        new: |
+          public String line(long amountCents) {
+                  return Money.format(amountCents);
+              }
+
+              public String total(int cents) {
+                  return Money.format(cents);
+              }
+        labels: ["B001", "fault"]
+
+  - id: "c4"
+    message: "Format the receipt total as an amount in cents"
+    author: "Dana Okafor <dana.okafor@example.com>"
+    date: "2024-03-18T11:20:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/Receipt.java"
+        old: "return Money.format(cents);"
+        new: "return Money.format((long) cents);"
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "The receipt total is printed as whole units"
+    bug_fixing_commit: "c4"
+    bug_introducing_commits: ["c1", "c3"]
+    fault:
+      commit: "c3"
+      file: "src/main/java/example/Receipt.java"
+      entity:
+        type: "method"
+        name: "total"
+        signature: "String total(int cents)"
+      statement: "return Money.format(cents);"
+      change_type: "line_modification"
+    fix:
+      commit: "c4"
+      file: "src/main/java/example/Receipt.java"
+      entity:
+        type: "method"
+        name: "total"
+        signature: "String total(int cents)"
+      statement: "return Money.format((long) cents);"
+      fix_type: "line_modification"
+    expected_szz:
+      commit_level:
+        true_positives: ["c1", "c3"]
+        primary_observable_bic: "c3"
+        contributing_bics: ["c1"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "return Money.format(cents);"
+        note: >
+          The fix deletes a line written by c3. c1 added the overload that call
+          binds to and is not reachable from the deleted line by blame; with a
+          single format method the new call would have been correct.
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3", "c4"]

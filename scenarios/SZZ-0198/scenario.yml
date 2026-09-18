@@ -1,0 +1,165 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0198"
+  title: "A guard that substitutes a different value, and a later caller that reaches it"
+  slug: "guard-substitutes-different-value"
+  description: >
+    The retry policy answers a non-positive request with a floor value. A
+    commit raises that floor from zero to one, which no caller in the
+    repository can observe because the only one clamps its argument first. A
+    later commit adds a caller that subtracts, so the floor is reached for the
+    first time and a job whose attempts are used up is granted one more,
+    forever. The fix repairs the new caller, so the line it deletes belongs to
+    that commit; the floor change is reachable only through the method the
+    fixed line calls.
+  category: "Multiple BICs, duplicate faults, and composite faults"
+  factors:
+    - "multi-bic"
+    - "single-bfc"
+    - "boundary-condition"
+    - "caller-callee-interaction"
+    - "blame-unreachable-bic"
+  difficulty: "hard"
+  status: "active"
+  tier: "discriminating"
+  category_code: "S6"
+
+repository:
+  name: "SZZ-0198-guard-substitutes-different-value"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Add the retry policy"
+    author: "Chen Wei <chen.wei@example.com>"
+    date: "2024-05-06T10:40:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/example/RetryPolicy.java"
+        content: |
+          package example;
+
+          public class RetryPolicy {
+              public int attemptsFor(int configured) {
+                  if (configured < 1) {
+                      return 0;
+                  }
+                  return configured;
+              }
+
+              public int attemptsForJob(int configured) {
+                  return attemptsFor(Math.max(1, configured));
+              }
+          }
+
+  - id: "c1"
+    message: "Always allow at least one attempt"
+    author: "Priya Raman <priya.raman@example.com>"
+    date: "2024-05-09T13:15:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/RetryPolicy.java"
+        old: |
+          if (configured < 1) {
+                      return 0;
+                  }
+        new: |
+          if (configured < 1) {
+                      return 1;
+                  }
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Record what the retry policy promises"
+    author: "Priya Raman <priya.raman@example.com>"
+    date: "2024-05-13T09:20:00Z"
+    role: "distractor"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/RetryPolicy.java"
+        old: |
+          public class RetryPolicy {
+        new: |
+          /** Decides how many attempts a job may make. */
+          public class RetryPolicy {
+
+  - id: "c3"
+    message: "Report how many attempts a job has left"
+    author: "Farid Haddad <farid.haddad@example.com>"
+    date: "2024-05-16T15:05:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/example/JobScheduler.java"
+        content: |
+          package example;
+
+          public class JobScheduler {
+              private final RetryPolicy policy = new RetryPolicy();
+
+              public int remainingAttempts(int configured, int used) {
+                  return policy.attemptsFor(configured - used);
+              }
+          }
+        labels: ["B001", "fault"]
+
+  - id: "c4"
+    message: "Report no attempts left once they are used up"
+    author: "Bruno Fischer <bruno.fischer@example.com>"
+    date: "2024-05-20T11:30:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/JobScheduler.java"
+        old: "return policy.attemptsFor(configured - used);"
+        new: "return used >= configured ? 0 : policy.attemptsFor(configured - used);"
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "A job whose attempts are used up is granted one more"
+    bug_fixing_commit: "c4"
+    bug_introducing_commits: ["c1", "c3"]
+    fault:
+      commit: "c3"
+      file: "src/main/java/example/JobScheduler.java"
+      entity:
+        type: "method"
+        name: "remainingAttempts"
+        signature: "int remainingAttempts(int configured, int used)"
+      statement: "return policy.attemptsFor(configured - used);"
+      change_type: "line_modification"
+    fix:
+      commit: "c4"
+      file: "src/main/java/example/JobScheduler.java"
+      entity:
+        type: "method"
+        name: "remainingAttempts"
+        signature: "int remainingAttempts(int configured, int used)"
+      statement: "return used >= configured ? 0 : policy.attemptsFor(configured - used);"
+      fix_type: "line_modification"
+    expected_szz:
+      commit_level:
+        true_positives: ["c1", "c3"]
+        primary_observable_bic: "c3"
+        contributing_bics: ["c1"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "return policy.attemptsFor(configured - used);"
+        note: >
+          The fix deletes a line written by c3, in a file no other commit
+          touches. c1 raised the floor the subtraction reaches and is not
+          reachable from the deleted line by blame; with the original floor the
+          new caller would have returned the right answer.
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3", "c4"]
