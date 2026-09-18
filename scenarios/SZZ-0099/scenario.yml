@@ -30,8 +30,8 @@ repository:
 commits:
 - id: c0
   message: Add the request rate limiter for the public API
-  author: Alice <alice@example.com>
-  date: '2024-01-01T10:00:00Z'
+  author: Priya Raman <priya.raman@example.com>
+  date: 2024-12-16T09:37:00Z
   role: initial
   operations:
   - type: write_file
@@ -61,8 +61,8 @@ commits:
       }
 - id: c1
   message: Let a request through while the used count has not passed the limit
-  author: Bob <bob@example.com>
-  date: '2024-01-02T10:00:00Z'
+  author: Tom Becker <tom.becker@example.com>
+  date: 2024-12-24T14:56:00Z
   role: bug_introducing
   operations:
   - type: replace
@@ -76,8 +76,8 @@ commits:
     - fault
 - id: c2
   message: Serialise access to the rate limiter counter
-  author: Carol <carol@example.com>
-  date: '2024-01-03T10:00:00Z'
+  author: Tom Becker <tom.becker@example.com>
+  date: 2025-01-01T13:43:00Z
   role: refactoring
   operations:
   - type: replace
@@ -96,8 +96,8 @@ commits:
     - non_bug_introducing_change
 - id: c3
   message: Stop granting one request beyond the configured limit
-  author: Dave <dave@example.com>
-  date: '2024-01-04T10:00:00Z'
+  author: Tom Becker <tom.becker@example.com>
+  date: 2025-01-06T11:51:00Z
   role: bug_fixing
   operations:
   - type: replace

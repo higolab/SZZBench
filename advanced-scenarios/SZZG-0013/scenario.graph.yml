@@ -32,7 +32,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create age gate'
+  message: 'Add the age gate'
   role: initial
   operations:
   - type: write_file
@@ -43,7 +43,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: introduce boundary bug'
+  message: 'Require an age above 18'
   role: bug_introducing
   operations:
   - type: replace
@@ -54,7 +54,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: rewrite condition into explicit if statement'
+  message: 'Rewrite the adult condition as an if statement'
   role: refactoring
   operations:
   - type: replace
@@ -65,7 +65,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: fix adult boundary after rewrite'
+  message: 'Treat 18 as adult again'
   role: bug_fixing
   operations:
   - type: replace

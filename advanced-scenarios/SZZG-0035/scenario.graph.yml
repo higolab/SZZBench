@@ -30,7 +30,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
+  message: 'Add the range acceptance helpers'
   role: initial
   operations:
   - type: write_file
@@ -43,7 +43,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
+  message: 'Require values strictly inside the range'
   role: bug_introducing
   operations:
   - type: replace
@@ -54,7 +54,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: fix bug (replace src/main/java/example/Range.java)'
+  message: 'Check the range bounds directly instead of calling within()'
   role: bug_fixing
   operations:
   - type: replace
@@ -66,7 +66,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: fix bug (replace src/main/java/example/Range.java)'
+  message: 'Check the range bounds directly in the remaining caller'
   role: bug_fixing
   operations:
   - type: replace

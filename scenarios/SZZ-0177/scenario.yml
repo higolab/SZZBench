@@ -31,8 +31,8 @@ repository:
 commits:
   - id: "c0"
     message: "Add account transfers with balance and limit checks"
-    author: "Luca Moretti <luca.moretti@example.com>"
-    date: "2024-05-02T09:00:00Z"
+    author: "Hana Sato <hana.sato@example.com>"
+    date: "2023-05-08T14:19:00Z"
     role: "initial"
     operations:
       - type: "write_file"
@@ -94,8 +94,8 @@ commits:
 
   - id: "c1"
     message: "Remove the amount check that the request validator already performs"
-    author: "Diego Alvarez <diego.alvarez@example.com>"
-    date: "2024-05-07T14:22:00Z"
+    author: "Hana Sato <hana.sato@example.com>"
+    date: "2023-05-09T08:11:00Z"
     role: "bug_introducing"
     operations:
       - type: "replace"
@@ -113,8 +113,8 @@ commits:
 
   - id: "c2"
     message: "Expose the configured daily limit"
-    author: "Hana Sato <hana.sato@example.com>"
-    date: "2024-05-13T10:40:00Z"
+    author: "Diego Alvarez <diego.alvarez@example.com>"
+    date: "2023-05-15T08:15:00Z"
     role: "feature_addition"
     operations:
       - type: "replace"
@@ -133,8 +133,8 @@ commits:
 
   - id: "c3"
     message: "Reject non-positive transfer amounts in the service layer"
-    author: "Luca Moretti <luca.moretti@example.com>"
-    date: "2024-05-20T17:05:00Z"
+    author: "Diego Alvarez <diego.alvarez@example.com>"
+    date: "2023-05-22T14:57:00Z"
     role: "bug_fixing"
     operations:
       - type: "replace"

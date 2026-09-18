@@ -1,9 +1,9 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0122
-  title: BFC with multiple files represented by write_file
+  title: BFC touches an extra file besides the fault
   slug: bfc-with-extra-file
-  description: 'This scenario evaluates SZZ behavior when the bug-fixing commit has the shape: BFC with multiple files represented by write_file.'
+  description: 'This scenario evaluates SZZ behavior when the bug-fixing commit has the shape: BFC touches an extra file besides the fault.'
   category: "BFC-side noise and tangled commits"
   factors:
   - single-bic
@@ -22,8 +22,8 @@ repository:
 commits:
 - id: c0
   message: Initial correct implementation
-  author: Alice <alice@example.com>
-  date: '2024-01-01T10:00:00Z'
+  author: Luca Moretti <luca.moretti@example.com>
+  date: 2024-02-09T12:06:00Z
   role: initial
   operations:
   - type: write_file
@@ -37,9 +37,9 @@ commits:
           }
       }
 - id: c1
-  message: Introduce bug
-  author: Bob <bob@example.com>
-  date: '2024-01-02T10:00:00Z'
+  message: 'Accept either condition in the check'
+  author: Jonas Berg <jonas.berg@example.com>
+  date: 2024-02-13T08:04:00Z
   role: bug_introducing
   operations:
   - type: replace
@@ -65,8 +65,8 @@ commits:
     - fault
 - id: c2
   message: Fix bug
-  author: Carol <carol@example.com>
-  date: '2024-01-03T10:00:00Z'
+  author: Luca Moretti <luca.moretti@example.com>
+  date: 2024-02-21T13:41:00Z
   role: bug_fixing
   operations:
   - type: replace
@@ -102,7 +102,7 @@ commits:
       }
 bugs:
 - id: B001
-  title: BFC with multiple files represented by write_file
+  title: BFC touches an extra file besides the fault
   bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1

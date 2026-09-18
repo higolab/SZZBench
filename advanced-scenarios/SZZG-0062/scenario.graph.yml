@@ -34,7 +34,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create lock timeout'
+  message: 'Add the lock timeout'
   role: initial
   operations:
   - type: write_file
@@ -44,7 +44,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: introduce too-short timeout on main'
+  message: 'Shorten the lock timeout to 3 seconds'
   role: bug_introducing
   operations:
   - type: replace
@@ -55,7 +55,7 @@ commits:
   branch: release
   parents:
   - c1
-  message: 'c2: release branch cut from buggy main'
+  message: 'Cut the release branch'
   role: other
   allow_empty: true
   operations: []
@@ -63,7 +63,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c3: fix timeout on main'
+  message: 'Restore the 30-second lock timeout'
   role: bug_fixing
   operations:
   - type: replace
@@ -74,7 +74,7 @@ commits:
   branch: release
   parents:
   - c2
-  message: 'c4: backport timeout fix to release branch'
+  message: 'Backport the lock timeout to release'
   role: bug_fixing
   operations:
   - type: replace

@@ -31,8 +31,8 @@ repository:
 commits:
   - id: "c0"
     message: "Add exponential backoff for job retries"
-    author: "Priya Raman <priya.raman@example.com>"
-    date: "2024-08-05T09:30:00Z"
+    author: "Tom Becker <tom.becker@example.com>"
+    date: "2024-08-19T10:09:00Z"
     role: "initial"
     operations:
       - type: "write_file"
@@ -74,8 +74,8 @@ commits:
 
   - id: "c1"
     message: "Cap the retry delay at the configured maximum"
-    author: "Priya Raman <priya.raman@example.com>"
-    date: "2024-08-08T11:15:00Z"
+    author: "Hana Sato <hana.sato@example.com>"
+    date: "2024-08-23T15:30:00Z"
     role: "bug_introducing"
     operations:
       - type: "replace"
@@ -90,8 +90,8 @@ commits:
 
   - id: "c2"
     message: "Document why the retry delay is capped"
-    author: "Diego Alvarez <diego.alvarez@example.com>"
-    date: "2024-08-14T15:40:00Z"
+    author: "Luca Moretti <luca.moretti@example.com>"
+    date: "2024-08-30T08:53:00Z"
     role: "distractor"
     operations:
       - type: "replace"
@@ -108,8 +108,8 @@ commits:
 
   - id: "c3"
     message: "Use the configured maximum as an upper bound for retry delays"
-    author: "Mei Tanaka <mei.tanaka@example.com>"
-    date: "2024-08-21T10:05:00Z"
+    author: "Luca Moretti <luca.moretti@example.com>"
+    date: "2024-09-04T08:41:00Z"
     role: "bug_fixing"
     operations:
       - type: "replace"

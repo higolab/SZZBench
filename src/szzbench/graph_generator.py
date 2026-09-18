@@ -660,7 +660,9 @@ def _expand_commit_generators(
                 except PathValidationError as exc:
                     raise GraphGenerationError(f"commit_generator of commit '{owner_id}' produced an invalid path '{rel_path}': {exc}") from exc
                 file_contents[rel_path] = existing.read_text(encoding="utf-8") if existing.exists() else ""
-            file_contents[rel_path] = _append_generated_line(file_contents[rel_path], f"{gid}: {generator} change {sequence}")
+            # The written line must not carry the generated commit id: a logical-id
+            # prefix inside the repository is an answer cue (issue #8).
+            file_contents[rel_path] = _append_generated_line(file_contents[rel_path], f"{generator} change {sequence}")
             author = deterministic_author(scenario_id, gid)
             author_date = format_timestamp(author_dates[sequence - 1])
             committer_date = format_timestamp(committer_dates[sequence - 1])

@@ -30,7 +30,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create checkout policy classes'
+  message: 'Add the checkout pricing and tax policies'
   role: initial
   operations:
   - type: write_file
@@ -57,7 +57,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: require totals above the loyalty threshold'
+  message: 'Require totals above the loyalty threshold'
   role: bug_introducing
   operations:
   - type: replace
@@ -68,7 +68,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: tighten tax-exempt state matching'
+  message: 'Require both state codes for tax exemption'
   role: bug_introducing
   operations:
   - type: replace
@@ -79,7 +79,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: fix checkout totals at discount and tax boundaries'
+  message: 'Fix checkout totals at the discount and tax boundaries'
   role: bug_fixing
   operations:
   - type: replace

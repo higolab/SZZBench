@@ -21,8 +21,8 @@ repository:
 commits:
 - id: c0
   message: Initial correct implementation
-  author: Alice <alice@example.com>
-  date: '2024-01-01T10:00:00Z'
+  author: Jonas Berg <jonas.berg@example.com>
+  date: 2023-01-17T08:06:00Z
   role: initial
   operations:
   - type: write_file
@@ -36,9 +36,9 @@ commits:
           }
       }
 - id: c1
-  message: Introduce bug
-  author: Bob <bob@example.com>
-  date: '2024-01-02T10:00:00Z'
+  message: 'Reject zero in the value check'
+  author: Jonas Berg <jonas.berg@example.com>
+  date: 2023-01-25T08:02:00Z
   role: bug_introducing
   operations:
   - type: replace
@@ -67,8 +67,8 @@ commits:
     - fault
 - id: c2
   message: Fix bug
-  author: Carol <carol@example.com>
-  date: '2024-01-03T10:00:00Z'
+  author: Jonas Berg <jonas.berg@example.com>
+  date: 2023-02-01T12:07:00Z
   role: bug_fixing
   operations:
   - type: replace

@@ -30,7 +30,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create tax calculator'
+  message: 'Add the tax calculator'
   role: initial
   operations:
   - type: write_file
@@ -40,7 +40,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: introduce tax rounding bug'
+  message: 'Round the tax up to the next unit'
   role: bug_introducing
   operations:
   - type: replace
@@ -51,7 +51,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: extract tax rate helper and fix rounding'
+  message: 'Extract the tax rate helper and round down'
   role: bug_fixing
   operations:
   - type: replace

@@ -29,7 +29,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create CP1252-encoded boundary configuration'
+  message: 'Add the config-backed range check'
   role: initial
   operations:
   - type: write_file
@@ -48,7 +48,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: introduce boundary bug in CP1252 config'
+  message: 'Narrow the configured range limits'
   role: bug_introducing
   operations:
   - type: write_binary_file
@@ -58,7 +58,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: fix CP1252 boundary config'
+  message: 'Restore the configured range limits'
   role: bug_fixing
   operations:
   - type: write_binary_file

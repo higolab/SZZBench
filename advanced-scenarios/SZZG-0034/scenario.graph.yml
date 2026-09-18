@@ -33,7 +33,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create correct range and discount implementations'
+  message: 'Add the range check and the discount calculator'
   role: initial
   operations:
   - type: write_file
@@ -48,7 +48,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: introduce range boundary bug'
+  message: 'Make the range check exclusive'
   role: bug_introducing
   operations:
   - type: replace
@@ -59,7 +59,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: introduce discount calculation bug'
+  message: 'Add the discount to the price'
   role: bug_introducing
   operations:
   - type: replace
@@ -70,7 +70,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: fix range and discount bugs together'
+  message: 'Restore the range bounds and the discount subtraction'
   role: bug_fixing
   operations:
   - type: replace

@@ -37,7 +37,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial range filter'
+  message: 'Create initial range filter'
   role: initial
   operations:
   - type: write_file

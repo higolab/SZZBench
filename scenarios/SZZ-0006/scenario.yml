@@ -22,8 +22,8 @@ repository:
 commits:
 - id: c0
   message: Initial correct implementation
-  author: Alice <alice@example.com>
-  date: '2024-01-01T10:00:00Z'
+  author: Luca Moretti <luca.moretti@example.com>
+  date: 2023-08-08T09:34:00Z
   role: initial
   operations:
   - type: write_file
@@ -37,9 +37,9 @@ commits:
           }
       }
 - id: c1
-  message: Introduce bug
-  author: Bob <bob@example.com>
-  date: '2024-01-02T10:00:00Z'
+  message: 'Offset compute() to the preceding value'
+  author: Priya Raman <priya.raman@example.com>
+  date: 2023-08-10T10:58:00Z
   role: bug_introducing
   operations:
   - type: replace
@@ -65,8 +65,8 @@ commits:
     - fault
 - id: c2
   message: Fix bug
-  author: Alice <alice@example.com>
-  date: '2024-01-03T10:00:00Z'
+  author: Tom Becker <tom.becker@example.com>
+  date: 2023-08-21T17:11:00Z
   role: bug_fixing
   operations:
   - type: replace

@@ -32,8 +32,8 @@ repository:
 commits:
   - id: "c0"
     message: "Add a labelled range check helper"
-    author: "Alice <alice@example.com>"
-    date: "2024-01-01T10:00:00Z"
+    author: "Tom Becker <tom.becker@example.com>"
+    date: "2025-06-05T16:45:00Z"
     role: "initial"
     operations:
       - type: "write_file"
@@ -55,8 +55,8 @@ commits:
 
   - id: "c1"
     message: "Make the range bounds exclusive in check()"
-    author: "Bob <bob@example.com>"
-    date: "2024-01-02T10:00:00Z"
+    author: "Tom Becker <tom.becker@example.com>"
+    date: "2025-06-09T09:38:00Z"
     role: "bug_introducing"
     operations:
       - type: "replace"
@@ -67,8 +67,8 @@ commits:
 
   - id: "c2"
     message: "Give the one-line member bodies their own lines"
-    author: "Carol <carol@example.com>"
-    date: "2024-01-03T10:00:00Z"
+    author: "Hana Sato <hana.sato@example.com>"
+    date: "2025-06-16T09:33:00Z"
     role: "formatting"
     operations:
       - type: "replace"
@@ -109,8 +109,8 @@ commits:
 
   - id: "c3"
     message: "Include both range bounds in check() again"
-    author: "Alice <alice@example.com>"
-    date: "2024-01-04T10:00:00Z"
+    author: "Diego Alvarez <diego.alvarez@example.com>"
+    date: "2025-06-19T10:49:00Z"
     role: "bug_fixing"
     operations:
       - type: "replace"

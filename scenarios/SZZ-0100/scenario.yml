@@ -30,8 +30,8 @@ repository:
 commits:
 - id: c0
   message: Read the request timeout from the deployment settings
-  author: Alice <alice@example.com>
-  date: '2024-01-01T10:00:00Z'
+  author: Mei Tanaka <mei.tanaka@example.com>
+  date: 2024-02-19T17:25:00Z
   role: initial
   operations:
   - type: write_file
@@ -54,8 +54,8 @@ commits:
       }
 - id: c1
   message: Clamp the configured timeout before converting it to milliseconds
-  author: Bob <bob@example.com>
-  date: '2024-01-02T10:00:00Z'
+  author: Hana Sato <hana.sato@example.com>
+  date: 2024-02-23T10:14:00Z
   role: bug_introducing
   operations:
   - type: replace
@@ -69,8 +69,8 @@ commits:
     - fault
 - id: c2
   message: Fall back to the default timeout when the setting is not a number
-  author: Carol <carol@example.com>
-  date: '2024-01-03T10:00:00Z'
+  author: Hana Sato <hana.sato@example.com>
+  date: 2024-03-04T17:04:00Z
   role: feature_addition
   operations:
   - type: replace
@@ -89,8 +89,8 @@ commits:
     - non_bug_introducing_change
 - id: c3
   message: Apply the timeout maximum in milliseconds, not in seconds
-  author: Dave <dave@example.com>
-  date: '2024-01-04T10:00:00Z'
+  author: Tom Becker <tom.becker@example.com>
+  date: 2024-03-08T14:54:00Z
   role: bug_fixing
   operations:
   - type: replace

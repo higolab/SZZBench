@@ -34,7 +34,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create quota checker'
+  message: 'Add the quota checker'
   role: initial
   operations:
   - type: write_file
@@ -45,7 +45,7 @@ commits:
   branch: feature
   parents:
   - c0
-  message: 'c1: feature branch introduces quota boundary bug'
+  message: 'Require usage below the quota limit'
   role: bug_introducing
   operations:
   - type: replace
@@ -56,7 +56,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c2: main branch updates comments only'
+  message: 'Add the quota helper notes'
   role: other
   operations:
   - type: write_file
@@ -67,14 +67,14 @@ commits:
   parents:
   - c2
   - c1
-  message: 'c3: merge feature branch'
+  message: 'Merge the feature branch'
   role: merge
   operations: []
 - id: c4
   branch: main
   parents:
   - c3
-  message: 'c4: fix quota boundary on main'
+  message: 'Allow usage equal to the quota limit'
   role: bug_fixing
   operations:
   - type: replace

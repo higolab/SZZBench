@@ -29,8 +29,8 @@ repository:
 commits:
   - id: "c0"
     message: "Initial validators"
-    author: "Alice <alice@example.com>"
-    date: "2024-01-01T10:00:00Z"
+    author: "Luca Moretti <luca.moretti@example.com>"
+    date: "2023-05-15T12:42:00Z"
     role: "initial"
     operations:
       - type: "write_file"
@@ -50,8 +50,8 @@ commits:
 
   - id: "c1"
     message: "Make zero invalid in validators"
-    author: "Bob <bob@example.com>"
-    date: "2024-01-02T10:00:00Z"
+    author: "Luca Moretti <luca.moretti@example.com>"
+    date: "2023-05-22T16:20:00Z"
     role: "bug_introducing"
     operations:
       - type: "replace"
@@ -69,8 +69,8 @@ commits:
 
   - id: "c2"
     message: "Allow zero age"
-    author: "Alice <alice@example.com>"
-    date: "2024-01-03T10:00:00Z"
+    author: "Luca Moretti <luca.moretti@example.com>"
+    date: "2023-05-25T15:05:00Z"
     role: "bug_fixing"
     operations:
       - type: "replace"

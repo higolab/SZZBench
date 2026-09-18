@@ -32,8 +32,8 @@ repository:
 commits:
   - id: "c0"
     message: "Add checkout flow with order validation and payment"
-    author: "Priya Raman <priya.raman@example.com>"
-    date: "2024-06-03T09:10:00Z"
+    author: "Luca Moretti <luca.moretti@example.com>"
+    date: "2023-12-25T10:17:00Z"
     role: "initial"
     operations:
       - type: "write_file"
@@ -125,8 +125,8 @@ commits:
 
   - id: "c1"
     message: "Drop the second validation pass from checkout"
-    author: "Mei Tanaka <mei.tanaka@example.com>"
-    date: "2024-06-06T14:30:00Z"
+    author: "Luca Moretti <luca.moretti@example.com>"
+    date: "2023-12-27T08:45:00Z"
     role: "bug_introducing"
     operations:
       - type: "replace"
@@ -142,8 +142,8 @@ commits:
 
   - id: "c2"
     message: "Record the order id with each charge"
-    author: "Luca Moretti <luca.moretti@example.com>"
-    date: "2024-06-12T11:00:00Z"
+    author: "Hana Sato <hana.sato@example.com>"
+    date: "2024-01-01T16:39:00Z"
     role: "feature_addition"
     operations:
       - type: "replace"
@@ -156,8 +156,8 @@ commits:
 
   - id: "c3"
     message: "Refuse to charge orders with a non-positive total"
-    author: "Priya Raman <priya.raman@example.com>"
-    date: "2024-06-18T16:45:00Z"
+    author: "Luca Moretti <luca.moretti@example.com>"
+    date: "2024-01-08T12:16:00Z"
     role: "bug_fixing"
     operations:
       - type: "replace"

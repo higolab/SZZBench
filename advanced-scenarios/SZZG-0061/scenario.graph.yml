@@ -32,7 +32,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create status mapper'
+  message: 'Add the status mapper'
   role: initial
   operations:
   - type: write_file
@@ -43,7 +43,7 @@ commits:
   branch: release
   parents:
   - c0
-  message: 'c1: introduce wrong error status on release branch'
+  message: 'Return 400 for the error case'
   role: bug_introducing
   operations:
   - type: replace
@@ -54,7 +54,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c2: cherry-pick wrong error status onto main'
+  message: 'Cherry-pick the error status change onto main'
   role: bug_introducing
   operations:
   - type: replace
@@ -65,7 +65,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: fix wrong error status on main'
+  message: 'Return 500 for the error case again'
   role: bug_fixing
   operations:
   - type: replace

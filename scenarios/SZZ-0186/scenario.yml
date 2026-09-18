@@ -33,8 +33,8 @@ repository:
 commits:
   - id: "c0"
     message: "Add paging calculations for list endpoints"
-    author: "Luca Moretti <luca.moretti@example.com>"
-    date: "2023-01-09T10:20:00Z"
+    author: "Diego Alvarez <diego.alvarez@example.com>"
+    date: "2025-06-16T10:47:00Z"
     role: "initial"
     operations:
       - type: "write_file"
@@ -67,8 +67,8 @@ commits:
 
   - id: "c1"
     message: "Simplify the page count formula"
-    author: "Tom Becker <tom.becker@example.com>"
-    date: "2023-01-12T13:00:00Z"
+    author: "Jonas Berg <jonas.berg@example.com>"
+    date: "2025-06-20T08:26:00Z"
     role: "bug_introducing"
     operations:
       - type: "replace"
@@ -81,8 +81,8 @@ commits:
 
   - id: "c2"
     message: "Clamp negative page numbers to the first page"
-    author: "Aiko Mori <aiko.mori@example.com>"
-    date: "2023-01-18T09:45:00Z"
+    author: "Jonas Berg <jonas.berg@example.com>"
+    date: "2025-06-26T09:27:00Z"
     role: "feature_addition"
     operations:
       - type: "replace"
@@ -95,8 +95,8 @@ commits:
 
   - id: "c3"
     message: "Fix the page count for exact multiples and fail fast on offset overflow"
-    author: "Luca Moretti <luca.moretti@example.com>"
-    date: "2023-01-25T16:30:00Z"
+    author: "Jonas Berg <jonas.berg@example.com>"
+    date: "2025-07-07T12:22:00Z"
     role: "bug_fixing"
     operations:
       - type: "replace"

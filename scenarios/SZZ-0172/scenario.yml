@@ -23,7 +23,9 @@ repository:
   source_root: src/main/java
 commits:
 - id: c0
-  message: 'c0: create retry delay config and interpreter'
+  message: 'Add the retry delay configuration and its interpreter'
+  author: Luca Moretti <luca.moretti@example.com>
+  date: 2023-07-17T16:16:00Z
   role: initial
   operations:
   - type: write_file
@@ -50,7 +52,9 @@ commits:
         }
       }
 - id: c1
-  message: 'c1: tune retry delay config to milliseconds'
+  message: 'Tune the retry delay to milliseconds'
+  author: Hana Sato <hana.sato@example.com>
+  date: 2023-07-24T18:01:00Z
   role: bug_introducing
   operations:
   - type: replace
@@ -58,7 +62,9 @@ commits:
     old: retry.delay.unit=seconds
     new: retry.delay.unit=milliseconds
 - id: c2
-  message: 'c2: document retry delay configuration'
+  message: 'Document the retry delay configuration'
+  author: Mei Tanaka <mei.tanaka@example.com>
+  date: 2023-08-02T08:16:00Z
   role: distractor
   operations:
   - type: write_file
@@ -67,7 +73,9 @@ commits:
 
 '
 - id: c3
-  message: 'c3: honor millisecond retry delay config'
+  message: 'Honour the millisecond retry delay unit'
+  author: Diego Alvarez <diego.alvarez@example.com>
+  date: 2023-08-03T15:18:00Z
   role: bug_fixing
   operations:
   - type: replace

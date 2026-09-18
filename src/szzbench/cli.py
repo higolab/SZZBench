@@ -146,6 +146,7 @@ def cmd_evaluate(args) -> int:
         variant=args.variant,
         include_generated=args.include_generated,
         evaluation_variant=args.evaluation_variant,
+        reference_format=args.reference_format,
     )
     if args.out:
         out_dir = Path(args.out)
@@ -328,6 +329,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_evaluate.add_argument("--variant", default="default", help="Generated repository variant name under each scenario")
     p_evaluate.add_argument("--include-generated", action="store_true", help="Evaluate every generated repository under --generated-root, using empty predictions for missing records")
     p_evaluate.add_argument("--evaluation-variant", help="Graph scenario evaluation variant name to use, overriding expected_szz.default_variant")
+    p_evaluate.add_argument(
+        "--reference-format",
+        choices=["auto", "hash", "logical"],
+        default="auto",
+        help="How predicted commits may be written: 'hash' accepts only commit hashes, which is all a tool that reads the "
+             "repository can produce; 'logical' accepts only scenario ids such as c1, for adapters and fixtures; 'auto' "
+             "(default) accepts both. Rejected references are reported as unknown predictions.",
+    )
     p_evaluate.add_argument("--out", help="Output directory for evaluation-results.json and evaluation-results.md")
     p_evaluate.add_argument("--json", action="store_true", help="Print JSON output")
     p_evaluate.add_argument("--fail-on-non-pass", action="store_true", help="Return a non-zero exit code when any scenario is non-PASS")

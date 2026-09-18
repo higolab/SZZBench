@@ -32,7 +32,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial calculator and validator'
+  message: 'Add the calculator and the validator'
   role: initial
   operations:
   - type: write_file
@@ -47,7 +47,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: introduce rounding bug in calculator'
+  message: 'Round the tax up'
   role: bug_introducing
   operations:
   - type: replace
@@ -58,7 +58,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: introduce zero-quantity validation bug'
+  message: 'Allow a quantity of zero'
   role: bug_introducing
   operations:
   - type: replace
@@ -69,7 +69,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: fix both pricing and validation bugs'
+  message: 'Restore tax rounding and the minimum quantity'
   role: bug_fixing
   operations:
   - type: replace

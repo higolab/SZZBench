@@ -14,7 +14,7 @@ Evaluate Top-k evaluation and whether SZZ identifies the expected bug-introducin
 c0: create initial state (write_file src/main/java/example/RangeService.java)
 c1: introduce bug (replace src/main/java/example/RangeService.java)
 c2: add distractor change (replace src/main/java/example/RangeService.java)
-c3: add distractor change (write_file docs/ranking-distractor.md)
+c3: add distractor change (write_file docs/range-service-notes.md)
 c4: fix bug (replace src/main/java/example/RangeService.java)
 ```
 

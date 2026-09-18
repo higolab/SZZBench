@@ -28,8 +28,8 @@ repository:
 commits:
   - id: "c0"
     message: "Initial range implementation"
-    author: "Alice <alice@example.com>"
-    date: "2024-01-01T10:00:00Z"
+    author: "Luca Moretti <luca.moretti@example.com>"
+    date: "2025-04-11T16:24:00Z"
     role: "initial"
     operations:
       - type: "write_file"
@@ -45,8 +45,8 @@ commits:
 
   - id: "c1"
     message: "Update range logic and add width helper"
-    author: "Bob <bob@example.com>"
-    date: "2024-01-02T10:00:00Z"
+    author: "Diego Alvarez <diego.alvarez@example.com>"
+    date: "2025-04-14T15:37:00Z"
     role: "bug_introducing"
     operations:
       - type: "replace"
@@ -72,8 +72,8 @@ commits:
 
   - id: "c2"
     message: "Fix range inclusiveness"
-    author: "Alice <alice@example.com>"
-    date: "2024-01-03T10:00:00Z"
+    author: "Diego Alvarez <diego.alvarez@example.com>"
+    date: "2025-04-23T12:54:00Z"
     role: "bug_fixing"
     operations:
       - type: "replace"

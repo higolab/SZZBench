@@ -22,8 +22,8 @@ repository:
 commits:
 - id: c0
   message: Initial correct implementation
-  author: Alice <alice@example.com>
-  date: '2024-01-01T10:00:00Z'
+  author: Priya Raman <priya.raman@example.com>
+  date: 2024-10-21T16:23:00Z
   role: initial
   operations:
   - type: write_file
@@ -37,9 +37,9 @@ commits:
           }
       }
 - id: c1
-  message: Introduce bug
-  author: Bob <bob@example.com>
-  date: '2024-01-02T10:00:00Z'
+  message: 'Require values above the lower bound'
+  author: Priya Raman <priya.raman@example.com>
+  date: 2024-10-28T16:01:00Z
   role: bug_introducing
   operations:
   - type: replace
@@ -65,8 +65,8 @@ commits:
     - fault
 - id: c2
   message: Fix bug
-  author: Carol <carol@example.com>
-  date: '2024-01-03T10:00:00Z'
+  author: Priya Raman <priya.raman@example.com>
+  date: 2024-11-05T17:21:00Z
   role: bug_fixing
   operations:
   - type: replace

@@ -31,8 +31,8 @@ repository:
 commits:
   - id: "c0"
     message: "Add word counter with a small test harness"
-    author: "Aiko Mori <aiko.mori@example.com>"
-    date: "2023-05-08T09:00:00Z"
+    author: "Priya Raman <priya.raman@example.com>"
+    date: "2024-01-26T11:50:00Z"
     role: "initial"
     operations:
       - type: "write_file"
@@ -97,8 +97,8 @@ commits:
 
   - id: "c1"
     message: "Split on plain spaces to avoid the regex engine"
-    author: "Hana Sato <hana.sato@example.com>"
-    date: "2023-05-11T14:20:00Z"
+    author: "Mei Tanaka <mei.tanaka@example.com>"
+    date: "2024-01-29T18:32:00Z"
     role: "bug_introducing"
     operations:
       - type: "replace"
@@ -111,8 +111,8 @@ commits:
 
   - id: "c2"
     message: "Cover blank input in the word counter test"
-    author: "Tom Becker <tom.becker@example.com>"
-    date: "2023-05-16T10:10:00Z"
+    author: "Aiko Mori <aiko.mori@example.com>"
+    date: "2024-02-05T16:42:00Z"
     role: "test_change"
     operations:
       - type: "replace"
@@ -132,8 +132,8 @@ commits:
 
   - id: "c3"
     message: "Treat runs of whitespace as a single word separator again"
-    author: "Aiko Mori <aiko.mori@example.com>"
-    date: "2023-05-23T16:00:00Z"
+    author: "Priya Raman <priya.raman@example.com>"
+    date: "2024-02-12T14:11:00Z"
     role: "bug_fixing"
     operations:
       - type: "replace"

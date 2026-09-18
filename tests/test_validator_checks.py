@@ -548,3 +548,47 @@ def test_origin_coverage_ignores_non_origin_roles():
     data = graph_scenario()
     data["bugs"][0]["bug_introducing_commits"].append({"commit": "c0", "role": "contributing"})
     assert lint_graph(data).findings == []
+
+
+def test_leakage_lint_catches_the_forms_the_first_version_missed():
+    """Regression examples from the PR #34 re-review.
+
+    The original patterns were anchored, lower-case and required the literal
+    word "bug" within three *unhyphenated* words of "introduce", so each of the
+    messages below passed the lint while naming its own role.
+    """
+    data = classic_scenario()
+    bic = data["commits"][1]
+
+    # hyphenated words between "introduce" and "bug"
+    for message in ("Introduce context-sensitive bug",
+                    "Introduce context-sensitive caller bug",
+                    "introduce release-specific range bug"):
+        bic["message"] = message
+        assert codes(lint_classic(data)) == ["W410"], message
+
+    # an admission of a fault without the word "bug" at all
+    for message in ("Introduce ambiguous faulty statement",
+                    "Rewrite the buggy comparison",
+                    "Keep the faulty line for now"):
+        bic["message"] = message
+        assert codes(lint_classic(data)) == ["W410"], message
+
+    # a logical id behind a legitimate work-item id, and a capitalised one
+    for message, exposed in (("WI-001 c1: implement the range feature", "c1"),
+                             ("WI-418 C1: reject oversold reservations", "C1"),
+                             ("Rel1: cut the release branch", "Rel1"),
+                             ("Fix the check; suspected c0", "c0")):
+        bic["message"] = message
+        result = lint_classic(data)
+        assert codes(result) == ["W411"], message
+        assert exposed in result.findings[0].message
+
+    # legitimate identifiers and natural wording stay clean
+    for message in ("WI-001 implement the range feature",
+                    "ISSUE-482 keep blank middle names as empty strings",
+                    "PAY-314 bypass the EU checkout challenge",
+                    "Add a webhook date regression test",
+                    "Rename the cubic interpolation helper"):
+        bic["message"] = message
+        assert lint_classic(data).findings == [], message

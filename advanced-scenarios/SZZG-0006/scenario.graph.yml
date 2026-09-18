@@ -34,7 +34,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create RangeService with validation and reporting'
+  message: 'Add RangeService with validation and reporting'
   role: initial
   operations:
   - type: write_file
@@ -47,7 +47,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: introduce range boundary bug'
+  message: 'Require values strictly inside the range'
   role: bug_introducing
   operations:
   - type: replace
@@ -58,7 +58,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: extract RangeValidator class after BIC'
+  message: 'Extract RangeValidator from RangeService'
   role: intermediate
   operations:
   - type: write_file
@@ -74,7 +74,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: fix boundary bug in extracted validator'
+  message: 'Accept the range bounds in the extracted validator'
   role: bug_fixing
   operations:
   - type: replace

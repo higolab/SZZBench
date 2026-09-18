@@ -31,8 +31,8 @@ repository:
 commits:
   - id: "c0"
     message: "Add currency conversion and price display helpers"
-    author: "Jonas Berg <jonas.berg@example.com>"
-    date: "2024-03-04T10:00:00Z"
+    author: "Tom Becker <tom.becker@example.com>"
+    date: "2024-04-10T15:14:00Z"
     role: "initial"
     operations:
       - type: "write_file"
@@ -87,8 +87,8 @@ commits:
 
   - id: "c1"
     message: "Replace Math.round with a cast in the conversion path"
-    author: "Jonas Berg <jonas.berg@example.com>"
-    date: "2024-03-07T15:20:00Z"
+    author: "Tom Becker <tom.becker@example.com>"
+    date: "2024-04-18T17:32:00Z"
     role: "bug_introducing"
     operations:
       - type: "replace"
@@ -101,8 +101,8 @@ commits:
 
   - id: "c2"
     message: "Show the currency code before the amount"
-    author: "Aiko Mori <aiko.mori@example.com>"
-    date: "2024-03-12T09:50:00Z"
+    author: "Priya Raman <priya.raman@example.com>"
+    date: "2024-04-22T14:32:00Z"
     role: "feature_addition"
     operations:
       - type: "replace"
@@ -115,8 +115,8 @@ commits:
 
   - id: "c3"
     message: "Round converted amounts to the nearest cent; use a non-breaking space in prices"
-    author: "Hana Sato <hana.sato@example.com>"
-    date: "2024-03-19T13:35:00Z"
+    author: "Tom Becker <tom.becker@example.com>"
+    date: "2024-04-24T17:24:00Z"
     role: "bug_fixing"
     operations:
       - type: "replace"

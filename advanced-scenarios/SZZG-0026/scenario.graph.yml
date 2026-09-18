@@ -32,7 +32,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create original formatter'
+  message: 'Add the formatter'
   role: initial
   operations:
   - type: write_file
@@ -43,7 +43,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: copy formatter to report formatter'
+  message: 'Copy the formatter for reports'
   role: other
   operations:
   - type: copy_file
@@ -57,7 +57,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: introduce copied-code null handling bug'
+  message: 'Trim the report value directly'
   role: bug_introducing
   operations:
   - type: replace
@@ -68,7 +68,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: fix copied formatter null handling'
+  message: 'Handle a null report value again'
   role: bug_fixing
   operations:
   - type: replace

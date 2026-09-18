@@ -40,7 +40,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial correct implementation'
+  message: 'Add the range check'
   role: initial
   operations:
   - type: write_file
@@ -51,7 +51,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: introduce range boundary bug before release branch'
+  message: 'Make the range check exclusive'
   role: bug_introducing
   operations:
   - type: replace
@@ -62,7 +62,7 @@ commits:
   branch: release
   parents:
   - c1
-  message: 'r0: cut release branch from buggy state'
+  message: 'Cut the 1.0.0 release branch'
   role: release_branch_point
   operations:
   - type: write_file
@@ -74,7 +74,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: fix range boundary bug on main'
+  message: 'Accept the range bounds again'
   role: bug_fixing
   operations:
   - type: replace
@@ -85,19 +85,19 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: continue main development after fix'
+  message: 'Continue main development'
   role: intermediate
   operations:
   - type: write_file
-    path: docs/main-after-fix.md
-    content: 'Main branch continues after the range bug fix.
+    path: docs/main-development.md
+    content: 'Main branch development continues.
 
       '
 - id: r1
   branch: release
   parents:
   - r0
-  message: 'r1: add release-specific configuration before backport'
+  message: 'Add the release compatibility configuration'
   role: intermediate
   operations:
   - type: write_file
@@ -109,7 +109,7 @@ commits:
   branch: release
   parents:
   - r1
-  message: 'r2: backport range boundary fix from main'
+  message: 'Backport the range bounds fix to release'
   role: bug_fixing
   backport_of: c2
   operations:

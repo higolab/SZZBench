@@ -32,7 +32,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create original sanitizer'
+  message: 'Add the sanitizer'
   role: initial
   operations:
   - type: write_file
@@ -43,7 +43,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: introduce bug in original sanitizer'
+  message: 'Return the input unchanged from the sanitizer'
   role: bug_introducing
   operations:
   - type: replace
@@ -54,7 +54,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: copy sanitizer into admin module'
+  message: 'Copy the sanitizer into the admin module'
   role: other
   operations:
   - type: copy_file
@@ -68,7 +68,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: fix copied sanitizer only'
+  message: 'Escape angle brackets in the admin sanitizer'
   role: bug_fixing
   operations:
   - type: replace

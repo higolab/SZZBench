@@ -35,7 +35,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create range helper methods'
+  message: 'Add the range helper methods'
   role: initial
   operations:
   - type: write_file
@@ -47,7 +47,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: introduce lower and upper boundary bugs'
+  message: 'Exclude the bounds from both helpers'
   role: bug_introducing
   operations:
   - type: replace
@@ -62,7 +62,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: partially fix lower boundary'
+  message: 'Include the minimum in aboveMin()'
   role: bug_fixing
   operations:
   - type: replace
@@ -73,7 +73,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: complete fix by repairing upper boundary'
+  message: 'Include the maximum in belowMax()'
   role: bug_fixing
   operations:
   - type: replace

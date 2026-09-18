@@ -30,7 +30,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create normalizer'
+  message: 'Add the normalizer'
   role: initial
   operations:
   - type: write_file
@@ -41,7 +41,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: rename method and accidentally remove lower-case conversion'
+  message: 'Rename normalize() to clean()'
   role: bug_introducing
   operations:
   - type: replace
@@ -56,7 +56,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: fix normalization after refactoring'
+  message: 'Lower-case the cleaned value again'
   role: bug_fixing
   operations:
   - type: replace

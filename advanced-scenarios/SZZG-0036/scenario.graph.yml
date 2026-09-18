@@ -32,7 +32,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
+  message: 'Add the range check'
   role: initial
   operations:
   - type: write_file
@@ -43,7 +43,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
+  message: 'Make the range check exclusive'
   role: bug_introducing
   operations:
   - type: replace
@@ -54,7 +54,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: add test context (write_file src/test/java/example/RangeTest.java)'
+  message: 'Add the range boundary test'
   role: test_added
   operations:
   - type: write_file
@@ -68,7 +68,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: fix bug (replace src/main/java/example/Range.java)'
+  message: 'Accept the lower bound again'
   role: bug_fixing
   operations:
   - type: replace
@@ -79,7 +79,7 @@ commits:
   branch: main
   parents:
   - c3
-  message: 'c4: fix bug (replace src/main/java/example/Range.java)'
+  message: 'Accept the upper bound again'
   role: bug_fixing
   operations:
   - type: replace

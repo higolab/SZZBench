@@ -29,7 +29,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create account directory and welcome mailer'
+  message: 'Create account directory and welcome mailer'
   role: initial
   operations:
   - type: write_file
@@ -61,7 +61,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: let guest accounts have no preferred display name'
+  message: 'Let guest accounts have no preferred display name'
   role: intermediate
   operations:
   - type: replace
@@ -76,7 +76,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: simplify welcome-mailer name lookup'
+  message: 'Simplify welcome-mailer name lookup'
   role: bug_introducing
   operations:
   - type: replace
@@ -87,7 +87,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: restore fallback greeting for guest accounts'
+  message: 'Restore fallback greeting for guest accounts'
   role: bug_fixing
   operations:
   - type: replace

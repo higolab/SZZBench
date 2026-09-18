@@ -17,7 +17,9 @@ repository:
   source_root: src/main/java
 commits:
 - id: c0
-  message: 'c0: create initial state (write_file pom.xml; write_file src/main/java/example/RangeAdapter.java)'
+  message: 'Add the range adapter and its dependency'
+  author: Jonas Berg <jonas.berg@example.com>
+  date: 2023-09-26T15:24:00Z
   role: initial
   operations:
   - type: write_file
@@ -26,7 +28,7 @@ commits:
       <project>
         <modelVersion>4.0.0</modelVersion>
         <groupId>example</groupId>
-        <artifactId>dependency-bic</artifactId>
+        <artifactId>range-adapter</artifactId>
         <version>1.0-SNAPSHOT</version>
         <dependencies>
           <dependency>
@@ -47,7 +49,9 @@ commits:
         }
       }
 - id: c1
-  message: 'c1: introduce bug (replace pom.xml)'
+  message: 'Upgrade RangeLib to 2.0.0'
+  author: Jonas Berg <jonas.berg@example.com>
+  date: 2023-09-27T12:05:00Z
   role: bug_introducing
   operations:
   - type: replace
@@ -55,7 +59,9 @@ commits:
     old: "<version>1.0.0</version>"
     new: "<version>2.0.0</version>"
 - id: c2
-  message: 'c2: fix bug (replace src/main/java/example/RangeAdapter.java)'
+  message: 'Call the inclusive RangeLib API'
+  author: Luca Moretti <luca.moretti@example.com>
+  date: 2023-10-06T17:02:00Z
   role: bug_fixing
   operations:
   - type: replace

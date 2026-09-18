@@ -770,7 +770,7 @@ scenarios:
   status: active
   path: scenarios/SZZ-0121/scenario.yml
 - id: SZZ-0122
-  title: BFC with multiple files represented by write_file
+  title: BFC touches an extra file besides the fault
   slug: bfc-with-extra-file
   category_code: S4
   category: BFC-side noise and tangled commits

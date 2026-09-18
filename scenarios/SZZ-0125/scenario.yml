@@ -28,8 +28,8 @@ repository:
 commits:
 - id: c0
   message: Add the idle timeout policy for signed-in sessions
-  author: Alice <alice@example.com>
-  date: '2024-01-01T10:00:00Z'
+  author: Jonas Berg <jonas.berg@example.com>
+  date: 2025-01-13T18:36:00Z
   role: initial
   operations:
   - type: write_file
@@ -67,8 +67,8 @@ commits:
       }
 - id: c1
   message: Expire a session as soon as it reaches the idle timeout
-  author: Bob <bob@example.com>
-  date: '2024-01-02T10:00:00Z'
+  author: Aiko Mori <aiko.mori@example.com>
+  date: 2025-01-20T12:30:00Z
   role: bug_introducing
   operations:
   - type: replace
@@ -82,8 +82,8 @@ commits:
     - fault
 - id: c2
   message: Rename withinTimeout() to say which timeout it checks
-  author: Carol <carol@example.com>
-  date: '2024-01-03T10:00:00Z'
+  author: Jonas Berg <jonas.berg@example.com>
+  date: 2025-01-22T16:24:00Z
   role: refactoring
   operations:
   - type: replace
@@ -104,8 +104,8 @@ commits:
     - non_bug_introducing_change
 - id: c3
   message: Keep a session alive at exactly the idle timeout
-  author: Alice <alice@example.com>
-  date: '2024-01-04T10:00:00Z'
+  author: Jonas Berg <jonas.berg@example.com>
+  date: 2025-01-29T16:20:00Z
   role: bug_fixing
   operations:
   - type: replace

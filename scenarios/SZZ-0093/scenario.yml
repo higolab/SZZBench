@@ -30,8 +30,8 @@ repository:
 commits:
 - id: c0
   message: Add the volume discount calculation for the checkout total
-  author: Alice <alice@example.com>
-  date: '2024-01-01T10:00:00Z'
+  author: Priya Raman <priya.raman@example.com>
+  date: 2023-10-30T16:52:00Z
   role: initial
   operations:
   - type: write_file
@@ -57,8 +57,8 @@ commits:
       }
 - id: c1
   message: Grant the volume discount only above the minimum order value
-  author: Bob <bob@example.com>
-  date: '2024-01-02T10:00:00Z'
+  author: Luca Moretti <luca.moretti@example.com>
+  date: 2023-11-06T12:18:00Z
   role: bug_introducing
   operations:
   - type: replace
@@ -72,8 +72,8 @@ commits:
     - fault
 - id: c2
   message: Return early from discountCents instead of using an else branch
-  author: Carol <carol@example.com>
-  date: '2024-01-03T10:00:00Z'
+  author: Luca Moretti <luca.moretti@example.com>
+  date: 2023-11-13T17:08:00Z
   role: refactoring
   operations:
   - type: replace
@@ -89,8 +89,8 @@ commits:
     - non_bug_introducing_change
 - id: c3
   message: Discount orders that exactly meet the minimum order value
-  author: Dave <dave@example.com>
-  date: '2024-01-04T10:00:00Z'
+  author: Luca Moretti <luca.moretti@example.com>
+  date: 2023-11-17T14:26:00Z
   role: bug_fixing
   operations:
   - type: replace

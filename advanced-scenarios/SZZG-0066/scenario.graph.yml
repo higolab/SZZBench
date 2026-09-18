@@ -35,7 +35,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial correct implementation'
+  message: 'Add the range check'
   role: initial
   operations:
   - type: write_file
@@ -46,7 +46,7 @@ commits:
   branch: feature
   parents:
   - c0
-  message: 'f1: introduce range bug on feature'
+  message: 'Make the range check exclusive'
   role: origin_bug_introducing
   operations:
   - type: replace
@@ -57,7 +57,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'm1: add main-line documentation'
+  message: 'Add the main documentation note'
   role: intermediate
   operations:
   - type: write_file
@@ -69,7 +69,7 @@ commits:
   branch: main
   parents:
   - m1
-  message: 'r1: resolve rebase conflict by taking buggy feature logic'
+  message: 'Resolve the rebase conflict in favour of the feature version'
   role: bug_introducing
   operations:
   - type: replace
@@ -82,7 +82,7 @@ commits:
   branch: main
   parents:
   - r1
-  message: 'c2: fix propagated rebase bug'
+  message: 'Accept the range bounds again'
   role: bug_fixing
   operations:
   - type: replace

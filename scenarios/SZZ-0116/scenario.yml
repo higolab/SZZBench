@@ -27,8 +27,8 @@ repository:
 commits:
 - id: c0
   message: Add counter helpers for the progress widget
-  author: Alice <alice@example.com>
-  date: '2024-01-01T10:00:00Z'
+  author: Tom Becker <tom.becker@example.com>
+  date: 2024-09-30T12:40:00Z
   role: initial
   operations:
   - type: write_file
@@ -54,8 +54,8 @@ commits:
       }
 - id: c1
   message: Start the progress counter at one and advance it in double steps
-  author: Bob <bob@example.com>
-  date: '2024-01-02T10:00:00Z'
+  author: Aiko Mori <aiko.mori@example.com>
+  date: 2024-10-01T15:46:00Z
   role: bug_introducing
   operations:
   - type: replace
@@ -78,8 +78,8 @@ commits:
     - fault
 - id: c2
   message: Count progress from zero again and advance one step at a time
-  author: Carol <carol@example.com>
-  date: '2024-01-03T10:00:00Z'
+  author: Aiko Mori <aiko.mori@example.com>
+  date: 2024-10-07T09:59:00Z
   role: bug_fixing
   operations:
   - type: replace

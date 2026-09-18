@@ -29,8 +29,8 @@ repository:
 commits:
 - id: c0
   message: Add the shipment gate for picked warehouse orders
-  author: Alice <alice@example.com>
-  date: '2024-01-01T10:00:00Z'
+  author: Tom Becker <tom.becker@example.com>
+  date: 2024-05-29T11:49:00Z
   role: initial
   operations:
   - type: write_file
@@ -60,8 +60,8 @@ commits:
       }
 - id: c1
   message: Hand over an order only above the minimum picked quantity
-  author: Bob <bob@example.com>
-  date: '2024-01-02T10:00:00Z'
+  author: Mei Tanaka <mei.tanaka@example.com>
+  date: 2024-06-07T14:52:00Z
   role: bug_introducing
   operations:
   - type: replace
@@ -75,8 +75,8 @@ commits:
     - fault
 - id: c2
   message: Extract the stock check of readyToShip() into a helper
-  author: Carol <carol@example.com>
-  date: '2024-01-03T10:00:00Z'
+  author: Aiko Mori <aiko.mori@example.com>
+  date: 2024-06-10T17:24:00Z
   role: refactoring
   operations:
   - type: replace
@@ -101,8 +101,8 @@ commits:
     - non_bug_introducing_change
 - id: c3
   message: Ship an order that holds exactly the minimum units
-  author: Dave <dave@example.com>
-  date: '2024-01-04T10:00:00Z'
+  author: Luca Moretti <luca.moretti@example.com>
+  date: 2024-06-12T16:39:00Z
   role: bug_fixing
   operations:
   - type: replace

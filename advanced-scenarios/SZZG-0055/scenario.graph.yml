@@ -36,7 +36,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial correct implementation'
+  message: 'Add the range check'
   role: initial
   operations:
   - type: write_file
@@ -47,7 +47,7 @@ commits:
   branch: release
   parents:
   - c0
-  message: 'rel1: introduce release-specific range bug'
+  message: 'Make the range check exclusive on the release branch'
   role: origin_bug_introducing
   operations:
   - type: replace
@@ -58,7 +58,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'm1: continue main development'
+  message: 'Continue main development'
   role: intermediate
   operations:
   - type: write_file
@@ -70,7 +70,7 @@ commits:
   branch: main
   parents:
   - m1
-  message: 'r1: rebase release change onto main'
+  message: 'Make the range check exclusive'
   role: bug_introducing
   operations:
   - type: replace
@@ -82,7 +82,7 @@ commits:
   branch: main
   parents:
   - r1
-  message: 'c2: fix release-origin bug on main'
+  message: 'Accept the range bounds again'
   role: bug_fixing
   operations:
   - type: replace

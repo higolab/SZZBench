@@ -28,8 +28,8 @@ repository:
 commits:
 - id: c0
   message: Add the transaction risk scorer used by the payment gateway
-  author: Alice <alice@example.com>
-  date: '2024-06-01T10:00:00Z'
+  author: Priya Raman <priya.raman@example.com>
+  date: 2024-06-24T16:47:00Z
   role: initial
   operations:
   - type: write_file
@@ -168,8 +168,8 @@ commits:
       }
 - id: c1
   message: Charge the velocity penalty only above the hourly transaction limit
-  author: Bob <bob@example.com>
-  date: '2024-06-02T10:00:00Z'
+  author: Mei Tanaka <mei.tanaka@example.com>
+  date: 2024-06-27T15:34:00Z
   role: bug_introducing
   operations:
   - type: replace
@@ -183,8 +183,8 @@ commits:
     - fault
 - id: c2
   message: Score the fifth transaction within an hour as a velocity hit again
-  author: Alice <alice@example.com>
-  date: '2024-06-03T10:00:00Z'
+  author: Mei Tanaka <mei.tanaka@example.com>
+  date: 2024-07-01T18:16:00Z
   role: bug_fixing
   operations:
   - type: replace

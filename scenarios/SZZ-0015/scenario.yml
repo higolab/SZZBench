@@ -22,8 +22,8 @@ repository:
 commits:
 - id: c0
   message: Initial correct implementation
-  author: Alice <alice@example.com>
-  date: '2024-01-01T10:00:00Z'
+  author: Luca Moretti <luca.moretti@example.com>
+  date: 2024-11-15T18:47:00Z
   role: initial
   operations:
   - type: write_file
@@ -37,9 +37,9 @@ commits:
           }
       }
 - id: c1
-  message: Introduce bug
-  author: Bob <bob@example.com>
-  date: '2024-01-02T10:00:00Z'
+  message: 'Report the height as the entry dimension'
+  author: Aiko Mori <aiko.mori@example.com>
+  date: 2024-11-20T08:31:00Z
   role: bug_introducing
   operations:
   - type: replace
@@ -65,8 +65,8 @@ commits:
     - fault
 - id: c2
   message: Fix bug
-  author: Alice <alice@example.com>
-  date: '2024-01-03T10:00:00Z'
+  author: Luca Moretti <luca.moretti@example.com>
+  date: 2024-11-25T17:03:00Z
   role: bug_fixing
   operations:
   - type: replace

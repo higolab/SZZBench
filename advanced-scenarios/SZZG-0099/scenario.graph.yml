@@ -29,7 +29,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create currency rounding helper'
+  message: 'Create currency rounding helper'
   role: initial
   operations:
   - type: write_file
@@ -46,7 +46,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: speed up cents normalization by truncating fractions'
+  message: 'Speed up cents normalization by truncating fractions'
   role: bug_introducing
   operations:
   - type: replace
@@ -57,7 +57,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: add invoice total label helper'
+  message: 'Add invoice total label helper'
   role: intermediate
   operations:
   - type: write_file
@@ -74,7 +74,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: fix invoice rounding regression from c2'
+  message: 'Fix the invoice rounding regression from the label helper change'
   role: bug_fixing
   operations:
   - type: replace

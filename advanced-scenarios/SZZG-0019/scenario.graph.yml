@@ -27,7 +27,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: introduce origin bug (write_file templates/Range.tpl)'
+  message: 'Add the range code template'
   role: origin_bug_introducing
   operations:
   - type: write_file
@@ -41,7 +41,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: introduce bug (write_file src/generated/java/generated/GeneratedRange.java)'
+  message: 'Regenerate the range code from the template'
   role: bug_introducing
   operations:
   - type: write_file
@@ -52,7 +52,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: fix bug (replace src/generated/java/generated/GeneratedRange.java)'
+  message: 'Accept the range bounds in the generated code'
   role: bug_fixing
   operations:
   - type: replace

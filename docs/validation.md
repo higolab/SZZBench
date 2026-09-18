@@ -141,8 +141,11 @@ With `--simulate`:
 | W400 | warning | a factor is a schema key or operation name (`expected_szz`, `faults`, `write_file`, `replace`, `edit`, `drop`, ...; see `RESERVED_FACTOR_WORDS`) | – |
 | W401 | warning | `meta.factors` is empty | – |
 | W402 | warning | factors mix hyphen and underscore styles within one scenario | – |
-| W410 | warning | a commit that is **not** the BFC has a message disclosing its role: `introduce ... bug`, `bug-introducing`, `BIC`, `BFC`, `distractor`, `intermediate change`, `initial state`, `noise`, `unrelated`, `replay...`, `reintroduc...` (case-insensitive). Natural "fix" wording in the BFC is never flagged. | – |
-| W411 | warning | any message starts with a logical-id prefix such as `c1:` (`^[a-z]{1,2}\d+:`) | – |
+The W41x / GW41x lints implement the leakage policy in
+[decisions/oracle-leakage.md](decisions/oracle-leakage.md); `tests/test_no_oracle_leakage.py` enforces it over the shipped scenarios.
+
+| W410 | warning | a commit that is **not** the BFC has a message disclosing its role: `introduce ... bug` (with hyphenated words in between, e.g. `introduce context-sensitive bug`), `bug-introducing`, `with ... bug`, `buggy`, `faulty`, `faulty statement/line/code/commit`, `BIC`, `BFC`, `distractor`, `intermediate change`, `initial state`, `noise`, `unrelated`, `replay...`, `reintroduc...` (case-insensitive). Natural "fix" wording in the BFC is never flagged. | – |
+| W411 | warning | a message exposes a logical id: one of the scenario's own commit ids as a standalone word, wherever it appears (`c1: ...`, `WI-001 c2: ...`, `suspected c0`), or an id-shaped token used as a prefix (`Rel1:`). Hyphenated issue and work-item ids (`ISSUE-482`, `PAY-314`, `WI-001`) are legitimate and are not flagged. | – |
 | W412 | warning | text written into the repository (`write_file.content`, `replace.new`, `insert_after.content`) matches the W410 role wording | – |
 | W420 | warning | ghost invariant: the BFC deletes or modifies an existing line although the scenario is declared as an addition-only fix. Declared by a factor in {`addition-only-fix`, `ghost-fix`, `add_only_fix`} (applies to every bug) or, per bug, by `fault.change_type: omission` together with `fix.fix_type` in {`line_addition`, `file_creation`} | – |
 | W421 | warning | ghost invariant: a BIC adds lines although the scenario is declared as a deletion-only BIC (factor `deletion-only-bic` or `line-deletion-bic`) | – |
@@ -241,7 +244,7 @@ With `--simulate`:
 | GW403 | warning | a BIC entry role is a non-canonical spelling; canonical roles are {`direct`, `origin`, `contributing`, `reintroducing`}. Consumers may normalize known aliases (the evaluator/verifier role normalization of #27 does), but the canonical spelling is recommended |
 | GW404 | warning | a BFC entry role is not in {`complete_fix`, `partial_fix`} |
 | GW410 | warning | a commit that is not a BFC (of any bug) has a role-disclosing message (same pattern as W410) |
-| GW411 | warning | a message starts with a logical-id prefix (`c1:`, `r2:`, ...) |
+| GW411 | warning | a message exposes a logical id (same rule as W411) |
 | GW412 | warning | written text (`write_file.content`, `replace.new`, `insert_after.content`) contains role wording |
 | GW440 | warning | `move_entity` / `copy_entity`: file-level approximation, the whole source file is copied under a marker header |
 | ~~GW441~~ | retired | `commit_generator` now expands into real commits (see `docs/generator-options.md`) |
@@ -257,6 +260,16 @@ currently declares a ghost class.
 Not resolved as commit references: `interactive_rebase` (its values are
 actions such as `squash` or `reorder`) and `reverts` (free-form: commit ids,
 `part_of_c3`, or objects).
+
+### Generated-repository checks (`verify-graph`, also run by `generate-graph`)
+
+| code | level | condition |
+|---|---|---|
+| GE630 | error | a commit is committed **before one of its parents**. A scenario that pins some timestamps and leaves the rest to the generator can otherwise invert its own history, which changes what date-based candidate filters and recency heuristics see (issue #9, PR #34 re-review) |
+| GW631 | warning | a commit's author date is **after** its committer date. An author date *before* the committer date is the normal signature of a rebase and is not flagged |
+| GW632 | warning | the commit-date check could not run (Git failed, or a timestamp was unreadable) |
+
+Both comparisons use Git's epoch seconds (`%ct` / `%at`), not the ISO strings: `%cI` / `%aI` keep each timestamp's UTC offset, so `2024-01-01T10:00:00+09:00` sorts after `2024-01-01T02:00:00Z` as text although it is an hour earlier. The ISO forms appear only in the finding message.
 
 ## Index (`validate-index`)
 

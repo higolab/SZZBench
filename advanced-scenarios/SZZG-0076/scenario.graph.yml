@@ -38,7 +38,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial correct implementation'
+  message: 'Add the range check'
   role: initial
   operations:
   - type: write_file
@@ -49,7 +49,7 @@ commits:
   branch: feature
   parents:
   - c0
-  message: 'f1: introduce lower-bound bug'
+  message: 'Tighten the lower bound'
   role: origin_bug_introducing
   operations:
   - type: replace
@@ -60,7 +60,7 @@ commits:
   branch: feature
   parents:
   - f1
-  message: 'f2: introduce upper-bound bug'
+  message: 'Tighten the upper bound'
   role: origin_bug_introducing
   operations:
   - type: replace
@@ -71,7 +71,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'r1: rebase lower-bound BIC'
+  message: 'Tighten the lower bound'
   role: bug_introducing
   operations:
   - type: replace
@@ -83,7 +83,7 @@ commits:
   branch: main
   parents:
   - r1
-  message: 'r2: rebase upper-bound BIC'
+  message: 'Tighten the upper bound'
   role: bug_introducing
   operations:
   - type: replace
@@ -95,7 +95,7 @@ commits:
   branch: main
   parents:
   - r2
-  message: 'c3: fix both rebased BICs'
+  message: 'Accept both range bounds again'
   role: bug_fixing
   operations:
   - type: replace

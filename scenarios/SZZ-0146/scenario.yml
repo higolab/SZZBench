@@ -23,8 +23,8 @@ repository:
 commits:
 - id: c0
   message: Initial implementation with duplicate-looking statement
-  author: Alice <alice@example.com>
-  date: '2024-04-01T10:00:00Z'
+  author: Mei Tanaka <mei.tanaka@example.com>
+  date: 2024-10-07T11:25:00Z
   role: initial
   operations:
   - type: write_file
@@ -42,9 +42,9 @@ commits:
           }
       }
 - id: c1
-  message: Introduce ambiguous faulty statement
-  author: Bob <bob@example.com>
-  date: '2024-04-02T10:00:00Z'
+  message: Require values above the minimum
+  author: Mei Tanaka <mei.tanaka@example.com>
+  date: 2024-10-08T14:00:00Z
   role: bug_introducing
   operations:
   - type: replace
@@ -78,8 +78,8 @@ commits:
     - fault
 - id: c2
   message: Fix ambiguous faulty statement
-  author: Alice <alice@example.com>
-  date: '2024-04-03T10:00:00Z'
+  author: Tom Becker <tom.becker@example.com>
+  date: 2024-10-14T18:46:00Z
   role: bug_fixing
   operations:
   - type: replace

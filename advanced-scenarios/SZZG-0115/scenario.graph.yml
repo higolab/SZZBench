@@ -24,14 +24,14 @@ graph:
 
     c2: add distractor change (replace src/main/java/example/RangeService.java)
 
-    c3: add distractor change (write_file docs/ranking-distractor.md)
+    c3: add distractor change (write_file docs/range-service-notes.md)
 
     c4: fix bug (replace src/main/java/example/RangeService.java)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_file src/main/java/example/RangeService.java)'
+  message: 'Add the range service'
   role: initial
   operations:
   - type: write_file
@@ -43,7 +43,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: introduce bug (replace src/main/java/example/RangeService.java)'
+  message: 'Make the range check exclusive'
   role: bug_introducing
   operations:
   - type: replace
@@ -54,7 +54,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: add distractor change (replace src/main/java/example/RangeService.java)'
+  message: 'Read the enabled flag from a system property'
   role: distractor
   operations:
   - type: replace
@@ -65,19 +65,19 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: add distractor change (write_file docs/ranking-distractor.md)'
+  message: 'Document the range service configuration'
   role: distractor
   operations:
   - type: write_file
-    path: docs/ranking-distractor.md
-    content: 'This commit is a ranking distractor for top-k SZZ evaluation.
+    path: docs/range-service-notes.md
+    content: 'Notes on the range service configuration.
 
       '
 - id: c4
   branch: main
   parents:
   - c3
-  message: 'c4: fix bug (replace src/main/java/example/RangeService.java)'
+  message: 'Accept the range bounds again'
   role: bug_fixing
   operations:
   - type: replace

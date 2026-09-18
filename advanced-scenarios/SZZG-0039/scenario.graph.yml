@@ -32,7 +32,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create token verifier'
+  message: 'Add the token verifier'
   role: initial
   operations:
   - type: write_file
@@ -44,7 +44,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: weaken token trust predicate'
+  message: 'Accept any non-null token as trusted'
   role: bug_introducing
   operations:
   - type: replace
@@ -55,7 +55,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: weaken access control condition'
+  message: 'Grant access when either condition holds'
   role: bug_introducing
   operations:
   - type: replace
@@ -66,7 +66,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: fix access control vulnerability'
+  message: 'Require the token prefix and both access conditions'
   role: bug_fixing
   operations:
   - type: replace

@@ -32,7 +32,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create retry policy'
+  message: 'Add the retry policy'
   role: initial
   operations:
   - type: write_file
@@ -43,7 +43,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: introduce excessive retry limit'
+  message: 'Raise the retry limit to 10'
   role: bug_introducing
   operations:
   - type: replace
@@ -54,7 +54,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: introduce retry on client errors'
+  message: 'Retry on client errors as well'
   role: bug_introducing
   operations:
   - type: replace
@@ -65,7 +65,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: fix retry condition without touching retry limit'
+  message: 'Retry only on server errors and inline the retry limit'
   role: bug_fixing
   operations:
   - type: replace

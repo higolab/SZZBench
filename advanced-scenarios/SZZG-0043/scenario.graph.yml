@@ -35,7 +35,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial correct implementation'
+  message: 'Add the range check'
   role: initial
   operations:
   - type: write_file
@@ -46,7 +46,7 @@ commits:
   branch: feature
   parents:
   - c0
-  message: 'c1: introduce range boundary bug on feature'
+  message: 'Make the range check exclusive'
   role: bug_introducing
   operations:
   - type: replace
@@ -57,7 +57,7 @@ commits:
   branch: feature
   parents:
   - c1
-  message: 'c2: extend feature branch code using range check'
+  message: 'Add a feature-specific range wrapper'
   role: intermediate
   operations:
   - type: replace
@@ -72,14 +72,14 @@ commits:
   parents:
   - c0
   - c2
-  message: 'c3: merge feature branch into main'
+  message: 'Merge the feature branch into main'
   role: merge
   operations: []
 - id: c4
   branch: main
   parents:
   - c3
-  message: 'c4: fix range boundary bug on main'
+  message: 'Accept the range bounds again'
   role: bug_fixing
   operations:
   - type: replace

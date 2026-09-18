@@ -24,7 +24,9 @@ repository:
   source_root: src/main/java
 commits:
 - id: c0
-  message: 'c0: create composite range check'
+  message: 'Add the composite range check'
+  author: Jonas Berg <jonas.berg@example.com>
+  date: 2023-03-13T13:03:00Z
   role: initial
   operations:
   - type: write_file
@@ -46,7 +48,9 @@ commits:
         }
       }
 - id: c1
-  message: 'c1: introduce lower-bound part of composite bug'
+  message: 'Require values above the minimum in lowerOk()'
+  author: Jonas Berg <jonas.berg@example.com>
+  date: 2023-03-21T11:40:00Z
   role: bug_introducing
   operations:
   - type: replace
@@ -54,7 +58,9 @@ commits:
     old: return value >= min;
     new: return value > min;
 - id: c2
-  message: 'c2: introduce upper-bound part of composite bug'
+  message: 'Require values below the maximum in upperOk()'
+  author: Jonas Berg <jonas.berg@example.com>
+  date: 2023-03-28T17:18:00Z
   role: bug_introducing
   operations:
   - type: replace
@@ -62,7 +68,9 @@ commits:
     old: return value <= max;
     new: return value < max;
 - id: c3
-  message: 'c3: fix both parts of composite range bug'
+  message: 'Accept the range bounds in both helpers'
+  author: Hana Sato <hana.sato@example.com>
+  date: 2023-04-06T17:22:00Z
   role: bug_fixing
   operations:
   - type: replace
