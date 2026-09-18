@@ -81,7 +81,7 @@ def test_every_predictor_declares_a_known_family():
     assert {family for _, family, _, _ in predictors} <= set(FAMILIES)
     # one rule per author, plus the fixed rules
     assert sum(1 for name in names if name.startswith("author:")) == 3
-    for fixed in ("message-admits-fault", "position-second", "position-before-fix",
+    for fixed in ("message-admits-fault", "position-1", "position-before-fix",
                   "shape-last-toucher", "blame-deleted-lines"):
         assert fixed in names
 
@@ -105,7 +105,7 @@ def _generate(tmp_path: Path, scenario_id: str, commits, bugs, tier: str = "cont
 
 
 def test_runner_scores_through_the_evaluator(tmp_path):
-    """A history whose BIC is the second commit must be solved by position-second."""
+    """A history whose BIC is the second commit must be solved by position-1."""
     java = "package example;\npublic class Range {\n  public boolean contains(int v, int lo, int hi) {\n    return v %s lo;\n  }\n}\n"
     commits = [
         {"id": "c0", "branch": "main", "parents": [], "message": "add the range check", "role": "initial",
@@ -133,9 +133,9 @@ def test_runner_scores_through_the_evaluator(tmp_path):
     assert report["scenario_count"] == 1
     assert report["errors"] == []
     by_name = {item["name"]: item for item in report["baselines"]}
-    assert by_name["position-second"]["passed"] == 1
+    assert by_name["position-1"]["passed"] == 1
     assert by_name["blame-deleted-lines"]["passed"] == 1
-    assert by_name["position-first"]["passed"] == 0
+    assert by_name["position-0"]["passed"] == 0
     assert by_name["message-admits-fault"]["passed"] == 0
     assert report["solved_by_any_baseline"] == 1
     assert report["unsolved"] == []
@@ -149,9 +149,9 @@ def test_runner_scores_through_the_evaluator(tmp_path):
     assert {item["family"] for item in only_position["baselines"]} == {"position"}
     # in a three-commit history the BIC is both the second commit and the one before the fix
     assert {item["name"] for item in only_position["baselines"] if item["passed"]} == {
-        "position-second", "position-before-fix"}
+        "position-1", "position-before-fix"}
     text = format_report(report)
-    assert "position-second" in text and "solved by no baseline" in text
+    assert "position-1" in text and "solved by no baseline" in text
     assert json.dumps(report)  # the report is JSON-serialisable for --json / --out
 
 
@@ -211,7 +211,7 @@ def test_commits_expanded_by_commit_generator_are_visible(tmp_path):
                                    "default", git)
     ids = [c.logical_id for c in scenarios[0].commits]
     assert ids == ["c0", "c1.g1", "c1.g2", "c1", "c2"], ids
-    assert by_name["position-second"]["passed"] == 0, "c1.g1 is the second commit, not the BIC"
+    assert by_name["position-1"]["passed"] == 0, "c1.g1 is the second commit, not the BIC"
     assert by_name["position-before-fix"]["passed"] == 1
     assert by_name["blame-deleted-lines"]["passed"] == 1
 
@@ -307,7 +307,7 @@ def test_a_filtered_run_does_not_claim_promotion_candidates(tmp_path):
     by_name = {i["name"]: i for i in full["baselines"]}
     # the fix only adds lines, so blame has nothing to go on; position does
     assert by_name["blame-deleted-lines"]["passed"] == 0
-    assert by_name["position-second"]["passed"] == 1
+    assert by_name["position-1"]["passed"] == 1
     assert full["complete"] is True
     assert full["declared_control_but_unsolved"] == []
 
@@ -331,3 +331,45 @@ def test_a_filtered_run_does_not_claim_promotion_candidates(tmp_path):
                                   advanced_scenarios_root=tmp_path / "advanced-scenarios",
                                   families=["position"])
     assert position_only["declared_discriminating_but_solved"] == ["SZZG-9004"]
+
+
+def test_restricting_the_position_indices_changes_nothing(tmp_path):
+    """The enumeration skips `position-k` rules that cannot score, and only those.
+
+    `position-k` predicts a single commit, so it can only be credited when the
+    commit at index k is part of the answer. The restricted enumeration is
+    compared here against a full 0..n-1 sweep.
+    """
+    from szzbench.baselines import GitProbe, _answer_hashes, _load_scenarios, position_indices
+
+    _generate(tmp_path, "SZZG-9005", _range_commits(), _range_bugs())
+    long_history = _range_commits()
+    for extra in range(3):
+        long_history.insert(1, {"id": f"n{extra}", "branch": "main", "parents": [],
+                                "message": f"unrelated note {extra}", "role": "intermediate",
+                                "operations": [{"type": "write_file", "path": f"docs/n{extra}.md",
+                                                "content": f"note {extra}\n"}]})
+    for i, commit in enumerate(long_history):
+        commit["parents"] = [] if i == 0 else [long_history[i - 1]["id"]]
+    _generate(tmp_path, "SZZG-9006", long_history, _range_bugs())
+
+    git = GitProbe()
+    scenarios, _ = _load_scenarios(tmp_path / "repos", tmp_path, tmp_path / "advanced-scenarios",
+                                   "default", git)
+    answers = _answer_hashes(scenarios, tmp_path, tmp_path / "advanced-scenarios")
+    restricted = position_indices(scenarios, answers)
+    longest = max(len(s.commits) for s in scenarios)
+    assert restricted != list(range(longest)), "the fixture must exercise the restriction"
+
+    def solved_by_index(indices):
+        out = {}
+        for index in indices:
+            predictor = _at_index(index)
+            out[index] = {s.scenario_id for s in scenarios if predictor(s)}
+        return out
+
+    # every omitted index predicts a commit that is in no answer, so it scores nothing
+    for index in set(range(longest)) - set(restricted):
+        for scenario in scenarios:
+            predicted = _at_index(index)(scenario)
+            assert not (set(predicted) & answers.get(scenario.scenario_id, set())), index

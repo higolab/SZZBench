@@ -1,0 +1,158 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0191"
+  title: "The other bug-introducing commit is in the method the fixed line calls"
+  slug: "bic-in-the-called-method"
+  description: >
+    The lookup stops normalizing its argument while the only caller still
+    passes already-normalized input, so nothing breaks. A later commit adds a
+    second caller that passes raw input, and only then does the bug appear. The
+    fix normalizes inside the new caller, so the line it deletes belongs to
+    that commit; the lookup it calls is where the normalization was dropped,
+    and blame on the fix never reaches it.
+  category: "Multiple BICs, duplicate faults, and composite faults"
+  factors:
+    - "multi-bic"
+    - "single-bfc"
+    - "caller-callee-interaction"
+    - "blame-unreachable-bic"
+  difficulty: "hard"
+  status: "active"
+  tier: "discriminating"
+  category_code: "S6"
+
+repository:
+  name: "SZZ-0191-bic-in-the-called-method"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Add the tag store with a normalizing lookup"
+    author: "Tom Becker <tom.becker@example.com>"
+    date: "2023-05-26T15:15:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/example/TagStore.java"
+        content: |
+          package example;
+
+          public class TagStore {
+              public boolean known(String tag) {
+                  String key = tag.trim().toLowerCase();
+                  return key.equals("release") || key.equals("hotfix");
+              }
+
+              public boolean knownFromMenu(String tag) {
+                  return known(tag);
+              }
+          }
+
+  - id: "c1"
+    message: "Look the tag up without rebuilding the key"
+    author: "Priya Raman <priya.raman@example.com>"
+    date: "2023-06-02T08:22:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/TagStore.java"
+        old: |
+          String key = tag.trim().toLowerCase();
+                  return key.equals("release") || key.equals("hotfix");
+        new: |
+          return tag.equals("release") || tag.equals("hotfix");
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Describe the accepted tags"
+    author: "Priya Raman <priya.raman@example.com>"
+    date: "2023-06-12T13:41:00Z"
+    role: "distractor"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/TagStore.java"
+        old: |
+          public class TagStore {
+        new: |
+          /** Accepts the release and hotfix tags. */
+          public class TagStore {
+
+  - id: "c3"
+    message: "Accept a tag typed by the user"
+    author: "Tom Becker <tom.becker@example.com>"
+    date: "2023-06-20T13:36:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/TagStore.java"
+        old: |
+          public boolean knownFromMenu(String tag) {
+                  return known(tag);
+              }
+        new: |
+          public boolean knownFromMenu(String tag) {
+                  return known(tag);
+              }
+
+              public boolean knownFromInput(String typed) {
+                  return known(typed);
+              }
+        labels: ["B001", "fault"]
+
+  - id: "c4"
+    message: "Normalize the typed tag before looking it up"
+    author: "Hana Sato <hana.sato@example.com>"
+    date: "2023-06-27T10:43:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/TagStore.java"
+        old: "return known(typed);"
+        new: "return known(typed.trim().toLowerCase());"
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "A typed tag is rejected unless it is already normalized"
+    bug_fixing_commit: "c4"
+    bug_introducing_commits: ["c1", "c3"]
+    fault:
+      commit: "c3"
+      file: "src/main/java/example/TagStore.java"
+      entity:
+        type: "method"
+        name: "knownFromInput"
+        signature: "boolean knownFromInput(String typed)"
+      statement: "return known(typed);"
+      change_type: "line_modification"
+    fix:
+      commit: "c4"
+      file: "src/main/java/example/TagStore.java"
+      entity:
+        type: "method"
+        name: "knownFromInput"
+        signature: "boolean knownFromInput(String typed)"
+      statement: "return known(typed.trim().toLowerCase());"
+      fix_type: "line_modification"
+    expected_szz:
+      commit_level:
+        true_positives: ["c1", "c3"]
+        primary_observable_bic: "c3"
+        contributing_bics: ["c1"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "return known(typed);"
+        note: >
+          The fix deletes a line written by c3. Reaching c1 means following the
+          call into known(), which the fix does not edit; while it normalized,
+          the new caller would have been correct.
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3", "c4"]

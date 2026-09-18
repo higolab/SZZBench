@@ -1,0 +1,165 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0194"
+  title: "The other bug-introducing commit is in a class the fix never touches"
+  slug: "bic-in-a-file-the-fix-never-touches"
+  description: >
+    A rate table is converted from percent to per-mille together with its only
+    caller, which preserves behaviour. A later commit adds a second caller that
+    reports the rate as a percentage, and only then does the bug appear. The
+    fix edits that caller, so every line it deletes lives in one file while the
+    unit change lives in another that the fix never opens.
+  category: "Multiple BICs, duplicate faults, and composite faults"
+  factors:
+    - "multi-bic"
+    - "single-bfc"
+    - "cross-file-bic"
+    - "blame-unreachable-bic"
+  difficulty: "hard"
+  status: "active"
+  tier: "discriminating"
+  category_code: "S6"
+
+repository:
+  name: "SZZ-0194-bic-in-a-file-the-fix-never-touches"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Add the tax table and the invoice total"
+    author: "Diego Alvarez <diego.alvarez@example.com>"
+    date: "2023-02-20T17:00:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/example/TaxTable.java"
+        content: |
+          package example;
+
+          public class TaxTable {
+              public int rate(String region) {
+                  return region.equals("EU") ? 20 : 8;
+              }
+          }
+      - type: "write_file"
+        path: "src/main/java/example/Invoice.java"
+        content: |
+          package example;
+
+          public class Invoice {
+              private final TaxTable table = new TaxTable();
+
+              public int taxCents(int amountCents, String region) {
+                  return amountCents * table.rate(region) / 100;
+              }
+          }
+
+  - id: "c1"
+    message: "Hold the tax rate in per-mille"
+    author: "Diego Alvarez <diego.alvarez@example.com>"
+    date: "2023-02-27T17:05:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/TaxTable.java"
+        old: "return region.equals(\"EU\") ? 20 : 8;"
+        new: "return region.equals(\"EU\") ? 200 : 80;"
+        labels: ["B001", "fault"]
+      - type: "replace"
+        path: "src/main/java/example/Invoice.java"
+        old: "return amountCents * table.rate(region) / 100;"
+        new: "return amountCents * table.rate(region) / 1000;"
+
+  - id: "c2"
+    message: "Note where the invoice totals are used"
+    author: "Diego Alvarez <diego.alvarez@example.com>"
+    date: "2023-03-06T09:26:00Z"
+    role: "distractor"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/Invoice.java"
+        old: |
+          public class Invoice {
+        new: |
+          /** Produces the totals shown on a customer invoice. */
+          public class Invoice {
+
+  - id: "c3"
+    message: "Show the tax rate on the invoice"
+    author: "Diego Alvarez <diego.alvarez@example.com>"
+    date: "2023-03-08T14:02:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/Invoice.java"
+        old: |
+          public int taxCents(int amountCents, String region) {
+                  return amountCents * table.rate(region) / 1000;
+              }
+        new: |
+          public int taxCents(int amountCents, String region) {
+                  return amountCents * table.rate(region) / 1000;
+              }
+
+              public int displayedRatePercent(String region) {
+                  return table.rate(region);
+              }
+        labels: ["B001", "fault"]
+
+  - id: "c4"
+    message: "Show the tax rate as a percentage"
+    author: "Jonas Berg <jonas.berg@example.com>"
+    date: "2023-03-13T10:18:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/Invoice.java"
+        old: "return table.rate(region);"
+        new: "return table.rate(region) / 10;"
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "The invoice shows the tax rate ten times too high"
+    bug_fixing_commit: "c4"
+    bug_introducing_commits: ["c1", "c3"]
+    fault:
+      commit: "c3"
+      file: "src/main/java/example/Invoice.java"
+      entity:
+        type: "method"
+        name: "displayedRatePercent"
+        signature: "int displayedRatePercent(String region)"
+      statement: "return table.rate(region);"
+      change_type: "line_modification"
+    fix:
+      commit: "c4"
+      file: "src/main/java/example/Invoice.java"
+      entity:
+        type: "method"
+        name: "displayedRatePercent"
+        signature: "int displayedRatePercent(String region)"
+      statement: "return table.rate(region) / 10;"
+      fix_type: "line_modification"
+    expected_szz:
+      commit_level:
+        true_positives: ["c1", "c3"]
+        primary_observable_bic: "c3"
+        contributing_bics: ["c1"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "return table.rate(region);"
+        note: >
+          Every line the fix deletes lives in Invoice.java, while the unit
+          change that makes the new method wrong lives in TaxTable.java, which
+          the fix never opens.
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3", "c4"]

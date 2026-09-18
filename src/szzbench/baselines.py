@@ -126,6 +126,34 @@ def _message_admits_fault(scenario: Scenario) -> list[str]:
     return [c.hash for c in _non_bfc(scenario) if ADMITS_FAULT.search(c.subject)]
 
 
+def position_indices(scenarios: list[Scenario], answer_hashes: dict[str, set[str]]) -> list[int]:
+    """Every index ``position-k`` is enumerated for.
+
+    The family is "report the commit at index k" for **every** k: a rule that
+    works at one depth is no weaker an attacker than one that works at another,
+    and stopping at k = 2 would let a scenario look discriminating merely
+    because its answer sits deeper.
+
+    Enumerating a thousand rules that provably score nothing is wasteful.
+    ``position-k`` predicts exactly one commit, so it can only be credited when
+    the commit at index k is part of that scenario's answer; the enumeration is
+    therefore restricted to those indices, plus 0, 1 and 2 so the report always
+    shows the shallow rules. The omitted indices score zero by construction, so
+    the numbers are the ones a full enumeration would produce - which
+    ``test_restricting_the_position_indices_changes_nothing`` checks.
+
+    ``answer_hashes`` is used only to decide which rules to *enumerate*; no
+    predictor ever sees it.
+    """
+    indices = {0, 1, 2}
+    for scenario in scenarios:
+        answers = answer_hashes.get(scenario.scenario_id, set())
+        for index, commit in enumerate(scenario.commits):
+            if commit.hash in answers:
+                indices.add(index)
+    return sorted(i for i in indices if any(len(s.commits) > i for s in scenarios))
+
+
 def _at_index(index: int) -> Predictor:
     def predict(scenario: Scenario) -> list[str]:
         hashes = scenario.hashes
@@ -231,7 +259,8 @@ def _blame_deleted_lines(git: GitProbe) -> Predictor:
     return predict
 
 
-def build_predictors(scenarios: list[Scenario], git: GitProbe) -> list[tuple[str, str, str, Predictor]]:
+def build_predictors(scenarios: list[Scenario], git: GitProbe,
+                     answer_hashes: dict[str, set[str]] | None = None) -> list[tuple[str, str, str, Predictor]]:
     """(name, family, description, predictor), including one rule per author.
 
     The author rules are enumerated over the whole suite and only their best is
@@ -246,9 +275,9 @@ def build_predictors(scenarios: list[Scenario], git: GitProbe) -> list[tuple[str
     predictors.append(("message-admits-fault", "metadata",
                        "report the non-fixing commits whose subject admits a fault",
                        _message_admits_fault))
-    for index, ordinal in ((0, "first"), (1, "second"), (2, "third")):
-        predictors.append((f"position-{ordinal}", "position",
-                           f"report the {ordinal} commit of the history", _at_index(index)))
+    for index in position_indices(scenarios, answer_hashes or {}):
+        predictors.append((f"position-{index}", "position",
+                           f"report the commit at index {index} of the history", _at_index(index)))
     predictors.append(("position-before-fix", "position",
                        "report the commit immediately before the fix", _before_bfc))
     predictors.append(("position-all-non-fix", "position",
@@ -341,6 +370,29 @@ def _load_scenarios(generated_root: Path, scenarios_root: Path, advanced_scenari
     return scenarios, errors
 
 
+def _answer_hashes(scenarios: list[Scenario], scenarios_root: Path,
+                   advanced_scenarios_root: Path) -> dict[str, set[str]]:
+    """Per scenario, the hashes of the commits its oracle requires.
+
+    Only :func:`position_indices` reads this, to decide which ``position-k``
+    rules are worth running; the predictors are never given it.
+    """
+    from .evaluator import _commit_level_policy, _find_scenario_path, _load_scenario_for_evaluation
+
+    answers: dict[str, set[str]] = {}
+    for scenario in scenarios:
+        path, suite = _find_scenario_path(scenario.scenario_id, scenarios_root, advanced_scenarios_root)
+        if path is None:
+            continue
+        data, _ = _load_scenario_for_evaluation(path, suite)
+        if data is None:
+            continue
+        required = set(_commit_level_policy(data, suite, None).required)
+        hash_of_id = {c.logical_id: c.hash for c in scenario.commits if c.logical_id}
+        answers[scenario.scenario_id] = {hash_of_id[r] for r in required if r in hash_of_id}
+    return answers
+
+
 def run_baselines(
     *,
     generated_root: Path,
@@ -355,7 +407,8 @@ def run_baselines(
     scenarios, errors = _load_scenarios(generated_root, scenarios_root, advanced_scenarios_root, variant, git)
     by_id = {s.scenario_id: s for s in scenarios}
     results: list[BaselineResult] = []
-    for name, family, description, predictor in build_predictors(scenarios, git):
+    answer_hashes = _answer_hashes(scenarios, scenarios_root, advanced_scenarios_root)
+    for name, family, description, predictor in build_predictors(scenarios, git, answer_hashes):
         if family not in selected:
             continue
         predictions: dict[str, list[Prediction]] = {}

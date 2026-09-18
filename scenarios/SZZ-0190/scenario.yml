@@ -1,0 +1,163 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0190"
+  title: "Unit change and a later consumer that assumes the old unit"
+  slug: "unit-change-later-consumer"
+  description: >
+    The cache TTL constant is converted from seconds to milliseconds together
+    with its only consumer, which preserves behaviour. A later commit adds a
+    second consumer that divides the constant as if it were still seconds, and
+    only then does the bug appear. The fix repairs the new consumer, so the
+    line it deletes belongs to the second commit; the unit change is reachable
+    only by following the constant the fixed expression reads.
+  category: "Multiple BICs, duplicate faults, and composite faults"
+  factors:
+    - "multi-bic"
+    - "single-bfc"
+    - "line-modification"
+    - "value-flow"
+    - "blame-unreachable-bic"
+  difficulty: "hard"
+  status: "active"
+  tier: "discriminating"
+  category_code: "S6"
+
+repository:
+  name: "SZZ-0190-unit-change-later-consumer"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Add the session cache expiry check"
+    author: "Hana Sato <hana.sato@example.com>"
+    date: "2024-01-15T11:00:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/example/SessionCache.java"
+        content: |
+          package example;
+
+          public class SessionCache {
+              static final int TTL = 60;
+
+              public boolean expired(int ageSeconds) {
+                  return ageSeconds > TTL;
+              }
+          }
+
+  - id: "c1"
+    message: "Express the session TTL in milliseconds"
+    author: "Luca Moretti <luca.moretti@example.com>"
+    date: "2024-01-19T11:35:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/SessionCache.java"
+        old: |
+          static final int TTL = 60;
+
+              public boolean expired(int ageSeconds) {
+                  return ageSeconds > TTL;
+              }
+        new: |
+          static final int TTL = 60000;
+
+              public boolean expired(int ageMillis) {
+                  return ageMillis > TTL;
+              }
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Document the session cache fields"
+    author: "Luca Moretti <luca.moretti@example.com>"
+    date: "2024-01-22T13:48:00Z"
+    role: "distractor"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/SessionCache.java"
+        old: |
+          public class SessionCache {
+        new: |
+          /** Holds the session expiry policy. */
+          public class SessionCache {
+
+  - id: "c3"
+    message: "Report when the session should be refreshed"
+    author: "Aiko Mori <aiko.mori@example.com>"
+    date: "2024-01-24T16:00:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/SessionCache.java"
+        old: |
+          public boolean expired(int ageMillis) {
+                  return ageMillis > TTL;
+              }
+        new: |
+          public boolean expired(int ageMillis) {
+                  return ageMillis > TTL;
+              }
+
+              public int refreshAfterSeconds() {
+                  return TTL / 2;
+              }
+        labels: ["B001", "fault"]
+
+  - id: "c4"
+    message: "Convert the refresh interval back to seconds"
+    author: "Diego Alvarez <diego.alvarez@example.com>"
+    date: "2024-01-29T18:58:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/SessionCache.java"
+        old: "return TTL / 2;"
+        new: "return TTL / 2000;"
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "The refresh interval is reported in milliseconds"
+    bug_fixing_commit: "c4"
+    bug_introducing_commits: ["c1", "c3"]
+    fault:
+      commit: "c3"
+      file: "src/main/java/example/SessionCache.java"
+      entity:
+        type: "method"
+        name: "refreshAfterSeconds"
+        signature: "int refreshAfterSeconds()"
+      statement: "return TTL / 2;"
+      change_type: "line_modification"
+    fix:
+      commit: "c4"
+      file: "src/main/java/example/SessionCache.java"
+      entity:
+        type: "method"
+        name: "refreshAfterSeconds"
+        signature: "int refreshAfterSeconds()"
+      statement: "return TTL / 2000;"
+      fix_type: "line_modification"
+    expected_szz:
+      commit_level:
+        true_positives: ["c1", "c3"]
+        primary_observable_bic: "c3"
+        contributing_bics: ["c1"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "return TTL / 2;"
+        note: >
+          The fix deletes a line written by c3. c1 changed the unit of the
+          constant that line reads and is not reachable from the deleted line
+          by blame; without it the new consumer would be correct.
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3", "c4"]

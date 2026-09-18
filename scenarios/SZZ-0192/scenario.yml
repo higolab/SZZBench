@@ -1,0 +1,159 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0192"
+  title: "Blame lands on an equivalence-preserving rewrite and returns the wrong commit"
+  slug: "blame-lands-on-rewrite"
+  description: >
+    Two commits each break one side of an interval check, with a
+    behaviour-preserving rewrite of the whole expression in between. The fix
+    repairs both sides, but one of the lines it deletes was last written by the
+    rewrite, so plain blame returns the rewrite instead of the commit that
+    broke that side.
+  category: "Multiple BICs, duplicate faults, and composite faults"
+  factors:
+    - "multi-bic"
+    - "single-bfc"
+    - "line-modification"
+    - "rewrite-after-bic"
+    - "tangled-bfc"
+    - "blame-unreachable-bic"
+  difficulty: "hard"
+  status: "active"
+  tier: "discriminating"
+  category_code: "S6"
+
+repository:
+  name: "SZZ-0192-blame-lands-on-rewrite"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Add the sensor reading window"
+    author: "Hana Sato <hana.sato@example.com>"
+    date: "2023-09-11T14:13:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/example/ReadingWindow.java"
+        content: |
+          package example;
+
+          public class ReadingWindow {
+              public boolean accepts(int reading, int low, int high) {
+                  return reading >= low && reading <= high;
+              }
+          }
+
+  - id: "c1"
+    message: "Record the accepted window in the class comment"
+    author: "Jonas Berg <jonas.berg@example.com>"
+    date: "2023-09-15T09:09:00Z"
+    role: "distractor"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/ReadingWindow.java"
+        old: |
+          public class ReadingWindow {
+        new: |
+          /** Accepts sensor readings inside the configured window. */
+          public class ReadingWindow {
+
+  - id: "c2"
+    message: "Require readings above the low mark"
+    author: "Diego Alvarez <diego.alvarez@example.com>"
+    date: "2023-09-21T13:17:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/ReadingWindow.java"
+        old: "return reading >= low && reading <= high;"
+        new: "return reading > low && reading <= high;"
+        labels: ["B001", "fault"]
+
+  - id: "c3"
+    message: "Split the window check into named parts"
+    author: "Jonas Berg <jonas.berg@example.com>"
+    date: "2023-09-25T12:10:00Z"
+    role: "refactoring"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/ReadingWindow.java"
+        old: "return reading > low && reading <= high;"
+        new: |
+          boolean aboveLow = reading > low;
+                  boolean belowHigh = reading <= high;
+                  return aboveLow && belowHigh;
+
+  - id: "c4"
+    message: "Require readings below the high mark"
+    author: "Hana Sato <hana.sato@example.com>"
+    date: "2023-10-04T08:52:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/ReadingWindow.java"
+        old: "boolean belowHigh = reading <= high;"
+        new: "boolean belowHigh = reading < high;"
+        labels: ["B001", "fault"]
+
+  - id: "c5"
+    message: "Accept readings on both marks again"
+    author: "Hana Sato <hana.sato@example.com>"
+    date: "2023-10-09T12:15:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/ReadingWindow.java"
+        old: |
+          boolean aboveLow = reading > low;
+                  boolean belowHigh = reading < high;
+        new: |
+          boolean aboveLow = reading >= low;
+                  boolean belowHigh = reading <= high;
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "The window rejects readings that sit exactly on a mark"
+    bug_fixing_commit: "c5"
+    bug_introducing_commits: ["c2", "c4"]
+    fault:
+      commit: "c4"
+      file: "src/main/java/example/ReadingWindow.java"
+      entity:
+        type: "method"
+        name: "accepts"
+        signature: "boolean accepts(int reading, int low, int high)"
+      statement: "boolean belowHigh = reading < high;"
+      change_type: "line_modification"
+    fix:
+      commit: "c5"
+      file: "src/main/java/example/ReadingWindow.java"
+      entity:
+        type: "method"
+        name: "accepts"
+        signature: "boolean accepts(int reading, int low, int high)"
+      statement: "boolean belowHigh = reading <= high;"
+      fix_type: "line_modification"
+    expected_szz:
+      commit_level:
+        true_positives: ["c2", "c4"]
+        primary_observable_bic: "c4"
+        contributing_bics: ["c2"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "boolean belowHigh = reading < high;"
+        note: >
+          The fix deletes two lines. The low-mark line was last written by the
+          behaviour-preserving rewrite c3, so plain blame returns c3 rather
+          than c2, which is the commit that made that side exclusive.
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3", "c4", "c5"]

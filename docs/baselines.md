@@ -42,19 +42,20 @@ oracles being a single commit it succeeds by coincidence rather than by signal.
 
 ## Measured on the shipped suite
 
-210 generated scenarios, measured on this branch (2026-09-18):
+215 generated scenarios, measured on this branch (2026-09-18):
 
 | baseline | family | solves |
 |---|---|---|
-| `position-second` | position | **146/210 = 69.5%** |
-| `blame-deleted-lines` | blame | 141/210 = 67.1% |
-| `shape-last-toucher` | shape | 107/210 = 51.0% |
-| `position-before-fix` | position | 95/210 = 45.2% |
-| `position-third` | position | 18/210 = 8.6% |
-| `position-first` | position | 7/210 = 3.3% |
-| `position-all-non-fix` | position | 6/210 = 2.9% |
-| best `author:…` | metadata | 11/210 = 5.2% (chance) |
-| `message-admits-fault` | metadata | **0/210** |
+| `position-1` | position | **146/215 = 67.9%** |
+| `blame-deleted-lines` | blame | 141/215 = 65.6% |
+| `shape-last-toucher` | shape | 107/215 = 49.8% |
+| `position-before-fix` | position | 95/215 = 44.2% |
+| `position-2` | position | 18/215 = 8.4% |
+| `position-3` | position | 17/215 = 7.9% |
+| `position-0`, `position-4` | position | 7/215 = 3.3% each |
+| `position-all-non-fix` | position | 6/215 = 2.8% |
+| best `author:…` | metadata | 11/215 = 5.1% (chance) |
+| `message-admits-fault` | metadata | **0/215** |
 
 **A fixed rule versus the union.** Each row is one rule applied to every
 scenario, which is what an attacker can actually do. The union of the rows is
@@ -65,18 +66,18 @@ a cheap rule could explain — headroom, not a result.
 Read this table before reading any result reported on SZZBench:
 
 - **A rule that opens no file beats the classic B-SZZ baseline.** "Report the
-  second commit of the history" solves 69.5% against B-SZZ's 67.1%, because
+  second commit of the history" solves 67.9% against B-SZZ's 65.6%, because
   most scenarios are four commits long with a single-commit oracle in second
   position.
-- **Upper bound (oracle-aware): 203 of 210 scenarios are solved by *some*
-  cheap rule.** Seven resist all of them: SZZ-0132, SZZ-0136, SZZG-0028,
-  SZZG-0038, SZZG-0040, SZZG-0069, SZZG-0076 — and every one of them has a
-  **multi-commit oracle**. Split by oracle size, the contrast is sharper still:
+- **Upper bound (oracle-aware): 203 of 215 scenarios are solved by *some*
+  cheap rule.** Twelve resist all of them — SZZ-0132, SZZ-0136, SZZ-0190 to
+  SZZ-0194, SZZG-0028, SZZG-0038, SZZG-0040, SZZG-0069, SZZG-0076 — and every
+  one of them has a **multi-commit oracle**. Split by oracle size:
 
   | | best fixed rule | union over all rules |
   |---|---|---|
   | 194 scenarios with a one-commit oracle | 145/194 = 74.7% | **194/194** |
-  | 16 scenarios with a two-commit oracle | 1/16 | 9/16 |
+  | 21 scenarios with a two-commit oracle | 1/21 | 9/21 |
 
   A one-commit answer inside a three- or four-commit history is reachable by
   *some* cheap rule in every single case, at every depth — 94/94 at depth 1,
@@ -111,10 +112,21 @@ Every scenario declares `meta.tier`, which says what it is for:
 | tier | meaning | count |
 |---|---|---|
 | `control` | checks that a method handles a specific input condition; a cheap rule may well solve it | **203** |
-| `discriminating` | designed so that none of the declared cheap baselines solves it | **7** |
+| `discriminating` | designed so that none of the declared cheap baselines solves it | **12** |
 
-The seven are SZZ-0132, SZZ-0136, SZZG-0028, SZZG-0038, SZZG-0040, SZZG-0069
-and SZZG-0076 — every one of them with a multi-commit oracle.
+Every one of the twelve has a multi-commit oracle. Seven are pre-existing
+scenarios that turned out to resist the baselines; SZZ-0190 to SZZ-0194 were
+**designed** against the measured axis, each on the same skeleton — the answer
+is two commits, one of which the fix's deleted lines do not blame to — with a
+different reason for the unreachability:
+
+| scenario | why the second commit is out of blame's reach |
+|---|---|
+| SZZ-0190 | it changed the *unit* of a constant the fixed expression reads |
+| SZZ-0191 | it changed the *callee* the fixed line calls |
+| SZZ-0192 | an equivalence-preserving rewrite owns the line, so blame returns the rewrite instead |
+| SZZ-0193 | it removed a guard, a *precondition* the later commit made reachable |
+| SZZ-0194 | it is in a *file the fix never opens* |
 
 A control being cheaply solvable is not a defect: a benchmark needs cases that
 verify the basics, and a method that fails one of them is broken on that input
@@ -165,17 +177,18 @@ the **farthest** required BIC — the deepest commit a tool has to reach.
 Measured on the shipped suite (210 scenarios):
 
 ```text
-oracle_size            1:194, 2:16
-bic_depth              1:94, 2:97, 3:15, 4:1, 5:1, 6:1, 1003:1
-fault_file_distractors 0:9, 1:99, 2:73, 3:22, 4:6, 5:1
-commit_count           2:4, 3:55, 4:98, 5:39, 6:10, 7:2, 8:1, 1005:1
-ref_count              1:171, 2:36, 3:3
+tier                   control:203, discriminating:12
+oracle_size            1:194, 2:21
+bic_depth              1:94, 2:97, 3:20, 4:1, 5:1, 6:1, 1003:1
+fault_file_distractors 0:9, 1:99, 2:77, 3:23, 4:6, 5:1
+commit_count           2:4, 3:55, 4:98, 5:43, 6:11, 7:2, 8:1, 1005:1
+ref_count              1:176, 2:36, 3:3
 
-81 distinct signatures; 39 groups of two or more, covering 168 scenarios
+83 distinct signatures; 40 groups of two or more, covering 172 scenarios
 ```
 
 The largest groups are 27 S3, 10 S4, 9 S2, 8 S1 and 8 G1 scenarios that agree
-on every dimension; 42 scenarios have a signature of their own. Read together with the baseline table, the suite concentrates
+on every dimension; 43 scenarios have a signature of their own. Read together with the baseline table, the suite concentrates
 in one cell — a one-commit answer, one or two commits before the fix, in a
 three- or four-commit single-branch history — and **that cell is where the
 cheap rules win**.

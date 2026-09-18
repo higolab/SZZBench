@@ -1360,3 +1360,71 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0189/scenario.yml
+- id: SZZ-0190
+  title: Unit change and a later consumer that assumes the old unit
+  slug: unit-change-later-consumer
+  category_code: S6
+  category: Multiple BICs, duplicate faults, and composite faults
+  factors:
+  - multi-bic
+  - single-bfc
+  - line-modification
+  - value-flow
+  - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0190/scenario.yml
+- id: SZZ-0191
+  title: The other bug-introducing commit is in the method the fixed line calls
+  slug: bic-in-the-called-method
+  category_code: S6
+  category: Multiple BICs, duplicate faults, and composite faults
+  factors:
+  - multi-bic
+  - single-bfc
+  - caller-callee-interaction
+  - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0191/scenario.yml
+- id: SZZ-0192
+  title: Blame lands on an equivalence-preserving rewrite and returns the wrong commit
+  slug: blame-lands-on-rewrite
+  category_code: S6
+  category: Multiple BICs, duplicate faults, and composite faults
+  factors:
+  - multi-bic
+  - single-bfc
+  - line-modification
+  - rewrite-after-bic
+  - tangled-bfc
+  - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0192/scenario.yml
+- id: SZZ-0193
+  title: A widened precondition that only becomes a fault once a later commit can reach it
+  slug: widened-precondition-reached-later
+  category_code: S6
+  category: Multiple BICs, duplicate faults, and composite faults
+  factors:
+  - multi-bic
+  - single-bfc
+  - prerequisite-bic
+  - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0193/scenario.yml
+- id: SZZ-0194
+  title: The other bug-introducing commit is in a class the fix never touches
+  slug: bic-in-a-file-the-fix-never-touches
+  category_code: S6
+  category: Multiple BICs, duplicate faults, and composite faults
+  factors:
+  - multi-bic
+  - single-bfc
+  - cross-file-bic
+  - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0194/scenario.yml
