@@ -27,7 +27,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_file src/main/java/example/A.java)'
+  message: 'Add the range check'
   role: initial
   operations:
   - type: write_file
@@ -38,7 +38,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: introduce bug (write_file src/main/java/example/B.java)'
+  message: 'Add a second range check in B'
   role: bug_introducing
   operations:
   - type: write_file
@@ -49,14 +49,14 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: fix bug (delete_file src/main/java/example/B.java; write_file docs/clone-removal.md)'
+  message: 'Remove B and point callers at A'
   role: bug_fixing
   operations:
   - type: delete_file
     path: src/main/java/example/B.java
   - type: write_file
     path: docs/clone-removal.md
-    content: 'Buggy clone B.java was removed; callers should use A.java.
+    content: 'B.java was removed; callers should use A.java.
 
       '
 bugs:

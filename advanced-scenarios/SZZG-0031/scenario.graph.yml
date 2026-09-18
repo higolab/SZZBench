@@ -30,7 +30,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
+  message: 'Add the lower and upper acceptance helpers'
   role: initial
   operations:
   - type: write_file
@@ -41,7 +41,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: introduce bug (replace src/main/java/example/Range.java; replace src/main/java/example/Range.java)'
+  message: 'Require values strictly inside both bounds'
   role: bug_introducing
   operations:
   - type: replace
@@ -56,7 +56,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: fix bug (replace src/main/java/example/Range.java)'
+  message: 'Allow a value equal to the minimum'
   role: bug_fixing
   operations:
   - type: replace
@@ -67,7 +67,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: fix bug (replace src/main/java/example/Range.java)'
+  message: 'Allow a value equal to the maximum'
   role: bug_fixing
   operations:
   - type: replace

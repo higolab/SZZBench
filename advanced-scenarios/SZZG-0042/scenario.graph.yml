@@ -32,7 +32,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial correct implementation'
+  message: 'Add the range check'
   role: initial
   operations:
   - type: write_file
@@ -43,7 +43,7 @@ commits:
   branch: feature
   parents:
   - c0
-  message: 'c1: introduce range boundary bug on feature'
+  message: 'Make the range check exclusive'
   role: bug_introducing
   operations:
   - type: replace
@@ -54,12 +54,12 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c2: add unrelated main branch note'
+  message: 'Add a release note on main'
   role: intermediate
   operations:
   - type: write_file
     path: docs/main-note.md
-    content: 'This note is unrelated to the range boundary bug.
+    content: 'Release checklist for the upcoming minor version.
 
       '
 - id: c3
@@ -67,7 +67,7 @@ commits:
   parents:
   - c2
   - c1
-  message: 'c3: merge feature and fix range boundary bug'
+  message: 'Merge the feature branch and accept the range bounds'
   role: bug_fixing
   operations:
   - type: replace

@@ -42,7 +42,7 @@ commits:
           }
       }
 - id: c1
-  message: Introduce bug
+  message: 'Match the expected status instead of excluding it'
   author: Jonas Berg <jonas.berg@example.com>
   date: 2025-02-03T09:43:00Z
   role: bug_introducing

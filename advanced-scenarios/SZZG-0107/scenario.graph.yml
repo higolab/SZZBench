@@ -27,7 +27,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create correct range implementation'
+  message: 'Add the range check'
   role: initial
   operations:
   - type: write_file
@@ -43,7 +43,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: introduce exclusive-boundary bug'
+  message: 'Make the range check exclusive'
   role: bug_introducing
   operations:
   - type: replace
@@ -54,7 +54,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: fix range bug and update generated boundary table'
+  message: 'Accept the range bounds and regenerate the boundary table'
   role: bug_fixing
   operations:
   - type: replace

@@ -37,7 +37,7 @@ commits:
           }
       }
 - id: c1
-  message: Introduce bug
+  message: 'Compare strictly against the upper bound'
   author: Jonas Berg <jonas.berg@example.com>
   date: 2024-08-22T14:06:00Z
   role: bug_introducing

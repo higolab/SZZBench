@@ -27,7 +27,7 @@ commits:
 - id: c1
   branch: main
   parents: []
-  message: 'c1: create initial range implementation'
+  message: 'Create initial range implementation'
   role: initial
   operations:
   - type: write_file

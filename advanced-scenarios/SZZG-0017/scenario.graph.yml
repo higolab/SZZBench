@@ -29,7 +29,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: introduce origin bug (write_file src/main/java/example/A.java)'
+  message: 'Add the range check'
   role: origin_bug_introducing
   operations:
   - type: write_file
@@ -40,7 +40,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: introduce bug (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)'
+  message: 'Copy the range check into B'
   role: bug_introducing
   operations:
   - type: copy_file
@@ -50,7 +50,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: diverge clone (replace src/main/java/example/B.java; replace src/main/java/example/B.java)'
+  message: 'Rename the copied class and its method'
   role: clone_divergence
   operations:
   - type: replace
@@ -65,7 +65,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: fix bug (replace src/main/java/example/B.java)'
+  message: 'Accept the range bounds in B'
   role: bug_fixing
   operations:
   - type: replace

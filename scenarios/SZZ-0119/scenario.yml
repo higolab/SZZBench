@@ -37,7 +37,7 @@ commits:
           }
       }
 - id: c1
-  message: Introduce bug
+  message: 'Include the upper bound in the comparison'
   author: Diego Alvarez <diego.alvarez@example.com>
   date: 2025-02-24T13:51:00Z
   role: bug_introducing

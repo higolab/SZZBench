@@ -45,7 +45,7 @@ commits:
           }
 
   - id: "c1"
-    message: "Introduce strict range bug"
+    message: 'Filter values strictly inside the configured range'
     author: "Hana Sato <hana.sato@example.com>"
     date: "2025-03-06T16:39:00Z"
     role: "bug_introducing"

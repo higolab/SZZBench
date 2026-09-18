@@ -31,7 +31,7 @@ commits:
     path: src/main/java/example/Scenario0079.java
     content: "package example;\n\npublic class Scenario0079 {\n    public String clean(String value) {\n        if (value == null) {\n                return \"\";\n            }\n            return value.trim();\n    }\n}\n"
 - id: c1
-  message: Introduce bug
+  message: 'Trim the value without the null branch'
   author: Jonas Berg <jonas.berg@example.com>
   date: 2023-09-06T16:10:00Z
   role: bug_introducing

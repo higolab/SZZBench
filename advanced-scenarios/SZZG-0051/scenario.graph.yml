@@ -31,7 +31,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
+  message: 'Add the range check'
   role: initial
   operations:
   - type: write_file
@@ -42,7 +42,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: add main range policy source change (write_file src/main/java/example/RangePolicy.java)'
+  message: 'Add the main range policy'
   role: source_change
   operations:
   - type: write_file
@@ -56,7 +56,7 @@ commits:
   branch: release
   parents:
   - c0
-  message: 'r1: backport range policy to release and introduce boundary bug (replace src/main/java/example/Range.java; write_file src/main/java/example/RangePolicy.java)'
+  message: 'Backport the range policy to release and tighten the range check'
   role: bug_introducing
   operations:
   - type: replace
@@ -75,7 +75,7 @@ commits:
   branch: release
   parents:
   - r1
-  message: 'r2: fix bug (replace src/main/java/example/Range.java)'
+  message: 'Accept the range bounds on release'
   role: bug_fixing
   operations:
   - type: replace

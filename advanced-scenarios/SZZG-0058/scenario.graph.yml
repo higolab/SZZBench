@@ -36,7 +36,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial correct implementation'
+  message: 'Add the range check'
   role: initial
   operations:
   - type: write_file
@@ -47,7 +47,7 @@ commits:
   branch: feature
   parents:
   - c0
-  message: 'f1: introduce bug on feature'
+  message: 'Make the range check exclusive'
   role: origin_bug_introducing
   operations:
   - type: replace
@@ -58,7 +58,7 @@ commits:
   branch: feature
   parents:
   - f1
-  message: 'f2: fix bug on feature'
+  message: 'Accept the range bounds again'
   role: origin_bug_fixing
   operations:
   - type: replace
@@ -69,7 +69,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'r1: rebase feature bug commit onto main'
+  message: 'Make the range check exclusive'
   role: bug_introducing
   operations:
   - type: replace
@@ -81,7 +81,7 @@ commits:
   branch: main
   parents:
   - r1
-  message: 'r2: rebase feature fix commit onto main'
+  message: 'Accept the range bounds again'
   role: bug_fixing
   operations:
   - type: replace

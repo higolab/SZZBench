@@ -32,7 +32,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create discount service'
+  message: 'Add the discount service'
   role: initial
   operations:
   - type: write_file
@@ -44,7 +44,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: introduce wrong threshold'
+  message: 'Include the fifth purchase in the discount'
   role: bug_introducing
   operations:
   - type: replace
@@ -55,7 +55,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: introduce wrong base discount'
+  message: 'Raise the base discount to 15'
   role: bug_introducing
   operations:
   - type: replace
@@ -66,7 +66,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: fix customer discount behavior by restoring threshold only'
+  message: 'Restore the purchase threshold and inline the base discount'
   role: bug_fixing
   operations:
   - type: replace

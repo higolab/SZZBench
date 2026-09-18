@@ -35,7 +35,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create base range filter'
+  message: 'Create base range filter'
   role: initial
   operations:
   - type: write_file
@@ -87,7 +87,7 @@ commits:
   branch: main
   parents:
   - c3
-  message: 'c4: fix boundary bug after feature work'
+  message: 'Accept the range bounds after the feature work'
   role: bug_fixing
   operations:
   - type: replace

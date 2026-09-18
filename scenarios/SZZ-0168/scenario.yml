@@ -20,7 +20,7 @@ repository:
   source_root: src/main/java
 commits:
 - id: c0
-  message: 'c0: create ISO event date parser'
+  message: 'Add the ISO event date parser'
   author: Tom Becker <tom.becker@example.com>
   date: 2024-06-06T11:05:00Z
   role: initial
@@ -41,7 +41,7 @@ commits:
         }
       }
 - id: c1
-  message: 'c1: parse dates with local slash format'
+  message: 'Parse event dates in the local slash format'
   author: Mei Tanaka <mei.tanaka@example.com>
   date: 2024-06-10T09:31:00Z
   role: bug_introducing
@@ -51,7 +51,7 @@ commits:
     old: private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
     new: private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("MM/dd/yyyy");
 - id: c2
-  message: 'c2: add webhook ISO date regression test'
+  message: 'Add a webhook date regression test'
   author: Mei Tanaka <mei.tanaka@example.com>
   date: 2024-06-13T14:38:00Z
   role: test_change
@@ -72,7 +72,7 @@ commits:
         }
       }
 - id: c3
-  message: 'c3: restore ISO webhook date parsing'
+  message: 'Restore ISO parsing for webhook event dates'
   author: Mei Tanaka <mei.tanaka@example.com>
   date: 2024-06-21T17:55:00Z
   role: bug_fixing

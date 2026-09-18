@@ -32,7 +32,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create shipping fee calculation'
+  message: 'Add the shipping fee calculation'
   role: initial
   operations:
   - type: write_file
@@ -43,7 +43,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: introduce free-shipping threshold bug'
+  message: 'Require a subtotal above the free-shipping threshold'
   role: bug_introducing
   operations:
   - type: replace
@@ -54,7 +54,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: extract free-shipping predicate'
+  message: 'Extract the free-shipping predicate'
   role: refactoring
   operations:
   - type: replace
@@ -69,7 +69,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: fix extracted threshold predicate'
+  message: 'Include the threshold in free shipping'
   role: bug_fixing
   operations:
   - type: replace

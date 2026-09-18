@@ -33,7 +33,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create correct original range implementation'
+  message: 'Add the range check'
   role: initial
   operations:
   - type: write_file
@@ -49,7 +49,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: introduce bug in original Range'
+  message: 'Make the range check exclusive'
   role: bug_introducing
   operations:
   - type: replace
@@ -60,7 +60,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: copy buggy Range into CopiedRange'
+  message: 'Copy Range into CopiedRange'
   role: bug_introducing
   operations:
   - type: copy_file
@@ -74,7 +74,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: fix copied range implementation'
+  message: 'Accept the range bounds in CopiedRange'
   role: bug_fixing
   operations:
   - type: replace

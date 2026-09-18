@@ -31,7 +31,7 @@ commits:
     path: src/main/java/example/Scenario0080.java
     content: "package example;\n\npublic class Scenario0080 {\n    public int divide(int total, int denominator) {\n        if (denominator == 0) {\n                return 0;\n            }\n            return total / denominator;\n    }\n}\n"
 - id: c1
-  message: Introduce bug
+  message: 'Divide without the zero-denominator branch'
   author: Luca Moretti <luca.moretti@example.com>
   date: 2025-02-24T17:03:00Z
   role: bug_introducing

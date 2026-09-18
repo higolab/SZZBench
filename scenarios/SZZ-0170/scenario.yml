@@ -19,7 +19,7 @@ repository:
   source_root: src/main/java
 commits:
 - id: c0
-  message: 'c0: create correct Range code and boundary test'
+  message: 'Add the range check and its boundary test'
   author: Luca Moretti <luca.moretti@example.com>
   date: 2023-06-05T12:36:00Z
   role: initial
@@ -56,7 +56,7 @@ commits:
         }
       }
 - id: c1
-  message: 'c1: introduce faulty boundary expectation in test only'
+  message: 'Expect the lower boundary to be excluded'
   author: Tom Becker <tom.becker@example.com>
   date: 2023-06-13T12:33:00Z
   role: bug_introducing
@@ -66,7 +66,7 @@ commits:
     old: assertTrue(range.contains(0, 0, 10));
     new: assertFalse(range.contains(0, 0, 10));
 - id: c2
-  message: 'c2: fix test oracle for inclusive lower boundary'
+  message: 'Expect the lower boundary to be included'
   author: Aiko Mori <aiko.mori@example.com>
   date: 2023-06-19T17:09:00Z
   role: bug_fixing

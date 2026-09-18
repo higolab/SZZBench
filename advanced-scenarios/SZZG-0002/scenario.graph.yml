@@ -28,7 +28,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
+  message: 'Add the range check'
   role: initial
   operations:
   - type: write_file
@@ -39,7 +39,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
+  message: 'Make the range check exclusive'
   role: bug_introducing
   operations:
   - type: replace
@@ -50,7 +50,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: fix bug (move_file src/main/java/example/Range.java -> src/main/java/domain/Range.java; replace src/main/java/domain/Range.java)'
+  message: 'Move the range check to the domain package and accept its bounds'
   role: bug_fixing
   operations:
   - type: move_file

@@ -37,7 +37,7 @@ commits:
           }
       }
 - id: c1
-  message: Introduce bug
+  message: 'Allow a transition when either side matches'
   author: Diego Alvarez <diego.alvarez@example.com>
   date: 2024-04-25T10:35:00Z
   role: bug_introducing

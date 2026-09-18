@@ -29,7 +29,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create API key validator'
+  message: 'Add the API key validator'
   role: initial
   operations:
   - type: write_file
@@ -46,7 +46,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: accept shorter API keys during migration'
+  message: 'Accept shorter API keys during the migration'
   role: bug_introducing
   operations:
   - type: replace
@@ -57,7 +57,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: rewrite API key predicate for readability'
+  message: 'Rewrite the API key predicate for readability'
   role: semantic_rewrite
   operations:
   - type: replace
@@ -79,7 +79,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: require full-length API keys again'
+  message: 'Require full-length API keys again'
   role: bug_fixing
   operations:
   - type: replace

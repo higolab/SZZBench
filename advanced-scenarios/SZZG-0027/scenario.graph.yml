@@ -34,7 +34,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create base permission check'
+  message: 'Add the delete permission check'
   role: initial
   operations:
   - type: write_file
@@ -45,7 +45,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: introduce permissive delete check'
+  message: 'Let every user delete during the rollout'
   role: bug_introducing
   operations:
   - type: replace
@@ -56,7 +56,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: clone policy to group policy'
+  message: 'Clone the user policy for groups'
   role: other
   operations:
   - type: copy_file
@@ -70,7 +70,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: diverge copied clone by renaming parameters'
+  message: 'Rename the owner parameter to maintainer'
   role: refactoring
   operations:
   - type: replace
@@ -85,7 +85,7 @@ commits:
   branch: main
   parents:
   - c3
-  message: 'c4: fix copied clone after divergence'
+  message: 'Restrict deletion in the group policy again'
   role: bug_fixing
   operations:
   - type: replace

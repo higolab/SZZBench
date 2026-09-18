@@ -34,7 +34,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create feature flag'
+  message: 'Add the feature flag'
   role: initial
   operations:
   - type: write_file
@@ -45,7 +45,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: main branch hardens feature flag'
+  message: 'Require the safe system property for the flag'
   role: other
   operations:
   - type: replace
@@ -56,7 +56,7 @@ commits:
   branch: feature
   parents:
   - c0
-  message: 'c2: feature branch keeps simple flag'
+  message: 'Keep the simple flag on the feature branch'
   role: other
   allow_empty: true
   operations:
@@ -69,7 +69,7 @@ commits:
   parents:
   - c1
   - c2
-  message: 'c3: merge feature branch and accidentally drop safety check'
+  message: 'Merge the feature branch'
   role: bug_introducing
   operations:
   - type: replace
@@ -80,7 +80,7 @@ commits:
   branch: main
   parents:
   - c3
-  message: 'c4: fix dropped safety check'
+  message: 'Require the safe system property again'
   role: bug_fixing
   operations:
   - type: replace

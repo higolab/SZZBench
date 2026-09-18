@@ -37,7 +37,7 @@ commits:
           }
       }
 - id: c1
-  message: Introduce bug
+  message: 'Treat a profile with a name or an e-mail as complete'
   author: Mei Tanaka <mei.tanaka@example.com>
   date: 2024-12-18T13:16:00Z
   role: bug_introducing

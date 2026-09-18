@@ -26,7 +26,7 @@ repository:
   source_root: src/main/java
 commits:
 - id: c1
-  message: Introduce boundary bug
+  message: 'Add the range check helper'
   author: Tom Becker <tom.becker@example.com>
   date: 2023-04-24T18:56:00Z
   role: bug_introducing

@@ -35,7 +35,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial correct implementation'
+  message: 'Add the range check'
   role: initial
   operations:
   - type: write_file
@@ -46,7 +46,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: introduce shared range boundary bug'
+  message: 'Make the range check exclusive'
   role: bug_introducing
   operations:
   - type: replace
@@ -57,19 +57,19 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: add boundary test documentation without fixing code'
+  message: 'Note the boundary cases to cover in tests'
   role: intermediate
   operations:
   - type: write_file
     path: docs/boundary-test-note.md
-    content: 'Boundary cases should be covered by tests, but the implementation is still buggy here.
+    content: 'Boundary cases should be covered by tests.
 
       '
 - id: c3
   branch: feature
   parents:
   - c1
-  message: 'c3: add feature helper that depends on buggy range check'
+  message: 'Add a feature-specific range wrapper'
   role: intermediate
   operations:
   - type: replace
@@ -84,7 +84,7 @@ commits:
   parents:
   - c2
   - c3
-  message: 'c4: merge feature and complete range boundary fix'
+  message: 'Merge the feature branch and accept the range bounds'
   role: bug_fixing
   operations:
   - type: replace

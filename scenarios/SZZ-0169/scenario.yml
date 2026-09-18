@@ -20,7 +20,7 @@ repository:
   source_root: src/main/java
 commits:
 - id: c0
-  message: 'c0: create correct range and access policy'
+  message: 'Add the range check and the access policy'
   author: Priya Raman <priya.raman@example.com>
   date: 2025-05-22T17:49:00Z
   role: initial
@@ -46,7 +46,7 @@ commits:
         }
       }
 - id: c1
-  message: 'c1: introduce boundary bug in Range.contains'
+  message: 'Require values strictly inside the range'
   author: Priya Raman <priya.raman@example.com>
   date: 2025-06-02T09:01:00Z
   role: bug_introducing
@@ -56,7 +56,7 @@ commits:
     old: return value >= min && value <= max;
     new: return value > min && value < max;
 - id: c2
-  message: 'c2: compensate for boundary bug in AccessPolicy'
+  message: 'Allow the range bounds in AccessPolicy.allows'
   author: Priya Raman <priya.raman@example.com>
   date: 2025-06-09T11:14:00Z
   role: bug_fixing

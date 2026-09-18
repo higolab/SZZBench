@@ -37,7 +37,7 @@ commits:
           }
       }
 - id: c1
-  message: Introduce bug
+  message: 'Require a strictly positive index'
   author: Mei Tanaka <mei.tanaka@example.com>
   date: 2023-04-06T13:05:00Z
   role: bug_introducing

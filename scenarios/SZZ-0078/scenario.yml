@@ -30,7 +30,7 @@ commits:
     path: src/main/java/example/Scenario0078.java
     content: "package example;\n\npublic class Scenario0078 {\n    public boolean valid(int value) {\n        if (value < 0) {\n                return false;\n            }\n            return true;\n    }\n}\n"
 - id: c1
-  message: Introduce bug
+  message: 'Drop the negative-value guard from valid()'
   author: Jonas Berg <jonas.berg@example.com>
   date: 2024-05-15T09:14:00Z
   role: bug_introducing

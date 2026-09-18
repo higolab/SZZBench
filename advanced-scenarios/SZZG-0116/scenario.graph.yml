@@ -26,7 +26,7 @@ commits:
 - id: c1
   branch: main
   parents: []
-  message: 'c1: create initial buggy range implementation (write_file src/main/java/example/Range.java)'
+  message: 'Add the range check'
   role: initial
   operations:
   - type: write_file
@@ -37,7 +37,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: fix bug (replace src/main/java/example/Range.java)'
+  message: 'Accept the range bounds'
   role: bug_fixing
   operations:
   - type: replace

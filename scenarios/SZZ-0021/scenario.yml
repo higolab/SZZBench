@@ -37,7 +37,7 @@ commits:
           }
       }
 - id: c1
-  message: Introduce bug
+  message: 'Raise the passing score to 90'
   author: Aiko Mori <aiko.mori@example.com>
   date: 2025-03-04T13:15:00Z
   role: bug_introducing

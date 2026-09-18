@@ -46,7 +46,7 @@ commits:
           }
 
   - id: "c1"
-    message: "Introduce threshold bug"
+    message: 'Require scores strictly inside the score gate'
     author: "Luca Moretti <luca.moretti@example.com>"
     date: "2023-11-22T15:09:00Z"
     role: "bug_introducing"

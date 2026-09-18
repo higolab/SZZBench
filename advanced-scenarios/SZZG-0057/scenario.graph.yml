@@ -38,7 +38,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial correct implementation'
+  message: 'Add the range check'
   role: initial
   operations:
   - type: write_file
@@ -49,7 +49,7 @@ commits:
   branch: feature
   parents:
   - c0
-  message: 'f1: introduce bug on old feature base'
+  message: 'Make the range check exclusive'
   role: origin_bug_introducing
   operations:
   - type: replace
@@ -60,7 +60,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'm1: unrelated main change'
+  message: 'Add the first main note'
   role: intermediate
   operations:
   - type: write_file
@@ -72,7 +72,7 @@ commits:
   branch: main
   parents:
   - m1
-  message: 'm2: second unrelated main change'
+  message: 'Add the second main note'
   role: intermediate
   operations:
   - type: write_file
@@ -84,7 +84,7 @@ commits:
   branch: main
   parents:
   - m2
-  message: 'r1: rebase old feature BIC onto latest main'
+  message: 'Make the range check exclusive'
   role: bug_introducing
   operations:
   - type: replace
@@ -96,7 +96,7 @@ commits:
   branch: main
   parents:
   - r1
-  message: 'c3: fix bug after rebase onto latest main'
+  message: 'Accept the range bounds again'
   role: bug_fixing
   operations:
   - type: replace

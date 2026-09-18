@@ -33,7 +33,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial correct implementation'
+  message: 'Add the range check'
   role: initial
   operations:
   - type: write_file
@@ -44,7 +44,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: introduce boundary exclusion bug'
+  message: 'Exclude the bounds from the range check'
   role: bug_introducing
   operations:
   - type: replace
@@ -55,7 +55,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: attempt fix but use wrong boolean operator'
+  message: 'Accept the range bounds again'
   role: attempted_fix
   operations:
   - type: replace
@@ -66,7 +66,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: follow-up fix with correct boolean operator'
+  message: 'Require both bounds to hold'
   role: follow_up_fix
   operations:
   - type: replace

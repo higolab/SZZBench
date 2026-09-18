@@ -18,7 +18,7 @@ repository:
   source_root: src/main/java
 commits:
 - id: c0
-  message: 'c0: create initial state (write_file src/main/java/example/IndependentRanges.java)'
+  message: 'Add two independent range checks'
   author: Hana Sato <hana.sato@example.com>
   date: 2024-06-03T09:47:00Z
   role: initial
@@ -38,7 +38,7 @@ commits:
         }
       }
 - id: c1
-  message: 'c1: introduce bug (replace src/main/java/example/IndependentRanges.java)'
+  message: 'Make the first range check exclusive'
   author: Hana Sato <hana.sato@example.com>
   date: 2024-06-10T13:28:00Z
   role: bug_introducing
@@ -49,7 +49,7 @@ commits:
     new: return value > min && value < max;
     occurrence: 1
 - id: c2
-  message: 'c2: introduce bug (replace src/main/java/example/IndependentRanges.java)'
+  message: 'Make the second range check exclusive'
   author: Hana Sato <hana.sato@example.com>
   date: 2024-06-11T09:00:00Z
   role: bug_introducing
@@ -60,7 +60,7 @@ commits:
     new: return value > min && value < max;
     occurrence: 1
 - id: c3
-  message: 'c3: fix bug (replace src/main/java/example/IndependentRanges.java; replace src/main/java/example/IndependentRanges.java)'
+  message: 'Accept the bounds in both range checks'
   author: Hana Sato <hana.sato@example.com>
   date: 2024-06-20T18:11:00Z
   role: bug_fixing

@@ -36,7 +36,7 @@ commits:
           }
       }
 - id: c1
-  message: Introduce bug
+  message: 'Reject zero in the value check'
   author: Jonas Berg <jonas.berg@example.com>
   date: 2023-01-25T08:02:00Z
   role: bug_introducing

@@ -30,7 +30,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create endpoint resolver and config'
+  message: 'Add the endpoint resolver and its configuration'
   role: initial
   operations:
   - type: write_file
@@ -46,7 +46,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: introduce trailing slash in configuration'
+  message: 'Add a trailing slash to the API host'
   role: bug_introducing
   operations:
   - type: replace
@@ -57,7 +57,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: fix endpoint construction in code'
+  message: 'Strip trailing slashes when building the endpoint URL'
   role: bug_fixing
   operations:
   - type: replace

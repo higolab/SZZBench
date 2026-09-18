@@ -37,7 +37,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial correct implementation'
+  message: 'Add the range check helpers'
   role: initial
   operations:
   - type: write_file
@@ -48,7 +48,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: introduce boundary bug'
+  message: 'Make both helpers strict'
   role: origin_bug_introducing
   operations:
   - type: replace
@@ -59,7 +59,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: fix boundary bug'
+  message: 'Accept both bounds again'
   role: prior_fix
   operations:
   - type: replace
@@ -70,7 +70,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: revert c2 and reintroduce boundary bug'
+  message: 'Revert the bounds change'
   role: bug_introducing
   operations:
   - type: replace
@@ -82,7 +82,7 @@ commits:
   branch: main
   parents:
   - c3
-  message: 'c4: add description before resolving revert conflict'
+  message: 'Add a range description method'
   role: intermediate
   operations:
   - type: replace
@@ -96,7 +96,7 @@ commits:
   branch: main
   parents:
   - c4
-  message: 'c5: revert c3 with conflict resolution and restore boundary fix'
+  message: 'Restore the inclusive bounds after the revert'
   role: bug_fixing
   operations:
   - type: replace

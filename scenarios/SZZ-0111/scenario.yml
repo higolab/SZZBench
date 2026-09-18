@@ -52,7 +52,7 @@ commits:
               }
       }
 - id: c1
-  message: Introduce bug in repetitive code
+  message: 'Make both bound checks strict'
   author: Tom Becker <tom.becker@example.com>
   date: 2024-07-31T18:48:00Z
   role: bug_introducing

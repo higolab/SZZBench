@@ -37,7 +37,7 @@ commits:
           }
       }
 - id: c1
-  message: Introduce bug
+  message: 'Compare strictly against the lower bound'
   author: Luca Moretti <luca.moretti@example.com>
   date: 2025-02-04T11:34:00Z
   role: bug_introducing

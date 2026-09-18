@@ -34,7 +34,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial correct implementation'
+  message: 'Add the range check'
   role: initial
   operations:
   - type: write_file
@@ -45,7 +45,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: introduce range boundary bug before release branch'
+  message: 'Make the range check exclusive'
   role: bug_introducing
   operations:
   - type: replace
@@ -56,19 +56,19 @@ commits:
   branch: release
   parents:
   - c1
-  message: 'c2: cut release branch from buggy state'
+  message: 'Cut the release branch'
   role: intermediate
   operations:
   - type: write_file
     path: docs/release-note.md
-    content: 'Release branch is cut while the range bug is still present.
+    content: 'Release branch cut for the 1.0 line.
 
       '
 - id: c3
   branch: main
   parents:
   - c1
-  message: 'c3: fix range boundary bug on main'
+  message: 'Accept the range bounds on main'
   role: bug_fixing
   operations:
   - type: replace
@@ -79,12 +79,12 @@ commits:
   branch: release
   parents:
   - c2
-  message: 'c4: release branch continues without main fix'
+  message: 'Add the release follow-up note'
   role: unfixed_release
   operations:
   - type: write_file
     path: docs/release-followup.md
-    content: 'Release branch follow-up. The code is still unfixed on this branch.
+    content: 'Release branch follow-up notes.
 
       '
 bugs:

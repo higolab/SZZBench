@@ -33,7 +33,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create legacy parser'
+  message: 'Add the legacy parser'
   role: initial
   operations:
   - type: write_file
@@ -44,7 +44,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: introduce parser trimming bug'
+  message: 'Parse the count without trimming'
   role: bug_introducing
   operations:
   - type: replace
@@ -55,7 +55,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: move parser to core package'
+  message: 'Move the parser to the core package'
   role: refactoring
   operations:
   - type: rename_file
@@ -69,7 +69,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: fix parser whitespace handling'
+  message: 'Trim the text before parsing the count'
   role: bug_fixing
   operations:
   - type: replace

@@ -37,7 +37,7 @@ commits:
           }
       }
 - id: c1
-  message: Introduce bug
+  message: 'Let the caller proceed while the record is locked'
   author: Priya Raman <priya.raman@example.com>
   date: 2025-01-24T17:04:00Z
   role: bug_introducing

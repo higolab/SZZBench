@@ -1,4 +1,4 @@
-# SZZ-0122: BFC with multiple files represented by write_file
+# SZZ-0122: BFC touches an extra file besides the fault
 
 ## Purpose
 

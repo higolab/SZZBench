@@ -47,7 +47,7 @@ commits:
           }
 
   - id: "c1"
-    message: "Introduce boundary bug"
+    message: 'Exclude the interval bounds from Range.contains'
     author: "Luca Moretti <luca.moretti@example.com>"
     date: "2023-05-15T08:11:00Z"
     role: "bug_introducing"

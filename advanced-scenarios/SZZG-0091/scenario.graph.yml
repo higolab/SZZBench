@@ -37,7 +37,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial correct implementation'
+  message: 'Add the range check helpers'
   role: initial
   operations:
   - type: write_file
@@ -48,7 +48,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: introduce lower-bound bug'
+  message: 'Exclude the minimum from aboveMin()'
   role: origin_bug_introducing
   operations:
   - type: replace
@@ -59,7 +59,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: introduce upper-bound bug'
+  message: 'Exclude the maximum from belowMax()'
   role: origin_bug_introducing
   operations:
   - type: replace
@@ -70,7 +70,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: fix both boundary bugs'
+  message: 'Accept both bounds again'
   role: prior_fix
   operations:
   - type: replace
@@ -81,7 +81,7 @@ commits:
   branch: main
   parents:
   - c3
-  message: 'c4: partially revert fix for upper boundary only'
+  message: 'Revert the upper-bound change'
   role: bug_introducing
   operations:
   - type: replace
@@ -93,7 +93,7 @@ commits:
   branch: main
   parents:
   - c4
-  message: 'c5: fix reintroduced upper-bound bug'
+  message: 'Include the maximum again'
   role: bug_fixing
   operations:
   - type: replace

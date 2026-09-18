@@ -41,7 +41,7 @@ commits:
           }
       }
 - id: c1
-  message: Introduce bug
+  message: 'Require values above the minimum'
   author: Jonas Berg <jonas.berg@example.com>
   date: 2024-04-29T13:21:00Z
   role: bug_introducing
@@ -76,7 +76,7 @@ commits:
     - B001
     - fault
 - id: c2
-  message: Inline helper after bug introduction
+  message: 'Inline the lower-bound helper'
   author: Aiko Mori <aiko.mori@example.com>
   date: 2024-05-06T18:45:00Z
   role: refactoring

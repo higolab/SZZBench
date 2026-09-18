@@ -34,7 +34,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create amount parser'
+  message: 'Add the amount parser'
   role: initial
   operations:
   - type: write_file
@@ -45,7 +45,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: introduce original parser trim bug'
+  message: 'Parse the amount without trimming'
   role: bug_introducing
   operations:
   - type: replace
@@ -56,7 +56,7 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: copy amount parser to invoice parser'
+  message: 'Copy the amount parser for invoices'
   role: other
   operations:
   - type: copy_file
@@ -70,7 +70,7 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'c3: introduce copied parser sign bug'
+  message: 'Take the absolute value of a parsed invoice amount'
   role: bug_introducing
   operations:
   - type: replace
@@ -81,7 +81,7 @@ commits:
   branch: main
   parents:
   - c3
-  message: 'c4: fix invoice parsing behavior'
+  message: 'Parse invoice amounts with trimming and sign'
   role: bug_fixing
   operations:
   - type: replace
