@@ -3,7 +3,8 @@ meta:
   id: SZZG-0114
   title: Huge history
   slug: huge-history
-  description: Evaluates huge history and checks whether SZZ identifies the expected bug-introducing commit set.
+  description: Evaluates a one-line defect that is separated from its fix by a thousand real, unrelated commits, inside a
+    generated 10,000-entry Java class.
   category: "Non-source, binary, generated, and scalability edge cases"
   category_code: "G8"
   factors:
@@ -18,75 +19,111 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial state (write_generated_text_file src/main/java/example/LargeRange.java)
-
-    c1: introduce bug (replace src/main/java/example/LargeRange.java)
-
-    c2: apply intermediate change (commit_generator)
-
-    c3: apply intermediate change (commit_generator)
-
-    c4: fix bug (replace src/main/java/example/LargeRange.java)'
+  history_summary: |
+    c0: add the generated 10,000-entry bounds table and the tier policy that reads it
+    c1: refresh the table with a wrong value for entry 5000
+    c2: 500 generated catalog-synchronization commits, then the release-notes entry
+    c3: 500 generated telemetry-export commits, then the release-notes entry
+    c4: correct the value of entry 5000, 1000 commits after it was broken
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_generated_text_file src/main/java/example/LargeRange.java)'
+  message: 'Add the generated bounds table and the tier policy'
   role: initial
   operations:
   - type: write_generated_text_file
     path: src/main/java/example/LargeRange.java
     lines: 10000
-    template: public int value_${line} = ${line};
+    template: '  public static final int VALUE_${line} = ${line};'
+    header: |
+      package example;
+
+      /** Generated bounds table; do not edit by hand. */
+      public class LargeRange {
+    footer: '}'
+  - type: write_file
+    path: src/main/java/example/TierPolicy.java
+    content: |
+      package example;
+
+      public class TierPolicy {
+        public int upperBound(int tier) {
+          switch (tier) {
+            case 1:
+              return LargeRange.VALUE_1;
+            case 500:
+              return LargeRange.VALUE_500;
+            case 5000:
+              return LargeRange.VALUE_5000;
+            case 10000:
+              return LargeRange.VALUE_10000;
+            default:
+              return -1;
+          }
+        }
+      }
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce bug (replace src/main/java/example/LargeRange.java)'
+  message: 'Refresh the bounds table from the tier export'
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/LargeRange.java
-    old: public int value_5000 = 5000;
-    new: public int value_5000 = -1;
+    old: public static final int VALUE_5000 = 5000;
+    new: public static final int VALUE_5000 = -1;
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: apply intermediate change (commit_generator)'
+  message: 'Open the 2024.2 release notes'
   role: intermediate
   operations:
   - type: commit_generator
-    generator: unrelated_changes
+    generator: catalog_sync
     count: 500
     files: 10
-    path: generated/unrelated-batch-1.txt
+    path: generated/catalog
+  - type: write_file
+    path: docs/release-notes.md
+    content: |
+      # 2024.2
+
+      - Nightly catalog synchronization runs are recorded under `generated/catalog`.
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'c3: apply intermediate change (commit_generator)'
+  message: 'Record the telemetry export in the release notes'
   role: intermediate
   operations:
   - type: commit_generator
-    generator: unrelated_changes
+    generator: telemetry_export
     count: 500
     files: 10
-    path: generated/unrelated-batch-2.txt
+    path: generated/telemetry
+  - type: replace
+    path: docs/release-notes.md
+    old: '- Nightly catalog synchronization runs are recorded under `generated/catalog`.'
+    new: |-
+      - Nightly catalog synchronization runs are recorded under `generated/catalog`.
+      - Telemetry exports are recorded under `generated/telemetry`.
 - id: c4
   branch: main
   parents:
   - c3
-  message: 'c4: fix bug (replace src/main/java/example/LargeRange.java)'
+  message: 'Correct the bound of tier 5000 in the generated table'
   role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/LargeRange.java
-    old: public int value_5000 = -1;
-    new: public int value_5000 = 5000;
+    old: public static final int VALUE_5000 = -1;
+    new: public static final int VALUE_5000 = 5000;
 bugs:
 - id: B001
-  title: Huge history with large file one-line bug
+  title: The bounds table reports the unknown-tier marker for tier 5000
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -97,34 +134,48 @@ bugs:
   - id: F001
     commit: c1
     file: src/main/java/example/LargeRange.java
-    statement: public int value_5000 = -1;
+    statement: public static final int VALUE_5000 = -1;
   fixes:
   - id: X001
     commit: c4
     file: src/main/java/example/LargeRange.java
-    statement: public int value_5000 = 5000;
+    statement: public static final int VALUE_5000 = 5000;
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
     - c1
 commit_generators:
-- type: unrelated_changes
-  count: 1000
+- type: catalog_sync
+  count: 500
   files: 10
   materialized_as:
   - c2
+- type: telemetry_export
+  count: 500
+  files: 10
+  materialized_as:
   - c3
 scenario_design:
-  purpose: Evaluate Huge history and whether SZZ identifies the expected bug-introducing commit set.
+  purpose: Evaluate whether SZZ still finds the bug-introducing commit when a thousand unrelated commits separate it from
+    the fix, and whether the tool scales to that history.
+  key_property: |
+    The two commit_generator operations are really expanded: the generated repository contains 1005 commits (5 logical ones
+    plus 500 catalog-synchronization and 500 telemetry-export commits), which is exactly what commit_generators declares.
+    None of the 1000 generated commits touches src/, so the fault line survives unchanged from c1 to the parent of the BFC
+    and blame has to walk back over the whole history.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
   required_extensions_from_source: 'This scenario uses factors: commit_generators; operations: write_generated_text_file,
-    replace, commit_generator.'
+    write_file, replace, commit_generator.'
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Whether the tool walks back over a thousand intervening commits without truncating the history or timing out.
+  - Whether the generated commits, which never touch the source tree, are excluded.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.
+- 'Measured on the generated repository: 1005 commits in total (git rev-list --count HEAD), 1000 of them generated; the
+  generated commits are named <owner>.g<N> in commit-map.json.'
+- 'The generated class is wrapped by the header/footer options of write_generated_text_file, so it is valid Java (issue #10).
+  The entries are compile-time constants, which keeps the class initializer empty.'
