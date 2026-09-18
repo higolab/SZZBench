@@ -4,7 +4,7 @@ meta:
   title: Only commit message provides the clue
   slug: commit-message
   description: Evaluates a case where the code diff is generic and the only domain clue connecting the BFC to the true BIC
-    is in the BIC commit message.
+    is in the BIC commit message, because a later refactor re-attributes the faulty line.
   category: "Issue, message, context, and non-local evidence"
   category_code: "G7"
   factors:
@@ -21,15 +21,15 @@ repository:
 graph:
   model: commit_dag
   history_summary: |
-    c0: create regional checkout challenge gate
-    c1: disable the EU checkout challenge with the only explicit message clue
-    c2: change an unrelated Canada rollout gate
-    c3: restore the EU checkout challenge
+    c0: create the regional checkout challenge gate
+    c1: make the EU checkout challenge conditional, with the only explicit message clue
+    c2: rewrite the regional branches as a switch, which re-attributes the EU line
+    c3: restore the mandatory EU checkout challenge
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create regional checkout challenge gate'
+  message: 'Add the regional checkout challenge gate'
   role: initial
   operations:
   - type: write_file
@@ -38,21 +38,23 @@ commits:
       package example;
 
       public class CheckoutChallengeGate {
-        public boolean requiresChallenge(String region, boolean merchantRiskFlag) {
+        static final int HIGH_RISK_SCORE = 70;
+
+        public boolean requiresChallenge(String region, boolean merchantRiskFlag, int riskScore) {
           if (region.equals("EU")) {
             return true;
           }
           if (region.equals("CA")) {
-            return merchantRiskFlag;
+            return merchantRiskFlag || riskScore >= HIGH_RISK_SCORE;
           }
-          return merchantRiskFlag;
+          return riskScore >= HIGH_RISK_SCORE;
         }
       }
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'PAY-314 temporary EU checkout challenge bypass during consent-copy rollout'
+  message: 'PAY-314 bypass the EU checkout challenge while the consent copy rolls out'
   role: bug_introducing
   operations:
   - type: replace
@@ -69,36 +71,43 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'PAY-299 tune Canada challenge rollout percentage'
+  message: 'PAY-352 collapse the regional gate into a switch'
   role: intermediate
   operations:
   - type: replace
     path: src/main/java/example/CheckoutChallengeGate.java
     old: |-
-      if (region.equals("CA")) {
+      if (region.equals("EU")) {
             return merchantRiskFlag;
           }
+          if (region.equals("CA")) {
+            return merchantRiskFlag || riskScore >= HIGH_RISK_SCORE;
+          }
+          return riskScore >= HIGH_RISK_SCORE;
     new: |-
-      if (region.equals("CA")) {
-            return merchantRiskFlag && region.length() == 2;
+      switch (region) {
+            case "EU":
+              return merchantRiskFlag;
+            case "CA":
+              return merchantRiskFlag || riskScore >= HIGH_RISK_SCORE;
+            default:
+              return riskScore >= HIGH_RISK_SCORE;
           }
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'c3: restore mandatory regional checkout challenge'
+  message: 'PAY-501 require the checkout challenge for EU orders again'
   role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/CheckoutChallengeGate.java
     old: |-
-      if (region.equals("EU")) {
-            return merchantRiskFlag;
-          }
+      case "EU":
+              return merchantRiskFlag;
     new: |-
-      if (region.equals("EU")) {
-            return true;
-          }
+      case "EU":
+              return true;
 bugs:
 - id: B001
   title: EU checkout challenge was accidentally left conditional
@@ -129,22 +138,31 @@ expected_szz:
     - c2
 scenario_design:
   purpose: Evaluate whether a context-aware SZZ method can use commit-message evidence when the changed code itself contains
-    only a generic boolean gate.
+    only a generic boolean gate and line-based blame points at a behaviour-preserving refactor.
+  key_property: |
+    c2 rewrites the three regional branches as a switch without changing behaviour, so the EU line the BFC deletes is
+    attributed to c2 by git blame. The fault statement is the same generic expression before and after the refactor, so the
+    code alone does not say which commit disabled the EU challenge. Only the message of c1 names the EU bypass (PAY-314)
+    that the BFC (PAY-501) undoes.
   current_schema_limitation: Commit-message clues are represented as contextual metadata rather than as first-class graph
     edges.
   required_extensions_from_source: 'This scenario uses factors: context, commit_messages; operations: write_file, replace.'
   evaluation_points:
   - Whether SZZ identifies c1 as the BIC using the PAY-314 EU clue in the commit message.
-  - Whether the unrelated Canada gate change c2 is not selected just because it is nearby and similar.
+  - Whether the behaviour-preserving refactor c2, which line-based blame reaches, is rejected.
   - Whether the BFC can be linked to the correct regional intent without relying only on line text.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.
+- 'Measured: git blame at BFC^ of the deleted EU line reaches c2, not c1, so the generator prints GW703 for this scenario
+  by design.'
 context:
   required_files:
   - src/main/java/example/CheckoutChallengeGate.java
   required_commit_messages:
   - commit: c1
     clue: PAY-314 identifies the EU checkout challenge bypass that the BFC restores.
-  ambiguous_code_context: The same method contains multiple regional boolean gates, but only c1's message names the restored
-    EU behavior.
+  - commit: c2
+    clue: PAY-352 describes a pure restructuring of the gate, which is why the line blame reaches it is not the cause.
+  ambiguous_code_context: The method contains three regional gates whose expressions are generic booleans, and the commit
+    that line-based blame reaches only moved them into a switch.
