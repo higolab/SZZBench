@@ -58,7 +58,9 @@ A commit that moves *and* duplicates (SZZG-0007: c2 moves `contains` to `RangeUt
 
 **D9 — multiple bugs sharing a BFC.** Until the evaluator scores per bug, the scenario-level `required` set is the union of the per-bug direct BICs of the evaluated BFC(s) (SZZG-0018 → `{c0, c1}`; SZZG-0034 already conforms).
 
-**D10 — validation.** Implemented as four graph lints: `GW450` (an origin covered by no `expected_szz` list), `GW451` (an origin the *default* variant does not list under `related_origins`), `GW452` (a scenario with an origin and no `origin-aware` variant) and `GW453` (an `origin-aware` variant that does not accept the origin). An origin that is itself `required` is exempt from GW451-GW453; it is the answer, not context. Before the sweep these fired on 3, 31, 31 and 1 scenarios respectively; afterwards none fires.
+**D10 — validation.** Implemented as four graph lints: `GW450` (an origin covered by no `expected_szz` list), `GW451` (an origin the *default* variant does not list under `related_origins`), `GW452` (a scenario with an origin and no `origin-aware` variant) and `GW453` (an `origin-aware` variant the evaluator does not in fact accept the origin under). An origin that is itself `required` is exempt from GW451-GW453; it is the answer, not context. Before the sweep GW450-GW452 fired on 3, 31 and 31 scenarios; afterwards none fires.
+
+All four ask the evaluator rather than reading the YAML: which variant is the default comes from `_commit_level_policy`, and whether a variant accepts a prediction comes from `classify_prediction`, a function extracted from `evaluate_scenario` so that there is one implementation of each question. The first version of these lints re-derived both and was wrong twice — it ignored `default_variant` when a base `commit_level` existed, and it read `acceptable_related` membership as acceptance, which a leftover `related_but_not_correct` entry or `expect_no_bic` silently overrides (PR #45 review).
 
 ## 5. Migration table
 

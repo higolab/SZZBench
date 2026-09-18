@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any
 import re
 
+from .evaluator import _commit_level_policy, classify_prediction
 from .findings import ValidationResult
 from .graph_operations import PATH_FIELDS_BY_OPERATION, REQUIRED_FIELDS_BY_OPERATION, SUPPORTED_GRAPH_OPERATIONS
 from .graph_scenario import commit_id_of, graph_bfc_entries, graph_bic_entries, graph_faults, graph_fixes, load_graph_scenario
@@ -453,7 +454,7 @@ def lint_graph_scenario(data: dict[str, Any]) -> ValidationResult:
                 result.warning("GW404", f"BFC role '{role}' is not in {sorted(ALLOWED_BFC_ROLES)}.", f"bugs[{i}].bug_fixing_commits[{j}].role")
     lint_leakage(commits, bfc_ids, result, prefix="GW")
     _lint_approximate_operations(commits, result)
-    _lint_origin_coverage(bugs, data.get("expected_szz"), result)
+    _lint_origin_coverage(bugs, data, result)
     return result
 
 
@@ -488,25 +489,7 @@ def _expected_szz_commit_ids(expected: Any) -> set[str]:
     return ids
 
 
-def _default_commit_level(expected: Any) -> dict[str, Any] | None:
-    """The commit_level the evaluator resolves when no variant is requested.
-
-    A scenario may state its default either as ``expected_szz.commit_level`` or
-    as the variant named by ``default_variant``; reading only the first misses
-    the second (SZZG-0022).
-    """
-    if not isinstance(expected, dict):
-        return None
-    if isinstance(expected.get("commit_level"), dict):
-        return expected["commit_level"]
-    name = expected.get("default_variant")
-    for variant in expected.get("evaluation_variants") or []:
-        if isinstance(variant, dict) and variant.get("name") == name and isinstance(variant.get("commit_level"), dict):
-            return variant["commit_level"]
-    return None
-
-
-def _lint_origin_coverage(bugs: list[dict[str, Any]], expected: Any, result: ValidationResult) -> None:
+def _lint_origin_coverage(bugs: list[dict[str, Any]], data: dict[str, Any], result: ValidationResult) -> None:
     """The direct/origin contract, checked on the scenario file (issue #3, D10).
 
     GW450 an origin BIC that expected_szz never mentions, in any variant.
@@ -515,21 +498,34 @@ def _lint_origin_coverage(bugs: list[dict[str, Any]], expected: Any, result: Val
           origin (contract D2).
     GW452 a scenario with an origin and no ``origin-aware`` variant, so there is
           no way to score a tool that reports origins as context (D3).
-    GW453 an ``origin-aware`` variant that does not actually accept the origin,
-          so the variant's name promises something its policy does not deliver
-          (SZZG-0020 carried one of these).
+    GW453 an ``origin-aware`` variant that does not in fact accept the origin.
 
-    An origin that is itself ``required`` is exempt from GW451 and GW452: it is
-    the answer, not context, and an origin-aware variant would be identical to
-    the default (SZZG-0018).
+    Which variant is the default, and whether a variant accepts a prediction,
+    are the evaluator's questions: both come from ``_commit_level_policy`` and
+    ``classify_prediction`` rather than from reading the YAML here.  An earlier
+    version read ``expected_szz.commit_level`` directly and inspected
+    ``acceptable_related`` membership, and was wrong twice - it ignored
+    ``default_variant`` when a base commit_level existed, and it called a
+    variant accepting when a leftover ``related_but_not_correct`` entry or
+    ``expect_no_bic`` meant the evaluator rejected the same prediction
+    (PR #45 review).
+
+    An origin that is itself ``required`` is exempt from GW451-GW453: it is the
+    answer, not context, and an origin-aware variant would be identical to the
+    default (SZZG-0018).
     """
+    expected = data.get("expected_szz")
     mentioned = _expected_szz_commit_ids(expected)
-    level = _default_commit_level(expected)
-    required = set(level.get("required") or []) if isinstance(level, dict) else set()
-    related_origins = set(level.get("related_origins") or []) if isinstance(level, dict) else set()
+    try:
+        default = _commit_level_policy(data, "advanced-scenarios", None)
+    except Exception:                                   # a malformed oracle is other checks' business
+        return
+    required = set(default.required)
+    related_origins = set(default.related_origins)
     variant_names = {v.get("name") for v in (expected.get("evaluation_variants") or [])
                      if isinstance(v, dict)} if isinstance(expected, dict) else set()
-    needs_variant = False
+
+    origins: list[str] = []
     for i, bug in enumerate(bugs):
         for j, entry in enumerate(graph_bic_entries(bug)):
             role = entry.get("role")
@@ -543,22 +539,19 @@ def _lint_origin_coverage(bugs: list[dict[str, Any]], expected: Any, result: Val
                 continue
             if cid in required:
                 continue
-            needs_variant = True
+            if cid not in origins:
+                origins.append(cid)
             if cid not in related_origins:
                 result.warning("GW451", f"bug {label} BIC '{cid}' has role '{role}' but the default commit_level does not list it under related_origins (direct/origin contract D2).", loc)
-    if not needs_variant:
+    if not origins:
         return
     if "origin-aware" not in variant_names:
         result.warning("GW452", "scenario declares an origin BIC but offers no 'origin-aware' evaluation variant (direct/origin contract D3).", "expected_szz.evaluation_variants")
         return
-    origins = {entry.get("commit") for bug in bugs for entry in graph_bic_entries(bug)
-               if isinstance(entry.get("role"), str) and "origin" in entry["role"]}
-    for k, variant in enumerate(expected.get("evaluation_variants") or []):
-        if not isinstance(variant, dict) or variant.get("name") != "origin-aware":
-            continue
-        level = variant.get("commit_level")
-        level = level if isinstance(level, dict) else {}
-        accepted = {commit_id_of(v) for v in (level.get("acceptable_related") or [])}
-        unaccepted = sorted(o for o in origins - required if o not in accepted)
-        if unaccepted:
-            result.warning("GW453", f"the 'origin-aware' variant does not accept origin BIC(s) {unaccepted}; a tool that reports them is still scored as wrong (direct/origin contract D3).", f"expected_szz.evaluation_variants[{k}]")
+    try:
+        variant = _commit_level_policy(data, "advanced-scenarios", "origin-aware")
+    except Exception:
+        return
+    scored = classify_prediction(variant, sorted(required | set(origins)))
+    if scored.status != "PASS":
+        result.warning("GW453", f"the 'origin-aware' variant does not accept the direct BICs together with origin(s) {sorted(origins)}: the evaluator returns {scored.status} (direct/origin contract D3).", "expected_szz.evaluation_variants")

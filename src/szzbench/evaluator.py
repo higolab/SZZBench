@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from collections.abc import Sequence
 from typing import Any
 import json
 
@@ -416,41 +417,23 @@ def evaluate_scenario(
     hash_to_id = _hash_to_logical_id(commit_map)
     ranked_actual_ids, unknown_predictions = _ranked_actual_ids(predictions, commit_map, hash_to_id, reference_format=reference_format)
 
+    scored = classify_prediction(policy, ranked_actual_ids, unknown_predictions=unknown_predictions)
     expected = set(policy.required)
-    allowed_map = {item.commit: item for item in policy.acceptable_related}
-    allowed = set(allowed_map)
-    actual = set(ranked_actual_ids)
-    true_positives = sorted(actual & expected)
-    false_positives = sorted(actual - expected - allowed)
-    false_negatives = sorted(expected - actual)
-    allowed_false_positives = sorted(actual & allowed)
-    related_origins = set(policy.related_origins)
-    related_but_not_correct = set(policy.related_but_not_correct)
-    related_origin_hits = sorted(actual & related_origins)
-    related_but_not_correct_hits = sorted(actual & related_but_not_correct)
-    known_distractor_hits = sorted(actual & set(policy.known_distractors))
-    hard_false_positives = sorted(actual - expected - allowed - related_origins - related_but_not_correct)
-    acceptable_related_hits = [
-        allowed_map[commit].to_dict()
-        for commit in allowed_false_positives
-        if commit in allowed_map
-    ]
-    weighted_credit = _weighted_credit(true_positives, acceptable_related_hits, len(expected))
-    possible_credit = float(len(expected)) if expected else None
-    credit_ratio = _float_ratio(weighted_credit, possible_credit)
-    minimum_required_met = _minimum_required_met(policy, len(true_positives))
-    top_k = _top_k_metrics(policy, ranked_actual_ids)
-    status = _evaluation_status(
-        policy,
-        false_positives=false_positives,
-        false_negatives=false_negatives,
-        hard_false_positives=hard_false_positives,
-        related_but_not_correct_hits=related_but_not_correct_hits,
-        unknown_predictions=unknown_predictions,
-        minimum_required_met=minimum_required_met,
-        top_k=top_k,
-        actual_count=len(actual),
-    )
+    true_positives = scored.true_positives
+    false_positives = scored.false_positives
+    false_negatives = scored.false_negatives
+    allowed_false_positives = scored.allowed_false_positives
+    related_origin_hits = scored.related_origin_hits
+    related_but_not_correct_hits = scored.related_but_not_correct_hits
+    known_distractor_hits = scored.known_distractor_hits
+    hard_false_positives = scored.hard_false_positives
+    acceptable_related_hits = scored.acceptable_related_hits
+    weighted_credit = scored.weighted_credit
+    possible_credit = scored.possible_credit
+    credit_ratio = scored.credit_ratio
+    minimum_required_met = scored.minimum_required_met
+    top_k = scored.top_k
+    status = scored.status
     precision = _ratio(len(true_positives), len(true_positives) + len(false_positives))
     recall = _ratio(len(true_positives), len(true_positives) + len(false_negatives))
     category = _scenario_category(scenario)
@@ -461,7 +444,7 @@ def evaluate_scenario(
         category=category,
         status=status,
         expected_bics=sorted(expected),
-        actual_bics=sorted(actual),
+        actual_bics=sorted(set(ranked_actual_ids)),
         true_positives=true_positives,
         false_positives=false_positives,
         false_negatives=false_negatives,
@@ -920,6 +903,88 @@ def _top_k_metrics(policy: CommitLevelPolicy, ranked_actual_ids: list[str]) -> d
         "hit_at": {str(k): best_rank is not None and best_rank <= k for k in k_values},
         "mrr": (1.0 / best_rank) if best_rank is not None else 0.0,
     }
+
+
+@dataclass
+class ScoredPrediction:
+    """What a policy makes of a predicted set of logical commit ids.
+
+    Everything here is derived from the policy and the prediction alone - no
+    repository, no commit map - so a check that wants to know "would this
+    prediction pass?" can ask the evaluator instead of reimplementing it.  Both
+    `evaluate_scenario` and the direct/origin lints of `graph_validator` go
+    through this function; the lints used to re-derive parts of it and got two
+    interactions wrong (PR #45 review).
+    """
+
+    status: str
+    true_positives: list[str]
+    false_positives: list[str]
+    false_negatives: list[str]
+    allowed_false_positives: list[str]
+    related_origin_hits: list[str]
+    related_but_not_correct_hits: list[str]
+    known_distractor_hits: list[str]
+    hard_false_positives: list[str]
+    acceptable_related_hits: list[dict[str, Any]]
+    weighted_credit: float
+    possible_credit: float | None
+    credit_ratio: float | None
+    minimum_required_met: bool | None
+    top_k: dict[str, Any] | None
+
+
+def classify_prediction(
+    policy: CommitLevelPolicy,
+    ranked_actual_ids: Sequence[str],
+    *,
+    unknown_predictions: Sequence[str] = (),
+) -> ScoredPrediction:
+    """Score `ranked_actual_ids` against `policy`."""
+    expected = set(policy.required)
+    allowed_map = {item.commit: item for item in policy.acceptable_related}
+    allowed = set(allowed_map)
+    actual = set(ranked_actual_ids)
+    true_positives = sorted(actual & expected)
+    allowed_false_positives = sorted(actual & allowed)
+    related_origins = set(policy.related_origins)
+    related_but_not_correct = set(policy.related_but_not_correct)
+    acceptable_related_hits = [allowed_map[commit].to_dict() for commit in allowed_false_positives]
+    weighted_credit = _weighted_credit(true_positives, acceptable_related_hits, len(expected))
+    possible_credit = float(len(expected)) if expected else None
+    minimum_required_met = _minimum_required_met(policy, len(true_positives))
+    top_k = _top_k_metrics(policy, list(ranked_actual_ids))
+    false_positives = sorted(actual - expected - allowed)
+    false_negatives = sorted(expected - actual)
+    hard_false_positives = sorted(actual - expected - allowed - related_origins - related_but_not_correct)
+    related_but_not_correct_hits = sorted(actual & related_but_not_correct)
+    return ScoredPrediction(
+        status=_evaluation_status(
+            policy,
+            false_positives=false_positives,
+            false_negatives=false_negatives,
+            hard_false_positives=hard_false_positives,
+            related_but_not_correct_hits=related_but_not_correct_hits,
+            unknown_predictions=list(unknown_predictions),
+            minimum_required_met=minimum_required_met,
+            top_k=top_k,
+            actual_count=len(actual),
+        ),
+        true_positives=true_positives,
+        false_positives=false_positives,
+        false_negatives=false_negatives,
+        allowed_false_positives=allowed_false_positives,
+        related_origin_hits=sorted(actual & related_origins),
+        related_but_not_correct_hits=related_but_not_correct_hits,
+        known_distractor_hits=sorted(actual & set(policy.known_distractors)),
+        hard_false_positives=hard_false_positives,
+        acceptable_related_hits=acceptable_related_hits,
+        weighted_credit=weighted_credit,
+        possible_credit=possible_credit,
+        credit_ratio=_float_ratio(weighted_credit, possible_credit),
+        minimum_required_met=minimum_required_met,
+        top_k=top_k,
+    )
 
 
 def _evaluation_status(

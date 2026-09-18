@@ -577,20 +577,66 @@ def test_required_origin_needs_no_variant():
     assert lint_graph(data).findings == []
 
 
-def test_origin_aware_variant_must_actually_accept_the_origin():
-    """GW453: a variant whose name promises what its policy does not deliver."""
+def _origin_scenario():
+    """A conforming origin scenario: origin in related_origins plus an origin-aware variant."""
     data = graph_scenario()
     data["bugs"][0]["bug_introducing_commits"].append({"commit": "c0", "role": "origin"})
     data["expected_szz"]["commit_level"]["related_origins"] = ["c0"]
-    # the shape SZZG-0020 carried: named origin-aware, but the origin is only
-    # repeated as related_origins under a policy that does not accept it
-    data["expected_szz"]["evaluation_variants"] = [{
-        "name": "origin-aware",
-        "commit_level": {"required": ["c1"], "related_origins": ["c0"]},
-    }]
-    result = lint_graph(data)
+    data["expected_szz"]["evaluation_variants"] = [deepcopy(ORIGIN_AWARE_VARIANT)]
+    return data
+
+
+def test_origin_aware_variant_must_actually_accept_the_origin():
+    """GW453: membership in acceptable_related is not the same as acceptance.
+
+    Both shapes below keep the origin in `acceptable_related`, so a check that
+    tested membership called them fine; the evaluator rejects the very
+    prediction the variant exists to accept (PR #45 review).
+    """
+    assert lint_graph(_origin_scenario()).findings == []
+
+    # a related_but_not_correct entry left behind by the migration still counts
+    # as a relaxed false positive, even for a commit that is also acceptable
+    leftover = _origin_scenario()
+    leftover["expected_szz"]["evaluation_variants"][0]["commit_level"]["related_but_not_correct"] = ["c0"]
+    result = lint_graph(leftover)
     assert codes(result) == ["GW453"]
-    assert result.findings[0].location == "expected_szz.evaluation_variants[0]"
+    assert result.findings[0].location == "expected_szz.evaluation_variants"
+    assert "FAIL" in result.findings[0].message
+
+    # expect_no_bic discards the allowance entirely
+    no_bic = _origin_scenario()
+    level = no_bic["expected_szz"]["evaluation_variants"][0]["commit_level"]
+    level["required"] = []
+    level["expect_no_bic"] = True
+    assert codes(lint_graph(no_bic)) == ["GW453"]
+
+
+def test_default_variant_decides_which_commit_level_is_checked():
+    """GW451 must ask the evaluator which variant is the default.
+
+    A scenario may carry a base `commit_level` *and* a `default_variant`; the
+    evaluator honours the latter.  Reading the base level directly both missed
+    violations and warned about conforming scenarios (PR #45 review).
+    """
+    # the base level conforms, but the selected default does not
+    misleading = _origin_scenario()
+    misleading["expected_szz"]["default_variant"] = "direct-only"
+    misleading["expected_szz"]["evaluation_variants"].append({
+        "name": "direct-only",
+        "commit_level": {"evaluation_policy": "exact_set", "required": ["c1"]},
+    })
+    assert "GW451" in codes(lint_graph(misleading))
+
+    # and the mirror image: the base level looks wrong, the selected default is right
+    conforming = _origin_scenario()
+    del conforming["expected_szz"]["commit_level"]["related_origins"]
+    conforming["expected_szz"]["default_variant"] = "direct-only"
+    conforming["expected_szz"]["evaluation_variants"].append({
+        "name": "direct-only",
+        "commit_level": {"evaluation_policy": "exact_set", "required": ["c1"], "related_origins": ["c0"]},
+    })
+    assert lint_graph(conforming).findings == []
 
 
 def test_origin_coverage_ignores_non_origin_roles():
