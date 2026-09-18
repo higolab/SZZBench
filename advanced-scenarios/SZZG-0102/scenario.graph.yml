@@ -1,10 +1,12 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0102
-  title: Issue description required
+  title: Issue text names the regressed column
   slug: issue-description
-  description: Evaluates a case where the issue description is needed to distinguish the true BIC from nearby data-cleanup
-    commits.
+  description: Evaluates a case where two commits give the same new contract to two duplicated normalizers and a later
+    commit deduplicates them, deleting both changed lines. Every tested blame baseline stops at the deduplication, and the
+    commit subjects carry only issue identifiers, so the text behind the identifiers is what names the column that
+    regressed. A tool that reconstructs the call graph across the deduplication can reach the same answer from code.
   category: "Issue, message, context, and non-local evidence"
   category_code: "G7"
   factors:
@@ -21,15 +23,16 @@ repository:
 graph:
   model: commit_dag
   history_summary: |
-    c0: create CSV contact importer
-    c1: introduce null handling for blank middle names
-    c2: change postal-code whitespace cleanup
-    c3: fix blank middle-name import using issue description
+    c0: create the CSV contact importer with two duplicated optional-column normalizers
+    c1: store blank middle names as null (ISSUE-401)
+    c2: store blank nicknames as null in the same shape (ISSUE-377)
+    c3: deduplicate the two normalizers, deleting both changed lines (ISSUE-510)
+    c4: restore the empty-string contract for middle names (ISSUE-482)
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create CSV contact importer'
+  message: 'Add the CSV contact importer'
   role: initial
   operations:
   - type: write_file
@@ -39,14 +42,18 @@ commits:
 
       public class CsvContactImporter {
         public String middleName(String[] row) {
-          return normalizeOptional(row[1]);
+          return normalizeMiddleName(row[1]);
         }
 
-        public String postalCode(String[] row) {
-          return row[2].trim();
+        public String nickname(String[] row) {
+          return normalizeNickname(row[2]);
         }
 
-        private String normalizeOptional(String value) {
+        private String normalizeMiddleName(String value) {
+          return value == null ? "" : value.trim();
+        }
+
+        private String normalizeNickname(String value) {
           return value == null ? "" : value.trim();
         }
       }
@@ -54,35 +61,79 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'c1: normalize blank optional contact fields as null'
+  message: 'ISSUE-401 follow the optional-column contract from the importer API docs'
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/CsvContactImporter.java
-    old: 'return value == null ? "" : value.trim();'
-    new: 'return value == null || value.trim().isEmpty() ? null : value.trim();'
+    old: |-
+      private String normalizeMiddleName(String value) {
+          return value == null ? "" : value.trim();
+        }
+    new: |-
+      private String normalizeMiddleName(String value) {
+          return value == null || value.trim().isEmpty() ? null : value.trim();
+        }
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: strip spaces from imported postal codes'
+  message: 'ISSUE-377 apply the same optional-column contract to the profile fields'
   role: intermediate
   operations:
   - type: replace
     path: src/main/java/example/CsvContactImporter.java
-    old: return row[2].trim();
-    new: return row[2].replace(" ", "").trim();
+    old: |-
+      private String normalizeNickname(String value) {
+          return value == null ? "" : value.trim();
+        }
+    new: |-
+      private String normalizeNickname(String value) {
+          return value == null || value.trim().length() == 0 ? null : value.trim();
+        }
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'c3: keep blank middle names as empty strings'
+  message: 'ISSUE-510 share one optional-column normalizer between the importer fields'
+  role: intermediate
+  operations:
+  - type: replace
+    path: src/main/java/example/CsvContactImporter.java
+    old: return normalizeMiddleName(row[1]);
+    new: return normalizeOptional(row[1]);
+  - type: replace
+    path: src/main/java/example/CsvContactImporter.java
+    old: return normalizeNickname(row[2]);
+    new: return normalizeOptional(row[2]);
+  - type: replace
+    path: src/main/java/example/CsvContactImporter.java
+    old: |-
+      private String normalizeMiddleName(String value) {
+          return value == null || value.trim().isEmpty() ? null : value.trim();
+        }
+
+        private String normalizeNickname(String value) {
+          return value == null || value.trim().length() == 0 ? null : value.trim();
+        }
+    new: |-
+      private String normalizeOptional(String value) {
+          String trimmed = value == null ? "" : value.trim();
+          return trimmed.isEmpty() ? null : trimmed;
+        }
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: 'ISSUE-482 keep blank middle names as empty strings'
   role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/CsvContactImporter.java
-    old: 'return value == null || value.trim().isEmpty() ? null : value.trim();'
-    new: 'return value == null ? "" : value.trim();'
+    old: return normalizeOptional(row[1]);
+    new: |-
+      String middle = normalizeOptional(row[1]);
+          return middle == null ? "" : middle;
 bugs:
 - id: B001
   title: Blank middle names are imported as null instead of empty strings
@@ -90,7 +141,7 @@ bugs:
   - commit: c1
     role: direct
   bug_fixing_commits:
-  - commit: c3
+  - commit: c4
     role: complete_fix
   faults:
   - id: F001
@@ -100,9 +151,9 @@ bugs:
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c3
+    commit: c4
     file: src/main/java/example/CsvContactImporter.java
-    statement: 'return value == null ? "" : value.trim();'
+    statement: 'return middle == null ? "" : middle;'
     fix_type: line_modification
 expected_szz:
   commit_level:
@@ -111,26 +162,78 @@ expected_szz:
     - c1
     related_but_not_correct:
     - c2
+    - c3
 scenario_design:
-  purpose: Evaluate whether SZZ can use issue text to choose the middle-name normalization BIC instead of a nearby importer
-    cleanup commit.
-  current_schema_limitation: Issue descriptions are represented as graph metadata linked to bugs.
+  purpose: Evaluate whether SZZ can use the issue text behind the identifier carried by the fix message to choose between
+    two commits that made the same change to two duplicated normalizers, after a deduplication deleted both changed lines.
+  key_property: |
+    c1 and c2 give the same null-for-blank contract to two duplicated normalizers, one for the middle-name column and one
+    for the nickname column. The two predicates are spelled differently (value.trim().isEmpty() and
+    value.trim().length() == 0) but are equivalent on every input, including Unicode whitespace, and the shared normalizer
+    c3 writes is a third spelling with the same behaviour. c3's patch therefore deletes both changed lines without changing
+    behaviour, and git blame at BFC^ reaches c3 under plain blame and under -w, -M and -C -C. The commit subjects carry
+    issue identifiers and no column names, so the subjects do not say which column regressed; the text of ISSUE-401 and
+    ISSUE-377, matched against the text of ISSUE-482, names the middle-name column and selects c1.
+  code_evidence_limitation: |
+    Issue-text evidence is sufficient and direct, not strictly necessary. A tool that reconstructs the call graph across
+    the deduplication can also reach c1, because middleName called normalizeMiddleName before c3, and the BFC repairs the
+    middleName path. What this scenario establishes is that the line-based blame baselines fail here while the issue texts
+    succeed, not that the code is free of clues.
+  current_schema_limitation: Issue descriptions are represented as graph metadata linked to bugs; the repository carries only
+    the identifiers in the commit messages.
   required_extensions_from_source: 'This scenario uses factors: issues, context; operations: write_file, replace.'
   evaluation_points:
-  - Whether SZZ identifies c1 as the BIC.
-  - Whether the issue description rules out the postal-code cleanup c2.
-  - Whether the BFC is interpreted as restoring an empty-string contract for optional middle names.
+  - Whether SZZ identifies c1 as the BIC from the issue texts, or from equivalent non-line evidence.
+  - Whether the nickname change c2 is rejected, although it is equivalent in behaviour and one commit closer to the fix.
+  - Whether the deduplication c3, which every tested blame variant reaches, is rejected.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.
+- 'Measured: git blame at BFC^ of the modified line reaches c3 under plain blame and under -w, -M and -C -C, never c1, so
+  the generator prints GW703 for this scenario by design.'
+- 'Issue context beyond the identifiers is scenario metadata: the repository carries ISSUE-401, ISSUE-377, ISSUE-510 and
+  ISSUE-482 only as identifiers in the commit subjects. An external context interface is designed in issue #23.'
+- A tool that reconstructs the call graph across c3 can also reach c1, because middleName called normalizeMiddleName before
+  the deduplication. The scenario claims only that no line-based blame variant separates c1 from c2; see
+  scenario_design.code_evidence_limitation.
+- 'The two pre-deduplication predicates are equivalent by construction: value.trim().isEmpty() and value.trim().length() == 0
+  agree on every input. An earlier revision spelled c2 with value.isBlank(), which is NOT equivalent to a trim-based test
+  (they disagree on U+0000, U+2003 and U+3000), so the deduplication silently changed the nickname contract.'
+context:
+  required_files:
+  - src/main/java/example/CsvContactImporter.java
+  ambiguous_code_context: The deduplication deleted the middle-name line and the nickname line in the same patch and replaced
+    them with one differently written body, so the line history of the modified line reaches both candidates and no blame
+    variant separates them. The call graph before the deduplication still links middleName to c1, which is recorded in
+    scenario_design.code_evidence_limitation.
 issues:
 - id: ISSUE-482
   title: Blank middle names are exported as null after CSV import
-  description: Contacts imported from CSV should preserve a blank middle_name column as an empty string. Postal-code whitespace
-    cleanup is unrelated; the regression is specifically in optional-name normalization.
+  description: Contacts imported from CSV should preserve a blank middle_name column as an empty string. Exports started to
+    contain null for those contacts after the release in which the optional-column contract was applied. The same contract
+    was applied to the nickname column on purpose and must stay as it is.
   linked_bugs:
   - B001
   referenced_commits:
   - c1
   excludes_commits:
   - c2
+  - c3
+- id: ISSUE-401
+  title: Store a blank middle_name column as null
+  description: The importer API docs say that an optional column that is absent or blank is stored as null. The middle_name
+    column still stores an empty string instead.
+  referenced_commits:
+  - c1
+- id: ISSUE-377
+  title: Store a blank nickname column as null
+  description: The nickname column is optional and should follow the same contract as every other optional column, so an
+    absent or blank value is stored as null.
+  referenced_commits:
+  - c2
+- id: ISSUE-510
+  title: Remove the duplicated optional-column normalizers
+  description: The importer carries one private normalizer per optional column and they have drifted apart in wording. Share
+    a single normalizer instead.
+  referenced_commits:
+  - c3

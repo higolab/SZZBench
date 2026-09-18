@@ -3,7 +3,8 @@ meta:
   id: SZZG-0113
   title: Huge file
   slug: huge-file
-  description: Evaluates huge file and checks whether SZZ identifies the expected bug-introducing commit set.
+  description: Evaluates a one-line defect inside a generated 10,000-entry Java class that exists before the BIC, so blame
+    for the fix has to run over the whole huge file.
   category: "Non-source, binary, generated, and scalability edge cases"
   category_code: "G8"
   factors:
@@ -18,68 +19,117 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
-
-    c1: introduce bug (replace src/main/java/example/Range.java)
-
-    c2: fix bug (write_generated_text_file src/main/java/example/LargeRange.java; replace src/main/java/example/Range.java)'
+  history_summary: |
+    c0: add the generated 10,000-entry bounds table and the tier policy that reads it
+    c1: regenerate the table with a wrong value for entry 5000
+    c2: add the script that regenerates the table
+    c3: correct the value of entry 5000
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
+  message: 'Add the generated bounds table and the tier policy'
   role: initial
-  operations:
-  - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
-- id: c1
-  branch: main
-  parents:
-  - c0
-  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
-  role: bug_introducing
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
-- id: c2
-  branch: main
-  parents:
-  - c1
-  message: 'c2: fix bug (write_generated_text_file src/main/java/example/LargeRange.java; replace src/main/java/example/Range.java)'
-  role: bug_fixing
   operations:
   - type: write_generated_text_file
     path: src/main/java/example/LargeRange.java
     lines: 10000
-    template: public int value_${line} = ${line};
+    template: '  public static final int VALUE_${line} = ${line};'
+    header: |
+      package example;
+
+      /** Generated bounds table; do not edit by hand. */
+      public class LargeRange {
+    footer: '}'
+  - type: write_file
+    path: src/main/java/example/TierPolicy.java
+    content: |
+      package example;
+
+      public class TierPolicy {
+        public int upperBound(int tier) {
+          switch (tier) {
+            case 1:
+              return LargeRange.VALUE_1;
+            case 500:
+              return LargeRange.VALUE_500;
+            case 5000:
+              return LargeRange.VALUE_5000;
+            case 10000:
+              return LargeRange.VALUE_10000;
+            default:
+              return -1;
+          }
+        }
+      }
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'Regenerate the bounds table after the tier import'
+  role: bug_introducing
+  operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/LargeRange.java
+    old: public static final int VALUE_5000 = 5000;
+    new: public static final int VALUE_5000 = 500;
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'Add the script that regenerates the bounds table'
+  role: intermediate
+  operations:
+  - type: write_file
+    path: tools/generate-bounds.sh
+    content: |
+      #!/bin/sh
+      # Writes src/main/java/example/LargeRange.java from scratch.
+      set -e
+      out=src/main/java/example/LargeRange.java
+      {
+        echo 'package example;'
+        echo
+        echo '/** Generated bounds table; do not edit by hand. */'
+        echo 'public class LargeRange {'
+        i=1
+        while [ "$i" -le 10000 ]; do
+          echo "  public static final int VALUE_$i = $i;"
+          i=$((i + 1))
+        done
+        echo '}'
+      } > "$out"
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'Correct the bound of tier 5000 in the generated table'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/LargeRange.java
+    old: public static final int VALUE_5000 = 500;
+    new: public static final int VALUE_5000 = 5000;
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: The bounds table reports 500 as the upper bound of tier 5000
   bug_introducing_commits:
   - commit: c1
     role: direct
   bug_fixing_commits:
-  - commit: c2
+  - commit: c3
     role: complete_fix
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/LargeRange.java
+    statement: public static final int VALUE_5000 = 500;
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c2
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
+    commit: c3
+    file: src/main/java/example/LargeRange.java
+    statement: public static final int VALUE_5000 = 5000;
     fix_type: line_modification
 expected_szz:
   commit_level:
@@ -87,15 +137,22 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: Evaluate Huge file and whether SZZ identifies the expected bug-introducing commit set.
+  purpose: Evaluate whether SZZ survives, and stays precise on, a fix inside a generated Java file of more than 10,000 lines.
+  key_property: |
+    The huge file is created by c0, one line inside it is changed by the BIC c1 and changed back by the BFC c3, so blame for
+    the fix really has to run over the whole 10,005-line file. Both the fault and the fix line are unique in the file, and
+    the wrapped class compiles with javac at every commit.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: write_generated_text_file; operations: write_file, replace,
-    write_generated_text_file.'
+  required_extensions_from_source: 'This scenario uses factors: write_generated_text_file; operations:
+    write_generated_text_file, write_file, replace.'
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether the tool handles a single-line diff inside a file of more than 10,000 lines without truncating or timing out.
   - Whether the expected_szz evaluation policy is applied correctly.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.
+- 'The generated class is wrapped by the header/footer options of write_generated_text_file, so it is valid Java (issue #10).
+  The entries are compile-time constants, which keeps the class initializer empty and the class within the 64 KiB method
+  limit.'

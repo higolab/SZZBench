@@ -1,10 +1,12 @@
 schema_version: graph-0.1-draft
 meta:
   id: SZZG-0098
-  title: Only commit message provides the clue
+  title: Commit message names the regressed region
   slug: commit-message
-  description: Evaluates a case where the code diff is generic and the only domain clue connecting the BFC to the true BIC
-    is in the BIC commit message.
+  description: Evaluates a case where two commits relax the same kind of regional gate in the same way and a later refactor
+    merges both gates into one expression, deleting both changed lines. Every tested blame baseline stops at the refactor,
+    so the region named in the commit messages is a direct route to the true BIC. Code-aware analysis can reach it too, from
+    the region name in the patch context or from the behaviour of the two candidates.
   category: "Issue, message, context, and non-local evidence"
   category_code: "G7"
   factors:
@@ -21,15 +23,16 @@ repository:
 graph:
   model: commit_dag
   history_summary: |
-    c0: create regional checkout challenge gate
-    c1: disable the EU checkout challenge with the only explicit message clue
-    c2: change an unrelated Canada rollout gate
-    c3: restore the EU checkout challenge
+    c0: create the regional checkout challenge gate, mandatory for EU and CA
+    c1: make the EU gate depend on the merchant risk flag, with the only explicit EU clue
+    c2: make the CA gate depend on the merchant risk flag as well, a deliberate product change
+    c3: merge the two regional gates into one branch, deleting both changed lines
+    c4: require the checkout challenge for EU orders again
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create regional checkout challenge gate'
+  message: 'Add the regional checkout challenge gate'
   role: initial
   operations:
   - type: write_file
@@ -38,21 +41,23 @@ commits:
       package example;
 
       public class CheckoutChallengeGate {
-        public boolean requiresChallenge(String region, boolean merchantRiskFlag) {
+        static final int HIGH_RISK_SCORE = 70;
+
+        public boolean requiresChallenge(String region, boolean merchantRiskFlag, int riskScore) {
           if (region.equals("EU")) {
             return true;
           }
           if (region.equals("CA")) {
-            return merchantRiskFlag;
+            return true;
           }
-          return merchantRiskFlag;
+          return riskScore >= HIGH_RISK_SCORE;
         }
       }
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'PAY-314 temporary EU checkout challenge bypass during consent-copy rollout'
+  message: 'PAY-314 bypass the EU checkout challenge while the consent copy rolls out'
   role: bug_introducing
   operations:
   - type: replace
@@ -69,25 +74,25 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'PAY-299 tune Canada challenge rollout percentage'
+  message: 'PAY-330 let Canadian merchants below the risk score skip the checkout challenge'
   role: intermediate
   operations:
   - type: replace
     path: src/main/java/example/CheckoutChallengeGate.java
     old: |-
       if (region.equals("CA")) {
-            return merchantRiskFlag;
+            return true;
           }
     new: |-
       if (region.equals("CA")) {
-            return merchantRiskFlag && region.length() == 2;
+            return merchantRiskFlag || riskScore >= HIGH_RISK_SCORE;
           }
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'c3: restore mandatory regional checkout challenge'
-  role: bug_fixing
+  message: 'PAY-352 collapse the two regional gates into one branch'
+  role: intermediate
   operations:
   - type: replace
     path: src/main/java/example/CheckoutChallengeGate.java
@@ -95,10 +100,24 @@ commits:
       if (region.equals("EU")) {
             return merchantRiskFlag;
           }
-    new: |-
-      if (region.equals("EU")) {
-            return true;
+          if (region.equals("CA")) {
+            return merchantRiskFlag || riskScore >= HIGH_RISK_SCORE;
           }
+    new: |-
+      if (region.equals("EU") || region.equals("CA")) {
+            return merchantRiskFlag || (region.equals("CA") && riskScore >= HIGH_RISK_SCORE);
+          }
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: 'PAY-501 require the checkout challenge for EU orders again'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/CheckoutChallengeGate.java
+    old: 'return merchantRiskFlag || (region.equals("CA") && riskScore >= HIGH_RISK_SCORE);'
+    new: 'return region.equals("EU") || merchantRiskFlag || (region.equals("CA") && riskScore >= HIGH_RISK_SCORE);'
 bugs:
 - id: B001
   title: EU checkout challenge was accidentally left conditional
@@ -106,7 +125,7 @@ bugs:
   - commit: c1
     role: direct
   bug_fixing_commits:
-  - commit: c3
+  - commit: c4
     role: complete_fix
   faults:
   - id: F001
@@ -116,9 +135,9 @@ bugs:
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c3
+    commit: c4
     file: src/main/java/example/CheckoutChallengeGate.java
-    statement: return true;
+    statement: 'return region.equals("EU") || merchantRiskFlag || (region.equals("CA") && riskScore >= HIGH_RISK_SCORE);'
     fix_type: line_modification
 expected_szz:
   commit_level:
@@ -127,24 +146,50 @@ expected_szz:
     - c1
     related_but_not_correct:
     - c2
+    - c3
 scenario_design:
-  purpose: Evaluate whether a context-aware SZZ method can use commit-message evidence when the changed code itself contains
-    only a generic boolean gate.
+  purpose: Evaluate whether a context-aware SZZ method can use commit-message evidence when a behaviour-preserving refactor
+    has deleted the faulty line together with an equally shaped line from a second, innocent commit, so that no line-based
+    blame variant separates the two candidates.
+  key_property: |
+    c1 relaxes the EU gate and c2 relaxes the CA gate in the same shape; both are plausible causes of a relaxed checkout
+    challenge. c3 merges the two branches into one condition and one expression without changing behaviour, and its patch
+    deletes both changed lines, so neither survives into the fixed revision. The line the BFC modifies was written by c3,
+    and walking its history back across the merge reaches c1 and c2 together, so plain blame and its -w, -M and -C -C
+    variants all stop at c3 and no line-based baseline can separate the candidates. The messages separate them directly:
+    c1 says it bypasses the EU challenge (PAY-314) and the BFC says it requires the EU challenge again (PAY-501), while c2
+    (PAY-330) is about Canada and c3 (PAY-352) only restructures the method.
+  code_evidence_limitation: |
+    Message evidence is sufficient and direct, not strictly necessary. The BFC names the region it repairs -- its added
+    line contains region.equals("EU") -- and the one-line patch context of c1 contains if (region.equals("EU")) while that
+    of c2 contains if (region.equals("CA")), so a tool that compares the fix hunk with the candidate hunks and their
+    context can pick c1 without reading a single message. The behaviour of the candidates discriminates as well: with
+    merchantRiskFlag=false and riskScore=0 the EU verdict flips at c1 and the CA verdict flips at c2. This is a property of
+    self-contained code repositories in general -- a fix commit names what it repairs -- so what this scenario establishes
+    is that the line-based blame baselines fail here while message evidence succeeds, not that the code is free of clues.
   current_schema_limitation: Commit-message clues are represented as contextual metadata rather than as first-class graph
     edges.
   required_extensions_from_source: 'This scenario uses factors: context, commit_messages; operations: write_file, replace.'
   evaluation_points:
-  - Whether SZZ identifies c1 as the BIC using the PAY-314 EU clue in the commit message.
-  - Whether the unrelated Canada gate change c2 is not selected just because it is nearby and similar.
-  - Whether the BFC can be linked to the correct regional intent without relying only on line text.
+  - Whether SZZ identifies c1 as the BIC using the PAY-314 EU clue in the commit message, or equivalent non-line evidence.
+  - Whether the behaviour-preserving refactor c3, which every tested blame variant reaches, is rejected.
+  - Whether the equally shaped but innocent CA relaxation c2 is rejected, although it is one commit closer to the fix.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.
+- 'Measured: git blame at BFC^ of the modified line reaches c3 under plain blame and under -w, -M and -C -C, never c1, so
+  the generator prints GW703 for this scenario by design.'
 context:
   required_files:
   - src/main/java/example/CheckoutChallengeGate.java
   required_commit_messages:
   - commit: c1
     clue: PAY-314 identifies the EU checkout challenge bypass that the BFC restores.
-  ambiguous_code_context: The same method contains multiple regional boolean gates, but only c1's message names the restored
-    EU behavior.
+  - commit: c2
+    clue: PAY-330 relaxes the Canadian gate in the same shape, so it is the rival candidate that the region name rules out.
+  - commit: c3
+    clue: PAY-352 describes a pure restructuring of the gate, which is why the line blame reaches it is not the cause.
+  ambiguous_code_context: The refactor deleted the EU line and the CA line in the same patch and replaced them with one
+    expression, so the line history of the modified line reaches both candidates and no blame variant separates them. The
+    region name is still present in the patch context of each candidate, which is recorded in
+    scenario_design.code_evidence_limitation.

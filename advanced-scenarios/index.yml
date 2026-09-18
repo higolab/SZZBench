@@ -240,7 +240,7 @@ scenarios:
   - branch
   - rebase
   - copy_propagation
-  - copy_file
+  - duplicate_code
   - direct_bic
   - origin_bic
 - id: SZZG-0024
@@ -520,7 +520,10 @@ scenarios:
   status: draft
   factors:
   - branch
-  - cherry_pick_of
+  - cherry_pick
+  - release_branch
+  - direct_bic
+  - origin_bic
 - id: SZZG-0049
   title: Cherry-pick BFC
   category_code: G4
@@ -568,6 +571,7 @@ scenarios:
   - branch
   - merge
   - criss_cross_merge
+  - multiple_merge_bases
 - id: SZZG-0053
   title: Release-branch-only bug
   category_code: G4
@@ -703,6 +707,7 @@ scenarios:
   - intermediate_commit
   - direct_bic
   - origin_bic
+  - inherited_commit_metadata
 - id: SZZG-0065
   title: Rebase conflict resolution introduces bug
   category_code: G5
@@ -716,6 +721,7 @@ scenarios:
   - rebase_conflict_resolution
   - conflict_resolution_bic
   - direct_bic
+  - fault_in_neither_parent
 - id: SZZG-0066
   title: Rebase conflict resolution propagates existing bug
   category_code: G5
@@ -809,9 +815,10 @@ scenarios:
   - branch
   - rebase
   - interactive_rebase
-  - drop
   - dropped_origin_bic
+  - deleted_branch
   - direct_bic
+  - origin_bic
 - id: SZZG-0073
   title: Interactive rebase reorders commits before BIC
   category_code: G5
@@ -826,6 +833,7 @@ scenarios:
   - reorder
   - direct_bic
   - origin_bic
+  - inherited_commit_metadata
 - id: SZZG-0075
   title: Interactive rebase squashes BIC and BFC into neutral commit
   category_code: G5
@@ -840,6 +848,7 @@ scenarios:
   - squash
   - transient_bug
   - scope_boundary
+  - no_main_line_bfc
 - id: SZZG-0076
   title: Multiple BICs replayed by rebase
   category_code: G5
@@ -879,7 +888,7 @@ scenarios:
   - branch
   - rebase
   - commit_messages
-  - developer_hints
+  - message_trailer
   - origin_bic
   - direct_bic
 - id: SZZG-0081
@@ -893,9 +902,10 @@ scenarios:
   - branch
   - rebase
   - formatting_rewrite
-  - formatting
-  - robustness
+  - whitespace_only_change
+  - blame_stops_at_formatting
   - direct_bic
+  - origin_bic
 - id: SZZG-0082
   title: Rebase with generated file update
   category_code: G5
@@ -920,9 +930,11 @@ scenarios:
   - branch
   - rebase
   - large_noisy_commit
+  - generated_file
   - multi_file
   - robustness
   - direct_bic
+  - origin_bic
 - id: SZZG-0084
   title: Partial revert reintroduces bug
   category_code: G6
@@ -930,7 +942,14 @@ scenarios:
   path: advanced-scenarios/SZZG-0084/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0084/README.md
   status: draft
-  factors: []
+  factors:
+  - linear_history
+  - revert
+  - partial_revert
+  - reintroduced_bug
+  - re_bic
+  - origin_bic
+  - revert_footer
 - id: SZZG-0085
   title: Old BIC and re-BIC are both plausible
   category_code: G6
@@ -1064,7 +1083,7 @@ scenarios:
   - commit_series
   - related_but_not_correct
 - id: SZZG-0098
-  title: Only commit message provides the clue
+  title: Commit message names the regressed region
   category_code: G7
   category: Issue, message, context, and non-local evidence
   path: advanced-scenarios/SZZG-0098/scenario.graph.yml
@@ -1105,7 +1124,7 @@ scenarios:
   - context
   - faults
 - id: SZZG-0102
-  title: Issue description required
+  title: Issue text names the regressed column
   category_code: G7
   category: Issue, message, context, and non-local evidence
   path: advanced-scenarios/SZZG-0102/scenario.graph.yml

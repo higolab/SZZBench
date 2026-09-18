@@ -3,8 +3,11 @@ meta:
   id: SZZG-0015
   title: Buggy code copied while original is fixed later
   slug: buggy-code-copied-original-later-fixed
-  description: Evaluates a copied buggy implementation where the original file is fixed before the copied file, and the
-    copy commit remains the direct BIC for the copied file.
+  description: >-
+    A.java already contains an exclusive range check at c0. Commit c1 copies the file to B.java and adapts only
+    the class declaration, so the faulty statement enters B.java byte-for-byte unchanged. c2 fixes the copied
+    instance in B.java and only c3, later, fixes the original in A.java. For the B.java fix the direct BIC is the
+    copy commit c1 and c0 is origin context; the original keeps the fault until after the scored fix.
   category: "Clone, copy propagation, and origin-vs-direct BIC"
   category_code: "G2"
   factors:
@@ -20,54 +23,64 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial state (write_file src/main/java/example/A.java)
+  history_summary: 'c0: add A with an exclusive range check
 
-    c1: copy buggy code to B.java (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)
+    c1: copy A.java to B.java and rename the copied class (direct BIC for B.java)
 
-    c2: fix original bug in A.java (replace src/main/java/example/A.java)
+    c2: include the bounds in B.contains (BFC)
 
-    c3: fix copied bug in B.java (replace src/main/java/example/B.java)'
+    c3: include the bounds in A.contains, later than the copy'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_file src/main/java/example/A.java)'
+  message: Add A with a range containment check
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/A.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value > min && value < max;\n  }\n}\n"
+    content: |
+      package example;
+
+      public class A {
+        public boolean contains(int value, int min, int max) {
+          return value > min && value < max;
+        }
+      }
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: copy buggy code to B.java (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)'
+  message: Copy the containment check from A into B
   role: bug_introducing
   operations:
   - type: copy_file
     from: src/main/java/example/A.java
     to: src/main/java/example/B.java
+  - type: replace
+    path: src/main/java/example/B.java
+    old: public class A {
+    new: public class B {
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: fix original bug in A.java (replace src/main/java/example/A.java)'
+  message: Include the bounds in B.contains
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/A.java
+    path: src/main/java/example/B.java
     old: return value > min && value < max;
     new: return value >= min && value <= max;
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'c3: fix copied bug in B.java (replace src/main/java/example/B.java)'
-  role: bug_fixing
+  message: Include the bounds in A.contains
+  role: origin_bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/B.java
+    path: src/main/java/example/A.java
     old: return value > min && value < max;
     new: return value >= min && value <= max;
 bugs:
@@ -81,7 +94,7 @@ bugs:
     role: origin
     description: Origin context where the faulty logic already existed in A.java.
   bug_fixing_commits:
-  - commit: c3
+  - commit: c2
     role: complete_fix
   faults:
   - id: F001
@@ -91,7 +104,7 @@ bugs:
     change_type: copy_propagated_line_modification
   fixes:
   - id: X001
-    commit: c3
+    commit: c2
     file: src/main/java/example/B.java
     statement: return value >= min && value <= max;
     fix_type: line_modification
@@ -101,16 +114,31 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: Evaluate a copy-propagated bug where c1 remains the direct BIC for B.java even though A.java is fixed first.
-  key_property: Commit c2 fixes the original A.java instance only. For the later B.java fix in c3, the expected direct BIC
-    is still c1, the commit that copied the faulty logic into B.java.
+  purpose: Evaluate a copy-propagated bug where the copied instance is fixed first and the original keeps the fault until later.
+  key_property: Commit c2 fixes the copied B.java instance only; the original A.java keeps the fault until c3. The expected
+    direct BIC for the scored fix is c1, the commit that copied the faulty logic into B.java.
+  difference_from_SZZG_0018: SZZG-0018 fixes the original first and the clone afterwards, and scores the clone's fix.
+    This scenario reverses that order, so the original is the instance that stays faulty longest. Before the 2026-09
+    repair both scenarios generated byte-identical repositories.
+  compilation_contract: >-
+    Both files live in package example and must compile together, so the copy commit renames the copied class from
+    A to B in the same commit. Only the class declaration line differs between A.java and B.java; the faulty
+    statement is copied verbatim, which is what copy-aware blame has to detect.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
   required_extensions_from_source: 'This scenario uses factors: copy_file, faults; operations: write_file, copy_file, replace.'
   evaluation_points:
   - Whether SZZ identifies c1 as the direct BIC for the copied B.java instance.
-  - Whether SZZ does not treat the later A.java fix c2 as the copied instance's BFC.
+  - Whether SZZ does not treat the later A.java fix c3 as the copied instance's BFC.
   - Whether the expected_szz evaluation policy is applied correctly.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.
+- >-
+  2026-09 revision (issue 10): A.java declared `public class Range`, so no commit of this scenario compiled. The class in
+  A.java is now A, and the copy commit renames the copied class to B so that both files compile together in one package.
+  The oracle (direct BIC c1, origin c0) and the copied faulty statement are unchanged; the commit messages were
+  rewritten to realistic, role-neutral text.
+- >-
+  2026-09 revision (issue 11): the fix order was reversed (the copy is fixed at c2, the original at c3) so that the
+  title holds literally and the generated repository is no longer byte-identical to SZZG-0018's.

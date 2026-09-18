@@ -3,13 +3,15 @@ meta:
   id: SZZG-0052
   title: Criss-cross merge
   slug: criss-cross-merge
-  description: Two long-lived branches merge each other in both directions before a bug introduced on one branch is fixed.
+  description: Two feature branches merge each other before both are integrated into main. The last merge therefore has two
+    merge bases, and the bug introduced on the first branch is fixed on main after it has travelled through both merges.
   category: "Branch, merge, cherry-pick, backport, and release branches"
   category_code: "G4"
   factors:
   - branch
   - merge
   - criss_cross_merge
+  - multiple_merge_bases
   difficulty: advanced
   status: draft
 repository:
@@ -20,108 +22,171 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial correct implementation
+  history_summary: 'c0: add SessionWindow with the accepted timeout range on main
 
-    c1: branchA introduces bug
+    a1: feature-timeout makes the timeout comparison exclusive
 
-    c2: branchB adds unrelated work
+    b1: feature-reporting adds the session reporter
 
-    c3: branchA merges branchB
+    a2: feature-timeout merges feature-reporting
 
-    c4: branchB merges branchA
+    b2: feature-reporting merges feature-timeout (the criss-cross)
 
-    c5: branchB fixes the bug after criss-cross merges'
+    a3: feature-timeout adds the clamp helper
+
+    c4: main integrates both branch tips; this merge has two merge bases, a1 and b1
+
+    c5: main accepts the timeout range bounds again'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial correct implementation'
+  message: Add SessionWindow with the accepted timeout range
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
-- id: c1
-  branch: branchA
+    path: src/main/java/example/SessionWindow.java
+    content: |
+      package example;
+
+      public class SessionWindow {
+        public static final int MIN_TIMEOUT_SECONDS = 30;
+        public static final int MAX_TIMEOUT_SECONDS = 3600;
+
+        public boolean acceptsTimeout(int seconds) {
+          return seconds >= MIN_TIMEOUT_SECONDS && seconds <= MAX_TIMEOUT_SECONDS;
+        }
+      }
+- id: a1
+  branch: feature-timeout
   parents:
   - c0
-  message: 'c1: introduce range boundary bug on branchA'
+  message: Require session timeouts strictly inside the accepted range
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
-- id: c2
-  branch: branchB
+    path: src/main/java/example/SessionWindow.java
+    old: return seconds >= MIN_TIMEOUT_SECONDS && seconds <= MAX_TIMEOUT_SECONDS;
+    new: return seconds > MIN_TIMEOUT_SECONDS && seconds < MAX_TIMEOUT_SECONDS;
+- id: b1
+  branch: feature-reporting
   parents:
   - c0
-  message: 'c2: add branchB reporter'
+  message: Add SessionReporter for timeout diagnostics
   role: intermediate
   operations:
   - type: write_file
-    path: src/main/java/example/BranchBReporter.java
-    content: "package example;\n\npublic class BranchBReporter {\n  public String branch() {\n    return \"B\";\n  }\n}\n"
-- id: c3
-  branch: branchA
+    path: src/main/java/example/SessionReporter.java
+    content: |
+      package example;
+
+      public class SessionReporter {
+        public String describeTimeout(int seconds) {
+          return "timeout=" + seconds;
+        }
+      }
+- id: a2
+  branch: feature-timeout
   parents:
-  - c1
-  - c2
-  message: 'c3: merge branchB into branchA'
+  - a1
+  - b1
+  message: Merge branch 'feature-reporting' into feature-timeout
   role: merge
   operations: []
-- id: c4
-  branch: branchB
+- id: b2
+  branch: feature-reporting
   parents:
-  - c2
-  - c3
-  message: 'c4: merge branchA back into branchB'
+  - b1
+  - a1
+  message: Merge branch 'feature-timeout' into feature-reporting
+  role: merge
+  operations: []
+- id: a3
+  branch: feature-timeout
+  parents:
+  - a2
+  message: Clamp session timeouts to the accepted range
+  role: intermediate
+  operations:
+  - type: replace
+    path: src/main/java/example/SessionWindow.java
+    old: |-
+      public boolean acceptsTimeout(int seconds) {
+          return seconds > MIN_TIMEOUT_SECONDS && seconds < MAX_TIMEOUT_SECONDS;
+        }
+    new: |-
+      public boolean acceptsTimeout(int seconds) {
+          return seconds > MIN_TIMEOUT_SECONDS && seconds < MAX_TIMEOUT_SECONDS;
+        }
+
+        public int clampTimeout(int seconds) {
+          if (seconds < MIN_TIMEOUT_SECONDS) {
+            return MIN_TIMEOUT_SECONDS;
+          }
+          if (seconds > MAX_TIMEOUT_SECONDS) {
+            return MAX_TIMEOUT_SECONDS;
+          }
+          return seconds;
+        }
+- id: c4
+  branch: main
+  parents:
+  - a3
+  - b2
+  message: Merge branch 'feature-reporting' into main
   role: merge
   operations: []
 - id: c5
-  branch: branchB
+  branch: main
   parents:
   - c4
-  message: 'c5: fix range boundary bug after criss-cross merge'
+  message: Accept the timeout range bounds again so 30 s and 3600 s stay valid
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/SessionWindow.java
+    old: return seconds > MIN_TIMEOUT_SECONDS && seconds < MAX_TIMEOUT_SECONDS;
+    new: return seconds >= MIN_TIMEOUT_SECONDS && seconds <= MAX_TIMEOUT_SECONDS;
 bugs:
 - id: B001
-  title: Range boundary bug through criss-cross merge
+  title: SessionWindow rejects the configured timeout bounds
   bug_introducing_commits:
-  - commit: c1
+  - commit: a1
     role: direct
+    description: The only commit that writes the faulty comparison; it reaches the BFC through two different merge paths.
   bug_fixing_commits:
   - commit: c5
     role: complete_fix
   faults:
   - id: F001
-    commit: c1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    commit: a1
+    file: src/main/java/example/SessionWindow.java
+    statement: return seconds > MIN_TIMEOUT_SECONDS && seconds < MAX_TIMEOUT_SECONDS;
     change_type: line_modification
   fixes:
   - id: X001
     commit: c5
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
+    file: src/main/java/example/SessionWindow.java
+    statement: return seconds >= MIN_TIMEOUT_SECONDS && seconds <= MAX_TIMEOUT_SECONDS;
     fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
-    - c1
+    - a1
 scenario_design:
-  purpose: Evaluate whether SZZ can identify a BIC when branch history includes reciprocal merges.
-  key_property: The history contains merges in both directions between branchA and branchB before the BFC.
+  purpose: Evaluate whether SZZ can identify a BIC when the history between the BIC and the BFC contains a criss-cross, i.e.
+    a merge whose two parents have more than one best common ancestor.
+  key_property: a2 merges b1 into a1 and b2 merges a1 into b1, so neither a1 nor b1 is an ancestor of the other while both
+    are ancestors of the two tips a3 and b2. The integration merge c4 therefore has two merge bases; `git merge-base --all
+    a3 b2` prints a1 and b1, and Git builds a virtual merge base for it.
+  difference_from_the_previous_version: The previous version merged c2 into c1 and then c3 (that merge) back into c2, so c2
+    was an ancestor of c3 and `git merge-base --all` returned a single base. There was no criss-cross (GitHub issue 4).
   evaluation_points:
-  - Criss-cross-like reciprocal merge structure
-  - BIC on branchA
-  - BFC after the bug has propagated to branchB.
+  - Whether a tool walks the faulty line through a merge with two merge bases back to a1.
+  - Whether the two merge commits a2, b2 or the integration merge c4 are reported instead of a1.
 notes:
-- This scenario uses a simplified criss-cross-like DAG that current graph_generator should be able to create.
+- The two branches touch disjoint files, so every merge is conflict-free; the criss-cross is structural, not a conflict
+  scenario.
+- Only feature-timeout commits again after the reciprocal merges (a3). That keeps every merge inside what the graph simulator
+  can model (it resolves a merge against a single nearest common ancestor) while the two merge bases of c4 are unaffected.

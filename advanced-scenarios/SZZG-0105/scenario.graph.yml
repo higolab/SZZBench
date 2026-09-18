@@ -3,8 +3,8 @@ meta:
   id: SZZG-0105
   title: Defensive check BFC masks an earlier root-cause BIC
   slug: defensive-check-masks-root-cause
-  description: Evaluates defensive check bfc masks an earlier root-cause bic and checks whether SZZ identifies the expected
-    bug-introducing commit set.
+  description: Evaluates a defensive fix that is applied in the caller, far from the commit that introduced the root cause,
+    so line-based blame at the BFC reaches the untouched caller instead of the BIC.
   category: "Issue, message, context, and non-local evidence"
   category_code: "G7"
   factors:
@@ -21,81 +21,131 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: c0: create profile renderer
-
-    c1: c1: introduce null-producing root cause
-
-    c2: c2: fix crash with defensive null checks'
+  history_summary: |
+    c0: add the profile name formatter and the profile card that renders it
+    c1: let the formatter return no name at all for blank inputs
+    c2: add a sort key to the profile formatter
+    c3: guard the profile card against a missing display name
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create profile renderer'
+  message: 'Add the profile name formatter and the profile card'
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Profile.java
-    content: "package example;\npublic class Profile {\n  public String displayName(String first, String last) {\n    return\
-      \ first + \" \" + last;\n  }\n\n}\n"
+    content: |
+      package example;
+
+      public class Profile {
+        public String displayName(String first, String last) {
+          return (first + " " + last).trim();
+        }
+      }
+  - type: write_file
+    path: src/main/java/example/ProfileCard.java
+    content: |
+      package example;
+
+      public class ProfileCard {
+        private final Profile profile = new Profile();
+
+        public String header(String first, String last) {
+          return profile.displayName(first, last).toUpperCase();
+        }
+      }
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce null-producing root cause'
+  message: 'Report no display name for profiles whose name parts are blank'
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Profile.java
-    old: return first + " " + last;
-    new: return first.trim() + " " + last.trim();
+    old: 'return (first + " " + last).trim();'
+    new: |-
+      String full = (first + " " + last).trim();
+          return full.isEmpty() ? null : full;
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: fix crash with defensive null checks'
-  role: bug_fixing
+  message: 'Add a sort key derived from the profile name'
+  role: intermediate
   operations:
   - type: replace
     path: src/main/java/example/Profile.java
-    old: return first.trim() + " " + last.trim();
-    new: 'return (first == null ? "" : first.trim()) + " " + (last == null ? "" : last.trim());'
+    old: |-
+      return full.isEmpty() ? null : full;
+        }
+    new: |-
+      return full.isEmpty() ? null : full;
+        }
+
+        public String sortKey(String first, String last) {
+          return (last + " " + first).trim().toLowerCase();
+        }
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'Guard the profile card header against a missing display name'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/ProfileCard.java
+    old: return profile.displayName(first, last).toUpperCase();
+    new: |-
+      String name = profile.displayName(first, last);
+          return name == null ? "" : name.toUpperCase();
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: The profile card crashes when the formatter reports no display name
   bug_introducing_commits:
   - commit: c1
     role: direct
   bug_fixing_commits:
-  - commit: c2
+  - commit: c3
     role: complete_fix
   faults:
   - id: F001
     commit: c1
     file: src/main/java/example/Profile.java
-    statement: return first.trim() + " " + last.trim();
+    statement: 'return full.isEmpty() ? null : full;'
     change_type: line_modification
   fixes:
   - id: X001
-    commit: c2
-    file: src/main/java/example/Profile.java
-    statement: 'return (first == null ? "" : first.trim()) + " " + (last == null ? "" : last.trim());'
+    commit: c3
+    file: src/main/java/example/ProfileCard.java
+    statement: 'return name == null ? "" : name.toUpperCase();'
     fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
     - c1
+    related_but_not_correct:
+    - c0
 scenario_design:
-  purpose: Evaluate defensive check bfc masks an earlier root-cause bic and whether SZZ identifies the expected bug-introducing
-    commit set.
+  purpose: Evaluate whether SZZ finds the commit that introduced the root cause when the fix is a defensive check in a caller
+    that the BIC never touched.
+  key_property: |
+    The BFC c3 edits ProfileCard.header, a line written by c0 and never touched by the BIC c1. Line-based blame at BFC^
+    therefore reaches c0, not c1. Only a tool that follows the null value back to Profile.displayName, where c1 made the
+    method return null, reaches the required BIC. The fix is defensive, so the root cause introduced by c1 is still in the
+    tree at the BFC and displayName keeps returning null.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
   required_extensions_from_source: 'This scenario uses factors: defensive_fix, root_cause_not_touched, context_dependent;
-    operations: replace, write_file.'
+    operations: write_file, replace.'
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Whether SZZ reports c1, the commit that introduced the root cause.
+  - Whether SZZ avoids reporting c0, which line-based blame at BFC^ reaches.
+  - Whether the fix is recognized as a defensive one that leaves the root cause in place.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.
+- 'Measured: git blame at BFC^ of the single line the BFC deletes reaches c0, so plain blame misses the required BIC c1.
+  The generator''s own blame check follows fault.statement instead and still reaches c1 (GI703).'

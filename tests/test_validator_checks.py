@@ -517,12 +517,12 @@ def test_approximate_operations_warn_with_explanations():
         ],
     })
     result = lint_graph(data)
-    assert codes(result) == ["GW442", "GW441", "GW440", "GW443"]
-    assert "core.filemode=false" in result.findings[0].message
-    assert "does not create additional commits" in result.findings[1].message
-    assert "file-level approximation" in result.findings[2].message
-    assert "not implemented" in result.findings[3].message
-    assert result.findings[3].location == "commits[3].operations[3]"
+    # chmod and commit_generator are faithful since the generator records file
+    # modes and expands commit_generator into real commits, so they no longer warn.
+    assert codes(result) == ["GW440", "GW443"]
+    assert "file-level approximation" in result.findings[0].message
+    assert "not implemented" in result.findings[1].message
+    assert result.findings[1].location == "commits[3].operations[3]"
 
 
 def test_origin_bic_must_be_mentioned_by_expected_szz():

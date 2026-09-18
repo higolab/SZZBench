@@ -3,12 +3,17 @@ meta:
   id: SZZG-0048
   title: Cherry-pick BIC
   slug: cherry-pick-bic
-  description: Evaluates cherry-pick bic and checks whether SZZ identifies the expected bug-introducing commit set.
+  description: A feature branch tightens the upload batch limits and is merged into main. The same commit is cherry-picked
+    onto the release branch, where the bug is reported and fixed. The cherry-picked commit is the direct BIC of the release-branch
+    fix; the feature-branch commit it was picked from is the origin and is not an ancestor of the fix.
   category: "Branch, merge, cherry-pick, backport, and release branches"
   category_code: "G4"
   factors:
   - branch
-  - cherry_pick_of
+  - cherry_pick
+  - release_branch
+  - direct_bic
+  - origin_bic
   difficulty: advanced
   status: draft
 repository:
@@ -19,115 +24,149 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
+  history_summary: 'c0: add UploadQuota with the accepted batch size limits on main
 
-    c1: introduce bug (replace src/main/java/example/Range.java)
+    c1: feature branch requires batch sizes strictly inside the limits
 
-    c2: apply intermediate change (write_file docs/feature-note.md)
+    c2: feature branch documents the batch limits
 
-    c3: merge branch
+    c3: merge the feature branch into main
 
-    c4: fix bug (replace src/main/java/example/Range.java)
+    r1: cherry-pick c1 onto the release branch (with the -x trailer)
 
-    r1: cherry-pick change (apply_patch_from c1)'
+    c4: release branch accepts the limit values again'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
+  message: Add UploadQuota with the accepted batch size limits
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
+    path: src/main/java/example/UploadQuota.java
+    content: |
+      package example;
+
+      public class UploadQuota {
+        public static final int MIN_FILES_PER_BATCH = 1;
+        public static final int MAX_FILES_PER_BATCH = 50;
+
+        public boolean acceptsBatch(int files) {
+          return files >= MIN_FILES_PER_BATCH && files <= MAX_FILES_PER_BATCH;
+        }
+      }
 - id: c1
   branch: feature
   parents:
   - c0
-  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
-  role: bug_introducing
+  message: Require batch sizes strictly inside the quota limits
+  role: origin_bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
+    path: src/main/java/example/UploadQuota.java
+    old: return files >= MIN_FILES_PER_BATCH && files <= MAX_FILES_PER_BATCH;
+    new: return files > MIN_FILES_PER_BATCH && files < MAX_FILES_PER_BATCH;
 - id: c2
   branch: feature
   parents:
   - c1
-  message: 'c2: apply intermediate change (write_file docs/feature-note.md)'
+  message: Document the upload batch limits for the client team
   role: intermediate
   operations:
   - type: write_file
-    path: docs/feature-note.md
-    content: 'feature note
+    path: docs/upload-limits.md
+    content: |
+      # Upload batch limits
 
-      '
+      A batch is accepted when its file count lies within the configured limits.
 - id: c3
   branch: main
   parents:
   - c0
   - c2
-  message: 'c3: merge branch'
+  message: Merge branch 'feature' into main
   role: merge
   operations: []
-- id: c4
-  branch: main
-  parents:
-  - c3
-  message: 'c4: fix bug (replace src/main/java/example/Range.java)'
-  role: bug_fixing
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
 - id: r1
   branch: release
   parents:
   - c0
-  message: 'r1: cherry-pick change (apply_patch_from c1)'
   role: cherry_pick
   cherry_pick_of: c1
+  cherry_pick_trailer: true
+  inherit_message: true
+  inherit_author_date: true
   operations:
   - type: apply_patch_from
     commit: c1
+- id: c4
+  branch: release
+  parents:
+  - r1
+  message: Accept the quota limit values again so a full batch of 50 files is allowed
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/UploadQuota.java
+    old: return files > MIN_FILES_PER_BATCH && files < MAX_FILES_PER_BATCH;
+    new: return files >= MIN_FILES_PER_BATCH && files <= MAX_FILES_PER_BATCH;
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: UploadQuota rejects the configured batch limits on the release branch
   bug_introducing_commits:
-  - commit: c1
+  - commit: r1
     role: direct
+    description: Direct BIC of the release-branch fix; the cherry-pick wrote the faulty comparison into the release history
+      and is the only bug-introducing commit in the ancestry of c4.
+  - commit: c1
+    role: origin
+    description: Origin BIC on the feature branch; the commit the release branch picked from. It is not an ancestor of c4.
   bug_fixing_commits:
   - commit: c4
     role: complete_fix
   faults:
   - id: F001
-    commit: c1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    commit: r1
+    file: src/main/java/example/UploadQuota.java
+    statement: return files > MIN_FILES_PER_BATCH && files < MAX_FILES_PER_BATCH;
     change_type: line_modification
+  origin_faults:
+  - id: OF001
+    commit: c1
+    file: src/main/java/example/UploadQuota.java
+    statement: return files > MIN_FILES_PER_BATCH && files < MAX_FILES_PER_BATCH;
+    change_type: origin_line_modification
   fixes:
   - id: X001
     commit: c4
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
+    file: src/main/java/example/UploadQuota.java
+    statement: return files >= MIN_FILES_PER_BATCH && files <= MAX_FILES_PER_BATCH;
     fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
+    - r1
+    related_but_not_correct:
     - c1
+    notes: The bug-fixing commit c4 is on the release branch, whose history contains the cherry-pick r1 but not the feature
+      commit c1. r1 is therefore the direct BIC and c1 its origin. The fault also lives on main through the merge c3, but
+      it is not fixed there.
 scenario_design:
-  purpose: Evaluate Cherry-pick BIC and whether SZZ identifies the expected bug-introducing commit set.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: branch, cherry_pick_of; operations: write_file, replace, apply_patch_from.'
+  purpose: Evaluate whether SZZ reports the cherry-picked commit as the direct BIC of a fix on the branch the commit was picked
+    onto, instead of the commit it was picked from.
+  key_property: r1 carries the `(cherry picked from commit <hash of c1>)` trailer in its body and keeps c1's subject and author
+    date, so a tool can recognise the cherry-pick; c1 is nevertheless not an ancestor of the BFC c4.
+  difference_from_SZZG_0049: SZZG-0049 cherry-picks a bug-fixing commit; here the cherry-picked commit carries the fault.
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Whether SZZ reports r1, the commit that put the faulty line into the release branch.
+  - Whether a tool follows the cherry-pick trailer or the patch identity to c1 and reports the origin instead of the direct
+    BIC.
+  - Whether the unfixed instance on main (through the merge c3) misleads a tool that evaluates the wrong branch.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
+- The cherry-pick is generated by really applying c1's patch (apply_patch_from) on top of c0; `cherry_pick_of` and `cherry_pick_trailer`
+  add the `-x` style trailer, and inherit_message / inherit_author_date reproduce the subject and author date that git cherry-pick
+  keeps.
+- Before this repair the bug-fixing commit was on main, so the cherry-pick was never in the ancestry of the fix and the oracle
+  never involved it (GitHub issue 4). Moving the fix to the release branch made r1 the direct BIC, so `required` changed from
+  c1 to r1 and c1 moved to `related_but_not_correct` as the origin.

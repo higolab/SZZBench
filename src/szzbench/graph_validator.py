@@ -30,11 +30,13 @@ ALLOWED_BIC_ROLES = frozenset({"direct", "origin", "contributing", "reintroducin
 ALLOWED_BFC_ROLES = frozenset({"complete_fix", "partial_fix"})
 
 # Operations whose generated result only approximates the declared intent.
+#: Operations whose generated result only approximates the intent.  ``commit_generator``
+#: and ``chmod`` used to be listed here; since the generator expands commit_generator into
+#: real commits and enables core.filemode for chmod scenarios, both are faithful and the
+#: codes GW441/GW442 are retired.
 APPROXIMATE_OPERATIONS: dict[str, tuple[str, str]] = {
     "move_entity": ("GW440", "move_entity is a file-level approximation: the whole source file is copied under a marker header, no entity is extracted."),
     "copy_entity": ("GW440", "copy_entity is a file-level approximation: the whole source file is copied under a marker header, no entity is extracted."),
-    "commit_generator": ("GW441", "commit_generator only writes a marker file; it does not create additional commits."),
-    "chmod": ("GW442", "chmod is not recorded: generated repositories use core.filemode=false, so the mode change produces no diff."),
     "apply_patch": ("GW443", "apply_patch is recognized by the schema but not implemented; generation will fail."),
 }
 

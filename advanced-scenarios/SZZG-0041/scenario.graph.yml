@@ -3,8 +3,12 @@ meta:
   id: SZZG-0041
   title: Ambiguous blame with duplicate faulty lines
   slug: ambiguous-duplicate-faulty-line
-  description: Evaluates ambiguous blame with duplicate faulty lines and checks whether SZZ identifies the expected bug-introducing
-    commit set.
+  description: >-
+    Limits.java holds two limit checks whose decisive statement is textually identical, `return value <= limit;`.
+    c1 makes the user check exclusive and c2 makes the admin check exclusive, so from c2 on the file contains two
+    byte-identical `return value < limit;` lines. The BFC c3 restores only the user check. Resolving the deleted
+    statement by text is ambiguous and picks the admin line first; only the line number from the BFC diff leads
+    to the required BIC c1.
   category: "Multiple BICs, multiple BFCs, and partial fixes"
   category_code: "G3"
   factors:
@@ -21,60 +25,77 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: c0: create duplicate limit checks
+  history_summary: 'c0: add Limits with an inclusive admin check and an inclusive user check
 
-    c1: c1: introduce user limit bug
+    c1: make the user check exclusive (BIC, second occurrence of the statement)
 
-    c2: c2: introduce syntactically identical admin limit bug
+    c2: make the admin check exclusive, producing two identical statements (first occurrence)
 
-    c3: c3: fix only user limit boundary'
+    c3: restore the inclusive user check (BFC, second occurrence)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create duplicate limit checks'
+  message: Add admin and user request limit checks
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Limits.java
-    content: "package example;\npublic class Limits {\n  public boolean userLimit(int value) {\n    return value <= 100;\n\
-      \  }\n  public boolean adminLimit(int value) {\n    return value <= 1000;\n  }\n\n}\n"
+    content: |
+      package example;
+
+      public class Limits {
+        private static final int ADMIN_LIMIT = 1000;
+        private static final int USER_LIMIT = 100;
+
+        public boolean withinAdminLimit(int value) {
+          final int limit = ADMIN_LIMIT;
+          return value <= limit;
+        }
+
+        public boolean withinUserLimit(int value) {
+          final int limit = USER_LIMIT;
+          return value <= limit;
+        }
+      }
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce user limit bug'
+  message: Treat the user request limit as an exclusive upper bound
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Limits.java
-    old: return value <= 100;
-    new: return value < 100;
+    old: return value <= limit;
+    new: return value < limit;
+    occurrence: 2
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: introduce syntactically identical admin limit bug'
+  message: Treat the admin request limit as an exclusive upper bound
   role: other
   operations:
   - type: replace
     path: src/main/java/example/Limits.java
-    old: return value <= 1000;
-    new: return value < 1000;
+    old: return value <= limit;
+    new: return value < limit;
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'c3: fix only user limit boundary'
+  message: Accept a request that is exactly at the user request limit
   role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/Limits.java
-    old: return value < 100;
-    new: return value <= 100;
+    old: return value < limit;
+    new: return value <= limit;
+    occurrence: 2
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: User request limit rejects the limit value itself
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -85,30 +106,52 @@ bugs:
   - id: F001
     commit: c1
     file: src/main/java/example/Limits.java
-    statement: return value < 100;
+    statement: return value < limit;
     change_type: line_modification
+    entity:
+      type: method
+      signature: boolean withinUserLimit(int value)
   fixes:
   - id: X001
     commit: c3
     file: src/main/java/example/Limits.java
-    statement: return value <= 100;
+    statement: return value <= limit;
     fix_type: line_modification
+    entity:
+      type: method
+      signature: boolean withinUserLimit(int value)
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
     - c1
+    notes: >-
+      Only the user check is repaired by c3. The admin check carries the same statement text and was changed by
+      c2, which is a different change to a different method and not the bug-introducing commit of this bug.
 scenario_design:
-  purpose: Evaluate ambiguous blame with duplicate faulty lines and whether SZZ identifies the expected bug-introducing commit
-    set.
+  purpose: >-
+    Evaluate whether SZZ resolves a deleted statement that occurs twice, byte for byte, in the BFC parent. The
+    two candidate lines were last changed by two different commits, so picking the wrong occurrence yields the
+    wrong BIC.
+  key_property: >-
+    From c2 on, src/main/java/example/Limits.java contains `return value < limit;` twice. The admin occurrence
+    comes first in the file and was written by c2; the user occurrence comes second and was written by c1. The
+    BFC c3 repairs the second occurrence, so the required BIC is c1, while any resolution by first textual match
+    lands on c2. The replace operations of c1 and c3 need an explicit `occurrence` for exactly this reason.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
   required_extensions_from_source: 'This scenario uses factors: ambiguous_blame, duplicate_code, same_statement_multiple_locations;
     operations: replace, write_file.'
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
+  - Whether SZZ resolves the duplicated statement by line number rather than by text.
+  - Whether SZZ reports c1 and not the same-text change c2.
   - Whether the expected_szz evaluation policy is applied correctly.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.
+- >-
+  2026-09 revision (issue 4): the two statements the title calls identical were `return value <= 100;` and
+  `return value <= 1000;`, which are different strings, so neither the replace operations nor blame were ambiguous. Both
+  checks now resolve their bound into a local `limit` variable, so the decisive statement is byte-identical in both
+  methods, c1 and c3 must name the occurrence they change, and resolving the deleted statement by text is genuinely
+  ambiguous. The oracle (BIC c1, BFC c3) is unchanged; the commit messages were rewritten to realistic, role-neutral text.

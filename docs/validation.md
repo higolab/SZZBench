@@ -244,8 +244,8 @@ With `--simulate`:
 | GW411 | warning | a message starts with a logical-id prefix (`c1:`, `r2:`, ...) |
 | GW412 | warning | written text (`write_file.content`, `replace.new`, `insert_after.content`) contains role wording |
 | GW440 | warning | `move_entity` / `copy_entity`: file-level approximation, the whole source file is copied under a marker header |
-| GW441 | warning | `commit_generator`: writes one marker file, creates no additional commits |
-| GW442 | warning | `chmod`: not recorded, generated repositories use `core.filemode=false` |
+| ~~GW441~~ | retired | `commit_generator` now expands into real commits (see `docs/generator-options.md`) |
+| ~~GW442~~ | retired | `chmod` is now recorded: the generator enables `core.filemode` for scenarios that use it |
 | GW443 | warning | `apply_patch`: recognised by the schema but not implemented, generation fails |
 | GW450 | warning | a BIC whose role contains `origin` is named in none of `expected_szz` lists (`required`, `acceptable_related`, `related_origins`, `related_but_not_correct`, `relevant`) of `commit_level` or of any evaluation variant |
 

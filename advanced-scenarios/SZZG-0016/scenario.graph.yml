@@ -3,8 +3,11 @@ meta:
   id: SZZG-0016
   title: Original and clone fixed together
   slug: original-clone
-  description: Evaluates original and clone fixed together and checks whether SZZ identifies the expected bug-introducing
-    commit set.
+  description: >-
+    A.java already contains an exclusive range check at c0. Commit c1 copies the file to B.java and adapts only
+    the class declaration, so the faulty statement enters B.java byte-for-byte unchanged. A single BFC c2 fixes
+    both instances in one commit. The direct BIC for the B.java instance is the copy commit c1; c0 is the origin
+    that also introduced the A.java instance fixed by the same commit.
   category: "Clone, copy propagation, and origin-vs-direct BIC"
   category_code: "G2"
   factors:
@@ -20,37 +23,47 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: introduce origin bug (write_file src/main/java/example/A.java)
+  history_summary: 'c0: add A with an exclusive range check (origin instance)
 
-    c1: introduce bug (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)
+    c1: copy A.java to B.java and rename the copied class (direct BIC for B.java)
 
-    c2: fix bug (replace src/main/java/example/A.java; replace src/main/java/example/B.java)'
+    c2: include the bounds in A.contains and B.contains (BFC for both instances)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: introduce origin bug (write_file src/main/java/example/A.java)'
+  message: Add A with a range containment check
   role: origin_bug_introducing
   operations:
   - type: write_file
     path: src/main/java/example/A.java
-    content: "package example;\n\npublic class A {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n}\n"
+    content: |
+      package example;
+
+      public class A {
+        public boolean contains(int value, int min, int max) {
+          return value > min && value < max;
+        }
+      }
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce bug (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)'
+  message: Copy the containment check from A into B
   role: bug_introducing
   operations:
   - type: copy_file
     from: src/main/java/example/A.java
     to: src/main/java/example/B.java
+  - type: replace
+    path: src/main/java/example/B.java
+    old: public class A {
+    new: public class B {
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'c2: fix bug (replace src/main/java/example/A.java; replace src/main/java/example/B.java)'
+  message: Include the bounds in A.contains and B.contains
   role: bug_fixing
   operations:
   - type: replace
@@ -108,6 +121,14 @@ clone_relationships:
   copy_commit: c1
 scenario_design:
   purpose: Evaluate Original and clone fixed together and whether SZZ identifies the expected bug-introducing commit set.
+  key_property: >-
+    The single BFC c2 deletes the same statement text from two files whose line histories end in two different
+    commits: the A.java line reaches c0, the B.java line reaches the copy commit c1. A tool that scores the BFC
+    as a whole sees both commits.
+  compilation_contract: >-
+    Both files live in package example and must compile together, so the copy commit renames the copied class from
+    A to B in the same commit. Only the class declaration line differs between A.java and B.java; the faulty
+    statement is copied verbatim, which is what copy-aware blame has to detect.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
   required_extensions_from_source: 'This scenario uses factors: faults, clone_relationships; operations: write_file, copy_file,
@@ -119,3 +140,9 @@ scenario_design:
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.
+- >-
+  2026-09 revision (issue 10): the copy commit produced a second `public class A` in B.java, so no commit from c1 onwards
+  compiled ("class A is public, should be declared in a file named A.java"). The copy commit now renames the copied class
+  to B, so A.java and B.java compile together in package example. The oracle (direct BIC c1, origin c0 as
+  acceptable_related, BFC c2) and the copied faulty statement are unchanged; the commit messages were rewritten to
+  realistic, role-neutral text.

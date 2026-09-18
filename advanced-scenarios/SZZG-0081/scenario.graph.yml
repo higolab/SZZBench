@@ -3,16 +3,19 @@ meta:
   id: SZZG-0081
   title: Rebase with formatting rewrite noise
   slug: rebase-with-formatting-rewrite-noise
-  description: A formatting rewrite occurs after a rebased BIC and before the fix.
+  description: A whitespace-only reformatting commit sits between the rebased bug-introducing commit and the fix and rewrites the
+    faulty line itself. Plain git blame at the fix therefore stops at the formatting commit; git blame -w reaches the bug-introducing
+    commit.
   category: "Rebase-specific history rewriting"
   category_code: "G5"
   factors:
   - branch
   - rebase
   - formatting_rewrite
-  - formatting
-  - robustness
+  - whitespace_only_change
+  - blame_stops_at_formatting
   - direct_bic
+  - origin_bic
   difficulty: advanced
   status: draft
 repository:
@@ -23,31 +26,32 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial correct implementation
+  history_summary: 'c0: Add the Range class with an inclusive contains check
 
-    f1: introduce range bug
+    f1: Use strict comparisons for the interval bounds (feature)
 
-    r1: rebase bug onto main
+    r1: rebased f1 onto main
 
-    r2: line ending rewrite during rebase cleanup
+    r2: Apply the four-space indentation of the project formatter (re-indents every line, including the faulty one)
 
-    c3: fix bug after line ending rewrite'
+    c3: Restore the inclusive comparison in Range.contains'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial correct implementation'
+  message: Add the Range class with an inclusive contains check
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ >= min && value <= max;\n  }\n\n  public boolean containsZero(int min, int max) {\n    return contains(0, min, max);\n\
+      \  }\n}\n"
 - id: f1
   branch: feature
   parents:
   - c0
-  message: 'f1: introduce range bug'
+  message: Use strict comparisons for the interval bounds
   role: origin_bug_introducing
   operations:
   - type: replace
@@ -58,34 +62,37 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'r1: rebase bug onto main'
   role: bug_introducing
+  rebase_of: f1
+  inherit_message: true
+  inherit_author_date: true
+  committer_date: '2024-01-04T10:45:00Z'
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
     new: return value > min && value < max;
-  rebase_of: f1
 - id: r2
   branch: main
   parents:
   - r1
-  message: 'r2: formatting rewrite during rebase cleanup'
+  message: Apply the four-space indentation of the project formatter
   role: formatting
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n}\n"
-    new: "package example;\n\npublic class Range {\n  // Rebase cleanup normalized formatting around this method.\n  public\
-      \ boolean contains(int value, int min, int max) {\n    return value > min && value < max;\n  }\n}\n"
   rebase_cleanup: formatting_rewrite
+  date: '2024-01-05T08:15:00Z'
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: "package example;\n\npublic class Range {\n    public boolean contains(int value, int min, int max) {\n        return\
+      \ value > min && value < max;\n    }\n\n    public boolean containsZero(int min, int max) {\n        return contains(0, min,\
+      \ max);\n    }\n}\n"
 - id: c3
   branch: main
   parents:
   - r2
-  message: 'c3: fix bug after formatting rewrite'
+  message: Restore the inclusive comparison in Range.contains
   role: bug_fixing
+  date: '2024-01-11T16:00:00Z'
   operations:
   - type: replace
     path: src/main/java/example/Range.java
@@ -93,7 +100,7 @@ commits:
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Range bug obscured by formatting rewrite after rebase
+  title: Range bug whose line was rewritten by a reformatting commit
   bug_introducing_commits:
   - commit: r1
     role: direct
@@ -128,15 +135,18 @@ expected_szz:
     related_but_not_correct:
     - f1
     - r2
-    notes: r2 is formatting noise and should not be the BIC.
+    notes: r2 changes only leading whitespace, including the whitespace of the faulty line, so plain line-level blame at c3^ stops
+      at r2. A tool has to ignore whitespace (git blame -w, git blame --ignore-rev, or an equivalent heuristic) to reach r1.
 scenario_design:
-  purpose: Evaluate rebase plus formatting rewrite noise.
-  key_property: The expected BIC is r1, while r2 is a formatting-only cleanup.
-  difference_from_SZZG_0064: SZZG-0064 covers a rebased BIC followed by a non-BIC rebased intermediate commit. This scenario
-    adds a distinct rebase-related complication.
+  purpose: Evaluate robustness against a reformatting commit that rewrites the faulty line between the BIC and the fix.
+  key_property: 'The reformatting is behaviour preserving and token identical: every line keeps its content and only its indentation
+    changes from two to four spaces. Plain git blame at c3^ attributes the faulty line to r2, git blame -w attributes it to r1.'
+  difference_from_SZZG_0064: SZZG-0064 has no noise between the replayed BIC and the fix; here a whitespace-only commit sits in
+    between and captures naive blame.
   evaluation_points:
   - Report r1.
-  - Avoid r2.
+  - Avoid r2, although plain git blame points at it.
 notes:
-- This scenario models a rebase-related development history for SZZ evaluation.
-- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.
+- 'The generated repository is designed so that plain blame misses the BIC: the graph verifier therefore reports GW703 for this
+  scenario. That warning is expected and documents the difficulty, it is not a defect.'
+- 'rebase_cleanup: formatting_rewrite records that the reformatting was part of the rebase cleanup.'

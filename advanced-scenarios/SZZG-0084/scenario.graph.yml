@@ -3,11 +3,20 @@ meta:
   id: SZZG-0084
   title: Partial revert reintroduces bug
   slug: partial-revert
-  description: Evaluates partial revert reintroduces bug and checks whether SZZ identifies the expected bug-introducing commit
-    set.
+  description: A commit that carries two independent changes - the boundary fix and a behaviour preserving simplification of clamp
+    - is reverted with git revert, but only the boundary part of the revert is kept. The resulting commit carries the standard
+    'This reverts commit <hash>.' footer while its diff undoes only half of what it claims to revert, and it is the direct BIC
+    for the final fix.
   category: "Revert-specific reintroduction"
   category_code: "G6"
-  factors: []
+  factors:
+  - linear_history
+  - revert
+  - partial_revert
+  - reintroduced_bug
+  - re_bic
+  - origin_bic
+  - revert_footer
   difficulty: advanced
   status: draft
 repository:
@@ -18,31 +27,32 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
+  history_summary: 'c0: Add the Range class with an inclusive contains check and a clamp helper
 
-    c1: introduce bug (replace src/main/java/example/Range.java)
+    c1: Use strict comparisons for the interval bounds
 
-    c2: fix bug (replace src/main/java/example/Range.java)
+    c2: Restore the inclusive bounds and simplify clamp (two independent changes)
 
-    c3: partially revert c2 and reintroduce bug (replace src/main/java/example/Range.java)
+    c3: Revert "Restore the inclusive bounds and simplify clamp" - git revert of c2, keeping the clamp simplification
 
-    c4: fix bug (replace src/main/java/example/Range.java)'
+    c4: Restore the inclusive comparison in Range.contains'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial state (write_file src/main/java/example/Range.java)'
+  message: Add the Range class with an inclusive contains check and a clamp helper
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ >= min && value <= max;\n  }\n\n  public int clamp(int value, int min, int max) {\n    if (value < min) {\n      return\
+      \ min;\n    }\n    if (value > max) {\n      return max;\n    }\n    return value;\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'c1: introduce bug (replace src/main/java/example/Range.java)'
+  message: Use strict comparisons for the interval bounds
   role: bug_introducing
   operations:
   - type: replace
@@ -53,34 +63,42 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'c2: fix bug (replace src/main/java/example/Range.java)'
+  message: Restore the inclusive bounds and simplify clamp
   role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value > min && value < max;
     new: return value >= min && value <= max;
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: "  public int clamp(int value, int min, int max) {\n    if (value < min) {\n      return min;\n    }\n    if (value >\
+      \ max) {\n      return max;\n    }\n    return value;\n  }"
+    new: "  public int clamp(int value, int min, int max) {\n    return value < min ? min : (value > max ? max : value);\n  }"
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'c3: partially revert c2 and reintroduce bug (replace src/main/java/example/Range.java)'
   role: bug_reintroducing
   revert_of: c2
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
+  apply_revert: true
+  date: '2024-01-08T09:20:00Z'
   reverts:
   - commit: c2
     mode: partial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n\n  public int clamp(int value, int min, int max) {\n    return value < min ? min : (value\
+      \ > max ? max : value);\n  }\n}\n"
 - id: c4
   branch: main
   parents:
   - c3
-  message: 'c4: fix bug (replace src/main/java/example/Range.java)'
+  message: Restore the inclusive comparison in Range.contains
   role: bug_fixing
+  date: '2024-01-12T15:30:00Z'
   operations:
   - type: replace
     path: src/main/java/example/Range.java
@@ -88,7 +106,7 @@ commits:
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Partial revert reintroduces boundary bug
+  title: Partial revert reintroduces the boundary bug
   bug_introducing_commits:
   - commit: c3
     role: reintroducing
@@ -108,6 +126,13 @@ bugs:
     commit: c4
     file: src/main/java/example/Range.java
     statement: return value >= min && value <= max;
+    fix_type: line_modification
+  origin_faults:
+  - id: OF001
+    commit: c1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: origin_line_modification
 expected_szz:
   commit_level:
     evaluation_policy: reintroduction_direct
@@ -115,17 +140,20 @@ expected_szz:
     - c3
     related_but_not_correct:
     - c1
+    notes: c3 is the direct BIC for the final fix c4. Its message and its footer claim a full revert of c2, but its diff undoes
+      only the boundary change; the clamp simplification of c2 survives. c1 is the original BIC of the same faulty statement.
 scenario_design:
-  purpose: Evaluate a partial revert where c3 reintroduces the boundary bug and is the expected direct BIC for the final
-    fix.
-  key_property: Commit c1 is the original BIC, but c3 is the reintroducing BIC required by the reintroduction_direct policy.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses operations: write_file, replace.'
+  purpose: 'Evaluate a partial revert: c3 reintroduces the boundary bug and is the expected direct BIC for the final fix.'
+  key_property: c2 carries two independent changes and c3 is produced by a real git revert --no-commit of c2 followed by restoring
+    the clamp simplification, so the commit body ends with 'This reverts commit <hash of c2>.' while git show c3 contains a single
+    hunk. A revert-aware tool that assumes the whole of c2 was undone is wrong about the clamp method.
+  current_schema_limitation: validate-graph --simulate does not model git revert, so the operations of c3 write the whole file;
+    the simulated state and the generated state are identical.
   evaluation_points:
   - Whether SZZ identifies c3 as the reintroducing BIC for the final fix.
   - Whether SZZ treats the original BIC c1 as related history, not the required direct answer.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Whether a revert-aware tool notices that only part of c2 was reverted.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
+- 'c3 has no message of its own: git revert''s default subject ''Revert "<subject of c2>"'' is used, which is what a developer
+  who reverts and then fixes up the working tree normally keeps.'
+- 'The generator runs git revert --no-commit c2 and applies the operations afterwards (apply_revert: true).'

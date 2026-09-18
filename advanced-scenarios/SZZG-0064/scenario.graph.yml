@@ -3,7 +3,9 @@ meta:
   id: SZZG-0064
   title: Rebase with non-BIC intermediate commit
   slug: rebase-with-non-bic-intermediate-commit
-  description: A rebased BIC is followed by a rebased intermediate commit that should not be selected as the BIC.
+  description: 'A faithful rebase replays two feature commits onto main: the replayed bug-introducing commit is followed by a replayed
+    commit that must not be selected. Both replayed commits keep the subject and the author date of their source, so only the committer
+    dates are new.'
   category: "Rebase-specific history rewriting"
   category_code: "G5"
   factors:
@@ -13,6 +15,7 @@ meta:
   - intermediate_commit
   - direct_bic
   - origin_bic
+  - inherited_commit_metadata
   difficulty: advanced
   status: draft
 repository:
@@ -23,33 +26,33 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial correct implementation
+  history_summary: 'c0: Add the Range class with an inclusive contains check
 
-    f1: introduce range boundary bug on feature
+    f1: Compare the value strictly against both interval bounds (feature)
 
-    f2: add feature helper using buggy range check
+    f2: Add a bulk membership check for the reporting module (feature)
 
-    r1: rebase feature BIC onto main
+    r1: rebased f1: same subject and author date, new committer date
 
-    r2: rebase feature helper onto main
+    r2: rebased f2: same subject and author date, new committer date
 
-    c3: fix range boundary bug after rebase'
+    c3: Restore the inclusive comparison in Range.contains'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial correct implementation'
+  message: Add the Range class with an inclusive contains check
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ >= min && value <= max;\n  }\n}\n"
 - id: f1
   branch: feature
   parents:
   - c0
-  message: 'f1: introduce range boundary bug on feature'
+  message: Compare the value strictly against both interval bounds
   role: origin_bug_introducing
   operations:
   - type: replace
@@ -60,7 +63,7 @@ commits:
   branch: feature
   parents:
   - f1
-  message: 'f2: add feature helper using buggy range check'
+  message: Add a bulk membership check for the reporting module
   role: intermediate
   operations:
   - type: replace
@@ -68,41 +71,46 @@ commits:
     old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
       \ > min && value < max;\n  }\n}\n"
     new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
-      \ min, max);\n  }\n}\n"
+      \ > min && value < max;\n  }\n\n  public boolean containsAny(int[] values, int min, int max) {\n    for (int value : values)\
+      \ {\n      if (contains(value, min, max)) {\n        return true;\n      }\n    }\n    return false;\n  }\n}\n"
 - id: r1
   branch: main
   parents:
   - c0
-  message: 'r1: rebase feature BIC onto main'
   role: bug_introducing
+  rebase_of: f1
+  inherit_message: true
+  inherit_author_date: true
+  committer_date: '2024-01-05T09:30:00Z'
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: return value >= min && value <= max;
     new: return value > min && value < max;
-  rebase_of: f1
 - id: r2
   branch: main
   parents:
   - r1
-  message: 'r2: rebase feature helper onto main'
   role: intermediate
+  rebase_of: f2
+  inherit_message: true
+  inherit_author_date: true
+  committer_date: '2024-01-05T09:30:12Z'
   operations:
   - type: replace
     path: src/main/java/example/Range.java
     old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
       \ > min && value < max;\n  }\n}\n"
     new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
-      \ min, max);\n  }\n}\n"
-  rebase_of: f2
+      \ > min && value < max;\n  }\n\n  public boolean containsAny(int[] values, int min, int max) {\n    for (int value : values)\
+      \ {\n      if (contains(value, min, max)) {\n        return true;\n      }\n    }\n    return false;\n  }\n}\n"
 - id: c3
   branch: main
   parents:
   - r2
-  message: 'c3: fix range boundary bug after rebase'
+  message: Restore the inclusive comparison in Range.contains
   role: bug_fixing
+  date: '2024-01-08T11:20:00Z'
   operations:
   - type: replace
     path: src/main/java/example/Range.java
@@ -145,13 +153,18 @@ expected_szz:
     related_but_not_correct:
     - f1
     - r2
-    notes: r2 is a rebased intermediate commit, not the BIC.
+    notes: 'r1 is the replayed commit that installs the fault on main. r2 is the replayed follow-up commit: it is reachable from
+      the fix, touches the same file and even carries an earlier author date than its parent''s committer date, but it does not
+      touch the faulty line. f1 is the pre-rebase source of r1 and stays reachable through the feature branch.'
 scenario_design:
-  purpose: Evaluate whether SZZ distinguishes a rebased BIC from a later rebased intermediate commit.
-  key_property: r1 is the direct BIC; r2 is non-BIC intermediate.
+  purpose: Evaluate whether SZZ distinguishes a rebased BIC from a later rebased commit in the same replayed series.
+  key_property: 'The rebase is faithful: r1/r2 keep the subjects and the author dates of f1/f2 and only their committer dates are
+    new, so author date < committer date holds for both replayed commits.'
   evaluation_points:
   - Report r1.
   - Avoid r2.
+  - Do not answer with the pre-rebase source f1 alone.
 notes:
-- This scenario models a rebase-related development history for SZZ evaluation.
-- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.
+- Rebase relationships are recorded with rebase_of; inherit_message and inherit_author_date reproduce what git rebase keeps from
+  the source commit.
+- The feature branch is not deleted, so f1 and f2 remain reachable for origin-aware evaluation.

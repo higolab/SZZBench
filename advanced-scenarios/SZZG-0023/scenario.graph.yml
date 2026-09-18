@@ -3,14 +3,16 @@ meta:
   id: SZZG-0023
   title: Rebase with copy propagation
   slug: rebase-with-copy-propagation
-  description: Buggy code is copied on feature and introduced into main by rebase.
+  description: A feature branch tightens the score band and then copies the same comparison into a second class for draft
+    submissions. Both commits are rebased onto main, keeping their subjects and author dates. The fix repairs the copied instance,
+    so the direct BIC is the rebased copy commit, while the rebased original, and both pre-rebase commits, are origins.
   category: "Clone, copy propagation, and origin-vs-direct BIC"
   category_code: "G2"
   factors:
   - branch
   - rebase
   - copy_propagation
-  - copy_file
+  - duplicate_code
   - direct_bic
   - origin_bic
   difficulty: advanced
@@ -23,123 +25,146 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial correct implementation
+  history_summary: 'c0: add ScoreBand with the accepted review score range on main
 
-    f1: introduce range bug on feature
+    f1: feature branch makes the score comparison exclusive
 
-    f2: copy buggy range logic
+    f2: feature branch copies the comparison into DraftScoreBand
 
-    r1: rebase original bug
+    r1: rebase of f1 onto main (subject and author date kept)
 
-    r2: rebase copied buggy logic
+    r2: rebase of f2 onto main (subject and author date kept)
 
-    c3: fix copied range logic'
+    c3: main accepts the draft band bounds again
+
+    the feature branch is kept, so f1 and f2 stay reachable'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial correct implementation'
+  message: Add ScoreBand with the accepted review score range
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
+    path: src/main/java/example/ScoreBand.java
+    content: |
+      package example;
+
+      public class ScoreBand {
+        public static final int LOWEST_SCORE = 0;
+        public static final int HIGHEST_SCORE = 100;
+
+        public boolean accepts(int score) {
+          return score >= LOWEST_SCORE && score <= HIGHEST_SCORE;
+        }
+      }
 - id: f1
   branch: feature
   parents:
   - c0
-  message: 'f1: introduce range bug on feature'
+  message: Require review scores strictly inside the accepted band
   role: origin_bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
+    path: src/main/java/example/ScoreBand.java
+    old: return score >= LOWEST_SCORE && score <= HIGHEST_SCORE;
+    new: return score > LOWEST_SCORE && score < HIGHEST_SCORE;
 - id: f2
   branch: feature
   parents:
   - f1
-  message: 'f2: copy buggy range logic'
+  message: Add DraftScoreBand for draft submissions
   role: origin_bug_propagating
   operations:
   - type: write_file
-    path: src/main/java/example/RangeCopy.java
-    content: "package example;\n\npublic class RangeCopy {\n  public boolean containsCopy(int value, int min, int max) {\n\
-      \    return value > min && value < max;\n  }\n}\n"
+    path: src/main/java/example/DraftScoreBand.java
+    content: |
+      package example;
+
+      public class DraftScoreBand {
+        public static final int LOWEST_DRAFT_SCORE = 0;
+        public static final int HIGHEST_DRAFT_SCORE = 100;
+
+        public boolean accepts(int score) {
+          return score > LOWEST_DRAFT_SCORE && score < HIGHEST_DRAFT_SCORE;
+        }
+      }
 - id: r1
   branch: main
   parents:
   - c0
-  message: 'r1: rebase original bug'
   role: bug_introducing
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
   rebase_of: f1
+  inherit_message: true
+  inherit_author_date: true
+  operations:
+  - type: apply_patch_from
+    commit: f1
 - id: r2
   branch: main
   parents:
   - r1
-  message: 'r2: rebase copied buggy logic'
   role: bug_introducing
-  operations:
-  - type: write_file
-    path: src/main/java/example/RangeCopy.java
-    content: "package example;\n\npublic class RangeCopy {\n  public boolean containsCopy(int value, int min, int max) {\n\
-      \    return value > min && value < max;\n  }\n}\n"
   rebase_of: f2
+  inherit_message: true
+  inherit_author_date: true
+  operations:
+  - type: apply_patch_from
+    commit: f2
 - id: c3
   branch: main
   parents:
   - r2
-  message: 'c3: fix copied range logic'
+  message: Accept the draft band bounds again so 0 and 100 stay valid draft scores
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/RangeCopy.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/DraftScoreBand.java
+    old: return score > LOWEST_DRAFT_SCORE && score < HIGHEST_DRAFT_SCORE;
+    new: return score >= LOWEST_DRAFT_SCORE && score <= HIGHEST_DRAFT_SCORE;
 bugs:
 - id: B001
-  title: Copied range bug introduced by rebased copy commit
+  title: DraftScoreBand rejects the bounds of the draft score band
   bug_introducing_commits:
   - commit: r2
     role: direct
+    description: Direct BIC of the fixed instance; the rebased copy commit that creates DraftScoreBand with the faulty comparison.
   - commit: r1
     role: origin
-  - commit: f1
-    role: origin
+    description: Origin of the copied comparison inside the rewritten history; it holds the same comparison in ScoreBand,
+      which the fix does not touch.
   - commit: f2
     role: origin
+    description: Pre-rebase copy commit; r2 replays it. Still reachable through the feature branch.
+  - commit: f1
+    role: origin
+    description: Pre-rebase commit that first wrote the comparison. Still reachable through the feature branch.
   bug_fixing_commits:
   - commit: c3
     role: complete_fix
   faults:
   - id: F001
     commit: r2
-    file: src/main/java/example/RangeCopy.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/DraftScoreBand.java
+    statement: return score > LOWEST_DRAFT_SCORE && score < HIGHEST_DRAFT_SCORE;
     change_type: line_modification
-  fixes:
-  - id: X001
-    commit: c3
-    file: src/main/java/example/RangeCopy.java
-    statement: return value >= min && value <= max;
-    fix_type: line_modification
   origin_faults:
   - id: OF001
     commit: f1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/ScoreBand.java
+    statement: return score > LOWEST_SCORE && score < HIGHEST_SCORE;
     change_type: origin_line_modification
   - id: OF002
     commit: f2
-    file: src/main/java/example/RangeCopy.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/DraftScoreBand.java
+    statement: return score > LOWEST_DRAFT_SCORE && score < HIGHEST_DRAFT_SCORE;
     change_type: origin_line_modification
+  fixes:
+  - id: X001
+    commit: c3
+    file: src/main/java/example/DraftScoreBand.java
+    statement: return score >= LOWEST_DRAFT_SCORE && score <= HIGHEST_DRAFT_SCORE;
+    fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
@@ -150,12 +175,24 @@ expected_szz:
     - f1
     - f2
 scenario_design:
-  purpose: Evaluate copy propagation through rebase.
-  key_property: The fixed instance is in the copied file introduced by r2.
-  difference_from_SZZG_0064: SZZG-0064 covers a rebased BIC followed by a non-BIC rebased intermediate commit. This scenario
-    adds a distinct rebase-related complication.
+  purpose: Evaluate copy propagation across a rebase. The fixed instance is the copy, so the direct BIC is the commit that
+    created the copy, not the commit that first wrote the comparison.
+  key_property: The fixed instance lives in DraftScoreBand, which r2 adds. r1 keeps the same comparison in ScoreBand and stays
+    faulty after the fix, which is what makes the origin-vs-direct distinction observable inside one history.
+  reachability_of_the_pre_rebase_commits: The feature branch is kept on purpose, so f1 and f2 stay reachable. This models
+    a GitHub "Rebase and merge" (or a rebase whose source branch was not deleted), and it is what makes the two pre-rebase
+    entries of related_but_not_correct observable at all - a tool can see them and must not report them. SZZG-0072 is the
+    counterpart where the pre-rebase branch is deleted.
+  category_placement: The scenario combines a G5 mechanism (rebase) with a G2 property (copy propagation, origin vs direct
+    BIC). It stays in G2 because the discriminating question is which of the two instances of the same comparison the fix
+    belongs to; the rebase only adds two more origin candidates.
+  difference_from_SZZG_0064: SZZG-0064 covers a rebased BIC followed by a non-BIC rebased intermediate commit. Here the second
+    rebased commit copies the faulty comparison into a new class and is the direct BIC.
   evaluation_points:
-  - Report r2.
+  - Whether SZZ reports r2, the commit that created the fixed instance.
+  - Whether r1 (same comparison, different class) or the pre-rebase commits f1 and f2 are reported instead.
 notes:
-- This scenario models a rebase-related development history for SZZ evaluation.
-- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.
+- r1 and r2 declare no message of their own; inherit_message and inherit_author_date give them the subject and the author
+  date of f1 and f2 while their committer dates are the rebase dates, which is what git rebase produces.
+- The fix is scoped to the copied class, so ScoreBand keeps the exclusive comparison after c3. That is intentional, because
+  it keeps r1 an origin of the fixed instance rather than a second BIC of it.
