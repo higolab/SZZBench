@@ -18,6 +18,7 @@ meta:
   - inherited_commit_metadata
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0064-rebase-with-non-bic-intermediate-commit
   default_branch: main

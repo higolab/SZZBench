@@ -10,7 +10,7 @@ from .graph_scenario import commit_id_of, graph_bfc_entries, graph_bic_entries, 
 from .graph_simulator import simulate_graph_scenario
 from .paths import PathValidationError, validate_repo_relative_path
 from .policies import SUPPORTED_EVALUATION_POLICIES
-from .validator import lint_factors, lint_leakage
+from .validator import lint_factors, lint_leakage, lint_tier
 
 GRAPH_ID_RE = re.compile(r"^SZZG-\d{4}$")
 
@@ -436,6 +436,7 @@ def lint_graph_scenario(data: dict[str, Any]) -> ValidationResult:
     bfc_ids = {e["commit"] for b in bugs for e in graph_bfc_entries(b) if isinstance(e.get("commit"), str)}
 
     lint_factors(meta.get("factors"), result, prefix="GW")
+    lint_tier(meta, result, prefix="GW")
     for i, bug in enumerate(bugs):
         for j, entry in enumerate(graph_bic_entries(bug)):
             role = entry.get("role")

@@ -14,6 +14,7 @@ meta:
   - direct_bic
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0068-rebase-changes-patch-content-during-replay
   default_branch: main

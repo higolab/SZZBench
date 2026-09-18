@@ -13,6 +13,7 @@ meta:
   - single_bfc
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0039-multi-bic-prerequisite-symptom
   default_branch: main

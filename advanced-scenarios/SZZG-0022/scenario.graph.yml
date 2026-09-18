@@ -16,6 +16,7 @@ meta:
   - relaxed_with_credit
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0022-copy-propagation-direct-origin-evaluation-variants
   default_branch: main

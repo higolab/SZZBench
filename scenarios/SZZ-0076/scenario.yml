@@ -13,6 +13,7 @@ meta:
   - security
   difficulty: medium
   status: active
+  tier: control
   category_code: "S2"
 repository:
   name: SZZ-0076-path-traversal-check-omission

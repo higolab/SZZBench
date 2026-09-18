@@ -21,6 +21,7 @@ meta:
     - "tangled-bfc"
   difficulty: "medium"
   status: "active"
+  tier: "control"
   category_code: "S4"
 
 repository:

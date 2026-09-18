@@ -20,6 +20,7 @@ meta:
   - plain-blame-control
   difficulty: easy
   status: active
+  tier: control
   category_code: "S3"
 repository:
   name: SZZ-0099-synchronized-after-bic

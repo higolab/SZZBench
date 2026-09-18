@@ -12,6 +12,7 @@ meta:
   - backport_of
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0051-backport-introduces-bug
   default_branch: main

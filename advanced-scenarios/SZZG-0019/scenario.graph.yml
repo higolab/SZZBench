@@ -10,6 +10,7 @@ meta:
   factors: []
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0019-generated-code
   default_branch: main

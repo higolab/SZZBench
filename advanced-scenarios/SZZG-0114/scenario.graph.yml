@@ -11,6 +11,7 @@ meta:
   - commit_generators
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0114-huge-history
   default_branch: main

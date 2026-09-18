@@ -13,6 +13,7 @@ meta:
   - unfixed_release
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0054-fixed-on-main-unfixed-on-release
   default_branch: main

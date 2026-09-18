@@ -63,7 +63,7 @@ def codes(result) -> list[str]:
 def classic_scenario() -> dict:
     return {
         "schema_version": "1.0",
-        "meta": {"id": "SZZ-9900", "title": "Lint fixture", "category": "fixture", "factors": ["single-bic", "single-bfc", "line-modification"]},
+        "meta": {"id": "SZZ-9900", "title": "Lint fixture", "category": "fixture", "tier": "control", "factors": ["single-bic", "single-bfc", "line-modification"]},
         "repository": {"name": "lint-fixture", "default_branch": "main", "language": "java"},
         "commits": [
             {"id": "c0", "message": "Initial implementation", "role": "initial",
@@ -86,7 +86,7 @@ def classic_scenario() -> dict:
 def graph_scenario() -> dict:
     return {
         "schema_version": "graph-0.1-draft",
-        "meta": {"id": "SZZG-9900", "title": "Graph lint fixture", "category": "fixture", "factors": ["rebase", "branch"]},
+        "meta": {"id": "SZZG-9900", "title": "Graph lint fixture", "category": "fixture", "tier": "control", "factors": ["rebase", "branch"]},
         "repository": {"name": "graph-lint-fixture", "default_branch": "main"},
         "commits": [
             {"id": "c0", "branch": "main", "parents": [], "message": "Initial implementation", "role": "initial",
@@ -592,3 +592,29 @@ def test_leakage_lint_catches_the_forms_the_first_version_missed():
                     "Rename the cubic interpolation helper"):
         bic["message"] = message
         assert lint_classic(data).findings == [], message
+
+
+def test_tier_lint_requires_a_declared_vocabulary_value():
+    """W460 / GW460: every scenario says what it is for (issue #14)."""
+    from szzbench.validator import SCENARIO_TIERS
+
+    assert SCENARIO_TIERS == ("control", "discriminating")
+
+    data = classic_scenario()
+    data["meta"].pop("tier", None)
+    result = lint_classic(data)
+    assert "W460" in codes(result)
+    assert "meta.tier is missing" in [f.message for f in result.findings if f.code == "W460"][0]
+
+    data["meta"]["tier"] = "controls"          # near miss
+    assert "W460" in codes(lint_classic(data))
+
+    for tier in SCENARIO_TIERS:
+        data["meta"]["tier"] = tier
+        assert "W460" not in codes(lint_classic(data))
+
+    graph = graph_scenario()
+    graph["meta"].pop("tier", None)
+    assert "GW460" in codes(lint_graph(graph))
+    graph["meta"]["tier"] = "control"
+    assert "GW460" not in codes(lint_graph(graph))

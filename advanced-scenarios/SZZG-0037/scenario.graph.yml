@@ -13,6 +13,7 @@ meta:
   - single_bfc
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0037-multi-bic-multi-file-fix
   default_branch: main

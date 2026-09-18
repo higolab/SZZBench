@@ -13,6 +13,7 @@ meta:
   - expected_szz
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0033-bic-partial-credit
   default_branch: main

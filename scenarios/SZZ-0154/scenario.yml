@@ -15,6 +15,7 @@ meta:
   - multiple_fault_locations
   difficulty: hard
   status: active
+  tier: control
   category_code: "S6"
 repository:
   name: SZZ-0154-1-bfc-bic-bic

@@ -10,6 +10,7 @@ meta:
   - write_binary_file
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0108-binary-file
   default_branch: main

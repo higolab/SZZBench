@@ -16,6 +16,7 @@ meta:
   - complete_fix
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0032-bfc-bug
   default_branch: main

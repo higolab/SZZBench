@@ -13,6 +13,7 @@ meta:
   - bfc_after_merge
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0060-bfc-main-after-feature-merge
   default_branch: main

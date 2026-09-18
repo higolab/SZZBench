@@ -43,3 +43,23 @@ def test_the_ghost_classes_are_actually_exercised():
                 delete_only += 1
     assert add_only >= 6, "no scenario declares an addition-only fix any more"
     assert delete_only >= 3, "no scenario declares a deletion-only BIC any more"
+
+
+def test_every_scenario_declares_a_tier():
+    """A scenario has to say whether it is a control or a discriminating case."""
+    import yaml
+
+    from szzbench.validator import SCENARIO_TIERS
+
+    counts = {tier: 0 for tier in SCENARIO_TIERS}
+    undeclared = []
+    for pattern in ("scenarios/SZZ-*/scenario.yml", "advanced-scenarios/SZZG-*/scenario.graph.yml"):
+        for path in sorted(REPO_ROOT.glob(pattern)):
+            tier = (yaml.safe_load(path.read_text()).get("meta") or {}).get("tier")
+            if tier in counts:
+                counts[tier] += 1
+            else:
+                undeclared.append(f"{path.parent.name}: {tier!r}")
+    assert undeclared == []
+    assert sum(counts.values()) > 200
+    assert counts["discriminating"] >= 1, "the suite must keep at least one discriminating scenario"

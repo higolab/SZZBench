@@ -13,6 +13,7 @@ meta:
   - context_dependent
   difficulty: advanced
   status: draft
+  tier: discriminating
 repository:
   name: SZZG-0040-multi-bic-untouched-root-cause
   default_branch: main

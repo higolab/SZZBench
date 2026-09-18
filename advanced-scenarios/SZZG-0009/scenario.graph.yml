@@ -13,6 +13,7 @@ meta:
   - line_history_break
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0009-intermediate-method-extraction
   default_branch: main

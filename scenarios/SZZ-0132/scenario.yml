@@ -16,6 +16,7 @@ meta:
     - "caller-callee-interaction"
   difficulty: "hard"
   status: "active"
+  tier: "discriminating"
   category_code: "S6"
 
 repository:

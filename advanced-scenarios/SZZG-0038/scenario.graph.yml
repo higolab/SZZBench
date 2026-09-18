@@ -13,6 +13,7 @@ meta:
   - partial_observability
   difficulty: advanced
   status: draft
+  tier: discriminating
 repository:
   name: SZZG-0038-multi-bic-context-only
   default_branch: main

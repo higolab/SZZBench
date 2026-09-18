@@ -13,6 +13,7 @@ meta:
   - exception-handling
   difficulty: medium
   status: active
+  tier: control
   category_code: "S2"
 repository:
   name: SZZ-0080-exception-handling-deletion-bic

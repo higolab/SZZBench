@@ -10,6 +10,7 @@ meta:
   - expected_szz
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0115-top-k-evaluation
   default_branch: main

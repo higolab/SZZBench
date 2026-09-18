@@ -11,6 +11,7 @@ meta:
   - rename_file
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0001-bfc-rename-fix
   default_branch: main

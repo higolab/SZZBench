@@ -38,7 +38,7 @@ def _scenario(subjects=None, authors=None, bfc="h3") -> Scenario:
         "h2": "document the range check", "h3": "accept the bounds again"}
     authors = authors or {"h0": "A <a@x>", "h1": "B <b@x>", "h2": "A <a@x>", "h3": "C <c@x>"}
     return Scenario(
-        scenario_id="SZZG-9000", suite="graph", category="G1",
+        scenario_id="SZZG-9000", suite="graph", category="G1", tier="control",
         commits=[CommitInfo(hash=h, logical_id=f"c{i}", author=authors[h], subject=subjects[h])
                  for i, h in enumerate(["h0", "h1", "h2", "h3"])],
         bfc_hashes={bfc}, repo_dir=Path("/nonexistent"),

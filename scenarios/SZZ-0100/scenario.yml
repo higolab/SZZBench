@@ -20,6 +20,7 @@ meta:
   - basic-blame-distractor
   difficulty: hard
   status: active
+  tier: control
   category_code: "S3"
 repository:
   name: SZZ-0100-try-block-rewrite-after-bic

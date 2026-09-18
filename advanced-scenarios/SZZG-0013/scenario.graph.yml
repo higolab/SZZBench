@@ -13,6 +13,7 @@ meta:
   - line_history_break
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0013-semantic-preserving-rewrite
   default_branch: main

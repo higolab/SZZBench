@@ -12,6 +12,7 @@ meta:
   - context-aware
   difficulty: medium
   status: active
+  tier: control
   category_code: "S7"
 repository:
   name: SZZ-0158-bfc-message-misleading-reference

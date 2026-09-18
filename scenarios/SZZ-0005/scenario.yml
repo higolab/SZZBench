@@ -18,6 +18,7 @@ meta:
     - "annotation-change"
   difficulty: "medium"
   status: "active"
+  tier: "control"
   category_code: "S1"
 
 repository:

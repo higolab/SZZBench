@@ -18,6 +18,7 @@ meta:
   - comment-only-intermediate
   difficulty: easy
   status: active
+  tier: control
   category_code: "S3"
 repository:
   name: SZZ-0109-comment-only-intermediate

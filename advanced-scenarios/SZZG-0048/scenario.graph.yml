@@ -16,6 +16,7 @@ meta:
   - origin_bic
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0048-cherry-pick-bic
   default_branch: main

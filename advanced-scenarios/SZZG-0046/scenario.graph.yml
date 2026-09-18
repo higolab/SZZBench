@@ -14,6 +14,7 @@ meta:
   - partial_fix
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0046-bfc-in-merge-commit
   default_branch: main

@@ -13,6 +13,7 @@ meta:
   - branch
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0042-bfc-merge-commit
   default_branch: main

@@ -17,6 +17,7 @@ meta:
     - "ambiguous-blame"
   difficulty: "medium"
   status: "active"
+  tier: "control"
   category_code: "S6"
 
 repository:

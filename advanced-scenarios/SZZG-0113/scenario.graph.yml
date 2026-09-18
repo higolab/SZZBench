@@ -11,6 +11,7 @@ meta:
   - write_generated_text_file
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0113-huge-file
   default_branch: main

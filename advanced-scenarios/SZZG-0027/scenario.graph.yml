@@ -13,6 +13,7 @@ meta:
   - ambiguous_blame
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0027-clone-divergence-before-fix
   default_branch: main

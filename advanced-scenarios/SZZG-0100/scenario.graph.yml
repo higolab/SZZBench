@@ -13,6 +13,7 @@ meta:
   - issues
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0100-issue-commit
   default_branch: main

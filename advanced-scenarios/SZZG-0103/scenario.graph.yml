@@ -16,6 +16,7 @@ meta:
   - not_directly_local
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0103-caller-context-needed
   default_branch: main

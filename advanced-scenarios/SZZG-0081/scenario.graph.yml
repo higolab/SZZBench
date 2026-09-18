@@ -18,6 +18,7 @@ meta:
   - origin_bic
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0081-rebase-with-formatting-rewrite-noise
   default_branch: main

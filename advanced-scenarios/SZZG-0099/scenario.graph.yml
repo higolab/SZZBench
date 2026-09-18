@@ -12,6 +12,7 @@ meta:
   - misleading_commit_message
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0099-bfc-message-references-wrong-commit
   default_branch: main

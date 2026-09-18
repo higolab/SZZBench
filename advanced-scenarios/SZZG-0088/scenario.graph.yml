@@ -14,6 +14,7 @@ meta:
   - re_bic
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0088-partial-revert-of-fix-reintroduces-one-fault
   default_branch: main

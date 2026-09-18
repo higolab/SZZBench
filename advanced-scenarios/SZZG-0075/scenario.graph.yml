@@ -18,6 +18,7 @@ meta:
   - no_main_line_bfc
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0075-interactive-rebase-squashes-bic-and-bfc-into-neutral-commit
   default_branch: main

@@ -17,6 +17,7 @@ meta:
   - fault_in_neither_parent
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0065-rebase-conflict-resolution-introduces-bug
   default_branch: main

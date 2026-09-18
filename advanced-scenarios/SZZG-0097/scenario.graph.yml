@@ -16,6 +16,7 @@ meta:
   - related_but_not_correct
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0097-work-item-inference-without-issue-id
   default_branch: main

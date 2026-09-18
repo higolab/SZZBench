@@ -14,6 +14,7 @@ meta:
   - re_bic
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0089-revert-of-revert-with-conflict-resolution
   default_branch: main

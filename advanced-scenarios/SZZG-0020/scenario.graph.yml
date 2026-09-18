@@ -14,6 +14,7 @@ meta:
   - origin_bic
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0020-direct-bic-vs-origin-bic
   default_branch: main

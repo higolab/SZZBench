@@ -19,6 +19,7 @@ meta:
   - basic-blame-distractor
   difficulty: hard
   status: active
+  tier: control
   category_code: "S5"
 repository:
   name: SZZ-0127-method-signature-extension-after-bic

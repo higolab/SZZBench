@@ -12,6 +12,7 @@ meta:
   - bfc-test-addition
   difficulty: medium
   status: active
+  tier: control
   category_code: "S4"
 repository:
   name: SZZ-0117-bfc-with-test-addition

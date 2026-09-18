@@ -10,6 +10,7 @@ meta:
   - generated_files
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0107-bfc-generated-file
   default_branch: main

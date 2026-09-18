@@ -18,6 +18,7 @@ meta:
   - statement-granularity
   difficulty: medium
   status: active
+  tier: control
   category_code: "S4"
 repository:
   name: SZZ-0123-bfc-fixes-two-expressions

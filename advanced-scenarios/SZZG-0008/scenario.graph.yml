@@ -12,6 +12,7 @@ meta:
   - related_but_not_correct
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0008-semantically-equivalent-rewrite
   default_branch: main

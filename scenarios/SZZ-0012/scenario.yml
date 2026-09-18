@@ -12,6 +12,7 @@ meta:
   - logical-operator-error
   difficulty: easy
   status: active
+  tier: control
   category_code: "S1"
 repository:
   name: SZZ-0012-logical-conjunction-error

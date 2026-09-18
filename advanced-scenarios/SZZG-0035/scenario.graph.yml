@@ -11,6 +11,7 @@ meta:
   - root_cause
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0035-bic-bug
   default_branch: main

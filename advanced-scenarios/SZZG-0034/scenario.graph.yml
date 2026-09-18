@@ -14,6 +14,7 @@ meta:
   - different_files
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0034-1-bfc-bug
   default_branch: main

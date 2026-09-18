@@ -17,6 +17,7 @@ meta:
   - same_statement_multiple_locations
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0041-ambiguous-duplicate-faulty-line
   default_branch: main

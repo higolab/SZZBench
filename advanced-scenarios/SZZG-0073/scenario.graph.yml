@@ -18,6 +18,7 @@ meta:
   - inherited_commit_metadata
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0073-interactive-rebase-reorders-commits-before-bic
   default_branch: main

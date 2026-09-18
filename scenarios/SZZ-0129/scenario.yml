@@ -12,6 +12,7 @@ meta:
   - inline-method-after-bic
   difficulty: medium
   status: active
+  tier: control
   category_code: "S5"
 repository:
   name: SZZ-0129-inline-helper-after-bic

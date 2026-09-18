@@ -17,6 +17,7 @@ meta:
   - direct_bic
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0078-rebase-commit-message-reveals-origin
   default_branch: main

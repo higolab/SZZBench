@@ -15,6 +15,7 @@ meta:
   - origin_bic
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0058-bug-fixing-commit-is-rebased-onto-main
   default_branch: main

@@ -12,6 +12,7 @@ meta:
   - write_binary_file
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0112-non-utf-8-file
   default_branch: main

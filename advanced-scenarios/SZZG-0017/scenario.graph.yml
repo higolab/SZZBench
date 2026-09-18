@@ -10,6 +10,7 @@ meta:
   - clone_relationships
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0017-clone
   default_branch: main

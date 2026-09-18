@@ -13,6 +13,7 @@ meta:
   - post_merge_bfc
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0044-bic-before-merge-bfc-after-merge
   default_branch: main

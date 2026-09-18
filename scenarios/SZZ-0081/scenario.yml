@@ -19,6 +19,7 @@ meta:
     - "basic-blame-distractor"
   difficulty: "medium"
   status: "active"
+  tier: "control"
   category_code: "S3"
 
 repository:

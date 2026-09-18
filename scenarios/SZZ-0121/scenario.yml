@@ -13,6 +13,7 @@ meta:
   - cleanup
   difficulty: medium
   status: active
+  tier: control
   category_code: "S4"
 repository:
   name: SZZ-0121-bfc-with-cleanup

@@ -11,6 +11,7 @@ meta:
   - bug_fixing_commits
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0036-fix-commit
   default_branch: main

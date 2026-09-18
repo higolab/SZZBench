@@ -13,6 +13,7 @@ meta:
   - cross_branch_bic
   difficulty: advanced
   status: draft
+  tier: control
 repository:
   name: SZZG-0062-backported-fix-maintenance-branch
   default_branch: main
