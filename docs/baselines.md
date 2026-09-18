@@ -156,10 +156,30 @@ reasons that half can be out of reach, and three scenarios for each:
 
 The classic instances isolate the code-level reason; the graph instances add a
 history-level one on top, so that the same reason has to be found across a
-merge, a copy, a move, two branches or a cherry-pick. Each README reports the
-blame result for every deleted line under three variants, the probe answers
-that move at each commit, and a counterfactual: reverting the unreachable
-commit on top of the faulty one reproduces the fixed behaviour.
+merge, a copy, a move, two branches or a cherry-pick.
+
+Every README reports the blame result for each deleted line under three
+variants and the probe answers that move at each commit. **How each one shows
+that both commits are necessary depends on which kind it is**, and the two
+forms of evidence must not be read as one:
+
+- In the *value*, *callee*, *guard* and *file* kinds the two commits
+  **interact**: the unreachable one is harmless on its own, and the fault
+  appears only once the later commit reaches it. There the evidence is a
+  counterfactual — undoing the unreachable commit on top of the faulty one
+  reproduces the fixed behaviour on every probed argument: all 63 keys for
+  SZZ-0195, all 25 for SZZ-0196, all 30 for SZZ-0198, all 98 for SZZG-0118, and
+  every key SZZ-0199 and SZZG-0117 probe. SZZG-0121 agrees on every key except
+  the seven belonging to `ratePerMille` itself, the accessor whose unit the
+  commit changed, which cannot agree by construction. SZZG-0120 makes the same
+  claim in the shape of the history instead: the bug is in neither parent of
+  the merge.
+- In the *rewrite* kind the two commits are **independent faults** that the
+  same fix repairs; the rewrite between them only moves the blame. There a
+  counterfactual would fail by construction — undoing one fault leaves the
+  other — so the evidence is instead that their effects are disjoint and the
+  fix restores exactly their union: 4 + 3 = 7 answers for SZZ-0197,
+  379 + 62 = 441 for SZZG-0119.
 
 A control being cheaply solvable is not a defect: a benchmark needs cases that
 verify the basics, and a method that fails one of them is broken on that input
@@ -235,14 +255,18 @@ four-commit single-branch history — and **that cell is where the cheap rules
 win**.
 
 The discriminating tier is deliberately spread out of it: its 22 scenarios
-occupy **16** distinct signatures, where the first twelve occupied 8. The ten
-added in this round introduced eight signatures the suite did not have,
-including the first two-commit oracles with no distracting commit on the fault
-file at all (SZZ-0198, SZZ-0199) and the first seven-commit history with a
-two-commit oracle (SZZ-0197). Two pairs still share a signature —
-SZZG-0028/SZZG-0118 and SZZ-0132/SZZ-0136 — which the signature cannot
-distinguish although their mechanisms differ; that is a limit of the proxy, not
-a claim that they are redundant.
+occupy **16** distinct signatures, where the first twelve occupied **7**. The
+ten added in this round introduced **nine** signatures the suite did not have —
+every one of them except SZZG-0118, which reuses SZZG-0028's — including the
+first two-commit oracles with no distracting commit on the fault file at all
+(SZZ-0198, SZZ-0199) and the first seven-commit history with a two-commit
+oracle (SZZ-0197).
+
+Four signatures inside the tier are still shared by more than one scenario:
+SZZ-0190/0191/0193/0194, SZZ-0132/SZZ-0136, SZZG-0038/SZZG-0040 and
+SZZG-0028/SZZG-0118. Those scenarios differ in mechanism — which is the point
+of the tier — and the signature cannot see it; that is a limit of the proxy,
+not a claim that they are redundant.
 
 ## Adding a baseline
 

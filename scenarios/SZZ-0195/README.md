@@ -56,6 +56,9 @@ with c1     feeYen(1) after deposit(1000) = 1000     (the bug: a 1% fee of 1000 
 without c1  feeYen(1) after deposit(1000) = 10       (correct)
 ```
 
+That holds across the whole grid, not just at one argument: the counterfactual
+tree agrees with the fix on **all 63** probe keys, with none differing.
+
 ## Measured blame outcome at BFC^
 
 The fix deletes exactly one line:

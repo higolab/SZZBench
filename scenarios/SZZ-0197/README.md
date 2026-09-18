@@ -50,6 +50,16 @@ Both faults are real and independent: `c1` costs the four eighteen-year-old
 cases, `c5` the three three-purchase cases, and the fix restores exactly the
 seven.
 
+**This is a different kind of evidence from the interaction scenarios**, and it
+is the right one here. In SZZ-0195, SZZ-0196, SZZ-0198 and SZZ-0199 the
+unreachable commit is harmless alone, so undoing it on top of the faulty commit
+reproduces the fixed behaviour. In a rewrite scenario that test fails by
+construction, because the two commits are independent faults rather than a
+prerequisite and its consumer. Measured: at `c5`, restoring only `age >= 18`
+leaves `eligible(19, 3)` returning `false`, where the complete fix `c6` returns
+`true` — `c5`'s fault is still there. Necessity here is shown by the two
+faults' effects being disjoint and the fix repairing exactly their union.
+
 ## Measured blame outcome at BFC^
 
 The fix deletes two lines:

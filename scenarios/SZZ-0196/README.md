@@ -57,7 +57,8 @@ c4 (the fix)           0.01       1.00        10.00
 ```
 
 Without the overload the call widens to `format(long)`, which is what the fix
-makes it do explicitly.
+makes it do explicitly. Over the whole grid the counterfactual tree agrees with
+the fix on **all 25** `Receipt` probe keys, with none differing.
 
 ## Measured blame outcome at BFC^
 

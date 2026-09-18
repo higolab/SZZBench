@@ -45,6 +45,15 @@ c4  Page from the first index up to the page size  441 answers change
 `441 = 379 + 62`: the fix restores exactly the union of the two faults, and
 neither fault overlaps the other.
 
+**This is a different kind of evidence from the interaction scenarios**, and it
+is the right one here. Where the unreachable commit is harmless alone — the
+value, callee, guard and file kinds — undoing it on top of the faulty commit
+reproduces the fixed behaviour. A rewrite scenario cannot pass that test,
+because its two commits are independent faults. Measured: at `c3`, restoring
+only `index >= pageStart` leaves `onPage(5, 0, 5)` returning `true`, where the
+complete fix `c4` returns `false` — `c3`'s inclusive upper bound is still
+there. Necessity here is the disjointness above.
+
 ## Measured history shape
 
 The inline leaves the moved file only **36% similar** to its source, below

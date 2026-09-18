@@ -51,6 +51,22 @@ The unit change keeps `ratePercent` and `surchargeCents` answering exactly what
 they answered before, so no caller in the repository can see it. `c2` is the
 first commit to read the raw table value, and reports 30% where the rate is 3%.
 
+**Both commits are necessary, measured rather than argued.** Undoing the unit
+change on top of `c2` — the tree in which the faulty display exists but the
+table is still in percent — makes `displayedRatePercent` agree with the fix for
+every zone:
+
+```text
+                         displayedRatePercent
+c2 as shipped            30        <- the bug
+c2 with r1's change undone   3
+c3 (the fix)             3
+```
+
+Of the 189 probe keys, the only ones that still differ are `ratePerMille`'s own
+— which is the method whose unit the commit changed, and so cannot agree by
+construction.
+
 ## Measured blame outcome at BFC^
 
 The fix deletes exactly one line, and opens exactly one file:
