@@ -13,6 +13,7 @@ from pathlib import Path
 import yaml
 
 from szzbench.baselines import (
+    ABSTAIN,
     FAMILIES,
     CommitInfo,
     GitProbe,
@@ -76,17 +77,21 @@ def test_message_predictor_uses_its_own_vocabulary_and_skips_the_fix():
 
 def test_every_predictor_declares_a_known_family():
     predictors = build_predictors([_scenario()], GitProbe())
-    names = [name for name, _, _, _ in predictors]
+    names = [b.name for b in predictors]
     assert len(names) == len(set(names)), "baseline names must be unique"
-    assert {family for _, family, _, _ in predictors} <= set(FAMILIES)
+    assert {b.family for b in predictors} <= set(FAMILIES)
     # one rule per author, plus the fixed rules
     assert sum(1 for name in names if name.startswith("author:")) == 3
-    for fixed in ("message-admits-fault", "position-second", "position-before-fix",
-                  "shape-last-toucher", "blame-deleted-lines"):
+    for fixed in ("message-admits-fault", "position-1", "position-before-fix",
+                  "shape-last-toucher", "blame-deleted-lines", "abstain"):
         assert fixed in names
+    # exactly one rule is credited for predicting nothing
+    abstaining = [b.name for b in predictors if b.scores_on_abstention]
+    assert abstaining == ["abstain"]
 
 
-def _generate(tmp_path: Path, scenario_id: str, commits, bugs, tier: str = "control") -> None:
+def _generate(tmp_path: Path, scenario_id: str, commits, bugs, tier: str = "control",
+              expected_szz: dict | None = None) -> None:
     data = {
         "schema_version": "graph-0.1-draft",
         "meta": {"id": scenario_id, "title": "baseline fixture", "category": "test",
@@ -97,6 +102,8 @@ def _generate(tmp_path: Path, scenario_id: str, commits, bugs, tier: str = "cont
         "commits": commits,
         "bugs": bugs,
     }
+    if expected_szz is not None:
+        data["expected_szz"] = expected_szz
     directory = tmp_path / "advanced-scenarios" / scenario_id
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / "scenario.graph.yml"
@@ -105,7 +112,7 @@ def _generate(tmp_path: Path, scenario_id: str, commits, bugs, tier: str = "cont
 
 
 def test_runner_scores_through_the_evaluator(tmp_path):
-    """A history whose BIC is the second commit must be solved by position-second."""
+    """A history whose BIC is the second commit must be solved by position-1."""
     java = "package example;\npublic class Range {\n  public boolean contains(int v, int lo, int hi) {\n    return v %s lo;\n  }\n}\n"
     commits = [
         {"id": "c0", "branch": "main", "parents": [], "message": "add the range check", "role": "initial",
@@ -133,9 +140,9 @@ def test_runner_scores_through_the_evaluator(tmp_path):
     assert report["scenario_count"] == 1
     assert report["errors"] == []
     by_name = {item["name"]: item for item in report["baselines"]}
-    assert by_name["position-second"]["passed"] == 1
+    assert by_name["position-1"]["passed"] == 1
     assert by_name["blame-deleted-lines"]["passed"] == 1
-    assert by_name["position-first"]["passed"] == 0
+    assert by_name["position-0"]["passed"] == 0
     assert by_name["message-admits-fault"]["passed"] == 0
     assert report["solved_by_any_baseline"] == 1
     assert report["unsolved"] == []
@@ -149,9 +156,9 @@ def test_runner_scores_through_the_evaluator(tmp_path):
     assert {item["family"] for item in only_position["baselines"]} == {"position"}
     # in a three-commit history the BIC is both the second commit and the one before the fix
     assert {item["name"] for item in only_position["baselines"] if item["passed"]} == {
-        "position-second", "position-before-fix"}
+        "position-1", "position-before-fix"}
     text = format_report(report)
-    assert "position-second" in text and "solved by no baseline" in text
+    assert "position-1" in text and "solved by no baseline" in text
     assert json.dumps(report)  # the report is JSON-serialisable for --json / --out
 
 
@@ -211,7 +218,7 @@ def test_commits_expanded_by_commit_generator_are_visible(tmp_path):
                                    "default", git)
     ids = [c.logical_id for c in scenarios[0].commits]
     assert ids == ["c0", "c1.g1", "c1.g2", "c1", "c2"], ids
-    assert by_name["position-second"]["passed"] == 0, "c1.g1 is the second commit, not the BIC"
+    assert by_name["position-1"]["passed"] == 0, "c1.g1 is the second commit, not the BIC"
     assert by_name["position-before-fix"]["passed"] == 1
     assert by_name["blame-deleted-lines"]["passed"] == 1
 
@@ -307,7 +314,7 @@ def test_a_filtered_run_does_not_claim_promotion_candidates(tmp_path):
     by_name = {i["name"]: i for i in full["baselines"]}
     # the fix only adds lines, so blame has nothing to go on; position does
     assert by_name["blame-deleted-lines"]["passed"] == 0
-    assert by_name["position-second"]["passed"] == 1
+    assert by_name["position-1"]["passed"] == 1
     assert full["complete"] is True
     assert full["declared_control_but_unsolved"] == []
 
@@ -331,3 +338,193 @@ def test_a_filtered_run_does_not_claim_promotion_candidates(tmp_path):
                                   advanced_scenarios_root=tmp_path / "advanced-scenarios",
                                   families=["position"])
     assert position_only["declared_discriminating_but_solved"] == ["SZZG-9004"]
+
+
+def test_the_restriction_keeps_every_passing_rule(tmp_path):
+    """Skipping `position-k` rules must never drop one that would have passed.
+
+    The first version of this check asserted that omitted predictions do not
+    intersect `required`, which is the same reasoning the restriction was built
+    on - and that reasoning was wrong: under `top_k` a prediction passes on a
+    hit in `relevant`, which need not overlap `required`. This sweeps every
+    index through the real evaluator instead (PR #40 review).
+    """
+    from szzbench.baselines import GitProbe, _answer_hashes, _load_scenarios, position_indices
+    from szzbench.evaluator import Prediction, evaluate_prediction_map
+
+    def op(old_text, new_text):
+        return {"type": "replace", "path": RANGE_PATH, "old": old_text, "new": new_text}
+
+    faulty, fixed = "return v > lo;", "return v >= lo;"
+    java = ("package example;\npublic class Range {\n  public boolean contains(int v, int lo) {\n"
+            "    return v >= lo;\n  }\n}\n")
+    commits = [
+        {"id": "c0", "branch": "main", "parents": [], "message": "add the range check", "role": "initial",
+         "operations": [{"type": "write_file", "path": RANGE_PATH, "content": java}]},
+        {"id": "c1", "branch": "main", "parents": ["c0"], "message": "document the range check",
+         "role": "intermediate",
+         "operations": [{"type": "write_file", "path": "docs/a.md", "content": "a\n"}]},
+        {"id": "c2", "branch": "main", "parents": ["c1"], "message": "document the caller",
+         "role": "intermediate",
+         "operations": [{"type": "write_file", "path": "docs/b.md", "content": "b\n"}]},
+        {"id": "c3", "branch": "main", "parents": ["c2"], "message": "require values above the minimum",
+         "role": "bug_introducing", "operations": [op(fixed, faulty)]},
+        {"id": "c4", "branch": "main", "parents": ["c3"], "message": "accept the lower bound again",
+         "role": "bug_fixing", "operations": [op(faulty, fixed)]},
+        {"id": "c5", "branch": "main", "parents": ["c4"], "message": "require it above the minimum once more",
+         "role": "bug_introducing", "operations": [op(fixed, faulty)]},
+        {"id": "c6", "branch": "main", "parents": ["c5"], "message": "accept the lower bound once more",
+         "role": "bug_fixing", "operations": [op(faulty, fixed)]},
+    ]
+    bugs = [{"id": "B001",
+             "bug_introducing_commits": [{"commit": "c3", "role": "origin"},
+                                         {"commit": "c5", "role": "reintroducing"}],
+             "bug_fixing_commits": [{"commit": "c6", "role": "complete_fix"}]}]
+
+    # top_k credits a hit in `relevant`, which here is the origin and not the
+    # required commit, so the passing rule is position-3 rather than position-5
+    _generate(tmp_path, "SZZG-9200", commits, bugs, expected_szz={
+        "commit_level": {"evaluation_policy": "top_k", "required": ["c5"],
+                         "related_origins": ["c3"], "relevant": ["c3"], "status_k": 1}})
+    # a plain exact-set scenario alongside it
+    _generate(tmp_path, "SZZG-9201", commits, bugs, expected_szz={
+        "commit_level": {"evaluation_policy": "exact_set", "required": ["c5"]}})
+
+    git = GitProbe()
+    scenarios, _ = _load_scenarios(tmp_path / "repos", tmp_path, tmp_path / "advanced-scenarios",
+                                   "default", git)
+    retained = position_indices(scenarios, _answer_hashes(scenarios, tmp_path,
+                                                          tmp_path / "advanced-scenarios"))
+
+    passing: dict[str, set[int]] = {s.scenario_id: set() for s in scenarios}
+    longest = max(len(s.commits) for s in scenarios)
+    for index in range(longest):
+        predictor = _at_index(index)
+        predictions = {s.scenario_id: [Prediction(scenario_id=s.scenario_id, inducing_commit=h)
+                                       for h in predictor(s)] for s in scenarios}
+        report = evaluate_prediction_map(
+            {k: v for k, v in predictions.items() if v},
+            generated_root=tmp_path / "repos", scenarios_root=tmp_path,
+            advanced_scenarios_root=tmp_path / "advanced-scenarios", include_generated=True)
+        for item in report.scenarios:
+            if item.status == "PASS":
+                passing[item.scenario_id].add(index)
+
+    assert passing["SZZG-9200"] == {3}, "the fixture must exercise a relevant-only pass"
+    assert passing["SZZG-9201"] == {5}
+    for scenario_id, indices in passing.items():
+        assert indices <= set(retained), f"{scenario_id}: dropped passing rule(s) {sorted(indices - set(retained))}"
+    assert set(retained) != set(range(longest)), "the fixture must exercise the restriction"
+
+
+def test_silence_is_credited_only_to_the_abstain_rule(tmp_path):
+    """A rule that says nothing must not be credited for an empty oracle.
+
+    `expect_no_bic` makes "no commit" the correct answer, so an empty
+    prediction passes. Every `position-k` rule is empty on a history shorter
+    than k, so scoring silence would hand each of them a free pass on that
+    scenario - and the pruning that dropped such rules as worthless was wrong
+    for the same reason (PR #40 review). Only the rule that exists to say
+    nothing is scored on silence; the rest are credited where they predict.
+
+    Histories of three different lengths make the out-of-range case real
+    rather than hypothetical, and every claim below is read back from the real
+    evaluator.
+    """
+    from szzbench.baselines import _answer_hashes, _load_scenarios, position_indices
+    from szzbench.evaluator import Prediction, evaluate_prediction_map
+
+    def op(old_text, new_text):
+        return {"type": "replace", "path": RANGE_PATH, "old": old_text, "new": new_text}
+
+    faulty, fixed = "return v > lo;", "return v >= lo;"
+    java = JAVA % ">="
+
+    def history(length: int, bic_index: int | None) -> list[dict]:
+        """`length` commits on main; the last one is the fix."""
+        commits = [{"id": "c0", "branch": "main", "parents": [], "message": "add the range check",
+                    "role": "initial",
+                    "operations": [{"type": "write_file", "path": RANGE_PATH, "content": java}]}]
+        for index in range(1, length - 1):
+            if index == bic_index:
+                commits.append({"id": f"c{index}", "branch": "main", "parents": [f"c{index - 1}"],
+                                "message": "require values above the minimum", "role": "bug_introducing",
+                                "operations": [op(fixed, faulty)]})
+            else:
+                commits.append({"id": f"c{index}", "branch": "main", "parents": [f"c{index - 1}"],
+                                "message": f"document step {index}", "role": "intermediate",
+                                "operations": [{"type": "write_file", "path": f"docs/{index}.md",
+                                                "content": f"{index}\n"}]})
+        last = length - 1
+        # With no bug-introducing commit the fix answers a contract that
+        # changed outside the repository: the code was right when written, so
+        # the fix tightens it rather than undoing an earlier edit.
+        fix = op(faulty, fixed) if bic_index is not None else op(fixed, "return v >= lo && lo >= 0;")
+        commits.append({"id": f"c{last}", "branch": "main", "parents": [f"c{last - 1}"],
+                        "message": "accept the lower bound again" if bic_index is not None
+                                   else "reject a negative lower bound", "role": "bug_fixing",
+                        "operations": [fix]})
+        return commits
+
+    def bug(bic_index: int | None, length: int) -> list[dict]:
+        introducing = [] if bic_index is None else [{"commit": f"c{bic_index}", "role": "direct"}]
+        return [{"id": "B001", "bug_introducing_commits": introducing,
+                 "bug_fixing_commits": [{"commit": f"c{length - 1}", "role": "complete_fix"}]}]
+
+    # four commits, answer at index 1
+    _generate(tmp_path, "SZZG-9300", history(4, 1), bug(1, 4), expected_szz={
+        "commit_level": {"evaluation_policy": "exact_set", "required": ["c1"]}})
+    # seven commits, answer at index 5 - out of range for the other two
+    _generate(tmp_path, "SZZG-9301", history(7, 5), bug(5, 7), expected_szz={
+        "commit_level": {"evaluation_policy": "exact_set", "required": ["c5"]}})
+    # five commits, and the answer is "no commit": the fault came from outside
+    _generate(tmp_path, "SZZG-9302", history(5, None), bug(None, 5), expected_szz={
+        "commit_level": {"evaluation_policy": "exact_set", "required": [], "expect_no_bic": True}})
+
+    roots = dict(generated_root=tmp_path / "repos", scenarios_root=tmp_path,
+                 advanced_scenarios_root=tmp_path / "advanced-scenarios")
+
+    # what the evaluator actually does with an empty prediction
+    silent = evaluate_prediction_map({}, include_generated=True, **roots)
+    assert {i.scenario_id for i in silent.scenarios if i.status == "PASS"} == {"SZZG-9302"}, \
+        "the fixture must exercise an oracle that silence satisfies"
+
+    report = run_baselines(**roots)
+    assert report["errors"] == []
+    solved_by = {b["name"]: set(b["solved"]) for b in report["baselines"]}
+
+    # the empty oracle is solved, and by exactly one rule
+    assert {name for name, solved in solved_by.items() if "SZZG-9302" in solved} == {ABSTAIN}
+    assert solved_by[ABSTAIN] == {"SZZG-9302"}
+    assert report["unsolved"] == []
+
+    # no other rule is credited on a scenario it makes no prediction for
+    git = GitProbe()
+    scenarios, _ = _load_scenarios(tmp_path / "repos", tmp_path, tmp_path / "advanced-scenarios",
+                                   "default", git)
+    for baseline in build_predictors(scenarios, git, _answer_hashes(scenarios, tmp_path,
+                                                                   tmp_path / "advanced-scenarios")):
+        if baseline.scores_on_abstention:
+            continue
+        quiet = {s.scenario_id for s in scenarios if not list(baseline.predict(s))}
+        assert not (quiet & solved_by[baseline.name]), \
+            f"{baseline.name} was credited without predicting: {sorted(quiet & solved_by[baseline.name])}"
+
+    # position-5 exists, is out of range on the two shorter histories, and is
+    # credited only on the one it names a commit for
+    assert solved_by["position-5"] == {"SZZG-9301"}
+    assert solved_by["position-1"] == {"SZZG-9300"}
+
+    # and no index whose prediction passes is pruned from the enumeration
+    retained = set(position_indices(scenarios, _answer_hashes(scenarios, tmp_path,
+                                                             tmp_path / "advanced-scenarios")))
+    for index in range(max(len(s.commits) for s in scenarios)):
+        predictor = _at_index(index)
+        predictions = {s.scenario_id: [Prediction(scenario_id=s.scenario_id, inducing_commit=h)
+                                       for h in predictor(s)] for s in scenarios}
+        predictions = {k: v for k, v in predictions.items() if v}
+        if not predictions:
+            continue
+        passing = evaluate_prediction_map(predictions, include_generated=False, **roots)
+        if any(i.status == "PASS" for i in passing.scenarios):
+            assert index in retained, f"position-{index} passes but was not enumerated"

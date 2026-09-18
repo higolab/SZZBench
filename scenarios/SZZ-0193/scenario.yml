@@ -1,0 +1,160 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0193"
+  title: "A widened precondition that only becomes a fault once a later commit can reach it"
+  slug: "widened-precondition-reached-later"
+  description: >
+    A guard that rejects negative amounts is removed while every caller passes
+    a non-negative amount, so nothing breaks. A later commit adds a refund path
+    that can produce a negative amount, and only then does the bug appear. The
+    fix guards the new path, so the line it deletes belongs to that commit and
+    the removed guard is reachable only by reasoning about what the fixed call
+    can now pass.
+  category: "Multiple BICs, duplicate faults, and composite faults"
+  factors:
+    - "multi-bic"
+    - "single-bfc"
+    - "prerequisite-bic"
+    - "blame-unreachable-bic"
+  difficulty: "hard"
+  status: "active"
+  tier: "discriminating"
+  category_code: "S6"
+
+repository:
+  name: "SZZ-0193-widened-precondition-reached-later"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Add the spending budget check"
+    author: "Luca Moretti <luca.moretti@example.com>"
+    date: "2024-06-14T11:06:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/example/Budget.java"
+        content: |
+          package example;
+
+          public class Budget {
+              static final int LIMIT_CENTS = 50000;
+
+              public boolean withinBudget(int costCents) {
+                  if (costCents < 0) {
+                      return false;
+                  }
+                  return costCents <= LIMIT_CENTS;
+              }
+          }
+
+  - id: "c1"
+    message: "Compare the cost against the limit directly"
+    author: "Tom Becker <tom.becker@example.com>"
+    date: "2024-06-18T16:36:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/Budget.java"
+        old: |
+          if (costCents < 0) {
+                      return false;
+                  }
+                  return costCents <= LIMIT_CENTS;
+        new: |
+          return costCents <= LIMIT_CENTS;
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Name the budget limit in the class comment"
+    author: "Priya Raman <priya.raman@example.com>"
+    date: "2024-06-20T16:09:00Z"
+    role: "distractor"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/Budget.java"
+        old: |
+          public class Budget {
+        new: |
+          /** Approves spending up to the configured limit. */
+          public class Budget {
+
+  - id: "c3"
+    message: "Approve spending after a refund"
+    author: "Priya Raman <priya.raman@example.com>"
+    date: "2024-06-24T11:17:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/Budget.java"
+        old: |
+          public boolean withinBudget(int costCents) {
+                  return costCents <= LIMIT_CENTS;
+              }
+        new: |
+          public boolean withinBudget(int costCents) {
+                  return costCents <= LIMIT_CENTS;
+              }
+
+              public boolean withinBudgetAfterRefund(int costCents, int refundCents) {
+                  return withinBudget(costCents - refundCents);
+              }
+        labels: ["B001", "fault"]
+
+  - id: "c4"
+    message: "Reject a refund larger than the cost"
+    author: "Luca Moretti <luca.moretti@example.com>"
+    date: "2024-07-01T14:10:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/Budget.java"
+        old: "return withinBudget(costCents - refundCents);"
+        new: "return costCents >= refundCents && withinBudget(costCents - refundCents);"
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "A refund larger than the cost is approved"
+    bug_fixing_commit: "c4"
+    bug_introducing_commits: ["c1", "c3"]
+    fault:
+      commit: "c3"
+      file: "src/main/java/example/Budget.java"
+      entity:
+        type: "method"
+        name: "withinBudgetAfterRefund"
+        signature: "boolean withinBudgetAfterRefund(int costCents, int refundCents)"
+      statement: "return withinBudget(costCents - refundCents);"
+      change_type: "line_modification"
+    fix:
+      commit: "c4"
+      file: "src/main/java/example/Budget.java"
+      entity:
+        type: "method"
+        name: "withinBudgetAfterRefund"
+        signature: "boolean withinBudgetAfterRefund(int costCents, int refundCents)"
+      statement: "return costCents >= refundCents && withinBudget(costCents - refundCents);"
+      fix_type: "line_modification"
+    expected_szz:
+      commit_level:
+        true_positives: ["c1", "c3"]
+        primary_observable_bic: "c3"
+        contributing_bics: ["c1"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "return withinBudget(costCents - refundCents);"
+        note: >
+          c1 removed the guard that would have rejected the negative amount the
+          new path can produce; while it stood, the refund path would have been
+          safe.
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3", "c4"]
