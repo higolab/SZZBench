@@ -3,7 +3,9 @@ meta:
   id: SZZG-0075
   title: Interactive rebase squashes BIC and BFC into neutral commit
   slug: interactive-rebase-squashes-bic-and-bfc-into-neutral-commit
-  description: A transient feature bug is fixed before rebase and does not survive into main.
+  description: 'A fault and its fix are written on a feature branch and squashed into a single commit before the branch reaches
+    main. The squashed commit adds the feature in its correct form: the main line contains neither the faulty statement nor a separate
+    fix, so main offers no bug-fixing commit to start SZZ from. The pre-squash pair stays reachable on the feature branch.'
   category: "Rebase-specific history rewriting"
   category_code: "G5"
   factors:
@@ -13,6 +15,7 @@ meta:
   - squash
   - transient_bug
   - scope_boundary
+  - no_main_line_bfc
   difficulty: advanced
   status: draft
 repository:
@@ -23,65 +26,74 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial correct implementation
+  history_summary: 'c0: Add the Range class with an inclusive contains check
 
-    f1: introduce transient bug on feature
+    f1: Add a width helper for an interval (feature, width is one too small)
 
-    f2: fix transient bug on feature
+    f2: An inclusive interval is one element wider than max - min (feature)
 
-    r1: squash transient bug and fix into neutral commit'
+    r1: Add a width helper that counts both endpoints (squash of f1 and f2 onto main; the two cancel out)'
+  ref_lifecycle:
+    tags:
+    - name: pre-squash/feature
+      commit: f2
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'c0: create initial correct implementation'
+  message: Add the Range class with an inclusive contains check
   role: initial
   operations:
   - type: write_file
     path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ >= min && value <= max;\n  }\n}\n"
 - id: f1
   branch: feature
   parents:
   - c0
-  message: 'f1: introduce transient bug on feature'
+  message: Add a width helper for an interval
   role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
+    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ >= min && value <= max;\n  }\n}\n"
+    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ >= min && value <= max;\n  }\n\n  public int width(int min, int max) {\n    return max - min;\n  }\n}\n"
 - id: f2
   branch: feature
   parents:
   - f1
-  message: 'f2: fix transient bug on feature'
+  message: An inclusive interval is one element wider than max - min
   role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    old: return max - min;
+    new: return max - min + 1;
 - id: r1
   branch: main
   parents:
   - c0
-  message: 'r1: squash transient bug and fix into neutral commit'
+  message: Add a width helper that counts both endpoints
   role: intermediate
-  operations:
-  - type: write_file
-    path: docs/rebase-note.md
-    content: 'transient bug squashed out
-
-      '
   rebase_of:
   - f1
   - f2
-  interactive_rebase: squash_transient_bug_fix
+  squashes:
+  - f1
+  - f2
+  interactive_rebase: squash
+  committer_date: '2024-01-06T14:25:00Z'
+  operations:
+  - type: apply_squash
+    from_commits:
+    - f1
+    - f2
 bugs:
 - id: B001
-  title: Transient feature bug squashed out before main
+  title: Interval width fault that never reaches the main line
   bug_introducing_commits:
   - commit: f1
     role: direct
@@ -92,28 +104,48 @@ bugs:
   - id: F001
     commit: f1
     file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    statement: return max - min;
     change_type: line_modification
   fixes:
   - id: X001
     commit: f2
     file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
+    statement: return max - min + 1;
     fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
     - f1
-    notes: This records the pre-rebase transient BIC/BFC pair; r1 is not a main-line SZZ target.
+    related_but_not_correct:
+    - r1
+    notes: 'The scored pair is the pre-squash pair on the feature branch: given the bug-fixing commit f2, the answer is f1. r1
+      is the squashed main-line commit; it is not a bug-fixing commit and it must not be returned as a bug-introducing commit either,
+      because the tree it produces contains no fault. The variant ''main-line-only'' states the expectation for a tool that mines
+      the main line: there is no bug-fixing commit for B001 on main, so the answer is the empty set.'
+  evaluation_variants:
+  - name: main-line-only
+    description: A tool that mines only the final main history. main carries no bug-fixing commit for B001, so the tool must report
+      nothing; every commit it reports is a false positive.
+    commit_level:
+      evaluation_policy: exact_set
+      expect_no_bic: true
+      required: []
 scenario_design:
-  purpose: Clarify a scope boundary for bugs that do not survive into final main history.
-  key_property: The final main history has no main-line BIC for this transient bug.
-  difference_from_SZZG_0064: SZZG-0064 covers a rebased BIC followed by a non-BIC rebased intermediate commit. This scenario
-    adds a distinct rebase-related complication.
+  purpose: Make the squashed main-line commit the object of the scenario and fix the scope boundary for faults that do not survive
+    into the main line.
+  key_property: 'r1 is the squash of f1 (fault) and f2 (fix): it adds the width helper in its correct form. The faulty statement
+    ''return max - min;'' occurs in no tree reachable from main, and main carries no separate fix either, so a main-line miner
+    has no bug-fixing commit for B001 to start from. The pre-squash commits stay reachable through the feature branch and the tag
+    pre-squash/feature.'
+  difference_from_SZZG_0064: SZZG-0064 replays a series commit by commit and asks which replayed commit is the BIC. Here the replay
+    squashes the fault and its fix into one commit, which removes the bug from the main line entirely.
   evaluation_points:
-  - Record transient pair.
-  - Treat as special scope-boundary case.
+  - Given the feature-branch fix f2, report f1.
+  - 'Given only the main line, report nothing: r1 is neither a BIC nor a BFC for B001.'
+  - Do not treat the squashed commit r1 as the bug-introducing commit of a bug that its tree does not contain.
 notes:
-- This scenario models a rebase-related development history for SZZ evaluation.
-- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.
+- The squash is generated with apply_squash, which cherry-picks f1 and then f2 with --no-commit, so the main-line tree really is
+  the result of applying both patches.
+- graph.ref_lifecycle creates the lightweight tag pre-squash/feature at f2; together with the feature branch it documents that
+  the pre-squash commits remain reachable and are not garbage collected.
