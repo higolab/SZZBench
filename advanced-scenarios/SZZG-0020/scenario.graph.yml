@@ -113,16 +113,19 @@ expected_szz:
     related_origins:
     - c1
   evaluation_variants:
-  - name: direct_bic_only
+  - name: direct-only
     commit_level:
       required:
       - c2
-  - name: origin_aware
+  - name: origin-aware
     commit_level:
+      evaluation_policy: relaxed_with_related
       required:
       - c2
-      related_origins:
-      - c1
+      acceptable_related:
+      - commit: c1
+        reason: origin_bic
+        credit: 0.5
 scenario_design:
   purpose: Evaluate direct-BIC versus origin-BIC accounting for copied buggy code.
   current_schema_limitation: Direct and origin BIC roles require graph-aware bug metadata and evaluation policy.

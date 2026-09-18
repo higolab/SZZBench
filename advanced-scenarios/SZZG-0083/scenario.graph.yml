@@ -137,10 +137,21 @@ expected_szz:
     evaluation_policy: exact_set
     required:
     - r1
-    related_but_not_correct:
+    notes: r1 is the direct BIC. Its patch is about 7000 lines long, but only one of them is the fault; the generated
+      files are never touched by the fix and therefore never enter deleted-line blame.
+    related_origins:
     - f1
-    notes: r1 is the direct BIC. Its patch is about 7000 lines long, but only one of them is the fault; the generated files are
-      never touched by the fix and therefore never enter deleted-line blame.
+  evaluation_variants:
+  - name: origin-aware
+    description: The direct BIC is required; the origin is accepted as related context.
+    commit_level:
+      evaluation_policy: relaxed_with_related
+      required:
+      - r1
+      acceptable_related:
+      - commit: f1
+        reason: origin_bic
+        credit: 0.5
 scenario_design:
   purpose: Evaluate how robust a tool is when the bug-introducing commit is very large.
   key_property: r1 adds a 5006-line generated Java table and a 2000-line generated properties file next to the single faulty source

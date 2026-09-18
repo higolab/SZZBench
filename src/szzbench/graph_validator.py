@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any
 import re
 
+from .evaluator import _commit_level_policy, classify_prediction
 from .findings import ValidationResult
 from .graph_operations import PATH_FIELDS_BY_OPERATION, REQUIRED_FIELDS_BY_OPERATION, SUPPORTED_GRAPH_OPERATIONS
 from .graph_scenario import commit_id_of, graph_bfc_entries, graph_bic_entries, graph_faults, graph_fixes, load_graph_scenario
@@ -453,7 +454,7 @@ def lint_graph_scenario(data: dict[str, Any]) -> ValidationResult:
                 result.warning("GW404", f"BFC role '{role}' is not in {sorted(ALLOWED_BFC_ROLES)}.", f"bugs[{i}].bug_fixing_commits[{j}].role")
     lint_leakage(commits, bfc_ids, result, prefix="GW")
     _lint_approximate_operations(commits, result)
-    _lint_origin_coverage(bugs, data.get("expected_szz"), result)
+    _lint_origin_coverage(bugs, data, result)
     return result
 
 
@@ -488,12 +489,69 @@ def _expected_szz_commit_ids(expected: Any) -> set[str]:
     return ids
 
 
-def _lint_origin_coverage(bugs: list[dict[str, Any]], expected: Any, result: ValidationResult) -> None:
-    """GW450: an origin BIC that expected_szz never mentions (in any variant)."""
+def _lint_origin_coverage(bugs: list[dict[str, Any]], data: dict[str, Any], result: ValidationResult) -> None:
+    """The direct/origin contract, checked on the scenario file (issue #3, D10).
+
+    GW450 an origin BIC that expected_szz never mentions, in any variant.
+    GW451 an origin that the *default* variant does not list as related_origins,
+          so predicting it is a plain false positive rather than a recognised
+          origin (contract D2).
+    GW452 a scenario with an origin and no ``origin-aware`` variant, so there is
+          no way to score a tool that reports origins as context (D3).
+    GW453 an ``origin-aware`` variant that does not in fact accept the origin.
+
+    Which variant is the default, and whether a variant accepts a prediction,
+    are the evaluator's questions: both come from ``_commit_level_policy`` and
+    ``classify_prediction`` rather than from reading the YAML here.  An earlier
+    version read ``expected_szz.commit_level`` directly and inspected
+    ``acceptable_related`` membership, and was wrong twice - it ignored
+    ``default_variant`` when a base commit_level existed, and it called a
+    variant accepting when a leftover ``related_but_not_correct`` entry or
+    ``expect_no_bic`` meant the evaluator rejected the same prediction
+    (PR #45 review).
+
+    An origin that is itself ``required`` is exempt from GW451-GW453: it is the
+    answer, not context, and an origin-aware variant would be identical to the
+    default (SZZG-0018).
+    """
+    expected = data.get("expected_szz")
     mentioned = _expected_szz_commit_ids(expected)
+    try:
+        default = _commit_level_policy(data, "advanced-scenarios", None)
+    except Exception:                                   # a malformed oracle is other checks' business
+        return
+    required = set(default.required)
+    related_origins = set(default.related_origins)
+    variant_names = {v.get("name") for v in (expected.get("evaluation_variants") or [])
+                     if isinstance(v, dict)} if isinstance(expected, dict) else set()
+
+    origins: list[str] = []
     for i, bug in enumerate(bugs):
         for j, entry in enumerate(graph_bic_entries(bug)):
             role = entry.get("role")
             cid = entry.get("commit")
-            if isinstance(role, str) and "origin" in role and isinstance(cid, str) and cid not in mentioned:
-                result.warning("GW450", f"bug {bug.get('id', f'<bug[{i}]>')} BIC '{cid}' has role '{role}' but appears in no expected_szz list (commit_level or any variant).", f"bugs[{i}].bug_introducing_commits[{j}]")
+            if not (isinstance(role, str) and "origin" in role and isinstance(cid, str)):
+                continue
+            loc = f"bugs[{i}].bug_introducing_commits[{j}]"
+            label = bug.get("id", f"<bug[{i}]>")
+            if cid not in mentioned:
+                result.warning("GW450", f"bug {label} BIC '{cid}' has role '{role}' but appears in no expected_szz list (commit_level or any variant).", loc)
+                continue
+            if cid in required:
+                continue
+            if cid not in origins:
+                origins.append(cid)
+            if cid not in related_origins:
+                result.warning("GW451", f"bug {label} BIC '{cid}' has role '{role}' but the default commit_level does not list it under related_origins (direct/origin contract D2).", loc)
+    if not origins:
+        return
+    if "origin-aware" not in variant_names:
+        result.warning("GW452", "scenario declares an origin BIC but offers no 'origin-aware' evaluation variant (direct/origin contract D3).", "expected_szz.evaluation_variants")
+        return
+    try:
+        variant = _commit_level_policy(data, "advanced-scenarios", "origin-aware")
+    except Exception:
+        return
+    scored = classify_prediction(variant, sorted(required | set(origins)))
+    if scored.status != "PASS":
+        result.warning("GW453", f"the 'origin-aware' variant does not accept the direct BICs together with origin(s) {sorted(origins)}: the evaluator returns {scored.status} (direct/origin contract D3).", "expected_szz.evaluation_variants")

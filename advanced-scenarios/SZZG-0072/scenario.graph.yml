@@ -181,12 +181,26 @@ expected_szz:
     evaluation_policy: exact_set
     required:
     - r2
-    related_but_not_correct:
-    - f1
+    notes: r2 is the only bug-introducing commit in the rewritten history. f1 (dropped) and f2 (the replay source)
+      are not reachable from any ref after generation; they stay in the oracle as the pre-rewrite origins that a
+      tool with access to the pre-rebase branch must not report.
+    related_origins:
     - f2
-    notes: r2 is the only bug-introducing commit in the rewritten history. f1 (dropped) and f2 (the replay source) are not
-      reachable from any ref after generation; they stay in the oracle as the pre-rewrite origins that a tool with access
-      to the pre-rebase branch must not report.
+    - f1
+  evaluation_variants:
+  - name: origin-aware
+    description: The direct BIC is required; the origin is accepted as related context.
+    commit_level:
+      evaluation_policy: relaxed_with_related
+      required:
+      - r2
+      acceptable_related:
+      - commit: f2
+        reason: origin_bic
+        credit: 0.5
+      - commit: f1
+        reason: origin_bic
+        credit: 0.5
 scenario_design:
   purpose: Evaluate whether SZZ finds the surviving fault when an interactive rebase drops the commit that first introduced
     the faulty comparison and keeps a later commit that had copied that comparison somewhere else.

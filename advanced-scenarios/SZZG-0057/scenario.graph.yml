@@ -139,9 +139,24 @@ expected_szz:
     required:
     - r1
     related_but_not_correct:
-    - f1
     - m1
     - m2
+    related_origins:
+    - f1
+  evaluation_variants:
+  - name: origin-aware
+    description: The direct BIC is required; the origin is accepted as related context.
+    commit_level:
+      evaluation_policy: relaxed_with_related
+      required:
+      - r1
+      acceptable_related:
+      - commit: f1
+        reason: origin_bic
+        credit: 0.5
+      related_but_not_correct:
+      - m1
+      - m2
 scenario_design:
   purpose: Evaluate rebase after unrelated main-line changes.
   key_property: m1/m2 are distractors; r1 is direct BIC.

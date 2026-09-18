@@ -124,9 +124,20 @@ expected_szz:
     evaluation_policy: exact_set
     required:
     - r1
-    related_but_not_correct:
-    - f1
     notes: r1 is direct; f1 is origin.
+    related_origins:
+    - f1
+  evaluation_variants:
+  - name: origin-aware
+    description: The direct BIC is required; the origin is accepted as related context.
+    commit_level:
+      evaluation_policy: relaxed_with_related
+      required:
+      - r1
+      acceptable_related:
+      - commit: f1
+        reason: origin_bic
+        credit: 0.5
 scenario_design:
   purpose: Evaluate direct-vs-origin BIC behavior when conflict resolution propagates an existing bug.
   key_property: The same buggy logic exists in f1, but main-line direct BIC is r1.

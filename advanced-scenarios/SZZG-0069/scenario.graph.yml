@@ -129,9 +129,21 @@ expected_szz:
     required:
     - r1
     - r2
-    related_but_not_correct:
-    - f1
     notes: The direct BIC set is r1 and r2.
+    related_origins:
+    - f1
+  evaluation_variants:
+  - name: origin-aware
+    description: The direct BIC is required; the origin is accepted as related context.
+    commit_level:
+      evaluation_policy: relaxed_with_related
+      required:
+      - r1
+      - r2
+      acceptable_related:
+      - commit: f1
+        reason: origin_bic
+        credit: 0.5
 scenario_design:
   purpose: Evaluate one-origin-to-multiple-direct BIC mapping after rebase.
   key_property: f1 is split into r1 and r2.

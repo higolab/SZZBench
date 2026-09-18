@@ -160,10 +160,21 @@ expected_szz:
     evaluation_policy: exact_set
     required:
     - c3
-    related_but_not_correct:
+    notes: The direct BIC on main is c3 because the feature branch is squash-merged as a single-parent commit. c1
+      is the origin BIC on the feature branch, but it is not an ancestor of the main-line BFC through a normal merge.
+    related_origins:
     - c1
-    notes: The direct BIC on main is c3 because the feature branch is squash-merged as a single-parent commit. c1 is the origin
-      BIC on the feature branch, but it is not an ancestor of the main-line BFC through a normal merge.
+  evaluation_variants:
+  - name: origin-aware
+    description: The direct BIC is required; the origin is accepted as related context.
+    commit_level:
+      evaluation_policy: relaxed_with_related
+      required:
+      - c3
+      acceptable_related:
+      - commit: c1
+        reason: origin_bic
+        credit: 0.5
 scenario_design:
   purpose: Evaluate how SZZ handles a squash merge where the main-line direct BIC is the squash commit, while the faulty logic
     originated earlier on a feature branch.

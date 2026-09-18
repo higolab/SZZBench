@@ -61,13 +61,13 @@ direct/origin oracle corrections of issue #3):
 
 | baseline | family | solves |
 |---|---|---|
-| `blame-deleted-lines` | blame | **143/225 = 63.6%** |
-| `position-1` | position | 142/225 = 63.1% |
-| `shape-last-toucher` | shape | 109/225 = 48.4% |
+| `blame-deleted-lines` | blame | **142/225 = 63.1%** |
+| `position-1` | position | **142/225 = 63.1%** |
+| `shape-last-toucher` | shape | 108/225 = 48.0% |
 | `position-before-fix` | position | 95/225 = 42.2% |
 | `position-2` | position | 20/225 = 8.9% |
 | `position-3` | position | 18/225 = 8.0% |
-| `position-all-non-fix` | position | 8/225 = 3.6% |
+| `position-all-non-fix` | position | 7/225 = 3.1% |
 | `position-0`, `position-4` | position | 6/225 = 2.7% each |
 | `position-5` | position | 1/225 = 0.4% |
 | best `author:…` | metadata | 10/225 = 4.4% (chance) |
@@ -82,20 +82,22 @@ a cheap rule could explain — headroom, not a result.
 
 Read this table before reading any result reported on SZZBench:
 
-- **A rule that opens no file is level with the classic B-SZZ baseline.**
-  "Report the second commit of the history" solves 63.1% against B-SZZ's
-  63.6% — a gap of one scenario — because most scenarios are four commits long
-  with a single-commit oracle in second position. The floor a real method has
-  to beat is therefore set by *either* of them, and a method that only matches
-  B-SZZ has not shown it uses anything blame does not.
+- **A rule that opens no file scores exactly what the classic B-SZZ baseline
+  scores.** "Report the second commit of the history" and
+  `blame-deleted-lines` both solve **142 of 225**, because most scenarios are
+  four commits long with a single-commit oracle in second position. The floor a
+  real method has to beat is therefore set by either of them, and a method that
+  only matches B-SZZ has not shown it uses anything blame does not.
 
-  Until the oracle corrections of issue #3 this row read the other way round
-  (64.9% against 62.7%, so the position rule won). Three of the corrected
-  scenarios moved from a one-commit to a two-commit oracle and three changed
-  which commit is required, which cost the position rule four scenarios and
-  gained blame two. The conclusion that a file-blind rule is *competitive with*
-  blame survives; the conclusion that it *beats* blame did not, and it was an
-  artefact of oracles that named the wrong commit.
+  Until the oracle work of issue #3 this row read the other way round (64.9%
+  against 62.7%, so the position rule won). Correcting eight oracles that
+  contradicted the direct/origin contract cost the position rule four scenarios
+  and gained blame two; applying the contract to the rest then cost blame one
+  more, by making SZZG-0016's origin a false positive in its default variant
+  where it had been accepted unconditionally. The conclusion that a file-blind
+  rule is *competitive with* blame survives every one of those changes; the
+  conclusion that it *beats* blame did not, and it was an artefact of oracles
+  that named the wrong commit.
 - **Upper bound (oracle-aware): 203 of 225 scenarios are solved by *some*
   cheap rule.** Twenty-two resist all of them — SZZ-0132, SZZ-0136, SZZ-0190 to
   SZZ-0199, SZZG-0028, SZZG-0038, SZZG-0040, SZZG-0069, SZZG-0076 and
@@ -135,6 +137,15 @@ Read this table before reading any result reported on SZZBench:
 - The metadata family is at chance, which is the leakage guarantee holding: the
   best author rule (4.4%) sits *below* the mean of a label-shuffled null, and
   the message rule scores zero.
+
+  This family is the sharpest illustration of the fixed-rule-versus-union
+  distinction above. The *union* over all author rules solves **81/225 =
+  36.0%**: in more than a third of the scenarios *some* author's set of commits
+  happens to be exactly the oracle, usually because the oracle is one commit and
+  the generator's author rotation gave that commit an author it gave no other.
+  An attacker cannot use that — they must fix one author and apply it
+  everywhere, which is the 4.4%. The coincidence is common; exploiting it needs
+  the answer.
 
 This is a property of how the scenarios are **shaped**, not of what they
 disclose, and it is tracked in [#13](https://github.com/YoshikiHigo/SZZBench/issues/13),

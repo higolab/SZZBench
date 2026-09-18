@@ -145,10 +145,25 @@ expected_szz:
     required:
     - c3
     related_but_not_correct:
-    - c1
     - c2
     - c4
     notes: The direct BIC is c3 even though the BFC c5 is a conflict-resolved revert-of-revert.
+    related_origins:
+    - c1
+  evaluation_variants:
+  - name: origin-aware
+    description: The direct BIC is required; the origin is accepted as related context.
+    commit_level:
+      evaluation_policy: relaxed_with_related
+      required:
+      - c3
+      acceptable_related:
+      - commit: c1
+        reason: origin_bic
+        credit: 0.5
+      related_but_not_correct:
+      - c2
+      - c4
 scenario_design:
   purpose: Evaluate a revert-of-revert BFC that includes conflict resolution after intervening code changes.
   key_property: The BFC restores the earlier fix while preserving unrelated intervening changes.

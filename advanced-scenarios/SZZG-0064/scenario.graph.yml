@@ -152,11 +152,26 @@ expected_szz:
     required:
     - r1
     related_but_not_correct:
-    - f1
     - r2
-    notes: 'r1 is the replayed commit that installs the fault on main. r2 is the replayed follow-up commit: it is reachable from
-      the fix, touches the same file and even carries an earlier author date than its parent''s committer date, but it does not
-      touch the faulty line. f1 is the pre-rebase source of r1 and stays reachable through the feature branch.'
+    notes: 'r1 is the replayed commit that installs the fault on main. r2 is the replayed follow-up commit: it is
+      reachable from the fix, touches the same file and even carries an earlier author date than its parent''s committer
+      date, but it does not touch the faulty line. f1 is the pre-rebase source of r1 and stays reachable through
+      the feature branch.'
+    related_origins:
+    - f1
+  evaluation_variants:
+  - name: origin-aware
+    description: The direct BIC is required; the origin is accepted as related context.
+    commit_level:
+      evaluation_policy: relaxed_with_related
+      required:
+      - r1
+      acceptable_related:
+      - commit: f1
+        reason: origin_bic
+        credit: 0.5
+      related_but_not_correct:
+      - r2
 scenario_design:
   purpose: Evaluate whether SZZ distinguishes a rebased BIC from a later rebased commit in the same replayed series.
   key_property: 'The rebase is faithful: r1/r2 keep the subjects and the author dates of f1/f2 and only their committer dates are

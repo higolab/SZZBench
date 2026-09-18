@@ -154,10 +154,25 @@ expected_szz:
     required:
     - r2
     related_but_not_correct:
-    - f1
     - r1
-    notes: r2 installs the fault on main although it replays the first commit of the feature branch. r1 replays the later feature
-      commit f2 and only adds the clamp helper. f1 is the pre-rebase source of r2 and stays reachable through the feature branch.
+    notes: r2 installs the fault on main although it replays the first commit of the feature branch. r1 replays
+      the later feature commit f2 and only adds the clamp helper. f1 is the pre-rebase source of r2 and stays reachable
+      through the feature branch.
+    related_origins:
+    - f1
+  evaluation_variants:
+  - name: origin-aware
+    description: The direct BIC is required; the origin is accepted as related context.
+    commit_level:
+      evaluation_policy: relaxed_with_related
+      required:
+      - r2
+      acceptable_related:
+      - commit: f1
+        reason: origin_bic
+        credit: 0.5
+      related_but_not_correct:
+      - r1
 scenario_design:
   purpose: Evaluate whether SZZ survives a rebase that replays commits in a different order than they were written.
   key_property: 'The replay order differs from the source order: r1 has rebase_of f2 and r2 has rebase_of f1, while on the feature
