@@ -3,9 +3,10 @@ meta:
   id: SZZG-0072
   title: Interactive rebase drops original BIC but bug remains
   slug: interactive-rebase-drops-original-bic-but-bug-remains
-  description: A feature branch tightens two independent windows of the retry policy. The interactive rebase onto main drops
-    the first commit and replays only the second one, so the fault of the dropped commit disappears while the second window
-    keeps its faulty comparison. The pre-rebase branch is deleted, so the dropped commit and the replay source are unreachable.
+  description: A feature branch first tightens the accepted backoff window of the retry policy and then reuses that tightened
+    window in a new scheduler. The interactive rebase onto main drops the first commit and replays only the second one, so
+    the retry policy is inclusive again while the copy of the window inside the scheduler keeps the exclusive comparison.
+    The pre-rebase branch is deleted, so the dropped commit and the replay source are unreachable.
   category: "Rebase-specific history rewriting"
   category_code: "G5"
   factors:
@@ -31,13 +32,13 @@ graph:
     - feature
   history_summary: 'c0: add RetryPolicy with the accepted delay and backoff windows on main
 
-    f1: feature branch makes the delay window exclusive (dropped by the rebase)
+    f1: feature branch makes the backoff window exclusive (dropped by the rebase)
 
-    f2: feature branch makes the backoff window exclusive
+    f2: feature branch adds RetryScheduler, which copies the exclusive backoff window of f1
 
     r2: interactive rebase onto main keeps only f2 and applies its patch to c0
 
-    c3: main accepts the backoff window bounds again
+    c3: main accepts the backoff window bounds in the scheduler again
 
     after generation: the feature branch is deleted, so f1 and f2 are unreachable'
 commits:
@@ -70,17 +71,6 @@ commits:
   branch: feature
   parents:
   - c0
-  message: Require retry delays strictly inside the delay window
-  role: origin_bug_introducing
-  operations:
-  - type: replace
-    path: src/main/java/example/RetryPolicy.java
-    old: return delayMs >= MIN_DELAY_MS && delayMs <= MAX_DELAY_MS;
-    new: return delayMs > MIN_DELAY_MS && delayMs < MAX_DELAY_MS;
-- id: f2
-  branch: feature
-  parents:
-  - f1
   message: Require backoff values strictly inside the backoff window
   role: origin_bug_introducing
   operations:
@@ -88,6 +78,26 @@ commits:
     path: src/main/java/example/RetryPolicy.java
     old: return backoffMs >= MIN_BACKOFF_MS && backoffMs <= MAX_BACKOFF_MS;
     new: return backoffMs > MIN_BACKOFF_MS && backoffMs < MAX_BACKOFF_MS;
+- id: f2
+  branch: feature
+  parents:
+  - f1
+  message: Reuse the accepted backoff window in the retry scheduler
+  role: origin_bug_introducing
+  operations:
+  - type: write_file
+    path: src/main/java/example/RetryScheduler.java
+    content: |
+      package example;
+
+      public class RetryScheduler {
+        public boolean schedules(int backoffMs, int attempt) {
+          if (attempt <= 0) {
+            return false;
+          }
+          return backoffMs > RetryPolicy.MIN_BACKOFF_MS && backoffMs < RetryPolicy.MAX_BACKOFF_MS;
+        }
+      }
 - id: r2
   branch: main
   parents:
@@ -98,62 +108,72 @@ commits:
   inherit_message: true
   inherit_author_date: true
   operations:
-  - type: replace
-    path: src/main/java/example/RetryPolicy.java
-    old: return backoffMs >= MIN_BACKOFF_MS && backoffMs <= MAX_BACKOFF_MS;
-    new: return backoffMs > MIN_BACKOFF_MS && backoffMs < MAX_BACKOFF_MS;
+  - type: write_file
+    path: src/main/java/example/RetryScheduler.java
+    content: |
+      package example;
+
+      public class RetryScheduler {
+        public boolean schedules(int backoffMs, int attempt) {
+          if (attempt <= 0) {
+            return false;
+          }
+          return backoffMs > RetryPolicy.MIN_BACKOFF_MS && backoffMs < RetryPolicy.MAX_BACKOFF_MS;
+        }
+      }
 - id: c3
   branch: main
   parents:
   - r2
-  message: Accept the backoff window bounds again so 250 ms and 60 s stay valid
+  message: Accept the backoff window bounds in the scheduler so 250 ms and 60 s stay schedulable
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/RetryPolicy.java
-    old: return backoffMs > MIN_BACKOFF_MS && backoffMs < MAX_BACKOFF_MS;
-    new: return backoffMs >= MIN_BACKOFF_MS && backoffMs <= MAX_BACKOFF_MS;
+    path: src/main/java/example/RetryScheduler.java
+    old: return backoffMs > RetryPolicy.MIN_BACKOFF_MS && backoffMs < RetryPolicy.MAX_BACKOFF_MS;
+    new: return backoffMs >= RetryPolicy.MIN_BACKOFF_MS && backoffMs <= RetryPolicy.MAX_BACKOFF_MS;
 bugs:
 - id: B001
-  title: The backoff window rejects its own bounds after the interactive rebase
+  title: The retry scheduler rejects the backoff window bounds after the interactive rebase
   bug_introducing_commits:
   - commit: r2
     role: direct
-    description: Direct BIC on main; the rebase applied f2's patch to c0, which writes the faulty backoff comparison into
-      the rewritten history.
+    description: Direct BIC on main; the rebase applied f2's patch to c0, which writes the exclusive backoff comparison of
+      the dropped commit into the rewritten history.
   - commit: f2
     role: origin
-    description: Origin BIC; the pre-rebase commit whose patch r2 applies. It is unreachable after generation because the
-      feature branch is deleted.
+    description: Origin BIC; the pre-rebase commit whose patch r2 applies. It copied the comparison that f1 had written into
+      the new scheduler. It is unreachable after generation because the feature branch is deleted.
   - commit: f1
     role: origin
-    description: The original faulty commit of the branch, dropped by the interactive rebase. Its fault (the delay window)
-      is absent from the rewritten history; it is unreachable after generation.
+    description: Origin BIC; the commit that first wrote the exclusive backoff comparison. The interactive rebase dropped
+      it, so its own edit to RetryPolicy is absent from the rewritten history, but the comparison it introduced survives
+      through the copy that f2 made. It is unreachable after generation.
   bug_fixing_commits:
   - commit: c3
     role: complete_fix
   faults:
   - id: F001
     commit: r2
-    file: src/main/java/example/RetryPolicy.java
-    statement: return backoffMs > MIN_BACKOFF_MS && backoffMs < MAX_BACKOFF_MS;
+    file: src/main/java/example/RetryScheduler.java
+    statement: return backoffMs > RetryPolicy.MIN_BACKOFF_MS && backoffMs < RetryPolicy.MAX_BACKOFF_MS;
     change_type: line_modification
   origin_faults:
   - id: OF001
     commit: f2
-    file: src/main/java/example/RetryPolicy.java
-    statement: return backoffMs > MIN_BACKOFF_MS && backoffMs < MAX_BACKOFF_MS;
+    file: src/main/java/example/RetryScheduler.java
+    statement: return backoffMs > RetryPolicy.MIN_BACKOFF_MS && backoffMs < RetryPolicy.MAX_BACKOFF_MS;
     change_type: origin_line_modification
   - id: OF002
     commit: f1
     file: src/main/java/example/RetryPolicy.java
-    statement: return delayMs > MIN_DELAY_MS && delayMs < MAX_DELAY_MS;
+    statement: return backoffMs > MIN_BACKOFF_MS && backoffMs < MAX_BACKOFF_MS;
     change_type: origin_line_modification
   fixes:
   - id: X001
     commit: c3
-    file: src/main/java/example/RetryPolicy.java
-    statement: return backoffMs >= MIN_BACKOFF_MS && backoffMs <= MAX_BACKOFF_MS;
+    file: src/main/java/example/RetryScheduler.java
+    statement: return backoffMs >= RetryPolicy.MIN_BACKOFF_MS && backoffMs <= RetryPolicy.MAX_BACKOFF_MS;
     fix_type: line_modification
 expected_szz:
   commit_level:
@@ -168,18 +188,22 @@ expected_szz:
       to the pre-rebase branch must not report.
 scenario_design:
   purpose: Evaluate whether SZZ finds the surviving fault when an interactive rebase drops the commit that first introduced
-    the faulty pattern and keeps a later commit that applied the same pattern elsewhere.
-  key_property: r2 is an honest replay of f2 — it makes exactly the change f2 made (the same removed and added line) and
-    nothing else, so the delay window of the rewritten history is correct and only the backoff window is faulty. f1 is neither
-    an ancestor of the BFC nor reachable from a ref.
+    the faulty comparison and keeps a later commit that had copied that comparison somewhere else.
+  key_property: |
+    The dropped commit f1 is a real origin of the surviving bug: it wrote the exclusive backoff comparison, and f2 copied
+    that comparison into the new scheduler. Replaying f2 alone onto c0 therefore re-installs the fault although the commit
+    that invented it is gone, and RetryPolicy itself is inclusive again in the rewritten history. r2 is an honest replay of
+    f2 — it writes exactly the file f2 wrote and nothing else. f1 is neither an ancestor of the BFC nor reachable from a ref.
   difference_from_SZZG_0047: SZZG-0047 is a squash merge that keeps both feature patches in one single-parent commit on a
     branch that still exists. Here one patch is dropped, only the other is replayed, and the source branch is deleted, so
     the two repositories differ in trees, patches and refs, not only in commit messages (GitHub issue 11).
   difference_from_SZZG_0064: SZZG-0064 covers a rebased BIC followed by a non-BIC rebased intermediate commit; here the first
-    commit of the branch is dropped instead of rebased.
+    commit of the branch is dropped instead of rebased, and the dropped commit is an origin of the bug that survives.
   evaluation_points:
   - Whether SZZ reports r2, the commit that carries the surviving fault into the rewritten history.
   - Whether a tool that has access to the pre-rebase commits reports f1 or f2 although they are unreachable.
+  - Whether a tool that reasons about origins keeps the dropped commit f1 out of the commit-level answer even though it is
+    the origin of the comparison that r2 re-installs.
 notes:
 - The interactive rebase is recorded with rebase_of (f2), interactive_rebase (drop_f1) and inherit_message / inherit_author_date,
   so r2 keeps f2's subject and author date while its committer date is the rebase date.
