@@ -15,13 +15,17 @@ scenario tested nothing about cherry-picks (GitHub issue 4).
 
 ## Commit graph (as generated)
 
+`git log --all --graph`, with the logical ids in place of the hashes:
+
 ```text
-main     c0 ─────────────── c3                 (main, still faulty)
-           │\               /
-feature    │ c1 ── c2 ─────'                   (feature)
-           \
-release     r1 ── c4                           (HEAD -> release)
-            (cherry-pick of c1)
+* c4 (HEAD -> release) Accept the quota limit values again so a full batch of 50 files is allowed
+* r1 Require batch sizes strictly inside the quota limits
+| * c3 (main) Merge branch 'feature' into main
+|/|
+| * c2 (feature) Document the upload batch limits for the client team
+| * c1 Require batch sizes strictly inside the quota limits
+|/
+* c0 Add UploadQuota with the accepted batch size limits
 ```
 
 | Commit | Branch | Parents | Role | Subject |

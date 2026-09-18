@@ -16,15 +16,26 @@ that merge back into `c2`, so `c2` was an ancestor of the other parent and
 
 ## Commit graph (as generated)
 
-```text
-                     a1 ──────── a2 ── a3        (feature-timeout)
-                    /   \       /        \
-main   c0 ─────────'     \     /          c4 ── c5   (HEAD -> main)
-                    \     \   /          /
-                     b1 ────x─ b2 ──────'        (feature-reporting)
+`git log --all --graph`, with the logical ids in place of the hashes:
 
-a2 = merge(a1, b1)      b2 = merge(b1, a1)      c4 = merge(a3, b2)
+```text
+* c5 (HEAD -> main) Accept the timeout range bounds again so 30 s and 3600 s stay valid
+*   c4 Merge branch 'feature-reporting' into main
+|\
+| *   b2 (feature-reporting) Merge branch 'feature-timeout' into feature-reporting
+| |\
+* | | a3 (feature-timeout) Clamp session timeouts to the accepted range
+* | | a2 Merge branch 'feature-reporting' into feature-timeout
+|\| |
+| |/
+|/|
+| * b1 Add SessionReporter for timeout diagnostics
+* | a1 Require session timeouts strictly inside the accepted range
+|/
+* c0 Add SessionWindow with the accepted timeout range
 ```
+
+`a2 = merge(a1, b1)`, `b2 = merge(b1, a1)`, `c4 = merge(a3, b2)`.
 
 | Commit | Branch | Parents | Role | Subject |
 |---|---|---|---|---|

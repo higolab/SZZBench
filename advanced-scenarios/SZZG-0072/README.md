@@ -13,11 +13,21 @@ left after `git rebase -i` plus a force-push that removes the branch.
 
 ## Commit graph (as generated)
 
+`git log --all --graph`, with the logical ids in place of the hashes — the
+whole repository, because `f1` and `f2` are no longer reachable:
+
 ```text
-main      c0 ── r2 ── c3            (HEAD -> main)
-            \    (replay of f2)
-feature      f1 ── f2               (branch deleted by graph.ref_lifecycle)
-                                    f1, f2 exist as objects but are unreachable
+* c3 (HEAD -> main) Accept the backoff window bounds again so 250 ms and 60 s stay valid
+* r2 Require backoff values strictly inside the backoff window
+* c0 Add RetryPolicy with the accepted delay and backoff windows
+```
+
+Before the branch was deleted the history was
+
+```text
+main      c0 ── r2 ── c3        r2 = replay of f2
+            \
+feature      f1 ── f2           f1 dropped, f2 replayed; both unreachable now
 ```
 
 | Commit | Branch | Parents | Role | Subject |

@@ -11,10 +11,15 @@ is the origin and is not an ancestor of the bug-fixing commit.
 
 ## Commit graph (as generated)
 
+`git log --all --graph`, with the logical ids in place of the hashes:
+
 ```text
-main      c0 ──────────────── c3 ── c4        (HEAD -> main)
-            \                 (squash, 1 parent)
-feature      c1 ── c2                          (feature)
+* c4 (HEAD -> main) Accept the range bounds again so min and max stay inside the range
+* c3 Tighten the range bounds and add the calibration window check (#118)
+| * c2 (feature) Add the calibration window check used by the sampler
+| * c1 Require samples strictly inside the range bounds
+|/
+* c0 Add Range with the supported sample window
 ```
 
 | Commit | Branch | Parents | Role | Subject |

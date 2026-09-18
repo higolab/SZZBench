@@ -11,10 +11,16 @@ created the copy (`r2`), while the rebased original (`r1`, same comparison in
 
 ## Commit graph (as generated)
 
+`git log --all --graph`, with the logical ids in place of the hashes:
+
 ```text
-main      c0 ── r1 ── r2 ── c3        (HEAD -> main)
-            \   (replays of f1, f2)
-feature      f1 ── f2                 (feature, kept on purpose)
+* c3 (HEAD -> main) Accept the draft band bounds again so 0 and 100 stay valid draft scores
+* r2 Add DraftScoreBand for draft submissions
+* r1 Require review scores strictly inside the accepted band
+| * f2 (feature) Add DraftScoreBand for draft submissions
+| * f1 Require review scores strictly inside the accepted band
+|/
+* c0 Add ScoreBand with the accepted review score range
 ```
 
 | Commit | Branch | Parents | Role | Subject |
