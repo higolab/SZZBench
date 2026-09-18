@@ -28,8 +28,8 @@ c4: c4: fix diverged clone
 | `c0` | `main` | none | `initial` | c0: create initial correct implementation |
 | `f1` | `feature` | c0 | `origin_bug_introducing` | f1: create buggy clone |
 | `f2` | `feature` | f1 | `origin_bug_introducing` | f2: diverge cloned buggy logic |
-| `r1` | `main` | c0 | `intermediate` | r1: rebase buggy clone creation |
-| `r2` | `main` | r1 | `bug_introducing` | r2: rebase clone divergence |
+| `r1` | `main` | c0 | `bug_introducing` | r1: replays the faulty clone into main (direct BIC) |
+| `r2` | `main` | r1 | `intermediate` | r2: replays the annotation; changes no behaviour |
 | `c4` | `main` | r2 | `bug_fixing` | c4: fix diverged clone |
 
 ## Expected SZZ result
@@ -42,7 +42,8 @@ Related but not correct: r2, f2
 
 ## Key property
 
-The fixed instance is the diverged clone line introduced by r2.
+The fixed instance is the cloned line that `r1` replayed into `main`. `r2`'s rebased annotation is the last
+commit to touch that line, so a method that reports the last textual touch answers `r2` and is wrong.
 
 ## Difference from SZZG-0064
 
@@ -50,7 +51,8 @@ SZZG-0064 covers a rebased BIC followed by a non-BIC rebased intermediate commit
 
 ## Evaluation points
 
-- Report r2.
+- Report `r1`, not the annotation commit `r2` that last touched the line.
+- Whether the replayed commit `r1` rather than its feature-branch source `f1` is reported.
 
 ## Notes
 

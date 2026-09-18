@@ -187,19 +187,21 @@ bug_instances:
   fixed_by: c3
   status: fixed
 scenario_design:
-  purpose: Evaluate whether SZZ traces a fix in the moved and in the duplicated location back to the initial BIC c1.
+  purpose: Evaluate whether SZZ answers the two halves of one commit differently - a move that preserves the
+    original BIC and a duplication that creates a new one.
   key_property: >-
-    Commit c2 only moves and duplicates an already buggy line: the line disappears from Range.java and appears
-    in RangeUtils.java (move) and Bounds.java (copy) in the same commit. It is related propagation history, not
-    the expected BIC; c1 remains the required bug-introducing commit. The BFC fixes both copies, so no faulty
-    copy remains at HEAD.
+    Commit c2 does two things at once: the line disappears from Range.java and appears in RangeUtils.java (a
+    move, behaviour-preserving, so c1 stays that instance's direct BIC) and in Bounds.java (a copy, which
+    creates a faulty instance that did not exist before, so c2 is its direct BIC). The BFC fixes both copies,
+    so the oracle is the union {c1, c2} and no faulty copy remains at HEAD.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
   required_extensions_from_source: 'This scenario uses factors: method_move, copy_propagation, bug_instances; operations:
     write_file, replace.'
   evaluation_points:
-  - Whether SZZ identifies c1 as the original BIC despite the move and duplicate in c2.
-  - Whether SZZ does not treat the move/copy commit c2 as the direct BIC.
+  - Whether SZZ identifies c1 as the BIC of the moved instance despite the move in c2.
+  - Whether SZZ also identifies c2 as the BIC of the instance its copy created, rather than treating the whole
+    commit as propagation history.
   - Whether the expected_szz evaluation policy is applied correctly.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.

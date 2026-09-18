@@ -152,9 +152,9 @@ scenario_design:
   purpose: Evaluate Only one clone instance is fixed first and whether SZZ identifies the expected bug-introducing commit
     set.
   key_property: >-
-    The two clone instances are fixed by two different commits, so the scenario carries two bug entries. The
-    expected_szz set scores the copied instance (BFC c3), whose direct BIC is the copy commit c1; the original
-    instance (BFC c2) traces to the origin c0.
+    The two clone instances are fixed by two different commits, so the scenario carries two bug entries and
+    both bug-fixing commits are in scope. The expected_szz set is therefore the union of their direct BICs:
+    c0, which wrote the fault into A.java that c2 fixes, and c1, which copied it into B.java that c3 fixes.
   compilation_contract: >-
     Both files live in package example and must compile together, so the copy commit renames the copied class from
     A to B in the same commit. Only the class declaration line differs between A.java and B.java; the faulty

@@ -31,8 +31,10 @@ This history requires graph-aware scenario semantics that are difficult to expre
 ## Expected BICs
 
 ```text
-c1
+c2
 ```
+
+(`c1` is the origin, not the answer — see [Expected SZZ result](#expected-szz-result).)
 
 ## Evaluation points
 

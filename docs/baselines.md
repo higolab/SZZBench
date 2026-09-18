@@ -56,20 +56,21 @@ evaluation has an empty oracle.
 
 ## Measured on the shipped suite
 
-225 generated scenarios, measured on this branch (2026-09-18):
+225 generated scenarios, measured on this branch (2026-09-18, after the
+direct/origin oracle corrections of issue #3):
 
 | baseline | family | solves |
 |---|---|---|
-| `position-1` | position | **146/225 = 64.9%** |
-| `blame-deleted-lines` | blame | 141/225 = 62.7% |
-| `shape-last-toucher` | shape | 107/225 = 47.6% |
+| `blame-deleted-lines` | blame | **143/225 = 63.6%** |
+| `position-1` | position | 142/225 = 63.1% |
+| `shape-last-toucher` | shape | 109/225 = 48.4% |
 | `position-before-fix` | position | 95/225 = 42.2% |
-| `position-2` | position | 18/225 = 8.0% |
-| `position-3` | position | 17/225 = 7.6% |
-| `position-0`, `position-4` | position | 7/225 = 3.1% each |
-| `position-all-non-fix` | position | 6/225 = 2.7% |
+| `position-2` | position | 20/225 = 8.9% |
+| `position-3` | position | 18/225 = 8.0% |
+| `position-all-non-fix` | position | 8/225 = 3.6% |
+| `position-0`, `position-4` | position | 6/225 = 2.7% each |
 | `position-5` | position | 1/225 = 0.4% |
-| best `author:…` | metadata | 11/225 = 4.9% (chance) |
+| best `author:…` | metadata | 10/225 = 4.4% (chance) |
 | `abstain` | position | **0/225** |
 | `message-admits-fault` | metadata | **0/225** |
 
@@ -81,10 +82,20 @@ a cheap rule could explain — headroom, not a result.
 
 Read this table before reading any result reported on SZZBench:
 
-- **A rule that opens no file beats the classic B-SZZ baseline.** "Report the
-  second commit of the history" solves 64.9% against B-SZZ's 62.7%, because
-  most scenarios are four commits long with a single-commit oracle in second
-  position.
+- **A rule that opens no file is level with the classic B-SZZ baseline.**
+  "Report the second commit of the history" solves 63.1% against B-SZZ's
+  63.6% — a gap of one scenario — because most scenarios are four commits long
+  with a single-commit oracle in second position. The floor a real method has
+  to beat is therefore set by *either* of them, and a method that only matches
+  B-SZZ has not shown it uses anything blame does not.
+
+  Until the oracle corrections of issue #3 this row read the other way round
+  (64.9% against 62.7%, so the position rule won). Three of the corrected
+  scenarios moved from a one-commit to a two-commit oracle and three changed
+  which commit is required, which cost the position rule four scenarios and
+  gained blame two. The conclusion that a file-blind rule is *competitive with*
+  blame survives; the conclusion that it *beats* blame did not, and it was an
+  artefact of oracles that named the wrong commit.
 - **Upper bound (oracle-aware): 203 of 225 scenarios are solved by *some*
   cheap rule.** Twenty-two resist all of them — SZZ-0132, SZZ-0136, SZZ-0190 to
   SZZ-0199, SZZG-0028, SZZG-0038, SZZG-0040, SZZG-0069, SZZG-0076 and
@@ -93,19 +104,20 @@ Read this table before reading any result reported on SZZBench:
 
   | | best fixed rule | union over all rules |
   |---|---|---|
-  | 194 scenarios with a one-commit oracle | 145/194 = 74.7% (`position-1`) | **194/194** |
-  | 31 scenarios with a two-commit oracle | 9/31 = 29.0% (`blame-deleted-lines`) | 9/31 |
+  | 191 scenarios with a one-commit oracle | 141/191 = 73.8% (`position-1`) | **191/191** |
+  | 34 scenarios with a two-commit oracle | 11/34 = 32.4% (`blame-deleted-lines`) | 12/34 |
 
   A one-commit answer inside a three- or four-commit history is reachable by
   *some* cheap rule in every single case, at every depth — 94/94 at depth 1,
-  82/82 at depth 2, 14/14 at depth 3 and 4/4 beyond. Oracle size is the
+  80/80 at depth 2, 13/13 at depth 3 and 4/4 beyond. Oracle size is the
   dimension that separates them, and a longer or deeper history on its own
   will not raise the floor.
 
-  The nine two-commit oracles a cheap rule does solve are all solved by the
-  *same* rule, `blame-deleted-lines`, and for the same reason: their fix
-  deletes one line from each of the two commits, so naive blame returns both.
-  That is the shape the discriminating tier is built to avoid.
+  Eleven of the twelve two-commit oracles a cheap rule solves fall to the same
+  rule, `blame-deleted-lines`, and for the same reason: their fix deletes one
+  line from each of the two commits, so naive blame returns both. That is the
+  shape the discriminating tier is built to avoid. The twelfth is solved only
+  by `shape-last-toucher`.
 
   (An earlier revision of this table reported `1/21` as the best fixed rule on
   two-commit oracles. That figure was wrong: recomputed on the same 215-scenario
@@ -114,7 +126,7 @@ Read this table before reading any result reported on SZZBench:
   (S1, S2, S3, S4, S5, S7, G6, G7, G8, G9); the rest have headroom — S6 42.1%,
   G3 78.6%, S8 80.0%, G2 87.5%, G5 88.2%, G4 91.3%, G1 92.9%.
 - The metadata family is at chance, which is the leakage guarantee holding: the
-  best author rule (4.9%) sits *below* the mean of a label-shuffled null, and
+  best author rule (4.4%) sits *below* the mean of a label-shuffled null, and
   the message rule scores zero.
 
 This is a property of how the scenarios are **shaped**, not of what they
@@ -238,35 +250,37 @@ Measured on the shipped suite (225 scenarios):
 
 ```text
 tier                   control:203, discriminating:22
-oracle_size            1:194, 2:31
-bic_depth              1:94, 2:98, 3:27, 4:2, 5:2, 6:1, 1003:1
-fault_file_distractors 0:11, 1:100, 2:82, 3:24, 4:7, 5:1
+oracle_size            1:191, 2:34
+bic_depth              1:94, 2:99, 3:26, 4:2, 5:2, 6:1, 1003:1
+fault_file_distractors 0:13, 1:98, 2:82, 3:24, 4:7, 5:1
 commit_count           2:4, 3:55, 4:98, 5:50, 6:13, 7:3, 8:1, 1005:1
 ref_count              1:183, 2:39, 3:3
 
-92 distinct signatures; 41 groups of two or more, covering 174 scenarios
+93 distinct signatures; 40 groups of two or more, covering 172 scenarios
 ```
 
 The largest groups are 27 S3, 10 S4, 9 S2, 8 S1 and 8 G1 scenarios that agree
-on every dimension; 51 scenarios have a signature of their own. Read together
+on every dimension; 53 scenarios have a signature of their own. Read together
 with the baseline table, the suite still concentrates in one cell — a
 one-commit answer, one or two commits before the fix, in a three- or
 four-commit single-branch history — and **that cell is where the cheap rules
 win**.
 
 The discriminating tier is deliberately spread out of it: its 22 scenarios
-occupy **16** distinct signatures, where the first twelve occupied **7**. The
-ten added in this round introduced **nine** signatures the suite did not have —
-every one of them except SZZG-0118, which reuses SZZG-0028's — including the
-first two-commit oracles with no distracting commit on the fault file at all
-(SZZ-0198, SZZ-0199) and the first seven-commit history with a two-commit
-oracle (SZZ-0197).
+occupy **17** distinct signatures, where the original twelve occupy **7**. The
+ten designed against the measured axis introduce **ten** signatures the suite
+did not have — no two of them, and none of them reusing an existing one —
+including the first two-commit oracles with no distracting commit on the fault
+file at all (SZZ-0198, SZZ-0199) and the first seven-commit history with a
+two-commit oracle (SZZ-0197). (Before the oracle corrections of issue #3 this
+read 16 and nine, because SZZG-0118 then shared a signature with SZZG-0028;
+correcting SZZG-0028's oracle moved it.)
 
-Four signatures inside the tier are still shared by more than one scenario:
-SZZ-0190/0191/0193/0194, SZZ-0132/SZZ-0136, SZZG-0038/SZZG-0040 and
-SZZG-0028/SZZG-0118. Those scenarios differ in mechanism — which is the point
-of the tier — and the signature cannot see it; that is a limit of the proxy,
-not a claim that they are redundant.
+Three signatures inside the tier are still shared by more than one scenario:
+SZZ-0190/0191/0193/0194, SZZ-0132/SZZ-0136 and SZZG-0038/SZZG-0040. Those
+scenarios differ in mechanism — which is the point of the tier — and the
+signature cannot see it; that is a limit of the proxy, not a claim that they
+are redundant.
 
 ## Adding a baseline
 

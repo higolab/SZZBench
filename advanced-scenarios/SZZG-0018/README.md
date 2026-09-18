@@ -59,15 +59,17 @@ score threshold); only whole-file copy detection rewrites the answer to the orig
 `expected_szz` and would therefore be a miss.
 
 The graph verifier reports `GI703` for `B001-B` and `GW703` for `B001-A`. The `GW703` is expected and
-pre-existing: `B001-A` only has a BIC with role `origin`, and the verifier's basic blame check only accepts
-`direct`/`reintroducing`/`contributing`. The scenario is not changed to silence it.
+pre-existing. `B001-A`'s BIC now carries the role `direct`, which is what it is: `c0` wrote the fault into
+`A.java` that `c2` fixes.
 
 ## What a tool must do to pass
 
-- Report exactly `{c1}` for the scored bug; plain line-level blame on the line that `c3` deletes already does
-  this.
-- Keep the two instances apart. The identical statement text is deleted by two different commits; pairing the
-  `B.java` fault with the earlier `A.java` fix `c2`, or following the copy into `A.java`, yields `c0` instead.
+- Report exactly `{c0, c1}`. Both bug-fixing commits are in scope, so the oracle is the union of their direct
+  BICs (contract D9): `c0` for the `A.java` instance that `c2` fixes, `c1` for the `B.java` instance that `c3`
+  fixes.
+- Keep the two instances apart. The identical statement text is deleted by two different commits, and a tool
+  that pairs them the other way round — the `B.java` fault with the earlier `A.java` fix `c2` — reaches the
+  same two commits for the wrong reasons.
 
 ## Compilation
 
