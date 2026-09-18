@@ -160,9 +160,22 @@ class GitProbe:
             self.failures.append(f"{repo.parent.parent.name}: git {' '.join(args[:2])} failed: {exc}")
             return ""
 
+    #: Git's empty tree, used as the parent of a root commit.
+    EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
+
+    def parent_of(self, repo: Path, commit: str) -> str:
+        """The first parent, or the empty tree for a root commit.
+
+        A root commit has no ``<commit>^``; asking for it is an ordinary Git
+        failure that would otherwise be recorded as one.
+        """
+        parents = self(repo, "rev-list", "--parents", "-n", "1", commit).split()
+        return parents[1] if len(parents) > 1 else self.EMPTY_TREE
+
     def paths_touched(self, repo: Path, commit: str) -> list[str]:
         """Paths a commit changes, read NUL-delimited so no quoting is involved."""
-        out = self(repo, "diff", "--name-only", "--no-renames", "-z", f"{commit}^", commit)
+        out = self(repo, "diff", "--name-only", "--no-renames", "-z",
+                   self.parent_of(repo, commit), commit)
         return [p for p in out.split("\0") if p]
 
 
