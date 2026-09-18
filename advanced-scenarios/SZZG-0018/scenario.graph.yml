@@ -89,7 +89,7 @@ bugs:
   title: Original instance fixed first
   bug_introducing_commits:
   - commit: c0
-    role: origin
+    role: direct
   bug_fixing_commits:
   - commit: c2
     role: complete_fix
@@ -127,7 +127,15 @@ expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
+    - c0
     - c1
+    notes: >
+      Two bug entries share this history and both bug-fixing commits are in
+      scope, so the scenario oracle is the union of their direct BICs
+      (contract D9): c0 wrote the fault into A.java, which c2 fixes, and c1
+      copied it into B.java, which c3 fixes. c0 is also the origin of B001-B;
+      because it is already required no origin-aware variant is needed, since
+      it would be identical to the default.
 clone_relationships:
 - origin_file: src/main/java/example/A.java
   copied_file: src/main/java/example/B.java

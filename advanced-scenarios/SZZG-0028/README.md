@@ -1,4 +1,4 @@
-# SZZG-0028: Origin BIC and direct copied-code BIC are both required
+# SZZG-0028: The copy and the later edit are both required; the origin is not
 
 ## Source
 

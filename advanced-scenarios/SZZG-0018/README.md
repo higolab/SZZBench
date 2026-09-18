@@ -12,8 +12,10 @@ instance). `c1` copies that file to `B.java`, so the faulty statement enters `B.
 declaration is adapted so that both classes compile in the same package. `c2` fixes the original instance and
 `c3` fixes the copied one.
 
-`expected_szz` scores the copied instance (BFC `c3`), whose direct BIC is the copy commit `c1`. The original
-instance (BFC `c2`) traces to the origin `c0`.
+Both bug-fixing commits are in scope, so the scenario oracle is the union of the two bugs' direct BICs
+(contract D9): `c0` wrote the fault into `A.java`, which `c2` fixes, and `c1` copied it into `B.java`, which
+`c3` fixes. `c0` is therefore the *direct* BIC of `B001-A` as well as the origin of `B001-B`; because it is
+already required, no origin-aware variant is offered — it would be identical to the default.
 
 ## Commit history
 
@@ -38,10 +40,9 @@ files differ only in the class declaration line.
 
 ## Oracle
 
-- Expected BIC (scored set): `c1` (exact set)
-- Bug `B001-A`: BIC `c0` (role `origin`), BFC `c2`, fault and fix in `A.java`
+- Expected BIC (scored set): `c0` and `c1` (exact set)
+- Bug `B001-A`: BIC `c0` (role `direct`), BFC `c2`, fault and fix in `A.java`
 - Bug `B001-B`: BICs `c1` (role `direct`) and `c0` (role `origin`), BFC `c3`, fault and fix in `B.java`
-- `c0` is deliberately not listed in `expected_szz` (`GW450`; see issue #3)
 
 ## Measured plain-blame behaviour at each BFC parent
 

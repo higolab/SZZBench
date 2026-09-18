@@ -53,3 +53,14 @@ SZZG-0027/
 |-- scenario.graph.yml
 `-- README.md
 ```
+
+## Expected SZZ result
+
+- Required: `c2` — the commit that cloned the faulty policy into `GroupPolicy.java`, the instance the fix
+  repairs (contract D4).
+- Related origin: `c1` — it made the source policy faulty (D2); accepted with credit 0.5 under `origin-aware`.
+- Related but not correct: `c3` — it renames the parameter in the fixed file and changes no behaviour, so it
+  is never a BIC (D5) even though it is the last commit to touch the line the fix deletes.
+- Bug-fixing commit: `c4`.
+
+`c3` is what makes this scenario worth running: plain blame at `c4^` returns `c3`, a rename.

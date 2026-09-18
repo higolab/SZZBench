@@ -4,6 +4,12 @@
 
 Evaluate rebase combined with clone divergence.
 
+`r1` replays the faulty clone into `main`, the history the fix belongs to, so it is the direct BIC
+(contract D4). `r2` replays the *annotation* — it appends `// cloned logic` to that line and changes no
+behaviour at all, measured as 0 of 27648 probe answers moving across it — so it is never a BIC (D5), even
+though it is the last commit to touch the line the fix deletes. `f1` is the feature-branch commit the clone
+was replayed from, and is therefore the origin (D2).
+
 ## Commit history
 
 ```text
@@ -29,8 +35,9 @@ c4: c4: fix diverged clone
 ## Expected SZZ result
 
 ```text
-Expected BIC(s): r2
-Related but not correct: r1, f1, f2
+Expected BIC(s): r1
+Related origins: f1
+Related but not correct: r2, f2
 ```
 
 ## Key property

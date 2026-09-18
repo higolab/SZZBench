@@ -7,7 +7,8 @@ meta:
     The faulty range check is introduced in Range.contains at c1. At c2 the method is moved out of Range into a
     new RangeUtils class and, in the same commit, the same faulty line is duplicated into a second helper,
     Bounds.within. The BFC c3 fixes both copies. Neither fixed line existed in its file before c2, so plain
-    blame stops at the move/copy commit c2; the required BIC is c1.
+    blame stops at the move/copy commit c2. Under the direct/origin contract the moved instance keeps c1 as its
+    direct BIC while the duplicated instance in Bounds.within has c2, so the oracle is the union {c1, c2}.
   category: "Refactoring, move, rename, and semantic rewrite"
   category_code: "G1"
   factors:
@@ -110,6 +111,10 @@ bugs:
   bug_introducing_commits:
   - commit: c1
     role: direct
+    description: Wrote the faulty line; it survives the move into RangeUtils unchanged.
+  - commit: c2
+    role: direct
+    description: Duplicated that line into Bounds.within, a second instance the fix also repairs.
   bug_fixing_commits:
   - commit: c3
     role: complete_fix
@@ -156,11 +161,13 @@ expected_szz:
     evaluation_policy: exact_set
     required:
     - c1
-    related_but_not_correct:
     - c2
     notes: >-
       Both fixed lines were introduced into their files by c2, so plain blame at c3^ returns c2 for both. c2
-      only moved and duplicated an already faulty line; the required BIC is c1.
+      does two different things in one commit: moving `contains` into RangeUtils preserves behaviour and
+      leaves c1 the direct BIC of that instance (contract D4, movement), while duplicating the line into
+      Bounds.within creates a second faulty instance whose direct BIC is c2 itself (D4, copying). The fix
+      repairs both, so the oracle is their union (D9).
 bug_instances:
 - id: B001-origin
   file: src/main/java/example/Range.java
@@ -175,8 +182,8 @@ bug_instances:
   status: fixed
 - id: B001-duplicate
   file: src/main/java/example/Bounds.java
-  introduced_by: c1
-  propagated_by: c2
+  introduced_by: c2
+  origin: c1
   fixed_by: c3
   status: fixed
 scenario_design:

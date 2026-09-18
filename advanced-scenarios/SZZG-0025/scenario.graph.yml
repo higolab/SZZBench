@@ -56,7 +56,7 @@ commits:
   parents:
   - c1
   message: 'Copy the sanitizer into the admin module'
-  role: other
+  role: bug_introducing
   operations:
   - type: copy_file
     from: src/main/java/example/Sanitizer.java
@@ -80,17 +80,27 @@ bugs:
 - id: B001
   title: Synthetic graph scenario bug
   bug_introducing_commits:
-  - commit: c1
+  - commit: c2
     role: direct
+    description: Copies the faulty sanitizer into the admin module, the instance the fix repairs.
+  - commit: c1
+    role: origin
+    description: Made the source sanitizer faulty; the copy inherited it.
   bug_fixing_commits:
   - commit: c3
     role: complete_fix
   faults:
   - id: F001
+    commit: c2
+    file: src/main/java/example/AdminSanitizer.java
+    statement: return s;
+    change_type: copy_propagated_line_modification
+  origin_faults:
+  - id: OF001
     commit: c1
     file: src/main/java/example/Sanitizer.java
     statement: return s;
-    change_type: line_modification
+    change_type: origin_line_modification
   fixes:
   - id: X001
     commit: c3
@@ -101,7 +111,24 @@ expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
+    - c2
+    related_origins:
     - c1
+    notes: >
+      The fix repairs AdminSanitizer.java, an instance that exists only because
+      c2 copied it. Under contract D4 the copying commit is the direct BIC of
+      the new instance and c1, which made the source faulty, is its origin.
+  evaluation_variants:
+  - name: origin-aware
+    description: The direct BIC is required; the origin is accepted as related context.
+    commit_level:
+      evaluation_policy: relaxed_with_related
+      required:
+      - c2
+      acceptable_related:
+      - commit: c1
+        reason: origin_bic
+        credit: 0.5
 scenario_design:
   purpose: Evaluate clone origin versus copied direct bic and whether SZZ identifies the expected bug-introducing commit set.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal

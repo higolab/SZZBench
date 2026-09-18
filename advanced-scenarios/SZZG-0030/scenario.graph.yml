@@ -76,15 +76,13 @@ commits:
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Attempted boundary fix needs follow-up
+  title: The range check excludes its bounds
   bug_introducing_commits:
   - commit: c1
     role: direct
   bug_fixing_commits:
   - commit: c2
-    role: attempted_fix
-  - commit: c3
-    role: follow_up_fix
+    role: complete_fix
   faults:
   - id: F001
     commit: c1
@@ -96,19 +94,41 @@ bugs:
     commit: c2
     file: src/main/java/example/Range.java
     statement: return value >= min || value <= max;
-    fix_type: attempted_fix_wrong_boolean_operator
+    fix_type: line_modification
+- id: B002
+  title: The repaired range check accepts every value
+  bug_introducing_commits:
+  - commit: c2
+    role: direct
+  bug_fixing_commits:
+  - commit: c3
+    role: complete_fix
+  faults:
+  - id: F002
+    commit: c2
+    file: src/main/java/example/Range.java
+    statement: return value >= min || value <= max;
+    change_type: line_modification
+  fixes:
   - id: X002
     commit: c3
     file: src/main/java/example/Range.java
     statement: return value >= min && value <= max;
-    fix_type: follow_up_fix
+    fix_type: line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
     - c1
-    notes: c2 is an attempted fix, not the original BIC. It may be considered a misleading candidate, but the expected BIC
-      remains c1.
+    - c2
+    notes: >
+      c2 repairs one fault and writes another, and both are observable:
+      contains(5,5,7) goes false -> true at c2 (the bounds are accepted again)
+      while contains(99,5,7) goes false -> true as well (a value outside the
+      range is now accepted, because || replaced &&). Contract D6 therefore
+      models them as two bug entries, and D9 makes the scenario oracle the
+      union of their direct BICs. Reporting c1 alone leaves the fault c3 fixes
+      unattributed.
 scenario_design:
   purpose: Evaluate an attempted fix followed by a follow-up fix. Unlike a partial fix, the attempted fix in c2 uses an incorrect
     boolean operator and is therefore a failed repair attempt rather than a correct partial repair.
