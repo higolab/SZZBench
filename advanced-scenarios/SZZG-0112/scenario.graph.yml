@@ -96,7 +96,8 @@ expected_szz:
 scenario_design:
   purpose: Evaluate whether SZZBench tooling handles non-UTF-8 files without assuming all changed files are UTF-8 text.
   current_schema_limitation: The non-UTF-8 file is modeled with write_binary_file so that invalid UTF-8 bytes can be represented safely.
-  required_extensions_from_source: 'This scenario uses factors: encoding, non_utf8_file, write_binary_file; operations: write_file, write_binary_file.'
+  required_extensions_from_source: >-
+    This scenario uses factors: encoding, non-utf8-file, binary-file; operations: write_file, write_binary_file.
   evaluation_points:
   - Whether SZZ identifies c1 as the BIC for the encoded configuration change.
   - Whether non-UTF-8 file content does not break parsing, generation, or verification.

@@ -3,8 +3,9 @@ meta:
   id: SZZG-0019
   title: Bug propagates into generated code
   slug: generated-code
-  description: Evaluates bug propagates into generated code and checks whether SZZ identifies the expected bug-introducing
-    commit set.
+  description: >-
+    The fault enters through generated code: the template carries it, and the regeneration commit writes it into
+    the generated file the fix repairs.
   category: "Clone, copy propagation, and origin-vs-direct BIC"
   category_code: "G2"
   factors:
@@ -117,7 +118,7 @@ files:
   kind: generated
   generated_from: templates/Range.tpl
 scenario_design:
-  purpose: Evaluate Bug propagates into generated code and whether SZZ identifies the expected bug-introducing commit set.
+  purpose: Evaluate whether a method attributes a fault in generated code to the commit that regenerated it.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
   required_extensions_from_source: 'This scenario uses operations: write_file, replace.'

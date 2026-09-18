@@ -148,8 +148,7 @@ bug_instances:
   file: src/main/java/example/B.java
   status: fixed_at_c3
 scenario_design:
-  purpose: Evaluate Only one clone instance is fixed first and whether SZZ identifies the expected bug-introducing commit
-    set.
+  purpose: Evaluate whether a method keeps two instances of the same fault apart when each is fixed by its own commit.
   key_property: >-
     The two clone instances are fixed by two different commits, so the scenario carries two bug entries and
     both bug-fixing commits are in scope. The expected_szz set is therefore the union of their direct BICs:
@@ -160,8 +159,8 @@ scenario_design:
     statement is copied verbatim, which is what copy-aware blame has to detect.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: clone_relationships, bug_instances; operations: write_file,
-    copy_file, replace.'
+  required_extensions_from_source: >-
+    This scenario uses factors: copy-propagation; operations: write_file, copy_file, replace.
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
   - Whether structural or contextual history is handled according to the scenario factors.

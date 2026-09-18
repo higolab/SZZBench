@@ -124,7 +124,8 @@ expected_szz:
 scenario_design:
   purpose: Evaluate whether SZZ traces through a semantically equivalent rewrite and reports the earlier bug-introducing commit.
   current_schema_limitation: Semantic equivalence is represented as scenario metadata rather than mechanically proven.
-  required_extensions_from_source: 'This scenario uses factors: semantic_rewrite, related_but_not_correct; operations: write_file, replace.'
+  required_extensions_from_source: >-
+    This scenario uses factors: semantic-rewrite, related-but-not-correct; operations: write_file, replace.
   evaluation_points:
   - Whether SZZ identifies c1 as the BIC.
   - Whether c2 is recognized as preserving the already-buggy predicate rather than introducing it.

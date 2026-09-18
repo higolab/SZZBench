@@ -3,7 +3,9 @@ meta:
   id: SZZG-0017
   title: Clone diverges before fix
   slug: clone
-  description: Evaluates clone diverges before fix and checks whether SZZ identifies the expected bug-introducing commit set.
+  description: >-
+    The faulty check is copied into a second class, which is then renamed before the copy is fixed, so the name
+    of the file the fix edits post-dates both the original fault and the copy.
   category: "Clone, copy propagation, and origin-vs-direct BIC"
   category_code: "G2"
   factors:
@@ -121,10 +123,11 @@ clone_relationships:
   divergence_commits:
   - c2
 scenario_design:
-  purpose: Evaluate Clone diverges before fix and whether SZZ identifies the expected bug-introducing commit set.
+  purpose: Evaluate whether a method reaches the copying commit when the copy has since been renamed.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: clone_relationships; operations: write_file, copy_file, replace.'
+  required_extensions_from_source: >-
+    This scenario uses factors: copy-propagation; operations: write_file, copy_file, replace.
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
   - Whether structural or contextual history is handled according to the scenario factors.

@@ -3,7 +3,9 @@ meta:
   id: SZZG-0108
   title: Binary file change
   slug: binary-file
-  description: Evaluates binary file change and checks whether SZZ identifies the expected bug-introducing commit set.
+  description: >-
+    The bug-fixing commit repairs the comparison and refreshes a binary asset in one commit, so its diff contains
+    a file no textual tool can read.
   category: "Non-source, binary, generated, and scalability edge cases"
   category_code: "G8"
   factors:
@@ -62,7 +64,7 @@ commits:
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: The range check rejects values equal to its bounds
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -87,10 +89,11 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: Evaluate Binary file change and whether SZZ identifies the expected bug-introducing commit set.
+  purpose: Evaluate whether a binary file in the fix's diff stops a method from reaching the bug-introducing commit.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: write_binary_file; operations: write_file, replace, write_binary_file.'
+  required_extensions_from_source: >-
+    This scenario uses factors: binary-file; operations: write_file, replace, write_binary_file.
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
   - Whether structural or contextual history is handled according to the scenario factors.

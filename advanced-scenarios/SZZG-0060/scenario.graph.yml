@@ -3,8 +3,8 @@ meta:
   id: SZZG-0060
   title: BFC on main after feature-branch BIC is merged
   slug: bfc-main-after-feature-merge
-  description: Evaluates bfc on main after feature-branch bic is merged and checks whether SZZ identifies the expected bug-introducing
-    commit set.
+  description: >-
+    The fault is introduced on a feature branch and reaches main through a merge; the fix lands on main afterwards.
   category: "Branch, merge, cherry-pick, backport, and release branches"
   category_code: "G4"
   factors:
@@ -84,7 +84,7 @@ commits:
     new: return used <= limit;
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Usage exactly at the quota limit is rejected
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -109,12 +109,13 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: Evaluate bfc on main after feature-branch bic is merged and whether SZZ identifies the expected bug-introducing
-    commit set.
+  purpose: >-
+    Evaluate whether a method reaches a feature-branch bug-introducing commit from a fix made on main after the
+    merge.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: feature_branch, merge_commit, bfc_after_merge; operations:
-    replace, write_file.'
+  required_extensions_from_source: >-
+    This scenario uses factors: feature-branch, merge-commit, bfc-after-merge; operations: replace, write_file.
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
   - Whether structural or contextual history is handled according to the scenario factors.

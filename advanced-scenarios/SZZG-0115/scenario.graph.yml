@@ -3,7 +3,9 @@ meta:
   id: SZZG-0115
   title: Top-k evaluation
   slug: top-k-evaluation
-  description: Evaluates top-k evaluation and checks whether SZZ identifies the expected bug-introducing commit set.
+  description: >-
+    Two distractor commits sit between the fault and the fix, and the oracle is scored with a top-k policy rather
+    than an exact set.
   category: "Evaluation policy variants"
   category_code: "G9"
   factors:
@@ -114,10 +116,13 @@ expected_szz:
     relevant:
     - c1
 scenario_design:
-  purpose: Evaluate Top-k evaluation and whether SZZ identifies the expected bug-introducing commit set.
+  purpose: >-
+    Evaluate a top-k oracle: whether the bug-introducing commit is ranked above the distractors rather than returned
+    alone.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: expected_szz; operations: write_file, replace.'
+  required_extensions_from_source: >-
+    This scenario uses factors: evaluation-variant; operations: write_file, replace.
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
   - Whether structural or contextual history is handled according to the scenario factors.

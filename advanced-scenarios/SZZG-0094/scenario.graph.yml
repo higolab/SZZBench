@@ -91,7 +91,8 @@ expected_szz:
 scenario_design:
   purpose: Evaluate whether issue-series context is preserved when the BIC and BFC both reference the same issue.
   current_schema_limitation: Issue membership and linked commits require graph-aware contextual metadata.
-  required_extensions_from_source: 'This scenario uses factors: issues; operations: write_file, replace.'
+  required_extensions_from_source: >-
+    This scenario uses factors: issue-evidence; operations: write_file, replace.
   evaluation_points:
   - Whether SZZ identifies c2 as the BIC rather than the initial commit.
   - Whether both the BIC and BFC are represented as part of ISSUE-101.

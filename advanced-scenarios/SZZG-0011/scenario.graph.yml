@@ -3,8 +3,9 @@ meta:
   id: SZZG-0011
   title: Bug introduced inside a refactoring commit
   slug: bug-introduced-inside-refactoring
-  description: Evaluates bug introduced inside a refactoring commit and checks whether SZZ identifies the expected bug-introducing
-    commit set.
+  description: >-
+    A commit presented as a rename also drops the lower-casing step, so the bug-introducing commit is one that looks
+    behaviour-preserving.
   category: "Refactoring, move, rename, and semantic rewrite"
   category_code: "G1"
   factors:
@@ -66,7 +67,7 @@ commits:
     new: 'return value == null ? "" : value.trim().toLowerCase();'
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Normalised values keep their original case
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -91,12 +92,11 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: Evaluate bug introduced inside a refactoring commit and whether SZZ identifies the expected bug-introducing commit
-    set.
+  purpose: Evaluate whether a method reports a commit that presents itself as a rename but also changes behaviour.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: bug_introducing_refactoring, mixed_change, rename_method;
-    operations: replace, write_file.'
+  required_extensions_from_source: >-
+    This scenario uses factors: bug-introducing-refactoring, mixed-change, rename-method; operations: replace, write_file.
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
   - Whether structural or contextual history is handled according to the scenario factors.

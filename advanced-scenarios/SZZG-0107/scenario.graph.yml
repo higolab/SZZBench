@@ -95,7 +95,8 @@ expected_szz:
 scenario_design:
   purpose: Evaluate whether SZZ identifies the source BIC when the BFC contains both the real source fix and generated-file noise.
   current_schema_limitation: The generated artifact in the BFC is represented explicitly with graph operations.
-  required_extensions_from_source: 'This scenario uses factors: generated_files; operations: write_file, replace, write_generated_text_file.'
+  required_extensions_from_source: >-
+    This scenario uses factors: generated-files; operations: write_file, replace, write_generated_text_file.
   evaluation_points:
   - Whether SZZ identifies c1 as the BIC.
   - Whether generated files added or refreshed in the BFC are ignored as blame targets.

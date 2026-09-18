@@ -182,7 +182,8 @@ scenario_design:
     succeed, not that the code is free of clues.
   current_schema_limitation: Issue descriptions are represented as graph metadata linked to bugs; the repository carries only
     the identifiers in the commit messages.
-  required_extensions_from_source: 'This scenario uses factors: issues, context; operations: write_file, replace.'
+  required_extensions_from_source: >-
+    This scenario uses factors: issue-evidence, context; operations: write_file, replace.
   evaluation_points:
   - Whether SZZ identifies c1 as the BIC from the issue texts, or from equivalent non-line evidence.
   - Whether the nickname change c2 is rejected, although it is equivalent in behaviour and one commit closer to the fix.

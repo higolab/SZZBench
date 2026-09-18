@@ -3,8 +3,8 @@ meta:
   id: SZZG-0096
   title: Multiple candidate BICs inside a work item
   slug: work-item-bic
-  description: Evaluates multiple candidate bics inside a work item and checks whether SZZ identifies the expected bug-introducing
-    commit set.
+  description: >-
+    Three commits of one work item touch the same service, and only the middle one makes the range check exclusive.
   category: "Issue, message, context, and non-local evidence"
   category_code: "G7"
   factors:
@@ -125,11 +125,13 @@ work_items:
   - commit: c4
     relevance: bug_fixing
 scenario_design:
-  purpose: Evaluate Multiple candidate BICs inside a work item and whether SZZ identifies the expected bug-introducing commit
-    set.
+  purpose: >-
+    Evaluate whether a method picks the one commit of a work item that introduced the fault, rather than the work
+    item.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: work_items, expected_szz; operations: write_file, replace.'
+  required_extensions_from_source: >-
+    This scenario uses factors: work-item, evaluation-variant; operations: write_file, replace.
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
   - Whether structural or contextual history is handled according to the scenario factors.

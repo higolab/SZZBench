@@ -129,7 +129,9 @@ expected_szz:
 scenario_design:
   purpose: Evaluate direct-BIC versus origin-BIC accounting for copied buggy code.
   current_schema_limitation: Direct and origin BIC roles require graph-aware bug metadata and evaluation policy.
-  required_extensions_from_source: 'This scenario uses factors: copy_file, expected_szz, direct_bic, origin_bic; operations: write_file, replace, copy_file.'
+  required_extensions_from_source: >-
+    This scenario uses factors: copy-propagation, evaluation-variant, direct-bic, origin-bic; operations: write_file,
+    replace, copy_file.
   evaluation_points:
   - Whether SZZ identifies c2 as the direct BIC for CopiedRange.
   - Whether c1 is tracked as the origin BIC without being required under direct-only scoring.

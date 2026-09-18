@@ -3,8 +3,9 @@ meta:
   id: SZZG-0104
   title: Configuration BIC is fixed by code-side normalization
   slug: config-bic-fixed-in-code
-  description: Evaluates configuration bic is fixed by code-side normalization and checks whether SZZ identifies the expected
-    bug-introducing commit set.
+  description: >-
+    The fault is a trailing slash in a properties file and the fix normalises the value in Java, so the bug-fixing
+    commit opens no file the fault touched.
   category: "Issue, message, context, and non-local evidence"
   category_code: "G7"
   factors:
@@ -67,7 +68,7 @@ commits:
     new: return host.replaceAll("/+$", "") + "/api";
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: The endpoint URL contains a doubled slash
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -92,12 +93,12 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: Evaluate configuration bic is fixed by code-side normalization and whether SZZ identifies the expected bug-introducing
-    commit set.
+  purpose: Evaluate whether a method reaches a fault in a configuration file from a fix that only changes code.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: configuration_change, cross_artifact_fix, context_dependent;
-    operations: replace, write_file.'
+  required_extensions_from_source: >-
+    This scenario uses factors: configuration-change, cross-artifact-fix, context-dependent; operations: replace,
+    write_file.
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
   - Whether structural or contextual history is handled according to the scenario factors.

@@ -3,8 +3,9 @@ meta:
   id: SZZG-0038
   title: One directly blamed BIC and one context-only BIC
   slug: multi-bic-context-only
-  description: Evaluates one directly blamed bic and one context-only bic and checks whether SZZ identifies the expected bug-introducing
-    commit set.
+  description: >-
+    The fix restores the purchase threshold and inlines the base discount, so one bug-introducing commit is reached
+    from a line the fix deletes and the other only from the inlined value.
   category: "Multiple BICs, multiple BFCs, and partial fixes"
   category_code: "G3"
   factors:
@@ -80,7 +81,7 @@ commits:
     new: return 10;
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: The discount starts one purchase too early and at the wrong rate
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -118,12 +119,12 @@ expected_szz:
     - c1
     - c2
 scenario_design:
-  purpose: Evaluate one directly blamed bic and one context-only bic and whether SZZ identifies the expected bug-introducing
-    commit set.
+  purpose: >-
+    Evaluate whether a method reports a bug-introducing commit that the fix reaches only through an inlined value.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: multiple_bic, context_dependent, partial_observability; operations:
-    replace, write_file.'
+  required_extensions_from_source: >-
+    This scenario uses factors: multi-bic, context-dependent, partial-observability; operations: replace, write_file.
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
   - Whether structural or contextual history is handled according to the scenario factors.

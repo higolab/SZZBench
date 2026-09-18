@@ -97,7 +97,7 @@ commits:
     new: return Integer.parseInt(s.trim());
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Invoice amounts are parsed without trimming and with the wrong sign
   bug_introducing_commits:
   - commit: c2
     role: direct
@@ -169,8 +169,8 @@ scenario_design:
     file.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: clone, multiple_bic, origin_and_direct_bic; operations: copy_file,
-    replace, write_file.'
+  required_extensions_from_source: >-
+    This scenario uses factors: clone, multi-bic, origin-and-direct-bic; operations: copy_file, replace, write_file.
   evaluation_points:
   - Whether the copy commit c2 rather than the origin c1 is reported.
   - Whether the second, directly written fault c3 is reported alongside it.

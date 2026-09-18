@@ -3,7 +3,9 @@ meta:
   id: SZZG-0021
   title: Clone removal as fix
   slug: clone-removal-as-fix
-  description: Evaluates clone removal as fix and checks whether SZZ identifies the expected bug-introducing commit set.
+  description: >-
+    The fix deletes the faulty copy and points callers at the original, so the bug-fixing commit removes the file
+    the fault lived in instead of editing it.
   category: "Clone, copy propagation, and origin-vs-direct BIC"
   category_code: "G2"
   factors:
@@ -85,10 +87,11 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: Evaluate Clone removal as fix and whether SZZ identifies the expected bug-introducing commit set.
+  purpose: Evaluate whether a method handles a fix that deletes the faulty file instead of editing it.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: clone_relationships; operations: write_file, delete_file.'
+  required_extensions_from_source: >-
+    This scenario uses factors: copy-propagation; operations: write_file, delete_file.
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
   - Whether structural or contextual history is handled according to the scenario factors.

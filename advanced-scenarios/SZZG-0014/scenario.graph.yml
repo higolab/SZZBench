@@ -123,7 +123,8 @@ scenario_design:
     statement is copied verbatim, which is what copy-aware blame has to detect.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: copy_file; operations: write_file, copy_file, replace.'
+  required_extensions_from_source: >-
+    This scenario uses factors: copy-propagation; operations: write_file, copy_file, replace.
   evaluation_points:
   - Whether SZZ identifies c1 as the direct BIC for B.java.
   - Whether SZZ keeps c0 as origin context without replacing the direct copy commit.

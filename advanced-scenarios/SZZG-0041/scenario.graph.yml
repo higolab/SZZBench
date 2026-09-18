@@ -141,8 +141,9 @@ scenario_design:
     lands on c2. The replace operations of c1 and c3 need an explicit `occurrence` for exactly this reason.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: ambiguous_blame, duplicate_code, same_statement_multiple_locations;
-    operations: replace, write_file.'
+  required_extensions_from_source: >-
+    This scenario uses factors: ambiguous-blame, duplicate-code, same-statement-multiple-locations; operations:
+    replace, write_file.
   evaluation_points:
   - Whether SZZ resolves the duplicated statement by line number rather than by text.
   - Whether SZZ reports c1 and not the same-text change c2.

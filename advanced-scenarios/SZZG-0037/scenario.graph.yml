@@ -3,8 +3,7 @@ meta:
   id: SZZG-0037
   title: One BFC fixes multiple BICs across multiple files
   slug: multi-bic-multi-file-fix
-  description: Evaluates one bfc fixes multiple bics across multiple files and checks whether SZZ identifies the expected
-    bug-introducing commit set.
+  description: Two independent faults in two files are repaired by a single commit, so the fix's diff spans both.
   category: "Multiple BICs, multiple BFCs, and partial fixes"
   category_code: "G3"
   factors:
@@ -83,7 +82,7 @@ commits:
     new: return quantity >= 1;
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: The tax is rounded up and a zero quantity is accepted
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -121,12 +120,12 @@ expected_szz:
     - c1
     - c2
 scenario_design:
-  purpose: Evaluate one bfc fixes multiple bics across multiple files and whether SZZ identifies the expected bug-introducing
-    commit set.
+  purpose: >-
+    Evaluate whether a method reports both bug-introducing commits when one fix repairs two faults in two files.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: multiple_bic, multiple_file, single_bfc; operations: replace,
-    write_file.'
+  required_extensions_from_source: >-
+    This scenario uses factors: multi-bic, multiple-file, single-bfc; operations: replace, write_file.
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
   - Whether structural or contextual history is handled according to the scenario factors.

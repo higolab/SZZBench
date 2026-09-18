@@ -117,7 +117,8 @@ scenario_design:
     source change onto release, but r1 also changes Range.contains and introduces the release-specific bug fixed by r2.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: branch, backport_of; operations: write_file, replace.'
+  required_extensions_from_source: >-
+    This scenario uses factors: branch, backport; operations: write_file, replace.
   evaluation_points:
   - Whether SZZ identifies r1 as the release-specific BIC.
   - Whether backport_of metadata does not cause SZZ to blame the main-line source change c1.

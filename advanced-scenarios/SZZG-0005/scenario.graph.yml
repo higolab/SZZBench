@@ -160,8 +160,8 @@ scenario_design:
     class and the source class keeps its remaining members.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: refactoring, method_move, post_bic_refactoring; operations:
-    write_file, replace.'
+  required_extensions_from_source: >-
+    This scenario uses factors: refactoring, method-move, post-bic-refactoring; operations: write_file, replace.
   evaluation_points:
   - Whether SZZ follows the moved method from RangeUtils.java back to Range.java.
   - Whether SZZ avoids treating the move commit c2 as the BIC.
