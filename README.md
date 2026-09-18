@@ -108,10 +108,15 @@ only, history position only, file-touch shape, and the classic blame baseline â€
 with the ordinary evaluator, so every result on SZZBench can be read against a
 floor. Measured on the shipped suite: **"report the second commit of the history",
 which opens no file at all, solves 146/210 â€” more than the classic
-`blame-deleted-lines` baseline at 141/210**; 203 of 210 scenarios are solved by
-at least one baseline, and the seven that are not all have a multi-commit
-oracle. The metadata family
+`blame-deleted-lines` baseline at 141/210**. Some cheap rule solves 203 of the
+210 scenarios, an oracle-aware upper bound rather than an attacker's score; the
+seven it does not reach all have a multi-commit oracle. The metadata family
 is at chance, which is the leakage guarantee below holding.
+
+`szzbench coverage` is the companion command: it measures each scenario's
+oracle size, the depth of its bug-introducing commit, how many distractors
+touch the fault file, and the size and branchiness of its history, then groups
+the scenarios that agree on all of them.
 
 Read [docs/baselines.md](docs/baselines.md) before reporting or comparing
 numbers on this benchmark. Raising that floor is tracked in issues #13, #14

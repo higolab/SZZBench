@@ -56,15 +56,33 @@ oracles being a single commit it succeeds by coincidence rather than by signal.
 | best `author:…` | metadata | 11/210 = 5.2% (chance) |
 | `message-admits-fault` | metadata | **0/210** |
 
+**A fixed rule versus the union.** Each row is one rule applied to every
+scenario, which is what an attacker can actually do. The union of the rows is
+*not* an attacker's score: choosing which rule to use per scenario needs the
+oracle. The union is reported below as an upper bound on how much of the suite
+a cheap rule could explain — headroom, not a result.
+
 Read this table before reading any result reported on SZZBench:
 
 - **A rule that opens no file beats the classic B-SZZ baseline.** "Report the
   second commit of the history" solves 69.5% against B-SZZ's 67.1%, because
   most scenarios are four commits long with a single-commit oracle in second
   position.
-- **203 of 210 scenarios are solved by at least one baseline.** Seven resist all
-  of them: SZZ-0132, SZZ-0136, SZZG-0028, SZZG-0038, SZZG-0040, SZZG-0069,
-  SZZG-0076 — and every one of them has a **multi-commit oracle**.
+- **Upper bound (oracle-aware): 203 of 210 scenarios are solved by *some*
+  cheap rule.** Seven resist all of them: SZZ-0132, SZZ-0136, SZZG-0028,
+  SZZG-0038, SZZG-0040, SZZG-0069, SZZG-0076 — and every one of them has a
+  **multi-commit oracle**. Split by oracle size, the contrast is sharper still:
+
+  | | best fixed rule | union over all rules |
+  |---|---|---|
+  | 194 scenarios with a one-commit oracle | 145/194 = 74.7% | **194/194** |
+  | 16 scenarios with a two-commit oracle | 1/16 | 9/16 |
+
+  A one-commit answer inside a three- or four-commit history is reachable by
+  *some* cheap rule in every single case, at every depth — 94/94 at depth 1,
+  82/82 at depth 2, 14/14 at depth 3 and 4/4 beyond. Oracle size is the
+  dimension that separates them, and a longer or deeper history on its own
+  will not raise the floor.
 - **Thirteen of the seventeen categories are 100% solvable** by a cheap
   baseline (S1, S2, S3, S4, S5, S7, S8, G1, G4, G6, G7, G8, G9); only G2
   (93.3%), G3 (84.6%), G5 (88.2%) and S6 (80.0%) have any headroom at all.
@@ -85,6 +103,48 @@ not more scenarios of the current shape.
 report, per baseline, the scenarios it solved, plus the union across families,
 the scenarios nothing solves, and a per-category breakdown. The exit code is
 non-zero only when a scenario or commit map could not be read.
+
+## Coverage: what each scenario contributes
+
+`szzbench coverage` measures every scenario along the dimensions that decide
+how hard its bug-introducing commit is to find, and groups the scenarios that
+agree on all of them. A large group is redundancy; an empty combination is a
+gap. It replaces the 2026-09-17 review's merge/delete list (issue #12), whose
+50 candidates have all been rebuilt since and no longer describe the suite.
+
+```bash
+szzbench coverage --out studies/coverage
+```
+
+| dimension | meaning |
+|---|---|
+| `oracle_size` | how many commits the answer contains |
+| `bic_depth` | commits between the deepest required BIC and the fix |
+| `fault_file_distractors` | commits before the fix that touch a file the fault lives in and are **not** the answer |
+
+`oracle_size` and `bic_depth` come from the evaluator's own policy resolution
+(`_commit_level_policy`), so a default evaluation variant and an inferred
+direct BIC are read the same way a scored run reads them. `bic_depth` measures
+the **farthest** required BIC — the deepest commit a tool has to reach.
+| `commit_count`, `ref_count` | size and branchiness of the history |
+
+Measured on the shipped suite (210 scenarios):
+
+```text
+oracle_size            1:194, 2:16
+bic_depth              1:94, 2:97, 3:15, 4:1, 5:1, 6:1, 1003:1
+fault_file_distractors 0:9, 1:99, 2:73, 3:22, 4:6, 5:1
+commit_count           2:4, 3:55, 4:98, 5:39, 6:10, 7:2, 8:1, 1005:1
+ref_count              1:171, 2:36, 3:3
+
+81 distinct signatures; 39 groups of two or more, covering 168 scenarios
+```
+
+The largest groups are 27 S3, 10 S4, 9 S2, 8 S1 and 8 G1 scenarios that agree
+on every dimension; 42 scenarios have a signature of their own. Read together with the baseline table, the suite concentrates
+in one cell — a one-commit answer, one or two commits before the fix, in a
+three- or four-commit single-branch history — and **that cell is where the
+cheap rules win**.
 
 ## Adding a baseline
 
