@@ -1,0 +1,157 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0120
+  title: Two branches that are each harmless, and a merge that is not
+  slug: harmless-branches-harmful-merge
+  description: >
+    One branch drops the guard that rejected a negative subtotal, which no
+    caller could produce. Another branch adds a checkout path that subtracts a
+    loyalty credit, which the guard still handled. Neither branch contains the
+    bug: it exists for the first time in the merge, where the subtraction meets
+    the missing guard and an over-credited order is refunded instead of
+    charged. The fix repairs the subtraction, so the line it deletes belongs to
+    the branch commit; the guard removal is on the other side of the merge.
+  category: "Multiple BICs, multiple BFCs, and partial fixes"
+  category_code: "G3"
+  factors:
+  - multiple_bic
+  - merge
+  - guard_removal
+  - caller_callee_interaction
+  - blame_unreachable_bic
+  difficulty: advanced
+  status: active
+  tier: discriminating
+repository:
+  name: SZZG-0120-harmless-branches-harmful-merge
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'Add the checkout discount'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Checkout.java
+    content: |
+      package example;
+
+      public class Checkout {
+          public int discounted(int subtotalCents, int percentOff) {
+              if (subtotalCents < 0) {
+                  return 0;
+              }
+              return (int) (subtotalCents - (long) subtotalCents * percentOff / 100);
+          }
+      }
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'Discount the subtotal without checking its sign'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Checkout.java
+    old: |
+      if (subtotalCents < 0) {
+                  return 0;
+              }
+              return (int) (subtotalCents - (long) subtotalCents * percentOff / 100);
+    new: |
+      return (int) (subtotalCents - (long) subtotalCents * percentOff / 100);
+- id: c2
+  branch: loyalty
+  parents:
+  - c0
+  message: 'Apply a loyalty credit before the discount'
+  role: bug_introducing
+  operations:
+  - type: write_file
+    path: src/main/java/example/CreditedCheckout.java
+    content: |
+      package example;
+
+      public class CreditedCheckout {
+          private final Checkout checkout = new Checkout();
+
+          public int amountDue(int subtotalCents, int creditCents, int percentOff) {
+              return checkout.discounted(subtotalCents - creditCents, percentOff);
+          }
+      }
+- id: c3
+  branch: main
+  parents:
+  - c1
+  - c2
+  message: 'Merge the loyalty branch'
+  role: merge
+  operations: []
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: 'Charge nothing when the credit covers the subtotal'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/CreditedCheckout.java
+    old: return checkout.discounted(subtotalCents - creditCents, percentOff);
+    new: 'return creditCents >= subtotalCents ? 0 : checkout.discounted(subtotalCents - creditCents, percentOff);'
+bugs:
+- id: B001
+  title: An order credited beyond its subtotal is refunded instead of charged nothing
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  - commit: c2
+    role: direct
+  bug_fixing_commits:
+  - commit: c4
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/Checkout.java
+    statement: return (int) (subtotalCents - (long) subtotalCents * percentOff / 100);
+    change_type: line_deletion
+  - id: F002
+    commit: c2
+    file: src/main/java/example/CreditedCheckout.java
+    statement: return checkout.discounted(subtotalCents - creditCents, percentOff);
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c4
+    file: src/main/java/example/CreditedCheckout.java
+    statement: 'return creditCents >= subtotalCents ? 0 : checkout.discounted(subtotalCents - creditCents, percentOff);'
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+    - c2
+scenario_design:
+  purpose: >
+    Split a two-commit answer across the two parents of a merge, so that
+    neither parent's tree contains the bug and it exists for the first time in
+    a commit that changed nothing itself.
+  key_property: >
+    On main after c1 the guard is gone, but no caller produces a negative
+    subtotal. On the loyalty branch after c2 the subtraction exists, but the
+    guard still catches its result. The merge c3 has no operations of its own
+    and is where the bug first exists. Blaming the line the fix deletes returns
+    c2 alone; c1 is in another file, on the other side of the merge.
+  evaluation_points:
+  - Whether the expected BIC set is reported exactly.
+  - Whether a bug that exists only in a merged tree is attributed to both parents.
+  - Whether a merge commit that changed nothing is correctly not reported.
+notes:
+- c3 is a clean merge - the two branches touch different files - and carries no operations.

@@ -1,0 +1,198 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0195"
+  title: "Scale change carried in stored state, and a later reader of the raw field"
+  slug: "scale-change-in-stored-state"
+  description: >
+    The ledger starts storing balances in sen rather than yen, converting on
+    the way in and on the way out, so every caller in the repository keeps its
+    answer. A later commit adds a fee calculation that reads the field
+    directly, as if it still held yen, and only then does the bug appear. The
+    fix repairs the fee calculation, so the line it deletes belongs to the
+    later commit; the scale change is reachable only by following the field
+    the fixed expression reads.
+  category: "Multiple BICs, duplicate faults, and composite faults"
+  factors:
+    - "multi-bic"
+    - "single-bfc"
+    - "line-modification"
+    - "value-flow"
+    - "blame-unreachable-bic"
+  difficulty: "hard"
+  status: "active"
+  tier: "discriminating"
+  category_code: "S6"
+
+repository:
+  name: "SZZ-0195-scale-change-in-stored-state"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Add the account ledger"
+    author: "Priya Raman <priya.raman@example.com>"
+    date: "2024-02-05T10:20:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/example/Ledger.java"
+        content: |
+          package example;
+
+          public class Ledger {
+              private int balance;
+
+              public void deposit(int yen) {
+                  balance += yen;
+              }
+
+              public int balanceYen() {
+                  return balance;
+              }
+          }
+
+  - id: "c1"
+    message: "Hold the ledger balance in sen"
+    author: "Jonas Berg <jonas.berg@example.com>"
+    date: "2024-02-09T14:05:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/Ledger.java"
+        old: |
+          private int balance;
+
+              public void deposit(int yen) {
+                  balance += yen;
+              }
+
+              public int balanceYen() {
+                  return balance;
+              }
+        new: |
+          private long balance;
+
+              public void deposit(int yen) {
+                  balance += (long) yen * 100;
+              }
+
+              public int balanceYen() {
+                  return (int) (balance / 100);
+              }
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Record what the ledger stores"
+    author: "Jonas Berg <jonas.berg@example.com>"
+    date: "2024-02-13T09:40:00Z"
+    role: "distractor"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/Ledger.java"
+        old: |
+          public class Ledger {
+        new: |
+          /** Holds one account balance. */
+          public class Ledger {
+
+  - id: "c3"
+    message: "Report whether the account is empty"
+    author: "Mei Tanaka <mei.tanaka@example.com>"
+    date: "2024-02-16T15:25:00Z"
+    role: "distractor"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/Ledger.java"
+        old: |
+          public int balanceYen() {
+                  return (int) (balance / 100);
+              }
+        new: |
+          public int balanceYen() {
+                  return (int) (balance / 100);
+              }
+
+              public boolean isEmpty() {
+                  return balance == 0;
+              }
+
+  - id: "c4"
+    message: "Charge a maintenance fee on the balance"
+    author: "Tom Becker <tom.becker@example.com>"
+    date: "2024-02-20T11:55:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/Ledger.java"
+        old: |
+          public boolean isEmpty() {
+                  return balance == 0;
+              }
+        new: |
+          public boolean isEmpty() {
+                  return balance == 0;
+              }
+
+              public int feeYen(int ratePercent) {
+                  return (int) (balance * ratePercent / 100);
+              }
+        labels: ["B001", "fault"]
+
+  - id: "c5"
+    message: "Charge the maintenance fee on yen, not sen"
+    author: "Chen Wei <chen.wei@example.com>"
+    date: "2024-02-23T17:10:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/Ledger.java"
+        old: "return (int) (balance * ratePercent / 100);"
+        new: "return (int) (balance * ratePercent / 10000);"
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "The maintenance fee is a hundred times too large"
+    bug_fixing_commit: "c5"
+    bug_introducing_commits: ["c1", "c4"]
+    fault:
+      commit: "c4"
+      file: "src/main/java/example/Ledger.java"
+      entity:
+        type: "method"
+        name: "feeYen"
+        signature: "int feeYen(int ratePercent)"
+      statement: "return (int) (balance * ratePercent / 100);"
+      change_type: "line_modification"
+    fix:
+      commit: "c5"
+      file: "src/main/java/example/Ledger.java"
+      entity:
+        type: "method"
+        name: "feeYen"
+        signature: "int feeYen(int ratePercent)"
+      statement: "return (int) (balance * ratePercent / 10000);"
+      fix_type: "line_modification"
+    expected_szz:
+      commit_level:
+        true_positives: ["c1", "c4"]
+        primary_observable_bic: "c4"
+        contributing_bics: ["c1"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "return (int) (balance * ratePercent / 100);"
+        note: >
+          The fix deletes a line written by c4. c1 changed the scale of the
+          field that line reads and is not reachable from the deleted line by
+          blame; while the field held yen the fee calculation would have been
+          correct.
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3", "c4", "c5"]

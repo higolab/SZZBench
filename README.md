@@ -107,16 +107,19 @@ In short, `scenario.yml` is treated as a restricted subset of `scenario.graph.ym
 only, history position only, file-touch shape, and the classic blame baseline —
 with the ordinary evaluator, so every result on SZZBench can be read against a
 floor. Measured on the shipped suite: **"report the second commit of the history",
-which opens no file at all, solves 146/215 — more than the classic
-`blame-deleted-lines` baseline at 141/215**. Some cheap rule solves 203 of the
-215 scenarios, an oracle-aware upper bound rather than an attacker's score; the
-twelve it does not reach all have a multi-commit oracle. The metadata family
-is at chance, which is the leakage guarantee below holding.
+which opens no file at all, solves 146/225 — more than the classic
+`blame-deleted-lines` baseline at 141/225**. Some cheap rule solves 203 of the
+225 scenarios, an oracle-aware upper bound rather than an attacker's score; the
+twenty-two it does not reach all have a multi-commit oracle. The metadata
+family is at chance, which is the leakage guarantee below holding.
 
 Every scenario declares `meta.tier`: **203 are `control`** — they check that a
 method handles a specific input condition, and a cheap rule may well solve them
-— and **12 are `discriminating`**, which no declared cheap baseline solves. A control being cheaply solvable is not a defect; what the tier prevents
-is reading a control as evidence that a method discriminates.
+— and **22 are `discriminating`**, which no declared cheap baseline solves.
+Fifteen of those were designed against the measured axis: the answer is two
+commits, and the fix's deleted lines do not blame to one of them. A control
+being cheaply solvable is not a defect; what the tier prevents is reading a
+control as evidence that a method discriminates.
 
 `szzbench coverage` is the companion command: it measures each scenario's
 oracle size, the depth of its bug-introducing commit, how many distractors

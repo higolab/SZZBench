@@ -51,27 +51,27 @@ otherwise pass it for free, and so would every other silent rule.
 Predicting nothing is a strategy, so it is published as one: `abstain` is the
 single rule scored on its silence. It is the honest version of that free pass —
 one rule with one number, rather than an invisible bonus spread across the
-family. It scores **0/215** on the shipped suite, because no scenario's default
+family. It scores **0/225** on the shipped suite, because no scenario's default
 evaluation has an empty oracle.
 
 ## Measured on the shipped suite
 
-215 generated scenarios, measured on this branch (2026-09-18):
+225 generated scenarios, measured on this branch (2026-09-18):
 
 | baseline | family | solves |
 |---|---|---|
-| `position-1` | position | **146/215 = 67.9%** |
-| `blame-deleted-lines` | blame | 141/215 = 65.6% |
-| `shape-last-toucher` | shape | 107/215 = 49.8% |
-| `position-before-fix` | position | 95/215 = 44.2% |
-| `position-2` | position | 18/215 = 8.4% |
-| `position-3` | position | 17/215 = 7.9% |
-| `position-0`, `position-4` | position | 7/215 = 3.3% each |
-| `position-all-non-fix` | position | 6/215 = 2.8% |
-| `position-5` | position | 1/215 = 0.5% |
-| best `author:…` | metadata | 11/215 = 5.1% (chance) |
-| `abstain` | position | **0/215** |
-| `message-admits-fault` | metadata | **0/215** |
+| `position-1` | position | **146/225 = 64.9%** |
+| `blame-deleted-lines` | blame | 141/225 = 62.7% |
+| `shape-last-toucher` | shape | 107/225 = 47.6% |
+| `position-before-fix` | position | 95/225 = 42.2% |
+| `position-2` | position | 18/225 = 8.0% |
+| `position-3` | position | 17/225 = 7.6% |
+| `position-0`, `position-4` | position | 7/225 = 3.1% each |
+| `position-all-non-fix` | position | 6/225 = 2.7% |
+| `position-5` | position | 1/225 = 0.4% |
+| best `author:…` | metadata | 11/225 = 4.9% (chance) |
+| `abstain` | position | **0/225** |
+| `message-admits-fault` | metadata | **0/225** |
 
 **A fixed rule versus the union.** Each row is one rule applied to every
 scenario, which is what an attacker can actually do. The union of the rows is
@@ -82,29 +82,39 @@ a cheap rule could explain — headroom, not a result.
 Read this table before reading any result reported on SZZBench:
 
 - **A rule that opens no file beats the classic B-SZZ baseline.** "Report the
-  second commit of the history" solves 67.9% against B-SZZ's 65.6%, because
+  second commit of the history" solves 64.9% against B-SZZ's 62.7%, because
   most scenarios are four commits long with a single-commit oracle in second
   position.
-- **Upper bound (oracle-aware): 203 of 215 scenarios are solved by *some*
-  cheap rule.** Twelve resist all of them — SZZ-0132, SZZ-0136, SZZ-0190 to
-  SZZ-0194, SZZG-0028, SZZG-0038, SZZG-0040, SZZG-0069, SZZG-0076 — and every
-  one of them has a **multi-commit oracle**. Split by oracle size:
+- **Upper bound (oracle-aware): 203 of 225 scenarios are solved by *some*
+  cheap rule.** Twenty-two resist all of them — SZZ-0132, SZZ-0136, SZZ-0190 to
+  SZZ-0199, SZZG-0028, SZZG-0038, SZZG-0040, SZZG-0069, SZZG-0076 and
+  SZZG-0117 to SZZG-0121 — and every one of them has a **multi-commit oracle**.
+  Split by oracle size:
 
   | | best fixed rule | union over all rules |
   |---|---|---|
-  | 194 scenarios with a one-commit oracle | 145/194 = 74.7% | **194/194** |
-  | 21 scenarios with a two-commit oracle | 1/21 | 9/21 |
+  | 194 scenarios with a one-commit oracle | 145/194 = 74.7% (`position-1`) | **194/194** |
+  | 31 scenarios with a two-commit oracle | 9/31 = 29.0% (`blame-deleted-lines`) | 9/31 |
 
   A one-commit answer inside a three- or four-commit history is reachable by
   *some* cheap rule in every single case, at every depth — 94/94 at depth 1,
   82/82 at depth 2, 14/14 at depth 3 and 4/4 beyond. Oracle size is the
   dimension that separates them, and a longer or deeper history on its own
   will not raise the floor.
-- **Thirteen of the seventeen categories are 100% solvable** by a cheap
-  baseline (S1, S2, S3, S4, S5, S7, S8, G1, G4, G6, G7, G8, G9); only G2
-  (93.3%), G3 (84.6%), G5 (88.2%) and S6 (80.0%) have any headroom at all.
+
+  The nine two-commit oracles a cheap rule does solve are all solved by the
+  *same* rule, `blame-deleted-lines`, and for the same reason: their fix
+  deletes one line from each of the two commits, so naive blame returns both.
+  That is the shape the discriminating tier is built to avoid.
+
+  (An earlier revision of this table reported `1/21` as the best fixed rule on
+  two-commit oracles. That figure was wrong: recomputed on the same 215-scenario
+  measurement, it is `9/21`, by `blame-deleted-lines`. The union was right.)
+- **Ten of the seventeen categories are 100% solvable** by a cheap baseline
+  (S1, S2, S3, S4, S5, S7, G6, G7, G8, G9); the rest have headroom — S6 42.1%,
+  G3 78.6%, S8 80.0%, G2 87.5%, G5 88.2%, G4 91.3%, G1 92.9%.
 - The metadata family is at chance, which is the leakage guarantee holding: the
-  best author rule (5.2%) sits *below* the mean of a label-shuffled null, and
+  best author rule (4.9%) sits *below* the mean of a label-shuffled null, and
   the message rule scores zero.
 
 This is a property of how the scenarios are **shaped**, not of what they
@@ -128,21 +138,48 @@ Every scenario declares `meta.tier`, which says what it is for:
 | tier | meaning | count |
 |---|---|---|
 | `control` | checks that a method handles a specific input condition; a cheap rule may well solve it | **203** |
-| `discriminating` | designed so that none of the declared cheap baselines solves it | **12** |
+| `discriminating` | designed so that none of the declared cheap baselines solves it | **22** |
 
-Every one of the twelve has a multi-commit oracle. Seven are pre-existing
-scenarios that turned out to resist the baselines; SZZ-0190 to SZZ-0194 were
-**designed** against the measured axis, each on the same skeleton — the answer
-is two commits, one of which the fix's deleted lines do not blame to — with a
-different reason for the unreachability:
+Every one of the twenty-two has a multi-commit oracle. Seven are pre-existing
+scenarios that turned out to resist the baselines; the other fifteen were
+**designed** against the measured axis, on one skeleton — the answer is two
+commits, one of which the fix's deleted lines do not blame to. There are five
+reasons that half can be out of reach, and three scenarios for each:
 
-| scenario | why the second commit is out of blame's reach |
-|---|---|
-| SZZ-0190 | it changed the *unit* of a constant the fixed expression reads |
-| SZZ-0191 | it changed the *callee* the fixed line calls |
-| SZZ-0192 | an equivalence-preserving rewrite owns the line, so blame returns the rewrite instead |
-| SZZ-0193 | it removed a guard, a *precondition* the later commit made reachable |
-| SZZ-0194 | it is in a *file the fix never opens* |
+| why the second commit is out of blame's reach | | | |
+|---|---|---|---|
+| **value** — it changed what a value *means* | SZZ-0190 a constant's unit | SZZ-0195 a stored field's scale | SZZG-0117 a unit change behind a merge |
+| **callee** — it changed what the fixed line *calls* | SZZ-0191 the callee's accepted input | SZZ-0196 which overload is selected | SZZG-0118 a reduced copy of the callee |
+| **rewrite** — a behaviour-preserving commit owns the line | SZZ-0192 extract variable | SZZ-0197 extract method | SZZG-0119 move and inline |
+| **guard** — it changed a precondition a later commit reaches | SZZ-0193 the guard is deleted | SZZ-0198 the guard substitutes a different value | SZZG-0120 guard and caller on different branches |
+| **file** — it is somewhere the fix never opens | SZZ-0194 another Java file | SZZ-0199 a properties file | SZZG-0121 another file, reached by cherry-pick |
+
+The classic instances isolate the code-level reason; the graph instances add a
+history-level one on top, so that the same reason has to be found across a
+merge, a copy, a move, two branches or a cherry-pick.
+
+Every README reports the blame result for each deleted line under three
+variants and the probe answers that move at each commit. **How each one shows
+that both commits are necessary depends on which kind it is**, and the two
+forms of evidence must not be read as one:
+
+- In the *value*, *callee*, *guard* and *file* kinds the two commits
+  **interact**: the unreachable one is harmless on its own, and the fault
+  appears only once the later commit reaches it. There the evidence is a
+  counterfactual — undoing the unreachable commit on top of the faulty one
+  reproduces the fixed behaviour on every probed argument: all 63 keys for
+  SZZ-0195, all 25 for SZZ-0196, all 30 for SZZ-0198, all 98 for SZZG-0118, and
+  every key SZZ-0199 and SZZG-0117 probe. SZZG-0121 agrees on every key except
+  the seven belonging to `ratePerMille` itself, the accessor whose unit the
+  commit changed, which cannot agree by construction. SZZG-0120 makes the same
+  claim in the shape of the history instead: the bug is in neither parent of
+  the merge.
+- In the *rewrite* kind the two commits are **independent faults** that the
+  same fix repairs; the rewrite between them only moves the blame. There a
+  counterfactual would fail by construction — undoing one fault leaves the
+  other — so the evidence is instead that their effects are disjoint and the
+  fix restores exactly their union: 4 + 3 = 7 answers for SZZ-0197,
+  379 + 62 = 441 for SZZG-0119.
 
 A control being cheaply solvable is not a defect: a benchmark needs cases that
 verify the basics, and a method that fails one of them is broken on that input
@@ -165,6 +202,13 @@ scoped to the families that ran.
 
 Raising the discriminating count is the work tracked in issues #13, #14 and
 #35; the measured axis is oracle size.
+
+The check earns its keep. `SZZG-0118` was first declared `discriminating` and
+the measurement refused it: the generator's author rotation had given its two
+bug-introducing commits the same author and no other commit that author, so
+"report every commit by Elena Rossi" returned exactly the oracle. The scenario
+now names five distinct authors. A coincidence is not a signal, but a benchmark
+cannot tell the difference — only the measurement can.
 
 ## Coverage: what each scenario contributes
 
@@ -190,24 +234,39 @@ szzbench coverage --out studies/coverage
 direct BIC are read the same way a scored run reads them. `bic_depth` measures
 the **farthest** required BIC — the deepest commit a tool has to reach.
 
-Measured on the shipped suite (215 scenarios):
+Measured on the shipped suite (225 scenarios):
 
 ```text
-tier                   control:203, discriminating:12
-oracle_size            1:194, 2:21
-bic_depth              1:94, 2:97, 3:20, 4:1, 5:1, 6:1, 1003:1
-fault_file_distractors 0:9, 1:99, 2:77, 3:23, 4:6, 5:1
-commit_count           2:4, 3:55, 4:98, 5:43, 6:11, 7:2, 8:1, 1005:1
-ref_count              1:176, 2:36, 3:3
+tier                   control:203, discriminating:22
+oracle_size            1:194, 2:31
+bic_depth              1:94, 2:98, 3:27, 4:2, 5:2, 6:1, 1003:1
+fault_file_distractors 0:11, 1:100, 2:82, 3:24, 4:7, 5:1
+commit_count           2:4, 3:55, 4:98, 5:50, 6:13, 7:3, 8:1, 1005:1
+ref_count              1:183, 2:39, 3:3
 
-83 distinct signatures; 40 groups of two or more, covering 172 scenarios
+92 distinct signatures; 41 groups of two or more, covering 174 scenarios
 ```
 
 The largest groups are 27 S3, 10 S4, 9 S2, 8 S1 and 8 G1 scenarios that agree
-on every dimension; 43 scenarios have a signature of their own. Read together
-with the baseline table, the suite concentrates in one cell — a one-commit answer, one or two commits before the fix, in a
-three- or four-commit single-branch history — and **that cell is where the
-cheap rules win**.
+on every dimension; 51 scenarios have a signature of their own. Read together
+with the baseline table, the suite still concentrates in one cell — a
+one-commit answer, one or two commits before the fix, in a three- or
+four-commit single-branch history — and **that cell is where the cheap rules
+win**.
+
+The discriminating tier is deliberately spread out of it: its 22 scenarios
+occupy **16** distinct signatures, where the first twelve occupied **7**. The
+ten added in this round introduced **nine** signatures the suite did not have —
+every one of them except SZZG-0118, which reuses SZZG-0028's — including the
+first two-commit oracles with no distracting commit on the fault file at all
+(SZZ-0198, SZZ-0199) and the first seven-commit history with a two-commit
+oracle (SZZ-0197).
+
+Four signatures inside the tier are still shared by more than one scenario:
+SZZ-0190/0191/0193/0194, SZZ-0132/SZZ-0136, SZZG-0038/SZZG-0040 and
+SZZG-0028/SZZG-0118. Those scenarios differ in mechanism — which is the point
+of the tier — and the signature cannot see it; that is a limit of the proxy,
+not a claim that they are redundant.
 
 ## Adding a baseline
 

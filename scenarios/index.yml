@@ -1428,3 +1428,75 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0194/scenario.yml
+- id: SZZ-0195
+  title: Scale change carried in stored state, and a later reader of the raw field
+  slug: scale-change-in-stored-state
+  category_code: S6
+  category: Multiple BICs, duplicate faults, and composite faults
+  factors:
+  - multi-bic
+  - single-bfc
+  - line-modification
+  - value-flow
+  - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0195/scenario.yml
+- id: SZZ-0196
+  title: An overload added earlier captures a call written later
+  slug: overload-captures-later-call
+  category_code: S6
+  category: Multiple BICs, duplicate faults, and composite faults
+  factors:
+  - multi-bic
+  - single-bfc
+  - caller-callee-interaction
+  - overload-resolution
+  - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0196/scenario.yml
+- id: SZZ-0197
+  title: Extracted methods take ownership of an earlier faulty comparison
+  slug: extract-method-takes-ownership
+  category_code: S6
+  category: Multiple BICs, duplicate faults, and composite faults
+  factors:
+  - multi-bic
+  - single-bfc
+  - extract-method
+  - behaviour-preserving-rewrite
+  - tangled-bfc
+  - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0197/scenario.yml
+- id: SZZ-0198
+  title: A guard that substitutes a different value, and a later caller that reaches it
+  slug: guard-substitutes-different-value
+  category_code: S6
+  category: Multiple BICs, duplicate faults, and composite faults
+  factors:
+  - multi-bic
+  - single-bfc
+  - boundary-condition
+  - caller-callee-interaction
+  - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0198/scenario.yml
+- id: SZZ-0199
+  title: The unit of a configuration value changes, and a later reader shows it raw
+  slug: configuration-unit-change
+  category_code: S8
+  category: Non-source, configuration, test-only, and file-level edge cases
+  factors:
+  - multi-bic
+  - single-bfc
+  - non-source-file
+  - configuration-change
+  - value-flow
+  - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0199/scenario.yml

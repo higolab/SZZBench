@@ -1,0 +1,189 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0197"
+  title: "Extracted methods take ownership of an earlier faulty comparison"
+  slug: "extract-method-takes-ownership"
+  description: >
+    One half of an eligibility test is made too strict, then the test is split
+    into two named private methods, and only later is the other half made too
+    strict as well. The refactoring writes the first faulty comparison in its
+    new home, so blaming what the fix deletes returns the refactoring and the
+    second fault, missing the first entirely and adding a commit that changed
+    no behaviour.
+  category: "Multiple BICs, duplicate faults, and composite faults"
+  factors:
+    - "multi-bic"
+    - "single-bfc"
+    - "extract-method"
+    - "behaviour-preserving-rewrite"
+    - "tangled-bfc"
+    - "blame-unreachable-bic"
+  difficulty: "hard"
+  status: "active"
+  tier: "discriminating"
+  category_code: "S6"
+
+repository:
+  name: "SZZ-0197-extract-method-takes-ownership"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Add the discount eligibility check"
+    author: "Hana Sato <hana.sato@example.com>"
+    date: "2024-04-02T09:30:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/example/Eligibility.java"
+        content: |
+          package example;
+
+          public class Eligibility {
+              public boolean eligible(int age, int purchases) {
+                  return age >= 18 && purchases >= 3;
+              }
+          }
+
+  - id: "c1"
+    message: "Offer the discount to customers over eighteen"
+    author: "Luca Moretti <luca.moretti@example.com>"
+    date: "2024-04-05T14:10:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/Eligibility.java"
+        old: "return age >= 18 && purchases >= 3;"
+        new: "return age > 18 && purchases >= 3;"
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Note what the discount requires"
+    author: "Luca Moretti <luca.moretti@example.com>"
+    date: "2024-04-09T11:45:00Z"
+    role: "distractor"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/Eligibility.java"
+        old: |
+          public class Eligibility {
+        new: |
+          /** Decides who receives the loyalty discount. */
+          public class Eligibility {
+
+  - id: "c3"
+    message: "Split the eligibility test into named checks"
+    author: "Aiko Mori <aiko.mori@example.com>"
+    date: "2024-04-12T16:20:00Z"
+    role: "refactoring"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/Eligibility.java"
+        old: |
+          public boolean eligible(int age, int purchases) {
+                  return age > 18 && purchases >= 3;
+              }
+        new: |
+          public boolean eligible(int age, int purchases) {
+                  return oldEnough(age) && frequentEnough(purchases);
+              }
+
+              private boolean oldEnough(int age) {
+                  return age > 18;
+              }
+
+              private boolean frequentEnough(int purchases) {
+                  return purchases >= 3;
+              }
+
+  - id: "c4"
+    message: "Give the purchase-count check a clearer name"
+    author: "Aiko Mori <aiko.mori@example.com>"
+    date: "2024-04-16T10:05:00Z"
+    role: "refactoring"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/Eligibility.java"
+        old: "return oldEnough(age) && frequentEnough(purchases);"
+        new: "return oldEnough(age) && hasEnoughPurchases(purchases);"
+      - type: "replace"
+        path: "src/main/java/example/Eligibility.java"
+        old: "private boolean frequentEnough(int purchases) {"
+        new: "private boolean hasEnoughPurchases(int purchases) {"
+
+  - id: "c5"
+    message: "Require more than three purchases"
+    author: "Mei Tanaka <mei.tanaka@example.com>"
+    date: "2024-04-19T15:35:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/Eligibility.java"
+        old: "return purchases >= 3;"
+        new: "return purchases > 3;"
+        labels: ["B001", "fault"]
+
+  - id: "c6"
+    message: "Accept eighteen-year-olds and three purchases again"
+    author: "Diego Alvarez <diego.alvarez@example.com>"
+    date: "2024-04-23T13:50:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/Eligibility.java"
+        old: "return age > 18;"
+        new: "return age >= 18;"
+        labels: ["B001", "fix"]
+      - type: "replace"
+        path: "src/main/java/example/Eligibility.java"
+        old: "return purchases > 3;"
+        new: "return purchases >= 3;"
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "The loyalty discount rejects eighteen-year-olds and three-purchase customers"
+    bug_fixing_commit: "c6"
+    bug_introducing_commits: ["c1", "c5"]
+    fault:
+      commit: "c5"
+      file: "src/main/java/example/Eligibility.java"
+      entity:
+        type: "method"
+        name: "hasEnoughPurchases"
+        signature: "boolean hasEnoughPurchases(int purchases)"
+      statement: "return purchases > 3;"
+      change_type: "line_modification"
+    fix:
+      commit: "c6"
+      file: "src/main/java/example/Eligibility.java"
+      entity:
+        type: "method"
+        name: "hasEnoughPurchases"
+        signature: "boolean hasEnoughPurchases(int purchases)"
+      statement: "return purchases >= 3;"
+      fix_type: "line_modification"
+    expected_szz:
+      commit_level:
+        true_positives: ["c1", "c5"]
+        primary_observable_bic: "c5"
+        contributing_bics: ["c1"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "return age > 18;"
+          - "return purchases > 3;"
+        note: >
+          The fix deletes one line written by c3, the refactoring that moved
+          c1's faulty comparison into a private method, and one written by c5.
+          Blame therefore returns c3 and c5: a commit that changed no behaviour
+          instead of the commit that made the comparison wrong.
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3", "c4", "c5", "c6"]

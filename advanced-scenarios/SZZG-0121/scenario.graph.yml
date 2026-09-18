@@ -1,0 +1,189 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0121
+  title: A cherry-picked unit change in a file the fix never opens
+  slug: cherry-picked-unit-change-other-file
+  description: >
+    The surcharge table starts holding its rates in per mille and converts on
+    the way out, so the rate every caller reads is unchanged. That change is
+    developed on a feature branch and cherry-picked onto main. A later commit
+    on main shows the raw table value as a percentage, and only then does the
+    bug appear. The fix repairs the display, so the line it deletes belongs to
+    that commit; the unit change is in another file, and the copy of it that is
+    in the fix's history is the cherry-pick rather than the commit it came from.
+  category: "Branch, merge, cherry-pick, backport, and release branches"
+  category_code: "G4"
+  factors:
+  - multiple_bic
+  - cherry_pick
+  - origin_and_direct_bic
+  - value_flow
+  - blame_unreachable_bic
+  difficulty: advanced
+  status: active
+  tier: discriminating
+repository:
+  name: SZZG-0121-cherry-picked-unit-change-other-file
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'Add the surcharge table and the shipment'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/SurchargeTable.java
+    content: |
+      package example;
+
+      public class SurchargeTable {
+          public int ratePercent(String zone) {
+              return "remote".equals(zone) ? 12 : 3;
+          }
+      }
+  - type: write_file
+    path: src/main/java/example/Shipment.java
+    content: |
+      package example;
+
+      public class Shipment {
+          private final SurchargeTable table = new SurchargeTable();
+
+          public int surchargeCents(int amountCents, String zone) {
+              return (int) ((long) amountCents * table.ratePercent(zone) / 100);
+          }
+      }
+- id: c1
+  branch: feature-rates
+  parents:
+  - c0
+  message: 'Hold the surcharge rates in per mille'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/SurchargeTable.java
+    old: |
+      public int ratePercent(String zone) {
+              return "remote".equals(zone) ? 12 : 3;
+          }
+    new: |
+      public int ratePerMille(String zone) {
+              return "remote".equals(zone) ? 120 : 30;
+          }
+
+          public int ratePercent(String zone) {
+              return ratePerMille(zone) / 10;
+          }
+- id: r1
+  branch: main
+  parents:
+  - c0
+  message: 'Hold the surcharge rates in per mille'
+  role: bug_introducing
+  cherry_pick_of: c1
+  cherry_pick_trailer: true
+  inherit_message: true
+  inherit_author_date: true
+  operations:
+  - type: apply_patch_from
+    commit: c1
+- id: c2
+  branch: main
+  parents:
+  - r1
+  message: 'Show the surcharge rate on the shipment'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Shipment.java
+    old: |
+      public int surchargeCents(int amountCents, String zone) {
+              return (int) ((long) amountCents * table.ratePercent(zone) / 100);
+          }
+    new: |
+      public int surchargeCents(int amountCents, String zone) {
+              return (int) ((long) amountCents * table.ratePercent(zone) / 100);
+          }
+
+          public int displayedRatePercent(String zone) {
+              return table.ratePerMille(zone);
+          }
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'Show the surcharge rate as a percentage'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Shipment.java
+    old: return table.ratePerMille(zone);
+    new: return table.ratePercent(zone);
+bugs:
+- id: B001
+  title: The shipment shows a per-mille rate labelled as a percentage
+  bug_introducing_commits:
+  - commit: r1
+    role: direct
+  - commit: c2
+    role: direct
+  - commit: c1
+    role: origin
+  bug_fixing_commits:
+  - commit: c3
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: r1
+    file: src/main/java/example/SurchargeTable.java
+    statement: 'return "remote".equals(zone) ? 120 : 30;'
+    change_type: line_modification
+  - id: F002
+    commit: c2
+    file: src/main/java/example/Shipment.java
+    statement: return table.ratePerMille(zone);
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c3
+    file: src/main/java/example/Shipment.java
+    statement: return table.ratePercent(zone);
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - r1
+    - c2
+    related_but_not_correct:
+    - c1
+    notes: >
+      The bug-fixing commit c3 is on main, whose history contains the
+      cherry-pick r1 but not the feature commit c1. r1 is therefore the
+      bug-introducing commit in scope and c1 its origin; a tool that reports c1
+      has named a commit that is not an ancestor of the fix.
+scenario_design:
+  purpose: >
+    Combine a two-commit answer whose unreachable half is in a file the fix
+    never opens with a cherry-pick, so the tool must both cross files and
+    choose between the commit in the fix's history and the one it was copied
+    from.
+  key_property: >
+    The unit change keeps ratePercent answering exactly what it did, so no
+    caller notices it; c2 is the first commit to read the raw table value.
+    Blaming the line the fix deletes returns c2 alone, and the fix opens only
+    Shipment.java, so nothing in the fix points at SurchargeTable.java at all.
+    Of the two identical copies of the unit change, only r1 is an ancestor of
+    the fix.
+  evaluation_points:
+  - Whether the expected BIC set is reported exactly.
+  - Whether the cherry-pick rather than its source is reported.
+  - Whether a commit in a file the fix never opens is reached at all.
+notes:
+- The cherry-pick is generated by really applying c1's patch, as SZZG-0048 does.

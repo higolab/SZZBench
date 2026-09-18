@@ -1,0 +1,174 @@
+schema_version: graph-0.1-draft
+meta:
+  id: SZZG-0117
+  title: The unit change arrives through a merge, the consumer is written after it
+  slug: unit-change-through-a-merge
+  description: >
+    A release branch restates the poll interval in milliseconds, converting the
+    only reader at the same time, and the change reaches main through a merge.
+    A commit written afterwards computes a warning time from the constant as if
+    it were still seconds. The fix repairs that computation, so the line it
+    deletes belongs to the later commit; the unit change sits on the second
+    parent of a merge, off the first-parent history a tool is most likely to
+    walk.
+  category: "Branch, merge, cherry-pick, backport, and release branches"
+  category_code: "G4"
+  factors:
+  - multiple_bic
+  - merge
+  - release_branch
+  - value_flow
+  - blame_unreachable_bic
+  difficulty: advanced
+  status: active
+  tier: discriminating
+repository:
+  name: SZZG-0117-unit-change-through-a-merge
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'Add the poll schedule'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/PollSchedule.java
+    content: |
+      package example;
+
+      public class PollSchedule {
+          static final int INTERVAL = 30;
+
+          public int nextPollSeconds() {
+              return INTERVAL;
+          }
+      }
+- id: c1
+  branch: release
+  parents:
+  - c0
+  message: 'Express the poll interval in milliseconds'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/PollSchedule.java
+    old: |
+      static final int INTERVAL = 30;
+
+          public int nextPollSeconds() {
+              return INTERVAL;
+          }
+    new: |
+      static final int INTERVAL = 30000;
+
+          public int nextPollSeconds() {
+              return INTERVAL / 1000;
+          }
+- id: c2
+  branch: main
+  parents:
+  - c0
+  message: 'Note when the schedule is consulted'
+  role: intermediate
+  operations:
+  - type: write_file
+    path: docs/schedule.md
+    content: |
+      The scheduler consults the poll schedule once per cycle.
+- id: c3
+  branch: main
+  parents:
+  - c2
+  - c1
+  message: 'Merge the release branch'
+  role: merge
+  operations: []
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: 'Warn shortly before the next poll'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/PollSchedule.java
+    old: |
+      public int nextPollSeconds() {
+              return INTERVAL / 1000;
+          }
+    new: |
+      public int nextPollSeconds() {
+              return INTERVAL / 1000;
+          }
+
+          public int warnAfterSeconds() {
+              return INTERVAL - 5;
+          }
+- id: c5
+  branch: main
+  parents:
+  - c4
+  message: 'Warn five seconds before the poll'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/PollSchedule.java
+    old: return INTERVAL - 5;
+    new: return INTERVAL / 1000 - 5;
+bugs:
+- id: B001
+  title: The warning time is computed from a millisecond constant as if it were seconds
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  - commit: c4
+    role: direct
+  bug_fixing_commits:
+  - commit: c5
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/PollSchedule.java
+    statement: static final int INTERVAL = 30000;
+    change_type: line_modification
+  - id: F002
+    commit: c4
+    file: src/main/java/example/PollSchedule.java
+    statement: return INTERVAL - 5;
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c5
+    file: src/main/java/example/PollSchedule.java
+    statement: return INTERVAL / 1000 - 5;
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+    - c4
+scenario_design:
+  purpose: >
+    Put the blame-unreachable half of a two-commit answer on the second parent
+    of a merge, so that reaching it needs both a value-flow step and a walk off
+    the first-parent history.
+  key_property: >
+    c1 converts the constant and its only reader together, so nothing observable
+    changes when the release branch is merged. c4, written after the merge,
+    reads the constant as if it still held seconds. Blaming the line the fix
+    deletes returns c4 alone; c1 is reachable only by following INTERVAL, and
+    only by walking the merge's second parent.
+  evaluation_points:
+  - Whether the expected BIC set is reported exactly.
+  - Whether a bug-introducing commit on a merged branch is considered at all.
+  - Whether the value the fixed expression reads is followed to the commit that changed its unit.
+notes:
+- The merge c3 is clean: the release branch touches the Java file, main touches only docs.
