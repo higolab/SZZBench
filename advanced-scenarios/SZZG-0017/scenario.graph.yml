@@ -1,17 +1,17 @@
-schema_version: graph-0.1-draft
+schema_version: graph-1.0
 meta:
   id: SZZG-0017
   title: Clone diverges before fix
   slug: clone
   description: >-
-    The faulty check is copied into a second class, and a later commit renames that class and its method inside
-    the same file, so the identifiers the fix edits are not the ones the copy was made under.
+    The faulty check is copied into a second class, and a later commit renames the copied method inside that file,
+    so the method the fix edits is not the one the copy was made under.
   category: "Clone, copy propagation, and origin-vs-direct BIC"
   category_code: "G2"
   factors:
   - copy-propagation
   difficulty: advanced
-  status: draft
+  status: active
   tier: control
 repository:
   name: SZZG-0017-clone
@@ -49,17 +49,17 @@ commits:
   - type: copy_file
     from: src/main/java/example/A.java
     to: src/main/java/example/B.java
-- id: c2
-  branch: main
-  parents:
-  - c1
-  message: 'Rename the copied class and its method'
-  role: clone_divergence
-  operations:
   - type: replace
     path: src/main/java/example/B.java
     old: public class A
     new: public class B
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'Rename the copied method'
+  role: clone_divergence
+  operations:
   - type: replace
     path: src/main/java/example/B.java
     old: public boolean contains
@@ -124,8 +124,7 @@ clone_relationships:
   - c2
 scenario_design:
   purpose: >-
-    Evaluate whether a method reaches the copying commit when the copied class and method have since been renamed
-    in place.
+    Evaluate whether a method reaches the copying commit when the copied method has since been renamed in place.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
   required_extensions_from_source: >-

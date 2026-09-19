@@ -1,4 +1,4 @@
-schema_version: graph-0.1-draft
+schema_version: graph-1.0
 meta:
   id: SZZG-0091
   title: Multiple BICs with partial revert reintroducing one fault
@@ -13,7 +13,7 @@ meta:
   - single-fault-reintroduced
   - re-bic
   difficulty: advanced
-  status: draft
+  status: active
   tier: control
 repository:
   name: SZZG-0091-multiple-bics-with-partial-revert-reintroducing-one-fault

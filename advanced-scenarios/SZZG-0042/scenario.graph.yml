@@ -1,4 +1,4 @@
-schema_version: graph-0.1-draft
+schema_version: graph-1.0
 meta:
   id: SZZG-0042
   title: BFC is a merge commit
@@ -12,7 +12,7 @@ meta:
   - bug-fixing-commit
   - branch
   difficulty: advanced
-  status: draft
+  status: active
   tier: control
 repository:
   name: SZZG-0042-bfc-merge-commit

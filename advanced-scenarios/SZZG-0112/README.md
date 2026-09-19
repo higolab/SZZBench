@@ -34,10 +34,6 @@ The non-UTF-8 file is modeled with `write_binary_file` so that invalid UTF-8 byt
 
 ---
 
-## Draft status
-
-This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
-
 ## Files
 
 ```text

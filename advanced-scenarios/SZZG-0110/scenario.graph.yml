@@ -1,4 +1,4 @@
-schema_version: graph-0.1-draft
+schema_version: graph-1.0
 meta:
   id: SZZG-0110
   title: Empty intermediate commit
@@ -11,7 +11,7 @@ meta:
   - single-bfc
   - boundary-condition
   difficulty: advanced
-  status: draft
+  status: active
   tier: control
 repository:
   name: SZZG-0110-empty-intermediate-commit

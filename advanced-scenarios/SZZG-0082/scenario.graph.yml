@@ -1,4 +1,4 @@
-schema_version: graph-0.1-draft
+schema_version: graph-1.0
 meta:
   id: SZZG-0082
   title: Rebase with generated file update
@@ -13,7 +13,7 @@ meta:
   - generated-code-noise
   - direct-bic
   difficulty: advanced
-  status: draft
+  status: active
   tier: control
 repository:
   name: SZZG-0082-rebase-with-generated-file-update

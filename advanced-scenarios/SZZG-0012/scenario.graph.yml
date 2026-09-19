@@ -1,4 +1,4 @@
-schema_version: graph-0.1-draft
+schema_version: graph-1.0
 meta:
   id: SZZG-0012
   title: BFC performs method extraction and bug fix in the same commit
@@ -13,7 +13,7 @@ meta:
   - extract-method
   - mixed-bfc
   difficulty: advanced
-  status: draft
+  status: active
   tier: control
 repository:
   name: SZZG-0012-bfc-extract-method-and-fix

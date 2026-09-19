@@ -1,4 +1,4 @@
-schema_version: graph-0.1-draft
+schema_version: graph-1.0
 meta:
   id: SZZG-0011
   title: Bug introduced inside a refactoring commit
@@ -13,7 +13,7 @@ meta:
   - mixed-change
   - rename-method
   difficulty: advanced
-  status: draft
+  status: active
   tier: control
 repository:
   name: SZZG-0011-bug-introduced-inside-refactoring

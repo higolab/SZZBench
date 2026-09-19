@@ -1,4 +1,4 @@
-schema_version: graph-0.1-draft
+schema_version: graph-1.0
 meta:
   id: SZZG-0016
   title: Original and clone fixed together
@@ -14,7 +14,7 @@ meta:
   - boundary-condition
   - copy-propagation
   difficulty: advanced
-  status: draft
+  status: active
   tier: control
 repository:
   name: SZZG-0016-original-clone

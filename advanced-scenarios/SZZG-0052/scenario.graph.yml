@@ -1,4 +1,4 @@
-schema_version: graph-0.1-draft
+schema_version: graph-1.0
 meta:
   id: SZZG-0052
   title: Criss-cross merge
@@ -13,7 +13,7 @@ meta:
   - criss-cross-merge
   - multiple-merge-bases
   difficulty: advanced
-  status: draft
+  status: active
   tier: control
 repository:
   name: SZZG-0052-criss-cross-merge

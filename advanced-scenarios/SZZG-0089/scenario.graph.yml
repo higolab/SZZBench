@@ -1,4 +1,4 @@
-schema_version: graph-0.1-draft
+schema_version: graph-1.0
 meta:
   id: SZZG-0089
   title: Revert of revert with conflict resolution
@@ -13,7 +13,7 @@ meta:
   - intermediate-change
   - re-bic
   difficulty: advanced
-  status: draft
+  status: active
   tier: control
 repository:
   name: SZZG-0089-revert-of-revert-with-conflict-resolution

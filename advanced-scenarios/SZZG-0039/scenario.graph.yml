@@ -1,4 +1,4 @@
-schema_version: graph-0.1-draft
+schema_version: graph-1.0
 meta:
   id: SZZG-0039
   title: Prerequisite BIC and symptom BIC fixed together
@@ -14,7 +14,7 @@ meta:
   - causal-chain
   - single-bfc
   difficulty: advanced
-  status: draft
+  status: active
   tier: control
 repository:
   name: SZZG-0039-multi-bic-prerequisite-symptom

@@ -1,4 +1,4 @@
-schema_version: graph-0.1-draft
+schema_version: graph-1.0
 meta:
   id: SZZG-0038
   title: One directly blamed BIC and one context-only BIC
@@ -13,7 +13,7 @@ meta:
   - context-dependent
   - partial-observability
   difficulty: advanced
-  status: draft
+  status: active
   tier: discriminating
 repository:
   name: SZZG-0038-multi-bic-context-only

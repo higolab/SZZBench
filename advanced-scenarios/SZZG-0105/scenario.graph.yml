@@ -1,4 +1,4 @@
-schema_version: graph-0.1-draft
+schema_version: graph-1.0
 meta:
   id: SZZG-0105
   title: Defensive check BFC masks an earlier root-cause BIC
@@ -12,7 +12,7 @@ meta:
   - root-cause-not-touched
   - context-dependent
   difficulty: advanced
-  status: draft
+  status: active
   tier: control
 repository:
   name: SZZG-0105-defensive-check-masks-root-cause

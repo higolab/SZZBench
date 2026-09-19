@@ -1,4 +1,4 @@
-schema_version: graph-0.1-draft
+schema_version: graph-1.0
 meta:
   id: SZZG-0070
   title: Rebase combines multiple BICs into one commit
@@ -14,7 +14,7 @@ meta:
   - multiple-origin-bic
   - direct-bic
   difficulty: advanced
-  status: draft
+  status: active
   tier: control
 repository:
   name: SZZG-0070-rebase-combines-multiple-bics-into-one-commit

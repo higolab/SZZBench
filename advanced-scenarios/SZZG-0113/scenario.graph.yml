@@ -1,4 +1,4 @@
-schema_version: graph-0.1-draft
+schema_version: graph-1.0
 meta:
   id: SZZG-0113
   title: Huge file
@@ -10,7 +10,7 @@ meta:
   factors:
   - generated-file
   difficulty: advanced
-  status: draft
+  status: active
   tier: control
 repository:
   name: SZZG-0113-huge-file

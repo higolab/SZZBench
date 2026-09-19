@@ -1,4 +1,4 @@
-schema_version: graph-0.1-draft
+schema_version: graph-1.0
 meta:
   id: SZZG-0003
   title: File rename between BIC and BFC
@@ -11,7 +11,7 @@ meta:
   factors:
   - file-rename
   difficulty: advanced
-  status: draft
+  status: active
   tier: control
 repository:
   name: SZZG-0003-file-rename-between-bic-and-bfc
@@ -37,7 +37,7 @@ commits:
   operations:
   - type: write_file
     path: src/main/java/example/OldRange.java
-    content: "package example;\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+    content: "package example;\npublic class OldRange {\n  public boolean contains(int value, int min, int max) {\n    return\
       \ value >= min && value <= max;\n  }\n}\n"
 - id: c1
   branch: main
@@ -60,6 +60,10 @@ commits:
   - type: rename_file
     from: src/main/java/example/OldRange.java
     to: src/main/java/example/Range.java
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: public class OldRange {
+    new: public class Range {
 - id: c3
   branch: main
   parents:

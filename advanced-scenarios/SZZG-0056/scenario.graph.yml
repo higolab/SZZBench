@@ -1,4 +1,4 @@
-schema_version: graph-0.1-draft
+schema_version: graph-1.0
 meta:
   id: SZZG-0056
   title: Main fix rebased onto release branch
@@ -14,7 +14,7 @@ meta:
   - rebased-bfc
   - multi-bfc
   difficulty: advanced
-  status: draft
+  status: active
   tier: control
 repository:
   name: SZZG-0056-main-fix-rebased-onto-release-branch

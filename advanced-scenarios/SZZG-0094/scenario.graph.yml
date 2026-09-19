@@ -1,4 +1,4 @@
-schema_version: graph-0.1-draft
+schema_version: graph-1.0
 meta:
   id: SZZG-0094
   title: BIC and BFC belong to the same issue commit series
@@ -9,7 +9,7 @@ meta:
   factors:
   - issue-evidence
   difficulty: advanced
-  status: draft
+  status: active
   tier: control
 repository:
   name: SZZG-0094-bic-bfc-issue-commit

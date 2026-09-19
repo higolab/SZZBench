@@ -78,10 +78,6 @@ against the intervals `(0,10)`, `(-5,5)`, `(7,7)`, `(MIN_VALUE,MAX_VALUE)`, `(MI
 
 ---
 
-## Draft status
-
-This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
-
 ## Files
 
 ```text

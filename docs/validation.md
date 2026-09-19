@@ -256,6 +256,7 @@ With `--simulate`:
 | GW451 | warning | an origin BIC that the **default** variant does not list under `related_origins`, so predicting it is a plain false positive instead of a recognised origin ([decisions/origin-direct-contract.md](decisions/origin-direct-contract.md) D2) |
 | GW452 | warning | a scenario with an origin BIC and no `origin-aware` evaluation variant, so a tool that reports origins as context cannot be scored (D3) |
 | GW453 | warning | an `origin-aware` variant that does not accept the origin, so the variant's name promises what its policy does not deliver (D3) |
+| GW454 | warning | the sibling README's `## Expected history` block contradicts the scenario: a commit's operation list differs from `commits[].operations`, or the block names a commit the scenario does not define. Only the parenthesised operation list is compared, because only that part is mechanically derivable; READMEs that describe the history in prose have no such block and are not linted |
 
 Ghost invariants (the graph counterparts of W420/W421) are **not**
 implemented: `graph_simulator.simulate_graph_scenario` does not expose
@@ -297,4 +298,5 @@ with the index path.
 | IE041 | error | the entry title differs from the scenario's `meta.title` |
 | IE043 | error | an index entry's `factors` differ from the scenario's `meta.factors`; the index repeats a field that changes with the scenario, which is how it drifted before ([issue #19](https://github.com/YoshikiHigo/SZZBench/issues/19)) |
 | IE044 | error | an index entry's `factors`, or the scenario's `meta.factors`, is not a list; neither side is validated before IE043 compares them |
+| IE045 | error | an index entry's `status` differs from the scenario's `meta.status` |
 | IE042 | error | the scenario file of an entry cannot be loaded |

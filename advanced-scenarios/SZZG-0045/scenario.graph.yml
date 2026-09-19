@@ -1,4 +1,4 @@
-schema_version: graph-0.1-draft
+schema_version: graph-1.0
 meta:
   id: SZZG-0045
   title: BIC in merge commit
@@ -11,7 +11,7 @@ meta:
   - merge
   - merge-commit-bic
   difficulty: advanced
-  status: draft
+  status: active
   tier: control
 repository:
   name: SZZG-0045-bic-in-merge-commit

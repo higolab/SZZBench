@@ -1,4 +1,4 @@
-schema_version: graph-0.1-draft
+schema_version: graph-1.0
 meta:
   id: SZZG-0022
   title: Copy propagation with direct and origin BIC evaluation variants
@@ -15,7 +15,7 @@ meta:
   - evaluation-variant
   - relaxed-with-credit
   difficulty: advanced
-  status: draft
+  status: active
   tier: control
 repository:
   name: SZZG-0022-copy-propagation-direct-origin-evaluation-variants

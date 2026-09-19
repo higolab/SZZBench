@@ -1,4 +1,4 @@
-schema_version: graph-0.1-draft
+schema_version: graph-1.0
 meta:
   id: SZZG-0030
   title: Attempted fix followed by follow-up fix
@@ -13,7 +13,7 @@ meta:
   - follow-up-fix
   - incorrect-fix
   difficulty: advanced
-  status: draft
+  status: active
   tier: control
 repository:
   name: SZZG-0030-follow-up-fix-bfc

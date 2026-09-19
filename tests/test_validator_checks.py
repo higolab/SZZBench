@@ -773,3 +773,62 @@ def test_index_factors_of_the_wrong_type_are_reported_not_coerced(tmp_path):
     # and the scenario side is just as unvalidated
     write(True)
     assert [f.code for f in validate_index_file(index(["boundary-condition"]), root, "scenario.yml").findings] == ["IE044"]
+
+
+def test_index_status_must_match_the_scenario(tmp_path):
+    """IE045: status is mirrored in the index too, and drifted the same way."""
+    from szzbench.validator import validate_index_file
+
+    root = tmp_path / "scenarios"
+    (root / "SZZ-0001").mkdir(parents=True)
+    scenario = graph_scenario()
+    scenario["meta"] = {"id": "SZZ-0001", "title": "A scenario", "status": "active"}
+    (root / "SZZ-0001" / "scenario.yml").write_text(yaml.safe_dump(scenario, sort_keys=False))
+
+    def index(status):
+        path = tmp_path / "index.yml"
+        path.write_text(yaml.safe_dump(
+            {"scenarios": [{"id": "SZZ-0001", "title": "A scenario", "status": status}]}, sort_keys=False))
+        return path
+
+    assert validate_index_file(index("active"), root, "scenario.yml").findings == []
+    stale = validate_index_file(index("draft"), root, "scenario.yml")
+    assert [f.code for f in stale.findings] == ["IE045"]
+
+
+def test_readme_expected_history_must_match_the_operations(tmp_path):
+    """GW454: the README's history block is a copy of data that lives in the YAML.
+
+    This is how SZZG-0001/0003/0017 went stale: repairing their histories for
+    the graph-1.0 freeze changed the operations, and nothing read the README.
+    """
+    from szzbench.graph_validator import validate_graph_scenario_file
+
+    scenario = graph_scenario()
+    scenario["meta"]["id"] = "SZZG-9900"
+    path = write_yaml(tmp_path / "SZZG-9900" / "scenario.graph.yml", scenario)
+    readme = path.with_name("README.md")
+
+    def lint_with(history: str) -> list[str]:
+        readme.write_text(f"# SZZG-9900\n\n## Expected history\n\n```text\n{history}\n```\n")
+        _, result = validate_graph_scenario_file(path, strict_paths=True, lint=True)
+        return [f.code for f in result.findings if f.code == "GW454"]
+
+    faithful = (f"c0: create initial state (write_file {JAVA})\n"
+                f"c1: introduce bug (replace {JAVA})\n"
+                f"c2: fix bug (replace {JAVA})")
+    assert lint_with(faithful) == []
+
+    # an operation the README does not mention
+    assert lint_with(faithful.replace(f"c1: introduce bug (replace {JAVA})",
+                                      "c1: introduce bug (write_file other.java)")) == ["GW454"]
+    # a commit the scenario does not define
+    assert lint_with(faithful + "\nc9: do something (replace x.java)") == ["GW454"]
+    # prose READMEs carry no such block and are not linted
+    readme.write_text("# SZZG-9900\n\nThe history is described in prose here.\n")
+    _, result = validate_graph_scenario_file(path, strict_paths=True, lint=True)
+    assert [f.code for f in result.findings if f.code == "GW454"] == []
+    # and a missing README is not an error
+    readme.unlink()
+    _, result = validate_graph_scenario_file(path, strict_paths=True, lint=True)
+    assert [f.code for f in result.findings if f.code == "GW454"] == []

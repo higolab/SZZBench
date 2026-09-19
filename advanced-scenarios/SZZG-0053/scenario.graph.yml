@@ -1,4 +1,4 @@
-schema_version: graph-0.1-draft
+schema_version: graph-1.0
 meta:
   id: SZZG-0053
   title: Release-branch-only bug
@@ -10,7 +10,7 @@ meta:
   - release-branch
   - branch-only-bug
   difficulty: advanced
-  status: draft
+  status: active
   tier: control
 repository:
   name: SZZG-0053-release-branch-only-bug

@@ -35,10 +35,6 @@ The BFC contains a misleading developer hint that must be represented separately
 
 ---
 
-## Draft status
-
-This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
-
 ## Files
 
 ```text

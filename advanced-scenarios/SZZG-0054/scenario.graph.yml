@@ -1,4 +1,4 @@
-schema_version: graph-0.1-draft
+schema_version: graph-1.0
 meta:
   id: SZZG-0054
   title: Fixed on main but unfixed on release
@@ -12,7 +12,7 @@ meta:
   - partial-fix-propagation
   - unfixed-release
   difficulty: advanced
-  status: draft
+  status: active
   tier: control
 repository:
   name: SZZG-0054-fixed-on-main-unfixed-on-release

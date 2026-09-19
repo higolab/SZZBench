@@ -34,10 +34,6 @@ The BFC combines a normal source-code fix with a generated artifact update, whic
 
 ---
 
-## Draft status
-
-This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
-
 ## Files
 
 ```text

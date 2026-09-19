@@ -76,7 +76,7 @@ szzbench verify-graph
 szzbench new-graph-scenario
 ```
 
-`scenario.graph.yml` is more expressive than the normal `scenario.yml`, but it is still positioned as an evolving draft schema.
+`scenario.graph.yml` is more expressive than the normal `scenario.yml`. Its schema is no longer a draft: it is versioned `graph-1.0`, and `docs/decisions/vocabulary.md` §4 records the bar it was measured against.
 
 ### Scenario schema boundary policy
 
@@ -655,7 +655,7 @@ This creates a ZIP file that excludes files not tracked by Git, such as `node_mo
 
 ## Current notes
 
-- `scenario.graph.yml` is more expressive than the normal `scenario.yml`, but it is still an evolving draft schema.
+- `scenario.graph.yml` is more expressive than the normal `scenario.yml`; its schema is versioned `graph-1.0` and is no longer a draft (`docs/decisions/vocabulary.md` §4).
 - For Graph scenarios, both `validate-graph --simulate` and `verify-graph` are recommended because the history structures and oracles are complex.
 - Generated repositories are derived artifacts, so they should generally not be tracked by Git.
 - SZZBench is not intended to replace large real-project-based oracles. It is a complementary benchmark for checking SZZ failure modes with small, controlled histories.
@@ -742,7 +742,7 @@ szzbench verify-graph
 szzbench new-graph-scenario
 ```
 
-`scenario.graph.yml` は、通常の `scenario.yml` より表現力が高い一方で、まだ draft schema として発展中の位置付けです。
+`scenario.graph.yml` は、通常の `scenario.yml` より表現力が高いスキーマです。すでに draft ではなく、バージョンは `graph-1.0` です。凍結時に満たした基準は `docs/decisions/vocabulary.md` の §4 に記録しています。
 
 ## ディレクトリ構成
 
@@ -1252,7 +1252,7 @@ git archive --format=zip --prefix=SZZBench/ --output=SZZBench_source.zip HEAD
 
 ## 現在の注意点
 
-- `scenario.graph.yml` は通常の `scenario.yml` より表現力が高いですが、まだ発展中の draft schema です。
+- `scenario.graph.yml` は通常の `scenario.yml` より表現力が高く、スキーマは draft ではなくバージョン `graph-1.0` です（`docs/decisions/vocabulary.md` §4）。
 - Graph シナリオでは、履歴構造や oracle が複雑なため、`validate-graph --simulate` と `verify-graph` の両方で確認することを推奨します。
 - 生成されたリポジトリは派生物なので、基本的には Git 管理しません。
 - SZZBench は、実プロジェクト由来の大規模 oracle を置き換えるものではありません。SZZ の failure mode を小さく制御された履歴で確認するための補助的なベンチマークです。
