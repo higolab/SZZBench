@@ -139,8 +139,9 @@ scenario_design:
     tree at the BFC and displayName keeps returning null.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: defensive_fix, root_cause_not_touched, context_dependent;
-    operations: write_file, replace.'
+  required_extensions_from_source: >-
+    This scenario uses factors: defensive-fix, root-cause-not-touched, context-dependent; operations: write_file,
+    replace.
   evaluation_points:
   - Whether SZZ reports c1, the commit that introduced the root cause.
   - Whether SZZ avoids reporting c0, which line-based blame at BFC^ reaches.

@@ -3,8 +3,9 @@ meta:
   id: SZZG-0040
   title: Multiple BICs where one true BIC is not directly touched by the BFC
   slug: multi-bic-untouched-root-cause
-  description: Evaluates multiple bics where one true bic is not directly touched by the bfc and checks whether SZZ identifies
-    the expected bug-introducing commit set.
+  description: >-
+    The fix inlines the retry limit and narrows the retry condition, so the commit that raised the limit is on no
+    line the fix deletes.
   category: "Multiple BICs, multiple BFCs, and partial fixes"
   category_code: "G3"
   factors:
@@ -75,7 +76,7 @@ commits:
     new: return status >= 500 && attempts < 3;
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Client errors are retried, and too many times
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -108,12 +109,12 @@ expected_szz:
     - c1
     - c2
 scenario_design:
-  purpose: Evaluate multiple bics where one true bic is not directly touched by the bfc and whether SZZ identifies the expected
-    bug-introducing commit set.
+  purpose: Evaluate whether a method reports a bug-introducing commit that is on no line the fix deletes.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: multiple_bic, not_directly_touched_by_fix, context_dependent;
-    operations: replace, write_file.'
+  required_extensions_from_source: >-
+    This scenario uses factors: multi-bic, not-directly-touched-by-fix, context-dependent; operations: replace,
+    write_file.
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
   - Whether structural or contextual history is handled according to the scenario factors.

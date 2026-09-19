@@ -120,7 +120,8 @@ scenario_design:
     line, so it can carry no blame.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: chmod; operations: write_file, chmod, replace.'
+  required_extensions_from_source: >-
+    This scenario uses factors: file-mode-change; operations: write_file, chmod, replace.
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
   - Whether the mode-only commit c2 between the BIC and the BFC is not reported as the BIC.

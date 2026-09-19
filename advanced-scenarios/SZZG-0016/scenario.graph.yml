@@ -130,7 +130,7 @@ clone_relationships:
   origin_commit: c0
   copy_commit: c1
 scenario_design:
-  purpose: Evaluate Original and clone fixed together and whether SZZ identifies the expected bug-introducing commit set.
+  purpose: Evaluate whether a method reports the copy rather than the original when a single fix repairs both.
   key_property: >-
     The single BFC c2 deletes the same statement text from two files whose line histories end in two different
     commits: the A.java line reaches c0, the B.java line reaches the copy commit c1. A tool that scores the BFC
@@ -141,8 +141,8 @@ scenario_design:
     statement is copied verbatim, which is what copy-aware blame has to detect.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: faults, clone_relationships; operations: write_file, copy_file,
-    replace.'
+  required_extensions_from_source: >-
+    This scenario uses factors: boundary-condition, copy-propagation; operations: write_file, copy_file, replace.
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
   - Whether structural or contextual history is handled according to the scenario factors.

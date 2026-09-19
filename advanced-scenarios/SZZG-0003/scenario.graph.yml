@@ -3,8 +3,9 @@ meta:
   id: SZZG-0003
   title: File rename between BIC and BFC
   slug: file-rename-between-bic-and-bfc
-  description: Evaluates file rename between bic and bfc and checks whether SZZ identifies the expected bug-introducing commit
-    set.
+  description: >-
+    An intermediate commit renames the class between the fault and the fix, so reaching the bug-introducing commit
+    means following the file across the rename.
   category: "Refactoring, move, rename, and semantic rewrite"
   category_code: "G1"
   factors:
@@ -72,7 +73,7 @@ commits:
     new: return value >= min && value <= max;
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: The range check rejects values equal to its bounds
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -97,10 +98,11 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: Evaluate File rename between BIC and BFC and whether SZZ identifies the expected bug-introducing commit set.
+  purpose: Evaluate whether a method follows a file across a rename that happened between the fault and the fix.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: rename_file; operations: write_file, replace, rename_file.'
+  required_extensions_from_source: >-
+    This scenario uses factors: file-rename; operations: write_file, replace, rename_file.
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
   - Whether structural or contextual history is handled according to the scenario factors.

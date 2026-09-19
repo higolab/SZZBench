@@ -195,8 +195,8 @@ scenario_design:
     so the oracle is the union {c1, c2} and no faulty copy remains at HEAD.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: method_move, copy_propagation, bug_instances; operations:
-    write_file, replace.'
+  required_extensions_from_source: >-
+    This scenario uses factors: method-move, copy-propagation; operations: write_file, replace.
   evaluation_points:
   - Whether SZZ identifies c1 as the BIC of the moved instance despite the move in c2.
   - Whether SZZ also identifies c2 as the BIC of the instance its copy created, rather than treating the whole

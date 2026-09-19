@@ -3,8 +3,9 @@ meta:
   id: SZZG-0009
   title: Intermediate method extraction between BIC and BFC
   slug: intermediate-method-extraction
-  description: Evaluates intermediate method extraction between bic and bfc and checks whether SZZ identifies the expected
-    bug-introducing commit set.
+  description: >-
+    A refactoring commit extracts the threshold test into its own method between the fault and the fix, so the line
+    the fix repairs lives in a method that did not exist when the fault was written.
   category: "Refactoring, move, rename, and semantic rewrite"
   category_code: "G1"
   factors:
@@ -79,7 +80,7 @@ commits:
     new: return subtotal >= 5000;
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Orders exactly at the free-shipping threshold are charged shipping
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -104,12 +105,14 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: Evaluate intermediate method extraction between bic and bfc and whether SZZ identifies the expected bug-introducing
-    commit set.
+  purpose: >-
+    Evaluate whether a method reaches the fault when the line it was written on has since been extracted into a
+    new method.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: intermediate_refactoring, extract_method, line_history_break;
-    operations: insert_after, replace, write_file.'
+  required_extensions_from_source: >-
+    This scenario uses factors: intermediate-refactoring, extract-method, line-history-break; operations: insert_after,
+    replace, write_file.
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
   - Whether structural or contextual history is handled according to the scenario factors.

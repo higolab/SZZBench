@@ -179,7 +179,8 @@ scenario_design:
     reached by the deleted lines over-reports c1.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: delete_file; operations: write_file, replace, delete_file.'
+  required_extensions_from_source: >-
+    This scenario uses factors: file-deletion; operations: write_file, replace, delete_file.
   evaluation_points:
   - Whether SZZ identifies c0 as the BIC for the deleted faulty file.
   - Whether SZZ handles a file deletion as the complete fix at all.

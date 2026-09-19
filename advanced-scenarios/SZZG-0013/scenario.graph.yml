@@ -3,8 +3,9 @@ meta:
   id: SZZG-0013
   title: Semantic-preserving rewrite between BIC and BFC
   slug: semantic-preserving-rewrite
-  description: Evaluates semantic-preserving rewrite between bic and bfc and checks whether SZZ identifies the expected bug-introducing
-    commit set.
+  description: >-
+    A behaviour-preserving rewrite turns the condition into an if statement between the fault and the fix, so blame
+    on the repaired line returns the rewrite.
   category: "Refactoring, move, rename, and semantic rewrite"
   category_code: "G1"
   factors:
@@ -75,7 +76,7 @@ commits:
     new: if (age >= 18) {
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Eighteen-year-olds are not treated as adults
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -100,12 +101,11 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: Evaluate semantic-preserving rewrite between bic and bfc and whether SZZ identifies the expected bug-introducing
-    commit set.
+  purpose: Evaluate whether a method looks past a behaviour-preserving rewrite that owns the repaired line.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: intermediate_rewrite, formatting, line_history_break; operations:
-    replace, write_file.'
+  required_extensions_from_source: >-
+    This scenario uses factors: intermediate-rewrite, formatting, line-history-break; operations: replace, write_file.
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
   - Whether structural or contextual history is handled according to the scenario factors.

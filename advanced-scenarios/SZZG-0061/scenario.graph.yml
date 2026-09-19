@@ -3,8 +3,9 @@ meta:
   id: SZZG-0061
   title: Cherry-picked BIC appears as duplicate commits on two branches
   slug: cherry-picked-bic-duplicates
-  description: Evaluates cherry-picked bic appears as duplicate commits on two branches and checks whether SZZ identifies
-    the expected bug-introducing commit set.
+  description: >-
+    The same change exists as two commits, one per branch, and only the copy in the fix's own history is the bug-introducing
+    commit.
   category: "Branch, merge, cherry-pick, backport, and release branches"
   category_code: "G4"
   factors:
@@ -76,7 +77,7 @@ commits:
     new: 'return ok ? 200 : 500;'
 bugs:
 - id: B001
-  title: Synthetic graph scenario bug
+  title: Server errors are reported as client errors
   bug_introducing_commits:
   - commit: c2
     role: direct
@@ -124,12 +125,11 @@ expected_szz:
         reason: origin_bic
         credit: 0.5
 scenario_design:
-  purpose: Evaluate cherry-picked bic appears as duplicate commits on two branches and whether SZZ identifies the expected
-    bug-introducing commit set.
+  purpose: Evaluate whether a method reports the copy of a cherry-picked commit that is in the fix's own history.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: cherry_pick, duplicate_patch, non_linear_history; operations:
-    replace, write_file.'
+  required_extensions_from_source: >-
+    This scenario uses factors: cherry-pick, duplicate-patch, non-linear-history; operations: replace, write_file.
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
   - Whether structural or contextual history is handled according to the scenario factors.

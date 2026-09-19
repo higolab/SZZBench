@@ -3,8 +3,9 @@ meta:
   id: SZZG-0035
   title: One BIC causes multiple bug symptoms
   slug: bic-bug
-  description: Evaluates one bic causes multiple bug symptoms and checks whether SZZ identifies the expected bug-introducing
-    commit set.
+  description: >-
+    One faulty helper is reached from two call sites and each site is repaired by its own commit, so the scenario
+    carries two bug entries with the same bug-introducing commit.
   category: "Multiple BICs, multiple BFCs, and partial fixes"
   category_code: "G3"
   factors:
@@ -130,10 +131,12 @@ bug_groups:
   - B001
   - B002
 scenario_design:
-  purpose: Evaluate One BIC causes multiple bug symptoms and whether SZZ identifies the expected bug-introducing commit set.
+  purpose: >-
+    Evaluate whether a method reports the same bug-introducing commit for two symptoms fixed by different commits.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses factors: root_cause; operations: write_file, replace.'
+  required_extensions_from_source: >-
+    This scenario uses factors: root-cause; operations: write_file, replace.
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
   - Whether structural or contextual history is handled according to the scenario factors.
