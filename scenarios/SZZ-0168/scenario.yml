@@ -63,13 +63,14 @@ commits:
       package example;
 
       import java.time.LocalDate;
-      import org.junit.jupiter.api.Test;
-      import static org.junit.jupiter.api.Assertions.assertEquals;
 
       public class EventDateParserTest {
-        @Test
         public void parsesIsoWebhookDate() {
-          assertEquals(LocalDate.of(2024, 3, 5), new EventDateParser().parseWebhookDate("2024-03-05"));
+          LocalDate expected = LocalDate.of(2024, 3, 5);
+          LocalDate actual = new EventDateParser().parseWebhookDate("2024-03-05");
+          if (!expected.equals(actual)) {
+            throw new AssertionError("parseWebhookDate(\"2024-03-05\") returned " + actual + ", expected " + expected);
+          }
         }
       }
 - id: c3

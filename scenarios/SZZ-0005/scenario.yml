@@ -36,6 +36,15 @@ commits:
     role: "initial"
     operations:
       - type: "write_file"
+        path: "src/main/java/example/Required.java"
+        content: |
+          package example;
+
+          public @interface Required {
+              boolean value();
+          }
+
+      - type: "write_file"
         path: "src/main/java/example/UserRequest.java"
         content: |
           package example;
