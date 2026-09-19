@@ -12,7 +12,7 @@ Evaluates a case where the BFC is a small parser change and the specific cause i
 ## Notes
 
 - Moved from SZZG-0114 after applying the scenario.yml / scenario.graph.yml boundary policy.
-- `build_system` is `none`, as in every SZZBench scenario, so the regression test at `c2` is textual
+- This scenario declares `repository.build_system: none`, so the regression test at `c2` is textual
   evidence a tool reads rather than a suite anyone runs. It therefore asserts with a plain
   `AssertionError` carrying the expected and actual dates, instead of importing JUnit, which would
   only make the snapshot uncompilable.
