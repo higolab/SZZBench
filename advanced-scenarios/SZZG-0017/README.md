@@ -12,8 +12,8 @@ Evaluate Clone diverges before fix and whether SZZ identifies the expected bug-i
 
 ```text
 c0: introduce origin bug (write_file src/main/java/example/A.java)
-c1: introduce bug (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)
-c2: diverge clone (replace src/main/java/example/B.java; replace src/main/java/example/B.java)
+c1: introduce bug (copy_file src/main/java/example/A.java -> src/main/java/example/B.java; replace src/main/java/example/B.java)
+c2: diverge clone (replace src/main/java/example/B.java)
 c3: fix bug (replace src/main/java/example/B.java)
 ```
 
@@ -34,10 +34,6 @@ This history requires graph-aware scenario semantics that are difficult to expre
 - Whether the expected_szz evaluation policy is applied correctly.
 
 ---
-
-## Draft status
-
-This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
 
 ## Files
 

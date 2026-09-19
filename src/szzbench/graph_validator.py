@@ -64,7 +64,7 @@ def validate_graph_scenario_file(
     if simulate and not result.has_errors():
         result.extend(simulate_graph_scenario(data))
     if lint and not result.has_errors():
-        result.extend(lint_graph_scenario(data))
+        result.extend(lint_graph_scenario(data, scenario_path=path))
     return data, result
 
 
@@ -423,12 +423,15 @@ def _validate_rewrite_references(
 
 # --- opt-in lints (graph suite) ---------------------------------------------
 
-def lint_graph_scenario(data: dict[str, Any]) -> ValidationResult:
+def lint_graph_scenario(data: dict[str, Any], *, scenario_path: Path | None = None) -> ValidationResult:
     """Run the GW4xx lints on a statically valid graph scenario.
 
     Ghost invariants (add-only BFC / delete-only BIC) are not implemented for
     the graph suite because graph_simulator does not expose per-commit
     snapshots.
+
+    ``scenario_path`` enables the lints that compare the scenario against its
+    sibling README; without it they are skipped.
     """
     result = ValidationResult()
     meta = data.get("meta") if isinstance(data.get("meta"), dict) else {}
@@ -455,7 +458,75 @@ def lint_graph_scenario(data: dict[str, Any]) -> ValidationResult:
     lint_leakage(commits, bfc_ids, result, prefix="GW")
     _lint_approximate_operations(commits, result)
     _lint_origin_coverage(bugs, data, result)
+    if scenario_path is not None:
+        _lint_readme_history(commits, scenario_path, result)
     return result
+
+
+#: A line of a README ``## Expected history`` block: ``c1: introduce bug (replace A.java)``.
+README_HISTORY_LINE = re.compile(r"^(?P<id>[A-Za-z]\w*): (?P<phrase>[^(]+?) \((?P<ops>.*)\)\s*$")
+README_HISTORY_BLOCK = re.compile(r"^## Expected history\s*\n+```text\n(?P<body>.*?)\n```", re.S | re.M)
+
+
+def _readme_operation_summary(commit: dict[str, Any]) -> str:
+    """Render a commit's operations the way the README blocks spell them."""
+    parts = []
+    for op in commit.get("operations") or []:
+        if not isinstance(op, dict):
+            continue
+        kind = op.get("type")
+        if kind in ("rename_file", "copy_file", "move_file"):
+            parts.append(f"{kind} {op.get('from')} -> {op.get('to')}")
+        elif "path" in op:
+            parts.append(f"{kind} {op['path']}")
+        else:
+            parts.append(str(kind))
+    return "; ".join(parts)
+
+
+def _lint_readme_history(commits: list[dict[str, Any]], scenario_path: Path, result: ValidationResult) -> None:
+    """GW454: the README's ``## Expected history`` block contradicts the scenario.
+
+    Only the parenthesised operation list is checked, because that part is
+    mechanically derivable from ``commits``; the surrounding phrase is prose and
+    is left to the author.  READMEs that describe the history in prose instead
+    of this shape have no such block and are not linted.  The block is a copy of
+    data that lives in the scenario file, so it drifts silently whenever a
+    commit's operations change -- which is exactly how SZZG-0001, SZZG-0003 and
+    SZZG-0017 went stale when their histories were repaired for the graph-1.0
+    freeze.
+    """
+    readme = scenario_path.with_name("README.md")
+    try:
+        text = readme.read_text(encoding="utf-8")
+    except OSError:
+        return
+    block = README_HISTORY_BLOCK.search(text)
+    if block is None:
+        return
+    by_id = {c["id"]: c for c in commits if isinstance(c.get("id"), str)}
+    for line in block.group("body").splitlines():
+        if not line.strip():
+            continue
+        match = README_HISTORY_LINE.match(line)
+        if match is None:
+            continue
+        commit = by_id.get(match.group("id"))
+        if commit is None:
+            result.warning(
+                "GW454",
+                f"README 'Expected history' names commit '{match.group('id')}', which the scenario does not define.",
+                f"{readme.name}:## Expected history",
+            )
+            continue
+        expected = _readme_operation_summary(commit)
+        if match.group("ops") != expected:
+            result.warning(
+                "GW454",
+                f"README 'Expected history' describes commit '{match.group('id')}' as "
+                f"'({match.group('ops')})' but the scenario's operations are '({expected})'.",
+                f"{readme.name}:## Expected history",
+            )
 
 
 def _lint_approximate_operations(commits: list[dict[str, Any]], result: ValidationResult) -> None:

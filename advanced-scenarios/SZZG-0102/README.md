@@ -175,10 +175,6 @@ All five commit snapshots compile with `javac` (JDK 25): 0 failures out of 5.
 
 ---
 
-## Draft status
-
-This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
-
 ## Files
 
 ```text

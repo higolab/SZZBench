@@ -13,7 +13,7 @@ Evaluate BFC performs rename and fix in the same commit and whether SZZ identifi
 ```text
 c0: create initial state (write_file src/main/java/example/OldRange.java)
 c1: introduce bug (replace src/main/java/example/OldRange.java)
-c2: fix bug (rename_file src/main/java/example/OldRange.java -> src/main/java/example/Range.java; replace src/main/java/example/Range.java)
+c2: fix bug (rename_file src/main/java/example/OldRange.java -> src/main/java/example/Range.java; replace src/main/java/example/Range.java; replace src/main/java/example/Range.java)
 ```
 
 ## Why this needs `scenario.graph.yml`
@@ -33,10 +33,6 @@ This history requires graph-aware scenario semantics that are difficult to expre
 - Whether the expected_szz evaluation policy is applied correctly.
 
 ---
-
-## Draft status
-
-This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
 
 ## Files
 

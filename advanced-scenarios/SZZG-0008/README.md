@@ -35,10 +35,6 @@ The intermediate rewrite preserves the bug, so it needs semantic metadata to avo
 
 ---
 
-## Draft status
-
-This scenario is a draft for the `scenario.graph.yml` schema and is intended for graph-aware generation and verification.
-
 ## Files
 
 ```text
