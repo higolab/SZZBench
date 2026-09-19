@@ -1,4 +1,4 @@
-schema_version: graph-0.1-draft
+schema_version: graph-1.0
 meta:
   id: SZZG-0040
   title: Multiple BICs where one true BIC is not directly touched by the BFC
@@ -13,7 +13,7 @@ meta:
   - not-directly-touched-by-fix
   - context-dependent
   difficulty: advanced
-  status: draft
+  status: active
   tier: discriminating
 repository:
   name: SZZG-0040-multi-bic-untouched-root-cause

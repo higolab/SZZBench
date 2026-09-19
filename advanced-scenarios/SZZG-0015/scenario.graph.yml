@@ -1,4 +1,4 @@
-schema_version: graph-0.1-draft
+schema_version: graph-1.0
 meta:
   id: SZZG-0015
   title: Buggy code copied while original is fixed later
@@ -14,7 +14,7 @@ meta:
   - copy-propagation
   - boundary-condition
   difficulty: advanced
-  status: draft
+  status: active
   tier: control
 repository:
   name: SZZG-0015-buggy-code-copied-original-later-fixed

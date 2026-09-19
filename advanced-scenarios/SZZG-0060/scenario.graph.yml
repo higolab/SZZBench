@@ -1,4 +1,4 @@
-schema_version: graph-0.1-draft
+schema_version: graph-1.0
 meta:
   id: SZZG-0060
   title: BFC on main after feature-branch BIC is merged
@@ -12,7 +12,7 @@ meta:
   - merge-commit
   - bfc-after-merge
   difficulty: advanced
-  status: draft
+  status: active
   tier: control
 repository:
   name: SZZG-0060-bfc-main-after-feature-merge

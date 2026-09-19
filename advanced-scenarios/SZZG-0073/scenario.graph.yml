@@ -1,4 +1,4 @@
-schema_version: graph-0.1-draft
+schema_version: graph-1.0
 meta:
   id: SZZG-0073
   title: Interactive rebase reorders commits before BIC
@@ -17,7 +17,7 @@ meta:
   - origin-bic
   - inherited-commit-metadata
   difficulty: advanced
-  status: draft
+  status: active
   tier: control
 repository:
   name: SZZG-0073-interactive-rebase-reorders-commits-before-bic

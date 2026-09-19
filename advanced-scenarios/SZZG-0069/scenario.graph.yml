@@ -1,4 +1,4 @@
-schema_version: graph-0.1-draft
+schema_version: graph-1.0
 meta:
   id: SZZG-0069
   title: Rebase splits original BIC into multiple commits
@@ -14,7 +14,7 @@ meta:
   - origin-bic
   - direct-bic
   difficulty: advanced
-  status: draft
+  status: active
   tier: discriminating
 repository:
   name: SZZG-0069-rebase-splits-original-bic-into-multiple-commits

@@ -1,4 +1,4 @@
-schema_version: graph-0.1-draft
+schema_version: graph-1.0
 meta:
   id: SZZG-0043
   title: BIC on feature branch, BFC on main
@@ -13,7 +13,7 @@ meta:
   - feature-branch-bic
   - main-branch-bfc
   difficulty: advanced
-  status: draft
+  status: active
   tier: control
 repository:
   name: SZZG-0043-bic-on-feature-branch-bfc-on-main

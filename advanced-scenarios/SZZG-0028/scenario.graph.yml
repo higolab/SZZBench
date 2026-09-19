@@ -1,4 +1,4 @@
-schema_version: graph-0.1-draft
+schema_version: graph-1.0
 meta:
   id: SZZG-0028
   title: The copy and the later edit are both required; the origin is not
@@ -13,7 +13,7 @@ meta:
   - multi-bic
   - origin-and-direct-bic
   difficulty: advanced
-  status: draft
+  status: active
   tier: discriminating
 repository:
   name: SZZG-0028-origin-and-direct-clone-bics

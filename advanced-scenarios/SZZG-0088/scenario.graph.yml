@@ -1,4 +1,4 @@
-schema_version: graph-0.1-draft
+schema_version: graph-1.0
 meta:
   id: SZZG-0088
   title: Partial revert of fix reintroduces one fault
@@ -13,7 +13,7 @@ meta:
   - single-fault-reintroduced
   - re-bic
   difficulty: advanced
-  status: draft
+  status: active
   tier: control
 repository:
   name: SZZG-0088-partial-revert-of-fix-reintroduces-one-fault

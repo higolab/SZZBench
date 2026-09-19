@@ -1,4 +1,4 @@
-schema_version: graph-0.1-draft
+schema_version: graph-1.0
 meta:
   id: SZZG-0047
   title: Squash merge
@@ -15,7 +15,7 @@ meta:
   - direct-bic
   - origin-bic
   difficulty: advanced
-  status: draft
+  status: active
   tier: control
 repository:
   name: SZZG-0047-squash-merge

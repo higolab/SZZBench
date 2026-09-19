@@ -1,4 +1,4 @@
-schema_version: graph-0.1-draft
+schema_version: graph-1.0
 meta:
   id: SZZG-0013
   title: Semantic-preserving rewrite between BIC and BFC
@@ -13,7 +13,7 @@ meta:
   - formatting
   - line-history-break
   difficulty: advanced
-  status: draft
+  status: active
   tier: control
 repository:
   name: SZZG-0013-semantic-preserving-rewrite

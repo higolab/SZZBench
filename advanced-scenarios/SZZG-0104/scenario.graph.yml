@@ -1,4 +1,4 @@
-schema_version: graph-0.1-draft
+schema_version: graph-1.0
 meta:
   id: SZZG-0104
   title: Configuration BIC is fixed by code-side normalization
@@ -13,7 +13,7 @@ meta:
   - cross-artifact-fix
   - context-dependent
   difficulty: advanced
-  status: draft
+  status: active
   tier: control
 repository:
   name: SZZG-0104-config-bic-fixed-in-code

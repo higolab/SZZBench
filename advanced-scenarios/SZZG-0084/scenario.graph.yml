@@ -1,4 +1,4 @@
-schema_version: graph-0.1-draft
+schema_version: graph-1.0
 meta:
   id: SZZG-0084
   title: Partial revert reintroduces bug
@@ -18,7 +18,7 @@ meta:
   - origin-bic
   - revert-footer
   difficulty: advanced
-  status: draft
+  status: active
   tier: control
 repository:
   name: SZZG-0084-partial-revert

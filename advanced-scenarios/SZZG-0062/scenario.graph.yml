@@ -1,4 +1,4 @@
-schema_version: graph-0.1-draft
+schema_version: graph-1.0
 meta:
   id: SZZG-0062
   title: Backported fix on maintenance branch traces to original mainline BIC
@@ -13,7 +13,7 @@ meta:
   - maintenance-branch
   - cross-branch-bic
   difficulty: advanced
-  status: draft
+  status: active
   tier: control
 repository:
   name: SZZG-0062-backported-fix-maintenance-branch

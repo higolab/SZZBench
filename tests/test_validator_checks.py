@@ -773,3 +773,24 @@ def test_index_factors_of_the_wrong_type_are_reported_not_coerced(tmp_path):
     # and the scenario side is just as unvalidated
     write(True)
     assert [f.code for f in validate_index_file(index(["boundary-condition"]), root, "scenario.yml").findings] == ["IE044"]
+
+
+def test_index_status_must_match_the_scenario(tmp_path):
+    """IE045: status is mirrored in the index too, and drifted the same way."""
+    from szzbench.validator import validate_index_file
+
+    root = tmp_path / "scenarios"
+    (root / "SZZ-0001").mkdir(parents=True)
+    scenario = graph_scenario()
+    scenario["meta"] = {"id": "SZZ-0001", "title": "A scenario", "status": "active"}
+    (root / "SZZ-0001" / "scenario.yml").write_text(yaml.safe_dump(scenario, sort_keys=False))
+
+    def index(status):
+        path = tmp_path / "index.yml"
+        path.write_text(yaml.safe_dump(
+            {"scenarios": [{"id": "SZZ-0001", "title": "A scenario", "status": status}]}, sort_keys=False))
+        return path
+
+    assert validate_index_file(index("active"), root, "scenario.yml").findings == []
+    stale = validate_index_file(index("draft"), root, "scenario.yml")
+    assert [f.code for f in stale.findings] == ["IE045"]

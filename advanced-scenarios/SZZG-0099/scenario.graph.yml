@@ -1,4 +1,4 @@
-schema_version: graph-0.1-draft
+schema_version: graph-1.0
 meta:
   id: SZZG-0099
   title: BFC message references the wrong commit
@@ -11,7 +11,7 @@ meta:
   - message-evidence
   - misleading-commit-message
   difficulty: advanced
-  status: draft
+  status: active
   tier: control
 repository:
   name: SZZG-0099-bfc-message-references-wrong-commit

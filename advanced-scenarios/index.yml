@@ -8,7 +8,7 @@ scenarios:
   category: Refactoring, move, rename, and semantic rewrite
   path: advanced-scenarios/SZZG-0001/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0001/README.md
-  status: draft
+  status: active
   factors:
   - file-rename
 - id: SZZG-0002
@@ -17,7 +17,7 @@ scenarios:
   category: Refactoring, move, rename, and semantic rewrite
   path: advanced-scenarios/SZZG-0002/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0002/README.md
-  status: draft
+  status: active
   factors:
   - file-move
 - id: SZZG-0003
@@ -26,7 +26,7 @@ scenarios:
   category: Refactoring, move, rename, and semantic rewrite
   path: advanced-scenarios/SZZG-0003/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0003/README.md
-  status: draft
+  status: active
   factors:
   - file-rename
 - id: SZZG-0004
@@ -35,7 +35,7 @@ scenarios:
   category: Refactoring, move, rename, and semantic rewrite
   path: advanced-scenarios/SZZG-0004/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0004/README.md
-  status: draft
+  status: active
   factors:
   - file-rename
   - file-move
@@ -45,7 +45,7 @@ scenarios:
   category: Refactoring, move, rename, and semantic rewrite
   path: advanced-scenarios/SZZG-0005/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0005/README.md
-  status: draft
+  status: active
   factors:
   - refactoring
   - method-move
@@ -56,7 +56,7 @@ scenarios:
   category: Refactoring, move, rename, and semantic rewrite
   path: advanced-scenarios/SZZG-0006/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0006/README.md
-  status: draft
+  status: active
   factors:
   - refactoring
   - extract-class
@@ -68,7 +68,7 @@ scenarios:
   category: Refactoring, move, rename, and semantic rewrite
   path: advanced-scenarios/SZZG-0007/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0007/README.md
-  status: draft
+  status: active
   factors:
   - method-move
   - copy-propagation
@@ -78,7 +78,7 @@ scenarios:
   category: Refactoring, move, rename, and semantic rewrite
   path: advanced-scenarios/SZZG-0008/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0008/README.md
-  status: draft
+  status: active
   factors:
   - semantic-rewrite
   - related-but-not-correct
@@ -88,7 +88,7 @@ scenarios:
   category: Refactoring, move, rename, and semantic rewrite
   path: advanced-scenarios/SZZG-0009/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0009/README.md
-  status: draft
+  status: active
   factors:
   - intermediate-refactoring
   - extract-method
@@ -99,7 +99,7 @@ scenarios:
   category: Refactoring, move, rename, and semantic rewrite
   path: advanced-scenarios/SZZG-0010/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0010/README.md
-  status: draft
+  status: active
   factors:
   - file-rename
   - file-move
@@ -111,7 +111,7 @@ scenarios:
   category: Refactoring, move, rename, and semantic rewrite
   path: advanced-scenarios/SZZG-0011/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0011/README.md
-  status: draft
+  status: active
   factors:
   - bug-introducing-refactoring
   - mixed-change
@@ -122,7 +122,7 @@ scenarios:
   category: Refactoring, move, rename, and semantic rewrite
   path: advanced-scenarios/SZZG-0012/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0012/README.md
-  status: draft
+  status: active
   factors:
   - bfc-refactoring
   - extract-method
@@ -133,7 +133,7 @@ scenarios:
   category: Refactoring, move, rename, and semantic rewrite
   path: advanced-scenarios/SZZG-0013/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0013/README.md
-  status: draft
+  status: active
   factors:
   - intermediate-rewrite
   - formatting
@@ -144,7 +144,7 @@ scenarios:
   category: Clone, copy propagation, and origin-vs-direct BIC
   path: advanced-scenarios/SZZG-0014/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0014/README.md
-  status: draft
+  status: active
   factors:
   - copy-propagation
 - id: SZZG-0015
@@ -153,7 +153,7 @@ scenarios:
   category: Clone, copy propagation, and origin-vs-direct BIC
   path: advanced-scenarios/SZZG-0015/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0015/README.md
-  status: draft
+  status: active
   factors:
   - copy-propagation
   - boundary-condition
@@ -163,7 +163,7 @@ scenarios:
   category: Clone, copy propagation, and origin-vs-direct BIC
   path: advanced-scenarios/SZZG-0016/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0016/README.md
-  status: draft
+  status: active
   factors:
   - boundary-condition
   - copy-propagation
@@ -173,7 +173,7 @@ scenarios:
   category: Clone, copy propagation, and origin-vs-direct BIC
   path: advanced-scenarios/SZZG-0017/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0017/README.md
-  status: draft
+  status: active
   factors:
   - copy-propagation
 - id: SZZG-0018
@@ -182,7 +182,7 @@ scenarios:
   category: Clone, copy propagation, and origin-vs-direct BIC
   path: advanced-scenarios/SZZG-0018/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0018/README.md
-  status: draft
+  status: active
   factors:
   - copy-propagation
 - id: SZZG-0019
@@ -191,7 +191,7 @@ scenarios:
   category: Clone, copy propagation, and origin-vs-direct BIC
   path: advanced-scenarios/SZZG-0019/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0019/README.md
-  status: draft
+  status: active
   factors:
   - single-bic
   - single-bfc
@@ -204,7 +204,7 @@ scenarios:
   category: Clone, copy propagation, and origin-vs-direct BIC
   path: advanced-scenarios/SZZG-0020/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0020/README.md
-  status: draft
+  status: active
   factors:
   - copy-propagation
   - evaluation-variant
@@ -216,7 +216,7 @@ scenarios:
   category: Clone, copy propagation, and origin-vs-direct BIC
   path: advanced-scenarios/SZZG-0021/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0021/README.md
-  status: draft
+  status: active
   factors:
   - copy-propagation
 - id: SZZG-0022
@@ -225,7 +225,7 @@ scenarios:
   category: Clone, copy propagation, and origin-vs-direct BIC
   path: advanced-scenarios/SZZG-0022/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0022/README.md
-  status: draft
+  status: active
   factors:
   - copy-propagation
   - direct-bic
@@ -238,7 +238,7 @@ scenarios:
   category: Clone, copy propagation, and origin-vs-direct BIC
   path: advanced-scenarios/SZZG-0023/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0023/README.md
-  status: draft
+  status: active
   factors:
   - branch
   - rebase
@@ -252,7 +252,7 @@ scenarios:
   category: Clone, copy propagation, and origin-vs-direct BIC
   path: advanced-scenarios/SZZG-0024/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0024/README.md
-  status: draft
+  status: active
   factors:
   - branch
   - rebase
@@ -266,7 +266,7 @@ scenarios:
   category: Clone, copy propagation, and origin-vs-direct BIC
   path: advanced-scenarios/SZZG-0025/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0025/README.md
-  status: draft
+  status: active
   factors:
   - clone
   - copy-propagation
@@ -277,7 +277,7 @@ scenarios:
   category: Clone, copy propagation, and origin-vs-direct BIC
   path: advanced-scenarios/SZZG-0026/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0026/README.md
-  status: draft
+  status: active
   factors:
   - copy-propagation
   - clone-divergence
@@ -288,7 +288,7 @@ scenarios:
   category: Clone, copy propagation, and origin-vs-direct BIC
   path: advanced-scenarios/SZZG-0027/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0027/README.md
-  status: draft
+  status: active
   factors:
   - clone
   - clone-divergence
@@ -299,7 +299,7 @@ scenarios:
   category: Clone, copy propagation, and origin-vs-direct BIC
   path: advanced-scenarios/SZZG-0028/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0028/README.md
-  status: draft
+  status: active
   factors:
   - clone
   - multi-bic
@@ -310,7 +310,7 @@ scenarios:
   category: Multiple BICs, multiple BFCs, and partial fixes
   path: advanced-scenarios/SZZG-0029/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0029/README.md
-  status: draft
+  status: active
   factors:
   - multi-bfc
 - id: SZZG-0030
@@ -319,7 +319,7 @@ scenarios:
   category: Multiple BICs, multiple BFCs, and partial fixes
   path: advanced-scenarios/SZZG-0030/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0030/README.md
-  status: draft
+  status: active
   factors:
   - multi-bfc
   - attempted-fix
@@ -331,7 +331,7 @@ scenarios:
   category: Multiple BICs, multiple BFCs, and partial fixes
   path: advanced-scenarios/SZZG-0031/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0031/README.md
-  status: draft
+  status: active
   factors:
   - multi-bfc
 - id: SZZG-0032
@@ -340,7 +340,7 @@ scenarios:
   category: Multiple BICs, multiple BFCs, and partial fixes
   path: advanced-scenarios/SZZG-0032/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0032/README.md
-  status: draft
+  status: active
   factors:
   - multi-bfc
   - progressive-fix
@@ -353,7 +353,7 @@ scenarios:
   category: Multiple BICs, multiple BFCs, and partial fixes
   path: advanced-scenarios/SZZG-0033/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0033/README.md
-  status: draft
+  status: active
   factors:
   - multi-bic
   - partial-credit
@@ -364,7 +364,7 @@ scenarios:
   category: Multiple BICs, multiple BFCs, and partial fixes
   path: advanced-scenarios/SZZG-0034/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0034/README.md
-  status: draft
+  status: active
   factors:
   - multiple-bug
   - single-bfc
@@ -376,7 +376,7 @@ scenarios:
   category: Multiple BICs, multiple BFCs, and partial fixes
   path: advanced-scenarios/SZZG-0035/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0035/README.md
-  status: draft
+  status: active
   factors:
   - root-cause
 - id: SZZG-0036
@@ -385,7 +385,7 @@ scenarios:
   category: Multiple BICs, multiple BFCs, and partial fixes
   path: advanced-scenarios/SZZG-0036/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0036/README.md
-  status: draft
+  status: active
   factors:
   - multi-bfc
 - id: SZZG-0037
@@ -394,7 +394,7 @@ scenarios:
   category: Multiple BICs, multiple BFCs, and partial fixes
   path: advanced-scenarios/SZZG-0037/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0037/README.md
-  status: draft
+  status: active
   factors:
   - multi-bic
   - multiple-file
@@ -405,7 +405,7 @@ scenarios:
   category: Multiple BICs, multiple BFCs, and partial fixes
   path: advanced-scenarios/SZZG-0038/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0038/README.md
-  status: draft
+  status: active
   factors:
   - multi-bic
   - context-dependent
@@ -416,7 +416,7 @@ scenarios:
   category: Multiple BICs, multiple BFCs, and partial fixes
   path: advanced-scenarios/SZZG-0039/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0039/README.md
-  status: draft
+  status: active
   factors:
   - multi-bic
   - causal-chain
@@ -427,7 +427,7 @@ scenarios:
   category: Multiple BICs, multiple BFCs, and partial fixes
   path: advanced-scenarios/SZZG-0040/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0040/README.md
-  status: draft
+  status: active
   factors:
   - multi-bic
   - not-directly-touched-by-fix
@@ -438,7 +438,7 @@ scenarios:
   category: Multiple BICs, multiple BFCs, and partial fixes
   path: advanced-scenarios/SZZG-0041/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0041/README.md
-  status: draft
+  status: active
   factors:
   - ambiguous-blame
   - duplicate-code
@@ -449,7 +449,7 @@ scenarios:
   category: Branch, merge, cherry-pick, backport, and release branches
   path: advanced-scenarios/SZZG-0042/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0042/README.md
-  status: draft
+  status: active
   factors:
   - merge-commit
   - bug-fixing-commit
@@ -460,7 +460,7 @@ scenarios:
   category: Branch, merge, cherry-pick, backport, and release branches
   path: advanced-scenarios/SZZG-0043/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0043/README.md
-  status: draft
+  status: active
   factors:
   - branch
   - merge
@@ -472,7 +472,7 @@ scenarios:
   category: Branch, merge, cherry-pick, backport, and release branches
   path: advanced-scenarios/SZZG-0044/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0044/README.md
-  status: draft
+  status: active
   factors:
   - branch
   - merge
@@ -484,7 +484,7 @@ scenarios:
   category: Branch, merge, cherry-pick, backport, and release branches
   path: advanced-scenarios/SZZG-0045/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0045/README.md
-  status: draft
+  status: active
   factors:
   - branch
   - merge
@@ -495,7 +495,7 @@ scenarios:
   category: Branch, merge, cherry-pick, backport, and release branches
   path: advanced-scenarios/SZZG-0046/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0046/README.md
-  status: draft
+  status: active
   factors:
   - branch
   - merge
@@ -507,7 +507,7 @@ scenarios:
   category: Branch, merge, cherry-pick, backport, and release branches
   path: advanced-scenarios/SZZG-0047/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0047/README.md
-  status: draft
+  status: active
   factors:
   - branch
   - squash-merge
@@ -520,7 +520,7 @@ scenarios:
   category: Branch, merge, cherry-pick, backport, and release branches
   path: advanced-scenarios/SZZG-0048/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0048/README.md
-  status: draft
+  status: active
   factors:
   - branch
   - cherry-pick
@@ -533,7 +533,7 @@ scenarios:
   category: Branch, merge, cherry-pick, backport, and release branches
   path: advanced-scenarios/SZZG-0049/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0049/README.md
-  status: draft
+  status: active
   factors:
   - branch
   - cherry-pick
@@ -546,7 +546,7 @@ scenarios:
   category: Branch, merge, cherry-pick, backport, and release branches
   path: advanced-scenarios/SZZG-0050/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0050/README.md
-  status: draft
+  status: active
   factors:
   - branch
   - backport
@@ -559,7 +559,7 @@ scenarios:
   category: Branch, merge, cherry-pick, backport, and release branches
   path: advanced-scenarios/SZZG-0051/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0051/README.md
-  status: draft
+  status: active
   factors:
   - branch
   - backport
@@ -569,7 +569,7 @@ scenarios:
   category: Branch, merge, cherry-pick, backport, and release branches
   path: advanced-scenarios/SZZG-0052/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0052/README.md
-  status: draft
+  status: active
   factors:
   - branch
   - merge
@@ -581,7 +581,7 @@ scenarios:
   category: Branch, merge, cherry-pick, backport, and release branches
   path: advanced-scenarios/SZZG-0053/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0053/README.md
-  status: draft
+  status: active
   factors:
   - release-branch
   - branch-only-bug
@@ -591,7 +591,7 @@ scenarios:
   category: Branch, merge, cherry-pick, backport, and release branches
   path: advanced-scenarios/SZZG-0054/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0054/README.md
-  status: draft
+  status: active
   factors:
   - release-branch
   - partial-fix-propagation
@@ -602,7 +602,7 @@ scenarios:
   category: Branch, merge, cherry-pick, backport, and release branches
   path: advanced-scenarios/SZZG-0055/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0055/README.md
-  status: draft
+  status: active
   factors:
   - branch
   - rebase
@@ -616,7 +616,7 @@ scenarios:
   category: Branch, merge, cherry-pick, backport, and release branches
   path: advanced-scenarios/SZZG-0056/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0056/README.md
-  status: draft
+  status: active
   factors:
   - branch
   - rebase
@@ -630,7 +630,7 @@ scenarios:
   category: Branch, merge, cherry-pick, backport, and release branches
   path: advanced-scenarios/SZZG-0057/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0057/README.md
-  status: draft
+  status: active
   factors:
   - branch
   - rebase
@@ -644,7 +644,7 @@ scenarios:
   category: Branch, merge, cherry-pick, backport, and release branches
   path: advanced-scenarios/SZZG-0058/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0058/README.md
-  status: draft
+  status: active
   factors:
   - branch
   - rebase
@@ -658,7 +658,7 @@ scenarios:
   category: Branch, merge, cherry-pick, backport, and release branches
   path: advanced-scenarios/SZZG-0059/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0059/README.md
-  status: draft
+  status: active
   factors:
   - merge-commit
   - bug-introducing-merge
@@ -669,7 +669,7 @@ scenarios:
   category: Branch, merge, cherry-pick, backport, and release branches
   path: advanced-scenarios/SZZG-0060/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0060/README.md
-  status: draft
+  status: active
   factors:
   - feature-branch
   - merge-commit
@@ -680,7 +680,7 @@ scenarios:
   category: Branch, merge, cherry-pick, backport, and release branches
   path: advanced-scenarios/SZZG-0061/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0061/README.md
-  status: draft
+  status: active
   factors:
   - cherry-pick
   - duplicate-patch
@@ -691,7 +691,7 @@ scenarios:
   category: Branch, merge, cherry-pick, backport, and release branches
   path: advanced-scenarios/SZZG-0062/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0062/README.md
-  status: draft
+  status: active
   factors:
   - backport
   - maintenance-branch
@@ -702,7 +702,7 @@ scenarios:
   category: Rebase-specific history rewriting
   path: advanced-scenarios/SZZG-0064/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0064/README.md
-  status: draft
+  status: active
   factors:
   - branch
   - rebase
@@ -717,7 +717,7 @@ scenarios:
   category: Rebase-specific history rewriting
   path: advanced-scenarios/SZZG-0065/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0065/README.md
-  status: draft
+  status: active
   factors:
   - branch
   - rebase
@@ -731,7 +731,7 @@ scenarios:
   category: Rebase-specific history rewriting
   path: advanced-scenarios/SZZG-0066/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0066/README.md
-  status: draft
+  status: active
   factors:
   - branch
   - rebase
@@ -744,7 +744,7 @@ scenarios:
   category: Rebase-specific history rewriting
   path: advanced-scenarios/SZZG-0067/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0067/README.md
-  status: draft
+  status: active
   factors:
   - branch
   - rebase
@@ -757,7 +757,7 @@ scenarios:
   category: Rebase-specific history rewriting
   path: advanced-scenarios/SZZG-0068/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0068/README.md
-  status: draft
+  status: active
   factors:
   - branch
   - rebase
@@ -770,7 +770,7 @@ scenarios:
   category: Rebase-specific history rewriting
   path: advanced-scenarios/SZZG-0069/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0069/README.md
-  status: draft
+  status: active
   factors:
   - branch
   - rebase
@@ -784,7 +784,7 @@ scenarios:
   category: Rebase-specific history rewriting
   path: advanced-scenarios/SZZG-0070/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0070/README.md
-  status: draft
+  status: active
   factors:
   - branch
   - rebase
@@ -798,7 +798,7 @@ scenarios:
   category: Rebase-specific history rewriting
   path: advanced-scenarios/SZZG-0071/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0071/README.md
-  status: draft
+  status: active
   factors:
   - branch
   - rebase
@@ -812,7 +812,7 @@ scenarios:
   category: Rebase-specific history rewriting
   path: advanced-scenarios/SZZG-0072/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0072/README.md
-  status: draft
+  status: active
   factors:
   - branch
   - rebase
@@ -827,7 +827,7 @@ scenarios:
   category: Rebase-specific history rewriting
   path: advanced-scenarios/SZZG-0073/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0073/README.md
-  status: draft
+  status: active
   factors:
   - branch
   - rebase
@@ -842,7 +842,7 @@ scenarios:
   category: Rebase-specific history rewriting
   path: advanced-scenarios/SZZG-0075/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0075/README.md
-  status: draft
+  status: active
   factors:
   - branch
   - rebase
@@ -857,7 +857,7 @@ scenarios:
   category: Rebase-specific history rewriting
   path: advanced-scenarios/SZZG-0076/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0076/README.md
-  status: draft
+  status: active
   factors:
   - branch
   - rebase
@@ -871,7 +871,7 @@ scenarios:
   category: Rebase-specific history rewriting
   path: advanced-scenarios/SZZG-0077/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0077/README.md
-  status: draft
+  status: active
   factors:
   - branch
   - rebase
@@ -885,7 +885,7 @@ scenarios:
   category: Rebase-specific history rewriting
   path: advanced-scenarios/SZZG-0078/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0078/README.md
-  status: draft
+  status: active
   factors:
   - branch
   - rebase
@@ -899,7 +899,7 @@ scenarios:
   category: Rebase-specific history rewriting
   path: advanced-scenarios/SZZG-0081/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0081/README.md
-  status: draft
+  status: active
   factors:
   - branch
   - rebase
@@ -914,7 +914,7 @@ scenarios:
   category: Rebase-specific history rewriting
   path: advanced-scenarios/SZZG-0082/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0082/README.md
-  status: draft
+  status: active
   factors:
   - branch
   - rebase
@@ -927,7 +927,7 @@ scenarios:
   category: Rebase-specific history rewriting
   path: advanced-scenarios/SZZG-0083/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0083/README.md
-  status: draft
+  status: active
   factors:
   - branch
   - rebase
@@ -943,7 +943,7 @@ scenarios:
   category: Revert-specific reintroduction
   path: advanced-scenarios/SZZG-0084/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0084/README.md
-  status: draft
+  status: active
   factors:
   - linear-history
   - revert
@@ -958,7 +958,7 @@ scenarios:
   category: Revert-specific reintroduction
   path: advanced-scenarios/SZZG-0085/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0085/README.md
-  status: draft
+  status: active
   factors:
   - reintroduction
   - partial-revert
@@ -970,7 +970,7 @@ scenarios:
   category: Revert-specific reintroduction
   path: advanced-scenarios/SZZG-0086/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0086/README.md
-  status: draft
+  status: active
   factors:
   - revert
   - revert-of-fix
@@ -983,7 +983,7 @@ scenarios:
   category: Revert-specific reintroduction
   path: advanced-scenarios/SZZG-0088/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0088/README.md
-  status: draft
+  status: active
   factors:
   - revert
   - partial-revert
@@ -996,7 +996,7 @@ scenarios:
   category: Revert-specific reintroduction
   path: advanced-scenarios/SZZG-0089/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0089/README.md
-  status: draft
+  status: active
   factors:
   - revert
   - revert-of-revert
@@ -1009,7 +1009,7 @@ scenarios:
   category: Revert-specific reintroduction
   path: advanced-scenarios/SZZG-0090/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0090/README.md
-  status: draft
+  status: active
   factors:
   - revert
   - revert-of-revert
@@ -1022,7 +1022,7 @@ scenarios:
   category: Revert-specific reintroduction
   path: advanced-scenarios/SZZG-0091/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0091/README.md
-  status: draft
+  status: active
   factors:
   - revert
   - partial-revert
@@ -1035,7 +1035,7 @@ scenarios:
   category: Issue, message, context, and non-local evidence
   path: advanced-scenarios/SZZG-0093/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0093/README.md
-  status: draft
+  status: active
   factors:
   - work-item
   - feature-work
@@ -1047,7 +1047,7 @@ scenarios:
   category: Issue, message, context, and non-local evidence
   path: advanced-scenarios/SZZG-0094/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0094/README.md
-  status: draft
+  status: active
   factors:
   - issue-evidence
 - id: SZZG-0095
@@ -1056,7 +1056,7 @@ scenarios:
   category: Issue, message, context, and non-local evidence
   path: advanced-scenarios/SZZG-0095/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0095/README.md
-  status: draft
+  status: active
   factors:
   - work-item
   - intermediate-commit
@@ -1067,7 +1067,7 @@ scenarios:
   category: Issue, message, context, and non-local evidence
   path: advanced-scenarios/SZZG-0096/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0096/README.md
-  status: draft
+  status: active
   factors:
   - work-item
   - evaluation-variant
@@ -1077,7 +1077,7 @@ scenarios:
   category: Issue, message, context, and non-local evidence
   path: advanced-scenarios/SZZG-0097/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0097/README.md
-  status: draft
+  status: active
   factors:
   - work-item
   - work-item-inference
@@ -1090,7 +1090,7 @@ scenarios:
   category: Issue, message, context, and non-local evidence
   path: advanced-scenarios/SZZG-0098/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0098/README.md
-  status: draft
+  status: active
   factors:
   - context
   - commit-messages
@@ -1100,7 +1100,7 @@ scenarios:
   category: Issue, message, context, and non-local evidence
   path: advanced-scenarios/SZZG-0099/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0099/README.md
-  status: draft
+  status: active
   factors:
   - message-evidence
   - misleading-commit-message
@@ -1110,7 +1110,7 @@ scenarios:
   category: Issue, message, context, and non-local evidence
   path: advanced-scenarios/SZZG-0100/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0100/README.md
-  status: draft
+  status: active
   factors:
   - work-item
   - issue-evidence
@@ -1120,7 +1120,7 @@ scenarios:
   category: Issue, message, context, and non-local evidence
   path: advanced-scenarios/SZZG-0101/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0101/README.md
-  status: draft
+  status: active
   factors:
   - caller-callee
   - context
@@ -1131,7 +1131,7 @@ scenarios:
   category: Issue, message, context, and non-local evidence
   path: advanced-scenarios/SZZG-0102/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0102/README.md
-  status: draft
+  status: active
   factors:
   - issue-evidence
   - context
@@ -1141,7 +1141,7 @@ scenarios:
   category: Issue, message, context, and non-local evidence
   path: advanced-scenarios/SZZG-0103/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0103/README.md
-  status: draft
+  status: active
   factors:
   - context-dependent
   - caller-callee
@@ -1152,7 +1152,7 @@ scenarios:
   category: Issue, message, context, and non-local evidence
   path: advanced-scenarios/SZZG-0104/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0104/README.md
-  status: draft
+  status: active
   factors:
   - configuration-change
   - cross-artifact-fix
@@ -1163,7 +1163,7 @@ scenarios:
   category: Issue, message, context, and non-local evidence
   path: advanced-scenarios/SZZG-0105/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0105/README.md
-  status: draft
+  status: active
   factors:
   - defensive-fix
   - root-cause-not-touched
@@ -1174,7 +1174,7 @@ scenarios:
   category: Non-source, binary, generated, and scalability edge cases
   path: advanced-scenarios/SZZG-0107/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0107/README.md
-  status: draft
+  status: active
   factors:
   - generated-files
 - id: SZZG-0108
@@ -1183,7 +1183,7 @@ scenarios:
   category: Non-source, binary, generated, and scalability edge cases
   path: advanced-scenarios/SZZG-0108/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0108/README.md
-  status: draft
+  status: active
   factors:
   - binary-file
 - id: SZZG-0109
@@ -1192,7 +1192,7 @@ scenarios:
   category: Non-source, binary, generated, and scalability edge cases
   path: advanced-scenarios/SZZG-0109/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0109/README.md
-  status: draft
+  status: active
   factors:
   - file-deletion
 - id: SZZG-0110
@@ -1201,7 +1201,7 @@ scenarios:
   category: Non-source, binary, generated, and scalability edge cases
   path: advanced-scenarios/SZZG-0110/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0110/README.md
-  status: draft
+  status: active
   factors:
   - single-bic
   - single-bfc
@@ -1212,7 +1212,7 @@ scenarios:
   category: Non-source, binary, generated, and scalability edge cases
   path: advanced-scenarios/SZZG-0111/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0111/README.md
-  status: draft
+  status: active
   factors:
   - file-mode-change
 - id: SZZG-0112
@@ -1221,7 +1221,7 @@ scenarios:
   category: Non-source, binary, generated, and scalability edge cases
   path: advanced-scenarios/SZZG-0112/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0112/README.md
-  status: draft
+  status: active
   factors:
   - encoding
   - non-utf8-file
@@ -1232,7 +1232,7 @@ scenarios:
   category: Non-source, binary, generated, and scalability edge cases
   path: advanced-scenarios/SZZG-0113/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0113/README.md
-  status: draft
+  status: active
   factors:
   - generated-file
 - id: SZZG-0114
@@ -1241,7 +1241,7 @@ scenarios:
   category: Non-source, binary, generated, and scalability edge cases
   path: advanced-scenarios/SZZG-0114/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0114/README.md
-  status: draft
+  status: active
   factors:
   - generated-history
 - id: SZZG-0115
@@ -1250,7 +1250,7 @@ scenarios:
   category: Evaluation policy variants
   path: advanced-scenarios/SZZG-0115/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0115/README.md
-  status: draft
+  status: active
   factors:
   - evaluation-variant
 - id: SZZG-0116
@@ -1259,7 +1259,7 @@ scenarios:
   category: Evaluation policy variants
   path: advanced-scenarios/SZZG-0116/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0116/README.md
-  status: draft
+  status: active
   factors:
   - evaluation-variant
 - id: SZZG-0117

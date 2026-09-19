@@ -1,4 +1,4 @@
-schema_version: graph-0.1-draft
+schema_version: graph-1.0
 meta:
   id: SZZG-0085
   title: Old BIC and re-BIC are both plausible
@@ -14,7 +14,7 @@ meta:
   - origin-bic
   - evaluation-variant
   difficulty: advanced
-  status: draft
+  status: active
   tier: control
 repository:
   name: SZZG-0085-old-bic-and-re-bic-plausible

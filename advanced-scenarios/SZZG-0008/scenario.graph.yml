@@ -1,4 +1,4 @@
-schema_version: graph-0.1-draft
+schema_version: graph-1.0
 meta:
   id: SZZG-0008
   title: Semantically equivalent rewrite
@@ -11,7 +11,7 @@ meta:
   - semantic-rewrite
   - related-but-not-correct
   difficulty: advanced
-  status: draft
+  status: active
   tier: control
 repository:
   name: SZZG-0008-semantically-equivalent-rewrite
