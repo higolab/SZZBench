@@ -18,7 +18,7 @@ repository:
   name: SZZ-0171-bic-dependency-update
   default_branch: main
   language: java
-  build_system: none
+  build_system: maven
   source_root: src/main/java
 commits:
 - id: c0
