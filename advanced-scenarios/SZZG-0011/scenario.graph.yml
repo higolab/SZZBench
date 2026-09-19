@@ -4,8 +4,8 @@ meta:
   title: Bug introduced inside a refactoring commit
   slug: bug-introduced-inside-refactoring
   description: >-
-    A commit presented as a rename also drops the lower-casing step, so the bug-introducing commit is one that looks
-    behaviour-preserving.
+    A commit whose message announces only a method rename also drops the lower-casing step, so the bug-introducing
+    commit is one that looks behaviour-preserving.
   category: "Refactoring, move, rename, and semantic rewrite"
   category_code: "G1"
   factors:

@@ -4,8 +4,8 @@ meta:
   title: Clone diverges before fix
   slug: clone
   description: >-
-    The faulty check is copied into a second class, which is then renamed before the copy is fixed, so the name
-    of the file the fix edits post-dates both the original fault and the copy.
+    The faulty check is copied into a second class, and a later commit renames that class and its method inside
+    the same file, so the identifiers the fix edits are not the ones the copy was made under.
   category: "Clone, copy propagation, and origin-vs-direct BIC"
   category_code: "G2"
   factors:
@@ -123,7 +123,9 @@ clone_relationships:
   divergence_commits:
   - c2
 scenario_design:
-  purpose: Evaluate whether a method reaches the copying commit when the copy has since been renamed.
+  purpose: >-
+    Evaluate whether a method reaches the copying commit when the copied class and method have since been renamed
+    in place.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
   required_extensions_from_source: >-

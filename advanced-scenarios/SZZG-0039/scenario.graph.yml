@@ -4,8 +4,9 @@ meta:
   title: Prerequisite BIC and symptom BIC fixed together
   slug: multi-bic-prerequisite-symptom
   description: >-
-    One commit accepts any non-null token and a later one weakens the access condition to an or; neither alone lets
-    an untrusted token through.
+    Two relaxations compound. The first weakens the trust check to accept any non-null token, which already admits
+    an untrusted token to an admin caller; the second turns the access condition from and into or, which extends
+    that to every caller. The fix has to undo both.
   category: "Multiple BICs, multiple BFCs, and partial fixes"
   category_code: "G3"
   factors:
@@ -120,7 +121,8 @@ expected_szz:
     - c2
 scenario_design:
   purpose: >-
-    Evaluate whether a method reports a prerequisite commit that is harmless until a later commit makes it reachable.
+    Evaluate whether a method reports both relaxations when the fix restores two conditions and either one alone
+    already grants access.
   current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
     scenario.yml schema.
   required_extensions_from_source: >-
