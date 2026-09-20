@@ -20,6 +20,7 @@ meta:
     - "multi-line-statement"
     - "statement-granularity"
     - "operator-precedence"
+    - "tangled-bfc"
   difficulty: "medium"
   status: "active"
   tier: "control"

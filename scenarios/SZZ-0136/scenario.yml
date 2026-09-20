@@ -125,13 +125,13 @@ bugs:
   - c1
   - c2
   fault:
-    commit: c1
+    commit: c2
     file: src/main/java/example/Scenario0136.java
     entity:
       type: method
       name: contains
       signature: boolean contains(int value, int min, int max)
-    statement: return value > min;
+    statement: return value > min && value < max;
     change_type: line_modification
   fix:
     commit: c3
@@ -149,7 +149,7 @@ bugs:
     line_level:
       available: true
       faulty_statements:
-      - return value > min;
+      - return value > min && value < max;
 checks:
 - type: git_history_contains
   commits:

@@ -77,12 +77,15 @@ def verify_generated_repo(repo_dir: Path, scenario_path: Path, commit_map_path: 
             fix_commit = fix.get("commit")
             fix_file = fix.get("file")
             fix_text = fix.get("added_statement") or fix.get("statement")
+            removed_text = fix.get("removed_statement")
             if fix_commit in commit_map and isinstance(fix_file, str):
                 fix_hash = commit_map[fix_commit]["hash"]
                 try:
                     content = git_show(repo_dir, fix_hash, fix_file)
                     if isinstance(fix_text, str) and fix_text not in content:
                         result.error("E311", f"bug {bid} fix statement not found at fix.commit '{fix_commit}'.", f"{loc}.fix")
+                    if isinstance(removed_text, str) and removed_text in content:
+                        result.error("E312", f"bug {bid} fix.removed_statement is still present at fix.commit '{fix_commit}'.", f"{loc}.fix.removed_statement")
                 except GitError as exc:
                     result.error("E310", f"Cannot read fix.file for bug {bid}: {exc}", f"{loc}.fix.file")
         if isinstance(fault, dict) and fault.get("change_type") != "omission" and bfc in commit_map:

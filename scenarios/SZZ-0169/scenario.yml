@@ -9,6 +9,7 @@ meta:
   category: "Context, message, and non-local evidence"
   factors:
   - root-cause
+  - tangled-bfc
   difficulty: hard
   status: active
   tier: control

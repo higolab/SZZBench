@@ -19,6 +19,7 @@ meta:
     - "line-addition-fix"
     - "missing-close"
     - "cosmetic-line-noise"
+    - "tangled-bfc"
   difficulty: "hard"
   status: "active"
   tier: "control"

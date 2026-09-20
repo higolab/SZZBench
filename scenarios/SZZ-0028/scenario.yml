@@ -110,7 +110,7 @@ bugs:
       name: valid
       signature: boolean valid(int value)
     statement: return false;
-    change_type: line_modification
+    change_type: line_addition
   fix:
     commit: c2
     file: src/main/java/example/Scenario0028.java
@@ -118,8 +118,8 @@ bugs:
       type: method
       name: valid
       signature: boolean valid(int value)
-    statement: return value >= 0;
-    fix_type: line_modification
+    removed_statement: 'if (value == 0) {'
+    fix_type: line_deletion
   expected_szz:
     commit_level:
       true_positives: *id001

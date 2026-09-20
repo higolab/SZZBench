@@ -18,6 +18,7 @@ meta:
     - "multi-file-bfc"
     - "three-file-bfc"
     - "caller-update-in-bfc"
+    - "tangled-bfc"
   difficulty: "medium"
   status: "active"
   tier: "control"

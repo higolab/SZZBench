@@ -126,11 +126,12 @@ With `--simulate`:
 | E250 | error | a commit produces no change |
 | E300 | error | `fault.file` does not exist at `fault.commit` |
 | E301 | error | `fault.statement` missing, or absent at `fault.commit` |
-| W301 | warning | `fault.statement` occurs more than once at `fault.commit` |
+| W301 | warning | `fault.statement` occurs more than once at `fault.commit`. Silenced by a `meta.factors` entry matching `duplicate`, `ambiguous`, `overload` or `repetitive`, for scenarios whose point is the duplication |
 | E310 | error | `fix.file` does not exist at `fix.commit` |
-| E311 | error | fix statement missing, or absent at `fix.commit` |
-| W320 | warning | `fault.file`/`fault.statement` not present immediately before the BFC |
-| W330 | warning | fix statement already present immediately before the BFC |
+| E311 | error | fix statement missing, or absent at `fix.commit`. One of `fix.statement`, `fix.added_statement` or `fix.removed_statement` is required |
+| E312 | error | `fix.removed_statement` is still present at `fix.commit`; a fix declared as a deletion must actually have removed it |
+| W320 | warning | `fault.file`/`fault.statement` not present immediately before the BFC. The statement case is silenced by a `meta.factors` entry matching `after-bic`, `rewrite`, `refactor`, `format`, `whitespace`, `rename`, `move`, `inline` or `extract`, for scenarios whose point is that the fault line was rewritten between BIC and BFC |
+| W330 | warning | fix statement already present immediately before the BFC. Silenced by the same duplication factors as W301, and by declaring `fix.removed_statement` — a fix that only deletes adds no text that could be "already present" |
 | W350 | warning | omission bug that also carries a `fault.statement` |
 | E351 | error | omission bug without `fault.missing_statement` |
 
