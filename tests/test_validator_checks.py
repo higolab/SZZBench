@@ -832,3 +832,31 @@ def test_readme_expected_history_must_match_the_operations(tmp_path):
     readme.unlink()
     _, result = validate_graph_scenario_file(path, strict_paths=True, lint=True)
     assert [f.code for f in result.findings if f.code == "GW454"] == []
+
+
+def test_index_mirrors_of_slug_category_and_difficulty(tmp_path):
+    """IE046: the index copies four more meta scalars, and checked none of them."""
+    from szzbench.validator import validate_index_file
+
+    root = tmp_path / "scenarios"
+    (root / "SZZ-0001").mkdir(parents=True)
+    scenario = graph_scenario()
+    scenario["meta"] = {"id": "SZZ-0001", "title": "A scenario", "slug": "a-scenario",
+                        "category": "Basic semantic line changes", "category_code": "S1",
+                        "difficulty": "medium", "status": "active"}
+    (root / "SZZ-0001" / "scenario.yml").write_text(yaml.safe_dump(scenario, sort_keys=False))
+
+    def index(**overrides):
+        entry = {"id": "SZZ-0001", "title": "A scenario", "slug": "a-scenario",
+                 "category": "Basic semantic line changes", "category_code": "S1",
+                 "difficulty": "medium", "status": "active"}
+        entry.update(overrides)
+        path = tmp_path / "index.yml"
+        path.write_text(yaml.safe_dump({"scenarios": [entry]}, sort_keys=False))
+        return path
+
+    assert validate_index_file(index(), root, "scenario.yml").findings == []
+    for key, wrong in (("slug", "other-slug"), ("category", "Omission and deletion bugs"),
+                       ("category_code", "S2"), ("difficulty", "hard")):
+        codes = [f.code for f in validate_index_file(index(**{key: wrong}), root, "scenario.yml").findings]
+        assert codes == ["IE046"], (key, codes)

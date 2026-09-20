@@ -708,6 +708,11 @@ def validate_index_file(index_path: Path, root: Path, scenario_filename: str) ->
         if "status" in entry and entry.get("status") != meta.get("status"):
             # The third mirrored field to drift in three PRs (issue #19).
             result.error("IE045", f"Index entry '{sid}' status '{entry.get('status')}' does not match meta.status '{meta.get('status')}'.", f"{loc}.status")
+        # title, status and factors each drifted before they were checked.  The
+        # index copies four more scalars from meta; nothing checked those either.
+        for key in ("slug", "category", "category_code", "difficulty"):
+            if key in entry and entry.get(key) != meta.get(key):
+                result.error("IE046", f"Index entry '{sid}' {key} '{entry.get(key)}' does not match meta.{key} '{meta.get(key)}'.", f"{loc}.{key}")
         if "factors" in entry:
             # The index repeats a field that changes with the scenario, which is
             # how it drifted before (issue #19); the copy has to be checked.  Both

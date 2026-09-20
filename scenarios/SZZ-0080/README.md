@@ -1,8 +1,10 @@
-# SZZ-0080: Exception handling deletion introduces bug
+# SZZ-0080: Zero-denominator guard deletion introduces a division by zero
 
 ## Purpose
 
-This scenario evaluates a bug-introducing commit shape: Exception handling deletion introduces bug.
+The BIC deletes the `denominator == 0` guard, so `divide` throws `ArithmeticException` instead of returning
+0, and the BFC restores the guard. No exception handler is involved: the removed code is a plain early-return
+branch.
 
 ## Commit structure
 

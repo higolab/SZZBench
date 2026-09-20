@@ -1,8 +1,10 @@
-# SZZ-0160: Patch context required around caller
+# SZZ-0160: Fault in a private helper reached only through its caller
 
 ## Purpose
 
-This scenario is intended for evaluating SZZ variants that need caller context around a patched helper method.
+The public method delegates to a private helper, and both the BIC and the BFC edit the helper's boundary
+check. Plain line-level blame on the line the fix deletes reaches the BIC exactly, so this is a control for
+the delegation shape rather than a case that needs the caller for context.
 
 ## Commit structure
 

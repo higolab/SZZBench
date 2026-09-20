@@ -65,7 +65,7 @@ commits:
     - B001
     - fault
 - id: c2
-  message: Performance cleanup before retry-condition fix
+  message: Cache the configured limit so callers avoid repeated lookups
   author: Mei Tanaka <mei.tanaka@example.com>
   date: 2023-11-14T12:22:00Z
   role: cleanup
@@ -93,7 +93,7 @@ commits:
           }
       }
 - id: c3
-  message: Fix retry condition after performance cleanup
+  message: Stop accepting one attempt beyond the configured limit
   author: Aiko Mori <aiko.mori@example.com>
   date: 2023-11-22T18:14:00Z
   role: bug_fixing
