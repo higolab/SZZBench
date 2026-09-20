@@ -142,19 +142,6 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0053/scenario.yml
-- id: SZZ-0058
-  title: Resource close omission
-  slug: resource-close-omission
-  category_code: S2
-  category: Omission and deletion bugs
-  factors:
-  - single-bic
-  - single-bfc
-  - omission-bug
-  - line-addition-fix
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0058/scenario.yml
 - id: SZZ-0070
   title: State transition check omission
   slug: state-transition-check-omission
