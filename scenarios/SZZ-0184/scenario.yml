@@ -17,7 +17,6 @@ meta:
     - "line-modification"
     - "test-line-noise"
     - "multi-file-bfc"
-    - "tangled-bfc"
   difficulty: "medium"
   status: "active"
   tier: "control"

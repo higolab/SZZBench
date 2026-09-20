@@ -126,3 +126,48 @@ def test_e312_when_the_removed_statement_is_still_there():
 def test_e311_still_requires_one_of_the_three_statement_keys():
     data = _deletion_scenario({"commit": "c2", "file": JAVA, "fix_type": "line_deletion"})
     assert "E311" in check(data)
+
+
+def test_e313_when_the_removed_statement_never_existed():
+    """Checking only that the text is gone afterwards accepts a false oracle.
+
+    A statement that occurs in no snapshot is trivially absent at the fix commit,
+    so `removed_statement: this_never_existed();` passed both validation and
+    verification until E313 required it to have been there beforehand.
+    """
+    data = _deletion_scenario({"commit": "c2", "file": JAVA,
+                               "removed_statement": "this_statement_never_existed();",
+                               "fix_type": "line_deletion"})
+    assert "E313" in check(data)
+
+
+def test_the_declarations_reach_the_git_backed_verifier(tmp_path):
+    """A scenario clean under `validate --lint` must be clean under `verify --strict`.
+
+    W301 lived in the verifier as well, where the declaration did not apply, so
+    SZZ-0111/0133/0146 validated cleanly and then failed verification.
+    """
+    from szzbench.generator import generate_repository
+    from szzbench.verifier import verify_generated_repo
+    import yaml
+
+    data = scenario(
+        factors=["single-bic", "duplicate-statement"],
+        commits=[write("c0", "package example;\npublic class Range {\n}\n"),
+                 write("c1", DUPLICATED, "bug_introducing"),
+                 write("c2", DUPLICATED.replace("x > min", "x >= min"), "bug_fixing")],
+        fault={"commit": "c1", "file": JAVA, "statement": "return x > min;", "change_type": "line_modification"},
+        fix={"commit": "c2", "file": JAVA, "statement": "return x >= min;", "fix_type": "line_modification"},
+    )
+    path = tmp_path / "scenario.yml"
+    path.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+    out = tmp_path / "out"
+    generate_repository(path, out, force=True)
+
+    declared = verify_generated_repo(out / "repo", path)
+    assert [f.code for f in declared.findings if f.code == "W301"] == []
+
+    data["meta"]["factors"] = ["single-bic"]
+    path.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+    undeclared = verify_generated_repo(out / "repo", path)
+    assert [f.code for f in undeclared.findings if f.code == "W301"] != []

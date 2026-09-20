@@ -10,7 +10,6 @@ meta:
   - single-bfc
   - config-bic
   - api-misuse
-  - tangled-bfc
   difficulty: hard
   status: active
   tier: control

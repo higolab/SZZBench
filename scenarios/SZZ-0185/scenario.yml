@@ -17,7 +17,6 @@ meta:
     - "single-bfc"
     - "line-modification"
     - "cosmetic-line-noise"
-    - "tangled-bfc"
   difficulty: "medium"
   status: "active"
   tier: "control"

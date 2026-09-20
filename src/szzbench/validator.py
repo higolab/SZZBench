@@ -87,6 +87,15 @@ DECLARED_BFC_NOISE_RE = re.compile(r"tangled|noise|distractor|adjacent-edit")
 # elsewhere in the file, typically in another overload (W330).
 DUPLICATE_STATEMENT_FACTOR_RE = re.compile(r"duplicate|ambiguous|overload|repetitive")
 
+# Factors declaring that the BFC edits lines the BIC did not write because the
+# repair does not live where the fault was introduced: the root cause is in
+# another file, the BIC is a configuration or dependency change, the fix has to
+# update call sites, or the faulty expression spans lines from several commits.
+# This is NOT tangling -- `tangled-bfc` means the commit mixes the fix with
+# *unrelated* changes (see decisions/vocabulary.md §2), and a single-line pure
+# repair whose blame reaches a non-BIC is not mixing anything.
+NON_LOCAL_FIX_FACTOR_RE = re.compile(r"root-cause|config|caller-update|multi-line-statement|cross-file")
+
 
 def validate_scenario_file(
     path: Path,
@@ -327,9 +336,16 @@ def validate_oracle_against_snapshots(data: dict[str, Any], snapshots: dict[str,
                     elif not isinstance(removed_text, str):
                         result.error("E311", f"bug {bid} fix.statement, fix.added_statement or fix.removed_statement is required.", f"{loc}.fix")
                     # A fix that only deletes is declared by what it removed, so that
-                    # text must be gone at the fix commit -- the mirror of E311.
-                    if isinstance(removed_text, str) and removed_text in snap[fix_file]:
-                        result.error("E312", f"bug {bid} fix.removed_statement is still present at fix.commit '{fix_commit}'.", f"{loc}.fix.removed_statement")
+                    # text must be there before the fix and gone after it.  Checking
+                    # only the second half accepts a statement that never existed.
+                    if isinstance(removed_text, str):
+                        if removed_text in snap[fix_file]:
+                            result.error("E312", f"bug {bid} fix.removed_statement is still present at fix.commit '{fix_commit}'.", f"{loc}.fix.removed_statement")
+                        fix_index = index_by_commit.get(fix_commit)
+                        before_id = commits[fix_index - 1].get("id") if fix_index else None
+                        before_files = snapshots.get(before_id) or {}
+                        if before_id is not None and removed_text not in before_files.get(fix_file, ""):
+                            result.error("E313", f"bug {bid} fix.removed_statement is not present in '{fix_file}' immediately before fix.commit '{fix_commit}'; the fix removed nothing.", f"{loc}.fix.removed_statement")
         if isinstance(bfc, str) and bfc in index_by_commit and index_by_commit[bfc] > 0:
             parent_id = commits[index_by_commit[bfc] - 1].get("id")
             parent_snapshot = snapshots.get(parent_id, {})
@@ -589,7 +605,11 @@ def _lint_fault_line_integrity(
     result = ValidationResult()
     index_by_commit = {c.get("id"): i for i, c in enumerate(commits)}
     rewrite_declared = factor_matches(factors, FAULT_REWRITE_FACTOR_RE)
-    tangled_declared = factor_matches(factors, TANGLED_BFC_FACTOR_RE)
+    # Either the BFC carries unrelated or cosmetic edits, or the repair legitimately
+    # sits away from the BIC; both explain a BFC that touches non-BIC lines.
+    tangled_declared = (factor_matches(factors, TANGLED_BFC_FACTOR_RE)
+                        or factor_matches(factors, DECLARED_BFC_NOISE_RE)
+                        or factor_matches(factors, NON_LOCAL_FIX_FACTOR_RE))
     authors_by_commit = _track_line_authors(commits, snapshots) if not tangled_declared else {}
     for i, bug in enumerate(bugs):
         loc = f"bugs[{i}]"

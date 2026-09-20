@@ -1089,7 +1089,6 @@ scenarios:
   category: Context, message, and non-local evidence
   factors:
   - root-cause
-  - tangled-bfc
   difficulty: hard
   status: active
   path: scenarios/SZZ-0169/scenario.yml
@@ -1114,7 +1113,6 @@ scenarios:
   - single-bfc
   - config-bic
   - api-misuse
-  - tangled-bfc
   difficulty: hard
   status: active
   path: scenarios/SZZ-0171/scenario.yml
@@ -1128,7 +1126,6 @@ scenarios:
   - code-interaction
   - context
   - config-value
-  - tangled-bfc
   difficulty: hard
   status: active
   path: scenarios/SZZ-0172/scenario.yml
@@ -1299,7 +1296,6 @@ scenarios:
   - line-modification
   - test-line-noise
   - multi-file-bfc
-  - tangled-bfc
   difficulty: medium
   status: active
   path: scenarios/SZZ-0184/scenario.yml
@@ -1313,7 +1309,6 @@ scenarios:
   - single-bfc
   - line-modification
   - cosmetic-line-noise
-  - tangled-bfc
   difficulty: medium
   status: active
   path: scenarios/SZZ-0185/scenario.yml
@@ -1344,7 +1339,6 @@ scenarios:
   - multi-file-bfc
   - three-file-bfc
   - caller-update-in-bfc
-  - tangled-bfc
   difficulty: medium
   status: active
   path: scenarios/SZZ-0187/scenario.yml
@@ -1360,7 +1354,6 @@ scenarios:
   - multi-line-statement
   - statement-granularity
   - operator-precedence
-  - tangled-bfc
   difficulty: medium
   status: active
   path: scenarios/SZZ-0188/scenario.yml
@@ -1376,7 +1369,6 @@ scenarios:
   - line-addition-fix
   - missing-close
   - cosmetic-line-noise
-  - tangled-bfc
   difficulty: hard
   status: active
   path: scenarios/SZZ-0189/scenario.yml

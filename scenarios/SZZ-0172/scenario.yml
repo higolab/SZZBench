@@ -12,7 +12,6 @@ meta:
   - code-interaction
   - context
   - config-value
-  - tangled-bfc
   difficulty: hard
   status: active
   tier: control

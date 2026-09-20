@@ -7,6 +7,7 @@ from .findings import ValidationResult
 from .gitutils import GitError, git_blame_line, git_hash_exists, git_message, git_parent, git_show
 from .operations import find_all_occurrences
 from .scenario import load_yaml
+from .validator import DUPLICATE_STATEMENT_FACTOR_RE, factor_matches
 
 def _load_commit_map(path: Path) -> tuple[dict, ValidationResult]:
     result = ValidationResult()
@@ -26,6 +27,10 @@ def verify_generated_repo(repo_dir: Path, scenario_path: Path, commit_map_path: 
     result.extend(load_result)
     if scenario is None:
         return result
+    # The same declarations the simulated checks honour, so a scenario that is
+    # clean under `validate --lint` is clean under `verify --strict` as well.
+    meta = scenario.get("meta") if isinstance(scenario.get("meta"), dict) else {}
+    duplicate_declared = factor_matches(meta.get("factors"), DUPLICATE_STATEMENT_FACTOR_RE)
     if commit_map_path is None:
         commit_map_path = repo_dir.parent / "metadata" / "commit-map.json"
     commit_map, cm_result = _load_commit_map(commit_map_path)
@@ -69,8 +74,8 @@ def verify_generated_repo(repo_dir: Path, scenario_path: Path, commit_map_path: 
                         count = len(find_all_occurrences(content, stmt))
                         if count == 0:
                             result.error("E301", f"bug {bid} fault.statement not found at fault.commit '{fcommit}'.", f"{loc}.fault.statement")
-                        elif count > 1:
-                            result.warning("W301", f"bug {bid} fault.statement appears {count} times at fault.commit '{fcommit}'.", f"{loc}.fault.statement")
+                        elif count > 1 and not duplicate_declared:
+                            result.warning("W301", f"bug {bid} fault.statement appears {count} times at fault.commit '{fcommit}'; declare the duplication with a factor if intended.", f"{loc}.fault.statement")
                 except GitError as exc:
                     result.error("E300", f"Cannot read fault.file for bug {bid}: {exc}", f"{loc}.fault.file")
         if isinstance(fix, dict):
@@ -84,8 +89,14 @@ def verify_generated_repo(repo_dir: Path, scenario_path: Path, commit_map_path: 
                     content = git_show(repo_dir, fix_hash, fix_file)
                     if isinstance(fix_text, str) and fix_text not in content:
                         result.error("E311", f"bug {bid} fix statement not found at fix.commit '{fix_commit}'.", f"{loc}.fix")
-                    if isinstance(removed_text, str) and removed_text in content:
-                        result.error("E312", f"bug {bid} fix.removed_statement is still present at fix.commit '{fix_commit}'.", f"{loc}.fix.removed_statement")
+                    if isinstance(removed_text, str):
+                        if removed_text in content:
+                            result.error("E312", f"bug {bid} fix.removed_statement is still present at fix.commit '{fix_commit}'.", f"{loc}.fix.removed_statement")
+                        before_hash = git_parent(repo_dir, fix_hash)
+                        if before_hash:
+                            before = git_show(repo_dir, before_hash, fix_file)
+                            if removed_text not in before:
+                                result.error("E313", f"bug {bid} fix.removed_statement is not present in '{fix_file}' immediately before fix.commit '{fix_commit}'; the fix removed nothing.", f"{loc}.fix.removed_statement")
                 except GitError as exc:
                     result.error("E310", f"Cannot read fix.file for bug {bid}: {exc}", f"{loc}.fix.file")
         if isinstance(fault, dict) and fault.get("change_type") != "omission" and bfc in commit_map:
