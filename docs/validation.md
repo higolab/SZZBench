@@ -126,11 +126,13 @@ With `--simulate`:
 | E250 | error | a commit produces no change |
 | E300 | error | `fault.file` does not exist at `fault.commit` |
 | E301 | error | `fault.statement` missing, or absent at `fault.commit` |
-| W301 | warning | `fault.statement` occurs more than once at `fault.commit` |
+| W301 | warning | `fault.statement` occurs more than once at `fault.commit`. Silenced by a `meta.factors` entry matching `duplicate`, `ambiguous`, `overload` or `repetitive`, for scenarios whose point is the duplication |
 | E310 | error | `fix.file` does not exist at `fix.commit` |
-| E311 | error | fix statement missing, or absent at `fix.commit` |
-| W320 | warning | `fault.file`/`fault.statement` not present immediately before the BFC |
-| W330 | warning | fix statement already present immediately before the BFC |
+| E311 | error | fix statement missing, or absent at `fix.commit`. One of `fix.statement`, `fix.added_statement` or `fix.removed_statement` is required |
+| E312 | error | `fix.removed_statement` is still present at `fix.commit`; a fix declared as a deletion must actually have removed it |
+| E313 | error | `fix.removed_statement` is not present in `fix.file` immediately before `fix.commit`; the declared text was never there, so the fix removed nothing. Without this, a `removed_statement` naming text that occurs in no snapshot is trivially "absent afterwards" and passes |
+| W320 | warning | `fault.file`/`fault.statement` not present immediately before the BFC. The statement case is silenced by a `meta.factors` entry matching `after-bic`, `rewrite`, `refactor`, `format`, `whitespace`, `rename`, `move`, `inline` or `extract`, for scenarios whose point is that the fault line was rewritten between BIC and BFC |
+| W330 | warning | fix statement already present immediately before the BFC. Silenced by the same duplication factors as W301, and by declaring `fix.removed_statement` — a fix that only deletes adds no text that could be "already present" |
 | W350 | warning | omission bug that also carries a `fault.statement` |
 | E351 | error | omission bug without `fault.missing_statement` |
 
@@ -151,7 +153,7 @@ The W41x / GW41x lints implement the leakage policy in
 | W420 | warning | ghost invariant: the BFC deletes or modifies an existing line although the scenario is declared as an addition-only fix. Declared by a factor in {`addition-only-fix`, `ghost-fix`, `add_only_fix`} (applies to every bug) or, per bug, by `fault.change_type: omission` together with `fix.fix_type` in {`line_addition`, `file_creation`} | a factor matching `tangled\|noise\|distractor\|adjacent-edit`, which declares that the fix deliberately carries unrelated deleted lines |
 | W421 | warning | ghost invariant: a BIC adds lines although the scenario is declared as a deletion-only BIC (factor `deletion-only-bic` or `line-deletion-bic`) | – |
 | W430 | warning | an intermediate non-BIC commit between `fault.commit` and the BFC removes the fault statement from `fault.file` | a factor matching `after-bic\|rewrite\|refactor\|format\|whitespace\|rename\|move\|inline\|extract` |
-| W431 | warning | the BFC deletes or modifies lines whose most recent author (difflib line tracking over the simulated snapshots) is not a BIC of the bug | a factor matching `tangled\|distractor\|candidate` |
+| W431 | warning | the BFC deletes or modifies lines whose most recent author (difflib line tracking over the simulated snapshots) is not a BIC of the bug | a factor matching `tangled\|distractor\|candidate`, `noise\|adjacent-edit` (the BFC carries unrelated or cosmetic edits), or `root-cause\|config\|caller-update\|multi-line-statement\|cross-file` (the repair legitimately sits away from the BIC: the root cause is in another file, the BIC is a configuration or dependency change, the fix updates call sites, or the faulty expression spans lines from several commits) |
 
 W420/W421/W430/W431 compare the simulated snapshots before and after a commit
 with `difflib.SequenceMatcher` on whole lines, i.e. a re-indented line counts

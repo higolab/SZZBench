@@ -82,6 +82,20 @@ TANGLED_BFC_FACTOR_RE = re.compile(r"tangled|distractor|candidate")
 #: W420 is not a finding but the scenario's subject (issues #6, #7).
 DECLARED_BFC_NOISE_RE = re.compile(r"tangled|noise|distractor|adjacent-edit")
 
+# Factors declaring that a statement legitimately occurs more than once: the
+# fault text is duplicated on purpose (W301), or the fix text already exists
+# elsewhere in the file, typically in another overload (W330).
+DUPLICATE_STATEMENT_FACTOR_RE = re.compile(r"duplicate|ambiguous|overload|repetitive")
+
+# Factors declaring that the BFC edits lines the BIC did not write because the
+# repair does not live where the fault was introduced: the root cause is in
+# another file, the BIC is a configuration or dependency change, the fix has to
+# update call sites, or the faulty expression spans lines from several commits.
+# This is NOT tangling -- `tangled-bfc` means the commit mixes the fix with
+# *unrelated* changes (see decisions/vocabulary.md §2), and a single-line pure
+# repair whose blame reaches a non-BIC is not mixing anything.
+NON_LOCAL_FIX_FACTOR_RE = re.compile(r"root-cause|config|caller-update|multi-line-statement|cross-file")
+
 
 def validate_scenario_file(
     path: Path,
@@ -274,6 +288,12 @@ def simulate_commits(data: dict[str, Any]) -> tuple[dict[str, dict[str, str]] | 
 
 def validate_oracle_against_snapshots(data: dict[str, Any], snapshots: dict[str, dict[str, str]]) -> ValidationResult:
     result = ValidationResult()
+    meta = data.get("meta") if isinstance(data.get("meta"), dict) else {}
+    factors = meta.get("factors")
+    # W301/W320/W330 report facts that some scenarios exist to exhibit.  A
+    # scenario says so in meta.factors, the same way W430/W431 are declared.
+    duplicate_declared = factor_matches(factors, DUPLICATE_STATEMENT_FACTOR_RE)
+    rewrite_declared = factor_matches(factors, FAULT_REWRITE_FACTOR_RE)
     commits = data.get("commits", [])
     index_by_commit = {c.get("id"): i for i, c in enumerate(commits) if isinstance(c, dict)}
     for i, bug in enumerate(data.get("bugs", [])):
@@ -298,8 +318,8 @@ def validate_oracle_against_snapshots(data: dict[str, Any], snapshots: dict[str,
                         count = len(find_all_occurrences(snap[ffile], stmt))
                         if count == 0:
                             result.error("E301", f"bug {bid} fault.statement does not exist at fault.commit '{fcommit}'.", f"{loc}.fault.statement")
-                        elif count > 1:
-                            result.warning("W301", f"bug {bid} fault.statement appears {count} times at fault.commit '{fcommit}'.", f"{loc}.fault.statement")
+                        elif count > 1 and not duplicate_declared:
+                            result.warning("W301", f"bug {bid} fault.statement appears {count} times at fault.commit '{fcommit}'; declare the duplication with a factor if intended.", f"{loc}.fault.statement")
         if isinstance(fix, dict):
             fix_commit = fix.get("commit")
             fix_file = fix.get("file")
@@ -309,11 +329,23 @@ def validate_oracle_against_snapshots(data: dict[str, Any], snapshots: dict[str,
                     result.error("E310", f"bug {bid} fix.file '{fix_file}' does not exist at fix.commit '{fix_commit}'.", f"{loc}.fix.file")
                 else:
                     fix_text = fix.get("added_statement") or fix.get("statement")
+                    removed_text = fix.get("removed_statement")
                     if isinstance(fix_text, str):
                         if fix_text not in snap[fix_file]:
                             result.error("E311", f"bug {bid} fix statement does not exist at fix.commit '{fix_commit}'.", f"{loc}.fix")
-                    else:
-                        result.error("E311", f"bug {bid} fix.statement or fix.added_statement is required.", f"{loc}.fix")
+                    elif not isinstance(removed_text, str):
+                        result.error("E311", f"bug {bid} fix.statement, fix.added_statement or fix.removed_statement is required.", f"{loc}.fix")
+                    # A fix that only deletes is declared by what it removed, so that
+                    # text must be there before the fix and gone after it.  Checking
+                    # only the second half accepts a statement that never existed.
+                    if isinstance(removed_text, str):
+                        if removed_text in snap[fix_file]:
+                            result.error("E312", f"bug {bid} fix.removed_statement is still present at fix.commit '{fix_commit}'.", f"{loc}.fix.removed_statement")
+                        fix_index = index_by_commit.get(fix_commit)
+                        before_id = commits[fix_index - 1].get("id") if fix_index else None
+                        before_files = snapshots.get(before_id) or {}
+                        if before_id is not None and removed_text not in before_files.get(fix_file, ""):
+                            result.error("E313", f"bug {bid} fix.removed_statement is not present in '{fix_file}' immediately before fix.commit '{fix_commit}'; the fix removed nothing.", f"{loc}.fix.removed_statement")
         if isinstance(bfc, str) and bfc in index_by_commit and index_by_commit[bfc] > 0:
             parent_id = commits[index_by_commit[bfc] - 1].get("id")
             parent_snapshot = snapshots.get(parent_id, {})
@@ -323,13 +355,13 @@ def validate_oracle_against_snapshots(data: dict[str, Any], snapshots: dict[str,
                 if isinstance(ffile, str) and isinstance(stmt, str):
                     if ffile not in parent_snapshot:
                         result.warning("W320", f"bug {bid} fault.file is absent in the BFC parent '{parent_id}'.", loc)
-                    elif stmt not in parent_snapshot[ffile]:
-                        result.warning("W320", f"bug {bid} fault.statement is not present immediately before BFC '{bfc}'.", loc)
+                    elif stmt not in parent_snapshot[ffile] and not rewrite_declared:
+                        result.warning("W320", f"bug {bid} fault.statement is not present immediately before BFC '{bfc}'; declare the rewrite with a factor if intended.", loc)
             if isinstance(fix, dict):
                 fix_file = fix.get("file")
                 fix_text = fix.get("added_statement") or fix.get("statement")
                 if isinstance(fix_file, str) and isinstance(fix_text, str) and fix_file in parent_snapshot:
-                    if fix_text in parent_snapshot[fix_file]:
+                    if fix_text in parent_snapshot[fix_file] and not duplicate_declared and "removed_statement" not in fix:
                         result.warning("W330", f"bug {bid} fix statement is already present before BFC '{bfc}'.", loc)
         if isinstance(fault, dict) and fault.get("change_type") == "omission":
             if "statement" in fault:
@@ -573,7 +605,11 @@ def _lint_fault_line_integrity(
     result = ValidationResult()
     index_by_commit = {c.get("id"): i for i, c in enumerate(commits)}
     rewrite_declared = factor_matches(factors, FAULT_REWRITE_FACTOR_RE)
-    tangled_declared = factor_matches(factors, TANGLED_BFC_FACTOR_RE)
+    # Either the BFC carries unrelated or cosmetic edits, or the repair legitimately
+    # sits away from the BIC; both explain a BFC that touches non-BIC lines.
+    tangled_declared = (factor_matches(factors, TANGLED_BFC_FACTOR_RE)
+                        or factor_matches(factors, DECLARED_BFC_NOISE_RE)
+                        or factor_matches(factors, NON_LOCAL_FIX_FACTOR_RE))
     authors_by_commit = _track_line_authors(commits, snapshots) if not tangled_declared else {}
     for i, bug in enumerate(bugs):
         loc = f"bugs[{i}]"

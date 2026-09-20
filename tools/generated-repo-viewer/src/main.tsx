@@ -152,6 +152,14 @@ function statementOf(entry: any): string {
   return String(entry?.statement || entry?.missing_statement || entry?.added_statement || "");
 }
 
+// A fix that only deletes is declared by `removed_statement`. That text is absent
+// at the fix commit by construction, so it is shown in the oracle card -- marked
+// as a removal -- but never highlighted in the file at that commit.
+function oracleTextOf(entry: any): string {
+  const removed = String(entry?.removed_statement || "");
+  return removed ? `removed: ${removed}` : statementOf(entry);
+}
+
 function formatCommitRef(entry: any, commitMap: RepositoryDetail["commitMap"]): string {
   const id = commitIdOf(entry);
   if (!id) return "";
@@ -628,7 +636,7 @@ function OracleViewer({
                   <div key={i} className="oracle-item">
                     <code>{fault.file || ""}</code>
                     <span>{fault.commit || ""}{fault.change_type ? ` / ${fault.change_type}` : ""}</span>
-                    <pre>{statementOf(fault)}</pre>
+                    <pre>{oracleTextOf(fault)}</pre>
                   </div>
                 ))}
               </div>
@@ -638,7 +646,7 @@ function OracleViewer({
                   <div key={i} className="oracle-item">
                     <code>{fix.file || ""}</code>
                     <span>{fix.commit || ""}{fix.fix_type ? ` / ${fix.fix_type}` : ""}</span>
-                    <pre>{statementOf(fix)}</pre>
+                    <pre>{oracleTextOf(fix)}</pre>
                   </div>
                 ))}
               </div>
