@@ -1,0 +1,135 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0205"
+  title: "f-string conversion rewrites the faulty format line after the BIC"
+  slug: "f-string-conversion-after-bic"
+  description: >
+    A progress line gains a second number and the two format arguments are
+    passed in the wrong order. A later modernisation commit converts the
+    `%`-formatting to an f-string, faithfully preserving the swapped order.
+    The fix swaps the names back. Plain blame at the fix's parent returns the
+    modernisation commit; the two spellings share no token sequence, so no
+    whitespace or token normalisation recovers the BIC.
+  category: "Intermediate noise and history noise"
+  factors:
+    - "single-bic"
+    - "single-bfc"
+    - "line-modification"
+    - "wrong-variable"
+    - "deep-line-history"
+    - "basic-blame-distractor"
+    - "string-format-rewrite"
+  difficulty: "medium"
+  status: "active"
+  tier: "control"
+  category_code: "S3"
+
+repository:
+  name: "SZZ-0205-f-string-conversion-after-bic"
+  default_branch: "main"
+  language: "python"
+  build_system: "none"
+  source_root: "src"
+
+commits:
+  - id: "c0"
+    message: "Add the shipping progress line"
+    author: "Mei Tanaka <mei.tanaka@example.com>"
+    date: "2025-08-04T09:52:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/shipping/__init__.py"
+        content: ""
+      - type: "write_file"
+        path: "src/shipping/summary.py"
+        content: |
+          """Human-readable shipping progress lines."""
+
+
+          def progress_line(shipped):
+              return "%d items shipped" % shipped
+
+  - id: "c1"
+    message: "Show the order total in the progress line"
+    author: "Diego Alvarez <diego.alvarez@example.com>"
+    date: "2025-08-11T15:37:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/shipping/summary.py"
+        old: |2
+          def progress_line(shipped):
+              return "%d items shipped" % shipped
+        new: |2
+          def progress_line(shipped, total):
+              return "%d of %d items shipped" % (total, shipped)
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Convert the progress line to an f-string"
+    author: "Priya Raman <priya.raman@example.com>"
+    date: "2025-08-18T10:14:00Z"
+    role: "refactoring"
+    operations:
+      - type: "replace"
+        path: "src/shipping/summary.py"
+        old: 'return "%d of %d items shipped" % (total, shipped)'
+        new: 'return f"{total} of {shipped} items shipped"'
+        labels: ["format_rewrite_only", "non_bug_introducing_change"]
+
+  - id: "c3"
+    message: "Print shipped before total in the progress line"
+    author: "Mei Tanaka <mei.tanaka@example.com>"
+    date: "2025-08-25T13:26:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/shipping/summary.py"
+        old: 'return f"{total} of {shipped} items shipped"'
+        new: 'return f"{shipped} of {total} items shipped"'
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "The progress line prints the total where the shipped count belongs"
+    bug_fixing_commit: "c3"
+    bug_introducing_commits: ["c1"]
+    fault:
+      commit: "c1"
+      file: "src/shipping/summary.py"
+      entity:
+        type: "function"
+        name: "progress_line"
+        signature: "progress_line(shipped, total)"
+      statement: 'return "%d of %d items shipped" % (total, shipped)'
+      change_type: "line_modification"
+      description: >
+        `progress_line(3, 12)` renders "12 of 3 items shipped": the tuple
+        lists `total` first while the template reads shipped-of-total.
+    fix:
+      commit: "c3"
+      file: "src/shipping/summary.py"
+      entity:
+        type: "function"
+        name: "progress_line"
+        signature: "progress_line(shipped, total)"
+      statement: 'return f"{shipped} of {total} items shipped"'
+      fix_type: "line_modification"
+    expected_szz:
+      commit_level:
+        true_positives: ["c1"]
+        known_distractors: ["c2"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - 'return "%d of %d items shipped" % (total, shipped)'
+        note: >
+          The line the BFC deletes is the f-string written by c2; the swapped
+          order it carries was introduced by c1.
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3"]

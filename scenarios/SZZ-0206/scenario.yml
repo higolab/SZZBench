@@ -1,0 +1,142 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0206"
+  title: "BOM-only rewrite of the faulty line"
+  slug: "bom-only-rewrite-of-faulty-line"
+  description: >
+    A limits module starts with its ceiling constant on line 1. A commit sets
+    the constant to the wrong value; a later commit re-saves the file as UTF-8
+    with a byte order mark, which changes the bytes of line 1 — and only line
+    1 — by the three-byte BOM while every character of code stays the same;
+    the fix corrects the constant. Plain blame at the fix's parent returns the
+    BOM commit, and `git blame -w` does too: a BOM is not whitespace. A tool
+    has to compare decoded text, or ignore commits whose diff is empty after
+    decoding, to reach the BIC.
+  category: "Intermediate noise and history noise"
+  factors:
+    - "single-bic"
+    - "single-bfc"
+    - "line-modification"
+    - "wrong-constant"
+    - "robustness"
+    - "bom-only-rewrite"
+    - "basic-blame-distractor"
+  difficulty: "medium"
+  status: "active"
+  tier: "control"
+  category_code: "S3"
+
+repository:
+  name: "SZZ-0206-bom-only-rewrite-of-faulty-line"
+  default_branch: "main"
+  language: "python"
+  build_system: "none"
+  source_root: "src"
+
+commits:
+  - id: "c0"
+    message: "Add the upload limits module"
+    author: "Luca Moretti <luca.moretti@example.com>"
+    date: "2025-09-01T09:30:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/limits/__init__.py"
+        content: ""
+      - type: "write_file"
+        path: "src/limits/upload.py"
+        content: |
+          MAX_UPLOAD_KB = 20480
+          ALLOWED_SUFFIXES = (".pdf", ".png", ".jpg")
+
+
+          def accepts(size_kb, name):
+              """True when an upload of ``size_kb`` kilobytes named ``name`` is allowed."""
+              return size_kb <= MAX_UPLOAD_KB and name.lower().endswith(ALLOWED_SUFFIXES)
+
+  - id: "c1"
+    message: "Raise the upload ceiling to 60 MB"
+    author: "Mei Tanaka <mei.tanaka@example.com>"
+    date: "2025-09-08T14:05:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/limits/upload.py"
+        old: "MAX_UPLOAD_KB = 20480"
+        new: "MAX_UPLOAD_KB = 6144"
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Save upload.py with the editor's default encoding (UTF-8 with BOM)"
+    author: "Tom Becker <tom.becker@example.com>"
+    date: "2025-09-15T17:48:00Z"
+    role: "formatting"
+    operations:
+      - type: "write_file"
+        path: "src/limits/upload.py"
+        encoding: "utf-8-sig"
+        content: |
+          MAX_UPLOAD_KB = 6144
+          ALLOWED_SUFFIXES = (".pdf", ".png", ".jpg")
+
+
+          def accepts(size_kb, name):
+              """True when an upload of ``size_kb`` kilobytes named ``name`` is allowed."""
+              return size_kb <= MAX_UPLOAD_KB and name.lower().endswith(ALLOWED_SUFFIXES)
+        labels: ["bom_only", "non_bug_introducing_change"]
+
+  - id: "c3"
+    message: "Correct the 60 MB ceiling: 61440 KB, not 6144"
+    author: "Mei Tanaka <mei.tanaka@example.com>"
+    date: "2025-09-22T10:19:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/limits/upload.py"
+        old: "MAX_UPLOAD_KB = 6144"
+        new: "MAX_UPLOAD_KB = 61440"
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "Uploads between 6 MB and 60 MB are rejected"
+    bug_fixing_commit: "c3"
+    bug_introducing_commits: ["c1"]
+    fault:
+      commit: "c1"
+      file: "src/limits/upload.py"
+      entity:
+        type: "constant"
+        name: "MAX_UPLOAD_KB"
+        signature: "MAX_UPLOAD_KB"
+      statement: "MAX_UPLOAD_KB = 6144"
+      change_type: "line_modification"
+      description: >
+        60 MB is 61440 KB; the commit that announces the new ceiling writes
+        6144, a dropped digit, so the ceiling falls from 20 MB to 6 MB.
+    fix:
+      commit: "c3"
+      file: "src/limits/upload.py"
+      entity:
+        type: "constant"
+        name: "MAX_UPLOAD_KB"
+        signature: "MAX_UPLOAD_KB"
+      statement: "MAX_UPLOAD_KB = 61440"
+      fix_type: "line_modification"
+    expected_szz:
+      commit_level:
+        true_positives: ["c1"]
+        known_distractors: ["c2"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "MAX_UPLOAD_KB = 6144"
+        note: >
+          At c3^ line 1 is the BOM followed by `MAX_UPLOAD_KB = 6144`; the
+          bytes were last written by c2, the characters by c1.
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3"]
