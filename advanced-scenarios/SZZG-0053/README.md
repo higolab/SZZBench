@@ -2,38 +2,53 @@
 
 ## Purpose
 
-A release branch introduces and fixes a bug that never exists on main.
+A bug that exists only on the `release` branch: `c2` means to keep serving
+administrators during maintenance and drops the negation from
+`!maintenance || admin`, so outside maintenance nobody but administrators is
+served. `c4` restores it on `release`; `main` never contains the fault and keeps
+receiving unrelated correct commits.
 
-## Commit history
+Rewritten 2026-09-21 (issue #13) from the shared `Range.contains` template; the
+history shape, oracle and coverage dimensions (`bic_depth` 1, one distractor on
+the fault file, 5 commits, 2 refs) are unchanged.
+
+## Commit structure (generated)
 
 ```text
-c0: create initial correct implementation on main
-c1: main continues correct development
-c2: release branch introduces release-only bug
-c3: main adds unrelated correct change
-c4: release branch fixes release-only bug
+* a8d91b8  2023-07-18  Serve everyone outside maintenance again on release  <- BFC (c4, release)
+* 37f7f31  2023-07-03  Serve administrators during maintenance on release   <- BIC (c2, release)
+| * c0b6709  2023-07-10  Add a main branch note                             (c3, main; docs/main-notes.md)
+| * eb11590  2023-06-27  Record the main version                            (c1, main; docs/main-version.md)
+|/
+* 6a9d916  2023-06-19  Add the request gate                                 (c0)
 ```
 
-## Commit table
+## Expected BIC / BFC
 
-| Commit | Branch | Parents | Role | Description |
+- BIC: `c2` (`exact_set`, `required: [c2]`)
+- BFC: `c4`
+
+## Measured behaviour and blame
+
+`canServe(maintenance, admin)`:
+
+| commit | `(false, false)` | `(true, false)` | `(false, true)` | `(true, true)` |
 |---|---|---|---|---|
-| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `c1` | `main` | c0 | `intermediate` | c1: add main-only version note |
-| `c2` | `release` | c0 | `bug_introducing` | c2: introduce release-only range boundary bug |
-| `c3` | `main` | c1 | `intermediate` | c3: add unrelated main documentation |
-| `c4` | `release` | c2 | `bug_fixing` | c4: fix release-only range boundary bug |
+| `c0`, `c1`, `c3` (main) | true | false | true | true |
+| `c2` (release) | **false** | **true** | true | true |
+| `c4` (release) | true | false | true | true |
 
-## Expected SZZ result
+Both administrator cases stay true, so a test that only checks administrators
+passes on the faulty release. `c4` deletes one line (`return maintenance ||
+admin;`, line 6); blame at `c4^` returns `c2` (verifier `GI703`).
 
-```text
-Expected BIC: c2
-```
+## What a tool must do
 
-## Scenario purpose
+Report `c2`. `main` offers no candidate at all; a tool that mines only the
+default branch never sees this bug or its fix.
 
-Evaluate whether SZZ can handle a bug that exists only on a release branch and not on main.
+## Factors
 
-## Notes
-
-- This scenario should not be collapsed into feature-to-main merge scenarios.
+- `release-branch`
+- `branch-only-bug`
+- `boolean-negation`

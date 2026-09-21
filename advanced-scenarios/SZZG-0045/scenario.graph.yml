@@ -3,13 +3,18 @@ meta:
   id: SZZG-0045
   title: BIC in merge commit
   slug: bic-in-merge-commit
-  description: The merge commit itself introduces the bug during merge resolution; a later normal commit fixes it.
+  description: >
+    The merge commit itself introduces the bug during merge resolution; a later normal commit
+    fixes it. The fault is a string compared by identity: the merge rewrites
+    `"admin".equals(role)` as `role == "admin"`, which is true for the interned literal and false
+    for any role that arrives from input.
   category: "Branch, merge, cherry-pick, backport, and release branches"
   category_code: "G4"
   factors:
   - branch
   - merge
   - merge-commit-bic
+  - string-comparison
   difficulty: advanced
   status: active
   tier: control
@@ -21,37 +26,49 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial correct implementation on main
+  history_summary: 'c0: add the role check on main (equals)
 
-    c1: add feature branch helper without changing the range logic
+    c1: add the role reporter on the feature branch, without touching the check
 
-    c2: add unrelated main branch note
+    c2: add an unrelated main branch note
 
-    c3: merge feature into main and introduce bug in the merge commit
+    c3: merge feature into main and compare roles by identity in the merge commit
 
-    c4: fix the merge-introduced bug'
+    c4: compare roles by value again'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'Add the range check'
+  message: 'Add the role check'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
+    path: src/main/java/example/RoleCheck.java
+    content: |
+      package example;
+
+      public class RoleCheck {
+        public boolean isAdmin(String role) {
+          return "admin".equals(role);
+        }
+      }
 - id: c1
   branch: feature
   parents:
   - c0
-  message: 'Add the feature reporter'
+  message: 'Add the role reporter'
   role: intermediate
   operations:
   - type: write_file
-    path: src/main/java/example/FeatureReporter.java
-    content: "package example;\n\npublic class FeatureReporter {\n  public String name() {\n    return \"feature\";\n  }\n\
-      }\n"
+    path: src/main/java/example/RoleReporter.java
+    content: |
+      package example;
+
+      public class RoleReporter {
+        public String name() {
+          return "roles";
+        }
+      }
 - id: c2
   branch: main
   parents:
@@ -69,45 +86,45 @@ commits:
   parents:
   - c2
   - c1
-  message: 'Merge the feature branch and tighten the range check'
+  message: 'Merge the feature branch and compare roles by identity'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
+    path: src/main/java/example/RoleCheck.java
+    old: return "admin".equals(role);
+    new: return role == "admin";
 - id: c4
   branch: main
   parents:
   - c3
-  message: 'Accept the range bounds again'
+  message: 'Compare roles by value again'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/RoleCheck.java
+    old: return role == "admin";
+    new: return "admin".equals(role);
 bugs:
 - id: B001
-  title: Range boundary bug introduced by merge commit
+  title: Administrators whose role string is not the interned literal are not recognised
   bug_introducing_commits:
   - commit: c3
     role: direct
-    description: The merge commit itself writes the faulty line.
+    description: The merge commit itself writes the faulty comparison.
   bug_fixing_commits:
   - commit: c4
     role: complete_fix
   faults:
   - id: F001
     commit: c3
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/RoleCheck.java
+    statement: return role == "admin";
     change_type: line_modification
   fixes:
   - id: X001
     commit: c4
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
+    file: src/main/java/example/RoleCheck.java
+    statement: return "admin".equals(role);
     fix_type: line_modification
 expected_szz:
   commit_level:
@@ -116,10 +133,16 @@ expected_szz:
     - c3
 scenario_design:
   purpose: Evaluate whether SZZ can identify a merge commit as the BIC when the merge resolution itself introduces the bug.
-  key_property: The BIC is the two-parent merge commit c3.
+  key_property: >
+    The BIC is the two-parent merge commit c3. Measured: isAdmin(new String("admin")) is true at c0, c1
+    and c2, false at c3, true at c4; isAdmin("admin") — the interned literal — is true at every commit,
+    which is why the fault survives a test that passes literals. Blaming the line c4 deletes at c4^
+    returns c3.
   evaluation_points:
   - Merge commit as BIC
   - Later normal BFC
-  - No parent contains the buggy range condition before the merge.
+  - No parent contains the identity comparison before the merge.
 notes:
 - This scenario requires support for operations on merge commits.
+- Rewritten 2026-09-21 from the shared Range.contains template to a string-comparison fault (GitHub issue 13); the history
+  shape, oracle and coverage dimensions are unchanged.

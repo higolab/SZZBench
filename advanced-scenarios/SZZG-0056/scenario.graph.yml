@@ -3,7 +3,10 @@ meta:
   id: SZZG-0056
   title: Main fix rebased onto release branch
   slug: main-fix-rebased-onto-release-branch
-  description: A main-line fix is replayed onto release by rebase.
+  description: >
+    A main-line fix is replayed onto release by rebase. The fault is an int multiplication that
+    overflows for inputs above 256 MiB after the long arithmetic is dropped from a byte-to-bit
+    conversion.
   category: "Branch, merge, cherry-pick, backport, and release branches"
   category_code: "G4"
   factors:
@@ -13,6 +16,7 @@ meta:
   - main-fix-to-release
   - rebased-bfc
   - multi-bfc
+  - integer-overflow
   difficulty: advanced
   status: active
   tier: control
@@ -24,37 +28,44 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial correct implementation
+  history_summary: 'c0: add the byte-to-bit conversion (long arithmetic)
 
-    c1: introduce range bug on main
+    c1: drop the long arithmetic on main (overflows above 256 MiB)
 
-    rel1: cut release branch with bug
+    rel1: cut release branch with the bug
 
-    c2: fix bug on main
+    c2: multiply in long again on main
 
-    r2: rebase main fix onto release'
+    r2: rebase the main fix onto release'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'Add the range check'
+  message: 'Add the byte-to-bit conversion'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
+    path: src/main/java/example/Bytes.java
+    content: |
+      package example;
+
+      public class Bytes {
+        /** Number of bits in {@code bytes} bytes. */
+        public long toBits(int bytes) {
+          return bytes * 8L;
+        }
+      }
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'Make the range check exclusive'
+  message: 'Drop the long arithmetic in toBits'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
+    path: src/main/java/example/Bytes.java
+    old: return bytes * 8L;
+    new: return bytes * 8;
 - id: rel1
   branch: release
   parents:
@@ -71,28 +82,28 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'Accept the range bounds again'
+  message: 'Multiply in long: toBits overflows past 256 MiB'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/Bytes.java
+    old: return bytes * 8;
+    new: return bytes * 8L;
 - id: r2
   branch: release
   parents:
   - rel1
-  message: 'Accept the range bounds on release'
+  message: 'Multiply in long on release: toBits overflows past 256 MiB'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/Bytes.java
+    old: return bytes * 8;
+    new: return bytes * 8L;
   rebase_of: c2
 bugs:
 - id: B001
-  title: Bug fixed by rebased main fix
+  title: toBits overflows for inputs above 256 MiB; fixed by a rebased main fix
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -104,14 +115,14 @@ bugs:
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/Bytes.java
+    statement: return bytes * 8;
     change_type: line_modification
   fixes:
   - id: X001
     commit: r2
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
+    file: src/main/java/example/Bytes.java
+    statement: return bytes * 8L;
     fix_type: line_modification
 expected_szz:
   commit_level:
@@ -122,7 +133,10 @@ expected_szz:
     - c2
 scenario_design:
   purpose: Evaluate a release BFC that is a rebased copy of a main fix.
-  key_property: r2 is the release BFC replaying c2.
+  key_property: >
+    r2 is the release BFC replaying c2. Measured: toBits(1 << 28) is 2147483648 at c0, -2147483648 at c1 and rel1
+    (the int product wraps before it is widened), 2147483648 at c2 and r2; toBits(1024) is 8192 throughout.
+    Blaming the line r2 deletes at r2^ returns c1.
   difference_from_SZZG_0064: SZZG-0064 covers a rebased BIC followed by a non-BIC rebased intermediate commit. This scenario
     adds a distinct rebase-related complication.
   evaluation_points:
@@ -131,3 +145,5 @@ scenario_design:
 notes:
 - This scenario models a rebase-related development history for SZZ evaluation.
 - Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.
+- Rewritten 2026-09-21 from the shared Range.contains template to an integer-overflow fault (GitHub issue 13); the history
+  shape, oracle and coverage dimensions are unchanged.

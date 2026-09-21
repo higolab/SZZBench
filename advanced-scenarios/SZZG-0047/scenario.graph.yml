@@ -3,9 +3,11 @@ meta:
   id: SZZG-0047
   title: Squash merge
   slug: squash-merge
-  description: A feature branch tightens the sample range check and adds a calibration window on top of it. The branch is
-    squash-merged into main as a single-parent commit whose message is the GitHub squash message of the pull request. The
-    squash commit is the direct BIC on main; the feature-branch commit that first wrote the faulty comparison is the origin.
+  description: >
+    A feature branch makes the port parser swallow NumberFormatException and return port 0, then
+    adds a privileged-port check on top. The branch is squash-merged into main as a single-parent
+    commit whose message is the GitHub squash message of the pull request. The squash commit is the
+    direct BIC on main; the feature-branch commit that first swallowed the exception is the origin.
   category: "Branch, merge, cherry-pick, backport, and release branches"
   category_code: "G4"
   factors:
@@ -14,6 +16,7 @@ meta:
   - squashed-bic
   - direct-bic
   - origin-bic
+  - exception-swallowed
   difficulty: advanced
   status: active
   tier: control
@@ -25,83 +28,94 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: add Range with the supported sample window on main
+  history_summary: 'c0: add PortParser on main (parse throws on malformed input)
 
-    c1: feature branch makes the range comparison exclusive
+    c1: feature branch catches NumberFormatException and returns FALLBACK_PORT (0)
 
-    c2: feature branch adds the calibration window check that reuses the comparison
+    c2: feature branch adds the privileged-port check used by the launcher
 
     c3: squash-merge of the feature branch into main (single parent, both feature patches applied)
 
-    c4: main accepts the range bounds again'
+    c4: main rejects malformed port values with an exception again'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: Add Range with the supported sample window
+  message: Add PortParser with the valid port window
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
+    path: src/main/java/example/PortParser.java
     content: |
       package example;
-
-      public class Range {
-        public static final int LOWEST_SAMPLE = -40;
-        public static final int HIGHEST_SAMPLE = 125;
-
-        public boolean contains(int value, int min, int max) {
-          return value >= min && value <= max;
+      public class PortParser {
+        public static final int MIN_PORT = 1;
+        public static final int MAX_PORT = 65535;
+        public int parse(String text) {
+          return Integer.parseInt(text.trim());
         }
-
-        public boolean isSupportedSample(int value) {
-          return contains(value, LOWEST_SAMPLE, HIGHEST_SAMPLE);
+        public boolean isValid(int port) {
+          return port >= MIN_PORT && port <= MAX_PORT;
         }
       }
 - id: c1
   branch: feature
   parents:
   - c0
-  message: Require samples strictly inside the range bounds
+  message: Never fail on a malformed port value
   role: origin_bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
+    path: src/main/java/example/PortParser.java
+    old: public static final int MAX_PORT = 65535;
+    new: |-
+      public static final int MAX_PORT = 65535;
+        public static final int FALLBACK_PORT = 0;
+  - type: replace
+    path: src/main/java/example/PortParser.java
+    old: |-
+      public int parse(String text) {
+          return Integer.parseInt(text.trim());
+        }
+    new: |-
+      public int parse(String text) {
+          try {
+            return Integer.parseInt(text.trim());
+          } catch (NumberFormatException e) {
+            return FALLBACK_PORT;
+          }
+        }
 - id: c2
   branch: feature
   parents:
   - c1
-  message: Add the calibration window check used by the sampler
+  message: Add the privileged-port check used by the launcher
   role: intermediate
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: public static final int HIGHEST_SAMPLE = 125;
+    path: src/main/java/example/PortParser.java
+    old: public static final int FALLBACK_PORT = 0;
     new: |-
-      public static final int HIGHEST_SAMPLE = 125;
-        public static final int CALIBRATION_LOW = 0;
-        public static final int CALIBRATION_HIGH = 80;
+      public static final int FALLBACK_PORT = 0;
+        public static final int PRIVILEGED_LIMIT = 1024;
   - type: replace
-    path: src/main/java/example/Range.java
+    path: src/main/java/example/PortParser.java
     old: |-
-      public boolean isSupportedSample(int value) {
-          return contains(value, LOWEST_SAMPLE, HIGHEST_SAMPLE);
+      public boolean isValid(int port) {
+          return port >= MIN_PORT && port <= MAX_PORT;
         }
     new: |-
-      public boolean isSupportedSample(int value) {
-          return contains(value, LOWEST_SAMPLE, HIGHEST_SAMPLE);
+      public boolean isValid(int port) {
+          return port >= MIN_PORT && port <= MAX_PORT;
         }
-
-        public boolean isWithinCalibrationWindow(int value) {
-          return contains(value, CALIBRATION_LOW, CALIBRATION_HIGH);
+        public boolean isPrivileged(int port) {
+          return port < PRIVILEGED_LIMIT;
         }
 - id: c3
   branch: main
   parents:
   - c0
-  message: Tighten the range bounds and add the calibration window check (#118)
+  message: Tolerate malformed port values and add the privileged-port check (#118)
   role: bug_introducing
   squashes:
   - c1
@@ -115,24 +129,24 @@ commits:
   branch: main
   parents:
   - c3
-  message: Accept the range bounds again so min and max stay inside the range
+  message: Reject malformed port values instead of silently using port 0
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/PortParser.java
+    old: return FALLBACK_PORT;
+    new: 'throw new IllegalArgumentException("not a port number: " + text, e);'
 bugs:
 - id: B001
-  title: Range.contains rejects the interval bounds after the squash merge
+  title: A malformed port value is silently parsed as port 0 after the squash merge
   bug_introducing_commits:
   - commit: c3
     role: direct
-    description: Direct BIC on main; the squash commit writes the faulty comparison into main's history as a single-parent
+    description: Direct BIC on main; the squash commit writes the swallowing catch block into main's history as a single-parent
       commit.
   - commit: c1
     role: origin
-    description: Origin BIC on the feature branch; it wrote the same comparison before the squash merge and is not an ancestor
+    description: Origin BIC on the feature branch; it wrote the same catch block before the squash merge and is not an ancestor
       of the BFC.
   bug_fixing_commits:
   - commit: c4
@@ -140,20 +154,20 @@ bugs:
   faults:
   - id: F001
     commit: c3
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/PortParser.java
+    statement: return FALLBACK_PORT;
     change_type: line_modification
   origin_faults:
   - id: OF001
     commit: c1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/PortParser.java
+    statement: return FALLBACK_PORT;
     change_type: origin_line_modification
   fixes:
   - id: X001
     commit: c4
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
+    file: src/main/java/example/PortParser.java
+    statement: 'throw new IllegalArgumentException("not a port number: " + text, e);'
     fix_type: line_modification
 expected_szz:
   commit_level:
@@ -178,9 +192,12 @@ expected_szz:
 scenario_design:
   purpose: Evaluate how SZZ handles a squash merge where the main-line direct BIC is the squash commit, while the faulty logic
     originated earlier on a feature branch.
-  key_property: c3 has one parent only. The feature commits c1 and c2 stay reachable through the `feature` branch and are
-    recorded in `squashes`, but they are not parents of c3. c3 is generated by really applying both feature patches (`apply_squash`),
-    so its diff against c0 is the combined feature diff.
+  key_property: >
+    c3 has one parent only. The feature commits c1 and c2 stay reachable through the `feature` branch and are
+    recorded in `squashes`, but they are not parents of c3. c3 is generated by really applying both feature patches
+    (`apply_squash`), so its diff against c0 is the combined feature diff. Measured: parse("http") throws
+    NumberFormatException at c0, returns 0 at c1, c2 and c3, and throws IllegalArgumentException at c4;
+    parse("8080") is 8080 throughout. Blaming the line c4 deletes at c4^ returns c3.
   difference_from_SZZG_0043: SZZG-0043 uses a normal merge where the feature branch is merged into main with a two-parent
     merge commit. SZZG-0047 uses a single-parent squash commit on main.
   difference_from_SZZG_0072: SZZG-0072 is an interactive rebase that drops the original faulty commit and keeps only the second
@@ -195,3 +212,5 @@ notes:
   `%s` with `message`, GE623), so the bullet list of squashed subjects that GitHub puts in the body is represented by `squashes`
   and by this README instead.
 - The expected direct BIC is c3; c1 is related origin metadata but not the direct BIC for the main-line fix.
+- Rewritten 2026-09-21 from the shared Range.contains template to a swallowed-exception fault (GitHub issue 13); the history
+  shape, oracle and coverage dimensions are unchanged.

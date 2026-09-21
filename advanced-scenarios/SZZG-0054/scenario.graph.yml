@@ -3,14 +3,16 @@ meta:
   id: SZZG-0054
   title: Fixed on main but unfixed on release
   slug: fixed-on-main-unfixed-on-release
-  description: A bug is introduced before a release branch is cut; main fixes the bug, but the release branch continues without
-    the fix.
+  description: >
+    A bug is introduced before a release branch is cut: the grand total adds the tax twice and the
+    shipping cost never. Main fixes the bug, but the release branch continues without the fix.
   category: "Branch, merge, cherry-pick, backport, and release branches"
   category_code: "G4"
   factors:
   - release-branch
   - partial-fix-propagation
   - unfixed-release
+  - wrong-variable
   difficulty: advanced
   status: active
   tier: control
@@ -22,37 +24,44 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial correct implementation on main
+  history_summary: 'c0: add the invoice totals on main
 
-    c1: introduce bug on main before release branch
+    c1: spell out the grand total on main (tax twice, shipping never)
 
     c2: create release branch from buggy state and add release note
 
-    c3: fix bug on main
+    c3: fix the grand total on main
 
-    c4: release branch continues with bug unfixed'
+    c4: release branch continues with the bug unfixed'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'Add the range check'
+  message: 'Add the invoice totals'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
+    path: src/main/java/example/Totals.java
+    content: |
+      package example;
+
+      public class Totals {
+        /** Grand total in cents: net amount plus tax plus shipping. */
+        public int grand(int net, int tax, int shipping) {
+          return net + tax + shipping;
+        }
+      }
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'Make the range check exclusive'
+  message: 'Spell out the grand total component by component'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
+    path: src/main/java/example/Totals.java
+    old: return net + tax + shipping;
+    new: return net + tax + tax;
 - id: c2
   branch: release
   parents:
@@ -69,13 +78,13 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'Accept the range bounds on main'
+  message: 'Add shipping, not tax twice, to the grand total on main'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/Totals.java
+    old: return net + tax + tax;
+    new: return net + tax + shipping;
 - id: c4
   branch: release
   parents:
@@ -90,7 +99,7 @@ commits:
       '
 bugs:
 - id: B001
-  title: Bug fixed on main but still present on release
+  title: The grand total counts tax twice and shipping never; fixed on main, still present on release
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -101,14 +110,14 @@ bugs:
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/Totals.java
+    statement: return net + tax + tax;
     change_type: line_modification
   fixes:
   - id: X001
     commit: c3
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
+    file: src/main/java/example/Totals.java
+    statement: return net + tax + shipping;
     fix_type: line_modification
   bug_instances:
   - branch: main
@@ -125,10 +134,14 @@ expected_szz:
 scenario_design:
   purpose: Evaluate whether SZZ can identify the original BIC when a fix exists on main but has not been propagated to a release
     branch.
-  key_property: The same BIC affects both branches, but only main contains a BFC.
+  key_property: >
+    The same BIC affects both branches, but only main contains a BFC. Measured: grand(100, 20, 15) is 135 at c0,
+    140 at c1, c2 and c4 (release stays wrong), 135 at c3. Blaming the line c3 deletes at c3^ returns c1.
   evaluation_points:
   - Main fixed
   - Release unfixed
   - Bug instance remains active on release.
 notes:
 - The release branch intentionally remains buggy at c4.
+- Rewritten 2026-09-21 from the shared Range.contains template to a wrong-variable fault (GitHub issue 13); the history shape,
+  oracle and coverage dimensions are unchanged.

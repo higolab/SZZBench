@@ -489,6 +489,7 @@ scenarios:
   - branch
   - merge
   - merge-commit-bic
+  - string-comparison
 - id: SZZG-0046
   title: BFC in merge commit
   category_code: G4
@@ -514,6 +515,7 @@ scenarios:
   - squashed-bic
   - direct-bic
   - origin-bic
+  - exception-swallowed
 - id: SZZG-0048
   title: Cherry-pick BIC
   category_code: G4
@@ -540,6 +542,7 @@ scenarios:
   - multi-bfc
   - copy-propagation
   - backport-like-fix
+  - off-by-one
 - id: SZZG-0050
   title: Backport fix
   category_code: G4
@@ -553,6 +556,7 @@ scenarios:
   - release-branch
   - release-specific-changes
   - copy-propagation
+  - null-check-omission
 - id: SZZG-0051
   title: Backport introduces release-specific bug
   category_code: G4
@@ -563,6 +567,7 @@ scenarios:
   factors:
   - branch
   - backport
+  - wrong-constant
 - id: SZZG-0052
   title: Criss-cross merge
   category_code: G4
@@ -585,6 +590,7 @@ scenarios:
   factors:
   - release-branch
   - branch-only-bug
+  - boolean-negation
 - id: SZZG-0054
   title: Fixed on main but unfixed on release
   category_code: G4
@@ -596,6 +602,7 @@ scenarios:
   - release-branch
   - partial-fix-propagation
   - unfixed-release
+  - wrong-variable
 - id: SZZG-0055
   title: Release branch change rebased onto main
   category_code: G4
@@ -624,6 +631,7 @@ scenarios:
   - main-fix-to-release
   - rebased-bfc
   - multi-bfc
+  - integer-overflow
 - id: SZZG-0057
   title: Rebase old feature branch after unrelated main changes
   category_code: G4

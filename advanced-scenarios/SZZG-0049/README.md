@@ -2,101 +2,57 @@
 
 ## Purpose
 
-This scenario represents a bug-fixing commit that is cherry-picked from `main` to a `release` branch.
+The page count is "simplified" from ceiling division to `items / perPage + 1`,
+which is one page too many whenever the item count is an exact multiple of the
+page size. The bug exists on `main` and on the `release` branch cut after it.
+`main` fixes it; the fix is then cherry-picked onto `release` with a real
+`git cherry-pick`. Both `c2` and `r2` are bug-fixing commits, and both must lead
+back to the single BIC `c1` — not to each other. Compare SZZG-0048, where the
+cherry-picked commit is the BIC.
 
-The bug is introduced on `main` before the release branch is cut. The release branch is created from the buggy state. The bug is then fixed on `main`, and that BFC is cherry-picked onto `release`.
+Rewritten 2026-09-21 (issue #13) from the shared `Range.contains` template; the
+history shape, oracle and coverage dimensions (`bic_depth` 3, one distractor on
+the fault file, 5 commits, 2 refs) are unchanged.
 
-This distinguishes `SZZG-0049` from `SZZG-0048`.
-
-```text
-SZZG-0048: cherry-pick BIC
-SZZG-0049: cherry-pick BFC
-```
-
-## Commit graph
-
-```text
-main:     c0 ---- c1(BIC) ---- c2(BFC)
-                    \
-release:             r1 ---- r2(BFC, cherry-pick of c2)
-```
-
-## Commit history
+## Commit structure (generated)
 
 ```text
-c0: create initial correct implementation on main
-c1: introduce bug on main before the release branch is cut
-r1: create release branch from the buggy state
-c2: fix bug on main
-r2: cherry-pick the main BFC onto release
+* da7ed90  2024-10-08  Cherry-pick the page count fix onto release          <- BFC (r2, release; cherry-pick of c2)
+* 21597a8  2024-09-27  Cut the 1.0 release branch                           (r1, release; docs/release-note.md)
+| * 8292672  2024-10-07  Count pages without an extra page for exact multiples  <- BFC (c2, main)
+|/
+* a83a838  2024-09-18  Simplify the page count                              <- BIC (c1)
+* 827e3c8  2024-09-16  Add the pager                                        (c0)
 ```
 
-## Commit table
+## Expected BIC / BFC
 
-| Commit | Branch | Parents | Role | Description |
-|---|---|---|---|---|
-| `c0` | `main` | none | initial | Creates the correct range check. |
-| `c1` | `main` | `c0` | bug_introducing | Introduces the range boundary bug. |
-| `r1` | `release` | `c1` | release_branch_point | Creates the release branch from the buggy state. |
-| `c2` | `main` | `c1` | bug_fixing | Fixes the bug on main. |
-| `r2` | `release` | `r1` | bug_fixing | Cherry-picks the main-line fix `c2` onto release. |
+- BIC: `c1` (`exact_set`, `required: [c1]`); `branch_level` names `c1` for both `main` (`bfc: c2`) and `release` (`bfc: r2`)
+- BFCs: `c2` on `main`, `r2` on `release` (`cherry_pick_of: c2`)
 
-## Code states
+## Measured behaviour and blame
 
-Correct range check in `c0`:
+| commit | `pageCount(20, 10)` | `pageCount(21, 10)` | `pageCount(1, 10)` |
+|---|---|---|---|
+| `c0` | 2 | 3 | 1 |
+| `c1`, `r1` | **3** | 3 | 1 |
+| `c2`, `r2` | 2 | 3 | 1 |
 
-```java
-return value >= min && value <= max;
-```
+Only exact multiples are affected, which is why the fault survives tests that
+use 21 items. Both fixes delete the same line (`return items / perPage + 1;`,
+line 6); blame at `c2^` and at `r2^` returns `c1` (verifier `GI703`).
 
-Bug introduced in `c1`:
+## What a tool must do
 
-```java
-return value > min && value < max;
-```
+Starting from either BFC, report `c1`. Starting from `r2`, a tool must not
+report `c2` (the commit it was cherry-picked from is a fix, not a cause) and
+must not stop at `r1`, the release branch point, which touched only a note.
 
-Main-line fix in `c2`:
+## Factors
 
-```java
-return value >= min && value <= max;
-```
-
-Release fix in `r2`:
-
-```text
-r2 cherry-picks the fixing patch from c2.
-```
-
-## Oracle
-
-Expected BIC:
-
-```text
-c1
-```
-
-Bug-fixing commits:
-
-```text
-c2: main-line fix
-r2: release-branch cherry-picked fix
-```
-
-## Evaluation purpose
-
-This scenario checks whether SZZ can handle a BFC that is cherry-picked onto another branch.
-
-When SZZ starts from the release-branch BFC `r2`, the expected BIC is still `c1`. A tool should not report `c2` as the BIC merely because `r2` is derived from `c2`.
-
-## Notes for generator / verifier
-
-`r2` uses:
-
-```yaml
-cherry_pick_of: c2
-operations:
-  - type: apply_patch_from
-    commit: c2
-```
-
-If the current verifier has limited support for `apply_patch_from`, `r2` can be rewritten as an explicit `replace` operation equivalent to the patch in `c2`.
+- `branch`
+- `cherry-pick`
+- `multi-bfc`
+- `copy-propagation`
+- `backport-like-fix`
+- `off-by-one`
