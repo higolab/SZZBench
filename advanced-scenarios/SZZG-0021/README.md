@@ -1,43 +1,49 @@
 # SZZG-0021: Clone removal as fix
 
-## Source
-
-- Category: Copy, clone, and propagation scenarios
-
 ## Purpose
 
-Evaluate Clone removal as fix and whether SZZ identifies the expected bug-introducing commit set.
+`Access.canView` serves a document when it is public or the viewer is a member.
+`c1` adds a second copy, `AccessCopy`, whose visibility flag is negated
+(`!isPublic || member`): private documents become viewable by everyone and
+public ones only by members. The fix `c2` does not edit the copy — it deletes
+the file and points callers at the original. The bug-fixing commit therefore
+removes the file the fault lived in, and its diff deletes every line of it.
 
-## Expected history
+Rewritten 2026-09-21 (issue #13) from the shared `Range.contains` template; the
+history shape, oracle and coverage dimensions (`bic_depth` 1, no distractor on
+the fault file, 3 commits, 1 ref) are unchanged.
 
-```text
-c0: create initial state (write_file src/main/java/example/A.java)
-c1: introduce bug (write_file src/main/java/example/B.java)
-c2: fix bug (delete_file src/main/java/example/B.java; write_file docs/clone-removal.md)
-```
-
-## Why this needs `scenario.graph.yml`
-
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
-
-## Required graph-schema features
-
-- Factors: clone_relationships
-- Operation types: write_file, delete_file
-- Expected SZZ policy is defined in expected_szz.
-
-## Evaluation points
-
-- Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
-- Whether the expected_szz evaluation policy is applied correctly.
-
----
-
-## Files
+## Commit structure (generated)
 
 ```text
-SZZG-0021/
-|-- scenario.graph.yml
-`-- README.md
+* ce2a4e3  2023-08-21  Remove AccessCopy and point callers at Access   <- BFC (c2; delete_file + docs/clone-removal.md)
+* e365061  2023-08-14  Add a second access check in AccessCopy         <- BIC (c1)
+* 4f088a3  2023-08-07  Add the access check                            (c0; Access.java, correct)
 ```
+
+## Expected BIC / BFC
+
+- BIC: `c1` (`exact_set`, `required: [c1]`)
+- BFC: `c2` (`fix_type: file_deletion`)
+
+## Measured behaviour and blame
+
+| commit | `Access.canView(true, false)` / `(false, false)` | `AccessCopy.canView(true, false)` / `(false, false)` |
+|---|---|---|
+| `c0` | true / false | — |
+| `c1` | true / false | **false / true** — the inverse |
+| `c2` | true / false | class removed |
+
+`c2`'s diff deletes all eight lines of `AccessCopy.java` (and adds a note);
+every deleted line blames to `c1` (verifier `GI661` for the deletion, `GI703`
+for blame).
+
+## What a tool must do
+
+Report `c1`. A tool that only follows modified lines has nothing to follow;
+one that blames deleted lines of a deleted file gets the answer at once.
+
+## Factors
+
+- `copy-propagation`
+- `boolean-negation`

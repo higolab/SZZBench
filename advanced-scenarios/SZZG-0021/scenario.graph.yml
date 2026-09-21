@@ -5,11 +5,13 @@ meta:
   slug: clone-removal-as-fix
   description: >-
     The fix deletes the faulty copy and points callers at the original, so the bug-fixing commit removes the file
-    the fault lived in instead of editing it.
+    the fault lived in instead of editing it. The copy negates the visibility flag, so private documents are
+    viewable by everyone and public ones only by members.
   category: "Clone, copy propagation, and origin-vs-direct BIC"
   category_code: "G2"
   factors:
   - copy-propagation
+  - boolean-negation
   difficulty: advanced
   status: active
   tier: control
@@ -21,50 +23,50 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial state (write_file src/main/java/example/A.java)
+  history_summary: 'c0: add Access.canView (isPublic || member)
 
-    c1: introduce bug (write_file src/main/java/example/B.java)
+    c1: add a second access check in AccessCopy with the visibility flag negated (BIC)
 
-    c2: fix bug (delete_file src/main/java/example/B.java; write_file docs/clone-removal.md)'
+    c2: remove AccessCopy and point callers at Access (fix by deletion)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'Add the range check'
+  message: 'Add the access check'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/A.java
-    content: "package example;\n\npublic class A {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ >= min && value <= max;\n  }\n}\n"
+    path: src/main/java/example/Access.java
+    content: "package example;\n\npublic class Access {\n  /** A document can be viewed when it is public or the viewer is a member. */\n\
+      \  public boolean canView(boolean isPublic, boolean member) {\n    return isPublic || member;\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'Add a second range check in B'
+  message: 'Add a second access check in AccessCopy'
   role: bug_introducing
   operations:
   - type: write_file
-    path: src/main/java/example/B.java
-    content: "package example;\n\npublic class B {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n}\n"
+    path: src/main/java/example/AccessCopy.java
+    content: "package example;\n\npublic class AccessCopy {\n  /** A document can be viewed when it is public or the viewer is a member. */\n\
+      \  public boolean canView(boolean isPublic, boolean member) {\n    return !isPublic || member;\n  }\n}\n"
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'Remove B and point callers at A'
+  message: 'Remove AccessCopy and point callers at Access'
   role: bug_fixing
   operations:
   - type: delete_file
-    path: src/main/java/example/B.java
+    path: src/main/java/example/AccessCopy.java
   - type: write_file
     path: docs/clone-removal.md
-    content: 'B.java was removed; callers should use A.java.
+    content: 'AccessCopy.java was removed; callers should use Access.java.
 
       '
 bugs:
 - id: B001
-  title: Buggy clone removed as fix
+  title: The copied access check negates the visibility flag; the copy is removed as the fix
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -74,12 +76,12 @@ bugs:
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/B.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/AccessCopy.java
+    statement: return !isPublic || member;
   fixes:
   - id: X001
     commit: c2
-    file: src/main/java/example/B.java
+    file: src/main/java/example/AccessCopy.java
     fix_type: file_deletion
 expected_szz:
   commit_level:
@@ -88,14 +90,14 @@ expected_szz:
     - c1
 scenario_design:
   purpose: Evaluate whether a method handles a fix that deletes the faulty file instead of editing it.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: >-
-    This scenario uses factors: copy-propagation; operations: write_file, delete_file.
+  key_property: >-
+    Measured: AccessCopy.canView(true, false) is false and canView(false, false) is true at c1 — the inverse of
+    Access.canView, which is true and false; at c2 the class no longer exists. The fix's diff deletes every line
+    of AccessCopy.java, all of which blame to c1.
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
   - Whether structural or contextual history is handled according to the scenario factors.
   - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
+- Rewritten 2026-09-21 from the shared Range.contains template to a boolean-negation fault (GitHub issue 13); the
+  history shape, oracle and coverage dimensions are unchanged.

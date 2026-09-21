@@ -66,11 +66,45 @@ REWRITES: dict[str, tuple[str, str, dict[str, str]]] = {
                   {"c0": "true false", "f1": "false true", "r1": "false true", "r2": "false true", "c3": "true false"}),
     "SZZG-0083": ("wrong-variable", 'example.StatusText s = new example.StatusText(); System.out.print(s.describe("OK", "Unknown") + " " + s.describe(null, "Unknown"));',
                   {"c0": "OK Unknown", "f1": "Unknown null", "r1": "Unknown null", "c2": "OK Unknown"}),
+    # --- G2 ---
+    "SZZG-0016": ("null-check-omission",
+                  'for (String n : new String[] {"example.TagNormalizer", "example.LabelNormalizer"}) { try { Class<?> c = Class.forName(n); '
+                  'try { System.out.print("[" + c.getMethod("normalize", String.class).invoke(c.getDeclaredConstructor().newInstance(), (Object) null) + "]"); } '
+                  'catch (java.lang.reflect.InvocationTargetException e) { System.out.print(e.getCause().getClass().getSimpleName()); } } '
+                  'catch (ClassNotFoundException e) { System.out.print("absent"); } System.out.print(" "); }',
+                  {"c0": "NullPointerException absent ", "c1": "NullPointerException NullPointerException ", "c2": "[] [] "}),
+    "SZZG-0017": ("off-by-one",
+                  'try { Class<?> c = Class.forName("example.Selection"); Object o = c.getDeclaredConstructor().newInstance(); '
+                  'for (java.lang.reflect.Method m : c.getDeclaredMethods()) System.out.print(m.getName() + "=" + m.invoke(o, 10)); } '
+                  'catch (ClassNotFoundException e) { System.out.print("absent"); }',
+                  {"c0": "absent", "c1": "lastPosition=10", "c2": "endPosition=10", "c3": "endPosition=9"}),
+    "SZZG-0019": ("wrong-constant",
+                  'try { Class<?> c = Class.forName("generated.GeneratedLimits"); System.out.print(c.getMethod("maxRetries").invoke(c.getDeclaredConstructor().newInstance())); } '
+                  'catch (ClassNotFoundException e) { System.out.print("absent"); }',
+                  {"c0": "absent", "c1": "30", "c2": "3"}),
+    "SZZG-0021": ("boolean-negation",
+                  'try { Class<?> c = Class.forName("example.AccessCopy"); Object o = c.getDeclaredConstructor().newInstance(); java.lang.reflect.Method m = c.getMethod("canView", boolean.class, boolean.class); '
+                  'System.out.print(m.invoke(o, true, false) + " " + m.invoke(o, false, false)); } catch (ClassNotFoundException e) { System.out.print("absent"); }',
+                  {"c0": "absent", "c1": "false true", "c2": "absent"}),
+    "SZZG-0024": ("wrong-operator",
+                  'System.out.print(new example.Rate().percentOf(30000000, 100) + " "); '
+                  'try { Class<?> c = Class.forName("example.RateClone"); java.lang.reflect.Method m = c.getMethod("percentOfClone", int.class, int.class); Object o = c.getDeclaredConstructor().newInstance(); '
+                  'System.out.print(m.invoke(o, 199, 10) + " " + m.invoke(o, 30000000, 100)); } catch (ClassNotFoundException e) { System.out.print("absent"); }',
+                  # the large input (PR #62 review) must not overflow in the original or in the fixed clone
+                  {"c0": "30000000 absent", "f1": "30000000 10 30000000", "f2": "30000000 10 30000000", "r1": "30000000 10 30000000",
+                   "r2": "30000000 10 30000000", "c4": "30000000 19 30000000"}),
 }
 
 #: SZZG-0081's reformatting commit owns the faulty line under plain blame by design (GW703);
 #: `git blame -w` is what reaches the BIC there.
 BLAME_NEEDS_W = {"SZZG-0081"}
+
+#: Where plain blame of the fix's deleted lines is *designed* not to be exactly the required set,
+#: the README says what it returns instead; these tests pin that statement.
+#: SZZG-0016: the fix deletes one line per file; the copy blames to c1 (required), the original to c0 (origin).
+#: SZZG-0021: the fix deletes the whole faulty file; all eight lines blame to c1.
+#: SZZG-0024: the annotation commit r2 is the last touch of the line, so plain blame returns it (GW703 by design).
+PLAIN_BLAME = {"SZZG-0016": {"c1", "c0"}, "SZZG-0021": {"c1"}, "SZZG-0024": {"r2"}}
 
 
 def _git(repo: Path, *args: str) -> str:
@@ -96,25 +130,45 @@ def test_rewritten_scenario_left_the_range_template(sid):
     assert kind in scenario["meta"]["factors"], f"{sid} does not declare its fault kind {kind}"
 
 
+def _deleted_lines(repo: Path, bfc: str) -> list[tuple[str, int]]:
+    """(path, line number at BFC^) of every line the fix's first-parent diff deletes."""
+    deleted: list[tuple[str, int]] = []
+    path = None
+    for line in _git(repo, "diff", "-U0", f"{bfc}^", bfc).splitlines():
+        if line.startswith("--- a/"):
+            path = line[6:]
+        elif line.startswith("--- /dev/null"):
+            path = None
+        elif line.startswith("@@") and path is not None:
+            old = line.split()[1][1:]
+            start, _, count = old.partition(",")
+            deleted.extend((path, int(start) + i) for i in range(int(count) if count else 1))
+    return deleted
+
+
 @pytest.mark.parametrize("sid", sorted(REWRITES))
-def test_fix_deletes_a_line_that_blames_to_the_declared_bic(tmp_path, sid):
+def test_fix_deletes_lines_that_blame_as_the_readme_says(tmp_path, sid):
     scenario, cmap, repo = _generate(tmp_path, sid)
     by_hash = {e["hash"]: c for c, e in cmap.items()}
-    bug = scenario["bugs"][0]
     required = set(scenario["expected_szz"]["commit_level"]["required"])
-    for fix in bug["bug_fixing_commits"]:
+    for fix in scenario["bugs"][0]["bug_fixing_commits"]:
         bfc = cmap[fix["commit"]]["hash"]
-        diff = _git(repo, "diff", "-U0", f"{bfc}^", bfc)
-        deleted = [l for l in diff.splitlines() if l.startswith("-") and not l.startswith("---")]
-        assert len(deleted) == 1, (sid, fix["commit"], deleted)
-        path = next(l[6:] for l in diff.splitlines() if l.startswith("--- a/"))
-        start = next(l for l in diff.splitlines() if l.startswith("@@")).split()[1][1:].split(",")[0]
-        options = ["-w"] if sid in BLAME_NEEDS_W else []
-        blamed = _git(repo, "blame", "-l", "-s", *options, "-L", f"{start},{start}", f"{bfc}^", "--", path).split()[0].lstrip("^")
-        assert by_hash[blamed] in required, (sid, fix["commit"], by_hash[blamed], required)
-        if sid in BLAME_NEEDS_W:
-            plain = _git(repo, "blame", "-l", "-s", "-L", f"{start},{start}", f"{bfc}^", "--", path).split()[0].lstrip("^")
-            assert by_hash[plain] not in required, (sid, "plain blame was expected to stop at the reformatting commit")
+        deleted = _deleted_lines(repo, bfc)
+        assert deleted, (sid, fix["commit"], "the fix deletes nothing")
+        def owner(token: str) -> str:
+            # a root commit is printed as ^ plus 39 hash characters
+            return next(c for h, c in by_hash.items() if h.startswith(token.lstrip("^")))
+
+        def blame(*options: str) -> set[str]:
+            return {owner(_git(repo, "blame", "-l", "-s", *options, "-L", f"{n},{n}", f"{bfc}^", "--", path).split()[0])
+                    for path, n in deleted}
+        plain = blame()
+        if sid in PLAIN_BLAME:
+            assert plain == PLAIN_BLAME[sid], (sid, fix["commit"], plain)
+        elif sid in BLAME_NEEDS_W:
+            assert not plain & required and blame("-w") <= required, (sid, fix["commit"], plain, blame("-w"))
+        else:
+            assert len(deleted) == 1 and plain <= required, (sid, fix["commit"], deleted, plain, required)
 
 
 @NEEDS_JDK
@@ -123,7 +177,7 @@ def test_fault_is_observed_exactly_where_the_readme_says(tmp_path, sid):
     _, driver_body, expected = REWRITES[sid]
     _, cmap, repo = _generate(tmp_path, sid)
     assert set(expected) == set(cmap), (sid, sorted(cmap))
-    driver = f"public class Driver {{ public static void main(String[] a) {{ {driver_body} }} }}"
+    driver = f"public class Driver {{ public static void main(String[] a) throws Exception {{ {driver_body} }} }}"
     for cid, want in expected.items():
         work = tmp_path / f"run-{sid}-{cid}"
         work.mkdir()

@@ -4,12 +4,15 @@ meta:
   title: Clone diverges before fix
   slug: clone
   description: >-
-    The faulty check is copied into a second class, and a later commit renames the copied method inside that file,
-    so the method the fix edits is not the one the copy was made under.
+    The faulty helper is copied into a second class, and a later commit renames the copied method inside that
+    file, so the method the fix edits is not the one the copy was made under. The fault is an off-by-one: the
+    last position of a sequence of {@code length} elements is returned as {@code length} instead of
+    {@code length - 1}.
   category: "Clone, copy propagation, and origin-vs-direct BIC"
   category_code: "G2"
   factors:
   - copy-propagation
+  - off-by-one
   difficulty: advanced
   status: active
   tier: control
@@ -21,63 +24,63 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: introduce origin bug (write_file src/main/java/example/A.java)
+  history_summary: 'c0: add Cursor with an off-by-one lastPosition (origin)
 
-    c1: introduce bug (copy_file src/main/java/example/A.java -> src/main/java/example/B.java)
+    c1: copy Cursor.java to Selection.java and rename the copied class (direct BIC)
 
-    c2: diverge clone (replace src/main/java/example/B.java; replace src/main/java/example/B.java)
+    c2: rename the copied method to endPosition (clone divergence)
 
-    c3: fix bug (replace src/main/java/example/B.java)'
+    c3: return length - 1 from Selection.endPosition (fix)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'Add the range check'
+  message: 'Add the cursor helper'
   role: origin_bug_introducing
   operations:
   - type: write_file
-    path: src/main/java/example/A.java
-    content: "package example;\n\npublic class A {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n}\n"
+    path: src/main/java/example/Cursor.java
+    content: "package example;\n\npublic class Cursor {\n  /** Position of the last element of a sequence of {@code length} elements. */\n\
+      \  public int lastPosition(int length) {\n    return length;\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'Copy the range check into B'
+  message: 'Copy the cursor helper into Selection'
   role: bug_introducing
   operations:
   - type: copy_file
-    from: src/main/java/example/A.java
-    to: src/main/java/example/B.java
+    from: src/main/java/example/Cursor.java
+    to: src/main/java/example/Selection.java
   - type: replace
-    path: src/main/java/example/B.java
-    old: public class A
-    new: public class B
+    path: src/main/java/example/Selection.java
+    old: public class Cursor
+    new: public class Selection
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'Rename the copied method'
+  message: 'Rename the copied method to endPosition'
   role: clone_divergence
   operations:
   - type: replace
-    path: src/main/java/example/B.java
-    old: public boolean contains
-    new: public boolean containsCopied
+    path: src/main/java/example/Selection.java
+    old: public int lastPosition
+    new: public int endPosition
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'Accept the range bounds in B'
+  message: 'Return the last position, not the length, from Selection.endPosition'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/B.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/Selection.java
+    old: return length;
+    new: return length - 1;
 bugs:
 - id: B001
-  title: Diverged clone bug
+  title: The copied last-position helper is off by one, and its method was renamed before the fix
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -89,14 +92,14 @@ bugs:
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/B.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/Selection.java
+    statement: return length;
     role: direct
   fixes:
   - id: X001
     commit: c3
-    file: src/main/java/example/B.java
-    statement: return value >= min && value <= max;
+    file: src/main/java/example/Selection.java
+    statement: return length - 1;
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
@@ -116,8 +119,8 @@ expected_szz:
         reason: origin_bic
         credit: 0.5
 clone_relationships:
-- origin_file: src/main/java/example/A.java
-  copied_file: src/main/java/example/B.java
+- origin_file: src/main/java/example/Cursor.java
+  copied_file: src/main/java/example/Selection.java
   origin_commit: c0
   copy_commit: c1
   divergence_commits:
@@ -125,14 +128,14 @@ clone_relationships:
 scenario_design:
   purpose: >-
     Evaluate whether a method reaches the copying commit when the copied method has since been renamed in place.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: >-
-    This scenario uses factors: copy-propagation; operations: write_file, copy_file, replace.
+  key_property: >-
+    Measured: Selection's helper returns 10 for length 10 at c1 and c2 (as lastPosition and as endPosition) and 9
+    at c3; Cursor.lastPosition(10) stays 10, the origin is not fixed here. Blaming the line c3 deletes at c3^
+    returns c1: the rename commit c2 touched the signature line, not the faulty return.
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
   - Whether structural or contextual history is handled according to the scenario factors.
   - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
+- Rewritten 2026-09-21 from the shared Range.contains template to an off-by-one fault (GitHub issue 13); the history
+  shape, oracle and coverage dimensions are unchanged.

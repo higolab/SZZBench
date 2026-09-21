@@ -165,7 +165,7 @@ scenarios:
   readme: advanced-scenarios/SZZG-0016/README.md
   status: active
   factors:
-  - boundary-condition
+  - null-check-omission
   - copy-propagation
 - id: SZZG-0017
   title: Clone diverges before fix
@@ -176,6 +176,7 @@ scenarios:
   status: active
   factors:
   - copy-propagation
+  - off-by-one
 - id: SZZG-0018
   title: Only one clone instance is fixed first
   category_code: G2
@@ -197,7 +198,7 @@ scenarios:
   - single-bfc
   - copy-propagation
   - generated-file
-  - boundary-condition
+  - wrong-constant
 - id: SZZG-0020
   title: Explicit evaluation of direct BIC vs origin BIC
   category_code: G2
@@ -219,6 +220,7 @@ scenarios:
   status: active
   factors:
   - copy-propagation
+  - boolean-negation
 - id: SZZG-0022
   title: Copy propagation with direct and origin BIC evaluation variants
   category_code: G2
@@ -260,6 +262,7 @@ scenarios:
   - clone-divergence
   - direct-bic
   - origin-bic
+  - wrong-operator
 - id: SZZG-0025
   title: Clone origin versus copied direct BIC
   category_code: G2

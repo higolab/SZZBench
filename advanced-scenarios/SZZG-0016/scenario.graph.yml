@@ -4,14 +4,16 @@ meta:
   title: Original and clone fixed together
   slug: original-clone
   description: >-
-    A.java already contains an exclusive range check at c0. Commit c1 copies the file to B.java and adapts only
-    the class declaration, so the faulty statement enters B.java byte-for-byte unchanged. A single BFC c2 fixes
-    both instances in one commit. The direct BIC for the B.java instance is the copy commit c1; c0 is the origin
-    that also introduced the A.java instance fixed by the same commit.
+    TagNormalizer.java already trims and lower-cases its input without a null guard at c0. Commit c1
+    copies the file to LabelNormalizer.java and adapts only the class declaration, so the faulty
+    statement enters LabelNormalizer.java byte-for-byte unchanged. A single BFC c2 adds the guard to
+    both instances in one commit. The direct BIC for the LabelNormalizer.java instance is the copy
+    commit c1; c0 is the origin that also introduced the TagNormalizer.java instance fixed by the same
+    commit.
   category: "Clone, copy propagation, and origin-vs-direct BIC"
   category_code: "G2"
   factors:
-  - boundary-condition
+  - null-check-omission
   - copy-propagation
   difficulty: advanced
   status: active
@@ -24,60 +26,60 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: add A with an exclusive range check (origin instance)
+  history_summary: 'c0: add TagNormalizer, which trims and lower-cases without a null guard (origin instance)
 
-    c1: copy A.java to B.java and rename the copied class (direct BIC for B.java)
+    c1: copy TagNormalizer.java to LabelNormalizer.java and rename the copied class (direct BIC for LabelNormalizer.java)
 
-    c2: include the bounds in A.contains and B.contains (BFC for both instances)'
+    c2: guard both normalizers against null (BFC for both instances)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: Add A with a range containment check
+  message: Add the tag normalizer
   role: origin_bug_introducing
   operations:
   - type: write_file
-    path: src/main/java/example/A.java
+    path: src/main/java/example/TagNormalizer.java
     content: |
       package example;
-
-      public class A {
-        public boolean contains(int value, int min, int max) {
-          return value > min && value < max;
+      public class TagNormalizer {
+        /** A tag in canonical form; a missing tag normalizes to the empty string. */
+        public String normalize(String tag) {
+          return tag.trim().toLowerCase();
         }
       }
 - id: c1
   branch: main
   parents:
   - c0
-  message: Copy the containment check from A into B
+  message: Copy the tag normalizer into a label normalizer
   role: bug_introducing
   operations:
   - type: copy_file
-    from: src/main/java/example/A.java
-    to: src/main/java/example/B.java
+    from: src/main/java/example/TagNormalizer.java
+    to: src/main/java/example/LabelNormalizer.java
   - type: replace
-    path: src/main/java/example/B.java
-    old: public class A {
-    new: public class B {
+    path: src/main/java/example/LabelNormalizer.java
+    old: public class TagNormalizer {
+    new: public class LabelNormalizer {
 - id: c2
   branch: main
   parents:
   - c1
-  message: Include the bounds in A.contains and B.contains
+  message: Normalize a missing tag or label to the empty string
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/A.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/TagNormalizer.java
+    old: return tag.trim().toLowerCase();
+    new: 'return tag == null ? "" : tag.trim().toLowerCase();'
   - type: replace
-    path: src/main/java/example/B.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/LabelNormalizer.java
+    old: return tag.trim().toLowerCase();
+    new: 'return tag == null ? "" : tag.trim().toLowerCase();'
 bugs:
 - id: B001
-  title: Original and clone fixed together
+  title: Normalizing a missing tag or label throws NullPointerException; original and clone fixed together
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -89,23 +91,23 @@ bugs:
   faults:
   - id: F001
     commit: c0
-    file: src/main/java/example/A.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/TagNormalizer.java
+    statement: return tag.trim().toLowerCase();
     role: origin
   - id: F002
     commit: c1
-    file: src/main/java/example/B.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/LabelNormalizer.java
+    statement: return tag.trim().toLowerCase();
     role: direct
   fixes:
   - id: X001
     commit: c2
-    file: src/main/java/example/A.java
-    statement: return value >= min && value <= max;
+    file: src/main/java/example/TagNormalizer.java
+    statement: 'return tag == null ? "" : tag.trim().toLowerCase();'
   - id: X002
     commit: c2
-    file: src/main/java/example/B.java
-    statement: return value >= min && value <= max;
+    file: src/main/java/example/LabelNormalizer.java
+    statement: 'return tag == null ? "" : tag.trim().toLowerCase();'
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
@@ -125,34 +127,28 @@ expected_szz:
         reason: origin_bic
         credit: 0.5
 clone_relationships:
-- origin_file: src/main/java/example/A.java
-  copied_file: src/main/java/example/B.java
+- origin_file: src/main/java/example/TagNormalizer.java
+  copied_file: src/main/java/example/LabelNormalizer.java
   origin_commit: c0
   copy_commit: c1
 scenario_design:
   purpose: Evaluate whether a method reports the copy rather than the original when a single fix repairs both.
   key_property: >-
     The single BFC c2 deletes the same statement text from two files whose line histories end in two different
-    commits: the A.java line reaches c0, the B.java line reaches the copy commit c1. A tool that scores the BFC
-    as a whole sees both commits.
+    commits: the TagNormalizer.java line reaches c0, the LabelNormalizer.java line reaches the copy commit c1. A
+    tool that scores the BFC as a whole sees both commits. Measured: normalize(null) throws NullPointerException
+    in both classes at c1 and returns "" at c2; normalize(" Urgent ") is "urgent" throughout.
   compilation_contract: >-
-    Both files live in package example and must compile together, so the copy commit renames the copied class from
-    A to B in the same commit. Only the class declaration line differs between A.java and B.java; the faulty
-    statement is copied verbatim, which is what copy-aware blame has to detect.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: >-
-    This scenario uses factors: boundary-condition, copy-propagation; operations: write_file, copy_file, replace.
+    Both files live in package example and must compile together, so the copy commit renames the copied class in
+    the same commit. Only the class declaration line differs between the two files; the faulty statement is
+    copied verbatim, which is what copy-aware blame has to detect.
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
   - Whether structural or contextual history is handled according to the scenario factors.
   - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
 - >-
-  2026-09 revision (issue 10): the copy commit produced a second `public class A` in B.java, so no commit from c1 onwards
-  compiled ("class A is public, should be declared in a file named A.java"). The copy commit now renames the copied class
-  to B, so A.java and B.java compile together in package example. The oracle (direct BIC c1, origin c0 as
-  acceptable_related, BFC c2) and the copied faulty statement are unchanged; the commit messages were rewritten to
-  realistic, role-neutral text.
+  2026-09 revision (issue 10): the copy commit produced a second public class of the same name, so no commit from c1
+  onwards compiled. The copy commit renames the copied class, so both files compile together in package example.
+- Rewritten 2026-09-21 from the shared Range.contains template to a null-check-omission fault (GitHub issue 13); the
+  history shape, oracle and coverage dimensions are unchanged.

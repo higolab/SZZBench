@@ -2,59 +2,69 @@
 
 ## Purpose
 
-Evaluate rebase combined with clone divergence.
+A cloned implementation is written on a feature branch, annotated there, and
+replayed onto `main` by rebase. `Rate.percentOf` multiplies before it divides
+(in `long`, so the product cannot overflow); the clone `RateClone.percentOfClone`
+divides first (`cents / 100 * percent`), which truncates the amount to whole
+hundreds before scaling — 199 cents at 10 % give 10 instead of 19. `f2`/`r2` append a comment to that line and change no
+behaviour. The fixed instance is the line `r1` replayed into `main`, so `r1` is
+the direct BIC (D4); `r2` is the last commit to touch the line and is what plain
+blame returns (D5).
 
-`r1` replays the faulty clone into `main`, the history the fix belongs to, so it is the direct BIC
-(contract D4). `r2` replays the *annotation* — it appends `// cloned logic` to that line and changes no
-behaviour at all, measured as 0 of 27648 probe answers moving across it — so it is never a BIC (D5), even
-though it is the last commit to touch the line the fix deletes. `f1` is the feature-branch commit the clone
-was replayed from, and is therefore the origin (D2).
+Rewritten 2026-09-21 (issue #13) from the shared `Range.contains` template; the
+history shape, oracle and coverage dimensions (`bic_depth` 2, three distractors
+on the fault file, 6 commits, 2 refs) are unchanged.
 
-## Commit history
-
-```text
-c0: create initial correct implementation
-f1: create buggy clone
-f2: diverge cloned buggy logic
-r1: rebase buggy clone creation
-r2: rebase clone divergence
-c4: fix diverged clone
-```
-
-## Commit table
-
-| Commit | Branch | Parents | Role | Description |
-|---|---|---|---|---|
-| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `f1` | `feature` | c0 | `origin_bug_introducing` | f1: create buggy clone |
-| `f2` | `feature` | f1 | `origin_bug_introducing` | f2: diverge cloned buggy logic |
-| `r1` | `main` | c0 | `bug_introducing` | r1: replays the faulty clone into main (direct BIC) |
-| `r2` | `main` | r1 | `intermediate` | r2: replays the annotation; changes no behaviour |
-| `c4` | `main` | r2 | `bug_fixing` | c4: fix diverged clone |
-
-## Expected SZZ result
+## Commit structure (generated)
 
 ```text
-Expected BIC(s): r1
-Related origins: f1
-Related but not correct: r2, f2
+* d0fb191  2025-01-24  Multiply before dividing in the cloned percentage helper  <- BFC (c4)
+* e823b86  2025-01-20  Annotate the cloned percentage logic                      (r2, rebase_of f2; comment only)
+* e6ef961  2025-01-17  Add the cloned percentage helper                          <- direct BIC (r1, rebase_of f1)
+| * ad967cf  2025-01-08  Annotate the cloned percentage logic                    (f2, feature)
+| * ae08f91  2025-01-03  Add the cloned percentage helper                        <- origin (f1, feature)
+|/
+* b88fbfb  2024-12-26  Add the percentage helper                                 (c0; Rate.java, correct)
 ```
 
-## Key property
+## Expected BIC / BFC
 
-The fixed instance is the cloned line that `r1` replayed into `main`. `r2`'s rebased annotation is the last
-commit to touch that line, so a method that reports the last textual touch answers `r2` and is wrong.
+- default: `required: [r1]`, `related_origins: [f1]`, `related_but_not_correct: [r2, f2]`
+- `origin-aware`: `relaxed_with_related`, `f1` at 0.5, `r2`/`f2` still `related_but_not_correct`
+- BFC: `c4`
 
-## Difference from SZZG-0064
+## Measured behaviour and blame
 
-SZZG-0064 covers a rebased BIC followed by a non-BIC rebased intermediate commit. This scenario adds a distinct rebase-related complication.
+| commit | `Rate.percentOf(199, 10)` | `RateClone.percentOfClone(199, 10)` | `percentOfClone(30000000, 100)` |
+|---|---|---|---|
+| `c0` | 19 | — | — |
+| `f1`, `f2`, `r1`, `r2` | 19 | **10** | 30000000 |
+| `c4` | 19 | 19 | 30000000 |
 
-## Evaluation points
+The large input shows that neither the original nor the fixed clone overflows
+(both multiply in `long` before dividing; PR #62 review) — the faulty clone
+happens to be right there because 30000000 is a multiple of 100.
 
-- Report `r1`, not the annotation commit `r2` that last touched the line.
-- Whether the replayed commit `r1` rather than its feature-branch source `f1` is reported.
+The annotation commits change nothing: of 1152 reflective probe answers over
+`Rate` and `RateClone` (every public method over a grid of inputs), 0 move
+across `r2` and 0 across `f2`, while 624 move across the fix `c4`. `c4` deletes one
+line (`return cents / 100 * percent; // cloned logic`, line 6) and writes
+`return (int) ((long) cents * percent / 100); // cloned logic, reviewed`; blame
+at `c4^` returns **`r2`**, and `-w` does too (the comment is not whitespace). The
+verifier reports `GW703` by design, as it did before the rewrite.
 
-## Notes
+## What a tool must do
 
-- This scenario models a rebase-related development history for SZZ evaluation.
-- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.
+Report `r1`, not `r2`. The last textual touch of the line appended a comment;
+the commit that put the faulty arithmetic into `main` is one step further back,
+and it is the replay `r1`, not its feature-branch source `f1`.
+
+## Factors
+
+- `branch`
+- `rebase`
+- `copy-propagation`
+- `clone-divergence`
+- `direct-bic`
+- `origin-bic`
+- `wrong-operator`
