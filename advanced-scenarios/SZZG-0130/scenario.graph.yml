@@ -1,0 +1,165 @@
+schema_version: graph-1.0
+meta:
+  id: SZZG-0130
+  title: A bug report filed between the BIC and a later rewrite; its date rules the rewrite out
+  slug: report-date-excludes-later-rewrite
+  description: >
+    The page-size clamp starts losing its last row. A report of the missing row is recorded in the
+    repository, with its date, after the change that caused it. A later commit rewrites the faulty
+    line without changing behaviour, so blame returns that rewrite; it is dated after the report, and
+    the report-date heuristic correctly excludes it. The fix comes last.
+  category: "Issue, message, context, and non-local evidence"
+  category_code: "G7"
+  factors:
+  - bug-report-date
+  - tool-visible-context
+  - rewrite-after-bic
+  - basic-blame-distractor
+  difficulty: advanced
+  status: active
+  tier: control
+repository:
+  name: SZZG-0130-report-date-excludes-later-rewrite
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'Add the page size clamp'
+  role: initial
+  date: '2024-03-01T10:00:00Z'
+  operations:
+  - type: write_file
+    path: src/main/java/example/PageSize.java
+    content: |
+      package example;
+
+      public class PageSize {
+          public int clamp(int requested, int max) {
+              return Math.min(requested, max);
+          }
+      }
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'Keep one row of every page for the footer'
+  role: bug_introducing
+  date: '2024-03-04T14:20:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/PageSize.java
+    old: return Math.min(requested, max);
+    new: return Math.min(requested, max - 1);
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'Record the report about the missing last row'
+  role: intermediate
+  date: '2024-03-08T09:30:00Z'
+  operations:
+  - type: write_file
+    path: docs/issues/ISSUE-31.md
+    content: |
+      # ISSUE-31: The last row of a full page is missing
+
+      Reported: 2024-03-07T09:12:00Z
+
+      Since the March build, asking for a page of 50 rows on a table with 50 rows returns 49.
+      The final row is not shown anywhere; paging to the next page shows an empty page.
+      Reproduced on the staging deployment with the default page size.
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'Name the footer allowance'
+  role: intermediate
+  date: '2024-03-11T16:05:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/PageSize.java
+    old: |
+      public int clamp(int requested, int max) {
+              return Math.min(requested, max - 1);
+          }
+    new: |
+      public int clamp(int requested, int max) {
+              int footerRows = 1;
+              return Math.min(requested, max - footerRows);
+          }
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: 'Fill the page to its full size again'
+  role: bug_fixing
+  date: '2024-03-14T11:45:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/PageSize.java
+    old: |
+      int footerRows = 1;
+              return Math.min(requested, max - footerRows);
+    new: |
+      return Math.min(requested, max);
+bugs:
+- id: B001
+  title: A full page loses its last row
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  bug_fixing_commits:
+  - commit: c4
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/PageSize.java
+    statement: return Math.min(requested, max - 1);
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c4
+    file: src/main/java/example/PageSize.java
+    statement: return Math.min(requested, max);
+    fix_type: line_modification
+issues:
+- id: ISSUE-31
+  title: The last row of a full page is missing
+  reported_at: '2024-03-07T09:12:00Z'
+  document: docs/issues/ISSUE-31.md
+  linked_bugs:
+  - B001
+  excludes_commits:
+  - c3
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+    related_but_not_correct:
+    - c3
+    notes: >
+      c3 rewrote the faulty line after the report was filed and changed no behaviour; blame returns it.
+      The report in docs/issues/ISSUE-31.md is dated 2024-03-07, c3 is dated 2024-03-11, so a tool that
+      excludes commits made after the report is left with c1.
+scenario_design:
+  purpose: >
+    The first scenario with tool-visible context inside the repository (decisions/tool-visible-context.md).
+    The report and its date are a committed document, so a tool that is only given the repository can
+    apply the report-date heuristic; here that heuristic is right.
+  key_property: >
+    Measured: clamp(50, 50) is 50 at c0, 49 at c1, 49 at c3, 50 at c4. Blaming the line c4 deletes at c4^
+    returns c3, dated 2024-03-11T16:05:00Z; the report says Reported: 2024-03-07T09:12:00Z; c1 is dated
+    2024-03-04T14:20:00Z. Every date is pinned.
+  evaluation_points:
+  - Report c1.
+  - Do not report c3, which blame returns and which post-dates the report.
+notes:
+- The report document is written by an ordinary commit and scanned by the leakage lint like any other text.

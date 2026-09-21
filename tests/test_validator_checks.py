@@ -873,3 +873,22 @@ def test_gw045_does_not_fire_for_commits_git_fills_in():
     result = validate_graph_static(data, strict_paths=True)
     codes = [(f.code, f.location) for f in result.findings if f.code == "GW045"]
     assert codes == [("GW045", "commits[5]")], codes
+
+
+def test_issue_documents_must_be_written_and_state_their_date():
+    """GW470/GW471: tool-visible context (decisions/tool-visible-context.md) is a copy of
+    `issues[].reported_at` inside a committed document; both sides are checked."""
+    data = graph_scenario()
+    data["commits"][1]["operations"].append({"type": "write_file", "path": "docs/issues/ISSUE-1.md",
+                                             "content": "# ISSUE-1\n\nReported: 2024-01-05T10:00:00Z\n\nThe check rejects the bound.\n"})
+    data["issues"] = [{"id": "ISSUE-1", "title": "t", "reported_at": "2024-01-05T10:00:00Z", "document": "docs/issues/ISSUE-1.md"}]
+    assert [f.code for f in validate_graph_static(data, strict_paths=True).findings if f.code.startswith("GW47")] == []
+
+    data["issues"][0]["reported_at"] = "2024-01-06T10:00:00Z"
+    assert [f.code for f in validate_graph_static(data, strict_paths=True).findings if f.code.startswith("GW47")] == ["GW471"]
+
+    data["issues"][0]["document"] = "docs/issues/ISSUE-9.md"
+    assert [f.code for f in validate_graph_static(data, strict_paths=True).findings if f.code.startswith("GW47")] == ["GW470"]
+
+    del data["issues"][0]["document"]
+    assert [f.code for f in validate_graph_static(data, strict_paths=True).findings if f.code.startswith("GW47")] == ["GW470"]

@@ -259,6 +259,8 @@ With `--simulate`:
 | GW452 | warning | a scenario with an origin BIC and no `origin-aware` evaluation variant, so a tool that reports origins as context cannot be scored (D3) |
 | GW453 | warning | an `origin-aware` variant that does not accept the origin, so the variant's name promises what its policy does not deliver (D3) |
 | GW454 | warning | the sibling README's `## Expected history` block contradicts the scenario: a commit's operation list differs from `commits[].operations`, or the block names a commit the scenario does not define. Only the parenthesised operation list is compared, because only that part is mechanically derivable; READMEs that describe the history in prose have no such block and are not linted |
+| GW470 | warning | an `issues[]` entry names a `document` that no commit writes with `write_file`, or has `reported_at` without a `document` — the report would not be visible to a tool ([decisions/tool-visible-context.md](decisions/tool-visible-context.md)) |
+| GW471 | warning | the issue document does not contain the line `Reported: <reported_at>`; `reported_at` and the document are copies of each other and must agree |
 
 Ghost invariants (the graph counterparts of W420/W421) are **not**
 implemented: `graph_simulator.simulate_graph_scenario` does not expose
@@ -303,3 +305,18 @@ with the index path.
 | IE045 | error | an index entry's `status` differs from the scenario's `meta.status` |
 | IE046 | error | an index entry's `slug`, `category`, `category_code` or `difficulty` differs from the scenario's `meta` value. These four are copied into the index like `title`, `status` and `factors`, and were the last mirrored fields nothing checked |
 | IE042 | error | the scenario file of an entry cannot be loaded |
+
+## Verifier findings that depend on a declaration
+
+`szzbench verify` / `verify-graph` blame the fault statement at the BFC's parent as a
+basic check. When that statement is not present there, the outcome depends on what the
+scenario declares:
+
+| code | level | meaning |
+|---|---|---|
+| W700 / GW701 | warning | `fault.statement` is not present in the BFC parent, so basic blame is unavailable — and the scenario does not say why |
+| I701 / GI701 | info | the same, but `meta.factors` declares a rewrite of the fault line (`after-bic\|rewrite\|refactor\|format\|whitespace\|rename\|move\|inline\|extract`, the vocabulary W320 honours): blame being unavailable is the scenario's point (SZZ-0081–0083, SZZG-0130, SZZG-0132) |
+| I700 / GI703 | info | basic blame reaches an expected BIC |
+| W700 / GW703 | warning | basic blame reaches a commit that is not an expected BIC |
+| GW700 / GW702 | warning | the blame check could not run (file unreadable, `git blame` failed) |
+

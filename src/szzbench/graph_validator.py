@@ -360,6 +360,7 @@ def _validate_context_sections(data: dict[str, Any], commit_by_id: dict[str, dic
         section = data.get(section_name)
         if section is not None and not isinstance(section, list):
             result.error("GE140", f"{section_name} must be a list when present.", section_name)
+    _validate_issue_documents(data, result)
     for i, hint in enumerate(data.get("developer_hints", []) or []):
         if not isinstance(hint, dict):
             continue
@@ -371,6 +372,37 @@ def _validate_context_sections(data: dict[str, Any], commit_by_id: dict[str, dic
             for j, ref in enumerate(refs):
                 if isinstance(ref, str) and ref not in commit_by_id:
                     result.error("GE142", f"developer_hints[{i}] references unknown commit '{ref}'.", f"developer_hints[{i}].referenced_commits[{j}]")
+
+
+def _validate_issue_documents(data: dict[str, Any], result: ValidationResult) -> None:
+    """GW470/GW471: an issue's tool-visible document must exist and state its report date.
+
+    decisions/tool-visible-context.md: an ``issues[]`` entry may name the
+    ``document`` a commit writes into the repository and the ``reported_at``
+    timestamp that document states.  Both are copies of each other, so they are
+    checked against the ``write_file`` operations rather than trusted.
+    """
+    issues = data.get("issues")
+    if not isinstance(issues, list):
+        return
+    written: dict[str, str] = {}
+    for commit in data.get("commits") or []:
+        if not isinstance(commit, dict):
+            continue
+        for op in commit.get("operations") or []:
+            if isinstance(op, dict) and op.get("type") == "write_file" and isinstance(op.get("path"), str) and isinstance(op.get("content"), str):
+                written[op["path"]] = op["content"]
+    for i, issue in enumerate(issues):
+        if not isinstance(issue, dict):
+            continue
+        document, reported_at = issue.get("document"), issue.get("reported_at")
+        if isinstance(document, str):
+            if document not in written:
+                result.warning("GW470", f"issues[{i}] names document '{document}', but no commit writes it (write_file).", f"issues[{i}].document")
+            elif isinstance(reported_at, str) and f"Reported: {reported_at}" not in written[document]:
+                result.warning("GW471", f"issues[{i}] says reported_at '{reported_at}', but '{document}' does not contain 'Reported: {reported_at}'.", f"issues[{i}].reported_at")
+        elif isinstance(reported_at, str):
+            result.warning("GW470", f"issues[{i}] has reported_at but names no document a tool could read it from.", f"issues[{i}].reported_at")
 
 
 def _validate_graph_acyclic(commits: list[Any]) -> ValidationResult:

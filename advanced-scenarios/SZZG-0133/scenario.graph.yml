@@ -1,0 +1,131 @@
+schema_version: graph-1.0
+meta:
+  id: SZZG-0133
+  title: A binary asset is changed by both the BIC and the BFC
+  slug: binary-asset-changed-in-bic-and-bfc
+  description: >
+    A palette file that the code loads and validates by its header is re-exported without the header,
+    so the palette stops loading. The fix re-exports it with the header. Both commits replace a binary
+    blob and touch no line of text, so there is no deleted line to blame.
+  category: "Non-source, binary, generated, and scalability edge cases"
+  category_code: "G8"
+  factors:
+  - binary-file
+  - binary-bic
+  - binary-bfc
+  - no-line-level-evidence
+  difficulty: advanced
+  status: active
+  tier: control
+repository:
+  name: SZZG-0133-binary-asset-changed-in-bic-and-bfc
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'Add the palette loader and the default palette'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Palette.java
+    content: |
+      package example;
+
+      import java.io.IOException;
+      import java.io.InputStream;
+
+      public class Palette {
+          private final byte[] data;
+
+          public Palette() {
+              try (InputStream in = Palette.class.getResourceAsStream("/palette.bin")) {
+                  if (in == null) {
+                      throw new IllegalStateException("palette.bin is missing from the classpath");
+                  }
+                  data = in.readAllBytes();
+              } catch (IOException e) {
+                  throw new IllegalStateException("cannot read palette.bin", e);
+              }
+          }
+
+          public boolean isValid() {
+              return data.length >= 4 && data[0] == 'P' && data[1] == 'A' && data[2] == 'L';
+          }
+
+          public int colours() {
+              return isValid() ? (data.length - 4) / 3 : 0;
+          }
+      }
+  - type: write_binary_file
+    path: src/main/resources/palette.bin
+    content_base64: UEFMAf8AAAD/AAAA/w==
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'Re-export the palette from the design tool'
+  role: bug_introducing
+  operations:
+  - type: write_binary_file
+    path: src/main/resources/palette.bin
+    content_base64: AAAAAP8AAAD/AAAA/w==
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'Re-export the palette with its PAL header'
+  role: bug_fixing
+  operations:
+  - type: write_binary_file
+    path: src/main/resources/palette.bin
+    content_base64: UEFMAv8AAAD/AAAA/w==
+bugs:
+- id: B001
+  title: The default palette no longer loads
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  bug_fixing_commits:
+  - commit: c2
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/resources/palette.bin
+    change_type: binary_modification
+    description: The first four bytes, the PAL header and version, are zero.
+  fixes:
+  - id: X001
+    commit: c2
+    file: src/main/resources/palette.bin
+    fix_type: binary_modification
+    description: The PAL header is back (version 2).
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+  line_level:
+    available: false
+    reason: Both the fault and the fix are replacements of a binary blob; no text line changes.
+scenario_design:
+  purpose: >
+    SZZG-0108 changes a binary in the fix only. Here the fault and the fix are both binary replacements
+    of the same asset, and the code demonstrably depends on the asset's bytes, so a tool has to attribute
+    a binary change without any line-level evidence at all.
+  key_property: >
+    Measured: Palette.isValid() is true at c0, false at c1, true at c2; colours() 3, 0, 3. git shows the
+    asset as "Binary files differ" in both c1 and c2; there is no deleted line, so the verifier's blame
+    check reports that blame is unavailable rather than a result.
+  evaluation_points:
+  - Report c1 from a fix whose only change is a binary blob.
+  - Do not fall back to the text files, none of which changed after c0.
+notes:
+- The bytes are a 4-byte header ('PAL' + version) followed by three RGB triples; the export at c1 zeroes
+  the header. tests/test_twins_and_transitions.py loads the palette at every commit.
