@@ -20,9 +20,12 @@ Checks come in two groups:
 * **default** checks run on every invocation;
 * **lint** checks run only with `--lint`. They encode expectations about
   *good* scenarios (neutral commit messages, controlled vocabularies,
-  declared ghost cases that really are ghost cases). Every lint finding is a
-  warning, so `--strict --lint` fails on them while plain `--strict` is
-  unaffected.
+  declared ghost cases that really are ghost cases). Lint findings are
+  warnings, so `--strict --lint` fails on them while plain `--strict` is
+  unaffected — except the vocabulary checks (`E400`–`E402`, `GE400`–`GE404`),
+  which have been errors since the suites were migrated to the controlled
+  vocabularies ([decisions/vocabulary.md](decisions/vocabulary.md) §6, step 4)
+  and fail `--lint` on their own.
 
 ## Flags
 
@@ -85,8 +88,10 @@ Without the package installed, run the CLI from the repository root with
 | `IE`/`IW` | index (`index.yml`) | error / warning |
 
 Codes are stable: a code is never reused for a different check. New checks
-continue the numbering of their group; the `x4xx` block (W4xx, GW4xx) is
-reserved for `--lint`.
+continue the numbering of their group; the `x4xx` block is reserved for
+`--lint` (W4xx / GW4xx warnings, and E4xx / GE4xx for the lint checks that
+became errors — the code keeps its number when its severity changes, so
+`W400` became `E400`).
 
 ## Classic suite (`validate`)
 
@@ -140,9 +145,9 @@ With `--simulate`:
 
 | code | severity | meaning | suppressed by |
 |---|---|---|---|
-| W400 | warning | a factor is a schema key or operation name (`expected_szz`, `faults`, `write_file`, `replace`, `edit`, `drop`, ...; see `RESERVED_FACTOR_WORDS`) | – |
-| W401 | warning | `meta.factors` is empty | – |
-| W402 | warning | factors mix hyphen and underscore styles within one scenario | – |
+| E400 | error | a factor is a schema key or operation name (`expected_szz`, `faults`, `write_file`, `replace`, `edit`, `drop`, ...; see `RESERVED_FACTOR_WORDS`). Was `W400` until 2026-09-22 | – |
+| E401 | error | `meta.factors` is empty (was `W401`) | – |
+| E402 | error | factors mix hyphen and underscore styles within one scenario (was `W402`) | – |
 The W41x / GW41x lints implement the leakage policy in
 [decisions/oracle-leakage.md](decisions/oracle-leakage.md); `tests/test_no_oracle_leakage.py` enforces it over the shipped scenarios.
 
@@ -151,6 +156,7 @@ The W41x / GW41x lints implement the leakage policy in
 | W412 | warning | text written into the repository (`write_file.content`, `replace.new`, `insert_after.content`) matches the W410 role wording | – |
 | W413 | warning | some author's set of commits equals the resolved default oracle and the oracle has two or more commits: the cheap baseline "report every commit by this author" returns the oracle by coincidence of the generator's author rotation (issue #43). Give the required commits distinct explicit `author`s. The oracle is resolved as the evaluator resolves it; the history is the one the generated repository will have — every commit with its explicit or deterministic default author, compared as Git records it (`name <email>`, so two spellings of one identity are one author), plus the commits `commit_generator` expands (`<owner>.g<N>`, attributed by the generator's rotation), and restricted to what a ref still reaches once `graph.ref_lifecycle` has run (a deleted branch's commits drop out unless a kept branch, a tag or HEAD reaches them; a tag may point into a generated chain, and each generated commit counts on its own reachability, not its owner's) — the history the author baseline sees through `git log --all` |
 | I413 | info | the same coincidence for a one-commit oracle — reported, not repaired: a one-commit oracle is solved by many cheap rules anyway |
+| W455 | warning | the sibling README disagrees with the scenario: its generated header is missing, differs from what the scenario renders (the message quotes the first differing line), or a hand-written `## Factors` / `## Source` copy is present. `szzbench readme --write` regenerates it ([scenario-readme.md](scenario-readme.md)) | – |
 | W460 | warning | `meta.tier` is missing or is not one of `control` / `discriminating` (see [decisions/vocabulary.md](decisions/vocabulary.md)) | – |
 | W420 | warning | ghost invariant: the BFC deletes or modifies an existing line although the scenario is declared as an addition-only fix. Declared by a factor in {`addition-only-fix`, `ghost-fix`, `add_only_fix`} (applies to every bug) or, per bug, by `fault.change_type: omission` together with `fix.fix_type` in {`line_addition`, `file_creation`} | a factor matching `tangled\|noise\|distractor\|adjacent-edit`, which declares that the fix deliberately carries unrelated deleted lines |
 | W421 | warning | ghost invariant: a BIC adds lines although the scenario is declared as a deletion-only BIC (factor `deletion-only-bic` or `line-deletion-bic`) | – |
@@ -243,11 +249,11 @@ With `--simulate`:
 
 | code | severity | meaning |
 |---|---|---|
-| GW400 | warning | a factor is a schema key or operation name (same list as W400) |
-| GW401 | warning | `meta.factors` is empty |
-| GW402 | warning | factors mix hyphen and underscore styles |
-| GW403 | warning | a BIC entry role is a non-canonical spelling; canonical roles are {`direct`, `origin`, `contributing`, `reintroducing`}. Consumers may normalize known aliases (the evaluator/verifier role normalization of #27 does), but the canonical spelling is recommended |
-| GW404 | warning | a BFC entry role is not in {`complete_fix`, `partial_fix`} |
+| GE400 | error | a factor is a schema key or operation name (same list as E400; was `GW400` until 2026-09-22) |
+| GE401 | error | `meta.factors` is empty (was `GW401`) |
+| GE402 | error | factors mix hyphen and underscore styles (was `GW402`) |
+| GE403 | error | a BIC entry role is a non-canonical spelling; canonical roles are {`direct`, `origin`, `contributing`, `reintroducing`}. Consumers normalize known aliases (the evaluator/verifier role normalization of #27 does), but a scenario declares the canonical spelling (was `GW403`) |
+| GE404 | error | a BFC entry role is not in {`complete_fix`, `partial_fix`} (was `GW404`) |
 | GW460 | warning | `meta.tier` is missing or outside the vocabulary (same rule as W460) |
 | GW410 | warning | a commit that is not a BFC (of any bug) has a role-disclosing message (same pattern as W410) |
 | GW411 | warning | a message exposes a logical id (same rule as W411) |
@@ -263,6 +269,7 @@ With `--simulate`:
 | GW452 | warning | a scenario with an origin BIC and no `origin-aware` evaluation variant, so a tool that reports origins as context cannot be scored (D3) |
 | GW453 | warning | an `origin-aware` variant that does not accept the origin, so the variant's name promises what its policy does not deliver (D3) |
 | GW454 | warning | the sibling README's `## Expected history` block contradicts the scenario: a commit's operation list differs from `commits[].operations`, or the block names a commit the scenario does not define. Only the parenthesised operation list is compared, because only that part is mechanically derivable; READMEs that describe the history in prose have no such block and are not linted |
+| GW455 | warning | the sibling README's generated header is missing, stale, or duplicated by a hand-written `## Factors` / `## Source` copy (same rule as W455; [scenario-readme.md](scenario-readme.md)) |
 | GW470 | warning | an `issues[]` entry names a `document` that no commit writes with `write_file`, or has `reported_at` without a `document` — the report would not be visible to a tool ([decisions/tool-visible-context.md](decisions/tool-visible-context.md)) |
 | GW471 | warning | the issue document has no `Reported: <timestamp>` line, its value is not an ISO 8601 timestamp, or it names a different instant from `issues[].reported_at`. Both values are normalised through the same parser and compared as instants, so an unquoted YAML timestamp (a `datetime`) and a different UTC offset are handled; `reported_at` and the document are copies of each other and must agree |
 | GW472 | warning | `issues[].reported_at` is neither an ISO 8601 string nor the `datetime` PyYAML makes of an unquoted one — it is reported rather than silently skipped |

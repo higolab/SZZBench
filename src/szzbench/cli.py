@@ -22,6 +22,7 @@ from .verifier import verify_generated_repo
 from .graph_verifier import verify_graph_generated_repo
 from .baselines import FAMILIES as BASELINE_FAMILIES, format_report as format_baselines, run_baselines
 from .coverage import format_report as format_coverage, run_coverage
+from .readme import format_readme_report, resolve_targets, run_readme, scenario_files
 from .evaluator import evaluate_predictions
 
 def print_result(result, *, json_output: bool = False) -> None:
@@ -181,6 +182,15 @@ def cmd_coverage(args) -> int:
     print(json.dumps(report, indent=2, ensure_ascii=False) if args.json else text)
     return 1 if report["errors"] else 0
 
+
+def cmd_readme(args) -> int:
+    files = resolve_targets(args.scenarios) if args.scenarios else scenario_files(
+        Path(args.scenarios_root), Path(args.advanced_scenarios_root))
+    report = run_readme(files, write=args.write)
+    print(json.dumps(report, indent=2, ensure_ascii=False) if args.json else format_readme_report(report, write=args.write))
+    if report["errors"]:
+        return 1
+    return 1 if (report["stale"] and not args.write) else 0
 
 def cmd_evaluate(args) -> int:
     if args.predictions is None and not args.include_generated:
@@ -387,6 +397,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_coverage.add_argument("--out", help="Write coverage.json and coverage.md to this directory")
     p_coverage.add_argument("--json", action="store_true", help="Print JSON output")
     p_coverage.set_defaults(func=cmd_coverage)
+
+    p_readme = sub.add_parser("readme", help="Check or regenerate the generated header of every scenario README")
+    p_readme.add_argument("scenarios", nargs="*", help="Scenario files or directories (default: every scenario of both suites)")
+    p_readme.add_argument("--scenarios-root", default=str(DEFAULT_SCENARIOS_ROOT), help="Root directory for classic scenarios")
+    p_readme.add_argument("--advanced-scenarios-root", default=str(DEFAULT_ADVANCED_SCENARIOS_ROOT), help="Root directory for graph scenarios")
+    p_readme.add_argument("--write", action="store_true", help="Rewrite missing or stale headers and drop the hand-written Factors/Source copies")
+    p_readme.add_argument("--json", action="store_true", help="Print JSON output")
+    p_readme.set_defaults(func=cmd_readme)
 
     p_evaluate = sub.add_parser("evaluate", help="Evaluate SZZ tool predictions against SZZBench oracles")
     p_evaluate.add_argument("--predictions", help="Path to predictions JSON or JSONL")

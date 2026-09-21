@@ -333,12 +333,12 @@ def test_factor_vocabulary_lints_classic():
     data = classic_scenario()
     data["meta"]["factors"] = ["expected_szz", "single-bic", "multiple_bic"]
     result = lint_classic(data)
-    assert codes(result).count("W400") == 1
-    assert "W402" in codes(result)
-    assert [f.location for f in result.findings if f.code == "W400"] == ["meta.factors[0]"]
+    assert codes(result).count("E400") == 1
+    assert "E402" in codes(result)
+    assert [f.location for f in result.findings if f.code == "E400"] == ["meta.factors[0]"]
 
     data["meta"]["factors"] = []
-    assert codes(lint_classic(data)) == ["W401"]
+    assert codes(lint_classic(data)) == ["E401"]
 
     data["meta"]["factors"] = ["single-bic", "omission-bug"]
     assert lint_classic(data).findings == []
@@ -347,10 +347,10 @@ def test_factor_vocabulary_lints_classic():
 def test_factor_vocabulary_lints_graph():
     data = graph_scenario()
     data["meta"]["factors"] = ["write_file", "edit", "branch"]
-    assert codes(lint_graph(data)).count("GW400") == 2
+    assert codes(lint_graph(data)).count("GE400") == 2
 
     data["meta"]["factors"] = []
-    assert codes(lint_graph(data)) == ["GW401"]
+    assert codes(lint_graph(data)) == ["GE401"]
 
     data["meta"]["factors"] = ["rebase", "single_bfc"]
     assert lint_graph(data).findings == []
@@ -373,7 +373,7 @@ def test_graph_role_vocabulary_lint():
     data["expected_szz"]["commit_level"]["related_origins"] = ["c0"]
     data["expected_szz"]["evaluation_variants"] = [deepcopy(ORIGIN_AWARE_VARIANT)]
     result = lint_graph(data)
-    assert codes(result) == ["GW403", "GW404"]
+    assert codes(result) == ["GE403", "GE404"]
     assert result.findings[0].location == "bugs[0].bug_introducing_commits[0].role"
 
     data["bugs"][0]["bug_introducing_commits"][0]["role"] = "direct"

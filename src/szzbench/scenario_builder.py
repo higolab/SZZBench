@@ -69,10 +69,7 @@ def create_new_scenario(
         ),
         encoding="utf-8",
     )
-    readme_path.write_text(
-        _readme_template(scenario_id=scenario_id, title=title),
-        encoding="utf-8",
-    )
+    readme_path.write_text(_readme_template(scenario_path), encoding="utf-8")
     _append_index_entry(
         index_path,
         scenario_id=scenario_id,
@@ -187,21 +184,26 @@ checks: []
 """
 
 
-def _readme_template(*, scenario_id: str, title: str) -> str:
-    return f"""# {scenario_id}: {title}
+def _readme_template(scenario_path: Path) -> str:
+    """The generated header rendered from the skeleton, then the sections a
+    scenario README carries by hand (``docs/scenario-readme.md``)."""
+    from .readme import render_header, suite_of
 
-## Summary
+    data, _ = load_yaml(scenario_path)
+    return render_header(data or {}, suite_of(scenario_path)) + """
+## Purpose
 
-TODO: Describe the scenario.
+TODO: What this scenario checks, and what a tool has to get right to pass it.
 
-## Expected SZZ Behavior
+## Commit structure
 
-- Bug-introducing commit: TODO
-- Bug-fixing commit: TODO
+- `c0`: TODO
+- `c1`: TODO (BIC)
+- `c2`: TODO (BFC)
 
-## Notes
+## Expected behavior
 
-TODO
+TODO: The expected BIC and BFC, and the evidence (behaviour at each commit, blame of the deleted lines) that the oracle is right.
 """
 
 

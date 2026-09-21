@@ -14,7 +14,7 @@ from .graph_simulator import simulate_graph_scenario
 from .gitutils import GitError, format_timestamp, parse_timestamp
 from .paths import PathValidationError, validate_repo_relative_path
 from .policies import SUPPORTED_EVALUATION_POLICIES
-from .validator import lint_author_coincidence, lint_factors, lint_leakage, lint_tier
+from .validator import lint_author_coincidence, lint_factors, lint_leakage, lint_readme_header, lint_tier
 
 GRAPH_ID_RE = re.compile(r"^SZZG-\d{4}$")
 
@@ -521,22 +521,23 @@ def lint_graph_scenario(data: dict[str, Any], *, scenario_path: Path | None = No
         for j, entry in enumerate(graph_bic_entries(bug)):
             role = entry.get("role")
             if isinstance(role, str) and role not in ALLOWED_BIC_ROLES:
-                result.warning(
-                    "GW403",
+                result.error(
+                    "GE403",
                     f"BIC role '{role}' is a non-canonical spelling; canonical roles are {sorted(ALLOWED_BIC_ROLES)}. "
-                    "Consumers may normalize known aliases, but the canonical spelling is recommended.",
+                    "Consumers normalize known aliases, but a scenario declares the canonical spelling.",
                     f"bugs[{i}].bug_introducing_commits[{j}].role",
                 )
         for j, entry in enumerate(graph_bfc_entries(bug)):
             role = entry.get("role")
             if isinstance(role, str) and role not in ALLOWED_BFC_ROLES:
-                result.warning("GW404", f"BFC role '{role}' is not in {sorted(ALLOWED_BFC_ROLES)}.", f"bugs[{i}].bug_fixing_commits[{j}].role")
+                result.error("GE404", f"BFC role '{role}' is not in {sorted(ALLOWED_BFC_ROLES)}.", f"bugs[{i}].bug_fixing_commits[{j}].role")
     lint_leakage(commits, bfc_ids, result, prefix="GW")
     lint_author_coincidence(data, "advanced-scenarios", result, prefix="GW")
     _lint_approximate_operations(commits, result)
     _lint_origin_coverage(bugs, data, result)
     if scenario_path is not None:
         _lint_readme_history(commits, scenario_path, result)
+        lint_readme_header(data, "advanced-scenarios", scenario_path, result, prefix="GW")
     return result
 
 
