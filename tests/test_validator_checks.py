@@ -1064,3 +1064,81 @@ def test_history_model_matches_the_generated_repository(tmp_path):
     from_git = {cid: by_hash[entry["hash"]] for cid, entry in commit_map.items()}
     assert dict(resolved_commit_authors(data)) == from_git
     assert "c2.g1" in from_git
+
+
+def _scratch_branch_fixture(*, delete: bool, tag: bool = False, keep_branch: bool = False) -> dict:
+    """SZZG-0007-shaped reproduction from the PR #64 review: Aiko writes the two required commits and a
+    commit d1 on a scratch branch; the lifecycle deletes the branch, optionally keeping d1 reachable
+    through a tag or a second branch."""
+    data = graph_scenario()
+    data["bugs"][0]["bug_introducing_commits"] = [{"commit": "c0", "role": "direct"}, {"commit": "c1", "role": "direct"}]
+    data["expected_szz"]["commit_level"]["required"] = ["c0", "c1"]
+    aiko = "Aiko Tanaka <aiko.tanaka@example.com>"
+    data["commits"][0]["author"] = aiko
+    data["commits"][1]["author"] = aiko
+    data["commits"][2]["author"] = "Bob Example <bob@example.com>"
+    scratch = {"id": "d1", "branch": "scratch", "parents": ["c1"], "author": aiko, "message": "Document pagination usage",
+               "role": "intermediate", "operations": [{"type": "write_file", "path": "docs/paging.md", "content": "Pagination usage examples.\n"}]}
+    data["commits"].insert(2, scratch)
+    if keep_branch:
+        data["commits"].append({"id": "k1", "branch": "keep", "parents": ["d1"], "author": "Bob Example <bob@example.com>",
+                                "message": "Keep the scratch work on another branch", "role": "intermediate",
+                                "operations": [{"type": "write_file", "path": "docs/keep.md", "content": "kept\n"}]})
+    lifecycle = {}
+    if delete:
+        lifecycle["delete_branches"] = ["scratch"]
+    if tag:
+        lifecycle["tags"] = [{"name": "scratch-tip", "commit": "d1"}]
+    if lifecycle:
+        data["graph"] = {"model": "commit_dag", "ref_lifecycle": lifecycle}
+    return data
+
+
+def test_author_coincidence_ignores_commits_no_ref_reaches_after_the_lifecycle():
+    """PR #64 re-review: after `delete_branches: [scratch]` Aiko's *visible* commits are exactly
+    {c0, c1}, so the author baseline returns the oracle and the lint must warn."""
+    assert codes(lint_graph(_scratch_branch_fixture(delete=True))) == ["GW413"]
+    # d1 still reachable: through its branch, through a tag, or through another branch that kept it
+    for data in (_scratch_branch_fixture(delete=False), _scratch_branch_fixture(delete=True, tag=True),
+                 _scratch_branch_fixture(delete=True, keep_branch=True)):
+        result = lint_graph(data)
+        assert codes(result) == [] and info_codes(result) == [], data.get("graph")
+
+
+@pytest.mark.parametrize("variant", ["deleted", "deleted-but-tagged", "deleted-but-kept-by-a-branch", "not-deleted"])
+def test_history_model_matches_git_log_all_after_the_ref_lifecycle(tmp_path, variant):
+    """`resolved_commit_authors` must list exactly the commits `git log --all` sees, whatever the lifecycle did."""
+    from szzbench.gitutils import resolved_commit_authors
+    from szzbench.graph_generator import generate_graph_repository
+    import subprocess
+    data = {"deleted": _scratch_branch_fixture(delete=True), "deleted-but-tagged": _scratch_branch_fixture(delete=True, tag=True),
+            "deleted-but-kept-by-a-branch": _scratch_branch_fixture(delete=True, keep_branch=True),
+            "not-deleted": _scratch_branch_fixture(delete=False)}[variant]
+    path = write_yaml(tmp_path / "SZZG-9900" / "scenario.graph.yml", data)
+    commit_map, verify = generate_graph_repository(path, tmp_path / "out", force=True)
+    assert not verify.has_errors(), verify.to_dict()
+    log = subprocess.run(["git", "log", "--all", "--format=%H%x00%an <%ae>"], cwd=tmp_path / "out" / "repo",
+                         capture_output=True, text=True, check=True).stdout
+    by_hash = {l.split("\x00")[0]: l.split("\x00")[1] for l in log.splitlines() if l}
+    from_git = {cid: by_hash[e["hash"]] for cid, e in commit_map.items() if e["hash"] in by_hash}
+    assert dict(resolved_commit_authors(data)) == from_git
+    assert ("d1" in from_git) == (variant != "deleted")
+
+
+@pytest.mark.parametrize("sid", ["SZZG-0072", "SZZG-0122", "SZZG-0075"])
+def test_history_model_matches_the_shipped_scenarios_with_a_ref_lifecycle(tmp_path, sid):
+    """The shipped scenarios whose lifecycle deletes a branch (0072, 0122) or adds a tag (0075)."""
+    from szzbench.gitutils import resolved_commit_authors
+    from szzbench.graph_generator import generate_graph_repository
+    import subprocess
+    root = Path(__file__).resolve().parent.parent
+    path = root / "advanced-scenarios" / sid / "scenario.graph.yml"
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    commit_map, verify = generate_graph_repository(path, tmp_path / sid, force=True)
+    assert not verify.has_errors(), verify.to_dict()
+    log = subprocess.run(["git", "log", "--all", "--format=%H%x00%an <%ae>"], cwd=tmp_path / sid / "repo",
+                         capture_output=True, text=True, check=True).stdout
+    by_hash = {l.split("\x00")[0]: l.split("\x00")[1] for l in log.splitlines() if l}
+    from_git = {cid: by_hash[e["hash"]] for cid, e in commit_map.items() if e["hash"] in by_hash}
+    assert dict(resolved_commit_authors(data)) == from_git
+    assert len(from_git) < len(commit_map) or sid == "SZZG-0075"

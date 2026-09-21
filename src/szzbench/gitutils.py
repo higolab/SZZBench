@@ -128,21 +128,67 @@ def planned_generated_commits(owner_id: str, commit_spec: dict[str, Any]) -> lis
     return [f"{owner_id}.g{n}" for n in range(1, total + 1)]
 
 
+def reachable_commit_ids(scenario: dict[str, Any]) -> set[str]:
+    """The scenario commits still reachable from a ref once the generator has finished.
+
+    Mirrors what ``git log --all`` sees in the generated repository: every branch
+    points at the last commit declared on it, ``graph.ref_lifecycle.delete_branches``
+    removes those refs, ``graph.ref_lifecycle.tags`` adds refs at named commits, and
+    HEAD stays on the last commit's branch — or, when that branch is deleted, moves to
+    the default branch if it survives and otherwise detaches at that commit.  Ancestry
+    follows ``parents``.  A history without ``parents`` (the classic suite) is linear and
+    entirely reachable.  Generated ``<owner>.g<N>`` commits are ancestors of their owner
+    and are reachable exactly when the owner is.
+    """
+    commits = [c for c in (scenario.get("commits") or []) if isinstance(c, dict) and isinstance(c.get("id"), str)]
+    ids = [c["id"] for c in commits]
+    if not commits or not any("parents" in c for c in commits):
+        return set(ids)
+    repository = scenario.get("repository") if isinstance(scenario.get("repository"), dict) else {}
+    default_branch = str(repository.get("default_branch") or "main")
+    parents_of = {c["id"]: [p for p in (c.get("parents") or []) if isinstance(p, str)] for c in commits}
+    tips: dict[str, str] = {}
+    for c in commits:
+        tips[str(c.get("branch") or default_branch)] = c["id"]       # the latest commit on a branch is its tip
+    graph = scenario.get("graph") if isinstance(scenario.get("graph"), dict) else {}
+    lifecycle = graph.get("ref_lifecycle") if isinstance(graph.get("ref_lifecycle"), dict) else {}
+    deleted = {n for n in (lifecycle.get("delete_branches") or []) if isinstance(n, str)}
+    roots = {tip for branch, tip in tips.items() if branch not in deleted}
+    for tag in lifecycle.get("tags") or []:
+        if isinstance(tag, dict) and isinstance(tag.get("commit"), str):
+            roots.add(tag["commit"])
+    last = commits[-1]
+    if str(last.get("branch") or default_branch) in deleted and (default_branch in deleted or default_branch not in tips):
+        roots.add(last["id"])                                          # HEAD detaches at the commit it was on
+    reachable: set[str] = set()
+    stack = [r for r in roots if r in parents_of]
+    while stack:
+        cid = stack.pop()
+        if cid in reachable:
+            continue
+        reachable.add(cid)
+        stack.extend(p for p in parents_of.get(cid, []) if p in parents_of)
+    return reachable
+
+
 def resolved_commit_authors(scenario: dict[str, Any]) -> list[tuple[str, str]]:
     """``(commit id, canonical author)`` for every commit the generated repository will contain.
 
     This is the history model a metadata rule sees: the scenario's own commits with their explicit
     or deterministic default author (``resolve_commit_metadata``), followed by the commits every
     ``commit_generator`` operation expands into, which the generator attributes with
-    ``deterministic_author(scenario id, generated id)``.  Any check that reasons about "the commits
-    written by X" must use this list, not ``scenario['commits']`` alone.
+    ``deterministic_author(scenario id, generated id)``; commits that no ref reaches once the
+    ref lifecycle has run (``reachable_commit_ids``) are left out, as ``git log --all`` leaves them
+    out.  Any check that reasons about "the commits written by X" must use this list, not
+    ``scenario['commits']`` alone.
     """
     meta = scenario.get("meta") if isinstance(scenario.get("meta"), dict) else {}
     repository = scenario.get("repository") if isinstance(scenario.get("repository"), dict) else {}
     scenario_id = str(meta.get("id") or repository.get("name") or "scenario")
+    reachable = reachable_commit_ids(scenario)
     rows: list[tuple[str, str]] = []
     for index, commit in enumerate(scenario.get("commits") or []):
-        if not isinstance(commit, dict) or not isinstance(commit.get("id"), str):
+        if not isinstance(commit, dict) or not isinstance(commit.get("id"), str) or commit["id"] not in reachable:
             continue
         rows.append((commit["id"], canonical_author(resolve_commit_metadata(scenario, commit, index).author)))
         for generated_id in planned_generated_commits(commit["id"], commit):
