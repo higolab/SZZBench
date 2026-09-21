@@ -120,6 +120,11 @@ def cmd_generate_all_repos(args) -> int:
     print(f"  Skipped:     {result.skipped_count}")
     print(f"  Overwritten: {result.overwritten_count}")
     print(f"  Failed:      {result.failed_count}")
+    if result.orphans:
+        print(f"  Orphaned:    {len(result.orphans)}")
+        for orphan in result.orphans:
+            print(f"[WARNING] {_display_path(orphan)} has no scenario; it was probably retired "
+                  f"(see docs/retired-ids.md). Remove it, or run `szzbench clean` and regenerate.", file=sys.stderr)
     return 1 if result.failed_count else 0
 
 def cmd_verify_graph(args) -> int:

@@ -1,19 +1,22 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0160
-  title: Patch context required around caller
-  slug: patch-context-required
-  description: This scenario is intended for evaluating SZZ variants that use commit messages or broader patch context.
-  category: "Context, message, and non-local evidence"
+  title: Fault in a private helper reached only through its caller
+  slug: private-helper-fault
+  description: >-
+    The public method delegates to a private helper, and both the BIC and the BFC edit the helper's
+    boundary check. Plain line-level blame on the line the fix deletes reaches the BIC exactly, so this
+    is a control for the delegation shape rather than a case that needs the caller for context.
+  category: "Basic semantic line changes"
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - context-aware
+  - delegated-call
   difficulty: medium
   status: active
   tier: control
-  category_code: "S7"
+  category_code: "S1"
 repository:
   name: SZZ-0160-patch-context-required
   default_branch: main
@@ -69,7 +72,7 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Patch context required around caller
+  title: Fault in a private helper reached only through its caller
   bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1

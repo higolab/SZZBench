@@ -364,8 +364,8 @@ def _read_history(repo_dir: Path, hash_to_id: dict[str, str], git: GitProbe) -> 
 
 
 def _load_scenarios(generated_root: Path, scenarios_root: Path, advanced_scenarios_root: Path,
-                    variant: str, git: GitProbe) -> tuple[list[Scenario], list[str]]:
-    from .evaluator import _find_scenario_path, _load_commit_map, _load_scenario_for_evaluation
+                    variant: str, git: GitProbe, *, warnings: list[str] | None = None) -> tuple[list[Scenario], list[str]]:
+    from .evaluator import _find_scenario_path, _load_commit_map, _load_scenario_for_evaluation, orphan_output_warning
 
     scenarios: list[Scenario] = []
     errors: list[str] = []
@@ -375,7 +375,11 @@ def _load_scenarios(generated_root: Path, scenarios_root: Path, advanced_scenari
         scenario_id = repo_dir.parent.parent.name
         path, suite = _find_scenario_path(scenario_id, scenarios_root, advanced_scenarios_root)
         if path is None:
-            errors.append(f"Cannot find scenario for '{scenario_id}'.")
+            # A generated output with no scenario is what a retired id leaves
+            # behind in an existing checkout (docs/retired-ids.md).  It is not a
+            # scenario to score, and it must not fail the run.
+            if warnings is not None:
+                warnings.append(orphan_output_warning(scenario_id, generated_root))
             continue
         data, load_errors = _load_scenario_for_evaluation(path, suite)
         errors.extend(load_errors)
@@ -451,7 +455,9 @@ def run_baselines(
     """Score every baseline and report the best of each family."""
     selected = [f for f in FAMILIES if f in set(families)]
     git = GitProbe()
-    scenarios, errors = _load_scenarios(generated_root, scenarios_root, advanced_scenarios_root, variant, git)
+    warnings: list[str] = []
+    scenarios, errors = _load_scenarios(generated_root, scenarios_root, advanced_scenarios_root, variant, git,
+                                        warnings=warnings)
     by_id = {s.scenario_id: s for s in scenarios}
     results: list[BaselineResult] = []
     answer_hashes = _answer_hashes(scenarios, scenarios_root, advanced_scenarios_root)
@@ -536,6 +542,7 @@ def run_baselines(
         "declared_discriminating_but_solved": wrongly_discriminating,
         "declared_control_but_unsolved": unsolved_controls,
         "errors": errors + git.failures,
+        "warnings": warnings,
     }
 
 
@@ -575,6 +582,8 @@ def format_report(report: dict[str, Any]) -> str:
         bucket = report["per_category"][category]
         rate = 100 * bucket["solved"] / bucket["total"] if bucket["total"] else 0.0
         lines.append(f"      {category:4s} {bucket['solved']:3d}/{bucket['total']:<3d} {rate:5.1f}%")
+    for warning in report.get("warnings", []):
+        lines.append(f"  [WARNING] {warning}")
     for error in report["errors"]:
         lines.append(f"  [ERROR] {error}")
     return "\n".join(lines)

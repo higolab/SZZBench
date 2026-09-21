@@ -343,14 +343,20 @@ def evaluate_prediction_map(
     """
     errors = list(errors or [])
     warnings = list(warnings or [])
-    scenario_ids = set(explicit_scenarios or predictions_by_scenario.keys())
+    requested = set(explicit_scenarios or predictions_by_scenario.keys())
+    scenario_ids = set(requested)
     if include_generated:
         scenario_ids.update(_generated_scenario_ids(generated_root, variant))
     evaluations: list[ScenarioEvaluation] = []
     for scenario_id in sorted(scenario_ids):
         scenario_path, suite = _find_scenario_path(scenario_id, scenarios_root, advanced_scenarios_root)
         if scenario_path is None:
-            errors.append(f"Cannot find scenario for '{scenario_id}'.")
+            if scenario_id in requested:
+                # the predictions name it, so this is a claim about a scenario
+                errors.append(f"Cannot find scenario for '{scenario_id}'.")
+            else:
+                # it only came from the generated output: a retired id's leftover
+                warnings.append(orphan_output_warning(scenario_id, generated_root))
             continue
         scenario, scenario_errors = _load_scenario_for_evaluation(scenario_path, suite)
         errors.extend(scenario_errors)
@@ -572,6 +578,17 @@ def _first_string(record: dict[str, Any], keys: list[str]) -> str | None:
         if isinstance(value, str) and value:
             return value
     return None
+
+
+def orphan_output_warning(scenario_id: str, generated_root: Path) -> str:
+    """The warning for a generated output whose scenario no longer exists.
+
+    Retiring a scenario (docs/retired-ids.md) removes its source and index entry,
+    but generated output is untracked and stays behind in existing checkouts; no
+    command regenerates or removes it.  Consumers skip it rather than fail.
+    """
+    return (f"generated output '{scenario_id}' has no scenario; it was probably retired "
+            f"(see docs/retired-ids.md) and is skipped. Remove {generated_root / scenario_id} to silence this.")
 
 
 def _find_scenario_path(scenario_id: str, scenarios_root: Path, advanced_scenarios_root: Path) -> tuple[Path | None, str]:

@@ -113,8 +113,9 @@ def run_coverage(
     variant: str = "default",
 ) -> dict[str, Any]:
     git = GitProbe()
+    warnings: list[str] = []
     scenarios, errors = _load_scenarios(generated_root, scenarios_root, advanced_scenarios_root,
-                                        variant, git)
+                                        variant, git, warnings=warnings)
     shapes: list[ScenarioShape] = []
     for scenario in scenarios:
         path = scenarios_root / scenario.scenario_id / "scenario.yml"
@@ -151,6 +152,7 @@ def run_coverage(
         "unique_scenarios": sorted(v[0] for v in groups.values() if len(v) == 1),
         "shapes": [s.to_dict() for s in shapes],
         "errors": errors + git.failures,
+        "warnings": warnings,
     }
 
 
@@ -176,6 +178,8 @@ def format_report(report: dict[str, Any]) -> str:
         lines.append(f"      ... and {len(groups) - 15} more group(s)")
     lines.append("")
     lines.append(f"  scenarios with a unique signature: {len(report['unique_scenarios'])}")
+    for warning in report.get("warnings", []):
+        lines.append(f"  [WARNING] {warning}")
     for error in report["errors"]:
         lines.append(f"  [ERROR] {error}")
     return "\n".join(lines)

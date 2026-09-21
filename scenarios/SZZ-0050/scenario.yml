@@ -4,7 +4,7 @@ meta:
   title: Index lower bound error
   slug: index-lower-bound-error
   description: This scenario introduces a bug by changing `return index >= 0;` to `return index > 0;` and later restores the correct implementation.
-  category: "Omission and deletion bugs"
+  category: "Basic semantic line changes"
   factors:
   - single-bic
   - single-bfc
@@ -13,7 +13,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
-  category_code: "S2"
+  category_code: "S1"
 repository:
   name: SZZ-0050-index-lower-bound-error
   default_branch: main

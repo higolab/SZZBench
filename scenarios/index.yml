@@ -119,8 +119,8 @@ scenarios:
 - id: SZZ-0050
   title: Index lower bound error
   slug: index-lower-bound-error
-  category_code: S2
-  category: Omission and deletion bugs
+  category_code: S1
+  category: Basic semantic line changes
   factors:
   - single-bic
   - single-bfc
@@ -142,19 +142,6 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0053/scenario.yml
-- id: SZZ-0058
-  title: Resource close omission
-  slug: resource-close-omission
-  category_code: S2
-  category: Omission and deletion bugs
-  factors:
-  - single-bic
-  - single-bfc
-  - omission-bug
-  - line-addition-fix
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0058/scenario.yml
 - id: SZZ-0070
   title: State transition check omission
   slug: state-transition-check-omission
@@ -210,8 +197,8 @@ scenarios:
   status: active
   path: scenarios/SZZ-0079/scenario.yml
 - id: SZZ-0080
-  title: Exception handling deletion introduces bug
-  slug: exception-handling-deletion-bic
+  title: Zero-denominator guard deletion introduces a division by zero
+  slug: zero-guard-deletion-bic
   category_code: S2
   category: Omission and deletion bugs
   factors:
@@ -219,7 +206,7 @@ scenarios:
   - single-bfc
   - line-modification
   - line-deletion-bic
-  - exception-handling
+  - division-by-zero
   difficulty: medium
   status: active
   path: scenarios/SZZ-0080/scenario.yml
@@ -1036,21 +1023,21 @@ scenarios:
   status: active
   path: scenarios/SZZ-0159/scenario.yml
 - id: SZZ-0160
-  title: Patch context required around caller
-  slug: patch-context-required
-  category_code: S7
-  category: Context, message, and non-local evidence
+  title: Fault in a private helper reached only through its caller
+  slug: private-helper-fault
+  category_code: S1
+  category: Basic semantic line changes
   factors:
   - single-bic
   - single-bfc
   - line-modification
-  - context-aware
+  - delegated-call
   difficulty: medium
   status: active
   path: scenarios/SZZ-0160/scenario.yml
 - id: SZZ-0166
-  title: Performance cleanup distractor with message
-  slug: context-with-cleanup-distractor
+  title: Signature-only cleanup between BIC and BFC
+  slug: signature-only-cleanup-distractor
   category_code: S7
   category: Context, message, and non-local evidence
   factors:
@@ -1058,19 +1045,10 @@ scenarios:
   - single-bfc
   - line-modification
   - context-aware
+  - intermediate-cleanup
   difficulty: medium
   status: active
   path: scenarios/SZZ-0166/scenario.yml
-- id: SZZ-0167
-  title: Patch context required
-  slug: patch-context
-  category_code: S7
-  category: Context, message, and non-local evidence
-  factors:
-  - context
-  difficulty: hard
-  status: active
-  path: scenarios/SZZ-0167/scenario.yml
 - id: SZZ-0168
   title: Cause can be inferred from test failure
   slug: test-failure

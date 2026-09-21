@@ -301,4 +301,5 @@ with the index path.
 | IE043 | error | an index entry's `factors` differ from the scenario's `meta.factors`; the index repeats a field that changes with the scenario, which is how it drifted before ([issue #19](https://github.com/YoshikiHigo/SZZBench/issues/19)) |
 | IE044 | error | an index entry's `factors`, or the scenario's `meta.factors`, is not a list; neither side is validated before IE043 compares them |
 | IE045 | error | an index entry's `status` differs from the scenario's `meta.status` |
+| IE046 | error | an index entry's `slug`, `category`, `category_code` or `difficulty` differs from the scenario's `meta` value. These four are copied into the index like `title`, `status` and `factors`, and were the last mirrored fields nothing checked |
 | IE042 | error | the scenario file of an entry cannot be loaded |

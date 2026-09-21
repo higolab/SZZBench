@@ -1,16 +1,19 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0080
-  title: Exception handling deletion introduces bug
-  slug: exception-handling-deletion-bic
-  description: 'This scenario evaluates a bug-introducing commit shape: Exception handling deletion introduces bug.'
+  title: Zero-denominator guard deletion introduces a division by zero
+  slug: zero-guard-deletion-bic
+  description: >-
+    The BIC deletes the `denominator == 0` guard, so `divide` throws `ArithmeticException` instead of
+    returning 0, and the BFC restores the guard. No exception handler is involved: the removed code is a
+    plain early-return branch.
   category: "Omission and deletion bugs"
   factors:
   - single-bic
   - single-bfc
   - line-modification
   - line-deletion-bic
-  - exception-handling
+  - division-by-zero
   difficulty: medium
   status: active
   tier: control
@@ -59,7 +62,7 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Exception handling deletion introduces bug
+  title: Zero-denominator guard deletion introduces a division by zero
   bug_fixing_commit: c2
   bug_introducing_commits: &id001
   - c1
