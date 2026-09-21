@@ -4,12 +4,13 @@ meta:
   title: One BIC causes multiple bug symptoms
   slug: bic-bug
   description: >-
-    One faulty helper is reached from two call sites and each site is repaired by its own commit, so the scenario
-    carries two bug entries with the same bug-introducing commit.
+    One faulty helper — a 3 percent fee computed with 30 — is reached from two call sites and each site is
+    repaired by its own commit, so the scenario carries two bug entries with the same bug-introducing commit.
   category: "Multiple BICs, multiple BFCs, and partial fixes"
   category_code: "G3"
   factors:
   - root-cause
+  - wrong-constant
   difficulty: advanced
   status: active
   tier: control
@@ -21,64 +22,63 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
+  history_summary: 'c0: create the fee helpers (a private 3 percent fee used by two callers)
 
-    c1: introduce bug (replace src/main/java/example/Range.java)
+    c1: compute the fee with 30 instead of 3 (BIC, one line, two symptoms)
 
-    c2: fix bug (replace src/main/java/example/Range.java)
+    c2: compute the card fee directly instead of calling fee() (fixes the first symptom)
 
-    c3: fix bug (replace src/main/java/example/Range.java)'
+    c3: compute the transfer fee directly instead of calling fee() (fixes the second symptom)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'Add the range acceptance helpers'
+  message: 'Add the payment fee helpers'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  private boolean within(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n\n  public boolean acceptImport(int value, int min, int max) {\n    return within(value,\
-      \ min, max);\n  }\n\n  public boolean acceptSearch(int value, int min, int max) {\n    return within(value, min, max);\n\
+    path: src/main/java/example/Fees.java
+    content: "package example;\n\npublic class Fees {\n  /** The 3 percent processing fee on {@code cents}. */\n  private int fee(int cents) {\n    return\
+      \ cents * 3 / 100;\n  }\n\n  public int cardFee(int cents) {\n    return fee(cents);\n  }\n\n  public int transferFee(int cents) {\n    return fee(cents);\n\
       \  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'Require values strictly inside the range'
+  message: 'Apply the 3 percent fee'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
+    path: src/main/java/example/Fees.java
+    old: return cents * 3 / 100;
+    new: return cents * 30 / 100;
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'Check the range bounds directly instead of calling within()'
+  message: 'Compute the card fee directly instead of calling fee()'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return within(value, min, max);
-    new: return value >= min && value <= max;
+    path: src/main/java/example/Fees.java
+    old: return fee(cents);
+    new: return cents * 3 / 100;
     occurrence: 1
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'Check the range bounds directly in the remaining caller'
+  message: 'Compute the transfer fee directly in the remaining caller'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return within(value, min, max);
-    new: return value >= min && value <= max;
+    path: src/main/java/example/Fees.java
+    old: return fee(cents);
+    new: return cents * 3 / 100;
     occurrence: 1
 bugs:
 - id: B001
-  title: Import symptom caused by shared helper BIC
+  title: Card fee symptom caused by the shared helper BIC
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -89,17 +89,17 @@ bugs:
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
-    location: within
+    file: src/main/java/example/Fees.java
+    statement: return cents * 30 / 100;
+    location: fee
   fixes:
   - id: X001
     commit: c2
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
-    location: acceptImport
+    file: src/main/java/example/Fees.java
+    statement: return cents * 3 / 100;
+    location: cardFee
 - id: B002
-  title: Search symptom caused by same shared helper BIC
+  title: Transfer fee symptom caused by the same shared helper BIC
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -110,15 +110,15 @@ bugs:
   faults:
   - id: F002
     commit: c1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
-    location: within
+    file: src/main/java/example/Fees.java
+    statement: return cents * 30 / 100;
+    location: fee
   fixes:
   - id: X002
     commit: c3
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
-    location: acceptSearch
+    file: src/main/java/example/Fees.java
+    statement: return cents * 3 / 100;
+    location: transferFee
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
@@ -133,14 +133,15 @@ bug_groups:
 scenario_design:
   purpose: >-
     Evaluate whether a method reports the same bug-introducing commit for two symptoms fixed by different commits.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: >-
-    This scenario uses factors: root-cause; operations: write_file, replace.
+  key_property: >-
+    Measured: cardFee(1000) is 30 at c0, 300 at c1, 30 at c2; transferFee(1000) is 30 at c0, 300 at c1 and c2,
+    30 at c3. Each fix deletes a `return fee(cents);` line written by c0, not the faulty helper line, so plain
+    blame of the fixes' deleted lines returns c0; the helper `fee` keeps its faulty constant at HEAD and is
+    simply no longer called.
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
   - Whether structural or contextual history is handled according to the scenario factors.
   - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
+- Rewritten 2026-09-21 from the shared Range.contains template to a wrong-constant fault (GitHub issue 13); the history
+  shape, oracle and coverage dimensions are unchanged.

@@ -2,94 +2,54 @@
 
 ## Purpose
 
-Evaluate a bug whose faulty line is introduced in `Range.java`, then moved into a new `RangeUtils.java` and, in
-the same commit, duplicated into a second helper `Bounds.java`, before both copies are fixed by one BFC.
+One commit does two different things to one faulty line. `c1` writes
+`Paging.pageCount` as `count / size + 1`, one page too many for exact multiples.
+`c2` moves the method into a new `PagingUtils` class *and* duplicates the same
+line into a new `Batches.batchCount`. `c3` fixes both copies. Under the
+direct/origin contract the move preserves `c1` as the BIC of the moved instance
+(D4, movement) while the duplication creates a second instance whose BIC is
+`c2` itself (D4, copying); the fix repairs both, so the oracle is the union
+`{c1, c2}` (D9). Plain blame at the fix returns `c2` for both lines.
 
-`c2` does two things in one commit, and the direct/origin contract treats them differently. *Moving*
-`contains` into `RangeUtils` preserves behaviour, so that instance keeps `c1` as its direct BIC (D4,
-movement). *Duplicating* the line into `Bounds.within` creates a second faulty instance that did not exist
-before, so its direct BIC is `c2` itself (D4, copying). The fix repairs both instances, so the oracle is the
-union `{c1, c2}` (D9).
+Rewritten 2026-09-21 (issue #13) from the shared `Range.contains` template; the
+history shape, oracle and coverage dimensions (`bic_depth` 2, no distractor on
+the fault file, 3 commits, 1 ref) are unchanged.
 
-## Commit history
+## Commit structure (generated)
 
 ```text
-c1: create Range with a buggy contains check (BIC)
-c2: move contains from Range to a new RangeUtils class and duplicate the same check into a new Bounds.within
-c3: fix both copies in RangeUtils.java and Bounds.java (BFC)
+* 615c541  2024-07-30  Count pages and batches without an extra one for exact multiples  <- BFC (c3; PagingUtils.java and Batches.java)
+* 03e528f  2024-07-24  Move pageCount to PagingUtils and add Batches.batchCount           <- BIC of the duplicate (c2); move of the original
+* 8bbc4a3  2024-07-15  Add Paging with page count and offset helpers                      <- BIC of the moved instance (c1)
 ```
 
-## Commit table
+## Expected BIC / BFC
 
-| Commit | Branch | Parents | Role | Description |
-|---|---|---|---|---|
-| `c1` | `main` | none | bug_introducing | Creates `Range` with `contains` returning `value > min && value < max` (bounds excluded) and `length`. |
-| `c2` | `main` | `c1` | refactoring | Removes `contains` from `Range.java` (which keeps `length`); adds `RangeUtils.contains` with the identical faulty line (move); adds `Bounds.within` with the identical faulty line (copy). |
-| `c3` | `main` | `c2` | bug_fixing | Changes both copies to `value >= min && value <= max`. |
+- BICs: `c1` and `c2` (`exact_set`, `required: [c1, c2]`)
+- BFC: `c3`
 
-## Code states
+## Measured behaviour and blame
 
-Behaviour at each commit (obtained by compiling every generated commit with `javac` and running a small
-harness); `(5, 5, 10)` and `(10, 5, 10)` are the boundary cases:
-
-| Method | `c1` | `c2` | `c3` |
+| commit | `pageCount(20, 10)` | `batchCount(20, 10)` | for 21 items |
 |---|---|---|---|
-| `Range.contains(5, 5, 10)` / `(10, 5, 10)` | `false` / `false` (buggy) | method absent | method absent |
-| `RangeUtils.contains(5, 5, 10)` / `(10, 5, 10)` | class absent | `false` / `false` (buggy) | `true` / `true` |
-| `Bounds.within(5, 5, 10)` / `(10, 5, 10)` | class absent | `false` / `false` (buggy) | `true` / `true` |
+| `c1` | **3** (`Paging`) | — | 3 |
+| `c2` | **3** (`PagingUtils`) | **3** | 3 |
+| `c3` | 2 | 2 | 3 |
 
-The `c2` diff removes 4 lines from `Range.java` and creates `RangeUtils.java` and `Bounds.java`; the `c3` diff
-is `Bounds.java | 2 +-` and `RangeUtils.java | 2 +-`. No faulty copy remains at HEAD.
+`c3` deletes one line in each of `PagingUtils.java` and `Batches.java` (line 5
+in both); blame at `c3^` returns `c2` for both, because both files were created
+there. The declared fault statement is no longer in `Paging.java` at `c3^`
+(verifier `GI701`, declared by `method-move`).
 
-## Oracle
+## What a tool must do
 
-- Expected BIC: `c1` and `c2` (exact set)
-- Bug-fixing commit: `c3` (`complete_fix`; it fixes both copies)
-- Fault `F001`: `return value > min && value < max;` in `Range.java` (`c1`)
-- Fix `X001`: `return value >= min && value <= max;` in `RangeUtils.java` (moved copy)
-- Fix `X002`: `return value >= min && value <= max;` in `Bounds.java` (duplicated copy)
-- `c2` is where plain blame stops for both fixed lines, and it is also the direct BIC of the duplicated
-  instance; reporting it alone is still a false negative on `c1`.
+Return both `c1` and `c2`, for different reasons: `c2` because it created a new
+faulty instance by copying the line, `c1` because the other fixed instance is
+the moved original. A tool that treats the whole of `c2` as propagation history
+misses `c2`; one that stops at the last touch misses `c1`.
 
-Bug instances (`bug_instances` in the YAML):
+## Factors
 
-| Instance | File | State |
-|---|---|---|
-| `B001-origin` | `Range.java` | introduced by `c1`, removed by `c2` (moved out) |
-| `B001-moved` | `RangeUtils.java` | created by `c2` from the origin line, fixed by `c3` |
-| `B001-duplicate` | `Bounds.java` | created by `c2` from the origin line, fixed by `c3` |
-
-## Expected plain-blame behaviour
-
-Both lines modified by the BFC live in files created by `c2`. Checked on the generated repository at `c3^`:
-
-| Tool | `RangeUtils.java` line 5 | `Bounds.java` line 5 |
-|---|---|---|
-| `git blame` (plain) | `c2` | `c2` |
-| `git blame -C -C -C1` (copy detection across files created in the same commit, low threshold) | `c1`, via `Range.java` | `c1`, via `Range.java` |
-| `git log -S'return value > min && value < max;'` | `c3`, `c2`, `c1` (oldest hit is `c1`) | same |
-
-Plain blame therefore returns `{c2}` for both fixed lines. That is not a wrong commit — `c2` *is* a required
-BIC, as the direct BIC of the instance its copy created — it is an **incomplete** answer, missing `c1`.
-Reaching `c1` requires refactoring- or clone-aware tracing: recognising that `c2` moved the line from
-`Range.java` into `RangeUtils.java` and copied it into `Bounds.java`, then continuing the line history in
-`Range.java`. That is
-the intended difficulty. The graph verifier reports `GW701` ("fault.statement not present in final BFC
-parent") for the same reason: the fault text is no longer in `Range.java` at `c3^`.
-
-## Files
-
-```text
-SZZG-0007/
-|-- scenario.graph.yml
-`-- README.md
-```
-
-## History
-
-- 2026-09 (issue 2): `c2` was previously expressed with `move_entity` and `copy_entity`, which the generator
-  realises as whole-file copies with a header line that leave the source untouched; `Range.java` still held
-  the buggy line at HEAD and `RangeUtils.java` did not compile. The move and the copy are now expressed with
-  explicit `write_file` operations, the duplicate lives in `Bounds.java`, the BFC fixes both copies (`X001`,
-  `X002`), the factors `move_entity`/`copy_entity` were replaced by `method_move`/`copy_propagation`, and
-  commit messages were rewritten to realistic, role-neutral text. The oracle (BIC `c1`, BFC `c3`) is unchanged.
+- `method-move`
+- `copy-propagation`
+- `off-by-one`

@@ -3,9 +3,11 @@ meta:
   id: SZZG-0006
   title: Extract class after BIC
   slug: extract-class-after-bic
-  description: A bug is introduced in a class that mixes range validation and reporting responsibilities. After the BIC, a
-    new RangeValidator class is extracted and the buggy validation logic is moved there. The BFC then fixes the bug in the
-    extracted class.
+  description: >-
+    A bug is introduced in a class that mixes quantity parsing and order reporting responsibilities: the
+    parser starts swallowing NumberFormatException and returning a quantity of 0. After the BIC, a new
+    QuantityParser class is extracted and the buggy parsing logic is moved there. The BFC then fixes the bug in
+    the extracted class.
   category: "Refactoring, move, rename, and semantic rewrite"
   category_code: "G1"
   factors:
@@ -13,6 +15,7 @@ meta:
   - extract-class
   - method-move
   - post-bic-refactoring
+  - exception-swallowed
   difficulty: advanced
   status: active
   tier: control
@@ -24,67 +27,67 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create RangeService with validation and reporting responsibilities
+  history_summary: 'c0: create OrderService with parsing and reporting responsibilities
 
-    c1: introduce boundary bug in RangeService.contains
+    c1: swallow NumberFormatException in OrderService.parseQuantity and return 0 (BIC)
 
-    c2: extract RangeValidator class after the BIC and move the buggy validation logic there
+    c2: extract QuantityParser after the BIC and move the buggy parsing logic there
 
-    c3: fix the boundary bug in the extracted RangeValidator class'
+    c3: reject a malformed quantity in the extracted QuantityParser (BFC)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'Add RangeService with validation and reporting'
+  message: 'Add OrderService with quantity parsing and reporting'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/RangeService.java
-    content: "package example;\n\npublic class RangeService {\n  public boolean contains(int value, int min, int max) {\n\
-      \    return value >= min && value <= max;\n  }\n\n  public String describe(int min, int max) {\n    return \"range[\"\
-      \ + min + \",\" + max + \"]\";\n  }\n\n  public boolean acceptsAndReport(int value, int min, int max) {\n    return\
-      \ contains(value, min, max);\n  }\n}\n"
+    path: src/main/java/example/OrderService.java
+    content: "package example;\n\npublic class OrderService {\n  public int parseQuantity(String text) {\n    return Integer.parseInt(text.trim());\n\
+      \  }\n\n  public String describe(String sku, int quantity) {\n    return sku + \" x \" + quantity;\n  }\n\n  public String describeParsed(String sku, String text) {\n    return\
+      \ describe(sku, parseQuantity(text));\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'Require values strictly inside the range'
+  message: 'Never fail on a malformed quantity'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/RangeService.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
+    path: src/main/java/example/OrderService.java
+    old: "  public int parseQuantity(String text) {\n    return Integer.parseInt(text.trim());\n  }"
+    new: "  public int parseQuantity(String text) {\n    try {\n      return Integer.parseInt(text.trim());\n    } catch (NumberFormatException e) {\n      return 0;\n\
+      \    }\n  }"
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'Extract RangeValidator from RangeService'
+  message: 'Extract QuantityParser from OrderService'
   role: intermediate
   operations:
   - type: write_file
-    path: src/main/java/example/RangeService.java
-    content: "package example;\n\npublic class RangeService {\n  private final RangeValidator validator = new RangeValidator();\n\
-      \n  public String describe(int min, int max) {\n    return \"range[\" + min + \",\" + max + \"]\";\n  }\n\n  public\
-      \ boolean acceptsAndReport(int value, int min, int max) {\n    return validator.contains(value, min, max);\n  }\n}\n"
+    path: src/main/java/example/OrderService.java
+    content: "package example;\n\npublic class OrderService {\n  private final QuantityParser parser = new QuantityParser();\n\
+      \n  public String describe(String sku, int quantity) {\n    return sku + \" x \" + quantity;\n  }\n\n  public String describeParsed(String sku, String text) {\n    return\
+      \ describe(sku, parser.parseQuantity(text));\n  }\n}\n"
   - type: write_file
-    path: src/main/java/example/RangeValidator.java
-    content: "package example;\n\npublic class RangeValidator {\n  public boolean contains(int value, int min, int max) {\n\
-      \    return value > min && value < max;\n  }\n}\n"
+    path: src/main/java/example/QuantityParser.java
+    content: "package example;\n\npublic class QuantityParser {\n  public int parseQuantity(String text) {\n    try {\n      return Integer.parseInt(text.trim());\n\
+      \    } catch (NumberFormatException e) {\n      return 0;\n    }\n  }\n}\n"
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'Accept the range bounds in the extracted validator'
+  message: 'Reject a malformed quantity in the extracted parser'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/RangeValidator.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/QuantityParser.java
+    old: return 0;
+    new: 'throw new IllegalArgumentException("not a quantity: " + text, e);'
 bugs:
 - id: B001
-  title: Range boundary bug moved to extracted validator class
+  title: A malformed quantity is silently parsed as 0; the parser moved to an extracted class before the fix
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -94,43 +97,47 @@ bugs:
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/RangeService.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/OrderService.java
+    statement: return 0;
     change_type: line_modification
   fixes:
   - id: X001
     commit: c3
-    file: src/main/java/example/RangeValidator.java
-    statement: return value >= min && value <= max;
+    file: src/main/java/example/QuantityParser.java
+    statement: 'throw new IllegalArgumentException("not a quantity: " + text, e);'
     fix_type: line_modification_after_extract_class
   refactorings:
   - commit: c2
     type: extract_class
-    from_file: src/main/java/example/RangeService.java
-    to_file: src/main/java/example/RangeValidator.java
+    from_file: src/main/java/example/OrderService.java
+    to_file: src/main/java/example/QuantityParser.java
     moved_entities:
-    - boolean contains(int value, int min, int max)
+    - int parseQuantity(String text)
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
     - c1
-    notes: The fault is introduced in RangeService.java at c1 and later moved to RangeValidator.java by the extract-class
+    notes: The fault is introduced in OrderService.java at c1 and later moved to QuantityParser.java by the extract-class
       refactoring at c2.
 scenario_design:
   purpose: Evaluate whether SZZ can identify the original BIC when the buggy method is moved into a newly extracted class
     before the BFC.
-  key_property: 'The BIC and BFC are in different files: the fault is introduced in RangeService.java, then moved to RangeValidator.java,
-    and finally fixed there.'
+  key_property: >-
+    The BIC and BFC are in different files: the fault is introduced in OrderService.java, then moved to
+    QuantityParser.java, and finally fixed there. Measured: describeParsed("SKU-1", "x") throws
+    NumberFormatException at c0, is "SKU-1 x 0" at c1 and c2, and throws IllegalArgumentException at c3;
+    describeParsed("SKU-1", " 4 ") is "SKU-1 x 4" throughout. Blaming the line c3 deletes at c3^ returns c2,
+    the extraction.
   difference_from_SZZG_0005: 'SZZG-0005 represents a method move between classes. This scenario represents extract class:
     a new class is created after the BIC, responsibilities are split, and the BFC occurs in the extracted class.'
   evaluation_points:
   - Whether SZZ follows the bug across extract-class refactoring.
   - Whether SZZ avoids treating the extraction commit c2 as the BIC.
-  - Whether file movement from RangeService.java to RangeValidator.java is handled correctly.
+  - Whether file movement from OrderService.java to QuantityParser.java is handled correctly.
 notes:
-- This revision differentiates SZZG-0006 from SZZG-0005 by creating a new RangeValidator class and moving the buggy validation
-  responsibility there.
 - The BIC remains c1, even though the BFC is in a different file after extraction.
 - The c2 extraction is intentionally represented with write_file operations so that current graph generation can reproduce
   the refactoring without requiring a dedicated extract_class operation.
+- Rewritten 2026-09-21 from the shared Range.contains template to a swallowed-exception fault (GitHub issue 13); the
+  history shape, oracle and coverage dimensions are unchanged.

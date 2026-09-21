@@ -1,43 +1,48 @@
 # SZZG-0107: BFC includes generated files
 
-## Source
-
-- Category: BFC shape scenarios
-
 ## Purpose
 
-Evaluate whether SZZ identifies the source BIC when the BFC contains both the real source fix and generated-file noise.
+`Retention.shouldKeep` keeps an entry while it is pinned or not yet expired.
+`c1` "simplifies" the rule and drops the negation, so expired entries are kept
+and unexpired ones discarded. The fix `c2` restores the negation and, in the
+same commit, regenerates a five-line retention table under `build/generated/`.
+The fix's diff therefore mixes one source line with generated noise.
 
-## Expected history
+Rewritten 2026-09-21 (issue #13) from the shared `Range.contains` template; the
+history shape, oracle and coverage dimensions (`bic_depth` 1, one distractor on
+the fault file, 3 commits, 1 ref) are unchanged.
 
-```text
-c0: create correct range implementation
-c1: introduce exclusive-boundary bug
-c2: fix range bug and update generated boundary table
-```
-
-## Why this needs `scenario.graph.yml`
-
-The BFC combines a normal source-code fix with a generated artifact update, which is represented explicitly with graph operations.
-
-## Required graph-schema features
-
-- Factors: generated_files
-- Operation types: write_file, replace, write_generated_text_file
-- Expected SZZ policy is defined in expected_szz.
-
-## Evaluation points
-
-- Whether SZZ identifies c1 as the BIC.
-- Whether generated files added or refreshed in the BFC are ignored as blame targets.
-- Whether the expected_szz exact-set policy is applied correctly.
-
----
-
-## Files
+## Commit structure (generated)
 
 ```text
-SZZG-0107/
-|-- scenario.graph.yml
-`-- README.md
+* e4ba907  2023-06-22  Keep unexpired entries again and regenerate the retention table  <- BFC (c2; Retention.java + build/generated/retention-table.txt)
+* 34814db  2023-06-20  Simplify the retention rule                                      <- BIC (c1)
+* 90e7b09  2023-06-15  Add the retention rule                                           (c0)
 ```
+
+## Expected BIC / BFC
+
+- BIC: `c1` (`exact_set`, `required: [c1]`)
+- BFC: `c2`
+
+## Measured behaviour and blame
+
+| commit | `shouldKeep(false, false)` | `shouldKeep(false, true)` | `shouldKeep(true, true)` |
+|---|---|---|---|
+| `c0` | true | false | true |
+| `c1` | **false** | **true** | true |
+| `c2` | true | false | true |
+
+`c2` deletes one line (`return pinned || expired;`, line 5) and adds a five-line
+generated file; blame at `c2^` returns `c1` (verifier `GI703`).
+
+## What a tool must do
+
+Report `c1`; the generated file has no deleted lines and no history, so it
+contributes nothing to blame, but a tool that scores every file in the fix or
+that weights commits by size has to ignore it.
+
+## Factors
+
+- `generated-files`
+- `boolean-negation`

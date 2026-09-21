@@ -50,6 +50,7 @@ scenarios:
   - refactoring
   - method-move
   - post-bic-refactoring
+  - wrong-variable
 - id: SZZG-0006
   title: Extract class after BIC
   category_code: G1
@@ -62,6 +63,7 @@ scenarios:
   - extract-class
   - method-move
   - post-bic-refactoring
+  - exception-swallowed
 - id: SZZG-0007
   title: Line moved and duplicated
   category_code: G1
@@ -72,6 +74,7 @@ scenarios:
   factors:
   - method-move
   - copy-propagation
+  - off-by-one
 - id: SZZG-0008
   title: Semantically equivalent rewrite
   category_code: G1
@@ -382,6 +385,7 @@ scenarios:
   status: active
   factors:
   - root-cause
+  - wrong-constant
 - id: SZZG-0036
   title: Fix split across multiple commits
   category_code: G3
@@ -1009,6 +1013,7 @@ scenarios:
   - reintroduced-bug
   - single-fault-reintroduced
   - re-bic
+  - wrong-variable
 - id: SZZG-0089
   title: Revert of revert with conflict resolution
   category_code: G6
@@ -1048,6 +1053,7 @@ scenarios:
   - multi-bic
   - single-fault-reintroduced
   - re-bic
+  - wrong-operator
 - id: SZZG-0093
   title: BIC occurs during feature work
   category_code: G7
@@ -1196,6 +1202,7 @@ scenarios:
   status: active
   factors:
   - generated-files
+  - boolean-negation
 - id: SZZG-0108
   title: Binary file change
   category_code: G8
@@ -1205,6 +1212,7 @@ scenarios:
   status: active
   factors:
   - binary-file
+  - wrong-constant
 - id: SZZG-0109
   title: File deletion
   category_code: G8

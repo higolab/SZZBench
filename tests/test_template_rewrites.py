@@ -90,6 +90,30 @@ REWRITES: dict[str, tuple[str, str, dict[str, str]]] = {
                   'try { Class<?> c = Class.forName("example.RateClone"); System.out.print(c.getMethod("percentOfClone", int.class, int.class).invoke(c.getDeclaredConstructor().newInstance(), 199, 10)); } '
                   'catch (ClassNotFoundException e) { System.out.print("absent"); }',
                   {"c0": "absent", "f1": "10", "f2": "10", "r1": "10", "r2": "10", "c4": "19"}),
+    # --- G1, G8, G6, G3 ---
+    "SZZG-0005": ("wrong-variable",
+                  'for (String n : new String[] {"example.Shipping", "example.ShippingUtils"}) { try { Class<?> c = Class.forName(n); Object o = c.getDeclaredConstructor().newInstance(); '
+                  'for (java.lang.reflect.Method m : c.getDeclaredMethods()) if (m.getName().equals("cost")) System.out.print(n.substring(8) + "=" + m.invoke(o, 500, 10, 8) + " "); } catch (ClassNotFoundException e) { } }',
+                  {"c0": "Shipping=8 ", "c1": "Shipping=10 ", "c2": "ShippingUtils=10 ", "c3": "ShippingUtils=8 "}),
+    "SZZG-0006": ("exception-swallowed",
+                  'try { System.out.print(new example.OrderService().describeParsed("SKU-1", "x")); } catch (RuntimeException e) { System.out.print(e.getClass().getSimpleName()); }',
+                  {"c0": "NumberFormatException", "c1": "SKU-1 x 0", "c2": "SKU-1 x 0", "c3": "IllegalArgumentException"}),
+    "SZZG-0007": ("off-by-one",
+                  'for (String n : new String[] {"example.Paging", "example.PagingUtils", "example.Batches"}) { try { Class<?> c = Class.forName(n); Object o = c.getDeclaredConstructor().newInstance(); '
+                  'for (java.lang.reflect.Method m : c.getDeclaredMethods()) if (m.getName().endsWith("Count")) System.out.print(m.getName() + "=" + m.invoke(o, 20, 10) + " "); } catch (ClassNotFoundException e) { } }',
+                  {"c1": "pageCount=3 ", "c2": "pageCount=3 batchCount=3 ", "c3": "pageCount=2 batchCount=2 "}),
+    "SZZG-0107": ("boolean-negation",
+                  'example.Retention r = new example.Retention(); System.out.print(r.shouldKeep(false, false) + " " + r.shouldKeep(false, true));',
+                  {"c0": "true false", "c1": "false true", "c2": "true false"}),
+    "SZZG-0108": ("wrong-constant", 'System.out.print(new example.Thumbnails().maxEdgePixels());',
+                  {"c0": "256", "c1": "51", "c2": "512"}),
+    "SZZG-0088": ("wrong-variable",
+                  'example.Greeting g = new example.Greeting(); System.out.print(g.greet("Ada", true)); try { System.out.print(" " + g.greet(null, true)); } catch (RuntimeException e) { System.out.print(" " + e.getClass().getSimpleName()); }',
+                  {"c0": "Dear Ada Dear guest", "c1": "Hi Ada NullPointerException", "c2": "Dear Ada Dear guest", "c3": "Hi Ada Hi guest", "c4": "Dear Ada Dear guest"}),
+    "SZZG-0091": ("wrong-operator", 'System.out.print(new example.InvoiceSummary().summarize(100, 30, false));',
+                  {"c0": "OPEN 70", "c1": "OPEN 130", "c2": "PAID 130", "c3": "OPEN 70", "c4": "OPEN 130", "c5": "OPEN 70"}),
+    "SZZG-0035": ("wrong-constant", 'example.Fees f = new example.Fees(); System.out.print(f.cardFee(1000) + " " + f.transferFee(1000));',
+                  {"c0": "30 30", "c1": "300 300", "c2": "30 300", "c3": "30 30"}),
 }
 
 #: SZZG-0081's reformatting commit owns the faulty line under plain blame by design (GW703);
@@ -101,7 +125,11 @@ BLAME_NEEDS_W = {"SZZG-0081"}
 #: SZZG-0016: the fix deletes one line per file; the copy blames to c1 (required), the original to c0 (origin).
 #: SZZG-0021: the fix deletes the whole faulty file; all eight lines blame to c1.
 #: SZZG-0024: the annotation commit r2 is the last touch of the line, so plain blame returns it (GW703 by design).
-PLAIN_BLAME = {"SZZG-0016": {"c1", "c0"}, "SZZG-0021": {"c1"}, "SZZG-0024": {"r2"}}
+#: SZZG-0005/0006/0007: the fixed line lives in a file the move/extract commit c2 created, so plain blame returns c2
+#: (required only in 0007, where c2 is also the BIC of the duplicated instance).
+#: SZZG-0035: each fix deletes a `return fee(cents);` call written by the root commit c0, not the faulty helper line.
+PLAIN_BLAME = {"SZZG-0016": {"c1", "c0"}, "SZZG-0021": {"c1"}, "SZZG-0024": {"r2"},
+               "SZZG-0005": {"c2"}, "SZZG-0006": {"c2"}, "SZZG-0007": {"c2"}, "SZZG-0035": {"c0"}}
 
 
 def _git(repo: Path, *args: str) -> str:

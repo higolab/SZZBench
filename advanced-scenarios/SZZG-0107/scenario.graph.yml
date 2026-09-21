@@ -3,11 +3,15 @@ meta:
   id: SZZG-0107
   title: BFC includes generated files
   slug: bfc-generated-file
-  description: Evaluates a bug-fixing commit that fixes source code while also updating generated artifacts in the same commit.
+  description: >-
+    Evaluates a bug-fixing commit that fixes source code while also updating generated artifacts in the same
+    commit. The fault drops the negation of the expiry flag from the retention rule, so expired entries are kept
+    and unexpired ones discarded.
   category: "Non-source, binary, generated, and scalability edge cases"
   category_code: "G8"
   factors:
   - generated-files
+  - boolean-negation
   difficulty: advanced
   status: active
   tier: control
@@ -19,56 +23,57 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create correct range implementation
+  history_summary: 'c0: create the retention rule (keep when pinned or not expired)
 
-    c1: introduce exclusive-boundary bug
+    c1: drop the negation of the expiry flag (BIC)
 
-    c2: fix range bug and update generated boundary table'
+    c2: negate the expiry flag again and regenerate the retention table (BFC with generated noise)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'Add the range check'
+  message: 'Add the retention rule'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
+    path: src/main/java/example/Retention.java
     content: |
       package example;
-      public class Range {
-        public boolean contains(int value, int min, int max) {
-          return value >= min && value <= max;
+      public class Retention {
+        /** An entry is kept while it is pinned or not yet expired. */
+        public boolean shouldKeep(boolean pinned, boolean expired) {
+          return pinned || !expired;
         }
       }
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'Make the range check exclusive'
+  message: 'Simplify the retention rule'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
+    path: src/main/java/example/Retention.java
+    old: return pinned || !expired;
+    new: return pinned || expired;
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'Accept the range bounds and regenerate the boundary table'
+  message: 'Keep unexpired entries again and regenerate the retention table'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/Retention.java
+    old: return pinned || expired;
+    new: return pinned || !expired;
   - type: write_generated_text_file
-    path: build/generated/range-boundary-table.txt
+    path: build/generated/retention-table.txt
     lines: 5
-    template: boundary-case-${line}=generated
+    template: retention-case-${line}=generated
 bugs:
 - id: B001
-  title: Boundary bug fixed alongside generated file updates
+  title: Expired entries are kept and unexpired ones discarded; fixed alongside generated file updates
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -78,14 +83,14 @@ bugs:
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/Retention.java
+    statement: return pinned || expired;
     change_type: line_modification
   fixes:
   - id: X001
     commit: c2
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
+    file: src/main/java/example/Retention.java
+    statement: return pinned || !expired;
     fix_type: line_modification
 expected_szz:
   commit_level:
@@ -94,13 +99,16 @@ expected_szz:
     - c1
 scenario_design:
   purpose: Evaluate whether SZZ identifies the source BIC when the BFC contains both the real source fix and generated-file noise.
-  current_schema_limitation: The generated artifact in the BFC is represented explicitly with graph operations.
-  required_extensions_from_source: >-
-    This scenario uses factors: generated-files; operations: write_file, replace, write_generated_text_file.
+  key_property: >-
+    Measured: shouldKeep(false, false) is true at c0, false at c1, true at c2; shouldKeep(false, true) is false at
+    c0, true at c1, false at c2; pinned entries are kept throughout. The fix's diff touches Retention.java (one
+    line) and adds a five-line generated table; blaming the deleted line at c2^ returns c1.
   evaluation_points:
   - Whether SZZ identifies c1 as the BIC.
   - Whether generated files added or refreshed in the BFC are ignored as blame targets.
   - Whether the expected_szz exact-set policy is applied correctly.
 notes:
 - The generated file is intentionally changed only in the BFC.
-- The source fix remains in src/main/java/example/Range.java.
+- The source fix remains in src/main/java/example/Retention.java.
+- Rewritten 2026-09-21 from the shared Range.contains template to a boolean-negation fault (GitHub issue 13); the
+  history shape, oracle and coverage dimensions are unchanged.

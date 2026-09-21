@@ -3,7 +3,9 @@ meta:
   id: SZZG-0088
   title: Partial revert of fix reintroduces one fault
   slug: partial-revert-of-fix-reintroduces-one-fault
-  description: A prior fix corrected two faults, but a later partial revert reintroduces only one of them.
+  description: >-
+    A prior fix corrected two faults in the greeting — a missing null guard and swapped salutations — but a later
+    partial revert reintroduces only the swapped salutations.
   category: "Revert-specific reintroduction"
   category_code: "G6"
   factors:
@@ -12,6 +14,7 @@ meta:
   - reintroduced-bug
   - single-fault-reintroduced
   - re-bic
+  - wrong-variable
   difficulty: advanced
   status: active
   tier: control
@@ -23,74 +26,74 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial correct implementation
+  history_summary: 'c0: create the greeting (null guard, formal "Dear", informal "Hi")
 
-    c1: introduce two boundary bugs
+    c1: drop the null guard and swap the salutations (two faults)
 
-    c2: fix both boundary bugs
+    c2: restore the guard and the salutations (fixes both)
 
-    c3: partially revert upper-bound fix
+    c3: partially revert c2: swap the salutations again
 
-    c4: fix reintroduced upper-bound bug'
+    c4: put the salutations back (fixes the reintroduced fault)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'Add the range check helpers'
+  message: 'Add the greeting helper'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    boolean\
-      \ aboveMin = value >= min;\n    boolean belowMax = value <= max;\n    return aboveMin && belowMax;\n  }\n}\n"
+    path: src/main/java/example/Greeting.java
+    content: "package example;\n\npublic class Greeting {\n  public String greet(String name, boolean formal) {\n    String\
+      \ shown = name == null ? \"guest\" : name.trim();\n    String prefix = formal ? \"Dear \" : \"Hi \";\n    return prefix + shown;\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'Make both helpers strict'
+  message: 'Streamline the greeting'
   role: origin_bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
-    new: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
+    path: src/main/java/example/Greeting.java
+    old: "String shown = name == null ? \"guest\" : name.trim();\n    String prefix = formal ? \"Dear \" : \"Hi \";"
+    new: "String shown = name.trim();\n    String prefix = formal ? \"Hi \" : \"Dear \";"
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'Accept both bounds again'
+  message: 'Guard the name and use the salutations the right way round'
   role: prior_fix
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
-    new: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
+    path: src/main/java/example/Greeting.java
+    old: "String shown = name.trim();\n    String prefix = formal ? \"Hi \" : \"Dear \";"
+    new: "String shown = name == null ? \"guest\" : name.trim();\n    String prefix = formal ? \"Dear \" : \"Hi \";"
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'Exclude the maximum from belowMax()'
+  message: 'Revert the salutation change'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: boolean belowMax = value <= max;
-    new: boolean belowMax = value < max;
+    path: src/main/java/example/Greeting.java
+    old: 'String prefix = formal ? "Dear " : "Hi ";'
+    new: 'String prefix = formal ? "Hi " : "Dear ";'
   reverts: part_of_c2
 - id: c4
   branch: main
   parents:
   - c3
-  message: 'Include the maximum again'
+  message: 'Use "Dear" for formal greetings again'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: boolean belowMax = value < max;
-    new: boolean belowMax = value <= max;
+    path: src/main/java/example/Greeting.java
+    old: 'String prefix = formal ? "Hi " : "Dear ";'
+    new: 'String prefix = formal ? "Dear " : "Hi ";'
 bugs:
 - id: B001
-  title: Upper-bound bug reintroduced by partial revert
+  title: Salutations swapped again by a partial revert
   bug_introducing_commits:
   - commit: c3
     role: direct
@@ -102,14 +105,14 @@ bugs:
   faults:
   - id: F001
     commit: c3
-    file: src/main/java/example/Range.java
-    statement: boolean belowMax = value < max;
-    change_type: partial_revert_upper_boundary
+    file: src/main/java/example/Greeting.java
+    statement: 'String prefix = formal ? "Hi " : "Dear ";'
+    change_type: partial_revert_of_fix
   fixes:
   - id: X001
     commit: c4
-    file: src/main/java/example/Range.java
-    statement: boolean belowMax = value <= max;
+    file: src/main/java/example/Greeting.java
+    statement: 'String prefix = formal ? "Dear " : "Hi ";'
     fix_type: line_modification
 expected_szz:
   commit_level:
@@ -118,7 +121,7 @@ expected_szz:
     - c3
     related_but_not_correct:
     - c2
-    notes: Only the partial revert c3 is the direct BIC for the later upper-bound fix.
+    notes: Only the partial revert c3 is the direct BIC for the later salutation fix.
     related_origins:
     - c1
   evaluation_variants:
@@ -136,7 +139,11 @@ expected_szz:
       - c2
 scenario_design:
   purpose: Evaluate a partial revert where only part of a previous fix is undone.
-  key_property: The direct BIC reintroduces only one of the previously fixed faults.
+  key_property: >-
+    The direct BIC reintroduces only one of the previously fixed faults. Measured: greet("Ada", true) is "Dear Ada"
+    at c0, "Hi Ada" at c1, "Dear Ada" at c2, "Hi Ada" at c3, "Dear Ada" at c4; greet(null, true) throws
+    NullPointerException at c1 only — the null guard stays fixed from c2 on. Blaming the line c4 deletes at c4^
+    returns c3.
   difference_from_existing_revert_scenarios: This scenario isolates a double-revert or revert-derived complication beyond
     the existing partial revert and reintroduction scenarios.
   evaluation_points:
@@ -145,3 +152,5 @@ scenario_design:
 notes:
 - This scenario models revert-related development history for SZZ evaluation.
 - The direct BIC is the commit that reintroduces the bug in the history observed from the BFC.
+- Rewritten 2026-09-21 from the shared aboveMin/belowMax template to a wrong-variable fault next to a null-check
+  omission (GitHub issue 13); the history shape, oracle and coverage dimensions are unchanged.

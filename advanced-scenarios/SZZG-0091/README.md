@@ -2,51 +2,62 @@
 
 ## Purpose
 
-Evaluate multiple original BICs when a later partial revert reintroduces only one of them.
+Two original BICs in `InvoiceSummary.summarize`: `c1` adds the credit to the
+amount due instead of subtracting it, `c2` swaps the `PAID`/`OPEN` labels. `c3`
+fixes both. `c4` partially reverts `c3` and adds the credit again; `c5` fixes
+that. For the final fix the direct BIC is the partial revert `c4`; `c1` is the
+origin of the reintroduced fault; `c2` and `c3` are related history a tool must
+not report.
 
-## Commit history
+Rewritten 2026-09-21 (issue #13) from the shared `aboveMin`/`belowMax` template;
+the history shape, oracle and coverage dimensions (`bic_depth` 1, four
+distractors on the fault file, 6 commits, 1 ref) are unchanged. The origin of
+the reintroduced fault is now `c1` (the template version's was `c2`).
 
-```text
-c0: create initial correct implementation
-c1: introduce lower-bound bug
-c2: introduce upper-bound bug
-c3: fix both boundary bugs
-c4: partially revert fix for upper boundary only
-c5: fix reintroduced upper-bound bug
-```
-
-## Commit table
-
-| Commit | Branch | Parents | Role | Description |
-|---|---|---|---|---|
-| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `c1` | `main` | c0 | `origin_bug_introducing` | c1: introduce lower-bound bug |
-| `c2` | `main` | c1 | `origin_bug_introducing` | c2: introduce upper-bound bug |
-| `c3` | `main` | c2 | `prior_fix` | c3: fix both boundary bugs |
-| `c4` | `main` | c3 | `bug_introducing` | c4: partially revert fix for upper boundary only |
-| `c5` | `main` | c4 | `bug_fixing` | c5: fix reintroduced upper-bound bug |
-
-## Expected SZZ result
+## Commit structure (generated)
 
 ```text
-Expected BIC(s): c4
-Related but not correct: c1, c2, c3
+* 09b8bb9  2025-04-07  Subtract the credit from the amount due again                    <- BFC (c5)
+* eac0824  2025-04-04  Revert the balance change                                        <- BIC (c4; partial revert of c3)
+* 13925eb  2025-04-02  Subtract the credit and put the status labels the right way round (c3, prior fix)
+* d368856  2025-03-31  Rename the status labels                                         (c2, second origin fault)
+* a9ae55f  2025-03-25  Apply the credit to the amount due                               <- origin (c1)
+* 0e66a70  2025-03-24  Add the invoice summary                                          (c0)
 ```
 
-## Key property
+## Expected BIC / BFC
 
-The direct BIC for the final fix is the partial revert, not the older original BIC set.
+- default: `required: [c4]`, `related_but_not_correct: [c2, c3]`, `related_origins: [c1]`
+- `origin-aware`: `relaxed_with_related`, `c1` at 0.5
+- BFC: `c5`
 
-## Difference from existing revert scenarios
+## Measured behaviour and blame
 
-This scenario isolates a double-revert or revert-derived complication beyond the existing partial revert and reintroduction scenarios.
+`summarize(100, 30, false)`:
 
-## Evaluation points
+| commit | result |
+|---|---|
+| `c0` | `OPEN 70` |
+| `c1` | **`OPEN 130`** |
+| `c2` | **`PAID 130`** (both faults) |
+| `c3` | `OPEN 70` |
+| `c4` | **`OPEN 130`** |
+| `c5` | `OPEN 70` |
 
-- Whether SZZ reports c4.
-- Whether SZZ avoids reporting both old BICs as exact direct answers.
+`c5` deletes one line (`int due = amount + credit;`, line 5); blame at `c5^`
+returns `c4` (verifier `GI703`).
 
-## Notes
+## What a tool must do
 
-- This scenario models revert-related development history for SZZ evaluation.
-- The direct BIC is the commit that reintroduces the bug in the history observed from the BFC.
+Report `c4` alone. Reporting the original BIC set `{c1, c2}` — the answer to the
+prior fix `c3` — is wrong for the final fix: `c2`'s fault never came back, and
+`c1`'s came back through `c4`.
+
+## Factors
+
+- `revert`
+- `partial-revert`
+- `multi-bic`
+- `single-fault-reintroduced`
+- `re-bic`
+- `wrong-operator`
