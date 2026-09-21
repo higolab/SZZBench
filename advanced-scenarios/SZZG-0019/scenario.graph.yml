@@ -4,8 +4,8 @@ meta:
   title: Bug propagates into generated code
   slug: generated-code
   description: >-
-    The fault enters through generated code: the template carries it, and the regeneration commit writes it into
-    the generated file the fix repairs.
+    The fault enters through generated code: the template carries a retry limit of 30 where the contract
+    says at most 3, and the regeneration commit writes it into the generated file the fix repairs.
   category: "Clone, copy propagation, and origin-vs-direct BIC"
   category_code: "G2"
   factors:
@@ -13,7 +13,7 @@ meta:
   - single-bfc
   - copy-propagation
   - generated-file
-  - boundary-condition
+  - wrong-constant
   difficulty: advanced
   status: active
   tier: control
@@ -25,50 +25,50 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: introduce origin bug (write_file templates/Range.tpl)
+  history_summary: 'c0: add the limits code template with maxRetries 30 (origin)
 
-    c1: introduce bug (write_file src/generated/java/generated/GeneratedRange.java)
+    c1: regenerate GeneratedLimits.java from the template (direct BIC)
 
-    c2: fix bug (replace src/generated/java/generated/GeneratedRange.java)'
+    c2: set maxRetries to 3 in the generated code (fix)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'Add the range code template'
+  message: 'Add the limits code template'
   role: origin_bug_introducing
   operations:
   - type: write_file
-    path: templates/Range.tpl
-    content: '// Template for generated range code
+    path: templates/Limits.tpl
+    content: '// Template for generated limits code
 
-      return value > min && value < max;
+      return 30;
 
       '
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'Regenerate the range code from the template'
+  message: 'Regenerate the limits code from the template'
   role: bug_introducing
   operations:
   - type: write_file
-    path: src/generated/java/generated/GeneratedRange.java
-    content: "package generated;\n\npublic class GeneratedRange {\n  public boolean contains(int value, int min, int max)\
-      \ {\n    return value > min && value < max;\n  }\n}\n"
+    path: src/generated/java/generated/GeneratedLimits.java
+    content: "package generated;\n\npublic class GeneratedLimits {\n  /** Retries after the first attempt: at most 3. */\n  public int maxRetries()\
+      \ {\n    return 30;\n  }\n}\n"
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'Accept the range bounds in the generated code'
+  message: 'Retry at most 3 times in the generated limits'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/generated/java/generated/GeneratedRange.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/generated/java/generated/GeneratedLimits.java
+    old: return 30;
+    new: return 3;
 bugs:
 - id: B001
-  title: Bug propagated into generated code
+  title: The generated retry limit is 30 instead of 3
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -80,19 +80,19 @@ bugs:
   faults:
   - id: F001
     commit: c1
-    file: src/generated/java/generated/GeneratedRange.java
-    statement: return value > min && value < max;
+    file: src/generated/java/generated/GeneratedLimits.java
+    statement: return 30;
     role: direct
   - id: F002
     commit: c0
-    file: templates/Range.tpl
-    statement: return value > min && value < max;
+    file: templates/Limits.tpl
+    statement: return 30;
     role: origin
   fixes:
   - id: X001
     commit: c2
-    file: src/generated/java/generated/GeneratedRange.java
-    statement: return value >= min && value <= max;
+    file: src/generated/java/generated/GeneratedLimits.java
+    statement: return 3;
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
@@ -112,20 +112,20 @@ expected_szz:
         reason: origin_bic
         credit: 0.5
 files:
-- path: templates/Range.tpl
+- path: templates/Limits.tpl
   kind: template
-- path: src/generated/java/generated/GeneratedRange.java
+- path: src/generated/java/generated/GeneratedLimits.java
   kind: generated
-  generated_from: templates/Range.tpl
+  generated_from: templates/Limits.tpl
 scenario_design:
   purpose: Evaluate whether a method attributes a fault in generated code to the commit that regenerated it.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: 'This scenario uses operations: write_file, replace.'
+  key_property: >-
+    Measured: maxRetries() is 30 at c1 and 3 at c2; the template still says 30 and is not fixed here, so the
+    next regeneration would reintroduce the fault. Blaming the line c2 deletes at c2^ returns c1.
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
   - Whether structural or contextual history is handled according to the scenario factors.
   - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
+- Rewritten 2026-09-21 from the shared Range.contains template to a wrong-constant fault (GitHub issue 13); the history
+  shape, oracle and coverage dimensions are unchanged.

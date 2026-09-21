@@ -3,7 +3,10 @@ meta:
   id: SZZG-0024
   title: Clone diverges before rebase
   slug: clone-diverges-before-rebase
-  description: A cloned buggy implementation diverges on feature and is replayed by rebase.
+  description: >
+    A cloned buggy implementation diverges on feature and is replayed by rebase. The clone divides before it
+    multiplies — `cents / 100 * percent` truncates to a multiple of the percentage — where the original
+    multiplies first.
   category: "Clone, copy propagation, and origin-vs-direct BIC"
   category_code: "G2"
   factors:
@@ -13,6 +16,7 @@ meta:
   - clone-divergence
   - direct-bic
   - origin-bic
+  - wrong-operator
   difficulty: advanced
   status: active
   tier: control
@@ -24,88 +28,88 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial correct implementation
+  history_summary: 'c0: add Rate.percentOf (multiply, then divide)
 
-    f1: create buggy clone
+    f1: add RateClone with a divide-first copy (origin)
 
-    f2: diverge cloned buggy logic
+    f2: annotate the cloned line (comment only)
 
-    r1: rebase buggy clone creation
+    r1: rebase the clone creation (direct BIC)
 
-    r2: rebase clone divergence
+    r2: rebase the annotation
 
-    c4: fix diverged clone'
+    c4: multiply before dividing in the clone (fix)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'Add the range check'
+  message: 'Add the percentage helper'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
+    path: src/main/java/example/Rate.java
+    content: "package example;\n\npublic class Rate {\n  /** {@code percent} percent of {@code cents}, in whole cents. */\n  public int percentOf(int cents, int percent) {\n\
+      \    return cents * percent / 100;\n  }\n}\n"
 - id: f1
   branch: feature
   parents:
   - c0
-  message: 'Add the cloned range check'
+  message: 'Add the cloned percentage helper'
   role: origin_bug_introducing
   operations:
   - type: write_file
-    path: src/main/java/example/RangeClone.java
-    content: "package example;\n\npublic class RangeClone {\n  public boolean containsClone(int value, int min, int max) {\n\
-      \    return value > min && value < max;\n  }\n}\n"
+    path: src/main/java/example/RateClone.java
+    content: "package example;\n\npublic class RateClone {\n  /** {@code percent} percent of {@code cents}, in whole cents. */\n  public int percentOfClone(int cents, int percent) {\n\
+      \    return cents / 100 * percent;\n  }\n}\n"
 - id: f2
   branch: feature
   parents:
   - f1
-  message: 'Annotate the cloned range logic'
+  message: 'Annotate the cloned percentage logic'
   role: origin_bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/RangeClone.java
-    old: return value > min && value < max;
-    new: return value > min && value < max; // cloned logic
+    path: src/main/java/example/RateClone.java
+    old: return cents / 100 * percent;
+    new: return cents / 100 * percent; // cloned logic
 - id: r1
   branch: main
   parents:
   - c0
-  message: 'Add the cloned range check'
+  message: 'Add the cloned percentage helper'
   role: bug_introducing
   operations:
   - type: write_file
-    path: src/main/java/example/RangeClone.java
-    content: "package example;\n\npublic class RangeClone {\n  public boolean containsClone(int value, int min, int max) {\n\
-      \    return value > min && value < max;\n  }\n}\n"
+    path: src/main/java/example/RateClone.java
+    content: "package example;\n\npublic class RateClone {\n  /** {@code percent} percent of {@code cents}, in whole cents. */\n  public int percentOfClone(int cents, int percent) {\n\
+      \    return cents / 100 * percent;\n  }\n}\n"
   rebase_of: f1
 - id: r2
   branch: main
   parents:
   - r1
-  message: 'Annotate the cloned range logic'
+  message: 'Annotate the cloned percentage logic'
   role: intermediate
   operations:
   - type: replace
-    path: src/main/java/example/RangeClone.java
-    old: return value > min && value < max;
-    new: return value > min && value < max; // cloned logic
+    path: src/main/java/example/RateClone.java
+    old: return cents / 100 * percent;
+    new: return cents / 100 * percent; // cloned logic
   rebase_of: f2
 - id: c4
   branch: main
   parents:
   - r2
-  message: 'Accept the range bounds in the clone'
+  message: 'Multiply before dividing in the cloned percentage helper'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/RangeClone.java
-    old: return value > min && value < max; // cloned logic
-    new: return value >= min && value <= max; // cloned logic, reviewed
+    path: src/main/java/example/RateClone.java
+    old: return cents / 100 * percent; // cloned logic
+    new: return cents * percent / 100; // cloned logic, reviewed
 bugs:
 - id: B001
-  title: Diverged clone bug introduced by rebase
+  title: The cloned percentage helper truncates before multiplying; introduced by rebase
   bug_introducing_commits:
   - commit: r1
     role: direct
@@ -119,20 +123,20 @@ bugs:
   faults:
   - id: F001
     commit: r1
-    file: src/main/java/example/RangeClone.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/RateClone.java
+    statement: return cents / 100 * percent;
     change_type: line_modification
   origin_faults:
   - id: OF001
     commit: f1
-    file: src/main/java/example/RangeClone.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/RateClone.java
+    statement: return cents / 100 * percent;
     change_type: origin_line_modification
   fixes:
   - id: X001
     commit: c4
-    file: src/main/java/example/RangeClone.java
-    statement: return value >= min && value <= max; // cloned logic, reviewed
+    file: src/main/java/example/RateClone.java
+    statement: return cents * percent / 100; // cloned logic, reviewed
     fix_type: line_modification
 expected_szz:
   commit_level:
@@ -147,9 +151,10 @@ expected_szz:
     notes: >
       r1 replays the faulty clone into the history the fix belongs to, so it is
       the direct BIC (contract D4). r2 and f2 only append a comment to that
-      line and change no behaviour - measured, 0 of 27648 probe answers move
-      across r2 - so they are never BICs (D5). f1 is the commit the clone was
-      replayed from and is therefore the origin (D2).
+      line and change no behaviour - measured, 0 of 1152 reflective probe
+      answers over Rate and RateClone move across r2, and 0 across f2 - so they
+      are never BICs (D5).
+      f1 is the commit the clone was replayed from and is therefore the origin (D2).
   evaluation_variants:
   - name: origin-aware
     description: The direct BIC is required; the origin is accepted as related context.
@@ -169,7 +174,9 @@ scenario_design:
   key_property: >
     The fixed instance is the cloned line that r1 replayed into main. r2's
     rebased annotation is the last commit to touch that line, so a method that
-    reports the last textual touch answers r2 and is wrong.
+    reports the last textual touch answers r2 and is wrong. Measured:
+    percentOfClone(199, 10) is 10 at r1 and r2 and 19 at c4; Rate.percentOf(199, 10)
+    is 19 throughout.
   difference_from_SZZG_0064: SZZG-0064 covers a rebased BIC followed by a non-BIC rebased intermediate commit. This scenario
     adds a distinct rebase-related complication.
   evaluation_points:
@@ -178,3 +185,5 @@ scenario_design:
 notes:
 - This scenario models a rebase-related development history for SZZ evaluation.
 - Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.
+- Rewritten 2026-09-21 from the shared Range.contains template to a wrong-operator (divide-before-multiply) fault
+  (GitHub issue 13); the history shape, oracle and coverage dimensions are unchanged.
