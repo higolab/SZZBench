@@ -3,12 +3,16 @@ meta:
   id: SZZG-0053
   title: Release-branch-only bug
   slug: release-branch-only-bug
-  description: A release branch introduces and fixes a bug that never exists on main.
+  description: >
+    A release branch introduces and fixes a bug that never exists on main: a change meant to keep
+    serving administrators during maintenance drops the negation from the gate, so outside
+    maintenance nobody but administrators is served.
   category: "Branch, merge, cherry-pick, backport, and release branches"
   category_code: "G4"
   factors:
   - release-branch
   - branch-only-bug
+  - boolean-negation
   difficulty: advanced
   status: active
   tier: control
@@ -20,26 +24,33 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial correct implementation on main
+  history_summary: 'c0: add the request gate on main (served unless in maintenance; administrators always)
 
     c1: main continues correct development
 
-    c2: release branch introduces release-only bug
+    c2: release branch drops the negation from the gate (release-only bug)
 
-    c3: main adds unrelated correct change
+    c3: main adds an unrelated correct change
 
-    c4: release branch fixes release-only bug'
+    c4: release branch restores the negation'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'Add the range check'
+  message: 'Add the request gate'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
+    path: src/main/java/example/Gate.java
+    content: |
+      package example;
+
+      public class Gate {
+        /** Requests are served unless the site is in maintenance; administrators are always served. */
+        public boolean canServe(boolean maintenance, boolean admin) {
+          return !maintenance || admin;
+        }
+      }
 - id: c1
   branch: main
   parents:
@@ -56,13 +67,13 @@ commits:
   branch: release
   parents:
   - c0
-  message: 'Make the range check exclusive on release'
+  message: 'Serve administrators during maintenance on release'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
+    path: src/main/java/example/Gate.java
+    old: return !maintenance || admin;
+    new: return maintenance || admin;
 - id: c3
   branch: main
   parents:
@@ -79,16 +90,16 @@ commits:
   branch: release
   parents:
   - c2
-  message: 'Accept the range bounds on release'
+  message: 'Serve everyone outside maintenance again on release'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/Gate.java
+    old: return maintenance || admin;
+    new: return !maintenance || admin;
 bugs:
 - id: B001
-  title: Release-branch-only range boundary bug
+  title: Outside maintenance only administrators are served on release
   bug_introducing_commits:
   - commit: c2
     role: direct
@@ -98,14 +109,14 @@ bugs:
   faults:
   - id: F001
     commit: c2
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/Gate.java
+    statement: return maintenance || admin;
     change_type: line_modification
   fixes:
   - id: X001
     commit: c4
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
+    file: src/main/java/example/Gate.java
+    statement: return !maintenance || admin;
     fix_type: line_modification
 expected_szz:
   commit_level:
@@ -114,10 +125,15 @@ expected_szz:
     - c2
 scenario_design:
   purpose: Evaluate whether SZZ can handle a bug that exists only on a release branch and not on main.
-  key_property: The BIC and BFC are both on release; main never contains the bug.
+  key_property: >
+    The BIC and BFC are both on release; main never contains the bug. Measured: canServe(false, false) is true
+    at c0, c1 and c3, false at c2, true at c4; canServe(true, false) is false at c0, true at c2, false at c4;
+    both administrator cases are true throughout. Blaming the line c4 deletes at c4^ returns c2.
   evaluation_points:
   - Release-only BIC
   - Release-only BFC
   - Main branch has unrelated correct development.
 notes:
 - This scenario should not be collapsed into feature-to-main merge scenarios.
+- Rewritten 2026-09-21 from the shared Range.contains template to a boolean-negation fault (GitHub issue 13); the history
+  shape, oracle and coverage dimensions are unchanged.

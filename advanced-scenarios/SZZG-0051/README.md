@@ -1,46 +1,52 @@
 # SZZG-0051: Backport introduces release-specific bug
 
-## Source
-
-- Category: Branch, merge, cherry-pick, and backport scenarios
-
 ## Purpose
 
-Evaluate a release-specific regression introduced while adapting a main-line source change onto a release branch.
+`c1` adds a retention policy on `main` — a source change, not a fix. `r1`
+backports it to `release` and, in the same commit, rewrites the retention
+period: the message announces the 30-day retention and the code says `return
+3;`. The release-specific bug is fixed on `release` by `r2`; `main` never has it.
+The BIC is the backport adaptation `r1`, not the main-line change it adapts.
 
-Commit `c1` is not a BFC. It is the main-line source change that adds `RangePolicy.java`. Commit `r1` is a release-side backport/adaptation of that source change, and it introduces the boundary bug in `Range.java`. The expected BIC is therefore `r1`, not `c1`.
+Rewritten 2026-09-21 (issue #13) from the shared `Range.contains` template; the
+history shape, oracle and coverage dimensions (`bic_depth` 1, one distractor on
+the fault file, 4 commits, 2 refs) are unchanged.
 
-## Expected history
-
-```text
-c0: create initial state (write_file src/main/java/example/Range.java)
-c1: add main range policy source change (write_file src/main/java/example/RangePolicy.java)
-r1: backport range policy to release and introduce boundary bug (replace src/main/java/example/Range.java; write_file src/main/java/example/RangePolicy.java)
-r2: fix bug (replace src/main/java/example/Range.java)
-```
-
-## Why this needs `scenario.graph.yml`
-
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
-
-## Required graph-schema features
-
-- Factors: branch, backport_of
-- Operation types: write_file, replace
-- Expected SZZ policy is defined in expected_szz.
-
-## Evaluation points
-
-- Whether SZZ identifies `r1` as the release-specific BIC.
-- Whether `backport_of: c1` metadata does not cause SZZ to blame the main-line source change `c1`.
-- Whether the expected_szz evaluation policy is applied correctly.
-
----
-
-## Files
+## Commit structure (generated)
 
 ```text
-SZZG-0051/
-|-- scenario.graph.yml
-`-- README.md
+* bc6f446  2025-06-16  Keep backups for 30 days on release, not 3                             <- BFC (r2, release)
+* 1798b8f  2025-06-09  Backport the retention policy to release and set the 30-day retention  <- BIC (r1, release; backport_of c1)
+| * 3a91953  2025-06-02  Add the main retention policy                                        (c1, main; source change)
+|/
+* a4c716e  2025-05-30  Add the backup retention period                                        (c0; Retention.days() = 30)
 ```
+
+## Expected BIC / BFC
+
+- BIC: `r1` (`exact_set`, `required: [r1]`)
+- BFC: `r2`
+
+## Measured behaviour and blame
+
+| commit | `Retention.days()` | `RetentionPolicy.mode()` |
+|---|---|---|
+| `c0` | 30 | — |
+| `c1` | 30 | `main` |
+| `r1` | **3** | `release` |
+| `r2` | 30 | `release` |
+
+`r2` deletes one line (`return 3;`, line 6); blame at `r2^` returns `r1`
+(verifier `GI703`).
+
+## What a tool must do
+
+Report `r1`. The `backport_of: c1` metadata and the shared subject line invite
+a tool to blame `c1`, but `c1` touched only `RetentionPolicy.java`; the faulty
+line was written on `release` by the adaptation itself.
+
+## Factors
+
+- `branch`
+- `backport`
+- `wrong-constant`

@@ -7,15 +7,19 @@ fault mix can be read off `szzbench coverage`'s *fault statement reuse* block.
 
 ## 1. Why
 
-`szzbench coverage` (2026-09-21, 251 scenarios) reports that one statement,
-`return value > min && value < max;`, is a declared fault statement of **83
-scenarios** — 18 of 116 classic, **65 of 135 graph** (counting `fault`,
-`faults[]` and `origin_faults[]`) — and is the most reused statement in every
-graph category but G6 (G4 17/28, G5 13/18, G2 10/16, G1 7/14, G8 5/10, G3 5/14,
-G7 4/16, G9 2/10; G6's most reused is its sibling `boolean belowMax = value <
-max;`, 5/9). Of the 159 distinct statements in the suite, 11 are shared by two
-or more scenarios and the next most common, `boolean belowMax = value < max;`
-and `return value > min;`, reach 6 each. Holding the fault constant while varying the history
+`szzbench coverage` (2026-09-21, 251 scenarios, before any rewrite) reported
+that one statement, `return value > min && value < max;`, was a declared fault
+statement of **83 scenarios** — 18 of 116 classic, **65 of 135 graph** (counting
+`fault`, `faults[]` and `origin_faults[]`) — and the most reused statement in
+every graph category but G6 (G4 17/28, G5 13/18, G2 10/16, G1 7/14, G8 5/10,
+G3 5/14, G7 4/16, G9 2/10; G6's most reused is its sibling `boolean belowMax =
+value < max;`, 5/9). Of the 159 distinct statements in the suite, 11 were shared
+by two or more scenarios and the next most common, `boolean belowMax = value <
+max;` and `return value > min;`, reach 6 each. The decided target (2026-09-21)
+is **at most one third of every graph category** on its most reused statement,
+which the twins keep; the G4 rewrites (SZZG-0045/0047/0049/0050/0051/0053/0054/
+0056) brought G4 to **9/28** with 21 distinct statements and the suite to 75
+carriers (57 graph), 166 distinct statements; G5, G2, G1, G8, G6 and G3 follow. Holding the fault constant while varying the history
 is a legitimate controlled-experiment device, and the twins that depend on it
 (SZZG-0043/0128, SZZG-0057/0122) keep it. But a tool that has seen the benchmark
 can match the text, and the graph suite's fault-kind coverage is thin: most

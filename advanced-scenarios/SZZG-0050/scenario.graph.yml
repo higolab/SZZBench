@@ -3,8 +3,11 @@ meta:
   id: SZZG-0050
   title: Backport fix
   slug: backport-fix
-  description: A bug is introduced on main before a release branch is cut. Main fixes the bug, continues with unrelated development,
-    and the release branch receives release-specific changes. The main fix is then backported to release.
+  description: >
+    A bug is introduced on main before a release branch is cut: the greeting trims the name without
+    its null guard, so anonymous users crash the greeting. Main fixes the bug, continues with
+    unrelated development, and the release branch receives release-specific changes. The main fix is
+    then backported to release.
   category: "Branch, merge, cherry-pick, backport, and release branches"
   category_code: "G4"
   factors:
@@ -13,6 +16,7 @@ meta:
   - release-branch
   - release-specific-changes
   - copy-propagation
+  - null-check-omission
   difficulty: advanced
   status: active
   tier: control
@@ -24,41 +28,47 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial correct implementation on main
+  history_summary: 'c0: add the greeting with a guest fallback for a missing name
 
-    c1: introduce bug on main before release branch is cut
+    c1: trim the name directly on main (drops the null guard)
 
     r0: create release branch from the buggy state and add release metadata
 
-    c2: fix bug on main
+    c2: restore the guest fallback on main
 
     c3: continue main development after the fix
 
-    r1: add release-specific configuration while bug is still present on release
+    r1: add release-specific configuration while the bug is still present on release
 
     r2: backport main fix c2 onto release'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'Add the range check'
+  message: 'Add the greeting'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
+    path: src/main/java/example/Greeting.java
+    content: |
+      package example;
+
+      public class Greeting {
+        public String forName(String name) {
+          return "Hello, " + (name == null ? "guest" : name.trim()) + "!";
+        }
+      }
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'Make the range check exclusive'
+  message: 'Trim the name directly'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
+    path: src/main/java/example/Greeting.java
+    old: 'return "Hello, " + (name == null ? "guest" : name.trim()) + "!";'
+    new: return "Hello, " + name.trim() + "!";
 - id: r0
   branch: release
   parents:
@@ -75,13 +85,13 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'Accept the range bounds again'
+  message: 'Greet anonymous users as guests again'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/Greeting.java
+    old: return "Hello, " + name.trim() + "!";
+    new: 'return "Hello, " + (name == null ? "guest" : name.trim()) + "!";'
 - id: c3
   branch: main
   parents:
@@ -103,24 +113,24 @@ commits:
   operations:
   - type: write_file
     path: release/config.properties
-    content: 'range.mode=compat
+    content: 'greeting.mode=compat
 
       '
 - id: r2
   branch: release
   parents:
   - r1
-  message: 'Backport the range bounds fix to release'
+  message: 'Backport the guest greeting fix to release'
   role: bug_fixing
   backport_of: c2
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/Greeting.java
+    old: return "Hello, " + name.trim() + "!";
+    new: 'return "Hello, " + (name == null ? "guest" : name.trim()) + "!";'
 bugs:
 - id: B001
-  title: Range boundary bug fixed on main and backported to release
+  title: Greeting a missing name throws NullPointerException; fixed on main and backported to release
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -135,19 +145,19 @@ bugs:
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/Greeting.java
+    statement: return "Hello, " + name.trim() + "!";
     change_type: line_modification
   fixes:
   - id: X001
     commit: c2
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
+    file: src/main/java/example/Greeting.java
+    statement: 'return "Hello, " + (name == null ? "guest" : name.trim()) + "!";'
     fix_type: main_line_fix
   - id: X002
     commit: r2
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
+    file: src/main/java/example/Greeting.java
+    statement: 'return "Hello, " + (name == null ? "guest" : name.trim()) + "!";'
     fix_type: backport_fix
   bug_instances:
   - branch: main
@@ -174,8 +184,11 @@ expected_szz:
       - c1
 scenario_design:
   purpose: Evaluate whether SZZ can identify the original BIC when a main-line fix is backported to a release branch.
-  key_property: The release branch has release-specific changes before the backport, so the history is not just a linear correct-buggy-fixed
-    sequence.
+  key_property: >
+    The release branch has release-specific changes before the backport, so the history is not just a linear
+    correct-buggy-fixed sequence. Measured: forName(null) is "Hello, guest!" at c0, throws NullPointerException
+    at c1, r0 and r1, and is "Hello, guest!" again at c2 and r2; forName(" Ada ") is "Hello, Ada!" throughout.
+    Blaming the line c2 deletes at c2^ returns c1, and so does blaming the line r2 deletes at r2^.
   difference_from_SZZG_0084_0085: SZZG-0084 and SZZG-0085 are revert/reintroduction scenarios. SZZG-0050 is a branch scenario
     where the release fix is a backport of the main-line BFC.
   evaluation_points:
@@ -183,6 +196,8 @@ scenario_design:
   - Whether backport metadata is handled without treating c2 as the BIC.
   - Whether release-specific changes before the backport do not hide the original BIC.
 notes:
-- This revision adds release-specific changes to avoid collapsing the source history into a simple correct-buggy-fixed sequence.
+- The release branch carries release-specific changes so that the source history is not a simple correct-buggy-fixed sequence.
 - r2 is an explicit backport of c2.
 - The expected BIC remains c1 for both main and release fixes.
+- Rewritten 2026-09-21 from the shared Range.contains template to a null-check-omission fault (GitHub issue 13); the history
+  shape, oracle and coverage dimensions are unchanged.

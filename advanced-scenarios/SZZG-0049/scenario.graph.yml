@@ -3,8 +3,10 @@ meta:
   id: SZZG-0049
   title: Cherry-pick BFC
   slug: cherry-pick-bfc
-  description: A bug exists on both main and release branches. The bug is fixed on main, and the BFC is then cherry-picked
-    onto the release branch to fix the release instance.
+  description: >
+    A bug exists on both main and release branches: the page count gains an extra page whenever the
+    item count is an exact multiple of the page size. The bug is fixed on main, and the BFC is then
+    cherry-picked onto the release branch to fix the release instance.
   category: "Branch, merge, cherry-pick, backport, and release branches"
   category_code: "G4"
   factors:
@@ -13,6 +15,7 @@ meta:
   - multi-bfc
   - copy-propagation
   - backport-like-fix
+  - off-by-one
   difficulty: advanced
   status: active
   tier: control
@@ -24,37 +27,44 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial correct implementation on main
+  history_summary: 'c0: add the pager with the ceiling-division page count on main
 
-    c1: introduce bug on main before the release branch is cut
+    c1: simplify the page count on main (one page too many for exact multiples)
 
     r1: create release branch from the buggy state
 
-    c2: fix bug on main
+    c2: fix the page count on main
 
     r2: cherry-pick the main BFC onto release'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'Add the range check'
+  message: 'Add the pager'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
+    path: src/main/java/example/Pager.java
+    content: |
+      package example;
+
+      public class Pager {
+        /** Number of pages needed to show {@code items} items, {@code perPage} to a page. */
+        public int pageCount(int items, int perPage) {
+          return (items + perPage - 1) / perPage;
+        }
+      }
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'Make the range check exclusive'
+  message: 'Simplify the page count'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
+    path: src/main/java/example/Pager.java
+    old: return (items + perPage - 1) / perPage;
+    new: return items / perPage + 1;
 - id: r1
   branch: release
   parents:
@@ -71,18 +81,18 @@ commits:
   branch: main
   parents:
   - c1
-  message: 'Accept the range bounds again'
+  message: 'Count pages without an extra page for exact multiples'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/Pager.java
+    old: return items / perPage + 1;
+    new: return (items + perPage - 1) / perPage;
 - id: r2
   branch: release
   parents:
   - r1
-  message: 'Cherry-pick the range bounds fix onto release'
+  message: 'Cherry-pick the page count fix onto release'
   role: bug_fixing
   cherry_pick_of: c2
   operations:
@@ -90,7 +100,7 @@ commits:
     commit: c2
 bugs:
 - id: B001
-  title: Range boundary bug fixed on main and cherry-picked to release
+  title: One page too many when the item count is a multiple of the page size, fixed on main and cherry-picked to release
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -105,19 +115,19 @@ bugs:
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/Pager.java
+    statement: return items / perPage + 1;
     change_type: line_modification
   fixes:
   - id: X001
     commit: c2
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
+    file: src/main/java/example/Pager.java
+    statement: return (items + perPage - 1) / perPage;
     fix_type: main_line_fix
   - id: X002
     commit: r2
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
+    file: src/main/java/example/Pager.java
+    statement: return (items + perPage - 1) / perPage;
     fix_type: cherry_picked_fix
   bug_instances:
   - branch: main
@@ -145,8 +155,11 @@ expected_szz:
 scenario_design:
   purpose: Evaluate whether SZZ can identify the original BIC when a bug-fixing commit is cherry-picked from main to a release
     branch.
-  key_property: The cherry-picked commit r2 is a BFC, not a BIC. This distinguishes SZZG-0049 from SZZG-0048, where the cherry-picked
-    commit is a BIC.
+  key_property: >
+    The cherry-picked commit r2 is a BFC, not a BIC. This distinguishes SZZG-0049 from SZZG-0048, where the
+    cherry-picked commit is a BIC. Measured: pageCount(20, 10) is 2 at c0, 3 at c1 and r1, 2 at c2 and r2;
+    pageCount(21, 10) is 3 throughout, so the fault shows only for exact multiples. Blaming the line c2 deletes
+    at c2^ returns c1, and so does blaming the line r2 deletes at r2^.
   difference_from_SZZG_0048: SZZG-0048 is about cherry-picking the BIC onto another branch. SZZG-0049 is about cherry-picking
     the BFC onto another branch.
   evaluation_points:
@@ -154,11 +167,10 @@ scenario_design:
   - Whether SZZ traces from r2 back to the original BIC c1 rather than to the main-line BFC c2.
   - Whether a cherry-picked fix is handled as a branch-specific bug-fixing instance.
 notes:
-- This revision changes the cherry-picked commit from the BIC to the BFC.
 - The release branch is created from the buggy state at c1.
-- The main fix c2 is cherry-picked onto release as r2.
-- If apply_patch_from cannot be validated by the current verifier, r2 can be represented with an explicit replace operation
-  equivalent to c2.
+- The main fix c2 is cherry-picked onto release as r2 with a real `git cherry-pick` (`apply_patch_from`).
+- Rewritten 2026-09-21 from the shared Range.contains template to an off-by-one fault (GitHub issue 13); the history shape,
+  oracle and coverage dimensions are unchanged.
 bug_instances:
 - id: B001-main
   branch: main

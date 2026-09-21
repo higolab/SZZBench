@@ -2,38 +2,47 @@
 
 ## Purpose
 
-A bug is introduced before a release branch is cut; main fixes the bug, but the release branch continues without the fix.
+`c1` spells out the grand total "component by component" and types `tax`
+twice — the total counts tax twice and shipping never. The `release` branch is
+cut from that state. `main` fixes the line; `release` continues with follow-up
+notes and never receives the fix. One BIC, one BFC, and a branch on which the
+bug is still live at its tip.
 
-## Commit history
+Rewritten 2026-09-21 (issue #13) from the shared `Range.contains` template; the
+history shape, oracle and coverage dimensions (`bic_depth` 1, one distractor on
+the fault file, 5 commits, 2 refs) are unchanged.
 
-```text
-c0: create initial correct implementation on main
-c1: introduce bug on main before release branch
-c2: create release branch from buggy state and add release note
-c3: fix bug on main
-c4: release branch continues with bug unfixed
-```
-
-## Commit table
-
-| Commit | Branch | Parents | Role | Description |
-|---|---|---|---|---|
-| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `c1` | `main` | c0 | `bug_introducing` | c1: introduce range boundary bug before release branch |
-| `c2` | `release` | c1 | `intermediate` | c2: cut release branch from buggy state |
-| `c3` | `main` | c1 | `bug_fixing` | c3: fix range boundary bug on main |
-| `c4` | `release` | c2 | `unfixed_release` | c4: release branch continues without main fix |
-
-## Expected SZZ result
+## Commit structure (generated)
 
 ```text
-Expected BIC: c1
+* 45a0094  2023-09-21  Add the release follow-up note                          (c4, release; still buggy)
+* 5503c00  2023-09-05  Cut the release branch                                  (c2, release; docs/release-note.md)
+| * cc0e52f  2023-09-14  Add shipping, not tax twice, to the grand total on main  <- BFC (c3, main)
+|/
+* 55264e7  2023-09-04  Spell out the grand total component by component        <- BIC (c1)
+* f7bcb54  2023-08-28  Add the invoice totals                                  (c0)
 ```
 
-## Scenario purpose
+## Expected BIC / BFC
 
-Evaluate whether SZZ can identify the original BIC when a fix exists on main but has not been propagated to a release branch.
+- BIC: `c1` (`exact_set`, `required: [c1]`)
+- BFC: `c3` (main only); `bug_instances` records `release` as `unfixed` at `c4`
 
-## Notes
+## Measured behaviour and blame
 
-- The release branch intentionally remains buggy at c4.
+`grand(100, 20, 15)`: **135** at `c0`; **140** at `c1`, `c2` and `c4` — the
+release tip is still wrong; 135 at `c3`. `c3` deletes one line (`return net +
+tax + tax;`, line 6); blame at `c3^` returns `c1` (verifier `GI703`).
+
+## What a tool must do
+
+Report `c1` for the fix `c3`. The scenario also asks a branch-aware tool to
+notice that `release` contains the BIC and no fix: the bug instance there is
+open, which SZZ alone does not say.
+
+## Factors
+
+- `release-branch`
+- `partial-fix-propagation`
+- `unfixed-release`
+- `wrong-variable`

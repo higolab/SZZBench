@@ -2,49 +2,56 @@
 
 ## Purpose
 
-Evaluate a release BFC that is a rebased copy of a main fix.
+`Bytes.toBits` multiplies in `long`; `c1` drops the `L` and the `int` product
+wraps for inputs above 256 MiB before it is widened to the `long` return type.
+A release branch is cut from the buggy state; `main` fixes the line; the fix is
+replayed onto `release` by rebase (`r2`, `rebase_of: c2`). Two BFCs, one BIC,
+and a rebased fix whose source commit `c2` is `related_but_not_correct` — a
+fix, not a cause.
 
-## Commit history
+Rewritten 2026-09-21 (issue #13) from the shared `Range.contains` template; the
+history shape, oracle and coverage dimensions (`bic_depth` 3, one distractor on
+the fault file, 5 commits, 2 refs) are unchanged.
 
-```text
-c0: create initial correct implementation
-c1: introduce range bug on main
-rel1: cut release branch with bug
-c2: fix bug on main
-r2: rebase main fix onto release
-```
-
-## Commit table
-
-| Commit | Branch | Parents | Role | Description |
-|---|---|---|---|---|
-| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `c1` | `main` | c0 | `bug_introducing` | c1: introduce range bug on main |
-| `rel1` | `release` | c1 | `release_branch_point` | rel1: cut release branch with bug |
-| `c2` | `main` | c1 | `bug_fixing` | c2: fix bug on main |
-| `r2` | `release` | rel1 | `bug_fixing` | r2: rebase main fix onto release |
-
-## Expected SZZ result
+## Commit structure (generated)
 
 ```text
-Expected BIC(s): c1
-Related but not correct: c2
+* 6eafce9  2024-07-02  Multiply in long on release: toBits overflows past 256 MiB  <- BFC (r2, release; rebase_of c2)
+* 3cb6328  2024-06-24  Cut the 1.0 release branch                                  (rel1, release; release/version.txt)
+| * 96ea9f9  2024-06-27  Multiply in long: toBits overflows past 256 MiB           <- BFC (c2, main)
+|/
+* e6743a0  2024-06-18  Drop the long arithmetic in toBits                          <- BIC (c1)
+* a7a1011  2024-06-10  Add the byte-to-bit conversion                              (c0)
 ```
 
-## Key property
+## Expected BIC / BFC
 
-r2 is the release BFC replaying c2.
+- BIC: `c1` (`exact_set`, `required: [c1]`, `related_but_not_correct: [c2]`)
+- BFCs: `c2` on `main`, `r2` on `release`
 
-## Difference from SZZG-0064
+## Measured behaviour and blame
 
-SZZG-0064 covers a rebased BIC followed by a non-BIC rebased intermediate commit. This scenario adds a distinct rebase-related complication.
+| commit | `toBits(1 << 28)` | `toBits(1024)` |
+|---|---|---|
+| `c0` | 2147483648 | 8192 |
+| `c1`, `rel1` | **-2147483648** | 8192 |
+| `c2`, `r2` | 2147483648 | 8192 |
 
-## Evaluation points
+Small inputs are unaffected, so the fault needs an input above 256 MiB to show.
+Both fixes delete the same line (`return bytes * 8;`, line 6); blame at `c2^`
+and at `r2^` returns `c1` (verifier `GI703`).
 
-- Start from r2.
-- Return c1.
+## What a tool must do
 
-## Notes
+Starting from `r2`, report `c1` — not `c2`, the commit `r2` replays, which is a
+fix and is listed as `related_but_not_correct`.
 
-- This scenario models a rebase-related development history for SZZ evaluation.
-- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.
+## Factors
+
+- `branch`
+- `rebase`
+- `release-branch`
+- `main-fix-to-release`
+- `rebased-bfc`
+- `multi-bfc`
+- `integer-overflow`

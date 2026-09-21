@@ -3,13 +3,16 @@ meta:
   id: SZZG-0051
   title: Backport introduces release-specific bug
   slug: backport-introduces-bug
-  description: Evaluates a release-specific regression introduced while adapting a main-line source change onto a release
-    branch.
+  description: >
+    Evaluates a release-specific regression introduced while adapting a main-line source change onto a
+    release branch: the backport that brings the retention policy to release also rewrites the retention
+    period, and the commit that announces "30-day retention" writes 3.
   category: "Branch, merge, cherry-pick, backport, and release branches"
   category_code: "G4"
   factors:
   - branch
   - backport
+  - wrong-constant
   difficulty: advanced
   status: active
   tier: control
@@ -21,54 +24,61 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial state (write_file src/main/java/example/Range.java)
+  history_summary: 'c0: add the retention period (30 days) on main
 
-    c1: add main range policy source change (write_file src/main/java/example/RangePolicy.java)
+    c1: add the retention policy on main (source change, not a fix)
 
-    r1: backport range policy to release and introduce boundary bug (replace src/main/java/example/Range.java; write_file src/main/java/example/RangePolicy.java)
+    r1: backport the retention policy to release and set the retention period to 3 (release-specific bug)
 
-    r2: fix bug (replace src/main/java/example/Range.java)'
+    r2: keep backups for 30 days on release again'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'Add the range check'
+  message: 'Add the backup retention period'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
+    path: src/main/java/example/Retention.java
+    content: |
+      package example;
+
+      public class Retention {
+        /** Days a backup is kept before it is deleted. */
+        public int days() {
+          return 30;
+        }
+      }
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'Add the main range policy'
+  message: 'Add the main retention policy'
   role: source_change
   operations:
   - type: write_file
-    path: src/main/java/example/RangePolicy.java
+    path: src/main/java/example/RetentionPolicy.java
     content: 'package example;
 
-      public class RangePolicy { public String mode() { return "main"; } }
+      public class RetentionPolicy { public String mode() { return "main"; } }
 
       '
 - id: r1
   branch: release
   parents:
   - c0
-  message: 'Backport the range policy to release and tighten the range check'
+  message: 'Backport the retention policy to release and set the 30-day retention'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
+    path: src/main/java/example/Retention.java
+    old: return 30;
+    new: return 3;
   - type: write_file
-    path: src/main/java/example/RangePolicy.java
+    path: src/main/java/example/RetentionPolicy.java
     content: 'package example;
 
-      public class RangePolicy { public String mode() { return "release"; } }
+      public class RetentionPolicy { public String mode() { return "release"; } }
 
       '
   backport_of: c1
@@ -76,16 +86,16 @@ commits:
   branch: release
   parents:
   - r1
-  message: 'Accept the range bounds on release'
+  message: 'Keep backups for 30 days on release, not 3'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/Retention.java
+    old: return 3;
+    new: return 30;
 bugs:
 - id: B001
-  title: Backport introduces release-specific bug
+  title: Backups on release are deleted after 3 days instead of 30
   bug_introducing_commits:
   - commit: r1
     role: direct
@@ -97,14 +107,14 @@ bugs:
   faults:
   - id: F001
     commit: r1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/Retention.java
+    statement: return 3;
     change_type: backport_regression
   fixes:
   - id: X001
     commit: r2
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
+    file: src/main/java/example/Retention.java
+    statement: return 30;
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
@@ -113,16 +123,14 @@ expected_szz:
 scenario_design:
   purpose: Evaluate whether SZZ identifies the release-branch adaptation r1 as the BIC when a backport-like change introduces
     a release-specific regression.
-  key_property: Commit c1 is a main-line source change, not a BFC. Commit r1 is marked backport_of c1 because it adapts that
-    source change onto release, but r1 also changes Range.contains and introduces the release-specific bug fixed by r2.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: >-
-    This scenario uses factors: branch, backport; operations: write_file, replace.
+  key_property: >
+    Commit c1 is a main-line source change, not a BFC. Commit r1 is marked backport_of c1 because it adapts that
+    source change onto release, but r1 also changes Retention.days() and introduces the release-specific bug fixed by
+    r2. Measured: days() is 30 at c0 and c1, 3 at r1, 30 at r2. Blaming the line r2 deletes at r2^ returns r1.
   evaluation_points:
   - Whether SZZ identifies r1 as the release-specific BIC.
   - Whether backport_of metadata does not cause SZZ to blame the main-line source change c1.
   - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
+- Rewritten 2026-09-21 from the shared Range.contains template to a wrong-constant fault (GitHub issue 13); the history shape,
+  oracle and coverage dimensions are unchanged.
