@@ -7,7 +7,7 @@ from .findings import ValidationResult
 from .gitutils import GitError, git_blame_line, git_hash_exists, git_message, git_parent, git_show
 from .operations import find_all_occurrences
 from .scenario import load_yaml
-from .validator import DUPLICATE_STATEMENT_FACTOR_RE, factor_matches
+from .validator import DUPLICATE_STATEMENT_FACTOR_RE, FAULT_REWRITE_FACTOR_RE, factor_matches
 
 def _load_commit_map(path: Path) -> tuple[dict, ValidationResult]:
     result = ValidationResult()
@@ -31,6 +31,7 @@ def verify_generated_repo(repo_dir: Path, scenario_path: Path, commit_map_path: 
     # clean under `validate --lint` is clean under `verify --strict` as well.
     meta = scenario.get("meta") if isinstance(scenario.get("meta"), dict) else {}
     duplicate_declared = factor_matches(meta.get("factors"), DUPLICATE_STATEMENT_FACTOR_RE)
+    rewrite_declared = factor_matches(meta.get("factors"), FAULT_REWRITE_FACTOR_RE)
     if commit_map_path is None:
         commit_map_path = repo_dir.parent / "metadata" / "commit-map.json"
     commit_map, cm_result = _load_commit_map(commit_map_path)
@@ -112,7 +113,9 @@ def verify_generated_repo(repo_dir: Path, scenario_path: Path, commit_map_path: 
                         if stmt in line:
                             line_number = line_index
                             break
-                    if line_number is None:
+                    if line_number is None and rewrite_declared:
+                        result.info("I701", f"bug {bid}: fault.statement not present in BFC parent, as the declared rewrite factor predicts; basic blame unavailable by design.", loc)
+                    elif line_number is None:
                         result.warning("W700", f"bug {bid}: fault.statement not present in BFC parent; basic blame unavailable.", loc)
                     else:
                         blamed_hash = git_blame_line(repo_dir, parent_hash, ffile, line_number)

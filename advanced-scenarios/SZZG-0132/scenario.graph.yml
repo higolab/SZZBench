@@ -1,0 +1,131 @@
+schema_version: graph-1.0
+meta:
+  id: SZZG-0132
+  title: The fix message names the rewrite commit that blame also returns
+  slug: message-and-blame-both-point-at-rewrite
+  description: >
+    The first retry starts waiting zero milliseconds after a change to how attempts are counted. A later
+    commit rewrites that line without changing behaviour. The fix's message blames the rewrite by
+    quoting its subject, and blame on the fixed line also returns the rewrite. Both signals agree, and
+    both are wrong: the counting change two commits earlier is the cause.
+  category: "Issue, message, context, and non-local evidence"
+  category_code: "G7"
+  factors:
+  - misleading-fix-message
+  - rewrite-after-bic
+  - basic-blame-distractor
+  - semantics-required
+  difficulty: advanced
+  status: active
+  tier: control
+repository:
+  name: SZZG-0132-message-and-blame-both-point-at-rewrite
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'Add the retry backoff'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/RetryBackoff.java
+    content: |
+      package example;
+
+      public class RetryBackoff {
+          public int delayMillis(int attempt) {
+              return 100 * attempt;
+          }
+      }
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'Count retry attempts from one'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/RetryBackoff.java
+    old: return 100 * attempt;
+    new: return 100 * (attempt - 1);
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'Name the backoff step'
+  role: intermediate
+  operations:
+  - type: replace
+    path: src/main/java/example/RetryBackoff.java
+    old: |
+      public int delayMillis(int attempt) {
+              return 100 * (attempt - 1);
+          }
+    new: |
+      public int delayMillis(int attempt) {
+              int step = attempt - 1;
+              return 100 * step;
+          }
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'Fix the zero delay before the first retry left by "Name the backoff step"'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/RetryBackoff.java
+    old: int step = attempt - 1;
+    new: int step = attempt;
+bugs:
+- id: B001
+  title: The first retry waits zero milliseconds
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  bug_fixing_commits:
+  - commit: c3
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/RetryBackoff.java
+    statement: return 100 * (attempt - 1);
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c3
+    file: src/main/java/example/RetryBackoff.java
+    statement: int step = attempt;
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+    related_but_not_correct:
+    - c2
+    notes: >
+      c2 moved the subtraction into a named variable and changed nothing about what delayMillis returns.
+      The fix message names c2 and blame returns c2; only comparing behaviour across the three snapshots
+      finds c1.
+scenario_design:
+  purpose: >
+    SZZ-0158 and SZZ-0159 have misleading fix messages whose references are vague or unresolvable, and
+    SZZ-0192 has blame landing on a rewrite. Here the message resolves cleanly -- it quotes c2's subject
+    verbatim -- and points at the same wrong commit blame does, so message and blame corroborate each
+    other and are both wrong.
+  key_property: >
+    Measured: delayMillis(1) is 100 at c0, 0 at c1, 0 at c2, 100 at c3. Blaming the line c3 deletes at
+    c3^ returns c2. The fix subject contains c2's subject in quotes.
+  evaluation_points:
+  - Report c1.
+  - Do not report c2, whatever the fix message says and whatever blame returns.
+notes:
+- The fix message's quotation is exact, so a tool that resolves quoted subjects finds c2 unambiguously.

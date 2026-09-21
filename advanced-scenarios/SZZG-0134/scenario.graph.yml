@@ -1,0 +1,146 @@
+schema_version: graph-1.0
+meta:
+  id: SZZG-0134
+  title: A .gitattributes line-ending rule is the BIC
+  slug: gitattributes-line-ending-bic
+  description: >
+    The mode list is read from a text resource and compared line by line. A commit adds a
+    .gitattributes rule that checks text files out with Windows line endings and rewrites the resource
+    accordingly; every line the code reads now ends in a carriage return and no mode matches. The fix
+    makes the reader tolerate either line ending. The faulty change touched no Java.
+  category: "Non-source, binary, generated, and scalability edge cases"
+  category_code: "G8"
+  factors:
+  - gitattributes-bic
+  - line-ending
+  - non-source-bic
+  - cross-artifact-fix
+  difficulty: advanced
+  status: active
+  tier: control
+repository:
+  name: SZZG-0134-gitattributes-line-ending-bic
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'Add the mode list and its reader'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/resources/modes.txt
+    content: |
+      strict
+      lenient
+      audit
+  - type: write_file
+    path: src/main/java/example/ModeList.java
+    content: |
+      package example;
+
+      import java.io.IOException;
+      import java.io.InputStream;
+      import java.nio.charset.StandardCharsets;
+
+      public class ModeList {
+          private final String[] lines;
+
+          public ModeList() {
+              try (InputStream in = ModeList.class.getResourceAsStream("/modes.txt")) {
+                  if (in == null) {
+                      throw new IllegalStateException("modes.txt is missing from the classpath");
+                  }
+                  lines = new String(in.readAllBytes(), StandardCharsets.UTF_8).split("\n");
+              } catch (IOException e) {
+                  throw new IllegalStateException("cannot read modes.txt", e);
+              }
+          }
+
+          public boolean contains(String mode) {
+              for (String line : lines) {
+                  if (line.equals(mode)) {
+                      return true;
+                  }
+              }
+              return false;
+          }
+      }
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'Check text files out with Windows line endings for the packaging tool'
+  role: bug_introducing
+  operations:
+  - type: write_file
+    path: .gitattributes
+    content: |
+      *.txt text eol=crlf
+  - type: write_file
+    path: src/main/resources/modes.txt
+    line_ending: crlf
+    content: |
+      strict
+      lenient
+      audit
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'Accept Windows line endings when reading the mode list'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/ModeList.java
+    old: lines = new String(in.readAllBytes(), StandardCharsets.UTF_8).split("\n");
+    new: lines = new String(in.readAllBytes(), StandardCharsets.UTF_8).split("\r?\n");
+bugs:
+- id: B001
+  title: No mode is recognised after the line-ending change
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  bug_fixing_commits:
+  - commit: c2
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: .gitattributes
+    statement: '*.txt text eol=crlf'
+    change_type: config_modification
+  fixes:
+  - id: X001
+    commit: c2
+    file: src/main/java/example/ModeList.java
+    statement: lines = new String(in.readAllBytes(), StandardCharsets.UTF_8).split("\r?\n");
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+scenario_design:
+  purpose: >
+    SZZ-0108 has a CRLF rewrite as an intermediate commit and SZZ-0171/SZZ-0172 have a dependency and a
+    property as the BIC. Here the BIC is a repository attribute: a .gitattributes rule plus the
+    re-encoded resource it governs, and the fault reaches the code only through the bytes the checkout
+    produces. The fix is in Java and opens neither file c1 changed.
+  key_property: >
+    Measured on the checked-out snapshots: contains("strict") is true at c0, false at c1, true at c2.
+    Blaming the line c2 deletes at c2^ returns c0; the fault statement lives in .gitattributes, whose only
+    line c1 wrote.
+  evaluation_points:
+  - Report c1 from a fix that changed only Java.
+  - Do not report c0, which owns the line the fix rewrote.
+notes:
+- Whether git stores modes.txt with CRLF or normalises it to LF and converts on checkout depends on the
+  attribute; the README records what the generated repository actually contains.
+  tests/test_twins_and_transitions.py runs contains("strict") on `git archive` snapshots, which honour
+  the attribute.

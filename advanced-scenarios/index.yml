@@ -1,6 +1,6 @@
 schema_version: graph-index-0.1-draft
 description: Index of draft advanced graph scenarios for SZZBench.
-scenario_count: 122
+scenario_count: 127
 scenarios:
 - id: SZZG-0001
   title: BFC performs rename and fix in the same commit
@@ -1426,5 +1426,66 @@ scenarios:
   - octopus-merge
   - bic-on-non-first-parent
   - multi-branch-integration
+- id: SZZG-0130
+  title: A bug report filed between the BIC and a later rewrite; its date rules the rewrite out
+  category_code: G7
+  category: Issue, message, context, and non-local evidence
+  path: advanced-scenarios/SZZG-0130/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0130/README.md
+  status: active
+  factors:
+  - bug-report-date
+  - tool-visible-context
+  - rewrite-after-bic
+  - basic-blame-distractor
+- id: SZZG-0131
+  title: The BIC was rebased after the bug report; excluding commits by committer date rules it out
+  category_code: G7
+  category: Issue, message, context, and non-local evidence
+  path: advanced-scenarios/SZZG-0131/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0131/README.md
+  status: active
+  factors:
+  - bug-report-date
+  - tool-visible-context
+  - rebase
+  - origin-and-direct-bic
+  - author-date-vs-committer-date
+- id: SZZG-0132
+  title: The fix message names the rewrite commit that blame also returns
+  category_code: G7
+  category: Issue, message, context, and non-local evidence
+  path: advanced-scenarios/SZZG-0132/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0132/README.md
+  status: active
+  factors:
+  - misleading-fix-message
+  - rewrite-after-bic
+  - basic-blame-distractor
+  - semantics-required
+- id: SZZG-0133
+  title: A binary asset is changed by both the BIC and the BFC
+  category_code: G8
+  category: Non-source, binary, generated, and scalability edge cases
+  path: advanced-scenarios/SZZG-0133/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0133/README.md
+  status: active
+  factors:
+  - binary-file
+  - binary-bic
+  - binary-bfc
+  - no-line-level-evidence
+- id: SZZG-0134
+  title: A .gitattributes line-ending rule is the BIC
+  category_code: G8
+  category: Non-source, binary, generated, and scalability edge cases
+  path: advanced-scenarios/SZZG-0134/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0134/README.md
+  status: active
+  factors:
+  - gitattributes-bic
+  - line-ending
+  - non-source-bic
+  - cross-artifact-fix
 notes:
 - Scenario IDs are ordered by the SZZBench scenario taxonomy.

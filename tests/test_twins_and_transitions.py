@@ -101,3 +101,55 @@ def test_cherry_pick_twins_fault_appears_where_declared(tmp_path, sid, expected)
     commit_map, repo = _generate(tmp_path, sid)
     observed = {cid: _behaviour(repo, commit_map[cid]["hash"], tmp_path / "w" / cid) for cid in expected}
     assert observed == expected
+
+
+# --- non-source BICs: the code must really consume the artifact (issue #23) -----
+
+def _run_java(repo: Path, commit_hash: str, work: Path, driver_name: str, driver_src: str, sources: list[str]) -> str:
+    """Compile the snapshot's listed sources plus a driver, with src/main/resources on the classpath."""
+    work.mkdir(parents=True, exist_ok=True)
+    tar = subprocess.run(["git", "archive", commit_hash], cwd=repo, capture_output=True, check=True).stdout
+    subprocess.run(["tar", "-x", "-C", str(work)], input=tar, check=True)
+    (work / f"{driver_name}.java").write_text(driver_src)
+    subprocess.run(["javac", "-d", str(work / "out"), *[str(work / s) for s in sources], str(work / f"{driver_name}.java")], check=True, capture_output=True)
+    cp = f"{work / 'out'}:{work / 'src' / 'main' / 'resources'}"
+    return subprocess.run(["java", "-cp", cp, driver_name], capture_output=True, text=True, check=True).stdout.strip()
+
+
+ARTIFACT_CASES = [
+    # SZZG-0104: the trailing slash in app.properties reaches the URL the client builds
+    ("SZZG-0104", "ApiDrive", "public class ApiDrive { public static void main(String[] a) { System.out.print(new example.ApiClient().apiUrl()); } }",
+     ["src/main/java/example/Endpoint.java", "src/main/java/example/AppConfig.java", "src/main/java/example/ApiClient.java"],
+     {"c0": "https://example.com/api", "c1": "https://example.com//api", "c2": "https://example.com/api"}),
+    # SZZG-0133: the palette header decides whether the asset loads
+    ("SZZG-0133", "PalDrive", "public class PalDrive { public static void main(String[] a) { example.Palette p = new example.Palette(); System.out.print(p.isValid() + \" \" + p.colours()); } }",
+     ["src/main/java/example/Palette.java"],
+     {"c0": "true 3", "c1": "false 0", "c2": "true 3"}),
+    # SZZG-0134: the .gitattributes rule changes the bytes the reader sees
+    ("SZZG-0134", "ModeDrive", "public class ModeDrive { public static void main(String[] a) { System.out.print(new example.ModeList().contains(\"strict\")); } }",
+     ["src/main/java/example/ModeList.java"],
+     {"c0": "true", "c1": "false", "c2": "true"}),
+]
+
+
+@pytest.mark.skipif(shutil.which("javac") is None or shutil.which("java") is None, reason="needs a JDK")
+@pytest.mark.parametrize("sid, driver, src, sources, expected", ARTIFACT_CASES, ids=[c[0] for c in ARTIFACT_CASES])
+def test_non_source_bic_reaches_the_code(tmp_path, sid, driver, src, sources, expected):
+    commit_map, repo = _generate(tmp_path, sid)
+    observed = {cid: _run_java(repo, commit_map[cid]["hash"], tmp_path / "w" / cid, driver, src, sources) for cid in expected}
+    assert observed == expected
+
+
+# --- report-date scenarios: the dates the READMEs reason about are the generated ones --
+
+def test_report_date_scenarios_have_the_declared_timeline(tmp_path):
+    """SZZG-0130: c1 < report < c3 < c4.  SZZG-0131: r1's author date < report < r1's committer date."""
+    cm, repo = _generate(tmp_path, "SZZG-0130")
+    committed = {cid: _git(repo, "log", "-1", "--format=%cI", cm[cid]["hash"]) for cid in ("c1", "c3", "c4")}
+    assert committed["c1"] < "2024-03-07T09:12:00Z" < committed["c3"] < committed["c4"], committed
+
+    cm, repo = _generate(tmp_path, "SZZG-0131")
+    authored = _git(repo, "log", "-1", "--format=%aI", cm["r1"]["hash"])
+    committed_r1 = _git(repo, "log", "-1", "--format=%cI", cm["r1"]["hash"])
+    assert authored < "2024-05-08T15:40:00Z" < committed_r1, (authored, committed_r1)
+    assert authored == _git(repo, "log", "-1", "--format=%aI", cm["f1"]["hash"]), "r1 inherits f1's author date"

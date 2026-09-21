@@ -4,8 +4,9 @@ meta:
   title: Configuration BIC is fixed by code-side normalization
   slug: config-bic-fixed-in-code
   description: >-
-    The fault is a trailing slash in a properties file and the fix normalises the value in Java, so the bug-fixing
-    commit opens no file the fault touched.
+    The API client reads api.host from app.properties and hands it to Endpoint.url. The fault is a trailing slash
+    added to that property, which makes every URL the client builds contain a doubled slash; the fix normalises the
+    value in Java, so the bug-fixing commit opens no file the fault touched.
   category: "Issue, message, context, and non-local evidence"
   category_code: "G7"
   factors:
@@ -32,7 +33,7 @@ commits:
 - id: c0
   branch: main
   parents: []
-  message: 'Add the endpoint resolver and its configuration'
+  message: 'Add the endpoint resolver, the API client and their configuration'
   role: initial
   operations:
   - type: write_file
@@ -44,6 +45,46 @@ commits:
     content: 'api.host=https://example.com
 
       '
+  - type: write_file
+    path: src/main/java/example/AppConfig.java
+    content: |
+      package example;
+
+      import java.io.IOException;
+      import java.io.InputStream;
+      import java.util.Properties;
+
+      public class AppConfig {
+          private final Properties properties = new Properties();
+
+          public AppConfig() {
+              try (InputStream in = AppConfig.class.getResourceAsStream("/app.properties")) {
+                  if (in == null) {
+                      throw new IllegalStateException("app.properties is missing from the classpath");
+                  }
+                  properties.load(in);
+              } catch (IOException e) {
+                  throw new IllegalStateException("cannot read app.properties", e);
+              }
+          }
+
+          public String apiHost() {
+              return properties.getProperty("api.host");
+          }
+      }
+  - type: write_file
+    path: src/main/java/example/ApiClient.java
+    content: |
+      package example;
+
+      public class ApiClient {
+          private final AppConfig config = new AppConfig();
+          private final Endpoint endpoint = new Endpoint();
+
+          public String apiUrl() {
+              return endpoint.url(config.apiHost());
+          }
+      }
 - id: c1
   branch: main
   parents:
@@ -93,16 +134,18 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: Evaluate whether a method reaches a fault in a configuration file from a fix that only changes code.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: >-
-    This scenario uses factors: configuration-change, cross-artifact-fix, context-dependent; operations: replace,
-    write_file.
+  purpose: >
+    Evaluate whether a method reaches a fault in a configuration file from a fix that only changes code. The
+    configuration is really consumed: AppConfig loads app.properties from the classpath and ApiClient passes
+    api.host to Endpoint.url, so the trailing slash c1 adds is what the doubled slash in c2's fix is about.
+  key_property: >
+    Measured on the generated snapshots: ApiClient.apiUrl() is https://example.com/api at c0,
+    https://example.com//api at c1 and https://example.com/api again at c2. The fix deletes a line of
+    Endpoint.java that c0 wrote, so blaming it returns c0; nothing the fix touches was written by c1.
   evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
+  - Whether SZZ reaches a commit that changed only a properties file from a fix that changed only Java.
+  - Whether the fix's deleted line (owned by c0) is mistaken for the answer.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
+- >-
+  Until 2026-09-21 no code read api.host, so the declared BIC could not cause the fault the BFC fixed
+  (issue #23). tests/test_twins_and_transitions.py runs ApiClient.apiUrl() at every commit.

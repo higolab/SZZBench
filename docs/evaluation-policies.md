@@ -292,7 +292,7 @@ rules are applied in this order after lower-casing:
 
 The classes `direct`, `reintroducing`, and `contributing` form the inferred
 required set (section 1.4) and the set of expected hashes in the verifier's
-basic blame check (`graph_verifier._verify_basic_blame`, GI703/GW703).
+basic blame check (`graph_verifier._verify_basic_blame`, GI703/GW703). The codes, including the informational `GI701` for a declared rewrite of the fault line, are tabulated in [validation.md](validation.md#verifier-findings-that-depend-on-a-declaration).
 `origin` commits are never inferred as required: whether they count is a
 scenario decision expressed through `required`, `acceptable_related`,
 `related_origins`, or `related_but_not_correct`.

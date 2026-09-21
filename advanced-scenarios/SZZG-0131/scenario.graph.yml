@@ -1,0 +1,193 @@
+schema_version: graph-1.0
+meta:
+  id: SZZG-0131
+  title: The BIC was rebased after the bug report; excluding commits by committer date rules it out
+  slug: report-date-heuristic-wrong-for-rebased-bic
+  description: >
+    The discount rounding is broken on a feature branch. A report of the one-cent shortfall, seen on the
+    branch's preview build, is recorded with its date. The branch is then rebased onto main, so the
+    faulty commit's replay carries the original author date but a committer date after the report. A
+    tool that excludes commits committed after the report excludes the direct BIC.
+  category: "Issue, message, context, and non-local evidence"
+  category_code: "G7"
+  factors:
+  - bug-report-date
+  - tool-visible-context
+  - rebase
+  - origin-and-direct-bic
+  - author-date-vs-committer-date
+  difficulty: advanced
+  status: active
+  tier: control
+repository:
+  name: SZZG-0131-report-date-heuristic-wrong-for-rebased-bic
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'Add the discount calculation'
+  role: initial
+  date: '2024-05-01T10:00:00Z'
+  operations:
+  - type: write_file
+    path: src/main/java/example/Discount.java
+    content: |
+      package example;
+
+      public class Discount {
+          public long apply(long priceCents, int percentOff) {
+              return Math.round(priceCents * (100 - percentOff) / 100.0);
+          }
+      }
+- id: f1
+  branch: feature
+  parents:
+  - c0
+  message: 'Compute the discounted price in integer arithmetic'
+  role: origin_bug_introducing
+  date: '2024-05-03T15:10:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/Discount.java
+    old: return Math.round(priceCents * (100 - percentOff) / 100.0);
+    new: return priceCents * (100 - percentOff) / 100;
+- id: m1
+  branch: main
+  parents:
+  - c0
+  message: 'Describe the discount rules'
+  role: intermediate
+  date: '2024-05-06T11:00:00Z'
+  operations:
+  - type: write_file
+    path: docs/discounts.md
+    content: |
+      # Discounts
+
+      `apply` returns the price after a percentage discount, in cents.
+- id: c2
+  branch: main
+  parents:
+  - m1
+  message: 'Record the report about discounted totals'
+  role: intermediate
+  date: '2024-05-09T09:00:00Z'
+  operations:
+  - type: write_file
+    path: docs/issues/ISSUE-58.md
+    content: |
+      # ISSUE-58: Discounted totals come out one cent short
+
+      Reported: 2024-05-08T15:40:00Z
+
+      On the preview build of the discount branch, a 10% discount on 1.05 gives 0.94 instead of 0.95.
+      Other amounts are also short by a cent whenever the exact result ends in half a cent.
+      The main build does not show this yet.
+- id: r1
+  branch: main
+  parents:
+  - c2
+  role: bug_introducing
+  rebase_of: f1
+  inherit_message: true
+  inherit_author_date: true
+  committer_date: '2024-05-13T10:30:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/Discount.java
+    old: return Math.round(priceCents * (100 - percentOff) / 100.0);
+    new: return priceCents * (100 - percentOff) / 100;
+- id: c3
+  branch: main
+  parents:
+  - r1
+  message: 'Round the discounted price to the nearest cent again'
+  role: bug_fixing
+  date: '2024-05-16T14:00:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/Discount.java
+    old: return priceCents * (100 - percentOff) / 100;
+    new: return Math.round(priceCents * (100 - percentOff) / 100.0);
+bugs:
+- id: B001
+  title: Discounted prices are truncated instead of rounded
+  bug_introducing_commits:
+  - commit: r1
+    role: direct
+  - commit: f1
+    role: origin
+  bug_fixing_commits:
+  - commit: c3
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: r1
+    file: src/main/java/example/Discount.java
+    statement: return priceCents * (100 - percentOff) / 100;
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c3
+    file: src/main/java/example/Discount.java
+    statement: return Math.round(priceCents * (100 - percentOff) / 100.0);
+    fix_type: line_modification
+  origin_faults:
+  - id: OF001
+    commit: f1
+    file: src/main/java/example/Discount.java
+    statement: return priceCents * (100 - percentOff) / 100;
+    change_type: origin_line_modification
+issues:
+- id: ISSUE-58
+  title: Discounted totals come out one cent short
+  reported_at: '2024-05-08T15:40:00Z'
+  document: docs/issues/ISSUE-58.md
+  linked_bugs:
+  - B001
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - r1
+    related_origins:
+    - f1
+    notes: >
+      r1 is the commit in main's history that carries the fault (direct/origin contract D8); f1 is the
+      pre-rebase original, not an ancestor of the fix. r1's author date (2024-05-03) is before the report
+      (2024-05-08) and its committer date (2024-05-13) is after it. A tool that drops commits committed
+      after the report drops the answer.
+  evaluation_variants:
+  - name: origin-aware
+    description: The direct BIC is required; the pre-rebase original is accepted as related context.
+    commit_level:
+      evaluation_policy: relaxed_with_related
+      required:
+      - r1
+      acceptable_related:
+      - commit: f1
+        reason: origin_bic
+        credit: 0.5
+scenario_design:
+  purpose: >
+    The counter-example to SZZG-0130: the report-date heuristic applied to committer dates excludes the
+    direct BIC, because the faulty change was written before the report and replayed onto main after it.
+    Applied to author dates it keeps r1. The report document is committed like any other file
+    (decisions/tool-visible-context.md).
+  key_property: >
+    Measured: apply(105, 10) is 95 at c0 and m1, 94 at f1 and r1, 95 at c3. Blaming the line c3 deletes
+    at c3^ returns r1. r1: author date 2024-05-03T15:10:00Z (inherited from f1), committer date
+    2024-05-13T10:30:00Z; report 2024-05-08T15:40:00Z.
+  evaluation_points:
+  - Report r1.
+  - Do not exclude r1 because its committer date is after the report.
+  - Treat f1 as origin, not as the answer.
+notes:
+- The rebase keeps f1's subject and author date (inherit_message, inherit_author_date) and sets its own
+  committer date, as a real rebase does.

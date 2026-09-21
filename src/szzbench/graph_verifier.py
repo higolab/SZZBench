@@ -8,6 +8,7 @@ from .findings import ValidationResult
 from .gitutils import GitError, git_blame_line, git_hash_exists, git_message, git_parent, git_show, run_git
 from .graph_scenario import graph_bfc_entries, graph_bic_entries, graph_faults, graph_fixes, load_graph_scenario
 from .operations import find_all_occurrences
+from .validator import FAULT_REWRITE_FACTOR_RE, factor_matches
 
 
 def load_json_file(path: Path, *, code: str) -> tuple[dict[str, Any], ValidationResult]:
@@ -192,7 +193,7 @@ def _verify_bugs(repo_dir: Path, scenario: dict[str, Any], commit_map: dict[str,
             _verify_location(repo_dir, commit_map, fault, result, f"{loc}.faults[{j}]", kind="fault", bug_id=str(bid))
         for j, fix in enumerate(graph_fixes(bug)):
             _verify_location(repo_dir, commit_map, fix, result, f"{loc}.fixes[{j}]", kind="fix", bug_id=str(bid))
-        _verify_basic_blame(repo_dir, commit_map, bug, result, loc, str(bid))
+        _verify_basic_blame(repo_dir, commit_map, bug, result, loc, str(bid), factors=(scenario.get("meta") or {}).get("factors"))
 
 
 def _verify_location(
@@ -231,7 +232,7 @@ def _verify_location(
             result.warning("GW664", f"bug {bug_id} {kind} statement appears {count} times at commit '{commit_id}'.", loc)
 
 
-def _verify_basic_blame(repo_dir: Path, commit_map: dict[str, Any], bug: dict[str, Any], result: ValidationResult, loc: str, bug_id: str) -> None:
+def _verify_basic_blame(repo_dir: Path, commit_map: dict[str, Any], bug: dict[str, Any], result: ValidationResult, loc: str, bug_id: str, factors: Any = None) -> None:
     bfc_entries = graph_bfc_entries(bug)
     faults = graph_faults(bug)
     if not bfc_entries or not faults:
@@ -259,7 +260,12 @@ def _verify_basic_blame(repo_dir: Path, commit_map: dict[str, Any], bug: dict[st
             line_number = line_index
             break
     if line_number is None:
-        result.warning("GW701", f"bug {bug_id}: fault.statement not present in final BFC parent; basic blame unavailable.", loc)
+        # A fault line that is gone by the BFC is what a scenario declaring a
+        # rewrite after the BIC exists to show (W320 makes the same exception).
+        if factor_matches(factors, FAULT_REWRITE_FACTOR_RE):
+            result.info("GI701", f"bug {bug_id}: fault.statement not present in final BFC parent, as the declared rewrite factor predicts; basic blame unavailable by design.", loc)
+        else:
+            result.warning("GW701", f"bug {bug_id}: fault.statement not present in final BFC parent; basic blame unavailable.", loc)
         return
     try:
         blamed_hash = git_blame_line(repo_dir, parent_hash, ffile, line_number)

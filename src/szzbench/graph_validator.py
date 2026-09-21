@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from pathlib import Path
 from typing import Any
 import re
@@ -9,6 +11,7 @@ from .findings import ValidationResult
 from .graph_operations import PATH_FIELDS_BY_OPERATION, REQUIRED_FIELDS_BY_OPERATION, SUPPORTED_GRAPH_OPERATIONS
 from .graph_scenario import commit_id_of, graph_bfc_entries, graph_bic_entries, graph_faults, graph_fixes, load_graph_scenario
 from .graph_simulator import simulate_graph_scenario
+from .gitutils import GitError, format_timestamp, parse_timestamp
 from .paths import PathValidationError, validate_repo_relative_path
 from .policies import SUPPORTED_EVALUATION_POLICIES
 from .validator import lint_factors, lint_leakage, lint_tier
@@ -360,6 +363,7 @@ def _validate_context_sections(data: dict[str, Any], commit_by_id: dict[str, dic
         section = data.get(section_name)
         if section is not None and not isinstance(section, list):
             result.error("GE140", f"{section_name} must be a list when present.", section_name)
+    _validate_issue_documents(data, result)
     for i, hint in enumerate(data.get("developer_hints", []) or []):
         if not isinstance(hint, dict):
             continue
@@ -371,6 +375,74 @@ def _validate_context_sections(data: dict[str, Any], commit_by_id: dict[str, dic
             for j, ref in enumerate(refs):
                 if isinstance(ref, str) and ref not in commit_by_id:
                     result.error("GE142", f"developer_hints[{i}] references unknown commit '{ref}'.", f"developer_hints[{i}].referenced_commits[{j}]")
+
+
+REPORTED_LINE_RE = re.compile(r"^Reported:\s*(\S+)\s*$", re.M)
+
+
+def _canonical_timestamp(value: Any) -> str | None:
+    """The instant as ISO 8601 in UTC (``...Z``), or None if ``value`` is not a timestamp.
+
+    Accepts a str or the ``datetime`` PyYAML makes of an unquoted value.  The
+    instant is converted to UTC first, so two spellings of one moment -- ``Z``
+    and ``+09:00`` -- canonicalise to the same string and compare equal;
+    ``format_timestamp`` alone keeps the offset and would not.
+    """
+    if not isinstance(value, (str, datetime)) or (isinstance(value, str) and not value.strip()):
+        return None
+    try:
+        return format_timestamp(parse_timestamp(value).astimezone(timezone.utc))
+    except (GitError, ValueError, TypeError):
+        return None
+
+
+def _validate_issue_documents(data: dict[str, Any], result: ValidationResult) -> None:
+    """GW470/GW471/GW472: an issue's tool-visible document must exist and state its report date.
+
+    decisions/tool-visible-context.md: an ``issues[]`` entry may name the
+    ``document`` a commit writes into the repository and the ``reported_at``
+    timestamp that document states.  Both are copies of each other, so they are
+    checked against the ``write_file`` operations rather than trusted.
+
+    ``reported_at`` may arrive as a str or as the ``datetime`` PyYAML makes of an
+    unquoted ISO 8601 value; both are normalised and compared as instants with
+    the document's ``Reported:`` line.  Anything else is GW472, never silence.
+    The containers are re-checked here because validate_graph_static has only
+    *reported* their types (GE030/GE044); it has not replaced them.
+    """
+    issues = data.get("issues")
+    if not isinstance(issues, list):
+        return
+    written: dict[str, str] = {}
+    commits = data.get("commits")
+    for commit in commits if isinstance(commits, list) else []:
+        if not isinstance(commit, dict):
+            continue
+        operations = commit.get("operations")
+        for op in operations if isinstance(operations, list) else []:
+            if isinstance(op, dict) and op.get("type") == "write_file" and isinstance(op.get("path"), str) and isinstance(op.get("content"), str):
+                written[op["path"]] = op["content"]
+    for i, issue in enumerate(issues):
+        if not isinstance(issue, dict):
+            continue
+        document, reported_at = issue.get("document"), issue.get("reported_at")
+        canonical = _canonical_timestamp(reported_at) if reported_at is not None else None
+        if reported_at is not None and canonical is None:
+            result.warning("GW472", f"issues[{i}].reported_at is not an ISO 8601 timestamp: {reported_at!r} ({type(reported_at).__name__}).", f"issues[{i}].reported_at")
+        if isinstance(document, str):
+            if document not in written:
+                result.warning("GW470", f"issues[{i}] names document '{document}', but no commit writes it (write_file).", f"issues[{i}].document")
+            elif canonical is not None:
+                match = REPORTED_LINE_RE.search(written[document])
+                stated = _canonical_timestamp(match.group(1)) if match else None
+                if match is None:
+                    result.warning("GW471", f"issues[{i}] says reported_at {canonical}, but '{document}' has no 'Reported: <timestamp>' line.", f"issues[{i}].reported_at")
+                elif stated is None:
+                    result.warning("GW471", f"issues[{i}]: '{document}' states 'Reported: {match.group(1)}', which is not an ISO 8601 timestamp.", f"issues[{i}].reported_at")
+                elif stated != canonical:
+                    result.warning("GW471", f"issues[{i}] says reported_at {canonical}, but '{document}' states Reported: {stated}.", f"issues[{i}].reported_at")
+        elif reported_at is not None:
+            result.warning("GW470", f"issues[{i}] has reported_at but names no document a tool could read it from.", f"issues[{i}].reported_at")
 
 
 def _validate_graph_acyclic(commits: list[Any]) -> ValidationResult:
