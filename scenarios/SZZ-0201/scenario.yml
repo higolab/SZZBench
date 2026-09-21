@@ -1,0 +1,126 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0201"
+  title: "Floor division mistaken for a typo: `//` becomes `/` in an index expression"
+  slug: "floor-division-mistaken-for-typo"
+  description: >
+    A helper indexes a sequence at its midpoint with `len(items) // 2`. A
+    later commit "fixes the doubled slash", turning floor division into true
+    division; the index becomes a float and every call on a non-empty sequence
+    raises TypeError. The fix restores `//`. The whole fault is one character
+    inside one Python expression, so a tool that tokenizes or normalizes code
+    has to treat `/` and `//` as different operators.
+  category: "Basic semantic line changes"
+  factors:
+    - "single-bic"
+    - "single-bfc"
+    - "line-modification"
+    - "wrong-operator"
+  difficulty: "easy"
+  status: "active"
+  tier: "control"
+  category_code: "S1"
+
+repository:
+  name: "SZZ-0201-floor-division-mistaken-for-typo"
+  default_branch: "main"
+  language: "python"
+  build_system: "none"
+  source_root: "src"
+
+commits:
+  - id: "c0"
+    message: "Add midpoint and bisect helpers for sorted sequences"
+    author: "Diego Alvarez <diego.alvarez@example.com>"
+    date: "2025-04-07T10:12:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/search/__init__.py"
+        content: ""
+      - type: "write_file"
+        path: "src/search/midpoint.py"
+        content: |
+          """Helpers for binary search over sorted sequences."""
+
+
+          def middle(items):
+              """Return the element at the midpoint of a non-empty sequence."""
+              return items[len(items) // 2]
+
+
+          def bisect_index(items, target):
+              """Return the first index at which ``target`` could be inserted."""
+              lo, hi = 0, len(items)
+              while lo < hi:
+                  mid = (lo + hi) // 2
+                  if items[mid] < target:
+                      lo = mid + 1
+                  else:
+                      hi = mid
+              return lo
+
+  - id: "c1"
+    message: "Fix the doubled slash in middle()"
+    author: "Tom Becker <tom.becker@example.com>"
+    date: "2025-04-15T16:48:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/search/midpoint.py"
+        old: "return items[len(items) // 2]"
+        new: "return items[len(items) / 2]"
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Restore floor division in middle(): sequence indices must be integers"
+    author: "Diego Alvarez <diego.alvarez@example.com>"
+    date: "2025-04-22T09:05:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/search/midpoint.py"
+        old: "return items[len(items) / 2]"
+        new: "return items[len(items) // 2]"
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "middle() raises TypeError because the index is a float"
+    bug_fixing_commit: "c2"
+    bug_introducing_commits: ["c1"]
+    fault:
+      commit: "c1"
+      file: "src/search/midpoint.py"
+      entity:
+        type: "function"
+        name: "middle"
+        signature: "middle(items)"
+      statement: "return items[len(items) / 2]"
+      change_type: "line_modification"
+      description: >
+        `/` is true division in Python 3, so `len(items) / 2` is a float and
+        `items[...]` raises `TypeError: list indices must be integers or
+        slices, not float` for every non-empty sequence.
+    fix:
+      commit: "c2"
+      file: "src/search/midpoint.py"
+      entity:
+        type: "function"
+        name: "middle"
+        signature: "middle(items)"
+      statement: "return items[len(items) // 2]"
+      fix_type: "line_modification"
+    expected_szz:
+      commit_level:
+        true_positives: ["c1"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "return items[len(items) / 2]"
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2"]

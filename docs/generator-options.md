@@ -158,8 +158,46 @@ Limitations: the in-memory simulators (`validate --simulate`,
 `validate-graph --simulate`) always work on LF text, so `old`/`anchor`
 matching is line-ending agnostic. Statements in `bugs` are matched against the
 file content as Git stores it; a statement that spans lines must therefore not
-be used for CRLF files. A BOM is not handled by this key: use
-`encoding: utf-8-sig` (graph `write_file`) as before.
+be used for CRLF files. A BOM is not handled by this key; see `encoding`.
+
+### `encoding` (*both*)
+
+Available on `write_file` and `replace` in both suites (and on the graph
+`insert_after`). It names the codec used for the bytes on disk; the default
+is `utf-8`. Its one intended use is `utf-8-sig`, which reads and writes a
+UTF-8 byte order mark: a `write_file` with `encoding: utf-8-sig` and otherwise
+unchanged content — or a `replace` with `encoding: utf-8-sig` whose `old`
+equals `new` — is a *BOM-only re-save*, the commit shape of SZZ-0206.
+
+```yaml
+- type: write_file
+  path: src/limits/upload.py
+  encoding: utf-8-sig        # bytes start with EF BB BF
+  content: |
+    MAX_UPLOAD_KB = 6144
+- type: replace
+  path: src/limits/upload.py
+  old: "MAX_UPLOAD_KB = 6144"
+  new: "MAX_UPLOAD_KB = 61440"
+  # no encoding: read and written as UTF-8, so the BOM survives as U+FEFF
+- type: replace
+  path: src/limits/upload.py
+  encoding: utf-8-sig        # strips the BOM on read, writes one back: still exactly one
+  old: "61440"
+  new: "20480"
+```
+
+In the classic suite the key is closed like `line_ending`: `utf-8` or
+`utf-8-sig` in any spelling Python accepts, anything else an operation error.
+The classic in-memory simulator applies the codec's read and write behaviour
+to the simulated text, which stores a BOM as a leading U+FEFF: `utf-8-sig`
+strips one on read and writes one, `utf-8` keeps it as text. A BOM added or
+removed by either operation is therefore a change (not `E250`), statements
+stay substrings of the decoded text, and the simulator accepts a history
+exactly when Git would record it as distinct commits. The graph operations
+pass any codec name to Python unchecked and the graph simulator does not model
+it; a graph commit that changes only the encoding needs another change or
+`allow_empty` to pass `GE202`.
 
 ### `write_generated_text_file.header` / `.footer` (*graph*)
 
@@ -440,6 +478,7 @@ does not understand `resolution` and reports the conflict as an error; plain
 | `repository.base_date` | top level | both |
 | `author_date`, `committer_date` | commit | both |
 | `line_ending` | `write_file`, `replace`, `insert_after` operations | both (`insert_after`: graph) |
+| `encoding` | `write_file`, `replace`, `insert_after` operations | both (`insert_after`: graph) |
 | `header`, `footer` | `write_generated_text_file` operation | graph |
 | `commit_generator.path` (directory), `count` (capped 2000), `files` | operation (semantics) | graph |
 | `inherit_message`, `inherit_author_date` | commit with `rebase_of`/`cherry_pick_of`/`backport_of` | graph |

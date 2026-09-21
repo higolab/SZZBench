@@ -1,0 +1,129 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0203"
+  title: "Dictionary lookup added without a key check (Python omission twin of SZZ-0047)"
+  slug: "missing-key-check-python"
+  description: >
+    A lookup function is added that indexes a dictionary directly, so an
+    unknown code raises KeyError. The fix adds a membership guard in front of
+    the lookup and changes nothing else. This is the Python counterpart of
+    SZZ-0047: the fault is an omission, the BFC is addition-only, and there is
+    no deleted line for blame to follow — in a language where a missing guard
+    surfaces as an exception rather than as a null.
+  category: "Omission and deletion bugs"
+  factors:
+    - "single-bic"
+    - "single-bfc"
+    - "omission-bug"
+    - "line-addition-fix"
+    - "missing-key-check"
+  difficulty: "easy"
+  status: "active"
+  tier: "control"
+  category_code: "S2"
+
+repository:
+  name: "SZZ-0203-missing-key-check-python"
+  default_branch: "main"
+  language: "python"
+  build_system: "none"
+  source_root: "src"
+
+commits:
+  - id: "c0"
+    message: "Add the carrier code table"
+    author: "Luca Moretti <luca.moretti@example.com>"
+    date: "2025-06-02T09:16:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/carriers/__init__.py"
+        content: ""
+      - type: "write_file"
+        path: "src/carriers/names.py"
+        content: |
+          """Carrier code lookups."""
+
+          CARRIERS = {
+              "DHL": "DHL Express",
+              "UPS": "United Parcel Service",
+              "FDX": "FedEx",
+          }
+
+  - id: "c1"
+    message: "Add carrier_name() for the shipment labels"
+    author: "Mei Tanaka <mei.tanaka@example.com>"
+    date: "2025-06-09T14:33:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/carriers/names.py"
+        old: |2
+              "FDX": "FedEx",
+          }
+        new: |2
+              "FDX": "FedEx",
+          }
+
+
+          def carrier_name(code):
+              return CARRIERS[code]
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Return a placeholder for unknown carrier codes instead of raising KeyError"
+    author: "Luca Moretti <luca.moretti@example.com>"
+    date: "2025-06-12T10:27:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/carriers/names.py"
+        old: |2
+          def carrier_name(code):
+              return CARRIERS[code]
+        new: |2
+          def carrier_name(code):
+              if code not in CARRIERS:
+                  return "unknown carrier"
+              return CARRIERS[code]
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "carrier_name() raises KeyError for an unknown code"
+    bug_fixing_commit: "c2"
+    bug_introducing_commits: ["c1"]
+    fault:
+      commit: "c1"
+      file: "src/carriers/names.py"
+      entity:
+        type: "function"
+        name: "carrier_name"
+        signature: "carrier_name(code)"
+      change_type: "omission"
+      missing_statement: |2
+        if code not in CARRIERS:
+            return "unknown carrier"
+    fix:
+      commit: "c2"
+      file: "src/carriers/names.py"
+      entity:
+        type: "function"
+        name: "carrier_name"
+        signature: "carrier_name(code)"
+      added_statement: |2
+            if code not in CARRIERS:
+                return "unknown carrier"
+      fix_type: "line_addition"
+    expected_szz:
+      commit_level:
+        true_positives: ["c1"]
+        false_positives_allowed: []
+      line_level:
+        available: false
+        reason: "The fault is an omitted guard, so the BFC deletes no line and blame has nothing to follow."
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2"]

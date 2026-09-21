@@ -1,0 +1,148 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0204"
+  title: "Type annotation added to the faulty line after the BIC"
+  slug: "type-annotation-rewrite-after-bic"
+  description: >
+    A boundary fault is introduced in an assignment. A later commit adds type
+    hints to the module — parameter and return annotations on the def line
+    and variable annotations on the assignments — which rewrites the faulty
+    line without changing its behaviour. The fix then repairs the comparison.
+    Plain blame at the fix's parent returns the annotation commit; `-w` does
+    not help because `: bool` is not whitespace. The Python analogue of the
+    Java generic-type and annotation-noise scenarios (SZZ-0094, SZZ-0095),
+    with the noise landing on the faulty line itself.
+  category: "Intermediate noise and history noise"
+  factors:
+    - "single-bic"
+    - "single-bfc"
+    - "line-modification"
+    - "boundary-condition"
+    - "deep-line-history"
+    - "basic-blame-distractor"
+    - "type-annotation-rewrite"
+  difficulty: "medium"
+  status: "active"
+  tier: "control"
+  category_code: "S3"
+
+repository:
+  name: "SZZ-0204-type-annotation-rewrite-after-bic"
+  default_branch: "main"
+  language: "python"
+  build_system: "none"
+  source_root: "src"
+
+commits:
+  - id: "c0"
+    message: "Add the cache expiry helper"
+    author: "Hana Sato <hana.sato@example.com>"
+    date: "2025-07-01T10:05:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/cache/__init__.py"
+        content: ""
+      - type: "write_file"
+        path: "src/cache/expiry.py"
+        content: |
+          """Time-to-live bookkeeping for cached entries."""
+
+
+          def is_expired(age_days, ttl_days):
+              """True once an entry has outlived its time to live.
+
+              An entry is still valid on the last day of its TTL, that is when
+              ``age_days == ttl_days``; it expires the day after.
+              """
+              remaining = ttl_days - age_days
+              expired = remaining < 0
+              return expired
+
+  - id: "c1"
+    message: "Expire cache entries on the last day of their TTL"
+    author: "Jonas Berg <jonas.berg@example.com>"
+    date: "2025-07-08T16:22:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/cache/expiry.py"
+        old: "expired = remaining < 0"
+        new: "expired = remaining <= 0"
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Add type hints to the expiry helper"
+    author: "Priya Raman <priya.raman@example.com>"
+    date: "2025-07-15T11:40:00Z"
+    role: "refactoring"
+    operations:
+      - type: "replace"
+        path: "src/cache/expiry.py"
+        old: "def is_expired(age_days, ttl_days):"
+        new: "def is_expired(age_days: int, ttl_days: int) -> bool:"
+      - type: "replace"
+        path: "src/cache/expiry.py"
+        old: "remaining = ttl_days - age_days"
+        new: "remaining: int = ttl_days - age_days"
+      - type: "replace"
+        path: "src/cache/expiry.py"
+        old: "expired = remaining <= 0"
+        new: "expired: bool = remaining <= 0"
+        labels: ["type_annotation_only", "non_bug_introducing_change"]
+
+  - id: "c3"
+    message: "Keep cache entries valid on the last day of their TTL"
+    author: "Hana Sato <hana.sato@example.com>"
+    date: "2025-07-22T09:13:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/cache/expiry.py"
+        old: "expired: bool = remaining <= 0"
+        new: "expired: bool = remaining < 0"
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "Entries expire one day early"
+    bug_fixing_commit: "c3"
+    bug_introducing_commits: ["c1"]
+    fault:
+      commit: "c1"
+      file: "src/cache/expiry.py"
+      entity:
+        type: "function"
+        name: "is_expired"
+        signature: "is_expired(age_days, ttl_days)"
+      statement: "expired = remaining <= 0"
+      change_type: "line_modification"
+      description: >
+        The docstring fixes the contract: an entry whose age equals its TTL is
+        still valid. `<= 0` reports it as expired, one day early.
+    fix:
+      commit: "c3"
+      file: "src/cache/expiry.py"
+      entity:
+        type: "function"
+        name: "is_expired"
+        signature: "is_expired(age_days: int, ttl_days: int) -> bool"
+      statement: "expired: bool = remaining < 0"
+      fix_type: "line_modification"
+    expected_szz:
+      commit_level:
+        true_positives: ["c1"]
+        known_distractors: ["c2"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "expired = remaining <= 0"
+        note: >
+          The line the BFC deletes is `expired: bool = remaining <= 0`, written
+          by c2; the fault it carries was introduced by c1.
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3"]

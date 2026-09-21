@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import codecs
 from pathlib import Path
 
 from .paths import safe_join
@@ -92,20 +93,60 @@ def insert_after_once(content: str, anchor: str, inserted: str, occurrence: int 
     end = start + len(anchor)
     return content[:end] + inserted + content[end:]
 
+#: The codecs a classic operation may name.  They differ only in the BOM, and
+#: the BOM is the one byte-level detail the in-memory simulator models.
+ENCODINGS = {"utf-8", "utf-8-sig"}
+
+def resolve_encoding(op: dict) -> str:
+    """Return the codec an operation reads and writes with (``utf-8`` by default).
+
+    Like ``line_ending`` the key is closed: ``utf-8`` or ``utf-8-sig`` in any
+    spelling Python accepts, anything else an OperationError — so a scenario
+    cannot depend on bytes the simulator does not model.
+    """
+    value = op.get("encoding")
+    if value is None:
+        return "utf-8"
+    try:
+        name = codecs.lookup(value).name if isinstance(value, str) else None
+    except LookupError:
+        name = None
+    if name not in ENCODINGS:
+        raise OperationError(f"encoding must be 'utf-8' or 'utf-8-sig', got {value!r}")
+    return name
+
+def decode_stored(stored: str, encoding: str) -> str:
+    """What ``read_text_raw(path, encoding)`` returns for a simulated file.
+
+    The simulator stores a file as its bytes decoded with UTF-8, so a BOM is a
+    leading U+FEFF; ``utf-8-sig`` strips one on read and ``utf-8`` keeps it as
+    text, exactly as the codecs behave on disk.
+    """
+    return stored.encode("utf-8").decode(encoding)
+
+def encode_stored(text: str, encoding: str) -> str:
+    """What ``write_text_raw(path, text, encoding)`` leaves on disk, as stored text."""
+    return text.encode(encoding).decode("utf-8")
+
 def apply_operation_to_memory(files: dict[str, str], op: dict) -> None:
-    # The in-memory simulator always works on LF-normalized text; line_ending
-    # only affects the bytes written to the generated repository.
+    # The in-memory simulator works on LF-normalized text: line_ending only
+    # affects the bytes written to the generated repository.  The encoding is
+    # applied, because it changes the bytes without changing the text (the
+    # BOM) and a scenario may be built on exactly that (SZZ-0206); otherwise a
+    # BOM-only commit would be E250 "produces no changes" here and real in Git.
     op_type = op.get("type")
     if op_type == "write_file":
-        files[op["path"]] = normalize_newlines(op["content"])
+        files[op["path"]] = encode_stored(normalize_newlines(op["content"]), resolve_encoding(op))
         return
     if op_type == "replace":
         path = op["path"]
         if path not in files:
             raise OperationError(f"replace target does not exist: {path}")
+        encoding = resolve_encoding(op)
+        content = decode_stored(files[path], encoding)
         old = normalize_newlines(op["old"])
         new = normalize_newlines(op["new"])
-        files[path] = replace_once(files[path], old, new, op.get("occurrence"))
+        files[path] = encode_stored(replace_once(content, old, new, op.get("occurrence")), encoding)
         return
     raise OperationError(f"unsupported operation: {op_type}")
 
@@ -114,18 +155,19 @@ def apply_operation_to_filesystem(repo_dir: Path, op: dict) -> None:
     if op_type == "write_file":
         path = safe_join(repo_dir, op["path"])
         path.parent.mkdir(parents=True, exist_ok=True)
-        write_text_raw(path, encode_line_endings(op["content"], resolve_line_ending(op)))
+        write_text_raw(path, encode_line_endings(op["content"], resolve_line_ending(op)), resolve_encoding(op))
         return
     if op_type == "replace":
         path = safe_join(repo_dir, op["path"])
         if not path.exists():
             raise OperationError(f"replace target does not exist: {op['path']}")
-        raw = read_text_raw(path)
+        encoding = resolve_encoding(op)
+        raw = read_text_raw(path, encoding)
         line_ending = resolve_line_ending(op, raw)
         content = normalize_newlines(raw)
         old = normalize_newlines(op["old"])
         new = normalize_newlines(op["new"])
         new_content = replace_once(content, old, new, op.get("occurrence"))
-        write_text_raw(path, encode_line_endings(new_content, line_ending))
+        write_text_raw(path, encode_line_endings(new_content, line_ending), encoding)
         return
     raise OperationError(f"unsupported operation: {op_type}")

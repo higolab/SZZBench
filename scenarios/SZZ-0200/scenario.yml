@@ -1,0 +1,108 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0200"
+  title: "Wrong threshold constant in a Python module"
+  slug: "wrong-threshold-constant-python"
+  description: >
+    The Python twin of SZZ-0021. The same three-commit history — a correct
+    threshold, a commit that raises it to the wrong value, a fix that restores
+    it — is written in Python instead of Java, with the same authors, dates
+    and messages. A tool that handles the Java twin and not this one has a
+    language dependency, not an algorithmic one.
+  category: "Basic semantic line changes"
+  factors:
+    - "single-bic"
+    - "single-bfc"
+    - "line-modification"
+    - "wrong-constant"
+  difficulty: "easy"
+  status: "active"
+  tier: "control"
+  category_code: "S1"
+
+repository:
+  name: "SZZ-0200-wrong-threshold-constant-python"
+  default_branch: "main"
+  language: "python"
+  build_system: "none"
+  source_root: "src"
+
+commits:
+  - id: "c0"
+    message: "Initial correct implementation"
+    author: "Aiko Mori <aiko.mori@example.com>"
+    date: "2025-02-24T09:29:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/grading/__init__.py"
+        content: ""
+      - type: "write_file"
+        path: "src/grading/scores.py"
+        content: |
+          """Pass/fail decision for graded submissions."""
+
+
+          def passes(score):
+              return score >= 80
+
+  - id: "c1"
+    message: "Raise the passing score to 90"
+    author: "Aiko Mori <aiko.mori@example.com>"
+    date: "2025-03-04T13:15:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/grading/scores.py"
+        old: "return score >= 80"
+        new: "return score >= 90"
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Fix bug"
+    author: "Hana Sato <hana.sato@example.com>"
+    date: "2025-03-10T11:11:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/grading/scores.py"
+        old: "return score >= 90"
+        new: "return score >= 80"
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "Wrong threshold constant"
+    bug_fixing_commit: "c2"
+    bug_introducing_commits: ["c1"]
+    fault:
+      commit: "c1"
+      file: "src/grading/scores.py"
+      entity:
+        type: "function"
+        name: "passes"
+        signature: "passes(score)"
+      statement: "return score >= 90"
+      change_type: "line_modification"
+    fix:
+      commit: "c2"
+      file: "src/grading/scores.py"
+      entity:
+        type: "function"
+        name: "passes"
+        signature: "passes(score)"
+      statement: "return score >= 80"
+      fix_type: "line_modification"
+    expected_szz:
+      commit_level:
+        true_positives: ["c1"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "return score >= 90"
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2"]

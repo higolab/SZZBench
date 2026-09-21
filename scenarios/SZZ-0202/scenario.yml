@@ -1,0 +1,139 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0202"
+  title: "Mutable default argument: the fault is on the def line"
+  slug: "mutable-default-argument"
+  description: >
+    A helper takes an optional list and creates a fresh one when none is
+    given. A "simplification" replaces the `None` sentinel with `tags=[]` and
+    drops the guard, so every call without an explicit list appends to the
+    same list object. The fix restores the sentinel. The faulty statement is
+    the `def` line itself: a tool that skips declaration lines as
+    non-executable (as Java-oriented filters skip method signatures) has
+    nothing left to blame.
+  category: "Basic semantic line changes"
+  factors:
+    - "single-bic"
+    - "single-bfc"
+    - "line-modification"
+    - "mutable-default-argument"
+    - "signature-line-fault"
+  difficulty: "medium"
+  status: "active"
+  tier: "control"
+  category_code: "S1"
+
+repository:
+  name: "SZZ-0202-mutable-default-argument"
+  default_branch: "main"
+  language: "python"
+  build_system: "none"
+  source_root: "src"
+
+commits:
+  - id: "c0"
+    message: "Add with_tag, appending to a caller-supplied or fresh list"
+    author: "Priya Raman <priya.raman@example.com>"
+    date: "2025-05-06T11:20:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/tagging/__init__.py"
+        content: ""
+      - type: "write_file"
+        path: "src/tagging/tags.py"
+        content: |
+          """Tag collection helpers."""
+
+
+          def with_tag(tag, tags=None):
+              """Return ``tags`` with ``tag`` appended; start a new list when none is given."""
+              if tags is None:
+                  tags = []
+              tags.append(tag)
+              return tags
+
+  - id: "c1"
+    message: "Simplify with_tag: default to an empty list directly"
+    author: "Tom Becker <tom.becker@example.com>"
+    date: "2025-05-13T15:02:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/tagging/tags.py"
+        old: |2
+          def with_tag(tag, tags=None):
+              """Return ``tags`` with ``tag`` appended; start a new list when none is given."""
+              if tags is None:
+                  tags = []
+              tags.append(tag)
+        new: |2
+          def with_tag(tag, tags=[]):
+              """Return ``tags`` with ``tag`` appended; start a new list when none is given."""
+              tags.append(tag)
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Use a None sentinel in with_tag: the default list was shared between calls"
+    author: "Priya Raman <priya.raman@example.com>"
+    date: "2025-05-20T09:41:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/tagging/tags.py"
+        old: |2
+          def with_tag(tag, tags=[]):
+              """Return ``tags`` with ``tag`` appended; start a new list when none is given."""
+              tags.append(tag)
+        new: |2
+          def with_tag(tag, tags=None):
+              """Return ``tags`` with ``tag`` appended; start a new list when none is given."""
+              if tags is None:
+                  tags = []
+              tags.append(tag)
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "with_tag() accumulates tags across unrelated calls"
+    bug_fixing_commit: "c2"
+    bug_introducing_commits: ["c1"]
+    fault:
+      commit: "c1"
+      file: "src/tagging/tags.py"
+      entity:
+        type: "function"
+        name: "with_tag"
+        signature: "with_tag(tag, tags=[])"
+      statement: "def with_tag(tag, tags=[]):"
+      change_type: "line_modification"
+      description: >
+        A default argument is evaluated once, when the function is defined,
+        so `tags=[]` is one list object shared by every call that omits
+        `tags`. The second call `with_tag("b")` returns `["a", "b"]` instead
+        of `["b"]`.
+    fix:
+      commit: "c2"
+      file: "src/tagging/tags.py"
+      entity:
+        type: "function"
+        name: "with_tag"
+        signature: "with_tag(tag, tags=None)"
+      statement: "def with_tag(tag, tags=None):"
+      fix_type: "line_modification"
+    expected_szz:
+      commit_level:
+        true_positives: ["c1"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "def with_tag(tag, tags=[]):"
+        note: >
+          The BFC also re-adds the two guard lines; the only line it deletes is
+          the def line, which blame attributes to c1 directly.
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2"]

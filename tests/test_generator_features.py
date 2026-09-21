@@ -15,7 +15,7 @@ from szzbench.generator import generate_repository
 from szzbench.gitutils import DEFAULT_AUTHOR_POOL, deterministic_author, deterministic_date, resolve_commit_metadata
 from szzbench.graph_generator import MAX_GENERATED_COMMITS, GraphGenerationError, generate_graph_repository
 from szzbench.graph_operations import apply_graph_operation_to_filesystem, commit_generator_directory
-from szzbench.operations import apply_operation_to_filesystem
+from szzbench.operations import OperationError, apply_operation_to_filesystem, apply_operation_to_memory
 
 
 # ---------------------------------------------------------------------------
@@ -1144,3 +1144,115 @@ def test_octopus_merge_has_all_declared_parents(tmp_path):
     # every branch's change is in the merged tree
     for path in (A, B, C):
         assert "return 2;" in _git(out / "repo", "show", f"{commit_map['m1']['hash']}:{path}")
+
+
+def test_encoding_option_in_classic_operations(tmp_path):
+    """`encoding: utf-8-sig` writes a BOM; a later plain `replace` keeps it; the
+    in-memory simulator treats the BOM-only re-save as a change (SZZ-0206)."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    apply_operation_to_filesystem(repo, {"type": "write_file", "path": "a.py", "content": "MAX = 6144\n"})
+    assert (repo / "a.py").read_bytes() == b"MAX = 6144\n"
+    apply_operation_to_filesystem(repo, {"type": "write_file", "path": "a.py", "content": "MAX = 6144\n", "encoding": "utf-8-sig"})
+    assert (repo / "a.py").read_bytes() == b"\xef\xbb\xbfMAX = 6144\n"
+    apply_operation_to_filesystem(repo, {"type": "replace", "path": "a.py", "old": "6144", "new": "61440"})
+    assert (repo / "a.py").read_bytes() == b"\xef\xbb\xbfMAX = 61440\n"
+
+    files = {}
+    apply_operation_to_memory(files, {"type": "write_file", "path": "a.py", "content": "MAX = 6144\n"})
+    before = dict(files)
+    apply_operation_to_memory(files, {"type": "write_file", "path": "a.py", "content": "MAX = 6144\n", "encoding": "utf-8-sig"})
+    assert files != before and files["a.py"] == "﻿MAX = 6144\n"
+    apply_operation_to_memory(files, {"type": "replace", "path": "a.py", "old": "MAX = 6144", "new": "MAX = 61440"})
+    assert files["a.py"] == "﻿MAX = 61440\n"
+
+
+def _disk_matches_simulation(repo: Path, files: dict, rel: str) -> None:
+    """The simulator's invariant: a stored text is the file's bytes decoded as UTF-8."""
+    assert (repo / rel).read_bytes() == files[rel].encode("utf-8"), rel
+
+
+def test_replace_encoding_is_simulated_like_the_codec(tmp_path):
+    """PR #57 review: `replace.encoding` must add, keep and strip the BOM in the simulator
+    exactly as the codec does on disk, so the simulator accepts the histories Git records."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    files: dict[str, str] = {}
+
+    def both(op: dict) -> dict:
+        apply_operation_to_filesystem(repo, op)
+        apply_operation_to_memory(files, op)
+        _disk_matches_simulation(repo, files, op["path"])
+        return dict(files)
+
+    # sequence A (first reproduction): a utf-8-sig replace with old == new is a BOM-only change
+    before = both({"type": "write_file", "path": "a.py", "content": "MAX = 6144\n"})
+    after = both({"type": "replace", "path": "a.py", "encoding": "utf-8-sig", "old": "MAX = 6144", "new": "MAX = 6144"})
+    assert after != before and (repo / "a.py").read_bytes() == b"\xef\xbb\xbfMAX = 6144\n"
+    # an unencoded replace on a BOM file keeps the BOM: utf-8 reads U+FEFF as text and writes it back
+    both({"type": "replace", "path": "a.py", "old": "6144", "new": "61440"})
+    assert (repo / "a.py").read_bytes() == b"\xef\xbb\xbfMAX = 61440\n"
+    # a utf-8-sig replace on a BOM file strips one BOM on read and writes one, never two
+    both({"type": "replace", "path": "a.py", "encoding": "utf-8-sig", "old": "61440", "new": "20480"})
+    assert (repo / "a.py").read_bytes() == b"\xef\xbb\xbfMAX = 20480\n"
+
+    # sequence B (second reproduction): an encoded replace adds the BOM, an unencoded write_file removes it
+    both({"type": "write_file", "path": "b.py", "content": "X = 1\n"})
+    with_bom = both({"type": "replace", "path": "b.py", "encoding": "utf-8-sig", "old": "X = 1", "new": "X = 2"})
+    assert (repo / "b.py").read_bytes() == b"\xef\xbb\xbfX = 2\n"
+    without = both({"type": "write_file", "path": "b.py", "content": "X = 2\n"})
+    assert (repo / "b.py").read_bytes() == b"X = 2\n" and without != with_bom
+
+
+def test_encoding_is_closed_like_line_ending(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    for bad in ("latin-1", "no-such-codec", 7):
+        op = {"type": "write_file", "path": "a.txt", "content": "x\n", "encoding": bad}
+        with pytest.raises(OperationError):
+            apply_operation_to_memory({}, op)
+        with pytest.raises(OperationError):
+            apply_operation_to_filesystem(repo, op)
+    files: dict[str, str] = {}
+    apply_operation_to_memory(files, {"type": "write_file", "path": "a.txt", "content": "x\n", "encoding": "UTF_8_SIG"})
+    assert files["a.txt"] == "﻿x\n"     # any spelling Python accepts for the same codec
+
+
+def _szz_0206_variant(tmp_path: Path, name: str, edit) -> Path:
+    root = Path(__file__).resolve().parent.parent
+    data = yaml.safe_load((root / "scenarios" / "SZZ-0206" / "scenario.yml").read_text(encoding="utf-8"))
+    edit(data)
+    path = tmp_path / name / "scenario.yml"
+    path.parent.mkdir()
+    path.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8")
+    return path
+
+
+def test_bom_history_via_replace_generates_the_same_commits_as_szz_0206(tmp_path):
+    """The reviewer's first reproduction: SZZ-0206 with c2 as a utf-8-sig `replace` (old == new)
+    is byte-for-byte the shipped history, so it must generate — and to the same four hashes."""
+    def edit(data):
+        data["commits"][2]["operations"] = [{"type": "replace", "path": "src/limits/upload.py", "encoding": "utf-8-sig",
+                                             "old": "MAX_UPLOAD_KB = 6144", "new": "MAX_UPLOAD_KB = 6144"}]
+    variant = _szz_0206_variant(tmp_path, "via-replace", edit)
+    shipped, _ = generate_repository(Path(__file__).resolve().parent.parent / "scenarios" / "SZZ-0206" / "scenario.yml", tmp_path / "shipped", force=True)
+    rewritten, verify = generate_repository(variant, tmp_path / "rewritten", force=True)
+    assert verify is not None and not verify.has_errors(), verify.to_dict() if verify else None
+    assert {c: shipped[c]["hash"] for c in shipped} == {c: rewritten[c]["hash"] for c in rewritten}
+
+
+def test_bom_added_by_replace_and_removed_by_write_file_generates(tmp_path):
+    """The reviewer's second reproduction: c1's replace adds the BOM (`encoding: utf-8-sig`) and
+    c2's plain write_file removes it. The simulator must record the BOM at c1 so c2 is a change."""
+    def edit(data):
+        data["commits"][1]["operations"][0]["encoding"] = "utf-8-sig"
+        del data["commits"][2]["operations"][0]["encoding"]
+    variant = _szz_0206_variant(tmp_path, "add-then-remove", edit)
+    commit_map, verify = generate_repository(variant, tmp_path / "out", force=True)
+    assert verify is not None and not verify.has_errors(), verify.to_dict() if verify else None
+    repo = tmp_path / "out" / "repo"
+    blob = lambda cid: subprocess.run(["git", "show", f"{commit_map[cid]['hash']}:src/limits/upload.py"], cwd=repo, capture_output=True, check=True).stdout
+    assert not blob("c0").startswith(b"\xef\xbb\xbf")
+    assert blob("c1").startswith(b"\xef\xbb\xbfMAX_UPLOAD_KB = 6144\n")
+    assert blob("c2") == blob("c1")[3:]
+    assert blob("c3").startswith(b"MAX_UPLOAD_KB = 61440\n")

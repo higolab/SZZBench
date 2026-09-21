@@ -1490,3 +1490,105 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0199/scenario.yml
+- id: SZZ-0200
+  title: Wrong threshold constant in a Python module
+  slug: wrong-threshold-constant-python
+  category_code: S1
+  category: Basic semantic line changes
+  factors:
+  - single-bic
+  - single-bfc
+  - line-modification
+  - wrong-constant
+  difficulty: easy
+  status: active
+  path: scenarios/SZZ-0200/scenario.yml
+- id: SZZ-0201
+  title: 'Floor division mistaken for a typo: `//` becomes `/` in an index expression'
+  slug: floor-division-mistaken-for-typo
+  category_code: S1
+  category: Basic semantic line changes
+  factors:
+  - single-bic
+  - single-bfc
+  - line-modification
+  - wrong-operator
+  difficulty: easy
+  status: active
+  path: scenarios/SZZ-0201/scenario.yml
+- id: SZZ-0202
+  title: 'Mutable default argument: the fault is on the def line'
+  slug: mutable-default-argument
+  category_code: S1
+  category: Basic semantic line changes
+  factors:
+  - single-bic
+  - single-bfc
+  - line-modification
+  - mutable-default-argument
+  - signature-line-fault
+  difficulty: medium
+  status: active
+  path: scenarios/SZZ-0202/scenario.yml
+- id: SZZ-0203
+  title: Dictionary lookup added without a key check (Python omission twin of SZZ-0047)
+  slug: missing-key-check-python
+  category_code: S2
+  category: Omission and deletion bugs
+  factors:
+  - single-bic
+  - single-bfc
+  - omission-bug
+  - line-addition-fix
+  - missing-key-check
+  difficulty: easy
+  status: active
+  path: scenarios/SZZ-0203/scenario.yml
+- id: SZZ-0204
+  title: Type annotation added to the faulty line after the BIC
+  slug: type-annotation-rewrite-after-bic
+  category_code: S3
+  category: Intermediate noise and history noise
+  factors:
+  - single-bic
+  - single-bfc
+  - line-modification
+  - boundary-condition
+  - deep-line-history
+  - basic-blame-distractor
+  - type-annotation-rewrite
+  difficulty: medium
+  status: active
+  path: scenarios/SZZ-0204/scenario.yml
+- id: SZZ-0205
+  title: f-string conversion rewrites the faulty format line after the BIC
+  slug: f-string-conversion-after-bic
+  category_code: S3
+  category: Intermediate noise and history noise
+  factors:
+  - single-bic
+  - single-bfc
+  - line-modification
+  - wrong-variable
+  - deep-line-history
+  - basic-blame-distractor
+  - string-format-rewrite
+  difficulty: medium
+  status: active
+  path: scenarios/SZZ-0205/scenario.yml
+- id: SZZ-0206
+  title: BOM-only rewrite of the faulty line
+  slug: bom-only-rewrite-of-faulty-line
+  category_code: S3
+  category: Intermediate noise and history noise
+  factors:
+  - single-bic
+  - single-bfc
+  - line-modification
+  - wrong-constant
+  - robustness
+  - bom-only-rewrite
+  - basic-blame-distractor
+  difficulty: medium
+  status: active
+  path: scenarios/SZZ-0206/scenario.yml
