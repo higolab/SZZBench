@@ -16,10 +16,10 @@ the fault file, 4 commits, 1 ref) are unchanged.
 ## Commit structure (generated)
 
 ```text
-* 99671a4  2025-05-16  Compute the transfer fee directly in the remaining caller    <- BFC of B002 (c3)
-* bf2ce46  2025-05-15  Compute the card fee directly instead of calling fee()       <- BFC of B001 (c2)
-* f8fee52  2025-05-08  Apply the 3 percent fee                                      <- BIC of both (c1; writes 30)
-* 5db0465  2025-05-01  Add the payment fee helpers                                  (c0)
+* d6caf17  2025-05-16  Compute the transfer fee directly in the remaining caller    <- BFC of B002 (c3)
+* 34feae0  2025-05-15  Compute the card fee directly instead of calling fee()       <- BFC of B001 (c2)
+* 7006e86  2025-05-08  Apply the 3 percent fee                                      <- BIC of both (c1; writes 30)
+* 3be7a46  2025-05-01  Add the payment fee helpers                                  (c0)
 ```
 
 ## Expected BIC / BFC
@@ -29,17 +29,20 @@ the fault file, 4 commits, 1 ref) are unchanged.
 
 ## Measured behaviour and blame
 
-| commit | `cardFee(1000)` | `transferFee(1000)` |
-|---|---|---|
-| `c0` | 30 | 30 |
-| `c1` | **300** | **300** |
-| `c2` | 30 | **300** |
-| `c3` | 30 | 30 |
+| commit | `cardFee(1000)` | `transferFee(1000)` | `cardFee(1000000000)` |
+|---|---|---|---|
+| `c0` | 30 | 30 | 30000000 |
+| `c1` | **300** | **300** | **300000000** |
+| `c2` | 30 | **300** | 30000000 |
+| `c3` | 30 | 30 | 30000000 |
 
+The fee is computed in `long` before the division
+(`(int) ((long) cents * 3 / 100)`), so a 3 % fee on 10^9 cents does not overflow
+in any snapshot (PR #63 review); the faulty helper differs only in the constant.
 Each fix deletes one line, `return fee(cents);`, written by `c0` — not the
 faulty helper line — so plain blame of the fixes' deleted lines returns `c0`,
 the root commit, and does not reach `c1`. The verifier's fault-statement blame
-(`return cents * 30 / 100;` at each fix's parent) does reach `c1` (`GI703`), and
+(`return (int) ((long) cents * 30 / 100);` at each fix's parent) does reach `c1` (`GI703`), and
 it reports `GW664` for B002 because both callers end up with the same inlined
 statement — as before the rewrite; this scenario has always been on the
 strict-verify list for that reason.

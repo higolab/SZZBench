@@ -17,10 +17,10 @@ the fault file, 4 commits, 1 ref) are unchanged.
 ## Commit structure (generated)
 
 ```text
-* 05e1ea6  2023-07-10  Floor the shipping cost at the configured minimum in ShippingUtils.cost  <- BFC (c3)
-* b22fc64  2023-07-03  Move cost from Shipping to ShippingUtils                                 (c2, move; related_but_not_correct)
-* fb37892  2023-06-30  Simplify the shipping cost floor                                         <- BIC (c1)
-* 99a6da2  2023-06-23  Add Shipping with cost and volumetric weight helpers                     (c0)
+* f4b08cf  2023-07-10  Floor the shipping cost at the configured minimum in ShippingUtils.cost  <- BFC (c3)
+* e178322  2023-07-03  Move cost from Shipping to ShippingUtils                                 (c2, move; related_but_not_correct)
+* 20351fe  2023-06-30  Simplify the shipping cost floor                                         <- BIC (c1)
+* 6ba0ece  2023-06-23  Add Shipping with cost and volumetric weight helpers                     (c0)
 ```
 
 ## Expected BIC / BFC
@@ -30,15 +30,17 @@ the fault file, 4 commits, 1 ref) are unchanged.
 
 ## Measured behaviour and blame
 
-| commit | `cost(500, 10, 8)` | `cost(3000, 10, 8)` | where `cost` lives |
-|---|---|---|---|
-| `c0` | 8 | 30 | `Shipping` |
-| `c1` | **10** | 30 | `Shipping` |
-| `c2` | **10** | 30 | `ShippingUtils` |
-| `c3` | 8 | 30 | `ShippingUtils` |
+| commit | `cost(500, 10, 8)` | `cost(3000, 10, 8)` | `cost(30000, 100000, 8)` | where `cost` lives |
+|---|---|---|---|---|
+| `c0` | 8 | 30 | 3000000 | `Shipping` |
+| `c1` | **10** | 30 | 3000000 | `Shipping` |
+| `c2` | **10** | 30 | 3000000 | `ShippingUtils` |
+| `c3` | 8 | 30 | 3000000 | `ShippingUtils` |
 
 Below the floor the faulty version returns the rate (10) instead of the minimum
-(8); above it nothing changes. `c3` deletes one line (line 5 of
+(8); above it nothing changes. The product is taken in `long` before the
+division (`(int) ((long) weightGrams * ratePerKg / 1000)`), so the large input
+does not overflow in any snapshot (PR #63 review). `c3` deletes one line (line 5 of
 `ShippingUtils.java`); blame at `c3^` returns `c2`, which created the file. The
 declared fault statement is no longer in `Shipping.java` at `c3^`, so the
 verifier reports `GI701` (declared by the refactoring factors).

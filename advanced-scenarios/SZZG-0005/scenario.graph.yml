@@ -48,7 +48,7 @@ commits:
       public class Shipping {
         /** Cost in cents: weight times the per-kilogram rate, never below the configured minimum. */
         public int cost(int weightGrams, int ratePerKg, int minimum) {
-          return Math.max(weightGrams * ratePerKg / 1000, minimum);
+          return Math.max((int) ((long) weightGrams * ratePerKg / 1000), minimum);
         }
         public int volumetricWeight(int lengthCm, int widthCm, int heightCm) {
           return lengthCm * widthCm * heightCm / 5;
@@ -63,8 +63,8 @@ commits:
   operations:
   - type: replace
     path: src/main/java/example/Shipping.java
-    old: return Math.max(weightGrams * ratePerKg / 1000, minimum);
-    new: return Math.max(weightGrams * ratePerKg / 1000, ratePerKg);
+    old: return Math.max((int) ((long) weightGrams * ratePerKg / 1000), minimum);
+    new: return Math.max((int) ((long) weightGrams * ratePerKg / 1000), ratePerKg);
 - id: c2
   branch: main
   parents:
@@ -88,7 +88,7 @@ commits:
       public class ShippingUtils {
         /** Cost in cents: weight times the per-kilogram rate, never below the configured minimum. */
         public int cost(int weightGrams, int ratePerKg, int minimum) {
-          return Math.max(weightGrams * ratePerKg / 1000, ratePerKg);
+          return Math.max((int) ((long) weightGrams * ratePerKg / 1000), ratePerKg);
         }
       }
 - id: c3
@@ -100,8 +100,8 @@ commits:
   operations:
   - type: replace
     path: src/main/java/example/ShippingUtils.java
-    old: return Math.max(weightGrams * ratePerKg / 1000, ratePerKg);
-    new: return Math.max(weightGrams * ratePerKg / 1000, minimum);
+    old: return Math.max((int) ((long) weightGrams * ratePerKg / 1000), ratePerKg);
+    new: return Math.max((int) ((long) weightGrams * ratePerKg / 1000), minimum);
 bugs:
 - id: B001
   title: The shipping cost floor is the per-kilogram rate; the method moved to another class before the fix
@@ -115,7 +115,7 @@ bugs:
   - id: F001
     commit: c1
     file: src/main/java/example/Shipping.java
-    statement: return Math.max(weightGrams * ratePerKg / 1000, ratePerKg);
+    statement: return Math.max((int) ((long) weightGrams * ratePerKg / 1000), ratePerKg);
     change_type: line_modification
     entity:
       type: method
@@ -124,7 +124,7 @@ bugs:
   - id: X001
     commit: c3
     file: src/main/java/example/ShippingUtils.java
-    statement: return Math.max(weightGrams * ratePerKg / 1000, minimum);
+    statement: return Math.max((int) ((long) weightGrams * ratePerKg / 1000), minimum);
     fix_type: line_modification_after_method_move
     entity:
       type: method
@@ -154,8 +154,10 @@ scenario_design:
   key_property: >-
     The BIC and BFC are in different files. The moved method is byte-for-byte identical before and after the
     move, and Shipping.java is modified in the same commit that creates ShippingUtils.java, so move-aware blame
-    (for example `git blame -C`) can follow the line back to Shipping.java. Measured: cost(500, 10, 8) is 8 at c0,
-    10 at c1 and c2 (the floor became the rate), 8 at c3; cost(3000, 10, 8) is 30 throughout.
+    (for example `git blame -C`) can follow the line back to Shipping.java. The product is taken in long before
+    the division, so no snapshot overflows for inputs whose result fits in int. Measured: cost(500, 10, 8) is 8 at
+    c0, 10 at c1 and c2 (the floor became the rate), 8 at c3; cost(3000, 10, 8) is 30 and cost(30000, 100000, 8)
+    is 3000000 throughout.
   difference_from_SZZG_0006: >-
     SZZG-0006 extracts a new class and splits responsibilities. Here a single method is moved unchanged to another
     class and the source class keeps its remaining members.

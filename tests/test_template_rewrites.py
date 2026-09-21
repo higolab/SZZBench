@@ -96,15 +96,17 @@ REWRITES: dict[str, tuple[str, str, dict[str, str]]] = {
     # --- G1, G8, G6, G3 ---
     "SZZG-0005": ("wrong-variable",
                   'for (String n : new String[] {"example.Shipping", "example.ShippingUtils"}) { try { Class<?> c = Class.forName(n); Object o = c.getDeclaredConstructor().newInstance(); '
-                  'for (java.lang.reflect.Method m : c.getDeclaredMethods()) if (m.getName().equals("cost")) System.out.print(n.substring(8) + "=" + m.invoke(o, 500, 10, 8) + " "); } catch (ClassNotFoundException e) { } }',
-                  {"c0": "Shipping=8 ", "c1": "Shipping=10 ", "c2": "ShippingUtils=10 ", "c3": "ShippingUtils=8 "}),
+                  'for (java.lang.reflect.Method m : c.getDeclaredMethods()) if (m.getName().equals("cost")) System.out.print(n.substring(8) + "=" + m.invoke(o, 500, 10, 8) + "/" + m.invoke(o, 30000, 100000, 8) + " "); } catch (ClassNotFoundException e) { } }',
+                  # the second call (PR #63 review) would overflow an int product; the result must be 3000000 in every snapshot
+                  {"c0": "Shipping=8/3000000 ", "c1": "Shipping=10/3000000 ", "c2": "ShippingUtils=10/3000000 ", "c3": "ShippingUtils=8/3000000 "}),
     "SZZG-0006": ("exception-swallowed",
                   'try { System.out.print(new example.OrderService().describeParsed("SKU-1", "x")); } catch (RuntimeException e) { System.out.print(e.getClass().getSimpleName()); }',
                   {"c0": "NumberFormatException", "c1": "SKU-1 x 0", "c2": "SKU-1 x 0", "c3": "IllegalArgumentException"}),
     "SZZG-0007": ("off-by-one",
                   'for (String n : new String[] {"example.Paging", "example.PagingUtils", "example.Batches"}) { try { Class<?> c = Class.forName(n); Object o = c.getDeclaredConstructor().newInstance(); '
-                  'for (java.lang.reflect.Method m : c.getDeclaredMethods()) if (m.getName().endsWith("Count")) System.out.print(m.getName() + "=" + m.invoke(o, 20, 10) + " "); } catch (ClassNotFoundException e) { } }',
-                  {"c1": "pageCount=3 ", "c2": "pageCount=3 batchCount=3 ", "c3": "pageCount=2 batchCount=2 "}),
+                  'for (java.lang.reflect.Method m : c.getDeclaredMethods()) if (m.getName().endsWith("Count")) System.out.print(m.getName() + "=" + m.invoke(o, 20, 10) + "/" + m.invoke(o, Integer.MAX_VALUE, 100) + " "); } catch (ClassNotFoundException e) { } }',
+                  # Integer.MAX_VALUE items (PR #63 review): the fixed ceiling division must not overflow
+                  {"c1": "pageCount=3/21474837 ", "c2": "pageCount=3/21474837 batchCount=3/21474837 ", "c3": "pageCount=2/21474837 batchCount=2/21474837 "}),
     "SZZG-0107": ("boolean-negation",
                   'example.Retention r = new example.Retention(); System.out.print(r.shouldKeep(false, false) + " " + r.shouldKeep(false, true));',
                   {"c0": "true false", "c1": "false true", "c2": "true false"}),
@@ -114,9 +116,10 @@ REWRITES: dict[str, tuple[str, str, dict[str, str]]] = {
                   'example.Greeting g = new example.Greeting(); System.out.print(g.greet("Ada", true)); try { System.out.print(" " + g.greet(null, true)); } catch (RuntimeException e) { System.out.print(" " + e.getClass().getSimpleName()); }',
                   {"c0": "Dear Ada Dear guest", "c1": "Hi Ada NullPointerException", "c2": "Dear Ada Dear guest", "c3": "Hi Ada Hi guest", "c4": "Dear Ada Dear guest"}),
     "SZZG-0091": ("wrong-operator", 'System.out.print(new example.InvoiceSummary().summarize(100, 30, false));',
-                  {"c0": "OPEN 70", "c1": "OPEN 130", "c2": "PAID 130", "c3": "OPEN 70", "c4": "OPEN 130", "c5": "OPEN 70"}),
-    "SZZG-0035": ("wrong-constant", 'example.Fees f = new example.Fees(); System.out.print(f.cardFee(1000) + " " + f.transferFee(1000));',
-                  {"c0": "30 30", "c1": "300 300", "c2": "30 300", "c3": "30 30"}),
+                  {"c0": "OPEN 70", "c1": "PAID 70", "c2": "PAID 130", "c3": "OPEN 70", "c4": "OPEN 130", "c5": "OPEN 70"}),
+    "SZZG-0035": ("wrong-constant", 'example.Fees f = new example.Fees(); System.out.print(f.cardFee(1000) + " " + f.transferFee(1000) + " " + f.cardFee(1000000000));',
+                  # 1e9 cents (PR #63 review): the 3 % fee must be 30000000, not an int overflow
+                  {"c0": "30 30 30000000", "c1": "300 300 300000000", "c2": "30 300 30000000", "c3": "30 30 30000000"}),
 }
 
 #: SZZG-0081's reformatting commit owns the faulty line under plain blame by design (GW703);
@@ -215,3 +218,68 @@ def test_fault_is_observed_exactly_where_the_readme_says(tmp_path, sid):
         subprocess.run(["javac", "-d", str(work / "out"), *[str(p) for p in work.rglob("*.java")]], check=True, capture_output=True)
         out = subprocess.run(["java", "-cp", str(work / "out"), "Driver"], capture_output=True, text=True, check=True).stdout
         assert out == want, (sid, cid, out)
+
+
+# --- the oracle must survive the rewrite ------------------------------------------
+
+#: main as it stood before the first #13 rewrite (the merge of PR #58); every rewritten scenario's
+#: scoring-relevant oracle must be identical to what it declared there.
+PRE_REWRITE_COMMIT = "b3369e8"
+
+SCORING_KEYS = ("evaluation_policy", "required", "related_origins", "related_but_not_correct", "relevant",
+                "k_values", "status_k", "minimum_required", "expect_no_bic", "known_distractors")
+
+
+def _scoring_view(scenario: dict) -> dict:
+    """Everything the evaluator reads, and nothing it does not (no notes, descriptions or statements)."""
+    from szzbench.graph_scenario import normalize_bic_role
+
+    def level(cl: dict) -> dict:
+        view = {k: cl.get(k) for k in SCORING_KEYS if cl.get(k) is not None}
+        if cl.get("acceptable_related"):
+            view["acceptable_related"] = [
+                (e.get("commit"), e.get("credit")) if isinstance(e, dict) else (e, None) for e in cl["acceptable_related"]]
+        return view
+
+    expected = scenario.get("expected_szz") or {}
+    return {
+        "commit_level": level(expected.get("commit_level") or {}),
+        "variants": {v["name"]: level(v.get("commit_level") or {}) for v in expected.get("evaluation_variants") or []},
+        "default_variant": expected.get("default_variant"),
+        "bugs": [{"bics": sorted((e["commit"], normalize_bic_role(e.get("role"))) for e in b.get("bug_introducing_commits") or []),
+                  "bfcs": sorted(e["commit"] for e in b.get("bug_fixing_commits") or [])} for b in scenario.get("bugs") or []],
+    }
+
+
+def _pre_rewrite(sid: str) -> dict | None:
+    result = subprocess.run(["git", "show", f"{PRE_REWRITE_COMMIT}:advanced-scenarios/{sid}/scenario.graph.yml"],
+                            cwd=ROOT, text=True, capture_output=True)
+    return yaml.safe_load(result.stdout) if result.returncode == 0 else None
+
+
+@pytest.mark.parametrize("sid", sorted(REWRITES))
+def test_the_oracle_is_exactly_what_it_was_before_the_rewrite(sid):
+    """PR #63 review: SZZG-0091's rewrite had moved the origin from c2 to c1, which changed the
+    origin-aware variant's verdicts. A rewrite changes code, never what is scored (fault-library.md §3)."""
+    before = _pre_rewrite(sid)
+    if before is None:
+        pytest.skip(f"{PRE_REWRITE_COMMIT} is not available in this clone")
+    after = yaml.safe_load((GRAPH / sid / "scenario.graph.yml").read_text(encoding="utf-8"))
+    assert _scoring_view(after) == _scoring_view(before)
+
+
+def test_szzg_0091_origin_aware_variant_scores_as_before(tmp_path):
+    """The verdicts the review measured: {c4, c2} passes and {c4, c1} fails under origin-aware."""
+    from szzbench.evaluator import Prediction, evaluate_scenario
+
+    scenario, cmap, _ = _generate(tmp_path, "SZZG-0091")
+
+    def verdict(answer: list[str], variant: str | None) -> str:
+        predictions = [Prediction(scenario_id="SZZG-0091", inducing_commit=c) for c in answer]
+        return evaluate_scenario("SZZG-0091", scenario, GRAPH / "SZZG-0091" / "scenario.graph.yml", "advanced-scenarios",
+                                 cmap, predictions, evaluation_variant=variant).status
+
+    assert verdict(["c4", "c2"], "origin-aware") == "PASS"
+    assert verdict(["c4", "c1"], "origin-aware") == "FAIL"
+    assert verdict(["c4"], None) == "PASS" and verdict(["c4", "c2"], None) == "FAIL"
+

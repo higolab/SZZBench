@@ -99,11 +99,11 @@ commits:
   - type: replace
     path: src/main/java/example/PagingUtils.java
     old: return count / size + 1;
-    new: return (count + size - 1) / size;
+    new: 'return count / size + (count % size == 0 ? 0 : 1);'
   - type: replace
     path: src/main/java/example/Batches.java
     old: return count / size + 1;
-    new: return (count + size - 1) / size;
+    new: 'return count / size + (count % size == 0 ? 0 : 1);'
 bugs:
 - id: B001
   title: Off-by-one page count moved and duplicated before the fix
@@ -130,7 +130,7 @@ bugs:
   - id: X001
     commit: c3
     file: src/main/java/example/PagingUtils.java
-    statement: return (count + size - 1) / size;
+    statement: 'return count / size + (count % size == 0 ? 0 : 1);'
     fix_type: line_modification_after_method_move
     entity:
       type: method
@@ -138,7 +138,7 @@ bugs:
   - id: X002
     commit: c3
     file: src/main/java/example/Batches.java
-    statement: return (count + size - 1) / size;
+    statement: 'return count / size + (count % size == 0 ? 0 : 1);'
     fix_type: line_modification_after_line_copy
     entity:
       type: method
@@ -192,8 +192,11 @@ scenario_design:
     Commit c2 does two things at once: the line disappears from Paging.java and appears in PagingUtils.java (a
     move, behaviour-preserving, so c1 stays that instance's direct BIC) and in Batches.java (a copy, which
     creates a faulty instance that did not exist before, so c2 is its direct BIC). The BFC fixes both copies,
-    so the oracle is the union {c1, c2} and no faulty copy remains at HEAD. Measured: pageCount(20, 10) is 3
-    at c1 and c2 and 2 at c3; batchCount(20, 10) is 3 at c2 and 2 at c3; both are 3 for 21 items throughout.
+    so the oracle is the union {c1, c2} and no faulty copy remains at HEAD. The correct form is the
+    overflow-safe `count / size + (count % size == 0 ? 0 : 1)`, not `(count + size - 1) / size`, so the fix is
+    right for every count that fits in int. Measured: pageCount(20, 10) is 3 at c1 and c2 and 2 at c3;
+    batchCount(20, 10) is 3 at c2 and 2 at c3; both are 3 for 21 items throughout, and 21474837 for
+    Integer.MAX_VALUE items throughout.
   evaluation_points:
   - Whether SZZ identifies c1 as the BIC of the moved instance despite the move in c2.
   - Whether SZZ also identifies c2 as the BIC of the instance its copy created, rather than treating the whole

@@ -4,8 +4,8 @@ meta:
   title: Multiple BICs with partial revert reintroducing one fault
   slug: multiple-bics-with-partial-revert-reintroducing-one-fault
   description: >-
-    Two original BICs — the balance due adds the credit instead of subtracting it, and the status labels are
-    swapped — are fixed together, but a later partial revert reintroduces only the balance fault.
+    Two original BICs — the status labels are swapped, and the balance due adds the credit instead of
+    subtracting it — are fixed together, but a later partial revert reintroduces only the balance fault.
   category: "Revert-specific reintroduction"
   category_code: "G6"
   factors:
@@ -28,9 +28,9 @@ graph:
   model: commit_dag
   history_summary: 'c0: create the invoice summary (due = amount - credit; PAID/OPEN labels)
 
-    c1: add the credit to the amount due instead of subtracting it (first origin fault)
+    c1: swap the PAID and OPEN labels (first origin fault)
 
-    c2: swap the PAID and OPEN labels (second origin fault)
+    c2: add the credit to the amount due instead of subtracting it (second origin fault, the one reintroduced later)
 
     c3: fix both (prior fix)
 
@@ -52,17 +52,6 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'Apply the credit to the amount due'
-  role: origin_bug_introducing
-  operations:
-  - type: replace
-    path: src/main/java/example/InvoiceSummary.java
-    old: int due = amount - credit;
-    new: int due = amount + credit;
-- id: c2
-  branch: main
-  parents:
-  - c1
   message: 'Rename the status labels'
   role: origin_bug_introducing
   operations:
@@ -70,6 +59,17 @@ commits:
     path: src/main/java/example/InvoiceSummary.java
     old: 'String status = paid ? "PAID" : "OPEN";'
     new: 'String status = paid ? "OPEN" : "PAID";'
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'Apply the credit to the amount due'
+  role: origin_bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/InvoiceSummary.java
+    old: int due = amount - credit;
+    new: int due = amount + credit;
 - id: c3
   branch: main
   parents:
@@ -110,7 +110,7 @@ bugs:
   bug_introducing_commits:
   - commit: c4
     role: direct
-  - commit: c1
+  - commit: c2
     role: origin
   bug_fixing_commits:
   - commit: c5
@@ -133,12 +133,12 @@ expected_szz:
     required:
     - c4
     related_but_not_correct:
-    - c2
-    - c3
-    notes: The final BFC targets only the fault reintroduced by c4; the original BICs are related history, and c1 is
-      the origin of the reintroduced fault.
-    related_origins:
     - c1
+    - c3
+    notes: The final BFC targets only the fault reintroduced by c4; original BICs are related history, and c2 is the
+      origin of the reintroduced fault.
+    related_origins:
+    - c2
   evaluation_variants:
   - name: origin-aware
     description: The direct BIC is required; the origin is accepted as related context.
@@ -147,18 +147,18 @@ expected_szz:
       required:
       - c4
       acceptable_related:
-      - commit: c1
+      - commit: c2
         reason: origin_bic
         credit: 0.5
       related_but_not_correct:
-      - c2
+      - c1
       - c3
 scenario_design:
   purpose: Evaluate multiple original BICs when a later partial revert reintroduces only one of them.
   key_property: >-
     The direct BIC for the final fix is the partial revert, not the older original BIC set. Measured:
-    summarize(100, 30, false) is "OPEN 70" at c0, "OPEN 130" at c1, "PAID 130" at c2, "OPEN 70" at c3,
-    "OPEN 130" at c4, "OPEN 70" at c5. Blaming the line c5 deletes at c5^ returns c4.
+    summarize(100, 30, false) is "OPEN 70" at c0, "PAID 70" at c1 (labels swapped), "PAID 130" at c2 (both
+    faults), "OPEN 70" at c3, "OPEN 130" at c4, "OPEN 70" at c5. Blaming the line c5 deletes at c5^ returns c4.
   difference_from_existing_revert_scenarios: This scenario isolates a double-revert or revert-derived complication beyond
     the existing partial revert and reintroduction scenarios.
   evaluation_points:
@@ -168,5 +168,5 @@ notes:
 - This scenario models revert-related development history for SZZ evaluation.
 - The direct BIC is the commit that reintroduces the bug in the history observed from the BFC.
 - Rewritten 2026-09-21 from the shared aboveMin/belowMax template to a wrong-operator fault next to a swapped-label
-  fault (GitHub issue 13); the history shape, oracle and coverage dimensions are unchanged. The origin of the
-  reintroduced fault is now c1 (the balance line), where the template version's origin was c2.
+  fault (GitHub issue 13); the history shape, oracle, variants and coverage dimensions are unchanged, including the
+  origin of the reintroduced fault (c2).

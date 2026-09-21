@@ -18,7 +18,7 @@ the fault file, 3 commits, 1 ref) are unchanged.
 ## Commit structure (generated)
 
 ```text
-* 615c541  2024-07-30  Count pages and batches without an extra one for exact multiples  <- BFC (c3; PagingUtils.java and Batches.java)
+* 162b541  2024-07-30  Count pages and batches without an extra one for exact multiples  <- BFC (c3; PagingUtils.java and Batches.java)
 * 03e528f  2024-07-24  Move pageCount to PagingUtils and add Batches.batchCount           <- BIC of the duplicate (c2); move of the original
 * 8bbc4a3  2024-07-15  Add Paging with page count and offset helpers                      <- BIC of the moved instance (c1)
 ```
@@ -30,11 +30,16 @@ the fault file, 3 commits, 1 ref) are unchanged.
 
 ## Measured behaviour and blame
 
-| commit | `pageCount(20, 10)` | `batchCount(20, 10)` | for 21 items |
-|---|---|---|---|
-| `c1` | **3** (`Paging`) | — | 3 |
-| `c2` | **3** (`PagingUtils`) | **3** | 3 |
-| `c3` | 2 | 2 | 3 |
+| commit | `pageCount(20, 10)` | `batchCount(20, 10)` | for 21 items | for `Integer.MAX_VALUE` items |
+|---|---|---|---|---|
+| `c1` | **3** (`Paging`) | — | 3 | 21474837 |
+| `c2` | **3** (`PagingUtils`) | **3** | 3 | 21474837 |
+| `c3` | 2 | 2 | 3 | 21474837 |
+
+The correct form is the overflow-safe `count / size + (count % size == 0 ? 0 : 1)`,
+not `(count + size - 1) / size`, which would wrap for counts near
+`Integer.MAX_VALUE` (PR #63 review); the faulty `count / size + 1` is wrong only
+for exact multiples.
 
 `c3` deletes one line in each of `PagingUtils.java` and `Batches.java` (line 5
 in both); blame at `c3^` returns `c2` for both, because both files were created
