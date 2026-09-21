@@ -10,7 +10,7 @@ from .findings import ValidationResult
 from .operations import SUPPORTED_OPERATIONS, FUTURE_OPERATIONS, OperationError, apply_operation_to_memory, find_all_occurrences
 from .paths import PathValidationError, validate_repo_relative_path
 from .scenario import load_yaml
-from .gitutils import resolve_commit_metadata
+from .gitutils import resolved_commit_authors
 
 ALLOWED_ROLES = {
     "initial", "bug_introducing", "bug_fixing", "distractor", "refactoring",
@@ -416,9 +416,12 @@ def lint_author_coincidence(data: dict[str, Any], suite: str, result: Validation
     That is exactly the condition under which the cheap baseline "report every
     commit written by X" returns the oracle, so the scenario is solved by the
     author rotation rather than by any signal.  The oracle is resolved the way
-    the evaluator resolves it (default variant, inferred BICs), and the author
-    of a commit without an explicit ``author`` is the deterministic default the
-    generator will assign.  A multi-commit coincidence is a warning
+    the evaluator resolves it (default variant, inferred BICs); the history is
+    the one the generated repository will have (``resolved_commit_authors``):
+    every commit with its explicit or deterministic default author, compared as
+    Git records it (``name <email>``), plus the commits ``commit_generator``
+    expands, which the author baseline sees through ``git log --all``.  A
+    multi-commit coincidence is a warning
     (``<prefix>413``); a one-commit oracle is solved by many cheap rules anyway,
     so its coincidence is reported as information (``<info prefix>413``).
     """
@@ -428,24 +431,21 @@ def lint_author_coincidence(data: dict[str, Any], suite: str, result: Validation
         required = set(_commit_level_policy(data, suite, None).required)
     except Exception:  # a scenario the evaluator cannot read is reported elsewhere
         return
-    commits = [c for c in (data.get("commits") or []) if isinstance(c, dict)]
-    if not required or len(commits) < 2:
+    try:
+        history = resolved_commit_authors(data)   # scenario commits and the commits commit_generator expands
+    except Exception:
+        return
+    if not required or len(history) < 2:
         return
     owned: dict[str, set[str]] = {}
-    for index, commit in enumerate(commits):
-        cid = commit.get("id")
-        if not isinstance(cid, str):
-            continue
-        try:
-            author = resolve_commit_metadata(data, commit, index).author
-        except Exception:
-            return
+    for cid, author in history:
         owned.setdefault(author, set()).add(cid)
+    explicit_by_id = {c.get("id"): bool(c.get("author")) for c in (data.get("commits") or []) if isinstance(c, dict)}
     info_prefix = prefix[:-1] + "I"
     for author, ids in sorted(owned.items()):
         if ids != required:
             continue
-        explicit = "explicit" if all(c.get("author") for c in commits if c.get("id") in ids) else "generator-assigned"
+        explicit = "explicit" if all(explicit_by_id.get(cid) for cid in ids) else "generator-assigned"
         message = (f"author {author!r} wrote exactly the required commit(s) {sorted(required)} and nothing else "
                    f"({explicit}), so the baseline 'report every commit by this author' returns the oracle by coincidence "
                    f"(issue #43); give the required commits distinct explicit authors")

@@ -1001,3 +1001,66 @@ def test_author_coincidence_resolves_the_oracle_like_the_evaluator():
         assert info_codes(result) == ["GI413"] and "generator-assigned" in result.findings[0].message
     else:
         assert info_codes(result) == []
+
+
+def test_author_coincidence_compares_identities_as_git_records_them():
+    """PR #64 review: two spellings of one identity must be one author. `Aiko Tanaka <a@x>` and
+    `Aiko Tanaka<a@x>` are the same Git author, so together they own {c0, c1} -> GW413."""
+    data = graph_scenario()
+    data["bugs"][0]["bug_introducing_commits"] = [{"commit": "c0", "role": "direct"}, {"commit": "c1", "role": "direct"}]
+    data["expected_szz"]["commit_level"]["required"] = ["c0", "c1"]
+    data["commits"][0]["author"] = "Aiko Tanaka <aiko.tanaka@example.com>"
+    data["commits"][1]["author"] = "Aiko Tanaka<aiko.tanaka@example.com>"
+    data["commits"][2]["author"] = "Bob Example <bob@example.com>"
+    result = lint_graph(data)
+    assert codes(result) == ["GW413"]
+    assert "'Aiko Tanaka <aiko.tanaka@example.com>'" in result.findings[0].message   # the canonical spelling
+    # a name without an e-mail gets the benchmark's default address, like the generator gives it
+    from szzbench.gitutils import canonical_author
+    assert canonical_author(" Bob ") == "Bob <szz-benchmark@example.com>"
+    assert canonical_author("A <a@x>") == canonical_author("A<a@x>") == canonical_author("  A   <a@x>  ")
+
+
+def _generated_history_fixture(shared_author: str) -> dict:
+    """graph fixture whose fix commit also expands one commit_generator commit; c0 and c1 (the oracle)
+    share `shared_author`."""
+    data = graph_scenario()
+    data["bugs"][0]["bug_introducing_commits"] = [{"commit": "c0", "role": "direct"}, {"commit": "c1", "role": "direct"}]
+    data["expected_szz"]["commit_level"]["required"] = ["c0", "c1"]
+    data["commits"][0]["author"] = shared_author
+    data["commits"][1]["author"] = shared_author
+    data["commits"][2]["author"] = "Bob Example <bob@example.com>"
+    data["commits"][2]["operations"].insert(0, {"type": "commit_generator", "generator": "catalog_sync", "count": 1, "files": 1, "path": "generated/catalog"})
+    return data
+
+
+def test_author_coincidence_counts_the_commits_commit_generator_expands():
+    """PR #64 review: the author baseline sees generated commits through `git log --all`. When the
+    generated commit's deterministic author is the required commits' author, that author's set is
+    {c0, c1, c2.g1}, not the oracle, and there is no coincidence to report."""
+    from szzbench.gitutils import canonical_author, deterministic_author
+    generated_author = canonical_author(deterministic_author("SZZG-9900", "c2.g1"))
+    with_generated = lint_graph(_generated_history_fixture(generated_author))
+    assert codes(with_generated) == [] and info_codes(with_generated) == []
+    other = "Zed Example <zed@example.com>"
+    assert other != generated_author
+    warned = lint_graph(_generated_history_fixture(other))
+    assert codes(warned) == ["GW413"]
+
+
+def test_history_model_matches_the_generated_repository(tmp_path):
+    """`resolved_commit_authors` is what the lint and the leakage guard reason about; it must list every
+    commit of the generated repository, generated ones included, with the author Git records."""
+    from szzbench.gitutils import deterministic_author, canonical_author, resolved_commit_authors
+    from szzbench.graph_generator import generate_graph_repository
+    import subprocess
+    data = _generated_history_fixture(canonical_author(deterministic_author("SZZG-9900", "c2.g1")))
+    path = write_yaml(tmp_path / "SZZG-9900" / "scenario.graph.yml", data)
+    commit_map, verify = generate_graph_repository(path, tmp_path / "out", force=True)
+    assert not verify.has_errors(), verify.to_dict()
+    log = subprocess.run(["git", "log", "--all", "--format=%H%x00%an <%ae>"], cwd=tmp_path / "out" / "repo",
+                         capture_output=True, text=True, check=True).stdout
+    by_hash = {line.split("\x00")[0]: line.split("\x00")[1] for line in log.splitlines() if line}
+    from_git = {cid: by_hash[entry["hash"]] for cid, entry in commit_map.items()}
+    assert dict(resolved_commit_authors(data)) == from_git
+    assert "c2.g1" in from_git

@@ -100,6 +100,56 @@ def parse_author(author: str | None) -> tuple[str, str]:
 # ---------------------------------------------------------------------------
 # Deterministic commit metadata (issue #9)
 # ---------------------------------------------------------------------------
+def canonical_author(author: str | None) -> str:
+    """The identity Git records for ``author``: ``name <email>`` as the generator writes it
+    (``parse_author`` supplies the benchmark's default e-mail when none is given), so that two
+    spellings of one identity (``A <a@x>``, ``A<a@x>``, `` A <a@x> ``) compare equal."""
+    name, email = parse_author(author)
+    return f"{name.strip()} <{email.strip()}>"     # git strips the ident's surrounding whitespace
+
+
+#: Upper bound on the commits one ``commit_generator`` operation may expand into.
+MAX_GENERATED_COMMITS = 2000
+
+
+def planned_generated_commits(owner_id: str, commit_spec: dict[str, Any]) -> list[str]:
+    """The ``<owner>.g<N>`` ids the generator will create for ``commit_spec``'s
+    ``commit_generator`` operations, in order and with the count cap applied.
+    A count the generator would reject is skipped here; it is reported there."""
+    total = 0
+    for op in commit_spec.get("operations") or []:
+        if not isinstance(op, dict) or op.get("type") != "commit_generator":
+            continue
+        try:
+            requested = int(op.get("count"))
+        except (TypeError, ValueError):
+            continue
+        total += min(max(requested, 0), MAX_GENERATED_COMMITS)
+    return [f"{owner_id}.g{n}" for n in range(1, total + 1)]
+
+
+def resolved_commit_authors(scenario: dict[str, Any]) -> list[tuple[str, str]]:
+    """``(commit id, canonical author)`` for every commit the generated repository will contain.
+
+    This is the history model a metadata rule sees: the scenario's own commits with their explicit
+    or deterministic default author (``resolve_commit_metadata``), followed by the commits every
+    ``commit_generator`` operation expands into, which the generator attributes with
+    ``deterministic_author(scenario id, generated id)``.  Any check that reasons about "the commits
+    written by X" must use this list, not ``scenario['commits']`` alone.
+    """
+    meta = scenario.get("meta") if isinstance(scenario.get("meta"), dict) else {}
+    repository = scenario.get("repository") if isinstance(scenario.get("repository"), dict) else {}
+    scenario_id = str(meta.get("id") or repository.get("name") or "scenario")
+    rows: list[tuple[str, str]] = []
+    for index, commit in enumerate(scenario.get("commits") or []):
+        if not isinstance(commit, dict) or not isinstance(commit.get("id"), str):
+            continue
+        rows.append((commit["id"], canonical_author(resolve_commit_metadata(scenario, commit, index).author)))
+        for generated_id in planned_generated_commits(commit["id"], commit):
+            rows.append((generated_id, canonical_author(deterministic_author(scenario_id, generated_id))))
+    return rows
+
+
 
 DEFAULT_BASE_DATE = "2024-01-01T10:00:00Z"
 

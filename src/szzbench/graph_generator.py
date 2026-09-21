@@ -8,6 +8,7 @@ import shutil
 
 from .findings import ValidationResult
 from .gitutils import (
+    MAX_GENERATED_COMMITS,
     CommitMetadata,
     GitError,
     deterministic_author,
@@ -38,7 +39,6 @@ class GraphGenerationError(RuntimeError):
 
 
 # Upper bound for one ``commit_generator`` operation (issue #18).
-MAX_GENERATED_COMMITS = 2000
 # Generated files keep at most this many change lines so that blobs stay small
 # even for thousands of generated commits.
 GENERATED_FILE_MAX_LINES = 50

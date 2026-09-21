@@ -14,7 +14,7 @@ from pathlib import Path
 
 import yaml
 
-from szzbench.gitutils import resolve_commit_metadata
+from szzbench.gitutils import resolve_commit_metadata, resolved_commit_authors
 from szzbench.validator import LEAK_CONTENT_FIELDS, LEAK_ROLE_RE, logical_id_reference
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -112,9 +112,11 @@ def test_message_only_predictor_wins_nothing():
 
 
 def _author_sets(data):
-    """(author label per commit, commit ids) with the deterministic defaults applied."""
-    commits = data.get("commits") or []
-    return [resolve_commit_metadata(data, commit, index).author for index, commit in enumerate(commits)], [c.get("id") for c in commits]
+    """(canonical author per commit, commit ids) for the history the generated repository will have:
+    explicit or deterministic default authors as Git records them, plus the commits `commit_generator`
+    expands (PR #64 review) - the same model the W413 lint uses."""
+    rows = resolved_commit_authors(data)
+    return [author for _, author in rows], [cid for cid, _ in rows]
 
 
 def _best_single_author(rows):
