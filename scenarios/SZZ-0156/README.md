@@ -14,7 +14,9 @@
 
 ## Summary
 
-Evaluates multiple overloaded methods and checks whether SZZ identifies the expected bug-introducing commit set.
+`Range.contains` has several overloads and only the `int` overload is faulty: `c1` makes its
+boundary check exclusive and `c2` restores it, while the other overloads stay correct throughout. A
+tool must attribute the fix to the overload it repairs, not to the method name.
 
 ## Expected SZZ Behavior
 

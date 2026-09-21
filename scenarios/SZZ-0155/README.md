@@ -14,7 +14,9 @@
 
 ## Summary
 
-Evaluates same bug introduced independently and checks whether SZZ identifies the expected bug-introducing commit set.
+Two commits introduce the same exclusive-boundary fault independently in two methods of
+`IndependentRanges`: `c1` in one, `c2` in the other, neither copied from the other. `c3` repairs
+both, so the oracle is the two-commit set {c1, c2}.
 
 ## Expected SZZ Behavior
 

@@ -14,7 +14,8 @@
 
 ## Purpose
 
-This scenario inserts an intermediate intermediate-history change between the BIC and BFC.
+This scenario inserts a comment-only change between the BIC and BFC: `c2` deletes an outdated
+comment above the faulty line without touching the code.
 
 ## Commit structure
 
