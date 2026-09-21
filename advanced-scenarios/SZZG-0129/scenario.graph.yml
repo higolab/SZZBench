@@ -1,0 +1,179 @@
+schema_version: graph-1.0
+meta:
+  id: SZZG-0129
+  title: Octopus merge with the faulty branch on a non-first parent
+  slug: octopus-merge-bic-on-later-parent
+  description: >
+    Three feature branches, each touching its own file, are integrated with one octopus merge. The fault
+    is on the second of them. Along main's first-parent history the change appears with the merge commit;
+    the commit that made it is only reachable through the merge's third parent.
+  category: "Branch, merge, cherry-pick, backport, and release branches"
+  category_code: "G4"
+  factors:
+  - merge
+  - octopus-merge
+  - bic-on-non-first-parent
+  - multi-branch-integration
+  difficulty: advanced
+  status: active
+  tier: control
+repository:
+  name: SZZG-0129-octopus-merge-bic-on-later-parent
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'Add the quota policy, the audit log and the report formatter'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/QuotaPolicy.java
+    content: |
+      package example;
+
+      public class QuotaPolicy {
+          public boolean within(int used, int limit) {
+              return used <= limit;
+          }
+      }
+  - type: write_file
+    path: src/main/java/example/AuditLog.java
+    content: |
+      package example;
+
+      import java.util.ArrayList;
+      import java.util.List;
+
+      public class AuditLog {
+          private final List<String> entries = new ArrayList<>();
+
+          public void record(String entry) {
+              entries.add(entry);
+          }
+
+          public int size() {
+              return entries.size();
+          }
+      }
+  - type: write_file
+    path: src/main/java/example/ReportFormatter.java
+    content: |
+      package example;
+
+      public class ReportFormatter {
+          public String line(String key, int value) {
+              return key + "=" + value;
+          }
+      }
+- id: a1
+  branch: audit
+  parents:
+  - c0
+  message: 'Keep the time of each audit entry'
+  role: intermediate
+  operations:
+  - type: replace
+    path: src/main/java/example/AuditLog.java
+    old: |
+      public void record(String entry) {
+              entries.add(entry);
+          }
+    new: |
+      public void record(String entry) {
+              entries.add(System.currentTimeMillis() + " " + entry);
+          }
+- id: q1
+  branch: quota
+  parents:
+  - c0
+  message: 'Refuse a request that would fill the quota completely'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/QuotaPolicy.java
+    old: return used <= limit;
+    new: return used < limit;
+- id: f1
+  branch: format
+  parents:
+  - c0
+  message: 'Pad report keys to a fixed width'
+  role: intermediate
+  operations:
+  - type: replace
+    path: src/main/java/example/ReportFormatter.java
+    old: return key + "=" + value;
+    new: return String.format("%-12s= %d", key, value);
+- id: m1
+  branch: main
+  parents:
+  - c0
+  - a1
+  - q1
+  - f1
+  message: "Merge branches 'audit', 'quota' and 'format' into main"
+  role: merge
+  operations: []
+- id: c2
+  branch: main
+  parents:
+  - m1
+  message: 'Allow a request that uses the quota exactly'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/QuotaPolicy.java
+    old: return used < limit;
+    new: return used <= limit;
+bugs:
+- id: B001
+  title: A request that exactly fills the quota is refused
+  bug_introducing_commits:
+  - commit: q1
+    role: direct
+  bug_fixing_commits:
+  - commit: c2
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: q1
+    file: src/main/java/example/QuotaPolicy.java
+    statement: return used < limit;
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c2
+    file: src/main/java/example/QuotaPolicy.java
+    statement: return used <= limit;
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - q1
+    related_but_not_correct:
+    - m1
+    notes: >
+      m1 is the octopus merge that brought q1's change onto main. `git log --first-parent main` shows m1
+      as the commit that changed QuotaPolicy.java; q1 is on the merge's third parent.
+scenario_design:
+  purpose: >
+    Every merge in the suite has two parents. An octopus merge integrates several branches at once, and
+    the faulty one is neither the first nor the last parent, so a tool that only follows the first parent
+    -- or the last-listed one -- attributes the change to the merge.
+  key_property: >
+    Blaming the line c2 deletes at c2^ returns q1: git blame follows all parents. The three branches touch
+    three different files, so the octopus merge is clean, which is the only kind git's octopus strategy
+    can produce.
+  evaluation_points:
+  - Report q1.
+  - Do not report the merge m1.
+notes:
+- The merge is generated with a single `git merge --no-ff --no-commit <a1> <q1> <f1>`; the commit has four
+  parents (c0 first).

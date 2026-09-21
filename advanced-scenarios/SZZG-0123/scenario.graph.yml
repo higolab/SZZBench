@@ -1,0 +1,159 @@
+schema_version: graph-1.0
+meta:
+  id: SZZG-0123
+  title: The fix lands on the un-rebased branch, which is merged after its commits were rebased
+  slug: fix-on-unrebased-branch-merged-later
+  description: >
+    A feature branch introduces the fault and is rebased onto main, so main carries a replay of it.
+    The fix is then committed on the original, un-rebased branch, and that branch is merged into main.
+    After the merge both the original fault and its replay are ancestors of main, and the fix arrived
+    through the merge rather than through the rebased line.
+  category: "Rebase-specific history rewriting"
+  category_code: "G5"
+  factors:
+  - rebase
+  - merge
+  - fix-on-feature-branch
+  - origin-and-replay-both-reachable
+  difficulty: advanced
+  status: active
+  tier: control
+repository:
+  name: SZZG-0123-fix-on-unrebased-branch-merged-later
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'Add the retry budget'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/RetryBudget.java
+    content: |
+      package example;
+
+      public class RetryBudget {
+          public boolean allows(int attempts, int limit) {
+              return attempts < limit;
+          }
+      }
+- id: f1
+  branch: feature
+  parents:
+  - c0
+  message: 'Let the last permitted attempt through'
+  role: origin_bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/RetryBudget.java
+    old: return attempts < limit;
+    new: return attempts <= limit;
+- id: m1
+  branch: main
+  parents:
+  - c0
+  message: 'Document the retry budget'
+  role: intermediate
+  operations:
+  - type: write_file
+    path: docs/retry-budget.md
+    content: |
+      # Retry budget
+
+      `allows` answers whether another attempt may be made.
+- id: r1
+  branch: main
+  parents:
+  - m1
+  role: bug_introducing
+  rebase_of: f1
+  inherit_message: true
+  inherit_author_date: true
+  operations:
+  - type: replace
+    path: src/main/java/example/RetryBudget.java
+    old: return attempts < limit;
+    new: return attempts <= limit;
+- id: f2
+  branch: feature
+  parents:
+  - f1
+  message: 'Stop the attempt that exceeds the budget, and reject a non-positive limit'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/RetryBudget.java
+    old: return attempts <= limit;
+    new: return limit > 0 && attempts < limit;
+- id: c3
+  branch: main
+  parents:
+  - r1
+  - f2
+  message: "Merge branch 'feature' into main"
+  role: merge
+  operations: []
+  resolution:
+    src/main/java/example/RetryBudget.java: |
+      package example;
+
+      public class RetryBudget {
+          public boolean allows(int attempts, int limit) {
+              return limit > 0 && attempts < limit;
+          }
+      }
+bugs:
+- id: B001
+  title: One attempt beyond the budget is allowed
+  bug_introducing_commits:
+  - commit: f1
+    role: direct
+  bug_fixing_commits:
+  - commit: f2
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: f1
+    file: src/main/java/example/RetryBudget.java
+    statement: return attempts <= limit;
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: f2
+    file: src/main/java/example/RetryBudget.java
+    statement: return limit > 0 && attempts < limit;
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - f1
+    related_but_not_correct:
+    - r1
+    - c3
+    notes: >
+      The bug-fixing commit f2 is on the feature branch, whose history contains the original f1 and not
+      the replay r1. r1 carries the same faulty text but is not an ancestor of the fix; c3 is the merge
+      that brought the fix to main and resolved the conflict in the fix's favour. Neither is the BIC.
+scenario_design:
+  purpose: >
+    Cover the case the rebase scenarios leave out: the fix is made on the branch that was rebased, not on
+    the rebased line, and the branch is merged afterwards. A tool that evaluates the fix in main's history
+    after c3 sees both f1 and r1 as ancestors and has to decide which one the fix answers.
+  key_property: >
+    Blaming the line f2 deletes at f2^ returns f1. On main after c3, `git log --first-parent` never shows
+    f1 or f2 -- it shows r1 and the merge -- so a first-parent tool attributes the fault to r1 and the fix
+    to c3. The merge needs a resolution because r1 (ours) and f2 (theirs) changed the same line against
+    their common base c0.
+  evaluation_points:
+  - Report f1 for the fix f2.
+  - Do not report r1, the replay that is not an ancestor of the fix.
+  - Do not report the merge c3.
+notes:
+- The merge conflict is real; `resolution` supplies the fix's version of the file.

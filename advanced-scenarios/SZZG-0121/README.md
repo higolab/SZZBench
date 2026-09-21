@@ -32,7 +32,7 @@ with `git merge-base --is-ancestor` — and `r1` carries the usual trailer:
 ## Expected BIC / BFC
 
 - BICs: `r1` and `c2` (`exact_set`, `required: [r1, c2]`)
-- `related_but_not_correct`: `c1` — the same change, but not in the history the fix belongs to
+- `related_origins`: `c1` — the commit `r1` was cherry-picked from; not in the history the fix belongs to, so a plain false positive under the default variant and accepted with half credit under `origin-aware`
 - BFC: `c3`
 
 ## Measured behaviour (from the generated repository)

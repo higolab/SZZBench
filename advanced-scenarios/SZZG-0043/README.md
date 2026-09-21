@@ -37,3 +37,7 @@ Evaluate whether SZZ can identify a BIC located on a feature branch when the BFC
 ## Notes
 
 - This scenario is intentionally distinct from SZZG-0046 and SZZG-0042 because the BFC is not a merge commit.
+
+## Twin
+
+[SZZG-0128](../SZZG-0128/README.md) is this scenario with the same feature commits integrated by a fast-forward instead of a `--no-ff` merge, so main has no merge commit. The oracle is identical; the pair separates tools that react to that difference from tools that do not.

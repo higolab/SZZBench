@@ -1,0 +1,148 @@
+schema_version: graph-1.0
+meta:
+  id: SZZG-0124
+  title: A cherry-pick whose conflict adaptation introduces the bug
+  slug: cherry-pick-adaptation-introduces-bug
+  description: >
+    A correct change on main is cherry-picked onto a release branch that had renamed the parameters
+    on the same lines. The cherry-pick conflicts, and the hand-written adaptation drops one of the two
+    bounds the source change added. The source commit is correct; the fault is in the adaptation.
+  category: "Branch, merge, cherry-pick, backport, and release branches"
+  category_code: "G4"
+  factors:
+  - cherry-pick
+  - conflict-resolution
+  - adaptation-introduces-bug
+  - release-branch
+  difficulty: advanced
+  status: active
+  tier: control
+repository:
+  name: SZZG-0124-cherry-pick-adaptation-introduces-bug
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'Add the upload window check'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/UploadWindow.java
+    content: |
+      package example;
+
+      public class UploadWindow {
+          public boolean accepts(int sizeKb, int lower, int upper) {
+              return sizeKb > lower && sizeKb < upper;
+          }
+      }
+- id: rel1
+  branch: release
+  parents:
+  - c0
+  message: 'Name the window bounds floor and ceiling on the release branch'
+  role: intermediate
+  operations:
+  - type: replace
+    path: src/main/java/example/UploadWindow.java
+    old: |
+      public boolean accepts(int sizeKb, int lower, int upper) {
+              return sizeKb > lower && sizeKb < upper;
+          }
+    new: |
+      public boolean accepts(int sizeKb, int floor, int ceiling) {
+              return sizeKb > floor && sizeKb < ceiling;
+          }
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'Accept uploads exactly at the window bounds'
+  role: intermediate
+  operations:
+  - type: replace
+    path: src/main/java/example/UploadWindow.java
+    old: return sizeKb > lower && sizeKb < upper;
+    new: return sizeKb >= lower && sizeKb <= upper;
+- id: r1
+  branch: release
+  parents:
+  - rel1
+  message: 'Accept uploads exactly at the window bounds'
+  role: bug_introducing
+  cherry_pick_of: c1
+  cherry_pick_trailer: true
+  inherit_author_date: true
+  resolution:
+    src/main/java/example/UploadWindow.java: |
+      package example;
+
+      public class UploadWindow {
+          public boolean accepts(int sizeKb, int floor, int ceiling) {
+              return sizeKb >= floor && sizeKb < ceiling;
+          }
+      }
+- id: r2
+  branch: release
+  parents:
+  - r1
+  message: 'Accept an upload exactly at the ceiling on the release branch too'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/UploadWindow.java
+    old: return sizeKb >= floor && sizeKb < ceiling;
+    new: return sizeKb >= floor && sizeKb <= ceiling;
+bugs:
+- id: B001
+  title: On the release branch an upload exactly at the ceiling is rejected
+  bug_introducing_commits:
+  - commit: r1
+    role: direct
+  bug_fixing_commits:
+  - commit: r2
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: r1
+    file: src/main/java/example/UploadWindow.java
+    statement: return sizeKb >= floor && sizeKb < ceiling;
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: r2
+    file: src/main/java/example/UploadWindow.java
+    statement: return sizeKb >= floor && sizeKb <= ceiling;
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - r1
+    related_but_not_correct:
+    - c1
+    notes: >
+      c1 is what r1 was cherry-picked from and what the trailer points at, but c1 is correct: it accepts
+      both bounds. The fault exists only in r1's adaptation, so a tool that follows the trailer to c1 has
+      named a commit that does not contain the bug.
+scenario_design:
+  purpose: >
+    Twin of SZZG-0125. Both cherry-pick the same kind of change onto a release branch that renamed the
+    parameters, both conflict, both carry the trailer. Here the source is correct and the adaptation is
+    wrong; in SZZG-0125 the source is wrong and the adaptation is faithful.
+  key_property: >
+    Blaming the line r2 deletes at r2^ returns r1, so plain blame is right. The trailer offers c1 as a
+    plausible answer, and c1 is a false positive here -- the opposite of SZZG-0125, where following the
+    trailer finds the origin.
+  evaluation_points:
+  - Report r1.
+  - Do not report c1; it is correct code.
+notes:
+- The cherry-pick conflict is real (rel1 renamed the parameters on the line c1 changes); `resolution`
+  supplies the adapted file, and that adaptation is where the bound goes missing.

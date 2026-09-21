@@ -1,0 +1,165 @@
+schema_version: graph-1.0
+meta:
+  id: SZZG-0125
+  title: A cherry-pick whose conflict adaptation is faithful to a faulty source
+  slug: cherry-pick-adaptation-faithful-to-faulty-source
+  description: >
+    A change on main that excludes the window bounds is cherry-picked onto a release branch that had
+    renamed the parameters on the same lines. The cherry-pick conflicts and the adaptation reproduces the
+    source change exactly, under the new names. The fault came with the source; the adaptation is benign.
+  category: "Branch, merge, cherry-pick, backport, and release branches"
+  category_code: "G4"
+  factors:
+  - cherry-pick
+  - conflict-resolution
+  - origin-and-direct-bic
+  - release-branch
+  difficulty: advanced
+  status: active
+  tier: control
+repository:
+  name: SZZG-0125-cherry-pick-adaptation-faithful
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'Add the upload window check'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/UploadWindow.java
+    content: |
+      package example;
+
+      public class UploadWindow {
+          public boolean accepts(int sizeKb, int lower, int upper) {
+              return sizeKb >= lower && sizeKb <= upper;
+          }
+      }
+- id: rel1
+  branch: release
+  parents:
+  - c0
+  message: 'Name the window bounds floor and ceiling on the release branch'
+  role: intermediate
+  operations:
+  - type: replace
+    path: src/main/java/example/UploadWindow.java
+    old: |
+      public boolean accepts(int sizeKb, int lower, int upper) {
+              return sizeKb >= lower && sizeKb <= upper;
+          }
+    new: |
+      public boolean accepts(int sizeKb, int floor, int ceiling) {
+              return sizeKb >= floor && sizeKb <= ceiling;
+          }
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'Require uploads strictly inside the window'
+  role: origin_bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/UploadWindow.java
+    old: return sizeKb >= lower && sizeKb <= upper;
+    new: return sizeKb > lower && sizeKb < upper;
+- id: r1
+  branch: release
+  parents:
+  - rel1
+  message: 'Require uploads strictly inside the window'
+  role: bug_introducing
+  cherry_pick_of: c1
+  cherry_pick_trailer: true
+  inherit_author_date: true
+  resolution:
+    src/main/java/example/UploadWindow.java: |
+      package example;
+
+      public class UploadWindow {
+          public boolean accepts(int sizeKb, int floor, int ceiling) {
+              return sizeKb > floor && sizeKb < ceiling;
+          }
+      }
+- id: r2
+  branch: release
+  parents:
+  - r1
+  message: 'Accept uploads exactly at the window bounds on the release branch'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/UploadWindow.java
+    old: return sizeKb > floor && sizeKb < ceiling;
+    new: return sizeKb >= floor && sizeKb <= ceiling;
+bugs:
+- id: B001
+  title: On the release branch uploads exactly at a bound are rejected
+  bug_introducing_commits:
+  - commit: r1
+    role: direct
+  - commit: c1
+    role: origin
+  bug_fixing_commits:
+  - commit: r2
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: r1
+    file: src/main/java/example/UploadWindow.java
+    statement: return sizeKb > floor && sizeKb < ceiling;
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: r2
+    file: src/main/java/example/UploadWindow.java
+    statement: return sizeKb >= floor && sizeKb <= ceiling;
+    fix_type: line_modification
+  origin_faults:
+  - id: OF001
+    commit: c1
+    file: src/main/java/example/UploadWindow.java
+    statement: return sizeKb > lower && sizeKb < upper;
+    change_type: origin_line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - r1
+    related_origins:
+    - c1
+    notes: >
+      r1 is the commit in the release branch's history that carries the faulty comparison; c1 is where it
+      was cherry-picked from, named by the trailer, and not an ancestor of the fix. Under the default
+      variant c1 is a false positive; the origin-aware variant accepts it as context.
+  evaluation_variants:
+  - name: origin-aware
+    description: The direct BIC is required; the cherry-pick source is accepted as related context.
+    commit_level:
+      evaluation_policy: relaxed_with_related
+      required:
+      - r1
+      acceptable_related:
+      - commit: c1
+        reason: origin_bic
+        credit: 0.5
+scenario_design:
+  purpose: >
+    Twin of SZZG-0124 with the fault on the other side: the cherry-picked source is faulty and the conflict
+    adaptation reproduces it faithfully under renamed parameters. Same branch shape, same conflict, same
+    trailer; only the answer to "was the bug in the source or in the adaptation?" differs.
+  key_property: >
+    Blaming the line r2 deletes at r2^ returns r1. The adapted text differs from c1's text (floor/ceiling
+    versus lower/upper), so patch-id matching between r1 and c1 fails; the trailer is the link that survives.
+  evaluation_points:
+  - Report r1.
+  - Treat c1 as origin, not as the answer (direct/origin contract D4).
+notes:
+- The cherry-pick conflict is real; `resolution` supplies the adapted file with the same exclusive bounds.

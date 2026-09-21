@@ -50,3 +50,7 @@ SZZG-0064 covers a rebased BIC followed by a non-BIC rebased intermediate commit
 
 - This scenario models a rebase-related development history for SZZ evaluation.
 - Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.
+
+## Twin
+
+[SZZG-0122](../SZZG-0122/README.md) is this scenario with the pre-rebase branch `feature` deleted after the rebase (`graph.ref_lifecycle.delete_branches`), so the origin `f1` is reachable from no ref. The oracle is identical; the pair separates tools that react to that difference from tools that do not.

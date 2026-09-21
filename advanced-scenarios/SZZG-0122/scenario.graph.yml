@@ -1,0 +1,177 @@
+schema_version: graph-1.0
+meta:
+  id: SZZG-0122
+  title: Rebased feature branch deleted after the rebase (twin of SZZG-0057)
+  slug: rebase-branch-deleted-twin
+  description: A feature branch from an old base is rebased after unrelated main changes.
+  category: "Branch, merge, cherry-pick, backport, and release branches"
+  category_code: "G4"
+  factors:
+  - branch
+  - rebase
+  - old-base
+  - unrelated-main-changes
+  - direct-bic
+  - origin-bic
+  difficulty: advanced
+  status: active
+  tier: control
+repository:
+  name: SZZG-0122-rebase-branch-deleted-twin
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  ref_lifecycle:
+    delete_branches:
+    - feature
+  history_summary: 'c0: create initial correct implementation
+
+    f1: introduce bug on old feature base
+
+    m1: unrelated main change
+
+    m2: second unrelated main change
+
+    r1: rebase old feature BIC onto latest main
+
+    c3: fix bug after rebase onto latest main'
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'Add the range check'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n}\n"
+- id: f1
+  branch: feature
+  parents:
+  - c0
+  message: 'Make the range check exclusive'
+  role: origin_bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+- id: m1
+  branch: main
+  parents:
+  - c0
+  message: 'Add the first main note'
+  role: intermediate
+  operations:
+  - type: write_file
+    path: docs/main1.md
+    content: 'main 1
+
+      '
+- id: m2
+  branch: main
+  parents:
+  - m1
+  message: 'Add the second main note'
+  role: intermediate
+  operations:
+  - type: write_file
+    path: docs/main2.md
+    content: 'main 2
+
+      '
+- id: r1
+  branch: main
+  parents:
+  - m2
+  message: 'Make the range check exclusive'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+  rebase_of: f1
+- id: c3
+  branch: main
+  parents:
+  - r1
+  message: 'Accept the range bounds again'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+bugs:
+- id: B001
+  title: Bug rebased after unrelated main changes
+  bug_introducing_commits:
+  - commit: r1
+    role: direct
+  - commit: f1
+    role: origin
+  bug_fixing_commits:
+  - commit: c3
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: r1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c3
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+    fix_type: line_modification
+  origin_faults:
+  - id: OF001
+    commit: f1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: origin_line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - r1
+    related_but_not_correct:
+    - m1
+    - m2
+    related_origins:
+    - f1
+  evaluation_variants:
+  - name: origin-aware
+    description: The direct BIC is required; the origin is accepted as related context.
+    commit_level:
+      evaluation_policy: relaxed_with_related
+      required:
+      - r1
+      acceptable_related:
+      - commit: f1
+        reason: origin_bic
+        credit: 0.5
+      related_but_not_correct:
+      - m1
+      - m2
+scenario_design:
+  purpose: >
+    The same commits as SZZG-0057, with one difference in the repository a tool receives: the pre-rebase
+    branch `feature` is deleted after the rebase, so the origin f1 keeps a valid hash but is reachable from
+    no ref. SZZG-0057 keeps the branch. The pair separates tools that walk from refs from tools that walk
+    every object, on an otherwise identical history and identical oracle.
+  key_property: >
+    r1 is the direct BIC in both twins. Here `git log --all` shows a single copy of the faulty change; in
+    SZZG-0057 it shows two. The required set does not change, only what is visible (direct/origin contract D8).
+  evaluation_points:
+  - Report r1.
+  - Do not report m1/m2.
+  - Behave the same as on SZZG-0057; a tool whose answer differs between the twins depends on ref reachability.
+notes:
+- Twin of SZZG-0057; the only difference is graph.ref_lifecycle.delete_branches.

@@ -1,6 +1,6 @@
 schema_version: graph-index-0.1-draft
 description: Index of draft advanced graph scenarios for SZZBench.
-scenario_count: 114
+scenario_count: 122
 scenarios:
 - id: SZZG-0001
   title: BFC performs rename and fix in the same commit
@@ -1327,5 +1327,104 @@ scenarios:
   - origin-and-direct-bic
   - value-flow
   - blame-unreachable-bic
+- id: SZZG-0122
+  title: Rebased feature branch deleted after the rebase (twin of SZZG-0057)
+  category_code: G4
+  category: Branch, merge, cherry-pick, backport, and release branches
+  path: advanced-scenarios/SZZG-0122/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0122/README.md
+  status: active
+  factors:
+  - branch
+  - rebase
+  - old-base
+  - unrelated-main-changes
+  - direct-bic
+  - origin-bic
+- id: SZZG-0123
+  title: The fix lands on the un-rebased branch, which is merged after its commits were rebased
+  category_code: G5
+  category: Rebase-specific history rewriting
+  path: advanced-scenarios/SZZG-0123/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0123/README.md
+  status: active
+  factors:
+  - rebase
+  - merge
+  - fix-on-feature-branch
+  - origin-and-replay-both-reachable
+- id: SZZG-0124
+  title: A cherry-pick whose conflict adaptation introduces the bug
+  category_code: G4
+  category: Branch, merge, cherry-pick, backport, and release branches
+  path: advanced-scenarios/SZZG-0124/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0124/README.md
+  status: active
+  factors:
+  - cherry-pick
+  - conflict-resolution
+  - adaptation-introduces-bug
+  - release-branch
+- id: SZZG-0125
+  title: A cherry-pick whose conflict adaptation is faithful to a faulty source
+  category_code: G4
+  category: Branch, merge, cherry-pick, backport, and release branches
+  path: advanced-scenarios/SZZG-0125/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0125/README.md
+  status: active
+  factors:
+  - cherry-pick
+  - conflict-resolution
+  - origin-and-direct-bic
+  - release-branch
+- id: SZZG-0126
+  title: The fix is a git revert of the faulty commit, after another revert that is not
+  category_code: G6
+  category: Revert-specific reintroduction
+  path: advanced-scenarios/SZZG-0126/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0126/README.md
+  status: active
+  factors:
+  - revert
+  - revert-is-fix
+  - resolvable-message-handle
+  - revert-as-distractor
+- id: SZZG-0127
+  title: Reverting a merge commit brings the merged branch's fix back out
+  category_code: G6
+  category: Revert-specific reintroduction
+  path: advanced-scenarios/SZZG-0127/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0127/README.md
+  status: active
+  factors:
+  - revert
+  - merge-revert
+  - reintroduction
+  - fix-on-feature-branch
+- id: SZZG-0128
+  title: Feature branch integrated by fast-forward, no merge commit (twin of SZZG-0043)
+  category_code: G4
+  category: Branch, merge, cherry-pick, backport, and release branches
+  path: advanced-scenarios/SZZG-0128/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0128/README.md
+  status: active
+  factors:
+  - fast-forward
+  - branch
+  - merge
+  - feature-branch-bic
+  - main-branch-bfc
+- id: SZZG-0129
+  title: Octopus merge with the faulty branch on a non-first parent
+  category_code: G4
+  category: Branch, merge, cherry-pick, backport, and release branches
+  path: advanced-scenarios/SZZG-0129/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0129/README.md
+  status: active
+  factors:
+  - merge
+  - octopus-merge
+  - bic-on-non-first-parent
+  - multi-branch-integration
 notes:
 - Scenario IDs are ordered by the SZZBench scenario taxonomy.
