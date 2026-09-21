@@ -3,9 +3,10 @@ meta:
   id: SZZG-0081
   title: Rebase with formatting rewrite noise
   slug: rebase-with-formatting-rewrite-noise
-  description: A whitespace-only reformatting commit sits between the rebased bug-introducing commit and the fix and rewrites the
-    faulty line itself. Plain git blame at the fix therefore stops at the formatting commit; git blame -w reaches the bug-introducing
-    commit.
+  description: >
+    A whitespace-only reformatting commit sits between the rebased bug-introducing commit and the fix and
+    rewrites the faulty line itself. Plain git blame at the fix therefore stops at the formatting commit;
+    git blame -w reaches the bug-introducing commit. The fault drops the null guard in front of a trim.
   category: "Rebase-specific history rewriting"
   category_code: "G5"
   factors:
@@ -16,6 +17,7 @@ meta:
   - blame-stops-at-formatting
   - direct-bic
   - origin-bic
+  - null-check-omission
   difficulty: advanced
   status: active
   tier: control
@@ -27,38 +29,37 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: Add the Range class with an inclusive contains check
+  history_summary: 'c0: Add the label helper with a null guard in front of the trim
 
-    f1: Use strict comparisons for the interval bounds (feature)
+    f1: Trim the label name directly (feature; drops the null guard)
 
     r1: rebased f1 onto main
 
     r2: Apply the four-space indentation of the project formatter (re-indents every line, including the faulty one)
 
-    c3: Restore the inclusive comparison in Range.contains'
+    c3: Guard the label name against null again'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: Add the Range class with an inclusive contains check
+  message: Add the label helper
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ >= min && value <= max;\n  }\n\n  public boolean containsZero(int min, int max) {\n    return contains(0, min, max);\n\
-      \  }\n}\n"
+    path: src/main/java/example/Label.java
+    content: "package example;\n\npublic class Label {\n  public String text(String name) {\n    return name == null ? \"\" : name.trim();\n\
+      \  }\n\n  public String upper(String name) {\n    return text(name).toUpperCase();\n  }\n}\n"
 - id: f1
   branch: feature
   parents:
   - c0
-  message: Use strict comparisons for the interval bounds
+  message: Trim the label name directly
   role: origin_bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
+    path: src/main/java/example/Label.java
+    old: 'return name == null ? "" : name.trim();'
+    new: return name.trim();
 - id: r1
   branch: main
   parents:
@@ -70,9 +71,9 @@ commits:
   committer_date: '2024-01-04T10:45:00Z'
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
+    path: src/main/java/example/Label.java
+    old: 'return name == null ? "" : name.trim();'
+    new: return name.trim();
 - id: r2
   branch: main
   parents:
@@ -83,25 +84,24 @@ commits:
   date: '2024-01-05T08:15:00Z'
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n    public boolean contains(int value, int min, int max) {\n        return\
-      \ value > min && value < max;\n    }\n\n    public boolean containsZero(int min, int max) {\n        return contains(0, min,\
-      \ max);\n    }\n}\n"
+    path: src/main/java/example/Label.java
+    content: "package example;\n\npublic class Label {\n    public String text(String name) {\n        return name.trim();\n    }\n\n\
+      \    public String upper(String name) {\n        return text(name).toUpperCase();\n    }\n}\n"
 - id: c3
   branch: main
   parents:
   - r2
-  message: Restore the inclusive comparison in Range.contains
+  message: Guard the label name against null again
   role: bug_fixing
   date: '2024-01-11T16:00:00Z'
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/Label.java
+    old: return name.trim();
+    new: 'return name == null ? "" : name.trim();'
 bugs:
 - id: B001
-  title: Range bug whose line was rewritten by a reformatting commit
+  title: A missing label name throws NullPointerException; the faulty line was rewritten by a reformatting commit
   bug_introducing_commits:
   - commit: r1
     role: direct
@@ -113,20 +113,20 @@ bugs:
   faults:
   - id: F001
     commit: r1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/Label.java
+    statement: return name.trim();
     change_type: line_modification
   fixes:
   - id: X001
     commit: c3
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
+    file: src/main/java/example/Label.java
+    statement: 'return name == null ? "" : name.trim();'
     fix_type: line_modification
   origin_faults:
   - id: OF001
     commit: f1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/Label.java
+    statement: return name.trim();
     change_type: origin_line_modification
 expected_szz:
   commit_level:
@@ -155,8 +155,11 @@ expected_szz:
       - r2
 scenario_design:
   purpose: Evaluate robustness against a reformatting commit that rewrites the faulty line between the BIC and the fix.
-  key_property: 'The reformatting is behaviour preserving and token identical: every line keeps its content and only its indentation
-    changes from two to four spaces. Plain git blame at c3^ attributes the faulty line to r2, git blame -w attributes it to r1.'
+  key_property: >
+    The reformatting is behaviour preserving and token identical: every line keeps its content and only its
+    indentation changes from two to four spaces. Measured: text(null) is "" at c0, throws NullPointerException at
+    f1, r1 and r2, and is "" again at c3; text(" x ") is "x" throughout. Plain git blame at c3^ attributes the
+    faulty line to r2, git blame -w attributes it to r1.
   difference_from_SZZG_0064: SZZG-0064 has no noise between the replayed BIC and the fix; here a whitespace-only commit sits in
     between and captures naive blame.
   evaluation_points:
@@ -166,3 +169,5 @@ notes:
 - 'The generated repository is designed so that plain blame misses the BIC: the graph verifier therefore reports GW703 for this
   scenario. That warning is expected and documents the difficulty, it is not a defect.'
 - 'rebase_cleanup: formatting_rewrite records that the reformatting was part of the rebase cleanup.'
+- Rewritten 2026-09-21 from the shared Range.contains template to a null-check-omission fault (GitHub issue 13); the history
+  shape, oracle and coverage dimensions are unchanged.

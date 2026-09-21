@@ -48,7 +48,29 @@ REWRITES: dict[str, tuple[str, str, dict[str, str]]] = {
                   {"c0": "135", "c1": "140", "c2": "140", "c3": "135", "c4": "140"}),
     "SZZG-0056": ("integer-overflow", 'System.out.print(new example.Bytes().toBits(1 << 28));',
                   {"c0": "2147483648", "c1": "-2147483648", "rel1": "-2147483648", "c2": "2147483648", "r2": "2147483648"}),
+    # --- G5 ---
+    "SZZG-0069": ("wrong-constant",
+                  'example.Backoff b = new example.Backoff(); for (int n : new int[] {0, 10, 25, 31, 32}) System.out.print(b.delayMillis(n) + " ");',
+                  # attempts 25, 31 and 32 saturate at the cap in every snapshot (PR #61 review: the first version overflowed)
+                  {"c0": "100 30000 30000 30000 30000 ", "f1": "10 3000 3000 3000 3000 ", "r1": "10 10240 30000 30000 30000 ",
+                   "r2": "10 3000 3000 3000 3000 ", "c3": "100 30000 30000 30000 30000 "}),
+    "SZZG-0070": ("off-by-one", 'System.out.print(new example.Pagination().lastIndex(1, 10));',
+                  {"c0": "9", "f1": "19", "f2": "20", "r1": "20", "c2": "9"}),
+    "SZZG-0073": ("api-misuse", 'System.out.print(new example.InvoiceDates().dueMonth(java.time.LocalDate.of(2024, 3, 15)));',
+                  {"c0": "3", "f1": "2", "f2": "2", "r1": "3", "r2": "2", "c3": "3"}),
+    "SZZG-0076": ("integer-overflow", 'example.Elapsed e = new example.Elapsed(); System.out.print(e.minutesBetween(0, 120000) + " " + e.minutesBetween(0, 3000000000L));',
+                  {"c0": "2 50000", "f1": "2 -21582", "f2": "7200000000 -77698037760000", "r1": "2 -21582", "r2": "7200000000 -77698037760000", "c3": "2 50000"}),
+    "SZZG-0081": ("null-check-omission", 'try { System.out.print("[" + new example.Label().text(null) + "]"); } catch (RuntimeException e) { System.out.print(e.getClass().getSimpleName()); }',
+                  {"c0": "[]", "f1": "NullPointerException", "r1": "NullPointerException", "r2": "NullPointerException", "c3": "[]"}),
+    "SZZG-0082": ("boolean-negation", 'example.FeatureGate g = new example.FeatureGate(); System.out.print(g.isEnabled(true, false) + " " + g.isEnabled(true, true));',
+                  {"c0": "true false", "f1": "false true", "r1": "false true", "r2": "false true", "c3": "true false"}),
+    "SZZG-0083": ("wrong-variable", 'example.StatusText s = new example.StatusText(); System.out.print(s.describe("OK", "Unknown") + " " + s.describe(null, "Unknown"));',
+                  {"c0": "OK Unknown", "f1": "Unknown null", "r1": "Unknown null", "c2": "OK Unknown"}),
 }
+
+#: SZZG-0081's reformatting commit owns the faulty line under plain blame by design (GW703);
+#: `git blame -w` is what reaches the BIC there.
+BLAME_NEEDS_W = {"SZZG-0081"}
 
 
 def _git(repo: Path, *args: str) -> str:
@@ -87,8 +109,12 @@ def test_fix_deletes_a_line_that_blames_to_the_declared_bic(tmp_path, sid):
         assert len(deleted) == 1, (sid, fix["commit"], deleted)
         path = next(l[6:] for l in diff.splitlines() if l.startswith("--- a/"))
         start = next(l for l in diff.splitlines() if l.startswith("@@")).split()[1][1:].split(",")[0]
-        blamed = _git(repo, "blame", "-l", "-s", "-L", f"{start},{start}", f"{bfc}^", "--", path).split()[0].lstrip("^")
+        options = ["-w"] if sid in BLAME_NEEDS_W else []
+        blamed = _git(repo, "blame", "-l", "-s", *options, "-L", f"{start},{start}", f"{bfc}^", "--", path).split()[0].lstrip("^")
         assert by_hash[blamed] in required, (sid, fix["commit"], by_hash[blamed], required)
+        if sid in BLAME_NEEDS_W:
+            plain = _git(repo, "blame", "-l", "-s", "-L", f"{start},{start}", f"{bfc}^", "--", path).split()[0].lstrip("^")
+            assert by_hash[plain] not in required, (sid, "plain blame was expected to stop at the reformatting commit")
 
 
 @NEEDS_JDK

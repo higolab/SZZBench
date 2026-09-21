@@ -2,48 +2,57 @@
 
 ## Purpose
 
-Evaluate multiple-origin-to-one-direct BIC mapping after interactive rebase.
+Two origin BICs become one direct BIC. On the feature branch `f1` treats pages
+as zero-based in `lastIndex` (one page too far) and `f2` returns the exclusive
+end (one element too far); an interactive rebase squashes both into `r1` on
+`main`. The default oracle requires the squash commit; the two feature commits
+are origins.
 
-## Commit history
+Rewritten 2026-09-21 (issue #13) from the shared `Range.contains` template; the
+history shape, oracle and coverage dimensions (`bic_depth` 1, three distractors
+on the fault file, 5 commits, 2 refs) are unchanged.
 
-```text
-c0: create initial correct implementation
-f1: introduce lower-bound bug
-f2: introduce upper-bound bug
-r1: rebase combined boundary bugs as one commit
-c2: fix combined rebased bug
-```
-
-## Commit table
-
-| Commit | Branch | Parents | Role | Description |
-|---|---|---|---|---|
-| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `f1` | `feature` | c0 | `origin_bug_introducing` | f1: introduce lower-bound bug |
-| `f2` | `feature` | f1 | `origin_bug_introducing` | f2: introduce upper-bound bug |
-| `r1` | `main` | c0 | `bug_introducing` | r1: rebase combined boundary bugs as one commit |
-| `c2` | `main` | r1 | `bug_fixing` | c2: fix combined rebased bug |
-
-## Expected SZZ result
+## Commit structure (generated)
 
 ```text
-Expected BIC(s): r1
-Related but not correct: f1, f2
+* 3846133  2023-06-06  Restore the 1-based, inclusive last index          <- BFC (c2)
+* a771e9b  2023-05-29  Rework the last-index arithmetic                   <- BIC (r1, squash of f1 and f2)
+| * 7fdb64f  2023-05-25  Return the exclusive end index from lastIndex    <- origin (f2, feature)
+| * e788506  2023-05-19  Treat pages as zero-based in lastIndex           <- origin (f1, feature)
+|/
+* 288d27a  2023-05-16  Add the pagination helper                          (c0)
 ```
 
-## Key property
+## Expected BIC / BFC
 
-f1 and f2 become one direct commit r1.
+- default: `required: [r1]`, `related_origins: [f1, f2]`
+- `origin-aware`: `relaxed_with_related`, `f1` and `f2` as `acceptable_related` at 0.5 each
+- BFC: `c2`
 
-## Difference from SZZG-0064
+## Measured behaviour and blame
 
-SZZG-0064 covers a rebased BIC followed by a non-BIC rebased intermediate commit. This scenario adds a distinct rebase-related complication.
+| commit | `lastIndex(1, 10)` | `lastIndex(3, 10)` |
+|---|---|---|
+| `c0` | 9 | 29 |
+| `f1` | 19 | 39 |
+| `f2`, `r1` | **20** | **40** |
+| `c2` | 9 | 29 |
 
-## Evaluation points
+`c2` deletes one line (`return page * size + size;`, line 6); blame at `c2^`
+returns `r1` (verifier `GI703`).
 
-- Report r1.
+## What a tool must do
 
-## Notes
+Report `r1`. A tool that follows the `feature` branch finds `f1` and `f2`,
+which the default oracle counts as false positives and the origin-aware variant
+tolerates; the squash commit is the change that put the fault on `main`.
 
-- This scenario models a rebase-related development history for SZZ evaluation.
-- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.
+## Factors
+
+- `branch`
+- `rebase`
+- `interactive-rebase`
+- `squash`
+- `multiple-origin-bic`
+- `direct-bic`
+- `off-by-one`

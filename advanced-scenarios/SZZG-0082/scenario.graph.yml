@@ -3,7 +3,9 @@ meta:
   id: SZZG-0082
   title: Rebase with generated file update
   slug: rebase-with-generated-file-update
-  description: A generated file is updated during rebase after the source BIC.
+  description: >
+    A generated file is updated during rebase after the source BIC. The fault drops the negation of the
+    kill switch from a feature gate, so the feature is enabled exactly when it should be switched off.
   category: "Rebase-specific history rewriting"
   category_code: "G5"
   factors:
@@ -12,6 +14,7 @@ meta:
   - generated-files
   - generated-code-noise
   - direct-bic
+  - boolean-negation
   difficulty: advanced
   status: active
   tier: control
@@ -23,61 +26,61 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial correct implementation
+  history_summary: 'c0: add the feature gate (flag && !killSwitch)
 
-    f1: introduce range bug
+    f1: drop the negation of the kill switch on the feature branch
 
-    r1: rebase bug onto main
+    r1: rebase the fault onto main
 
-    r2: regenerate derived range metadata during rebase
+    r2: regenerate the derived feature metadata during rebase
 
-    c3: fix source range bug'
+    c3: negate the kill switch again'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'Add the range check'
+  message: 'Add the feature gate'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
+    path: src/main/java/example/FeatureGate.java
+    content: "package example;\n\npublic class FeatureGate {\n  /** The feature is on when its flag is set and the kill switch is not. */\n\
+      \  public boolean isEnabled(boolean flag, boolean killSwitch) {\n    return flag && !killSwitch;\n  }\n}\n"
 - id: f1
   branch: feature
   parents:
   - c0
-  message: 'Make the range check exclusive'
+  message: 'Honour the kill switch in the feature gate'
   role: origin_bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
+    path: src/main/java/example/FeatureGate.java
+    old: return flag && !killSwitch;
+    new: return flag && killSwitch;
 - id: r1
   branch: main
   parents:
   - c0
-  message: 'Make the range check exclusive'
+  message: 'Honour the kill switch in the feature gate'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
+    path: src/main/java/example/FeatureGate.java
+    old: return flag && !killSwitch;
+    new: return flag && killSwitch;
   rebase_of: f1
 - id: r2
   branch: main
   parents:
   - r1
-  message: 'Regenerate the derived range metadata'
+  message: 'Regenerate the derived feature metadata'
   role: intermediate
   operations:
   - type: write_file
-    path: generated/range.properties
-    content: 'minInclusive=false
+    path: generated/feature.properties
+    content: 'gate.flag=true
 
-      maxInclusive=false
+      gate.killSwitch=false
 
       '
   generated_files: true
@@ -85,16 +88,16 @@ commits:
   branch: main
   parents:
   - r2
-  message: 'Accept the range bounds again'
+  message: 'Negate the kill switch in the feature gate again'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/FeatureGate.java
+    old: return flag && killSwitch;
+    new: return flag && !killSwitch;
 bugs:
 - id: B001
-  title: Source bug with generated file noise after rebase
+  title: The feature is enabled exactly when the kill switch is on; generated-file noise after the rebase
   bug_introducing_commits:
   - commit: r1
     role: direct
@@ -106,20 +109,20 @@ bugs:
   faults:
   - id: F001
     commit: r1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/FeatureGate.java
+    statement: return flag && killSwitch;
     change_type: line_modification
   fixes:
   - id: X001
     commit: c3
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
+    file: src/main/java/example/FeatureGate.java
+    statement: return flag && !killSwitch;
     fix_type: line_modification
   origin_faults:
   - id: OF001
     commit: f1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/FeatureGate.java
+    statement: return flag && killSwitch;
     change_type: origin_line_modification
 expected_szz:
   commit_level:
@@ -145,7 +148,10 @@ expected_szz:
       - r2
 scenario_design:
   purpose: Evaluate generated-file noise during rebase.
-  key_property: r2 updates generated metadata only.
+  key_property: >
+    r2 updates generated metadata only. Measured: isEnabled(true, false) is true at c0, false at f1, r1 and r2,
+    true at c3; isEnabled(true, true) is false at c0, true at r1, false at c3 — the gate is inverted with respect
+    to the kill switch. Blaming the line c3 deletes at c3^ returns r1.
   difference_from_SZZG_0064: SZZG-0064 covers a rebased BIC followed by a non-BIC rebased intermediate commit. This scenario
     adds a distinct rebase-related complication.
   evaluation_points:
@@ -154,3 +160,5 @@ scenario_design:
 notes:
 - This scenario models a rebase-related development history for SZZ evaluation.
 - Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.
+- Rewritten 2026-09-21 from the shared Range.contains template to a boolean-negation fault (GitHub issue 13); the history
+  shape, oracle and coverage dimensions are unchanged.
