@@ -1,5 +1,17 @@
 # SZZ-0113: Malformed commit message
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S3` Intermediate noise and history noise |
+| tier | `control` |
+| status | `active` |
+| difficulty | `medium` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `robustness`, `malformed-commit-message`, `message-robustness`, `bfc-message` |
+| oracle | `exact_set`; required `c1` · BFC `c2` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 This scenario checks robustness against a malformed-looking bug-fixing commit message.

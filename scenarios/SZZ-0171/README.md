@@ -1,5 +1,17 @@
 # SZZ-0171: Dependency update as BIC
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S8` Non-source, configuration, test-only, and file-level edge cases |
+| tier | `control` |
+| status | `active` |
+| difficulty | `hard` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `config-bic`, `api-misuse` |
+| oracle | `exact_set`; required `c1` · BFC `c2` |
+<!-- /szzbench:header -->
+
 ## Summary
 
 The fault is introduced by a dependency upgrade rather than by a source edit. `c0` adds

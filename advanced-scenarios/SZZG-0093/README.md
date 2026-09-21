@@ -1,5 +1,18 @@
 # SZZG-0093: BIC occurs during feature work
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G7` Issue, message, context, and non-local evidence |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `work-item`, `feature-work`, `bic-inside-work-item`, `commit-series` |
+| oracle | `exact_set`; required `c2`; related but not correct `c1`, `c3` · BFC `c4` |
+| graph features | `work_items` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 This scenario represents a bug-introducing commit that occurs in the middle of a multi-commit feature work item.

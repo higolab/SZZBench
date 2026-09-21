@@ -1,5 +1,18 @@
 # SZZG-0055: Release branch change rebased onto main
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G4` Branch, merge, cherry-pick, backport, and release branches |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `branch`, `rebase`, `release-branch`, `release-to-main`, `direct-bic`, `origin-bic` |
+| oracle | default: `exact_set`; required `r1`; related origins `rel1` · `origin-aware`: `relaxed_with_related`; required `r1`; acceptable `rel1` (credit 0.5) · BFC `c2` |
+| graph features | 2 branches; rebase `r1`; 2 BICs; origin faults; 1 evaluation variant (`origin-aware`) |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 Evaluate rebase from release branch to main.

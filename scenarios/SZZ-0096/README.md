@@ -1,5 +1,17 @@
 # SZZ-0096: Lambda rewrite after BIC
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S3` Intermediate noise and history noise |
+| tier | `control` |
+| status | `active` |
+| difficulty | `hard` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `lambda-rewrite-after-bic`, `basic-blame-distractor` |
+| oracle | `exact_set`; required `c1`; known distractors `c2` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 This scenario checks how SZZ implementations behave when a behaviour-preserving
@@ -48,11 +60,3 @@ predicate `age > MIN_AGE` (`git log -S`), both lead to `c1`.
   from a repeating `-5`…`35` pattern — 60 outputs in total. The `c1` snapshot
   differs from `c0` for every input that contains an age of exactly 18; the `c3`
   snapshot agrees with `c0` on every probed input.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `lambda-rewrite-after-bic`
-- `basic-blame-distractor`

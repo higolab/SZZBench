@@ -1,5 +1,17 @@
 # SZZ-0204: Type annotation added to the faulty line after the BIC
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S3` Intermediate noise and history noise |
+| tier | `control` |
+| status | `active` |
+| difficulty | `medium` |
+| language | `python` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `boundary-condition`, `deep-line-history`, `basic-blame-distractor`, `type-annotation-rewrite` |
+| oracle | `exact_set`; required `c1`; known distractors `c2` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 The Python form of "the faulty line was rewritten without a behaviour
@@ -59,13 +71,3 @@ follow the line's history one more step (`git log -L`, or blame again at
 `c2^`), or recognise `c2` as behaviour-preserving (an AST comparison with
 annotations stripped finds `c1..c2` empty). A tool that reports `{c2}` has
 blamed a type-hinting commit for a boundary fault.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `boundary-condition`
-- `deep-line-history`
-- `basic-blame-distractor`
-- `type-annotation-rewrite`

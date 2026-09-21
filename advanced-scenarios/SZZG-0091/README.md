@@ -1,5 +1,18 @@
 # SZZG-0091: Multiple BICs with partial revert reintroducing one fault
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G6` Revert-specific reintroduction |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `revert`, `partial-revert`, `multi-bic`, `single-fault-reintroduced`, `re-bic`, `wrong-operator` |
+| oracle | default: `exact_set`; required `c4`; related origins `c2`; related but not correct `c1`, `c3` · `origin-aware`: `relaxed_with_related`; required `c4`; acceptable `c2` (credit 0.5); related but not correct `c1`, `c3` · BFC `c5` |
+| graph features | 2 BICs; 1 evaluation variant (`origin-aware`) |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 Two original BICs in `InvoiceSummary.summarize`: `c1` swaps the `PAID`/`OPEN`
@@ -58,12 +71,3 @@ pre-rewrite version.
 Report `c4` alone. Reporting the original BIC set `{c1, c2}` — the answer to the
 prior fix `c3` — is wrong for the final fix: `c1`'s fault never came back, and
 `c2`'s came back through `c4`.
-
-## Factors
-
-- `revert`
-- `partial-revert`
-- `multi-bic`
-- `single-fault-reintroduced`
-- `re-bic`
-- `wrong-operator`

@@ -1,5 +1,18 @@
 # SZZG-0132: The fix message names the rewrite commit that blame also returns
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G7` Issue, message, context, and non-local evidence |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `misleading-fix-message`, `rewrite-after-bic`, `basic-blame-distractor`, `semantics-required` |
+| oracle | `exact_set`; required `c1`; related but not correct `c2` · BFC `c3` |
+| graph features | none: a linear history with one bug and an exact-set oracle, kept in the graph suite for its category |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 SZZ-0158 and SZZ-0159 have misleading fix messages whose references are vague
@@ -38,10 +51,3 @@ and nothing else.
 Report `c1`. Resolving the quoted subject gives `c2`; blaming the fixed line
 gives `c2`; the two agree and are both wrong. The zero delay first appears at
 `c1`, and `c2`'s snapshot behaves exactly like `c1`'s.
-
-## Factors
-
-- `misleading-fix-message`
-- `rewrite-after-bic`
-- `basic-blame-distractor`
-- `semantics-required`

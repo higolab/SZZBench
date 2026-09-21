@@ -1,5 +1,17 @@
 # SZZ-0110: Large noisy intermediate history
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S3` Intermediate noise and history noise |
+| tier | `control` |
+| status | `active` |
+| difficulty | `easy` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `robustness`, `large-noisy-intermediate` |
+| oracle | `exact_set`; required `c1`; known distractors `c2` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 This scenario checks that a *large* intermediate change to the faulty file
@@ -44,11 +56,3 @@ Blame class: **exact** — B-SZZ returns `{c1}`, which is the expected set.
 Blame the one deleted line and stop. A tool fails by adding `c2`, which is the
 most recent and by far the largest commit on the file between the BIC and the
 fix.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `robustness`
-- `large-noisy-intermediate`

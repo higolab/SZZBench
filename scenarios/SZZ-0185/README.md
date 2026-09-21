@@ -1,5 +1,17 @@
 # SZZ-0185: BFC deletes comment and blank lines of a distractor together with the faulty line
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S4` BFC-side noise and tangled commits |
+| tier | `control` |
+| status | `active` |
+| difficulty | `medium` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `cosmetic-line-noise` |
+| oracle | `exact_set`; required `c1`; known distractors `c2` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 This scenario tests the cosmetic-line filters of MA-SZZ/RA-SZZ-style tools.
@@ -35,10 +47,3 @@ the faulty statement: the BIC is reached, with one extra candidate.
 To pass, a tool must ignore deleted lines that are blank or comment-only
 before blaming (or discard candidates that are only reached through such
 lines).
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `cosmetic-line-noise`

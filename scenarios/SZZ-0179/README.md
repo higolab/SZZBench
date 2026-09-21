@@ -1,5 +1,17 @@
 # SZZ-0179: Last of two rewrites of a line is the BIC (control for depth-2 line history)
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S3` Intermediate noise and history noise |
+| tier | `control` |
+| status | `active` |
+| difficulty | `easy` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `deep-line-history`, `matched-control`, `last-rewrite-is-bic` |
+| oracle | `exact_set`; required `c3`; known distractors `c1`, `c2` · BFC `c4` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 Matched control for SZZ-0178. The repository has the same file, the same
@@ -41,12 +53,3 @@ To pass, a tool must stop at `c3`. Recursive line-history tracing has to
 compare the semantics of successive versions of the line (the `+ 999L` term
 disappears in `c3`) instead of skipping every commit that looks like a
 cleanup.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `deep-line-history`
-- `matched-control`
-- `last-rewrite-is-bic`

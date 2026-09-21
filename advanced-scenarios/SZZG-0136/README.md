@@ -1,5 +1,18 @@
 # SZZG-0136: The fault predates the repository: an import commit is the history's boundary, not the BIC
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G9` Evaluation policy variants |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `expect-no-bic`, `history-boundary`, `import-commit`, `tool-visible-context`, `evaluation-variant`, `single-bfc` |
+| oracle | default: `exact_set`; expects no BIC; known distractors `c0` · `boundary-commit`: `exact_set`; required `c0` · BFC `c3` |
+| graph features | 1 evaluation variant (`boundary-commit`); `issues` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 The second contract for "the fix's deleted line belongs to the first commit"
@@ -51,12 +64,3 @@ import from an authored commit will report `c0`, exactly as in SZZG-0137; a tool
 that reads the import message or `docs/IMPORT.md` can either abstain or report
 `c0` labelled as the history boundary, which the `boundary-commit` variant
 accepts.
-
-## Factors
-
-- `expect-no-bic`
-- `history-boundary`
-- `import-commit`
-- `tool-visible-context`
-- `evaluation-variant`
-- `single-bfc`

@@ -1,5 +1,17 @@
 # SZZ-0132: Basic multiple bug-introducing commits
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S6` Multiple BICs, duplicate faults, and composite faults |
+| tier | `discriminating` |
+| status | `active` |
+| difficulty | `hard` |
+| language | `java` |
+| factors | `multi-bic`, `single-bfc`, `line-modification`, `caller-callee-interaction` |
+| oracle | `exact_set`; required `c1`, `c2` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 This scenario represents a basic multi-BIC case. The bug is caused by a

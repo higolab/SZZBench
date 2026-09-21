@@ -1,8 +1,17 @@
 # SZZG-0100: Unrelated commits mixed in the same issue
 
-## Source
-
-- Category: Issue, message, context, and non-local evidence (G7)
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G7` Issue, message, context, and non-local evidence |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `work-item`, `issue-evidence` |
+| oracle | `exact_set`; required `c1`; related but not correct `c2`, `c3` · BFC `c4` |
+| graph features | `issues`; `work_items` |
+<!-- /szzbench:header -->
 
 ## Purpose
 

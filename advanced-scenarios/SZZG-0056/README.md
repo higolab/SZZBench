@@ -1,5 +1,18 @@
 # SZZG-0056: Main fix rebased onto release branch
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G4` Branch, merge, cherry-pick, backport, and release branches |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `branch`, `rebase`, `release-branch`, `main-fix-to-release`, `rebased-bfc`, `multi-bfc`, `integer-overflow` |
+| oracle | `exact_set`; required `c1`; related but not correct `c2` · BFCs `c2`, `r2` |
+| graph features | 2 branches; rebase `r2`; 2 BFCs |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 `Bytes.toBits` multiplies in `long`; `c1` drops the `L` and the `int` product
@@ -45,13 +58,3 @@ and at `r2^` returns `c1` (verifier `GI703`).
 
 Starting from `r2`, report `c1` — not `c2`, the commit `r2` replays, which is a
 fix and is listed as `related_but_not_correct`.
-
-## Factors
-
-- `branch`
-- `rebase`
-- `release-branch`
-- `main-fix-to-release`
-- `rebased-bfc`
-- `multi-bfc`
-- `integer-overflow`

@@ -1,5 +1,17 @@
 # SZZ-0183: Two-file BFC whose second hunk blames a non-BIC commit
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S4` BFC-side noise and tangled commits |
+| tier | `control` |
+| status | `active` |
+| difficulty | `medium` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `multi-file-bfc`, `tangled-bfc` |
+| oracle | `exact_set`; required `c1`; known distractors `c2` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 The existing multi-file BFC scenario (SZZ-0122) only *adds* a file. Here the
@@ -38,11 +50,3 @@ example by relating the commit message ("round converted amounts") to the
 `CurrencyConverter` change, by noticing that the `PriceDisplay` change is a
 string-literal-only edit, or by scoring candidates per hunk instead of
 taking the union.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `multi-file-bfc`
-- `tangled-bfc`

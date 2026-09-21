@@ -1,5 +1,17 @@
 # SZZ-0125: Method rename after BIC
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S5` Refactoring, move, and rename after BIC |
+| tier | `control` |
+| status | `active` |
+| difficulty | `easy` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `method-rename-after-bic`, `matched-control` |
+| oracle | `exact_set`; required `c1`; known distractors `c2` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 A method is renamed between the BIC and the BFC. The rename rewrites the
@@ -61,11 +73,3 @@ and `revoked ∈ {false, true}`. `c1` differs from `c0` in exactly the 6 cases
 in which `idleMinutes == idleTimeoutMinutes` and the session is not revoked;
 `c3` agrees with `c0` in all 132. The rename of `c2` is private and does not
 change the public API.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `method-rename-after-bic`
-- `matched-control`

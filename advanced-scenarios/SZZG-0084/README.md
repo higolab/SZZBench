@@ -1,5 +1,18 @@
 # SZZG-0084: Partial revert reintroduces bug
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G6` Revert-specific reintroduction |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `linear-history`, `revert`, `partial-revert`, `reintroduced-bug`, `re-bic`, `origin-bic`, `revert-footer` |
+| oracle | default: `reintroduction_direct`; required `c3`; related origins `c1` · `origin-aware`: `relaxed_with_related`; required `c3`; acceptable `c1` (credit 0.5) · BFC `c4` |
+| graph features | revert `c3`; 2 BICs; origin faults; policy `reintroduction_direct`; 1 evaluation variant (`origin-aware`) |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 Evaluate a **real partial revert**: a commit that carries two independent

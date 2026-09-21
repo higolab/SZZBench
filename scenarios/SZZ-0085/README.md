@@ -1,5 +1,17 @@
 # SZZ-0085: Comment insertion after BIC
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S3` Intermediate noise and history noise |
+| tier | `control` |
+| status | `active` |
+| difficulty | `easy` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `comment-insertion-after-bic`, `blame-reaches-bic` |
+| oracle | `exact_set`; required `c1`; known distractors `c2` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 An intermediate commit inserts a comment line directly above the faulty line.
@@ -37,11 +49,3 @@ Plain line-based blame already answers correctly. To pass, a tool must *not*
 add `c2`: it must not blame the context lines around the fix hunk, and it must
 not treat the most recent commit in the method as a candidate.
 `false_positives_allowed` is empty, so returning `{c1, c2}` fails.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `comment-insertion-after-bic`
-- `blame-reaches-bic`

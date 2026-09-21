@@ -1,5 +1,18 @@
 # SZZG-0077: Rebased BIC fixed by multiple BFCs
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G5` Rebase-specific history rewriting |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `branch`, `rebase`, `rebased-bic`, `multi-bfc`, `partial-fix`, `complete-fix` |
+| oracle | default: `exact_set`; required `r1`; related origins `f1` · `origin-aware`: `relaxed_with_related`; required `r1`; acceptable `f1` (credit 0.5) · BFCs `c3`, `c4` |
+| graph features | 2 branches; rebase `r1`; 2 BICs; 2 BFCs; origin faults; 2 fault sites; 1 evaluation variant (`origin-aware`) |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 Evaluate progressive repair of a rebased BIC.

@@ -1,5 +1,18 @@
 # SZZG-0016: Original and clone fixed together
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G2` Clone, copy propagation, and origin-vs-direct BIC |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `null-check-omission`, `copy-propagation` |
+| oracle | default: `exact_set`; required `c1`; related origins `c0` · `origin-aware`: `relaxed_with_related`; required `c1`; acceptable `c0` (credit 0.5) · BFC `c2` |
+| graph features | operation `copy_file`; 2 BICs; 2 fault sites; 1 evaluation variant (`origin-aware`); `clone_relationships` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 `TagNormalizer.normalize` trims and lower-cases its argument with no null
@@ -48,8 +61,3 @@ Report `c1` for the fixed copy. Blame over the whole fix returns `{c0, c1}`;
 under the default oracle `c0` is a false positive (an origin), under
 `origin-aware` it is tolerated. A copy-aware tool notices that `c1` added the
 line to `LabelNormalizer.java` by copying it from `TagNormalizer.java`.
-
-## Factors
-
-- `null-check-omission`
-- `copy-propagation`

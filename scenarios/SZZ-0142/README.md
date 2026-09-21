@@ -1,5 +1,17 @@
 # SZZ-0142: Authentication and token checks introduced separately
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S6` Multiple BICs, duplicate faults, and composite faults |
+| tier | `control` |
+| status | `active` |
+| difficulty | `medium` |
+| language | `java` |
+| factors | `multi-bic`, `single-bfc`, `line-modification` |
+| oracle | `exact_set`; required `c1`, `c2` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 This scenario requires treating two bug-introducing commits as contributing to the same later fix.
@@ -56,12 +68,6 @@ generated repository):
 Plain line-level blame therefore reaches both BICs. The difficulty of this scenario is the aggregation: an SZZ
 implementation must report both commits as the BIC set rather than collapsing to the most recent one or to a
 single "primary" BIC.
-
-## Factors
-
-- `multi-bic`
-- `single-bfc`
-- `line-modification`
 
 ## History
 

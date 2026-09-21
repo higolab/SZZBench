@@ -1,5 +1,17 @@
 # SZZ-0087: Unrelated method addition after BIC
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S3` Intermediate noise and history noise |
+| tier | `control` |
+| status | `active` |
+| difficulty | `easy` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `unrelated-method-after-bic`, `blame-reaches-bic` |
+| oracle | `exact_set`; required `c1`; known distractors `c2` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 An intermediate commit adds a second, unrelated method to the class that
@@ -44,11 +56,3 @@ Before this repair, the `c2` snapshot declared `width` inside the body of
 `check` and repeated it after the class, so `javac` rejected it with "illegal
 start of expression" (issue #10). All four snapshots now compile with
 `javac 25`.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `unrelated-method-after-bic`
-- `blame-reaches-bic`

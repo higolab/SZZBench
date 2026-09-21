@@ -1,5 +1,18 @@
 # SZZG-0067: Rebase conflict resolution fixes bug
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G5` Rebase-specific history rewriting |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `branch`, `rebase`, `rebase-conflict-resolution`, `conflict-resolution-bfc`, `rebased-bic` |
+| oracle | default: `exact_set`; required `r1`; related origins `f1`; related but not correct `f2` · `origin-aware`: `relaxed_with_related`; required `r1`; acceptable `f1` (credit 0.5); related but not correct `f2` · BFC `r2` |
+| graph features | 2 branches; rebase `r1`, `r2`; 2 BICs; origin faults; 1 evaluation variant (`origin-aware`) |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 Evaluate whether SZZ can handle a bug-fixing commit that is itself a rebase

@@ -1,5 +1,17 @@
 # SZZ-0188: Fault in a multi-line statement whose lines come from different commits
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S4` BFC-side noise and tangled commits |
+| tier | `control` |
+| status | `active` |
+| difficulty | `medium` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-addition-bic`, `multi-line-statement`, `statement-granularity`, `operator-precedence` |
+| oracle | `exact_set`; required `c1` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 This scenario separates *line* granularity from *statement* granularity. The
@@ -48,12 +60,3 @@ changed in the fix only because the opening parenthesis had to be placed
 there. Note that the BIC's own diff is addition-only (`+1 -0`), so matching
 deleted fix lines against added BIC lines succeeds only for the `isInternal`
 line.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-addition-bic`
-- `multi-line-statement`
-- `statement-granularity`
-- `operator-precedence`

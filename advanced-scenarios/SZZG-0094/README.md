@@ -1,8 +1,17 @@
 # SZZG-0094: BIC and BFC belong to the same issue commit series
 
-## Source
-
-- Category: Work-item and commit-series scenarios
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G7` Issue, message, context, and non-local evidence |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `issue-evidence` |
+| oracle | `exact_set`; required `c2` · BFC `c3` |
+| graph features | `issues` |
+<!-- /szzbench:header -->
 
 ## Purpose
 

@@ -1,8 +1,17 @@
 # SZZG-0101: Caller/callee interaction bug
 
-## Source
-
-- Category: Context-aware and LLM-based SZZ scenarios
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G7` Issue, message, context, and non-local evidence |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `caller-callee`, `context`, `api-misuse` |
+| oracle | `exact_set`; required `c2`; related but not correct `c1` · BFC `c3` |
+| graph features | `context` |
+<!-- /szzbench:header -->
 
 ## Purpose
 

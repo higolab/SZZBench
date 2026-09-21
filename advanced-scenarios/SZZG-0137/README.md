@@ -1,5 +1,18 @@
 # SZZG-0137: The fault is present since the initial commit, which wrote it: c0 is the BIC
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G9` Evaluation policy variants |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `initial-commit-bic`, `single-bic`, `single-bfc`, `tool-visible-context` |
+| oracle | `exact_set`; required `c0` · BFC `c3` |
+| graph features | `issues` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 The third contract for "the fix's deleted line belongs to the first commit"
@@ -37,10 +50,3 @@ source tree; only `c0`'s message differs and `docs/IMPORT.md` is absent
 Report `c0`, and do not abstain merely because the answer is the root commit.
 Read next to SZZG-0136: the same blame result is right here and wrong there, and
 only the provenance evidence in the repository tells the two apart.
-
-## Factors
-
-- `initial-commit-bic`
-- `single-bic`
-- `single-bfc`
-- `tool-visible-context`

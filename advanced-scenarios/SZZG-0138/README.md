@@ -1,5 +1,18 @@
 # SZZG-0138: Partial credit with a majority threshold: two of three contributing BICs suffice
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G9` Evaluation policy variants |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `partial-credit`, `multi-bic`, `single-bfc`, `addition-only-fix` |
+| oracle | `partial_credit`; required `c1`, `c2`, `c3`; minimum 2 · BFC `c4` |
+| graph features | 3 BICs; 3 fault sites; policy `partial_credit` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 Second member of the `partial_credit` family ([SZZG-0033](../SZZG-0033/README.md):
@@ -48,10 +61,3 @@ and its fix is addition-only, so blame cannot reach it.
 | `{c1, c2, c3}` | PASS | full credit |
 | `{c1}` | FAIL | below the threshold |
 | `{c1, c2, c0}` | FAIL | a false positive is never tolerated |
-
-## Factors
-
-- `partial-credit`
-- `multi-bic`
-- `single-bfc`
-- `addition-only-fix`

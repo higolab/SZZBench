@@ -1,8 +1,17 @@
 # SZZG-0020: Explicit evaluation of direct BIC vs origin BIC
 
-## Source
-
-- Category: Copy, clone, and propagation scenarios
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G2` Clone, copy propagation, and origin-vs-direct BIC |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `copy-propagation`, `evaluation-variant`, `direct-bic`, `origin-bic` |
+| oracle | default: `direct_only`; required `c2`; related origins `c1` · `direct-only`: `direct_only`; required `c2` · `origin-aware`: `relaxed_with_related`; required `c2`; acceptable `c1` (credit 0.5) · BFC `c3` |
+| graph features | operation `copy_file`; 2 BICs; policy `direct_only`; 2 evaluation variants (`direct-only`, `origin-aware`); `clone_relationships` |
+<!-- /szzbench:header -->
 
 ## Purpose
 

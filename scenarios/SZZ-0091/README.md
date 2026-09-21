@@ -1,5 +1,17 @@
 # SZZ-0091: Dead code removal after BIC
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S3` Intermediate noise and history noise |
+| tier | `control` |
+| status | `active` |
+| difficulty | `easy` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `dead-code-removal-after-bic`, `deletion-only-intermediate`, `blame-reaches-bic` |
+| oracle | `exact_set`; required `c1`; known distractors `c2` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 The intermediate commit is a pure deletion: it removes dead code that `c0`
@@ -46,12 +58,3 @@ Before this repair, `c2` removed nothing: it inserted the comment
 `// dead code removed; boundary remains faulty`, which both contradicted the
 title and leaked the oracle (issue #5). `c0` now contains real dead code and
 `c2` really removes it.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `dead-code-removal-after-bic`
-- `deletion-only-intermediate`
-- `blame-reaches-bic`

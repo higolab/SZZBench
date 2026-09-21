@@ -1,5 +1,18 @@
 # SZZG-0078: Rebase commit message reveals origin
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G5` Rebase-specific history rewriting |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `branch`, `rebase`, `commit-messages`, `message-trailer`, `origin-bic`, `direct-bic` |
+| oracle | default: `exact_set`; required `r1`; related origins `f1` · `origin-aware`: `relaxed_with_related`; required `r1`; acceptable `f1` (credit 0.5) · BFC `c2` |
+| graph features | 2 branches; rebase `r1`; cherry-pick `r1`; 2 BICs; origin faults; 1 evaluation variant (`origin-aware`); `developer_hints` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 Evaluate whether an origin reference *inside the commit message* helps or

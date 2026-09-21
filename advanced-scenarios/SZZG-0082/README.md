@@ -1,5 +1,18 @@
 # SZZG-0082: Rebase with generated file update
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G5` Rebase-specific history rewriting |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `branch`, `rebase`, `generated-files`, `generated-code-noise`, `direct-bic`, `boolean-negation` |
+| oracle | default: `exact_set`; required `r1`; related origins `f1`; related but not correct `r2` · `origin-aware`: `relaxed_with_related`; required `r1`; acceptable `f1` (credit 0.5); related but not correct `r2` · BFC `c3` |
+| graph features | 2 branches; rebase `r1`; 2 BICs; origin faults; 1 evaluation variant (`origin-aware`) |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 A generated file is regenerated during the rebase, after the replayed BIC and
@@ -45,12 +58,3 @@ returns `r1` (verifier `GI703`).
 Report `r1`; ignore `r2`, which changed no source file. A tool that treats
 "the commit before the fix" as a candidate, or that scores generated-file churn,
 picks up `r2`.
-
-## Factors
-
-- `branch`
-- `rebase`
-- `generated-files`
-- `generated-code-noise`
-- `direct-bic`
-- `boolean-negation`

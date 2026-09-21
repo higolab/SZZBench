@@ -1,5 +1,18 @@
 # SZZG-0139: Partial credit across a merge: one BIC on each side, either one is a passing answer
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G9` Evaluation policy variants |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `partial-credit`, `multi-bic`, `single-bfc`, `branch-merge` |
+| oracle | `partial_credit`; required `m1`, `f1`; minimum 1; known distractors `c2` · BFC `c3` |
+| graph features | 2 branches; merge commit `c2`; 2 BICs; 2 fault sites; policy `partial_credit` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 Third member of the `partial_credit` family ([SZZG-0033](../SZZG-0033/README.md),
@@ -51,10 +64,3 @@ first-parent walk never sees `f1`.
 | `{m1, f1}`, `{m1}`, `{f1}` | PASS (`{m1}` and `{f1}` with one false negative and credit 1/2) |
 | `{c2}`, `{m1, c2}` | FAIL — the merge introduced nothing |
 | `{}` | FAIL |
-
-## Factors
-
-- `partial-credit`
-- `multi-bic`
-- `single-bfc`
-- `branch-merge`

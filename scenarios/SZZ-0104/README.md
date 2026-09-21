@@ -1,5 +1,17 @@
 # SZZ-0104: Method order change after BIC
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S3` Intermediate noise and history noise |
+| tier | `control` |
+| status | `active` |
+| difficulty | `easy` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `method-order-change-after-bic` |
+| oracle | `exact_set`; required `c1`; known distractors `c2` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 This scenario checks that a change to the *declaration order* of methods
@@ -52,10 +64,3 @@ Blame the deleted line and stop. A tool fails by adding `c2`, for example
 because `c2` is the most recent commit on the file, or because a method-level
 (rather than line-level) change model sees "the method list of `DiscountTable`
 changed" and treats the whole class as touched.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `method-order-change-after-bic`

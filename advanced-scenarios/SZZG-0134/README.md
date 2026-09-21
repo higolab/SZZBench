@@ -1,5 +1,18 @@
 # SZZG-0134: A .gitattributes line-ending rule is the BIC
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G8` Non-source, binary, generated, and scalability edge cases |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `gitattributes-bic`, `line-ending`, `non-source-bic`, `cross-artifact-fix` |
+| oracle | `exact_set`; required `c1` · BFC `c2` |
+| graph features | none: a linear history with one bug and an exact-set oracle, kept in the graph suite for its category |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 [SZZ-0108](../../scenarios/SZZ-0108/README.md) has a CRLF rewrite as an
@@ -47,10 +60,3 @@ at `c1`, `true` at `c2` (`tests/test_twins_and_transitions.py`, on
 Report `c1`. The fix's deleted line was written by `c0`, and `c1` touched no
 file the fix touched; the link is that `c1` changed how the resource the fixed
 line reads is checked out.
-
-## Factors
-
-- `gitattributes-bic`
-- `line-ending`
-- `non-source-bic`
-- `cross-artifact-fix`

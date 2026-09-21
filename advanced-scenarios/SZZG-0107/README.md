@@ -1,5 +1,18 @@
 # SZZG-0107: BFC includes generated files
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G8` Non-source, binary, generated, and scalability edge cases |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `generated-files`, `boolean-negation` |
+| oracle | `exact_set`; required `c1` · BFC `c2` |
+| graph features | operation `write_generated_text_file` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 `Retention.shouldKeep` keeps an entry while it is pinned or not yet expired.
@@ -41,8 +54,3 @@ generated file; blame at `c2^` returns `c1` (verifier `GI703`).
 Report `c1`; the generated file has no deleted lines and no history, so it
 contributes nothing to blame, but a tool that scores every file in the fix or
 that weights commits by size has to ignore it.
-
-## Factors
-
-- `generated-files`
-- `boolean-negation`

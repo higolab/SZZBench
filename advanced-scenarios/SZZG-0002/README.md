@@ -1,8 +1,17 @@
 # SZZG-0002: BFC performs file move and fix in the same commit
 
-## Source
-
-- Category: BFC shape scenarios
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G1` Refactoring, move, rename, and semantic rewrite |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `file-move` |
+| oracle | `exact_set`; required `c1` · BFC `c2` |
+| graph features | operation `move_file` |
+<!-- /szzbench:header -->
 
 ## Purpose
 

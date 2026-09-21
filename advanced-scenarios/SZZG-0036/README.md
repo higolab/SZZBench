@@ -1,8 +1,17 @@
 # SZZG-0036: Fix split across multiple commits
 
-## Source
-
-- Category: Work-item and commit-series scenarios
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G3` Multiple BICs, multiple BFCs, and partial fixes |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `multi-bfc` |
+| oracle | `exact_set`; required `c1` · BFCs `c3`, `c4` |
+| graph features | 2 BFCs; `fix_series` |
+<!-- /szzbench:header -->
 
 ## Purpose
 

@@ -1,5 +1,17 @@
 # SZZ-0186: Multi-hunk BFC whose hunks blame different commits
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S4` BFC-side noise and tangled commits |
+| tier | `control` |
+| status | `active` |
+| difficulty | `medium` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `mixed-origin-hunks`, `multiple-hunk-bfc`, `tangled-bfc` |
+| oracle | `exact_set`; required `c1`; known distractors `c2` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 SZZ-0116 is the control in which both hunks of a two-hunk BFC belong to the
@@ -38,12 +50,3 @@ relating the commit message ("fix the page count") to the `pageCount`
 method, by recognising the `offset` hunk as a behaviour-preserving hardening
 for non-overflowing inputs, or by ranking candidates instead of returning
 the union.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `mixed-origin-hunks`
-- `multiple-hunk-bfc`
-- `tangled-bfc`

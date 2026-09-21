@@ -1,5 +1,18 @@
 # SZZG-0066: Rebase conflict resolution propagates existing bug
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G5` Rebase-specific history rewriting |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `branch`, `rebase`, `rebase-conflict-resolution`, `origin-bic`, `direct-bic` |
+| oracle | default: `exact_set`; required `r1`; related origins `f1` · `origin-aware`: `relaxed_with_related`; required `r1`; acceptable `f1` (credit 0.5) · BFC `c2` |
+| graph features | 2 branches; rebase `r1`; 2 BICs; origin faults; 1 evaluation variant (`origin-aware`) |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 Evaluate direct-vs-origin BIC behavior when conflict resolution propagates an existing bug.

@@ -1,5 +1,17 @@
 # SZZ-0176: Addition-only fix for an unhandled enum branch
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S2` Omission and deletion bugs |
+| tier | `control` |
+| status | `active` |
+| difficulty | `hard` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `omission-bug`, `addition-only-fix`, `missing-branch` |
+| oracle | `exact_set`; required `c1` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 This scenario checks how SZZ implementations behave when the fault is an
@@ -36,11 +48,3 @@ for example by blaming the context lines of the added hunk (the closing brace
 of the `DELIVERED` branch and `return "";`), both of which belong to `c1`.
 Blaming `ShipmentState.java` instead leads to `c0`, which is wrong: the enum
 constant existed before the incomplete logic was written.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `omission-bug`
-- `addition-only-fix`
-- `missing-branch`

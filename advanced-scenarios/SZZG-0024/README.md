@@ -1,5 +1,18 @@
 # SZZG-0024: Clone diverges before rebase
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G2` Clone, copy propagation, and origin-vs-direct BIC |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `branch`, `rebase`, `copy-propagation`, `clone-divergence`, `direct-bic`, `origin-bic`, `wrong-operator` |
+| oracle | default: `exact_set`; required `r1`; related origins `f1`; related but not correct `r2`, `f2` · `origin-aware`: `relaxed_with_related`; required `r1`; acceptable `f1` (credit 0.5); related but not correct `r2`, `f2` · BFC `c4` |
+| graph features | 2 branches; rebase `r1`, `r2`; 2 BICs; origin faults; 1 evaluation variant (`origin-aware`) |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 A cloned implementation is written on a feature branch, annotated there, and
@@ -58,13 +71,3 @@ verifier reports `GW703` by design, as it did before the rewrite.
 Report `r1`, not `r2`. The last textual touch of the line appended a comment;
 the commit that put the faulty arithmetic into `main` is one step further back,
 and it is the replay `r1`, not its feature-branch source `f1`.
-
-## Factors
-
-- `branch`
-- `rebase`
-- `copy-propagation`
-- `clone-divergence`
-- `direct-bic`
-- `origin-bic`
-- `wrong-operator`

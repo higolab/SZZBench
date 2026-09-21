@@ -1,5 +1,18 @@
 # SZZG-0085: Old BIC and re-BIC are both plausible
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G6` Revert-specific reintroduction |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `reintroduction`, `partial-revert`, `origin-bic`, `evaluation-variant` |
+| oracle | default (`reintroduction-direct`): `exact_set`; required `c3`; related origins `c1` · `origin-aware`: `relaxed_with_related`; required `c3`; acceptable `c1` (credit 0.5) · BFC `c4` |
+| graph features | revert `c3`; 2 BICs; origin faults; 2 evaluation variants (`reintroduction-direct`, `origin-aware`) |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 This scenario represents a bug that is introduced, fixed, reintroduced by a partial revert, and fixed again.

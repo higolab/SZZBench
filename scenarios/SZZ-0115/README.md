@@ -1,5 +1,17 @@
 # SZZ-0115: Tangled bug-fixing commit
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S4` BFC-side noise and tangled commits |
+| tier | `control` |
+| status | `active` |
+| difficulty | `medium` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `tangled-bfc` |
+| oracle | `exact_set`; required `c1` · BFC `c2` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 This scenario checks a tangled BFC: the fixing commit contains both the real fix

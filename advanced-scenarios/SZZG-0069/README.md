@@ -1,5 +1,18 @@
 # SZZG-0069: Rebase splits original BIC into multiple commits
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G5` Rebase-specific history rewriting |
+| tier | `discriminating` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `branch`, `rebase`, `split-bic`, `multi-bic`, `origin-bic`, `direct-bic`, `wrong-constant` |
+| oracle | default: `exact_set`; required `r1`, `r2`; related origins `f1` · `origin-aware`: `relaxed_with_related`; required `r1`, `r2`; acceptable `f1` (credit 0.5) · BFC `c3` |
+| graph features | 2 branches; rebase `r1`, `r2`; 3 BICs; origin faults; 1 evaluation variant (`origin-aware`) |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 One origin commit becomes two direct BICs. On the feature branch `f1` mistypes
@@ -58,13 +71,3 @@ Return both `r1` and `r2`: follow the line's history past the most recent
 change (`git log -L`, or blame again at `r2^`) or read the rebase metadata
 (`rebase_of: f1` on both). An answer of `r2` alone is a false negative; an
 answer of `f1` names the origin, which the default oracle does not accept.
-
-## Factors
-
-- `branch`
-- `rebase`
-- `split-bic`
-- `multi-bic`
-- `origin-bic`
-- `direct-bic`
-- `wrong-constant`

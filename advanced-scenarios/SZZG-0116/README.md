@@ -1,8 +1,17 @@
 # SZZG-0116: Entity-level-only expected SZZ policy
 
-## Source
-
-- Category: Schema and evaluation-policy scenarios
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G9` Evaluation policy variants |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `evaluation-variant` |
+| oracle | `exact_set`; required `c1` · BFC `c2` |
+| graph features | `entity_level` oracle |
+<!-- /szzbench:header -->
 
 ## Purpose
 

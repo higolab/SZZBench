@@ -1,5 +1,17 @@
 # SZZ-0090: Guard clause addition after BIC
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S3` Intermediate noise and history noise |
+| tier | `control` |
+| status | `active` |
+| difficulty | `easy` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `guard-clause-after-bic`, `redundant-guard`, `blame-reaches-bic` |
+| oracle | `exact_set`; required `c1`; known distractors `c2` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 An intermediate commit adds an early-return guard directly above the faulty
@@ -39,12 +51,3 @@ returns **`c1`**: **exact**.
 Plain line-based blame already answers correctly. To pass, a tool must *not*
 add `c2`: it must not blame the guard lines that sit immediately above the
 fix hunk. `false_positives_allowed` is empty, so returning `{c1, c2}` fails.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `guard-clause-after-bic`
-- `redundant-guard`
-- `blame-reaches-bic`

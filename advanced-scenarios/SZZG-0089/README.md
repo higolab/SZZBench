@@ -1,5 +1,18 @@
 # SZZG-0089: Revert of revert with conflict resolution
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G6` Revert-specific reintroduction |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `revert`, `revert-of-revert`, `conflict-resolution`, `intermediate-change`, `re-bic` |
+| oracle | default: `exact_set`; required `c3`; related origins `c1`; related but not correct `c2`, `c4` · `origin-aware`: `relaxed_with_related`; required `c3`; acceptable `c1` (credit 0.5); related but not correct `c2`, `c4` · BFC `c5` |
+| graph features | 2 BICs; 2 fault sites; 1 evaluation variant (`origin-aware`) |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 Evaluate a revert-of-revert BFC that includes conflict resolution after intervening code changes.

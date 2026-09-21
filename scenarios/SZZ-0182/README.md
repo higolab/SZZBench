@@ -1,5 +1,17 @@
 # SZZ-0182: Cross-file ghost: BIC deletes a validation call in one file, BFC adds a check in another
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S2` Omission and deletion bugs |
+| tier | `control` |
+| status | `active` |
+| difficulty | `hard` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `deletion-only-bic`, `addition-only-fix`, `cross-file-fix` |
+| oracle | `exact_set`; required `c1` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 This scenario combines a deletion-only BIC with an addition-only BFC in a
@@ -41,11 +53,3 @@ already enforced, and the commit that stopped calling the validator on this
 path is `c1`. Searching the history for deletions of calls to
 `validate(...)` (`git log -S`) or tracking which commit made
 `PaymentGateway.charge` reachable with unvalidated orders both lead to `c1`.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `deletion-only-bic`
-- `addition-only-fix`
-- `cross-file-fix`

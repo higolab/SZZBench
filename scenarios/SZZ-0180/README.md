@@ -1,5 +1,17 @@
 # SZZ-0180: BIC is a large initial import
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S3` Intermediate noise and history noise |
+| tier | `control` |
+| status | `active` |
+| difficulty | `easy` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `initial-import-bic`, `large-bic` |
+| oracle | `exact_set`; required `c0` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 This scenario checks how SZZ implementations treat a bug whose inducing
@@ -38,11 +50,3 @@ To pass, a tool must keep `c0` as a candidate even though it is the root
 commit, touches nine files and adds 232 lines. Any filter that removes
 large commits, multi-file commits or the initial commit produces an empty
 answer here.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `initial-import-bic`
-- `large-bic`

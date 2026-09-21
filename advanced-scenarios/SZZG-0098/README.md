@@ -1,8 +1,17 @@
 # SZZG-0098: Commit message names the regressed region
 
-## Source
-
-- Category: Issue, message, context, and non-local evidence (G7)
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G7` Issue, message, context, and non-local evidence |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `context`, `commit-messages` |
+| oracle | `exact_set`; required `c1`; related but not correct `c2`, `c3` · BFC `c4` |
+| graph features | `context` |
+<!-- /szzbench:header -->
 
 ## Purpose
 

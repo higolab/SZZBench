@@ -1,5 +1,17 @@
 # SZZ-0098: Enum case addition after BIC
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S3` Intermediate noise and history noise |
+| tier | `control` |
+| status | `active` |
+| difficulty | `easy` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `enum-change-after-bic`, `plain-blame-control` |
+| oracle | `exact_set`; required `c1`; known distractors `c2` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 This scenario is an honest **control** for language-specific noise: between the
@@ -48,11 +60,3 @@ there for `COOL` before `AUTO` existed.
   compared with `c0`. `c3` reports `drawsPower() == true` for `AUTO`, which is
   the intended contract ("every mode except off draws power") and the reason the
   fix does not enumerate the powered modes.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `enum-change-after-bic`
-- `plain-blame-control`

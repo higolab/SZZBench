@@ -1,5 +1,18 @@
 # SZZG-0128: Feature branch integrated by fast-forward, no merge commit (twin of SZZG-0043)
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G4` Branch, merge, cherry-pick, backport, and release branches |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `fast-forward`, `branch`, `merge`, `feature-branch-bic`, `main-branch-bfc` |
+| oracle | `exact_set`; required `c1` · BFC `c4` |
+| graph features | 2 branches |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 The same feature commits as [SZZG-0043](../SZZG-0043/README.md), integrated
@@ -41,8 +54,3 @@ and `--first-parent` hides `c1`; here `c1` is on `main`'s only line.
 Report `c1` and behave exactly as on SZZG-0043. A tool that behaves differently
 between the twins is reacting to the presence of the merge commit, not to the
 change that introduced the bug.
-
-## Factors
-
-- `fast-forward`
-- `feature-branch`

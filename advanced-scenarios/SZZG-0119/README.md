@@ -1,5 +1,18 @@
 # SZZG-0119: A move that inlines two named conditions takes ownership of an earlier fault
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G1` Refactoring, move, rename, and semantic rewrite |
+| tier | `discriminating` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `multi-bic`, `file-move`, `inline-refactoring`, `behaviour-preserving-rewrite`, `blame-unreachable-bic` |
+| oracle | `exact_set`; required `c1`, `c3` · BFC `c4` |
+| graph features | operation `move_file`; 2 BICs; 2 fault sites |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 A discriminating-tier scenario on the measured axis: the answer is two commits,

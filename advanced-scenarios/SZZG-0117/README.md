@@ -1,5 +1,18 @@
 # SZZG-0117: The unit change arrives through a merge, the consumer is written after it
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G4` Branch, merge, cherry-pick, backport, and release branches |
+| tier | `discriminating` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `multi-bic`, `merge`, `release-branch`, `value-flow`, `blame-unreachable-bic` |
+| oracle | `exact_set`; required `c1`, `c4` · BFC `c5` |
+| graph features | 2 branches; merge commit `c3`; 2 BICs; 2 fault sites |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 A discriminating-tier scenario on the measured axis: the answer is two commits,

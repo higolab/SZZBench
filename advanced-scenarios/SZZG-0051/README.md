@@ -1,5 +1,18 @@
 # SZZG-0051: Backport introduces release-specific bug
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G4` Branch, merge, cherry-pick, backport, and release branches |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `branch`, `backport`, `wrong-constant` |
+| oracle | `exact_set`; required `r1` · BFC `r2` |
+| graph features | 2 branches; backport `r1` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 `c1` adds a retention policy on `main` — a source change, not a fix. `r1`
@@ -44,9 +57,3 @@ the fault file, 4 commits, 2 refs) are unchanged.
 Report `r1`. The `backport_of: c1` metadata and the shared subject line invite
 a tool to blame `c1`, but `c1` touched only `RetentionPolicy.java`; the faulty
 line was written on `release` by the adaptation itself.
-
-## Factors
-
-- `branch`
-- `backport`
-- `wrong-constant`

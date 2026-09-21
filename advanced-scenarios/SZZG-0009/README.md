@@ -1,8 +1,17 @@
 # SZZG-0009: Intermediate method extraction between BIC and BFC
 
-## Source
-
-- Category: Refactoring scenarios
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G1` Refactoring, move, rename, and semantic rewrite |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `intermediate-refactoring`, `extract-method`, `line-history-break` |
+| oracle | `exact_set`; required `c1` · BFC `c3` |
+| graph features | operation `insert_after` |
+<!-- /szzbench:header -->
 
 ## Purpose
 

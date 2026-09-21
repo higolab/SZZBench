@@ -1,5 +1,18 @@
 # SZZG-0043: BIC on feature branch, BFC on main
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G4` Branch, merge, cherry-pick, backport, and release branches |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `branch`, `merge`, `feature-branch-bic`, `main-branch-bfc` |
+| oracle | `exact_set`; required `c1` · BFC `c4` |
+| graph features | 2 branches; merge commit `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 A feature branch introduces a bug, extends feature code that depends on the buggy method, is merged into main, and is then fixed by a normal main-branch commit.

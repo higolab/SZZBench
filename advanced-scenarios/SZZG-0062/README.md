@@ -1,8 +1,17 @@
 # SZZG-0062: Backported fix on maintenance branch traces to original mainline BIC
 
-## Source
-
-- Category: Branch and merge scenarios
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G4` Branch, merge, cherry-pick, backport, and release branches |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `backport`, `maintenance-branch`, `cross-branch-bic` |
+| oracle | `exact_set`; required `c1` · BFC `c4` |
+| graph features | 2 branches |
+<!-- /szzbench:header -->
 
 ## Purpose
 

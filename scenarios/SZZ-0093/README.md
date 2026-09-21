@@ -1,5 +1,17 @@
 # SZZ-0093: If-else to guard clause after BIC
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S3` Intermediate noise and history noise |
+| tier | `control` |
+| status | `active` |
+| difficulty | `easy` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `guard-clause-after-bic`, `plain-blame-control` |
+| oracle | `exact_set`; required `c1`; known distractors `c2` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 This scenario is the honest **control** of the refactoring-after-BIC family: an
@@ -48,11 +60,3 @@ it must not follow the line history further back to `c0`.
   of `[-20000, 200000]` in steps of 137 — 1825 outputs in total. The `c1`
   snapshot differs from `c0` at `orderTotalCents == 5000`; the `c3` snapshot
   agrees with `c0` on every probed input.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `guard-clause-after-bic`
-- `plain-blame-control`

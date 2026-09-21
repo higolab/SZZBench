@@ -1,5 +1,18 @@
 # SZZG-0129: Octopus merge with the faulty branch on a non-first parent
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G4` Branch, merge, cherry-pick, backport, and release branches |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `merge`, `octopus-merge`, `bic-on-non-first-parent`, `multi-branch-integration` |
+| oracle | `exact_set`; required `q1`; related but not correct `m1` · BFC `c2` |
+| graph features | 4 branches; merge commit `m1` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 Every other merge in the suite has two parents. Here three feature branches,
@@ -43,10 +56,3 @@ first-parent commit that changed `QuotaPolicy.java`.
 
 Report `q1`. A tool that follows only the first parent, or only the last
 listed parent, attributes the change to `m1`.
-
-## Factors
-
-- `merge`
-- `octopus-merge`
-- `bic-on-non-first-parent`
-- `multi-branch-integration`

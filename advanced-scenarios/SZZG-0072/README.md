@@ -1,5 +1,18 @@
 # SZZG-0072: Interactive rebase drops original BIC but bug remains
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G5` Rebase-specific history rewriting |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `branch`, `rebase`, `interactive-rebase`, `dropped-origin-bic`, `deleted-branch`, `direct-bic`, `origin-bic` |
+| oracle | default: `exact_set`; required `r2`; related origins `f2`, `f1` · `origin-aware`: `relaxed_with_related`; required `r2`; acceptable `f2` (credit 0.5), `f1` (credit 0.5) · BFC `c3` |
+| graph features | 2 branches; rebase `r2`; ref lifecycle; 3 BICs; origin faults; 1 evaluation variant (`origin-aware`) |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 A feature branch first tightens the accepted backoff window of `RetryPolicy`
@@ -137,8 +150,3 @@ attempts `{-1, 0, 1, 3}` for the scheduler — 115 probe keys per snapshot, with
 * `c3` (BFC) differs from `r2` on exactly **4** keys — `schedules(250, ·)` and
   `schedules(60000, ·)` for both positive attempt counts — and afterwards the
   scheduler agrees with the policy on every probed bound.
-
-## Factors
-
-`branch`, `rebase`, `interactive_rebase`, `dropped_origin_bic`,
-`deleted_branch`, `direct_bic`, `origin_bic`.

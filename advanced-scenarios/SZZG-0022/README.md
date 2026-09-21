@@ -1,5 +1,18 @@
 # SZZG-0022: Copy propagation with direct and origin BIC evaluation variants
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G2` Clone, copy propagation, and origin-vs-direct BIC |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `copy-propagation`, `direct-bic`, `origin-bic`, `evaluation-variant`, `relaxed-with-credit` |
+| oracle | default (`direct-only`): `exact_set`; required `c2`; related origins `c1` · `origin-aware`: `relaxed_with_related`; required `c2`; acceptable `c1` (credit 0.5) · `relaxed-with-credit`: `relaxed_with_credit`; required `c2`; acceptable `c1` (credit 0.5) · BFC `c3` |
+| graph features | 2 BICs; origin faults; 3 evaluation variants (`direct-only`, `origin-aware`, `relaxed-with-credit`); `clone_relationships`; `copy_relationships` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 This scenario represents a copy-propagated bug.

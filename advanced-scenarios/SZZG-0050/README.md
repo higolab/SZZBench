@@ -1,5 +1,18 @@
 # SZZG-0050: Backport fix
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G4` Branch, merge, cherry-pick, backport, and release branches |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `branch`, `backport`, `release-branch`, `release-specific-changes`, `copy-propagation`, `null-check-omission` |
+| oracle | `exact_set`; required `c1` · BFCs `c2`, `r2` |
+| graph features | 2 branches; backport `r2`; 2 BFCs; `branch_level` oracle |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 `Greeting.forName` trims the name after a null guard; `c1` "trims the name
@@ -47,12 +60,3 @@ line 5); blame at `c2^` and at `r2^` returns `c1` (verifier `GI703`).
 From either fix, report `c1`. From `r2` the walk back passes `r1` and `r0`,
 which touch only release files, before reaching the shared history; the
 backport metadata (`backport_of: c2`) points at a fix, not at a cause.
-
-## Factors
-
-- `branch`
-- `backport`
-- `release-branch`
-- `release-specific-changes`
-- `copy-propagation`
-- `null-check-omission`

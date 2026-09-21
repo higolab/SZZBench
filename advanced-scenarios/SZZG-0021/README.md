@@ -1,5 +1,18 @@
 # SZZG-0021: Clone removal as fix
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G2` Clone, copy propagation, and origin-vs-direct BIC |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `copy-propagation`, `boolean-negation` |
+| oracle | `exact_set`; required `c1` · BFC `c2` |
+| graph features | operation `delete_file` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 `Access.canView` serves a document when it is public or the viewer is a member.
@@ -42,8 +55,3 @@ for blame).
 
 Report `c1`. A tool that only follows modified lines has nothing to follow;
 one that blames deleted lines of a deleted file gets the answer at once.
-
-## Factors
-
-- `copy-propagation`
-- `boolean-negation`

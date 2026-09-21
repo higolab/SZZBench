@@ -1,5 +1,17 @@
 # SZZ-0189: Missing close() fixed by an addition whose only deleted line is a distractor's comment
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S2` Omission and deletion bugs |
+| tier | `control` |
+| status | `active` |
+| difficulty | `hard` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `omission-bug`, `line-addition-fix`, `missing-close`, `cosmetic-line-noise` |
+| oracle | `exact_set`; required `c1`; known distractors `c2` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 SZZ-0185 tests the cosmetic-line filter when the BFC deletes comment and
@@ -44,12 +56,3 @@ ghost BFC: relate the added `writer.close();` to the surrounding code (the
 context lines `writer.newLine();` and the closing `}` of `exportSummary`
 belong to `c1`), or trace the enclosing method to the commit that added it.
 Both lead to `c1`.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `omission-bug`
-- `line-addition-fix`
-- `missing-close`
-- `cosmetic-line-noise`

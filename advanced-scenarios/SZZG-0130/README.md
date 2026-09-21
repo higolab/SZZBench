@@ -1,5 +1,18 @@
 # SZZG-0130: A bug report filed between the BIC and a later rewrite; its date rules the rewrite out
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G7` Issue, message, context, and non-local evidence |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `bug-report-date`, `tool-visible-context`, `rewrite-after-bic`, `basic-blame-distractor` |
+| oracle | `exact_set`; required `c1`; related but not correct `c3` · BFC `c4` |
+| graph features | `issues` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 The first scenario whose tool-visible context is a document inside the
@@ -44,10 +57,3 @@ deletes returns `c3`. `tests/test_twins_and_transitions.py` asserts the timeline
 
 Report `c1`. Plain blame says `c3`; reading the report's date and dropping
 commits made after it removes `c3` and leaves `c1`.
-
-## Factors
-
-- `bug-report-date`
-- `tool-visible-context`
-- `rewrite-after-bic`
-- `basic-blame-distractor`

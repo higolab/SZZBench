@@ -1,8 +1,17 @@
 # SZZG-0061: Cherry-picked BIC appears as duplicate commits on two branches
 
-## Source
-
-- Category: Branch and merge scenarios
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G4` Branch, merge, cherry-pick, backport, and release branches |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `cherry-pick`, `duplicate-patch`, `non-linear-history` |
+| oracle | default: `exact_set`; required `c2`; related origins `c1` · `origin-aware`: `relaxed_with_related`; required `c2`; acceptable `c1` (credit 0.5) · BFC `c3` |
+| graph features | 2 branches; cherry-pick `c2`; 2 BICs; 1 evaluation variant (`origin-aware`) |
+<!-- /szzbench:header -->
 
 ## Purpose
 

@@ -1,5 +1,18 @@
 # SZZG-0081: Rebase with formatting rewrite noise
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G5` Rebase-specific history rewriting |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `branch`, `rebase`, `formatting-rewrite`, `whitespace-only-change`, `blame-stops-at-formatting`, `direct-bic`, `origin-bic`, `null-check-omission` |
+| oracle | default: `exact_set`; required `r1`; related origins `f1`; related but not correct `r2` · `origin-aware`: `relaxed_with_related`; required `r1`; acceptable `f1` (credit 0.5); related but not correct `r2` · BFC `c3` |
+| graph features | 2 branches; rebase `r1`; 2 BICs; origin faults; 1 evaluation variant (`origin-aware`) |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 A whitespace-only reformatting commit sits between the rebased bug-introducing
@@ -48,14 +61,3 @@ returns **`r2`**, `git blame -w` returns `r1`. The verifier therefore reports
 Report `r1`. Ignore whitespace when attributing the line (`git blame -w`,
 `--ignore-rev` for the formatter commit, or a token-level comparison); a tool
 that takes plain blame's answer reports a reformatting.
-
-## Factors
-
-- `branch`
-- `rebase`
-- `formatting-rewrite`
-- `whitespace-only-change`
-- `blame-stops-at-formatting`
-- `direct-bic`
-- `origin-bic`
-- `null-check-omission`

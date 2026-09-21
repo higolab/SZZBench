@@ -1,5 +1,18 @@
 # SZZG-0073: Interactive rebase reorders commits before BIC
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G5` Rebase-specific history rewriting |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `branch`, `rebase`, `interactive-rebase`, `reorder`, `direct-bic`, `origin-bic`, `inherited-commit-metadata`, `api-misuse` |
+| oracle | default: `exact_set`; required `r2`; related origins `f1`; related but not correct `r1` · `origin-aware`: `relaxed_with_related`; required `r2`; acceptable `f1` (credit 0.5); related but not correct `r1` · BFC `c3` |
+| graph features | 2 branches; rebase `r1`, `r2`; 2 BICs; origin faults; 1 evaluation variant (`origin-aware`) |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 An interactive rebase replays the two feature commits in the opposite order.
@@ -52,14 +65,3 @@ The author dates are the inherited ones: `r1` 2024-01-03, `r2` 2024-01-02.
 Report `r2` and avoid `r1`, which only adds the quarter helper. Do not assume
 that the n-th replayed commit corresponds to the n-th source commit, and do not
 sort candidates by author date: the older-dated commit is the later one here.
-
-## Factors
-
-- `branch`
-- `rebase`
-- `interactive-rebase`
-- `reorder`
-- `direct-bic`
-- `origin-bic`
-- `inherited-commit-metadata`
-- `api-misuse`

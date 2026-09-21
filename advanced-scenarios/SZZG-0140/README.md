@@ -1,5 +1,18 @@
 # SZZG-0140: Top-k with a strict status cut-off: the BIC must be ranked first, hit@3 is only reported
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G9` Evaluation policy variants |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `top-k`, `formatting-noise`, `basic-blame-distractor`, `boundary-condition`, `single-bic`, `single-bfc` |
+| oracle | `top_k`; relevant `c1`; k = 1, 3, 5; status at k = 1; related but not correct `c2`; known distractors `c2` · BFC `c4` |
+| graph features | policy `top_k` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 Third member of the `top_k` family ([SZZG-0096](../SZZG-0096/README.md): ranking
@@ -43,12 +56,3 @@ statement is not present at `c4^` (verifier `GI701`, declared by
 
 False positives never fail a `top_k` scenario; the rank of the first relevant
 commit does.
-
-## Factors
-
-- `top-k`
-- `formatting-noise`
-- `basic-blame-distractor`
-- `boundary-condition`
-- `single-bic`
-- `single-bfc`

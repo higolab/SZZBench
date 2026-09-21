@@ -1,5 +1,17 @@
 # SZZ-0170: BIC is a test-only commit
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S8` Non-source, configuration, test-only, and file-level edge cases |
+| tier | `control` |
+| status | `active` |
+| difficulty | `hard` |
+| language | `java` |
+| factors | `test-only-bic`, `evaluation-variant` |
+| oracle | `exact_set`; required `c1` · BFC `c2` |
+<!-- /szzbench:header -->
+
 ## Summary
 
 Evaluates a bug where the bug-introducing commit changes only a test oracle, not production code.

@@ -1,5 +1,18 @@
 # SZZG-0131: The BIC was rebased after the bug report; excluding commits by committer date rules it out
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G7` Issue, message, context, and non-local evidence |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `bug-report-date`, `tool-visible-context`, `rebase`, `origin-and-direct-bic`, `author-date-vs-committer-date` |
+| oracle | default: `exact_set`; required `r1`; related origins `f1` · `origin-aware`: `relaxed_with_related`; required `r1`; acceptable `f1` (credit 0.5) · BFC `c3` |
+| graph features | 2 branches; rebase `r1`; 2 BICs; origin faults; 1 evaluation variant (`origin-aware`); `issues` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 The counter-example to [SZZG-0130](../SZZG-0130/README.md). The faulty change
@@ -44,11 +57,3 @@ Report `r1`. Dropping every commit *committed* after 2024-05-08 drops `r1`
 and leaves nothing on `main` that touched the line; dropping by *author* date
 keeps it. A tool that reaches `f1` through `git log --all` has found the origin,
 not the answer.
-
-## Factors
-
-- `bug-report-date`
-- `tool-visible-context`
-- `rebase`
-- `origin-and-direct-bic`
-- `author-date-vs-committer-date`

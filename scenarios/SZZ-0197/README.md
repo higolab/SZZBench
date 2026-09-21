@@ -1,5 +1,17 @@
 # SZZ-0197: Extracted methods take ownership of an earlier faulty comparison
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S6` Multiple BICs, duplicate faults, and composite faults |
+| tier | `discriminating` |
+| status | `active` |
+| difficulty | `hard` |
+| language | `java` |
+| factors | `multi-bic`, `single-bfc`, `extract-method`, `behaviour-preserving-rewrite`, `tangled-bfc`, `blame-unreachable-bic` |
+| oracle | `exact_set`; required `c1`, `c5` · BFC `c6` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 A discriminating-tier scenario on the measured axis: the answer is two commits,

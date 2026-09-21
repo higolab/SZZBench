@@ -1,5 +1,17 @@
 # SZZ-0166: Signature-only cleanup between BIC and BFC
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S7` Context, message, and non-local evidence |
+| tier | `control` |
+| status | `active` |
+| difficulty | `medium` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `context-aware`, `intermediate-cleanup` |
+| oracle | `exact_set`; required `c1`; known distractors `c2` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 Between the BIC and the BFC, an unrelated tidy-up commit touches the same file
@@ -27,11 +39,3 @@ The expected BFC is `c3` and the expected BIC is `c1`.
 at `c3^` on that line returns **`c1`**: plain blame reaches the BIC. `c2` never
 touched that line, so it is not a blame distractor; it is a distractor only for
 tools that weigh commit messages or nearby edits.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `context-aware`
-- `intermediate-cleanup`

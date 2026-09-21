@@ -1,8 +1,17 @@
 # SZZG-0059: Merge commit itself is the BIC
 
-## Source
-
-- Category: Branch and merge scenarios
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G4` Branch, merge, cherry-pick, backport, and release branches |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `merge-commit`, `bug-introducing-merge`, `non-linear-history` |
+| oracle | `exact_set`; required `c3` · BFC `c4` |
+| graph features | 2 branches; merge commit `c3` |
+<!-- /szzbench:header -->
 
 ## Purpose
 

@@ -1,5 +1,17 @@
 # SZZ-0095: Generic type change after BIC
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S3` Intermediate noise and history noise |
+| tier | `control` |
+| status | `active` |
+| difficulty | `easy` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `generic-type-after-bic`, `plain-blame-control` |
+| oracle | `exact_set`; required `c1`; known distractors `c2` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 This scenario is an honest **control** for language-specific noise: between the
@@ -47,11 +59,3 @@ follow the line history back to `c0`, which wrote the correct check.
   from `c0` at `currentCount == 7` (the eighth tag is refused) and at
   `Integer.MAX_VALUE`, where `currentCount + 1` overflows and wrongly reports
   free capacity; the `c3` snapshot agrees with `c0` on every probed input.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `generic-type-after-bic`
-- `plain-blame-control`

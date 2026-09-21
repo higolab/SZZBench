@@ -1,5 +1,17 @@
 # SZZ-0107: Large commit with small bug
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S3` Intermediate noise and history noise |
+| tier | `control` |
+| status | `active` |
+| difficulty | `easy` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `large-bic`, `tangled-bic` |
+| oracle | `exact_set`; required `c1` · BFC `c2` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 This scenario checks how an SZZ implementation reports a fault that sits
@@ -51,11 +63,3 @@ Return `{c1}` and, at line level, the single deleted comparison. Ways to fail:
 treat `c1` as too large to be a bug-introducing commit and fall back to `c0`;
 report every line `c1` touched as faulty; or attribute the fault to the file
 creation in `c0`, which did contain the method but with the correct bound.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `large-bic`
-- `tangled-bic`

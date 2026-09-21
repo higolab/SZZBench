@@ -1,5 +1,17 @@
 # SZZ-0116: Multiple-hunk bug-fixing commit
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S4` BFC-side noise and tangled commits |
+| tier | `control` |
+| status | `active` |
+| difficulty | `medium` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `multiple-hunk-bfc`, `same-origin-hunks` |
+| oracle | `exact_set`; required `c1` · BFC `c2` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 This is the **same-origin control** for multi-hunk bug-fixing commits: the
@@ -54,11 +66,3 @@ The three public methods were probed over
 identically in all snapshots): `c1` differs from `c0` on all 13 inputs
 (`next` everywhere, `isNonNegative` at `value == 0`), and `c2` agrees with
 `c0` on all 13.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `multiple-hunk-bfc`
-- `same-origin-hunks`

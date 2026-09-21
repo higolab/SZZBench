@@ -1,5 +1,17 @@
 # SZZ-0205: f-string conversion rewrites the faulty format line after the BIC
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S3` Intermediate noise and history noise |
+| tier | `control` |
+| status | `active` |
+| difficulty | `medium` |
+| language | `python` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `wrong-variable`, `deep-line-history`, `basic-blame-distractor`, `string-format-rewrite` |
+| oracle | `exact_set`; required `c1`; known distractors `c2` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 A modernisation rewrite that no normalisation undoes. The faulty line is a
@@ -57,13 +69,3 @@ line's history through `c2` (`git log -L`, or blame the line again at `c2^`),
 or judge `c2` behaviour-preserving by evaluating both spellings. Text-level
 tricks that rescue whitespace, line-ending and BOM rewrites (SZZ-0083,
 SZZ-0108, SZZ-0206) do not apply here.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `wrong-variable`
-- `deep-line-history`
-- `basic-blame-distractor`
-- `string-format-rewrite`

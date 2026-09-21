@@ -1,5 +1,18 @@
 # SZZG-0019: Bug propagates into generated code
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G2` Clone, copy propagation, and origin-vs-direct BIC |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `copy-propagation`, `generated-file`, `wrong-constant` |
+| oracle | default: `exact_set`; required `c1`; related origins `c0` · `origin-aware`: `relaxed_with_related`; required `c1`; acceptable `c0` (credit 0.5) · BFC `c2` |
+| graph features | 2 BICs; 2 fault sites; 1 evaluation variant (`origin-aware`) |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 The fault enters through generated code. The template `templates/Limits.tpl`
@@ -39,11 +52,3 @@ Report `c1`, the commit that wrote the fault into the fixed file. A tool that
 knows `files[].generated_from` may add the template commit `c0` as context; the
 default oracle counts it as a false positive, the origin-aware variant tolerates
 it.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `copy-propagation`
-- `generated-file`
-- `wrong-constant`

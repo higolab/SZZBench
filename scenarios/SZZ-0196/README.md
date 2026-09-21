@@ -1,5 +1,17 @@
 # SZZ-0196: An overload added earlier captures a call written later
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S6` Multiple BICs, duplicate faults, and composite faults |
+| tier | `discriminating` |
+| status | `active` |
+| difficulty | `hard` |
+| language | `java` |
+| factors | `multi-bic`, `single-bfc`, `caller-callee-interaction`, `overload-resolution`, `blame-unreachable-bic` |
+| oracle | `exact_set`; required `c1`, `c3` · BFC `c4` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 A discriminating-tier scenario on the measured axis: the answer is two commits,

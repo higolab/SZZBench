@@ -1,5 +1,18 @@
 # SZZG-0048: Cherry-pick BIC
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G4` Branch, merge, cherry-pick, backport, and release branches |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `branch`, `cherry-pick`, `release-branch`, `direct-bic`, `origin-bic` |
+| oracle | default: `exact_set`; required `r1`; related origins `c1` · `origin-aware`: `relaxed_with_related`; required `r1`; acceptable `c1` (credit 0.5) · BFC `c4` |
+| graph features | 3 branches; merge commit `c3`; cherry-pick `r1`; operation `apply_patch_from`; 2 BICs; origin faults; 1 evaluation variant (`origin-aware`) |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 A feature branch tightens the accepted upload batch limits and is merged into
@@ -97,9 +110,3 @@ MAX_VALUE}` (11 inputs: both `int` limits and both boundary constants, ±1).
 * `r1` agrees with `c1` on all 11 probes — the cherry-pick reproduces the
   feature-branch behaviour exactly.
 * `c4` (BFC) agrees with `c0` on **all 11** probes.
-
-## Factors
-
-`branch`, `cherry_pick`, `release_branch`, `direct_bic`, `origin_bic`.
-Changed: `cherry_pick_of` (a schema key, `GW400`) replaced by `cherry_pick`;
-`release_branch`, `direct_bic` and `origin_bic` added.

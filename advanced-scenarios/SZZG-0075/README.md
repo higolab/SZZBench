@@ -1,5 +1,18 @@
 # SZZG-0075: Interactive rebase squashes BIC and BFC into neutral commit
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G5` Rebase-specific history rewriting |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `branch`, `rebase`, `interactive-rebase`, `squash`, `transient-bug`, `scope-boundary`, `no-main-line-bfc` |
+| oracle | default: `exact_set`; required `f1`; related but not correct `r1` · `main-line-only`: `exact_set`; expects no BIC · BFC `f2` |
+| graph features | 2 branches; rebase `r1`; ref lifecycle; operation `apply_squash`; 1 evaluation variant (`main-line-only`) |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 Make the **squashed main-line commit** the object of the scenario: a fault and

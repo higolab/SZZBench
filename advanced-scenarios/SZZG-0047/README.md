@@ -1,5 +1,18 @@
 # SZZG-0047: Squash merge
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G4` Branch, merge, cherry-pick, backport, and release branches |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `branch`, `squash-merge`, `squashed-bic`, `direct-bic`, `origin-bic`, `exception-swallowed` |
+| oracle | default: `exact_set`; required `c3`; related origins `c1` · `origin-aware`: `relaxed_with_related`; required `c3`; acceptable `c1` (credit 0.5) · BFC `c4` |
+| graph features | 2 branches; operation `apply_squash`; 2 BICs; origin faults; 1 evaluation variant (`origin-aware`) |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 A feature branch makes `PortParser.parse` swallow `NumberFormatException` and
@@ -53,12 +66,3 @@ Report `c3` under the default oracle; `c1` is context. A tool that follows the
 `feature` branch will find `c1` first — the origin-aware variant tolerates it
 with half credit, the default does not, because `c1` is not an ancestor of the
 fix and a `main`-line bisect never sees it.
-
-## Factors
-
-- `branch`
-- `squash-merge`
-- `squashed-bic`
-- `direct-bic`
-- `origin-bic`
-- `exception-swallowed`
