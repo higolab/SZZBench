@@ -1142,3 +1142,67 @@ def test_history_model_matches_the_shipped_scenarios_with_a_ref_lifecycle(tmp_pa
     from_git = {cid: by_hash[e["hash"]] for cid, e in commit_map.items() if e["hash"] in by_hash}
     assert dict(resolved_commit_authors(data)) == from_git
     assert len(from_git) < len(commit_map) or sid == "SZZG-0075"
+
+
+def _tagged_generated_chain_fixture(*, count: int, tag_at: str | None, shared_author: str = "Dana Okafor <dana.okafor@example.com>") -> dict:
+    """PR #64 third review: Dana writes the two required commits; a scratch-branch commit d1 by Bob expands
+    `count` generated commits d1.g1..d1.gN (the generator attributes them by its rotation); the scratch
+    branch is deleted and a tag may point into the generated chain."""
+    data = graph_scenario()
+    data["bugs"][0]["bug_introducing_commits"] = [{"commit": "c0", "role": "direct"}, {"commit": "c1", "role": "direct"}]
+    data["expected_szz"]["commit_level"]["required"] = ["c0", "c1"]
+    data["commits"][0]["author"] = shared_author
+    data["commits"][1]["author"] = shared_author
+    data["commits"][2]["author"] = "Bob Example <bob@example.com>"
+    data["commits"].insert(2, {"id": "d1", "branch": "scratch", "parents": ["c1"], "author": "Bob Example <bob@example.com>",
+                               "message": "Document pagination usage", "role": "intermediate",
+                               "operations": [{"type": "commit_generator", "generator": "catalog_sync", "count": count, "files": 1, "path": "generated/catalog"},
+                                              {"type": "write_file", "path": "docs/paging.md", "content": "Pagination usage examples.\n"}]})
+    lifecycle = {"delete_branches": ["scratch"]}
+    if tag_at:
+        lifecycle["tags"] = [{"name": "catalog-snapshot", "commit": tag_at}]
+    data["graph"] = {"model": "commit_dag", "ref_lifecycle": lifecycle}
+    return data
+
+
+def test_a_tag_on_a_generated_commit_keeps_it_and_its_ancestors_reachable():
+    """The generated chain sits between the owner's first parent and the owner: c1 <- d1.g1 <- d1.g2 <- d1.g3 <- d1.
+    A tag at d1.g2 on the deleted scratch branch keeps d1.g1 and d1.g2 visible; d1.g3 and d1 stay unreachable."""
+    from szzbench.gitutils import reachable_commit_ids, resolved_commit_authors
+    data = _tagged_generated_chain_fixture(count=3, tag_at="d1.g2")
+    reachable = reachable_commit_ids(data)
+    assert {"c0", "c1", "c2", "d1.g1", "d1.g2"} <= reachable
+    assert not {"d1", "d1.g3"} & reachable
+    ids = [cid for cid, _ in resolved_commit_authors(data)]
+    assert "d1.g1" in ids and "d1.g2" in ids and "d1.g3" not in ids and "d1" not in ids
+    # without the tag the whole scratch chain is gone
+    assert not {"d1", "d1.g1", "d1.g2", "d1.g3"} & reachable_commit_ids(_tagged_generated_chain_fixture(count=3, tag_at=None))
+
+
+def test_author_coincidence_sees_a_tagged_generated_commit_by_the_same_author():
+    """The review's reproduction: the tag keeps d1.g1 visible, and when the rotation gives d1.g1 to the
+    required commits' author, her visible set is {c0, c1, d1.g1} and there is nothing to warn about."""
+    from szzbench.gitutils import canonical_author, deterministic_author
+    generated_author = canonical_author(deterministic_author("SZZG-9900", "d1.g1"))
+    quiet = lint_graph(_tagged_generated_chain_fixture(count=1, tag_at="d1.g1", shared_author=generated_author))
+    assert codes(quiet) == [] and info_codes(quiet) == []
+    # the same history with the tag on the owner's chain removed: d1.g1 is unreachable and the coincidence is real
+    assert codes(lint_graph(_tagged_generated_chain_fixture(count=1, tag_at=None, shared_author=generated_author))) == ["GW413"]
+
+
+@pytest.mark.parametrize("tag_at", ["d1.g1", "d1.g2", None])
+def test_history_model_matches_git_log_all_with_a_tag_inside_a_generated_chain(tmp_path, tag_at):
+    from szzbench.gitutils import resolved_commit_authors
+    from szzbench.graph_generator import generate_graph_repository
+    import subprocess
+    data = _tagged_generated_chain_fixture(count=3, tag_at=tag_at)
+    path = write_yaml(tmp_path / "SZZG-9900" / "scenario.graph.yml", data)
+    commit_map, verify = generate_graph_repository(path, tmp_path / "out", force=True)
+    assert not verify.has_errors(), verify.to_dict()
+    log = subprocess.run(["git", "log", "--all", "--format=%H%x00%an <%ae>"], cwd=tmp_path / "out" / "repo",
+                         capture_output=True, text=True, check=True).stdout
+    by_hash = {l.split("\x00")[0]: l.split("\x00")[1] for l in log.splitlines() if l}
+    from_git = {cid: by_hash[e["hash"]] for cid, e in commit_map.items() if e["hash"] in by_hash}
+    assert dict(resolved_commit_authors(data)) == from_git
+    expected_generated = {"d1.g1": {"d1.g1"}, "d1.g2": {"d1.g1", "d1.g2"}, None: set()}[tag_at]
+    assert {cid for cid in from_git if cid.startswith("d1")} == expected_generated
