@@ -192,7 +192,7 @@ Every scenario declares `meta.tier`, which says what it is for:
 
 | tier | meaning | count |
 |---|---|---|
-| `control` | checks that a method handles a specific input condition; a cheap rule may well solve it | **214** |
+| `control` | checks that a method handles a specific input condition; a cheap rule may well solve it | **229** |
 | `discriminating` | designed so that none of the declared cheap baselines solves it | **22** |
 
 Every one of the twenty-two has a multi-commit oracle. Seven are pre-existing
