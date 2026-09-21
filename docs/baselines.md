@@ -51,29 +51,30 @@ otherwise pass it for free, and so would every other silent rule.
 Predicting nothing is a strategy, so it is published as one: `abstain` is the
 single rule scored on its silence. It is the honest version of that free pass —
 one rule with one number, rather than an invisible bonus spread across the
-family. It scores **0/236** on the shipped suite, because no scenario's default
+family. It scores **0/243** on the shipped suite, because no scenario's default
 evaluation has an empty oracle.
 
 ## Measured on the shipped suite
 
-236 generated scenarios, measured 2026-09-21 (after the history-rewriting scenarios of
-issue #22, SZZG-0122–0129, and the tool-visible-context scenarios of issue #23, SZZG-0130–0134):
+243 generated scenarios, measured 2026-09-21 (after the history-rewriting scenarios of
+issue #22, SZZG-0122–0129, the tool-visible-context scenarios of issue #23, SZZG-0130–0134,
+and the Python scenarios of issue #24, SZZ-0200–0206):
 
 | baseline | family | solves |
 |---|---|---|
-| `blame-deleted-lines` | blame | **150/236 = 63.6%** |
-| `position-1` | position | **147/236 = 62.3%** |
-| `shape-last-toucher` | shape | 114/236 = 48.3% |
-| `position-before-fix` | position | 101/236 = 42.8% |
-| `position-3` | position | 22/236 = 9.3% |
-| `position-2` | position | 21/236 = 8.9% |
-| `position-all-non-fix` | position | 6/236 = 2.5% |
-| `position-4` | position | 7/236 = 3.0% |
-| `position-0` | position | 5/236 = 2.1% |
-| `position-5` | position | 2/236 = 0.8% |
-| best `author:…` | metadata | 11/236 = 4.7% (chance) |
-| `abstain` | position | **0/236** |
-| `message-admits-fault` | metadata | **0/236** |
+| `position-1` | position | **154/243 = 63.4%** |
+| `blame-deleted-lines` | blame | **153/243 = 63.0%** |
+| `shape-last-toucher` | shape | 118/243 = 48.6% |
+| `position-before-fix` | position | 105/243 = 43.2% |
+| `position-3` | position | 22/243 = 9.1% |
+| `position-2` | position | 21/243 = 8.6% |
+| `position-4` | position | 7/243 = 2.9% |
+| `position-all-non-fix` | position | 6/243 = 2.5% |
+| `position-0` | position | 5/243 = 2.1% |
+| `position-5` | position | 2/243 = 0.8% |
+| best `author:…` | metadata | 11/243 = 4.5% (chance) |
+| `abstain` | position | **0/243** |
+| `message-admits-fault` | metadata | **0/243** |
 
 **A fixed rule versus the union.** Each row is one rule applied to every
 scenario, which is what an attacker can actually do. The union of the rows is
@@ -83,16 +84,20 @@ a cheap rule could explain — headroom, not a result.
 
 Read this table before reading any result reported on SZZBench:
 
-- **A rule that opens no file scores within three scenarios of the classic
-  B-SZZ baseline.** "Report the second commit of the history" solves **147 of
-  236** and `blame-deleted-lines` **150 of 236**; on the 225-scenario suite the
-  two were exactly tied at 142. The eight history-rewriting scenarios of issue
+- **A rule that opens no file is level with the classic B-SZZ baseline.**
+  "Report the second commit of the history" solves **154 of 243** and
+  `blame-deleted-lines` **153 of 243**; on the 225-scenario suite the two were
+  exactly tied at 142. The eight history-rewriting scenarios of issue
   #22 are all blame-solvable and only two of them put the BIC second, which
   opened a gap of six; the five tool-visible-context scenarios of issue #23
   closed half of it the other way — four put the BIC second and only one is
   blame-solvable, because in the others the fault line was rewritten, the fault
-  is a binary blob, or the fix's deleted line belongs to the initial commit.
-  Most scenarios are still four commits long with a single-commit oracle in
+  is a binary blob, or the fix's deleted line belongs to the initial commit;
+  and the seven Python scenarios of issue #24 all put the BIC second while only
+  three are blame-solvable (SZZ-0203's fix deletes nothing, and in SZZ-0204,
+  SZZ-0205 and SZZ-0206 a type-annotation pass, an f-string conversion and a
+  BOM re-save rewrote the faulty line), which hands the position rule a lead of
+  one. Most scenarios are still four commits long with a single-commit oracle in
   second position, so the floor a real method has to beat is set by either
   rule, and a method that only matches B-SZZ has not shown it uses anything
   blame does not.
@@ -103,10 +108,12 @@ Read this table before reading any result reported on SZZBench:
   and gained blame two; applying the contract to the rest then cost blame one
   more, by making SZZG-0016's origin a false positive in its default variant
   where it had been accepted unconditionally. The conclusion that a file-blind
-  rule is *competitive with* blame survives every one of those changes; the
-  conclusion that it *beats* blame did not, and it was an artefact of oracles
-  that named the wrong commit.
-- **Upper bound (oracle-aware): 214 of 236 scenarios are solved by *some*
+  rule is *competitive with* blame survives every one of those changes. The
+  conclusion that either rule *beats* the other does not: the 2026-09-19 lead
+  of the position rule was an artefact of oracles that named the wrong commit,
+  and the lead has since changed hands with every batch of five to eight
+  scenarios — a property of the last batch's composition, not of the suite.
+- **Upper bound (oracle-aware): 221 of 243 scenarios are solved by *some*
   cheap rule.** Twenty-two resist all of them — SZZ-0132, SZZ-0136, SZZ-0190 to
   SZZ-0199, SZZG-0028, SZZG-0038, SZZG-0040, SZZG-0069, SZZG-0076 and
   SZZG-0117 to SZZG-0121 — and every one of them has a **multi-commit oracle**.
@@ -114,12 +121,12 @@ Read this table before reading any result reported on SZZBench:
 
   | | best fixed rule | union over all rules |
   |---|---|---|
-  | 202 scenarios with a one-commit oracle | 146/202 = 72.3% (`position-1`) | **202/202** |
+  | 209 scenarios with a one-commit oracle | 153/209 = 73.2% (`position-1`) | **209/209** |
   | 34 scenarios with a two-commit oracle | 11/34 = 32.4% (`blame-deleted-lines`) | 12/34 |
 
   A one-commit answer inside a three- or four-commit history is reachable by
-  *some* cheap rule in every single case, at every depth — 100/100 at depth 1,
-  82/82 at depth 2, 16/16 at depth 3 and 4/4 beyond. Oracle size is the
+  *some* cheap rule in every single case, at every depth — 104/104 at depth 1,
+  85/85 at depth 2, 16/16 at depth 3 and 4/4 beyond. Oracle size is the
   dimension that separates them, and a longer or deeper history on its own
   will not raise the floor.
 
@@ -141,18 +148,18 @@ Read this table before reading any result reported on SZZBench:
   measurement, it is `9/21`, by `blame-deleted-lines`. The union was right.)
 - **Ten of the seventeen categories are 100% solvable** by a cheap baseline
   (S1, S2, S3, S4, S5, S7, G6, G7, G8, G9); the rest have headroom — S6 42.1%,
-  G3 78.6%, S8 80.0%, G2 87.5%, G5 88.2%, G4 91.3%, G1 92.9%.
+  G3 78.6%, S8 80.0%, G2 87.5%, G5 88.9%, G1 92.9%, G4 92.9%.
 - The metadata family is at chance, which is the leakage guarantee holding: the
-  best author rule (4.7%) sits *below* the mean of a label-shuffled null, and
+  best author rule (4.5%) sits *below* the mean of a label-shuffled null, and
   the message rule scores zero.
 
   This family is the sharpest illustration of the fixed-rule-versus-union
-  distinction above. The *union* over all author rules solves **84/236 =
-  35.6%**: in more than a third of the scenarios *some* author's set of commits
+  distinction above. The *union* over all author rules solves **89/243 =
+  36.6%**: in more than a third of the scenarios *some* author's set of commits
   happens to be exactly the oracle, usually because the oracle is one commit and
   the generator's author rotation gave that commit an author it gave no other.
   An attacker cannot use that — they must fix one author and apply it
-  everywhere, which is the 4.4%. The coincidence is common; exploiting it needs
+  everywhere, which is the 4.5%. The coincidence is common; exploiting it needs
   the answer.
 
 This is a property of how the scenarios are **shaped**, not of what they
@@ -272,21 +279,21 @@ szzbench coverage --out studies/coverage
 direct BIC are read the same way a scored run reads them. `bic_depth` measures
 the **farthest** required BIC — the deepest commit a tool has to reach.
 
-Measured on the shipped suite (236 scenarios):
+Measured on the shipped suite (243 scenarios):
 
 ```text
-tier                   control:214, discriminating:22
-oracle_size            1:202, 2:34
-bic_depth              1:100, 2:101, 3:29, 4:2, 5:2, 6:1, 1003:1
-fault_file_distractors 0:12, 1:100, 2:88, 3:27, 4:8, 5:1
-commit_count           2:3, 3:56, 4:100, 5:55, 6:16, 7:4, 8:1, 1005:1
-ref_count              1:187, 2:45, 3:3, 4:1
+tier                   control:221, discriminating:22
+oracle_size            1:209, 2:34
+bic_depth              1:104, 2:104, 3:29, 4:2, 5:2, 6:1, 1003:1
+fault_file_distractors 0:12, 1:104, 2:91, 3:27, 4:8, 5:1
+commit_count           2:3, 3:60, 4:103, 5:55, 6:16, 7:4, 8:1, 1005:1
+ref_count              1:194, 2:45, 3:3, 4:1
 
-99 distinct signatures; 40 groups of two or more, covering 172 scenarios
+99 distinct signatures; 42 groups of two or more, covering 186 scenarios
 ```
 
-The largest groups are 27 S3, 10 S4, 9 S2, 8 S1 and 8 G1 scenarios that agree
-on every dimension; 53 scenarios have a signature of their own. Read together
+The largest groups are 30 S3, 13 S1, 10 S4, 8 S2 and 8 G1 scenarios that agree
+on every dimension; 57 scenarios have a signature of their own. Read together
 with the baseline table, the suite still concentrates in one cell — a
 one-commit answer, one or two commits before the fix, in a three- or
 four-commit single-branch history — and **that cell is where the cheap rules
