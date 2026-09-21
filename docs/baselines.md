@@ -51,28 +51,29 @@ otherwise pass it for free, and so would every other silent rule.
 Predicting nothing is a strategy, so it is published as one: `abstain` is the
 single rule scored on its silence. It is the honest version of that free pass —
 one rule with one number, rather than an invisible bonus spread across the
-family. It scores **0/225** on the shipped suite, because no scenario's default
+family. It scores **0/231** on the shipped suite, because no scenario's default
 evaluation has an empty oracle.
 
 ## Measured on the shipped suite
 
-225 generated scenarios, measured on this branch (2026-09-18, after the
-direct/origin oracle corrections of issue #3):
+231 generated scenarios, measured 2026-09-21 (after the eight history-rewriting
+and merge scenarios of issue #22, SZZG-0122–0129):
 
 | baseline | family | solves |
 |---|---|---|
-| `blame-deleted-lines` | blame | **142/225 = 63.1%** |
-| `position-1` | position | **142/225 = 63.1%** |
-| `shape-last-toucher` | shape | 108/225 = 48.0% |
-| `position-before-fix` | position | 95/225 = 42.2% |
-| `position-2` | position | 20/225 = 8.9% |
-| `position-3` | position | 18/225 = 8.0% |
-| `position-all-non-fix` | position | 7/225 = 3.1% |
-| `position-0`, `position-4` | position | 6/225 = 2.7% each |
-| `position-5` | position | 1/225 = 0.4% |
-| best `author:…` | metadata | 10/225 = 4.4% (chance) |
-| `abstain` | position | **0/225** |
-| `message-admits-fault` | metadata | **0/225** |
+| `blame-deleted-lines` | blame | **149/231 = 64.5%** |
+| `position-1` | position | **143/231 = 61.9%** |
+| `shape-last-toucher` | shape | 112/231 = 48.5% |
+| `position-before-fix` | position | 98/231 = 42.4% |
+| `position-3` | position | 22/231 = 9.5% |
+| `position-2` | position | 21/231 = 9.1% |
+| `position-all-non-fix` | position | 6/231 = 2.6% |
+| `position-4` | position | 6/231 = 2.6% |
+| `position-0` | position | 5/231 = 2.2% |
+| `position-5` | position | 2/231 = 0.9% |
+| best `author:…` | metadata | 11/231 = 4.8% (chance) |
+| `abstain` | position | **0/231** |
+| `message-admits-fault` | metadata | **0/231** |
 
 **A fixed rule versus the union.** Each row is one rule applied to every
 scenario, which is what an attacker can actually do. The union of the rows is
@@ -82,12 +83,16 @@ a cheap rule could explain — headroom, not a result.
 
 Read this table before reading any result reported on SZZBench:
 
-- **A rule that opens no file scores exactly what the classic B-SZZ baseline
-  scores.** "Report the second commit of the history" and
-  `blame-deleted-lines` both solve **142 of 225**, because most scenarios are
-  four commits long with a single-commit oracle in second position. The floor a
-  real method has to beat is therefore set by either of them, and a method that
-  only matches B-SZZ has not shown it uses anything blame does not.
+- **A rule that opens no file scores within six scenarios of the classic
+  B-SZZ baseline.** "Report the second commit of the history" solves **143 of
+  231** and `blame-deleted-lines` **149 of 231**; on the 225-scenario suite the
+  two were exactly tied at 142. The gap is the eight history-rewriting scenarios
+  of issue #22: every one of them is blame-solvable, because its fix deletes a
+  line the BIC wrote, and only two of them (SZZG-0126, SZZG-0128) put the BIC
+  in second position. Most scenarios are still four commits long with a
+  single-commit oracle in second position, so the floor a real method has to
+  beat is set by either rule, and a method that only matches B-SZZ has not
+  shown it uses anything blame does not.
 
   Until the oracle work of issue #3 this row read the other way round (64.9%
   against 62.7%, so the position rule won). Correcting eight oracles that
@@ -98,7 +103,7 @@ Read this table before reading any result reported on SZZBench:
   rule is *competitive with* blame survives every one of those changes; the
   conclusion that it *beats* blame did not, and it was an artefact of oracles
   that named the wrong commit.
-- **Upper bound (oracle-aware): 203 of 225 scenarios are solved by *some*
+- **Upper bound (oracle-aware): 209 of 231 scenarios are solved by *some*
   cheap rule.** Twenty-two resist all of them — SZZ-0132, SZZ-0136, SZZ-0190 to
   SZZ-0199, SZZG-0028, SZZG-0038, SZZG-0040, SZZG-0069, SZZG-0076 and
   SZZG-0117 to SZZG-0121 — and every one of them has a **multi-commit oracle**.
@@ -106,12 +111,12 @@ Read this table before reading any result reported on SZZBench:
 
   | | best fixed rule | union over all rules |
   |---|---|---|
-  | 191 scenarios with a one-commit oracle | 141/191 = 73.8% (`position-1`) | **191/191** |
+  | 197 scenarios with a one-commit oracle | 142/197 = 72.1% (`position-1`) | **197/197** |
   | 34 scenarios with a two-commit oracle | 11/34 = 32.4% (`blame-deleted-lines`) | 12/34 |
 
   A one-commit answer inside a three- or four-commit history is reachable by
-  *some* cheap rule in every single case, at every depth — 94/94 at depth 1,
-  80/80 at depth 2, 13/13 at depth 3 and 4/4 beyond. Oracle size is the
+  *some* cheap rule in every single case, at every depth — 97/97 at depth 1,
+  81/81 at depth 2, 15/15 at depth 3 and 4/4 beyond. Oracle size is the
   dimension that separates them, and a longer or deeper history on its own
   will not raise the floor.
 
@@ -135,12 +140,12 @@ Read this table before reading any result reported on SZZBench:
   (S1, S2, S3, S4, S5, S7, G6, G7, G8, G9); the rest have headroom — S6 42.1%,
   G3 78.6%, S8 80.0%, G2 87.5%, G5 88.2%, G4 91.3%, G1 92.9%.
 - The metadata family is at chance, which is the leakage guarantee holding: the
-  best author rule (4.4%) sits *below* the mean of a label-shuffled null, and
+  best author rule (4.8%) sits *below* the mean of a label-shuffled null, and
   the message rule scores zero.
 
   This family is the sharpest illustration of the fixed-rule-versus-union
-  distinction above. The *union* over all author rules solves **81/225 =
-  36.0%**: in more than a third of the scenarios *some* author's set of commits
+  distinction above. The *union* over all author rules solves **81/231 =
+  35.1%**: in more than a third of the scenarios *some* author's set of commits
   happens to be exactly the oracle, usually because the oracle is one commit and
   the generator's author rotation gave that commit an author it gave no other.
   An attacker cannot use that — they must fix one author and apply it
@@ -167,7 +172,7 @@ Every scenario declares `meta.tier`, which says what it is for:
 
 | tier | meaning | count |
 |---|---|---|
-| `control` | checks that a method handles a specific input condition; a cheap rule may well solve it | **203** |
+| `control` | checks that a method handles a specific input condition; a cheap rule may well solve it | **209** |
 | `discriminating` | designed so that none of the declared cheap baselines solves it | **22** |
 
 Every one of the twenty-two has a multi-commit oracle. Seven are pre-existing
@@ -264,17 +269,17 @@ szzbench coverage --out studies/coverage
 direct BIC are read the same way a scored run reads them. `bic_depth` measures
 the **farthest** required BIC — the deepest commit a tool has to reach.
 
-Measured on the shipped suite (225 scenarios):
+Measured on the shipped suite (231 scenarios):
 
 ```text
-tier                   control:203, discriminating:22
-oracle_size            1:191, 2:34
-bic_depth              1:94, 2:99, 3:26, 4:2, 5:2, 6:1, 1003:1
-fault_file_distractors 0:13, 1:98, 2:82, 3:24, 4:7, 5:1
-commit_count           2:4, 3:55, 4:98, 5:50, 6:13, 7:3, 8:1, 1005:1
-ref_count              1:183, 2:39, 3:3
+tier                   control:209, discriminating:22
+oracle_size            1:197, 2:34
+bic_depth              1:97, 2:100, 3:28, 4:2, 5:2, 6:1, 1003:1
+fault_file_distractors 0:12, 1:98, 2:85, 3:27, 4:8, 5:1
+commit_count           2:3, 3:54, 4:99, 5:54, 6:15, 7:4, 8:1, 1005:1
+ref_count              1:183, 2:44, 3:3, 4:1
 
-93 distinct signatures; 40 groups of two or more, covering 172 scenarios
+98 distinct signatures; 40 groups of two or more, covering 172 scenarios
 ```
 
 The largest groups are 27 S3, 10 S4, 9 S2, 8 S1 and 8 G1 scenarios that agree
