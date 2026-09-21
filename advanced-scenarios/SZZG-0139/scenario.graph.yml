@@ -1,0 +1,168 @@
+schema_version: graph-1.0
+meta:
+  id: SZZG-0139
+  title: "Partial credit across a merge: one BIC on each side, either one is a passing answer"
+  slug: partial-credit-across-merge
+  description: >
+    A booking total goes wrong because of two independent faults: the nightly base price loses a
+    night on the main line, and the weekend surcharge turns into a discount on a feature branch.
+    The branch is merged and one commit fixes both. Under partial_credit with minimum_required 1 a
+    tool that only walks the first-parent line and finds the main-line BIC passes with the branch
+    BIC as a false negative; a tool that returns the merge commit fails. Sibling of SZZG-0033
+    (two BICs, one line) and SZZG-0138 (three BICs, threshold two).
+  category: "Evaluation policy variants"
+  category_code: "G9"
+  factors:
+  - partial-credit
+  - multi-bic
+  - single-bfc
+  - branch-merge
+  difficulty: advanced
+  status: active
+  tier: control
+repository:
+  name: SZZG-0139-partial-credit-across-merge
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'Add the booking price components'
+  role: initial
+  date: '2024-04-01T09:15:00Z'
+  operations:
+  - type: write_file
+    path: src/main/java/example/booking/Pricing.java
+    content: |
+      package example.booking;
+
+      public class Pricing {
+          /** Base price in cents for a stay of {@code nights} nights. */
+          public int basePrice(int nights) {
+              return nights * 10000;
+          }
+      }
+  - type: write_file
+    path: src/main/java/example/booking/Surcharge.java
+    content: |
+      package example.booking;
+
+      public class Surcharge {
+          /** Weekend nights cost ten percent more. */
+          public int weekend(int price) {
+              return price + price / 10;
+          }
+      }
+- id: f1
+  branch: feature
+  parents:
+  - c0
+  message: 'Round the weekend surcharge the way the invoice does'
+  role: bug_introducing
+  date: '2024-04-08T14:40:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/booking/Surcharge.java
+    old: return price + price / 10;
+    new: return price - price / 10;
+- id: m1
+  branch: main
+  parents:
+  - c0
+  message: 'Do not charge the check-out day'
+  role: bug_introducing
+  date: '2024-04-10T10:05:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/booking/Pricing.java
+    old: return nights * 10000;
+    new: return (nights - 1) * 10000;
+- id: c2
+  branch: main
+  parents:
+  - m1
+  - f1
+  message: 'Merge branch feature: weekend surcharge rounding'
+  role: merge
+  date: '2024-04-15T09:30:00Z'
+  operations: []
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'Restore the nightly base price and the weekend surcharge'
+  role: bug_fixing
+  date: '2024-04-22T11:20:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/booking/Pricing.java
+    old: return (nights - 1) * 10000;
+    new: return nights * 10000;
+  - type: replace
+    path: src/main/java/example/booking/Surcharge.java
+    old: return price - price / 10;
+    new: return price + price / 10;
+bugs:
+- id: B001
+  title: Booking totals are too low
+  bug_introducing_commits:
+  - commit: m1
+    role: contributing
+  - commit: f1
+    role: contributing
+  bug_fixing_commits:
+  - commit: c3
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: m1
+    file: src/main/java/example/booking/Pricing.java
+    statement: return (nights - 1) * 10000;
+    change_type: line_modification
+  - id: F002
+    commit: f1
+    file: src/main/java/example/booking/Surcharge.java
+    statement: return price - price / 10;
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c3
+    file: src/main/java/example/booking/Pricing.java
+    statement: return nights * 10000;
+    fix_type: line_modification
+  - id: X002
+    commit: c3
+    file: src/main/java/example/booking/Surcharge.java
+    statement: return price + price / 10;
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: partial_credit
+    required:
+    - m1
+    - f1
+    minimum_required: 1
+    known_distractors:
+    - c2
+    notes: >
+      Either contributing BIC is a passing answer; the merge commit c2 is a false positive that
+      fails the scenario. Blame at c3^ (the merge) reaches m1 for Pricing.java and f1 for
+      Surcharge.java, so full blame finds both; a first-parent walk from c3 sees c2, m1 and c0 and
+      can find only m1.
+scenario_design:
+  purpose: >
+    Third member of the partial_credit family: the required set is split across a merge, so the
+    policy separates "found one side of the merge" (passes, credit 1/2) from "blamed the merge
+    itself" (fails).
+  key_property: >
+    Measured: basePrice(3) is 30000 at c0 and f1, 20000 at m1, c2 and 30000 at c3; weekend(10000)
+    is 11000 at c0 and m1, 9000 at f1, c2 and 11000 at c3. c3 is the only commit whose first-parent
+    diff touches both files.
+  evaluation_points:
+  - '{m1, f1}, {m1} and {f1} pass; {c2}, {m1, c2} and {} fail.'
+  - The merge commit introduces nothing and is a known distractor.

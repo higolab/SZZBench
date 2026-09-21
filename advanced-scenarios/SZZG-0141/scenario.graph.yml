@@ -1,0 +1,269 @@
+schema_version: graph-1.0
+meta:
+  id: SZZG-0141
+  title: "Credit that saturates: two origins at half credit each can fill a two-commit oracle without full recall"
+  slug: relaxed-credit-saturation
+  description: >
+    Two faulty formulas live in two helper classes (the origins). An invoice line copies both
+    inline, in two commits (the direct BICs), and one fix repairs the copies. The relaxed-with-credit
+    variant gives each origin credit 0.5 towards a possible credit of 2. An answer of one direct and
+    both origins reaches weighted credit 2.0 — the cap — while still missing a required commit and
+    failing; credit and status are different measures. Sibling of SZZG-0022 (one origin) and
+    SZZG-0142 (an origin worth a full point).
+  category: "Evaluation policy variants"
+  category_code: "G9"
+  factors:
+  - relaxed-credit
+  - origin-vs-direct
+  - copy-propagation
+  - multi-bic
+  - single-bfc
+  - evaluation-variant
+  difficulty: advanced
+  status: active
+  tier: control
+repository:
+  name: SZZG-0141-relaxed-credit-saturation
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'Add the money and percentage helpers'
+  role: initial
+  date: '2024-08-05T09:05:00Z'
+  operations:
+  - type: write_file
+    path: src/main/java/example/invoice/Money.java
+    content: |
+      package example.invoice;
+
+      public class Money {
+          /** Whole cents for an amount in euros, rounded to the nearest cent. */
+          public static int cents(double euros) {
+              return (int) Math.round(euros * 100);
+          }
+      }
+  - type: write_file
+    path: src/main/java/example/invoice/Percent.java
+    content: |
+      package example.invoice;
+
+      public class Percent {
+          public static int of(int cents, int percent) {
+              return cents * percent / 100;
+          }
+      }
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'Drop the rounding call from Money.cents'
+  role: bug_introducing
+  date: '2024-08-12T13:30:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/invoice/Money.java
+    old: return (int) Math.round(euros * 100);
+    new: return (int) (euros * 100);
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'Divide first in Percent.of to avoid overflow'
+  role: bug_introducing
+  date: '2024-08-19T10:15:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/invoice/Percent.java
+    old: return cents * percent / 100;
+    new: return cents / 100 * percent;
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'Add InvoiceLine with an inline cent conversion'
+  role: bug_introducing
+  date: '2024-08-26T15:45:00Z'
+  operations:
+  - type: write_file
+    path: src/main/java/example/invoice/InvoiceLine.java
+    content: |
+      package example.invoice;
+
+      public class InvoiceLine {
+          public int netCents(double euros) {
+              return (int) (euros * 100);
+          }
+      }
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: 'Add the discounted total to InvoiceLine'
+  role: bug_introducing
+  date: '2024-09-02T11:00:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/invoice/InvoiceLine.java
+    old: |
+      public int netCents(double euros) {
+              return (int) (euros * 100);
+          }
+    new: |
+      public int netCents(double euros) {
+              return (int) (euros * 100);
+          }
+
+          public int discountedCents(int cents, int percent) {
+              return cents - cents / 100 * percent;
+          }
+- id: c5
+  branch: main
+  parents:
+  - c4
+  message: 'Round cents and multiply before dividing in InvoiceLine'
+  role: bug_fixing
+  date: '2024-09-09T09:50:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/invoice/InvoiceLine.java
+    old: return (int) (euros * 100);
+    new: return (int) Math.round(euros * 100);
+  - type: replace
+    path: src/main/java/example/invoice/InvoiceLine.java
+    old: return cents - cents / 100 * percent;
+    new: return cents - cents * percent / 100;
+bugs:
+- id: B001
+  title: Invoice lines lose cents to truncation
+  bug_introducing_commits:
+  - commit: c3
+    role: direct
+  - commit: c4
+    role: direct
+  - commit: c1
+    role: origin
+  - commit: c2
+    role: origin
+  bug_fixing_commits:
+  - commit: c5
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c3
+    file: src/main/java/example/invoice/InvoiceLine.java
+    statement: return (int) (euros * 100);
+    change_type: line_addition
+  - id: F002
+    commit: c4
+    file: src/main/java/example/invoice/InvoiceLine.java
+    statement: return cents - cents / 100 * percent;
+    change_type: line_addition
+  origin_faults:
+  - id: O001
+    commit: c1
+    file: src/main/java/example/invoice/Money.java
+    statement: return (int) (euros * 100);
+  - id: O002
+    commit: c2
+    file: src/main/java/example/invoice/Percent.java
+    statement: return cents / 100 * percent;
+  fixes:
+  - id: X001
+    commit: c5
+    file: src/main/java/example/invoice/InvoiceLine.java
+    statement: return (int) Math.round(euros * 100);
+    fix_type: line_modification
+  - id: X002
+    commit: c5
+    file: src/main/java/example/invoice/InvoiceLine.java
+    statement: return cents - cents * percent / 100;
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c3
+    - c4
+    related_origins:
+    - c1
+    - c2
+  evaluation_variants:
+  - name: direct-only
+    description: Only the two direct BICs in InvoiceLine.java are accepted.
+    commit_level:
+      evaluation_policy: exact_set
+      required:
+      - c3
+      - c4
+      related_origins:
+      - c1
+      - c2
+  - name: origin-aware
+    description: The direct BICs are required; each origin is tolerated with credit 0.5.
+    commit_level:
+      evaluation_policy: relaxed_with_related
+      required:
+      - c3
+      - c4
+      acceptable_related:
+      - commit: c1
+        reason: origin_bic
+        credit: 0.5
+      - commit: c2
+        reason: origin_bic
+        credit: 0.5
+  - name: relaxed-with-credit
+    description: >
+      Scored like origin-aware; the point is the credit arithmetic. possible_credit is 2. {c3, c4}
+      gives 2.0; {c3, c4, c1, c2} gives min(2, 2 + 1.0) = 2.0, the cap; {c3, c1, c2} gives
+      min(2, 1 + 1.0) = 2.0 as well — full credit — yet fails, because c4 is missing; {c1, c2}
+      gives 1.0 and fails.
+    commit_level:
+      evaluation_policy: relaxed_with_credit
+      required:
+      - c3
+      - c4
+      acceptable_related:
+      - commit: c1
+        reason: origin_bic
+        credit: 0.5
+      - commit: c2
+        reason: origin_bic
+        credit: 0.5
+  default_variant: direct-only
+scenario_design:
+  purpose: >
+    Second member of the relaxed_with_credit family (with SZZG-0022 and SZZG-0142): a two-commit
+    oracle whose two origins can, together, saturate the weighted credit while a required commit is
+    still missing. The report's credit_ratio and status must be read together.
+  key_property: >
+    Measured: netCents(0.29) is 28 at c3, c4 and 29 at c5 (0.29 * 100 is 28.999...);
+    discountedCents(199, 10) is 199 - 1 * 10 = 189 at c4 and 199 - 19 = 180 at c5. Blaming the two
+    lines c5 deletes at c5^ returns c3 and c4. The helper classes keep their faults; they are the
+    origins and are not fixed here.
+  evaluation_points:
+  - 'Default: {c3, c4} passes; any origin in the answer is a false positive.'
+  - 'origin-aware / relaxed-with-credit: origins are tolerated; weighted_credit is capped at 2.0.'
+  - '{c3, c1, c2} reaches full credit and still fails: credit measures overlap, status measures recall.'
+copy_relationships:
+- id: COPY-001
+  source_file: src/main/java/example/invoice/Money.java
+  target_file: src/main/java/example/invoice/InvoiceLine.java
+  copy_commit: c3
+  origin_bic: c1
+  direct_bic: c3
+  description: InvoiceLine.netCents repeats Money.cents' truncating conversion inline.
+- id: COPY-002
+  source_file: src/main/java/example/invoice/Percent.java
+  target_file: src/main/java/example/invoice/InvoiceLine.java
+  copy_commit: c4
+  origin_bic: c2
+  direct_bic: c4
+  description: InvoiceLine.discountedCents repeats Percent.of's divide-first formula inline.

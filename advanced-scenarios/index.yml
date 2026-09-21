@@ -1,6 +1,6 @@
 schema_version: graph-index-0.1-draft
 description: Index of draft advanced graph scenarios for SZZBench.
-scenario_count: 127
+scenario_count: 135
 scenarios:
 - id: SZZG-0001
   title: BFC performs rename and fix in the same commit
@@ -1487,5 +1487,110 @@ scenarios:
   - line-ending
   - non-source-bic
   - cross-artifact-fix
+- id: SZZG-0135
+  title: 'Externally caused fault: the fix has no bug-introducing commit in the repository'
+  category_code: G9
+  category: Evaluation policy variants
+  path: advanced-scenarios/SZZG-0135/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0135/README.md
+  status: active
+  factors:
+  - expect-no-bic
+  - external-cause
+  - tool-visible-context
+  - single-bfc
+- id: SZZG-0136
+  title: 'The fault predates the repository: an import commit is the history''s boundary, not the BIC'
+  category_code: G9
+  category: Evaluation policy variants
+  path: advanced-scenarios/SZZG-0136/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0136/README.md
+  status: active
+  factors:
+  - expect-no-bic
+  - history-boundary
+  - import-commit
+  - tool-visible-context
+  - evaluation-variant
+  - single-bfc
+- id: SZZG-0137
+  title: 'The fault is present since the initial commit, which wrote it: c0 is the BIC'
+  category_code: G9
+  category: Evaluation policy variants
+  path: advanced-scenarios/SZZG-0137/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0137/README.md
+  status: active
+  factors:
+  - initial-commit-bic
+  - single-bic
+  - single-bfc
+  - tool-visible-context
+- id: SZZG-0138
+  title: 'Partial credit with a majority threshold: two of three contributing BICs suffice'
+  category_code: G9
+  category: Evaluation policy variants
+  path: advanced-scenarios/SZZG-0138/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0138/README.md
+  status: active
+  factors:
+  - partial-credit
+  - multi-bic
+  - single-bfc
+  - addition-only-fix
+- id: SZZG-0139
+  title: 'Partial credit across a merge: one BIC on each side, either one is a passing answer'
+  category_code: G9
+  category: Evaluation policy variants
+  path: advanced-scenarios/SZZG-0139/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0139/README.md
+  status: active
+  factors:
+  - partial-credit
+  - multi-bic
+  - single-bfc
+  - branch-merge
+- id: SZZG-0140
+  title: 'Top-k with a strict status cut-off: the BIC must be ranked first, hit@3 is only reported'
+  category_code: G9
+  category: Evaluation policy variants
+  path: advanced-scenarios/SZZG-0140/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0140/README.md
+  status: active
+  factors:
+  - top-k
+  - formatting-noise
+  - basic-blame-distractor
+  - boundary-condition
+  - single-bic
+  - single-bfc
+- id: SZZG-0141
+  title: 'Credit that saturates: two origins at half credit each can fill a two-commit oracle without full recall'
+  category_code: G9
+  category: Evaluation policy variants
+  path: advanced-scenarios/SZZG-0141/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0141/README.md
+  status: active
+  factors:
+  - relaxed-credit
+  - origin-vs-direct
+  - copy-propagation
+  - multi-bic
+  - single-bfc
+  - evaluation-variant
+- id: SZZG-0142
+  title: 'An origin worth a full point: credit 1.0 fills the metric while the status still needs the direct BIC'
+  category_code: G9
+  category: Evaluation policy variants
+  path: advanced-scenarios/SZZG-0142/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0142/README.md
+  status: active
+  factors:
+  - relaxed-credit
+  - origin-vs-direct
+  - copy-propagation
+  - wrong-constant
+  - single-bic
+  - single-bfc
+  - evaluation-variant
 notes:
 - Scenario IDs are ordered by the SZZBench scenario taxonomy.

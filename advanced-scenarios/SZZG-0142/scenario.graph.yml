@@ -1,0 +1,181 @@
+schema_version: graph-1.0
+meta:
+  id: SZZG-0142
+  title: "An origin worth a full point: credit 1.0 fills the metric while the status still needs the direct BIC"
+  slug: relaxed-credit-full-origin
+  description: >
+    A timeout constant is wrong in a shared Timeouts class (the origin) and copied into the HTTP
+    client configuration (the direct BIC); the fix corrects the copy. The relaxed-with-credit
+    variant gives the origin credit 1.0 — for this scenario the origin is judged as good an answer
+    as the copy — so an answer of the origin alone reaches credit_ratio 1.0 and still fails: the
+    status is decided by the required set, the credit by overlap. The origin-aware variant keeps
+    the suite's convention of 0.5 (D3). Sibling of SZZG-0022 and SZZG-0141.
+  category: "Evaluation policy variants"
+  category_code: "G9"
+  factors:
+  - relaxed-credit
+  - origin-vs-direct
+  - copy-propagation
+  - wrong-constant
+  - single-bic
+  - single-bfc
+  - evaluation-variant
+  difficulty: advanced
+  status: active
+  tier: control
+repository:
+  name: SZZG-0142-relaxed-credit-full-origin
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'Add the shared timeout constants'
+  role: initial
+  date: '2024-10-07T09:00:00Z'
+  operations:
+  - type: write_file
+    path: src/main/java/example/net/Timeouts.java
+    content: |
+      package example.net;
+
+      public class Timeouts {
+          /** Connect timeout in milliseconds. */
+          public static int connectMillis() {
+              return 3000;
+          }
+      }
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'Lower the connect timeout to 30'
+  role: bug_introducing
+  date: '2024-10-14T14:10:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/net/Timeouts.java
+    old: return 3000;
+    new: return 30;
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'Add the HTTP client configuration with the connect timeout inlined'
+  role: bug_introducing
+  date: '2024-10-21T10:35:00Z'
+  operations:
+  - type: write_file
+    path: src/main/java/example/net/HttpClientConfig.java
+    content: |
+      package example.net;
+
+      public class HttpClientConfig {
+          /** Connect timeout in milliseconds, kept in step with Timeouts.connectMillis(). */
+          public int connectTimeoutMillis() {
+              return 30;
+          }
+      }
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'Use a 3 second connect timeout in the HTTP client'
+  role: bug_fixing
+  date: '2024-10-28T11:20:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/net/HttpClientConfig.java
+    old: return 30;
+    new: return 3000;
+bugs:
+- id: B001
+  title: HTTP connections time out after 30 milliseconds
+  bug_introducing_commits:
+  - commit: c2
+    role: direct
+  - commit: c1
+    role: origin
+  bug_fixing_commits:
+  - commit: c3
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c2
+    file: src/main/java/example/net/HttpClientConfig.java
+    statement: return 30;
+    change_type: line_addition
+  origin_faults:
+  - id: O001
+    commit: c1
+    file: src/main/java/example/net/Timeouts.java
+    statement: return 30;
+  fixes:
+  - id: X001
+    commit: c3
+    file: src/main/java/example/net/HttpClientConfig.java
+    statement: return 3000;
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c2
+    related_origins:
+    - c1
+  evaluation_variants:
+  - name: direct-only
+    description: Only the direct BIC in HttpClientConfig.java is accepted.
+    commit_level:
+      evaluation_policy: exact_set
+      required:
+      - c2
+      related_origins:
+      - c1
+  - name: origin-aware
+    description: The direct BIC is required; the origin is tolerated with the suite's usual credit 0.5.
+    commit_level:
+      evaluation_policy: relaxed_with_related
+      required:
+      - c2
+      acceptable_related:
+      - commit: c1
+        reason: origin_bic
+        credit: 0.5
+  - name: relaxed-with-credit
+    description: >
+      The origin is worth a full point: {c1} alone gives weighted_credit 1.0 of possible_credit 1.0
+      (credit_ratio 1.0) and still FAILs, because c2 is missing; {c2} passes with 1.0; {c2, c1}
+      passes with min(1, 1 + 1.0) = 1.0.
+    commit_level:
+      evaluation_policy: relaxed_with_credit
+      required:
+      - c2
+      acceptable_related:
+      - commit: c1
+        reason: origin_bic
+        credit: 1.0
+  default_variant: direct-only
+scenario_design:
+  purpose: >
+    Third member of the relaxed_with_credit family: the largest credit value, which shows that
+    credit is a similarity measure and never a substitute for the required set.
+  key_property: >
+    Measured: connectTimeoutMillis() is 30 at c2 and 3000 at c3; Timeouts.connectMillis() is 3000
+    at c0 and 30 from c1 on and is not fixed here. Blaming the line c3 deletes at c3^ returns c2.
+  evaluation_points:
+  - 'Default: {c2} passes; {c1} and {c2, c1} fail.'
+  - 'relaxed-with-credit: {c1} has credit_ratio 1.0 and FAILs; {c2, c1} passes.'
+copy_relationships:
+- id: COPY-001
+  source_file: src/main/java/example/net/Timeouts.java
+  target_file: src/main/java/example/net/HttpClientConfig.java
+  copy_commit: c2
+  origin_bic: c1
+  direct_bic: c2
+  description: HttpClientConfig inlines the constant Timeouts.connectMillis() returns.

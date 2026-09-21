@@ -1,0 +1,177 @@
+schema_version: graph-1.0
+meta:
+  id: SZZG-0136
+  title: "The fault predates the repository: an import commit is the history's boundary, not the BIC"
+  slug: import-boundary-not-bic
+  description: >
+    The first commit imports a billing module from another version-control system and says so:
+    its message names the source repository and revision, and docs/IMPORT.md records that the
+    earlier history is not part of this repository. The imported code already carries the fault.
+    The default oracle is the empty set — the introducing change lies before the boundary — and
+    the variant boundary-commit accepts c0 for tools that report the boundary explicitly. Its twin
+    SZZG-0137 has the same code and history but an authored first commit, and there c0 is the BIC.
+  category: "Evaluation policy variants"
+  category_code: "G9"
+  factors:
+  - expect-no-bic
+  - history-boundary
+  - import-commit
+  - tool-visible-context
+  - evaluation-variant
+  - single-bfc
+  difficulty: advanced
+  status: active
+  tier: control
+repository:
+  name: SZZG-0136-import-boundary-not-bic
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'Import the billing module from the accounting SVN repository (r4120)'
+  role: initial
+  author: 'Bruno Fischer <bruno.fischer@example.com>'
+  date: '2024-01-08T09:00:00Z'
+  operations:
+  - type: write_file
+    path: docs/IMPORT.md
+    content: |
+      # Provenance of the billing module
+
+      The billing module was developed in the accounting SVN repository between 2019 and 2023.
+      It was imported into this repository at SVN r4120 (2023-11-30) as a single snapshot, without
+      its history. Its earlier revisions are not part of this repository.
+  - type: write_file
+    path: src/main/java/example/billing/LateFee.java
+    content: |
+      package example.billing;
+
+      public class LateFee {
+          /**
+           * Fee in cents for an invoice that is {@code daysLate} days overdue. The first
+           * {@code graceDays} days are free; only the days beyond the grace period are charged,
+           * at {@code centsPerDay} each.
+           */
+          public int feeCents(int daysLate, int graceDays, int centsPerDay) {
+              if (daysLate <= graceDays) {
+                  return 0;
+              }
+              return daysLate * centsPerDay;
+          }
+      }
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'Add the invoice reminder text'
+  role: intermediate
+  author: 'Chen Wei <chen.wei@example.com>'
+  date: '2024-01-15T14:30:00Z'
+  operations:
+  - type: write_file
+    path: src/main/java/example/billing/Reminder.java
+    content: |
+      package example.billing;
+
+      public class Reminder {
+          public String text(String invoiceId, int daysLate) {
+              return "Invoice " + invoiceId + " is " + daysLate + " day(s) overdue.";
+          }
+      }
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'Record the report about late fees charged from the first day'
+  role: intermediate
+  author: 'Dana Okafor <dana.okafor@example.com>'
+  date: '2024-01-22T10:15:00Z'
+  operations:
+  - type: write_file
+    path: docs/issues/ISSUE-8.md
+    content: |
+      # ISSUE-8: Late fees are charged for the grace period too
+
+      Reported: 2024-01-19T16:05:00Z
+
+      An invoice that is 5 days late with a 3-day grace period is charged 5 days of fees
+      (500 cents at 100 cents per day). Only the 2 days beyond the grace period should be charged.
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'Charge only the days beyond the grace period'
+  role: bug_fixing
+  author: 'Bruno Fischer <bruno.fischer@example.com>'
+  date: '2024-01-29T11:45:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/billing/LateFee.java
+    old: return daysLate * centsPerDay;
+    new: return (daysLate - graceDays) * centsPerDay;
+bugs:
+- id: B001
+  title: Late fees are charged for the grace period too
+  bug_introducing_commits: []
+  bug_fixing_commits:
+  - commit: c3
+    role: complete_fix
+  faults: []
+  fixes:
+  - id: X001
+    commit: c3
+    file: src/main/java/example/billing/LateFee.java
+    statement: return (daysLate - graceDays) * centsPerDay;
+    fix_type: line_modification
+issues:
+- id: ISSUE-8
+  title: Late fees are charged for the grace period too
+  reported_at: '2024-01-19T16:05:00Z'
+  document: docs/issues/ISSUE-8.md
+  linked_bugs:
+  - B001
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    expect_no_bic: true
+    required: []
+    known_distractors:
+    - c0
+    notes: >
+      c0 is a boundary, not a change: its message and docs/IMPORT.md state that the code has an
+      earlier history (SVN r4120) which this repository does not contain, so the commit that wrote
+      `return daysLate * centsPerDay;` is not here. The default answer is the empty set. The
+      variant boundary-commit accepts c0 for a tool that reports the history boundary as such.
+  evaluation_variants:
+  - name: boundary-commit
+    description: >
+      A tool that reports the import commit as the earliest point at which the fault is present in
+      this repository. Accepted as an explicit boundary answer; the tool should say that it is one.
+    commit_level:
+      evaluation_policy: exact_set
+      required:
+      - c0
+  default_variant: default
+scenario_design:
+  purpose: >
+    The second of three contracts for "no ordinary BIC" (issue #24): the origin lies before the
+    repository's first commit. The evidence that makes c0 a boundary is tool-visible — the import
+    message and docs/IMPORT.md — and it is the only thing that distinguishes this scenario from its
+    twin SZZG-0137, whose c0 is an authored commit and therefore the BIC. Contract in
+    decisions/origin-direct-contract.md (D11).
+  key_property: >
+    Measured: feeCents(5, 3, 100) is 500 at c0, c1 and c2 and 200 at c3; feeCents(3, 3, 100) is 0
+    throughout. Blaming the line c3 deletes at c3^ returns c0. Every commit is pinned to the same
+    author and date as in SZZG-0137; the two repositories differ only in c0's message and
+    docs/IMPORT.md.
+  evaluation_points:
+  - Report nothing under the default oracle; the history does not contain the introducing change.
+  - Report c0 only as a boundary (variant boundary-commit), not as the change that introduced the fault.
+notes:
+- docs/IMPORT.md is written by c0 itself, so the provenance is visible at every commit of the history.
