@@ -4,9 +4,10 @@ meta:
   title: A cherry-pick whose conflict adaptation introduces the bug
   slug: cherry-pick-adaptation-introduces-bug
   description: >
-    A correct change on main is cherry-picked onto a release branch that had renamed the parameters
-    on the same lines. The cherry-pick conflicts, and the hand-written adaptation drops one of the two
-    bounds the source change added. The source commit is correct; the fault is in the adaptation.
+    A correct change on main -- a ceiling of zero means "no ceiling" -- is cherry-picked onto a release
+    branch that had renamed the parameters on the same lines. The cherry-pick conflicts, and the
+    hand-written adaptation mistypes the `||` of the new condition as `&&`, so every upload with a
+    positive ceiling is rejected. The source commit is correct; the fault is in the adaptation.
   category: "Branch, merge, cherry-pick, backport, and release branches"
   category_code: "G4"
   factors:
@@ -39,7 +40,7 @@ commits:
 
       public class UploadWindow {
           public boolean accepts(int sizeKb, int lower, int upper) {
-              return sizeKb > lower && sizeKb < upper;
+              return sizeKb >= lower && sizeKb <= upper;
           }
       }
 - id: rel1
@@ -53,28 +54,28 @@ commits:
     path: src/main/java/example/UploadWindow.java
     old: |
       public boolean accepts(int sizeKb, int lower, int upper) {
-              return sizeKb > lower && sizeKb < upper;
+              return sizeKb >= lower && sizeKb <= upper;
           }
     new: |
       public boolean accepts(int sizeKb, int floor, int ceiling) {
-              return sizeKb > floor && sizeKb < ceiling;
+              return sizeKb >= floor && sizeKb <= ceiling;
           }
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'Accept uploads exactly at the window bounds'
+  message: 'Treat a ceiling of zero as no ceiling'
   role: intermediate
   operations:
   - type: replace
     path: src/main/java/example/UploadWindow.java
-    old: return sizeKb > lower && sizeKb < upper;
-    new: return sizeKb >= lower && sizeKb <= upper;
+    old: return sizeKb >= lower && sizeKb <= upper;
+    new: return sizeKb >= lower && (upper == 0 || sizeKb <= upper);
 - id: r1
   branch: release
   parents:
   - rel1
-  message: 'Accept uploads exactly at the window bounds'
+  message: 'Treat a ceiling of zero as no ceiling'
   role: bug_introducing
   cherry_pick_of: c1
   cherry_pick_trailer: true
@@ -85,23 +86,23 @@ commits:
 
       public class UploadWindow {
           public boolean accepts(int sizeKb, int floor, int ceiling) {
-              return sizeKb >= floor && sizeKb < ceiling;
+              return sizeKb >= floor && (ceiling == 0 && sizeKb <= ceiling);
           }
       }
 - id: r2
   branch: release
   parents:
   - r1
-  message: 'Accept an upload exactly at the ceiling on the release branch too'
+  message: 'Let a zero ceiling mean no ceiling on the release branch as well'
   role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/UploadWindow.java
-    old: return sizeKb >= floor && sizeKb < ceiling;
-    new: return sizeKb >= floor && sizeKb <= ceiling;
+    old: return sizeKb >= floor && (ceiling == 0 && sizeKb <= ceiling);
+    new: return sizeKb >= floor && (ceiling == 0 || sizeKb <= ceiling);
 bugs:
 - id: B001
-  title: On the release branch an upload exactly at the ceiling is rejected
+  title: On the release branch every upload with a positive ceiling is rejected
   bug_introducing_commits:
   - commit: r1
     role: direct
@@ -112,13 +113,13 @@ bugs:
   - id: F001
     commit: r1
     file: src/main/java/example/UploadWindow.java
-    statement: return sizeKb >= floor && sizeKb < ceiling;
+    statement: return sizeKb >= floor && (ceiling == 0 && sizeKb <= ceiling);
     change_type: line_modification
   fixes:
   - id: X001
     commit: r2
     file: src/main/java/example/UploadWindow.java
-    statement: return sizeKb >= floor && sizeKb <= ceiling;
+    statement: return sizeKb >= floor && (ceiling == 0 || sizeKb <= ceiling);
     fix_type: line_modification
 expected_szz:
   commit_level:
@@ -128,21 +129,24 @@ expected_szz:
     related_but_not_correct:
     - c1
     notes: >
-      c1 is what r1 was cherry-picked from and what the trailer points at, but c1 is correct: it accepts
-      both bounds. The fault exists only in r1's adaptation, so a tool that follows the trailer to c1 has
-      named a commit that does not contain the bug.
+      c1 is what r1 was cherry-picked from and what the trailer points at, but c1 is correct: with a
+      positive ceiling it accepts the same uploads as before and a zero ceiling means unlimited. The fault
+      exists only in r1's adaptation (`&&` where c1 has `||`), so a tool that follows the trailer to c1
+      has named a commit that does not contain the bug.
 scenario_design:
   purpose: >
     Twin of SZZG-0125. Both cherry-pick the same kind of change onto a release branch that renamed the
     parameters, both conflict, both carry the trailer. Here the source is correct and the adaptation is
     wrong; in SZZG-0125 the source is wrong and the adaptation is faithful.
   key_property: >
-    Blaming the line r2 deletes at r2^ returns r1, so plain blame is right. The trailer offers c1 as a
-    plausible answer, and c1 is a false positive here -- the opposite of SZZG-0125, where following the
-    trailer finds the origin.
+    Measured on the generated snapshots with accepts(15, 10, 20): rel1 accepts, c1 accepts, r1 rejects,
+    r2 accepts -- the rejection appears with r1 and nowhere before it. Blaming the line r2 deletes at r2^
+    returns r1, so plain blame is right. The trailer offers c1 as a plausible answer, and c1 is a false
+    positive here -- the opposite of SZZG-0125, where following the trailer finds the origin.
   evaluation_points:
   - Report r1.
   - Do not report c1; it is correct code.
 notes:
 - The cherry-pick conflict is real (rel1 renamed the parameters on the line c1 changes); `resolution`
-  supplies the adapted file, and that adaptation is where the bound goes missing.
+  supplies the adapted file, and that adaptation is where `||` became `&&`.
+- tests/test_twins_and_transitions.py compiles every snapshot and checks the accept/reject transition.

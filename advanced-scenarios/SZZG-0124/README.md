@@ -2,33 +2,49 @@
 
 ## Purpose
 
-Twin of [SZZG-0125](../SZZG-0125/README.md). A change on `main` is
+Twin of [SZZG-0125](../SZZG-0125/README.md). A correct change on `main` is
 cherry-picked onto a `release` branch that had renamed the parameters on the
 same lines, so the cherry-pick conflicts and needs a hand-written adaptation.
-Here the source commit `c1` is correct — it accepts both window bounds — and
-the adaptation drops one of them. The fault lives only in the adapted commit.
+Here the source commit `c1` is correct — a ceiling of zero comes to mean "no
+ceiling", and every other input keeps its answer — and the adaptation mistypes
+the new condition's `||` as `&&`. The fault lives only in the adapted commit,
+and it did not exist anywhere before it.
 
 ## Commit structure (generated)
 
 ```text
-* ea12648  Accept an upload exactly at the ceiling on the release branch too   <- BFC (r2)
-* bdb808a  Accept uploads exactly at the window bounds                         <- BIC (r1), cherry-pick of c83f646
-* 1ac4b13  Name the window bounds floor and ceiling on the release branch      (rel1)
-| * c83f646  Accept uploads exactly at the window bounds                       (c1, main — correct)
+* e5cd06a  Let a zero ceiling mean no ceiling on the release branch as well     <- BFC (r2)
+* d47ce1b  Treat a ceiling of zero as no ceiling                                <- BIC (r1), cherry-pick of bd77a1f
+* 97b4615  Name the window bounds floor and ceiling on the release branch       (rel1)
+| * bd77a1f  Treat a ceiling of zero as no ceiling                              (c1, main — correct)
 |/
-* 0b382b4  Add the upload window check                                         (c0)
+* 59c72fe  Add the upload window check                                          (c0)
 ```
 
 `r1`'s body carries the trailer git writes for `cherry-pick -x`:
 
 ```text
-(cherry picked from commit c83f646a8f8babd7057eaeb15fb51072688bcd2a)
+(cherry picked from commit bd77a1fab5b528d5ce7c883c96492a63bdc379ec)
 ```
 
-Content, measured: `main` has `return sizeKb >= lower && sizeKb <= upper;`
-(both bounds accepted). `release` after `r1` has
-`return sizeKb >= floor && sizeKb < ceiling;` — the adaptation kept the renamed
-parameters but lost `<=` on the ceiling.
+## The code, measured
+
+| commit | `accepts` returns | (10,10,20) (15,10,20) (20,10,20) (9,10,20) (21,10,20) (15,10,0) |
+|---|---|---|
+| `c0` | `sizeKb >= lower && sizeKb <= upper` | `TTTFFF` |
+| `rel1` | `sizeKb >= floor && sizeKb <= ceiling` | `TTTFFF` |
+| `c1` (main) | `sizeKb >= lower && (upper == 0 \|\| sizeKb <= upper)` | `TTTFFT` |
+| **`r1`** | `sizeKb >= floor && (ceiling == 0 && sizeKb <= ceiling)` | **`FFFFFF`** |
+| `r2` | `sizeKb >= floor && (ceiling == 0 \|\| sizeKb <= ceiling)` | `TTTFFT` |
+
+Read down the `(15,10,20)` column: accepted at `rel1` (immediately before
+`r1`), accepted at the correct source `c1`, **rejected at `r1`**, accepted at
+`r2`. The rejection appears with the adaptation and nowhere earlier; with the
+`&&`, any positive ceiling fails the parenthesis outright. The first version of
+this scenario blamed the adaptation for rejecting the ceiling itself, which
+`c0` already did — the table is what showed that.
+`tests/test_twins_and_transitions.py` compiles every snapshot and asserts these
+six strings, for this scenario and for its twin.
 
 ## Expected BIC / BFC
 

@@ -26,7 +26,9 @@ differs.
 (cherry picked from commit 336ad4b5103b35100d053ad2ad0801740d976a7c)
 ```
 
-Content, measured: `main` has `return sizeKb > lower && sizeKb < upper;`;
+Content, measured (`tests/test_twins_and_transitions.py` compiles every snapshot and checks that
+`accepts(20, 10, 20)` is accepted at `c0` and `rel1`, rejected at `c1` and `r1`, accepted at `r2` —
+the fault arrives with the source): `main` has `return sizeKb > lower && sizeKb < upper;`;
 `release` after `r1` has `return sizeKb > floor && sizeKb < ceiling;` — the
 same exclusive comparison under the renamed parameters. The texts differ, so
 patch-id matching between `r1` and `c1` fails; the trailer is the link that

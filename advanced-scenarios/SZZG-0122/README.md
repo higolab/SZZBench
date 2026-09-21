@@ -12,13 +12,17 @@ every object.
 ## Commit structure (generated)
 
 ```text
-* 81801d5  Accept the range bounds again        <- BFC (c3)
-* 8ea2194  Make the range check exclusive       <- BIC (r1), rebase_of f1
-* 5c74b93  Add the second main note             (m2)
-* ae1b918  Add the first main note              (m1)
-* 8d4b941  Add the range check                  (c0)
+* eddf3f3  Accept the range bounds again        <- BFC (c3)
+* 4a3aa06  Make the range check exclusive       <- BIC (r1), rebase_of f1
+* 2067f93  Add the second main note             (m2)
+* 1cdb4e6  Add the first main note              (m1)
+* e93ce02  Add the range check                  (c0)
 ```
 
+These are **the same commit objects as SZZG-0057's**, hash for hash: every
+commit pins the author, author date and committer date the generator resolved
+for SZZG-0057, so a metadata-only rule cannot tell the twins apart.
+`tests/test_twins_and_transitions.py` generates both and asserts the identity.
 `git for-each-ref` lists only `main`. The commit `f1` still exists as an object
 (`git cat-file -t` answers `commit`) but `git branch -a --contains <f1>` is empty:
 `git log --all` shows one copy of the faulty change here and two in SZZG-0057.

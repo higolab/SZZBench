@@ -10,13 +10,18 @@ branch tip. The oracle is identical in both twins.
 ## Commit structure (generated)
 
 ```text
-* e8aa2ed  Accept the range bounds again          <- BFC (c4), parent 5b5061a
-* 5b5061a  Add a feature-specific range wrapper   (c2, feature tip; `feature` still points here)
-* 350657b  Make the range check exclusive         <- BIC (c1)
-* 6c89af4  Add the range check                    (c0)
+* 9808188  Accept the range bounds again          <- BFC (c4), parent e732750
+* e732750  Add a feature-specific range wrapper   (c2, feature tip; `feature` still points here)
+* 5c2b50c  Make the range check exclusive         <- BIC (c1)
+* 65694a2  Add the range check                    (c0)
 ```
 
-Every commit has exactly one parent (`git log --format=%p`). The fast-forward is
+`c0`, `c1` and `c2` are **the same commit objects as SZZG-0043's**, and `c4`
+has SZZG-0043's author, dates, message and tree — only its parent differs (`c2`
+here, the merge `c3` there). Every commit pins the metadata the generator
+resolved for SZZG-0043, so a metadata-only rule cannot tell the twins apart;
+`tests/test_twins_and_transitions.py` asserts all of this. Every commit has
+exactly one parent (`git log --format=%p`). The fast-forward is
 expressed in the scenario by giving `c4` the feature tip `c2` as its parent;
 the generator moves `main` there and commits on top.
 
