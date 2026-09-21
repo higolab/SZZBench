@@ -309,18 +309,21 @@ counts how many scenarios declare each fault statement (`fault.statement`,
 `faults[].statement`, `origin_faults[].statement`, whitespace-normalised):
 
 ```text
-159 distinct statement(s) over 234 scenario(s); 11 shared by two or more
- 83x  return value > min && value < max;   (advanced-scenarios 65, scenarios 18)
+166 distinct statement(s) over 234 scenario(s); 12 shared by two or more
+ 75x  return value > min && value < max;   (advanced-scenarios 57, scenarios 18)
   6x  boolean belowMax = value < max;      (advanced-scenarios 6)
   6x  return value > min;                  (advanced-scenarios 2, scenarios 4)
-most reused statement per category: G1 7/14, G2 10/16, G3 5/14, G4 17/28, G5 13/18,
+most reused statement per category: G1 7/14, G2 10/16, G3 5/14, G4 9/28, G5 13/18,
   G6 5/9, G7 4/16, G8 5/10, G9 2/10, S3 11/37, S4 3/16, S6 3/19
 ```
 
-One statement is a declared fault of a third of the suite and of half the graph
-suite; `decisions/fault-library.md` catalogues the kinds a rewrite can draw on
-and the rules a rewrite follows, and the per-category share above is the number
-a rewrite is measured by. Read together
+(After the eight G4 rewrites of issue #13; before them the statement had 83
+carriers, 65 of them graph, and G4 read 17/28.) One statement is still a
+declared fault of 30% of the suite and 42% of the graph suite;
+`decisions/fault-library.md` catalogues the kinds a rewrite can draw on and the
+rules a rewrite follows, and the per-category share above — to be brought to at
+most one third in every graph category — is the number a rewrite is measured
+by. Read together
 with the baseline table, the suite still concentrates in one cell — a
 one-commit answer, one or two commits before the fix, in a three- or
 four-commit single-branch history — and **that cell is where the cheap rules
