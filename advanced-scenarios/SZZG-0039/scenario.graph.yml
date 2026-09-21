@@ -60,6 +60,7 @@ commits:
   - c1
   message: 'Grant access when either condition holds'
   role: bug_introducing
+  author: Bruno Fischer <bruno.fischer@example.com>
   operations:
   - type: replace
     path: src/main/java/example/TokenVerifier.java
@@ -134,3 +135,6 @@ scenario_design:
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.
+- 'c2 carries an explicit author. With the generator''s default rotation c1 and c2 shared an author who wrote nothing
+  else, so the baseline "report every commit by this author" returned the oracle {c1, c2} by coincidence (GW413, GitHub
+  issue 43).'

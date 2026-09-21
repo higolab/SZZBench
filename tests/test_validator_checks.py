@@ -57,7 +57,13 @@ UNGUARDED_REINDENTED = (
 
 
 def codes(result) -> list[str]:
-    return [f.code for f in result.findings]
+    """Error and warning codes, in order. Information items (I/GI codes) do not fail
+    `--strict` and are not lint findings in the sense these tests assert; see info_codes()."""
+    return [f.code for f in result.findings if f.severity != "INFO"]
+
+
+def info_codes(result) -> list[str]:
+    return [f.code for f in result.findings if f.severity == "INFO"]
 
 
 def classic_scenario() -> dict:
@@ -66,9 +72,9 @@ def classic_scenario() -> dict:
         "meta": {"id": "SZZ-9900", "title": "Lint fixture", "category": "fixture", "tier": "control", "factors": ["single-bic", "single-bfc", "line-modification"]},
         "repository": {"name": "lint-fixture", "default_branch": "main", "language": "java"},
         "commits": [
-            {"id": "c0", "message": "Initial implementation", "role": "initial",
+            {"id": "c0", "message": "Initial implementation", "role": "initial", "author": "Ann Example <ann@example.com>",
              "operations": [{"type": "write_file", "path": JAVA, "content": RANGE_OK}]},
-            {"id": "c1", "message": "Tighten range check", "role": "bug_introducing",
+            {"id": "c1", "message": "Tighten range check", "role": "bug_introducing", "author": "Ann Example <ann@example.com>",
              "operations": [{"type": "replace", "path": JAVA, "old": "value >= min && value <= max", "new": "value > min && value < max"}]},
             {"id": "c2", "message": "Fix boundary condition", "role": "bug_fixing",
              "operations": [{"type": "replace", "path": JAVA, "old": "value > min && value < max", "new": "value >= min && value <= max"}]},
@@ -89,9 +95,9 @@ def graph_scenario() -> dict:
         "meta": {"id": "SZZG-9900", "title": "Graph lint fixture", "category": "fixture", "tier": "control", "factors": ["rebase", "branch"]},
         "repository": {"name": "graph-lint-fixture", "default_branch": "main"},
         "commits": [
-            {"id": "c0", "branch": "main", "parents": [], "message": "Initial implementation", "role": "initial",
+            {"id": "c0", "branch": "main", "parents": [], "message": "Initial implementation", "role": "initial", "author": "Ann Example <ann@example.com>",
              "operations": [{"type": "write_file", "path": JAVA, "content": RANGE_OK}]},
-            {"id": "c1", "branch": "main", "parents": ["c0"], "message": "Tighten range check", "role": "bug_introducing",
+            {"id": "c1", "branch": "main", "parents": ["c0"], "message": "Tighten range check", "role": "bug_introducing", "author": "Ann Example <ann@example.com>",
              "operations": [{"type": "replace", "path": JAVA, "old": "value >= min && value <= max", "new": "value > min && value < max"}]},
             {"id": "c2", "branch": "main", "parents": ["c1"], "message": "Fix boundary condition", "role": "bug_fixing",
              "operations": [{"type": "replace", "path": JAVA, "old": "value > min && value < max", "new": "value >= min && value <= max"}]},
@@ -574,6 +580,7 @@ def test_required_origin_needs_no_variant():
     data = graph_scenario()
     data["bugs"][0]["bug_introducing_commits"].append({"commit": "c0", "role": "origin"})
     data["expected_szz"]["commit_level"]["required"] = ["c0", "c1"]
+    data["commits"][1]["author"] = "Bob Example <bob@example.com>"   # otherwise Ann owns exactly {c0, c1}: GW413 (#43)
     assert lint_graph(data).findings == []
 
 
@@ -928,3 +935,274 @@ def test_issue_document_dates_are_compared_as_timestamps_not_strings():
     assert scenario(42) == ["GW472"]                                                       # not a timestamp at all
     assert scenario("2024-01-05T10:00:00Z", doc_line="Filed on 2024-01-05.") == ["GW471"]  # document has no Reported: line
     assert scenario("2024-01-05T10:00:00Z", doc_line="Reported: yesterday") == ["GW471"]   # document's value unparsable
+
+
+# --- author coincidence lint (#43) ---------------------------------------------
+
+def _with_authors(data: dict, *authors: str) -> dict:
+    for commit, author in zip(data["commits"], authors):
+        commit["author"] = f"{author} <{author.lower()}@example.com>"
+    return data
+
+
+def test_author_coincidence_on_a_one_commit_oracle_is_information():
+    """An author who wrote exactly the single required commit: the author baseline solves the
+    scenario by coincidence, but one-commit oracles are cheap to solve anyway -> I413 / GI413."""
+    result = lint_classic(_with_authors(classic_scenario(), "Ann", "Bob", "Ann"))
+    assert codes(result) == [] and info_codes(result) == ["I413"]
+    finding = result.findings[0]
+    assert "'Bob <bob@example.com>'" in finding.message and "['c1']" in finding.message and "(explicit)" in finding.message
+    result = lint_graph(_with_authors(graph_scenario(), "Ann", "Bob", "Ann"))
+    assert codes(result) == [] and info_codes(result) == ["GI413"]
+
+
+def test_no_author_coincidence_when_the_author_also_wrote_another_commit():
+    for result in (lint_classic(_with_authors(classic_scenario(), "Ann", "Ann", "Bob")),
+                   lint_graph(_with_authors(graph_scenario(), "Ann", "Ann", "Bob"))):
+        assert codes(result) == [] and info_codes(result) == []
+
+
+def test_author_coincidence_on_a_multi_commit_oracle_is_a_warning():
+    """SZZG-0118 and SZZG-0028 (#41, #42): two required commits, one author, nothing else by that
+    author -> GW413. Giving one of them another author clears it."""
+    data = graph_scenario()
+    data["bugs"][0]["bug_introducing_commits"] = [{"commit": "c0", "role": "direct"}, {"commit": "c1", "role": "direct"}]
+    data["expected_szz"]["commit_level"]["required"] = ["c0", "c1"]
+    result = lint_graph(_with_authors(deepcopy(data), "Ann", "Ann", "Bob"))
+    assert codes(result) == ["GW413"]
+    assert "['c0', 'c1']" in result.findings[0].message and result.findings[0].location == "commits"
+    cleared = lint_graph(_with_authors(deepcopy(data), "Ann", "Cid", "Bob"))
+    assert codes(cleared) == [] and info_codes(cleared) == []
+
+
+def test_author_coincidence_resolves_the_oracle_like_the_evaluator():
+    """A default evaluation variant supplies the oracle (SZZG-0022 style); reading
+    expected_szz.commit_level directly would see nothing."""
+    data = graph_scenario()
+    data["expected_szz"] = {
+        "evaluation_variants": [
+            {"name": "direct-only", "commit_level": {"evaluation_policy": "exact_set", "required": ["c1"]}},
+        ],
+        "default_variant": "direct-only",
+    }
+    assert info_codes(lint_graph(_with_authors(deepcopy(data), "Ann", "Bob", "Ann"))) == ["GI413"]
+    # without explicit authors the generator's deterministic rotation decides; the lint must reproduce it
+    from collections import defaultdict
+    from szzbench.gitutils import resolve_commit_metadata
+    plain = deepcopy(data)
+    for commit in plain["commits"]:
+        commit.pop("author", None)
+    owned = defaultdict(set)
+    for index, commit in enumerate(plain["commits"]):
+        owned[resolve_commit_metadata(plain, commit, index).author].add(commit["id"])
+    result = lint_graph(plain)
+    assert codes(result) == []
+    if any(ids == {"c1"} for ids in owned.values()):
+        assert info_codes(result) == ["GI413"] and "generator-assigned" in result.findings[0].message
+    else:
+        assert info_codes(result) == []
+
+
+def test_author_coincidence_compares_identities_as_git_records_them():
+    """PR #64 review: two spellings of one identity must be one author. `Aiko Tanaka <a@x>` and
+    `Aiko Tanaka<a@x>` are the same Git author, so together they own {c0, c1} -> GW413."""
+    data = graph_scenario()
+    data["bugs"][0]["bug_introducing_commits"] = [{"commit": "c0", "role": "direct"}, {"commit": "c1", "role": "direct"}]
+    data["expected_szz"]["commit_level"]["required"] = ["c0", "c1"]
+    data["commits"][0]["author"] = "Aiko Tanaka <aiko.tanaka@example.com>"
+    data["commits"][1]["author"] = "Aiko Tanaka<aiko.tanaka@example.com>"
+    data["commits"][2]["author"] = "Bob Example <bob@example.com>"
+    result = lint_graph(data)
+    assert codes(result) == ["GW413"]
+    assert "'Aiko Tanaka <aiko.tanaka@example.com>'" in result.findings[0].message   # the canonical spelling
+    # a name without an e-mail gets the benchmark's default address, like the generator gives it
+    from szzbench.gitutils import canonical_author
+    assert canonical_author(" Bob ") == "Bob <szz-benchmark@example.com>"
+    assert canonical_author("A <a@x>") == canonical_author("A<a@x>") == canonical_author("  A   <a@x>  ")
+
+
+def _generated_history_fixture(shared_author: str) -> dict:
+    """graph fixture whose fix commit also expands one commit_generator commit; c0 and c1 (the oracle)
+    share `shared_author`."""
+    data = graph_scenario()
+    data["bugs"][0]["bug_introducing_commits"] = [{"commit": "c0", "role": "direct"}, {"commit": "c1", "role": "direct"}]
+    data["expected_szz"]["commit_level"]["required"] = ["c0", "c1"]
+    data["commits"][0]["author"] = shared_author
+    data["commits"][1]["author"] = shared_author
+    data["commits"][2]["author"] = "Bob Example <bob@example.com>"
+    data["commits"][2]["operations"].insert(0, {"type": "commit_generator", "generator": "catalog_sync", "count": 1, "files": 1, "path": "generated/catalog"})
+    return data
+
+
+def test_author_coincidence_counts_the_commits_commit_generator_expands():
+    """PR #64 review: the author baseline sees generated commits through `git log --all`. When the
+    generated commit's deterministic author is the required commits' author, that author's set is
+    {c0, c1, c2.g1}, not the oracle, and there is no coincidence to report."""
+    from szzbench.gitutils import canonical_author, deterministic_author
+    generated_author = canonical_author(deterministic_author("SZZG-9900", "c2.g1"))
+    with_generated = lint_graph(_generated_history_fixture(generated_author))
+    assert codes(with_generated) == [] and info_codes(with_generated) == []
+    other = "Zed Example <zed@example.com>"
+    assert other != generated_author
+    warned = lint_graph(_generated_history_fixture(other))
+    assert codes(warned) == ["GW413"]
+
+
+def test_history_model_matches_the_generated_repository(tmp_path):
+    """`resolved_commit_authors` is what the lint and the leakage guard reason about; it must list every
+    commit of the generated repository, generated ones included, with the author Git records."""
+    from szzbench.gitutils import deterministic_author, canonical_author, resolved_commit_authors
+    from szzbench.graph_generator import generate_graph_repository
+    import subprocess
+    data = _generated_history_fixture(canonical_author(deterministic_author("SZZG-9900", "c2.g1")))
+    path = write_yaml(tmp_path / "SZZG-9900" / "scenario.graph.yml", data)
+    commit_map, verify = generate_graph_repository(path, tmp_path / "out", force=True)
+    assert not verify.has_errors(), verify.to_dict()
+    log = subprocess.run(["git", "log", "--all", "--format=%H%x00%an <%ae>"], cwd=tmp_path / "out" / "repo",
+                         capture_output=True, text=True, check=True).stdout
+    by_hash = {line.split("\x00")[0]: line.split("\x00")[1] for line in log.splitlines() if line}
+    from_git = {cid: by_hash[entry["hash"]] for cid, entry in commit_map.items()}
+    assert dict(resolved_commit_authors(data)) == from_git
+    assert "c2.g1" in from_git
+
+
+def _scratch_branch_fixture(*, delete: bool, tag: bool = False, keep_branch: bool = False) -> dict:
+    """SZZG-0007-shaped reproduction from the PR #64 review: Aiko writes the two required commits and a
+    commit d1 on a scratch branch; the lifecycle deletes the branch, optionally keeping d1 reachable
+    through a tag or a second branch."""
+    data = graph_scenario()
+    data["bugs"][0]["bug_introducing_commits"] = [{"commit": "c0", "role": "direct"}, {"commit": "c1", "role": "direct"}]
+    data["expected_szz"]["commit_level"]["required"] = ["c0", "c1"]
+    aiko = "Aiko Tanaka <aiko.tanaka@example.com>"
+    data["commits"][0]["author"] = aiko
+    data["commits"][1]["author"] = aiko
+    data["commits"][2]["author"] = "Bob Example <bob@example.com>"
+    scratch = {"id": "d1", "branch": "scratch", "parents": ["c1"], "author": aiko, "message": "Document pagination usage",
+               "role": "intermediate", "operations": [{"type": "write_file", "path": "docs/paging.md", "content": "Pagination usage examples.\n"}]}
+    data["commits"].insert(2, scratch)
+    if keep_branch:
+        data["commits"].append({"id": "k1", "branch": "keep", "parents": ["d1"], "author": "Bob Example <bob@example.com>",
+                                "message": "Keep the scratch work on another branch", "role": "intermediate",
+                                "operations": [{"type": "write_file", "path": "docs/keep.md", "content": "kept\n"}]})
+    lifecycle = {}
+    if delete:
+        lifecycle["delete_branches"] = ["scratch"]
+    if tag:
+        lifecycle["tags"] = [{"name": "scratch-tip", "commit": "d1"}]
+    if lifecycle:
+        data["graph"] = {"model": "commit_dag", "ref_lifecycle": lifecycle}
+    return data
+
+
+def test_author_coincidence_ignores_commits_no_ref_reaches_after_the_lifecycle():
+    """PR #64 re-review: after `delete_branches: [scratch]` Aiko's *visible* commits are exactly
+    {c0, c1}, so the author baseline returns the oracle and the lint must warn."""
+    assert codes(lint_graph(_scratch_branch_fixture(delete=True))) == ["GW413"]
+    # d1 still reachable: through its branch, through a tag, or through another branch that kept it
+    for data in (_scratch_branch_fixture(delete=False), _scratch_branch_fixture(delete=True, tag=True),
+                 _scratch_branch_fixture(delete=True, keep_branch=True)):
+        result = lint_graph(data)
+        assert codes(result) == [] and info_codes(result) == [], data.get("graph")
+
+
+@pytest.mark.parametrize("variant", ["deleted", "deleted-but-tagged", "deleted-but-kept-by-a-branch", "not-deleted"])
+def test_history_model_matches_git_log_all_after_the_ref_lifecycle(tmp_path, variant):
+    """`resolved_commit_authors` must list exactly the commits `git log --all` sees, whatever the lifecycle did."""
+    from szzbench.gitutils import resolved_commit_authors
+    from szzbench.graph_generator import generate_graph_repository
+    import subprocess
+    data = {"deleted": _scratch_branch_fixture(delete=True), "deleted-but-tagged": _scratch_branch_fixture(delete=True, tag=True),
+            "deleted-but-kept-by-a-branch": _scratch_branch_fixture(delete=True, keep_branch=True),
+            "not-deleted": _scratch_branch_fixture(delete=False)}[variant]
+    path = write_yaml(tmp_path / "SZZG-9900" / "scenario.graph.yml", data)
+    commit_map, verify = generate_graph_repository(path, tmp_path / "out", force=True)
+    assert not verify.has_errors(), verify.to_dict()
+    log = subprocess.run(["git", "log", "--all", "--format=%H%x00%an <%ae>"], cwd=tmp_path / "out" / "repo",
+                         capture_output=True, text=True, check=True).stdout
+    by_hash = {l.split("\x00")[0]: l.split("\x00")[1] for l in log.splitlines() if l}
+    from_git = {cid: by_hash[e["hash"]] for cid, e in commit_map.items() if e["hash"] in by_hash}
+    assert dict(resolved_commit_authors(data)) == from_git
+    assert ("d1" in from_git) == (variant != "deleted")
+
+
+@pytest.mark.parametrize("sid", ["SZZG-0072", "SZZG-0122", "SZZG-0075"])
+def test_history_model_matches_the_shipped_scenarios_with_a_ref_lifecycle(tmp_path, sid):
+    """The shipped scenarios whose lifecycle deletes a branch (0072, 0122) or adds a tag (0075)."""
+    from szzbench.gitutils import resolved_commit_authors
+    from szzbench.graph_generator import generate_graph_repository
+    import subprocess
+    root = Path(__file__).resolve().parent.parent
+    path = root / "advanced-scenarios" / sid / "scenario.graph.yml"
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    commit_map, verify = generate_graph_repository(path, tmp_path / sid, force=True)
+    assert not verify.has_errors(), verify.to_dict()
+    log = subprocess.run(["git", "log", "--all", "--format=%H%x00%an <%ae>"], cwd=tmp_path / sid / "repo",
+                         capture_output=True, text=True, check=True).stdout
+    by_hash = {l.split("\x00")[0]: l.split("\x00")[1] for l in log.splitlines() if l}
+    from_git = {cid: by_hash[e["hash"]] for cid, e in commit_map.items() if e["hash"] in by_hash}
+    assert dict(resolved_commit_authors(data)) == from_git
+    assert len(from_git) < len(commit_map) or sid == "SZZG-0075"
+
+
+def _tagged_generated_chain_fixture(*, count: int, tag_at: str | None, shared_author: str = "Dana Okafor <dana.okafor@example.com>") -> dict:
+    """PR #64 third review: Dana writes the two required commits; a scratch-branch commit d1 by Bob expands
+    `count` generated commits d1.g1..d1.gN (the generator attributes them by its rotation); the scratch
+    branch is deleted and a tag may point into the generated chain."""
+    data = graph_scenario()
+    data["bugs"][0]["bug_introducing_commits"] = [{"commit": "c0", "role": "direct"}, {"commit": "c1", "role": "direct"}]
+    data["expected_szz"]["commit_level"]["required"] = ["c0", "c1"]
+    data["commits"][0]["author"] = shared_author
+    data["commits"][1]["author"] = shared_author
+    data["commits"][2]["author"] = "Bob Example <bob@example.com>"
+    data["commits"].insert(2, {"id": "d1", "branch": "scratch", "parents": ["c1"], "author": "Bob Example <bob@example.com>",
+                               "message": "Document pagination usage", "role": "intermediate",
+                               "operations": [{"type": "commit_generator", "generator": "catalog_sync", "count": count, "files": 1, "path": "generated/catalog"},
+                                              {"type": "write_file", "path": "docs/paging.md", "content": "Pagination usage examples.\n"}]})
+    lifecycle = {"delete_branches": ["scratch"]}
+    if tag_at:
+        lifecycle["tags"] = [{"name": "catalog-snapshot", "commit": tag_at}]
+    data["graph"] = {"model": "commit_dag", "ref_lifecycle": lifecycle}
+    return data
+
+
+def test_a_tag_on_a_generated_commit_keeps_it_and_its_ancestors_reachable():
+    """The generated chain sits between the owner's first parent and the owner: c1 <- d1.g1 <- d1.g2 <- d1.g3 <- d1.
+    A tag at d1.g2 on the deleted scratch branch keeps d1.g1 and d1.g2 visible; d1.g3 and d1 stay unreachable."""
+    from szzbench.gitutils import reachable_commit_ids, resolved_commit_authors
+    data = _tagged_generated_chain_fixture(count=3, tag_at="d1.g2")
+    reachable = reachable_commit_ids(data)
+    assert {"c0", "c1", "c2", "d1.g1", "d1.g2"} <= reachable
+    assert not {"d1", "d1.g3"} & reachable
+    ids = [cid for cid, _ in resolved_commit_authors(data)]
+    assert "d1.g1" in ids and "d1.g2" in ids and "d1.g3" not in ids and "d1" not in ids
+    # without the tag the whole scratch chain is gone
+    assert not {"d1", "d1.g1", "d1.g2", "d1.g3"} & reachable_commit_ids(_tagged_generated_chain_fixture(count=3, tag_at=None))
+
+
+def test_author_coincidence_sees_a_tagged_generated_commit_by_the_same_author():
+    """The review's reproduction: the tag keeps d1.g1 visible, and when the rotation gives d1.g1 to the
+    required commits' author, her visible set is {c0, c1, d1.g1} and there is nothing to warn about."""
+    from szzbench.gitutils import canonical_author, deterministic_author
+    generated_author = canonical_author(deterministic_author("SZZG-9900", "d1.g1"))
+    quiet = lint_graph(_tagged_generated_chain_fixture(count=1, tag_at="d1.g1", shared_author=generated_author))
+    assert codes(quiet) == [] and info_codes(quiet) == []
+    # the same history with the tag on the owner's chain removed: d1.g1 is unreachable and the coincidence is real
+    assert codes(lint_graph(_tagged_generated_chain_fixture(count=1, tag_at=None, shared_author=generated_author))) == ["GW413"]
+
+
+@pytest.mark.parametrize("tag_at", ["d1.g1", "d1.g2", None])
+def test_history_model_matches_git_log_all_with_a_tag_inside_a_generated_chain(tmp_path, tag_at):
+    from szzbench.gitutils import resolved_commit_authors
+    from szzbench.graph_generator import generate_graph_repository
+    import subprocess
+    data = _tagged_generated_chain_fixture(count=3, tag_at=tag_at)
+    path = write_yaml(tmp_path / "SZZG-9900" / "scenario.graph.yml", data)
+    commit_map, verify = generate_graph_repository(path, tmp_path / "out", force=True)
+    assert not verify.has_errors(), verify.to_dict()
+    log = subprocess.run(["git", "log", "--all", "--format=%H%x00%an <%ae>"], cwd=tmp_path / "out" / "repo",
+                         capture_output=True, text=True, check=True).stdout
+    by_hash = {l.split("\x00")[0]: l.split("\x00")[1] for l in log.splitlines() if l}
+    from_git = {cid: by_hash[e["hash"]] for cid, e in commit_map.items() if e["hash"] in by_hash}
+    assert dict(resolved_commit_authors(data)) == from_git
+    expected_generated = {"d1.g1": {"d1.g1"}, "d1.g2": {"d1.g1", "d1.g2"}, None: set()}[tag_at]
+    assert {cid for cid in from_git if cid.startswith("d1")} == expected_generated

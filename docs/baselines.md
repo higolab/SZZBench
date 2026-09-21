@@ -145,10 +145,12 @@ Read this table before reading any result reported on SZZBench:
 
   The fourteenth is **SZZG-0007**, and blame cannot reach it: both files the fix
   touches were created by `c2`, so blame answers `{c2}` and misses `c1`. It
-  falls instead to `position-all-non-fix` and to `author:Aiko Tanaka`, each of
-  which predicts `{c1, c2}` — the history is three commits long and the two
-  non-fix commits *are* the answer, and the same two commits happen to share an
-  author. `shape-last-toucher` does **not** solve it (it answers `{c2}`); the
+  falls instead to `position-all-non-fix`, which predicts `{c1, c2}` — the
+  history is three commits long and the two non-fix commits *are* the answer.
+  (Until 2026-09-21 `author:Aiko Tanaka` solved it as well, because the
+  generator's rotation had given those two commits one author who wrote nothing
+  else; that coincidence is now `GW413` — issue #43 — and `c2` carries an
+  explicit author.) `shape-last-toucher` does **not** solve it (it answers `{c2}`); the
   six two-commit scenarios it does solve are all solved by blame as well.
 
   (An earlier revision of this table reported `1/21` as the best fixed rule on
@@ -162,8 +164,8 @@ Read this table before reading any result reported on SZZBench:
   the message rule scores zero.
 
   This family is the sharpest illustration of the fixed-rule-versus-union
-  distinction above. The *union* over all author rules solves **91/251 =
-  36.3%**: in more than a third of the scenarios *some* author's set of commits
+  distinction above. The *union* over all author rules solves **89/251 =
+  35.5%**: in more than a third of the scenarios *some* author's set of commits
   happens to be exactly the oracle, usually because the oracle is one commit and
   the generator's author rotation gave that commit an author it gave no other.
   An attacker cannot use that — they must fix one author and apply it

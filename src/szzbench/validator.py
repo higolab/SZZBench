@@ -10,6 +10,7 @@ from .findings import ValidationResult
 from .operations import SUPPORTED_OPERATIONS, FUTURE_OPERATIONS, OperationError, apply_operation_to_memory, find_all_occurrences
 from .paths import PathValidationError, validate_repo_relative_path
 from .scenario import load_yaml
+from .gitutils import resolved_commit_authors
 
 ALLOWED_ROLES = {
     "initial", "bug_introducing", "bug_fixing", "distractor", "refactoring",
@@ -409,6 +410,51 @@ def lint_tier(meta: Any, result: ValidationResult, *, prefix: str) -> None:
         result.warning(f"{prefix}460", f"meta.tier '{tier}' is not one of {SCENARIO_TIERS}.", "meta.tier")
 
 
+def lint_author_coincidence(data: dict[str, Any], suite: str, result: ValidationResult, *, prefix: str) -> None:
+    """Issue #43: does some author's set of commits equal the resolved default oracle?
+
+    That is exactly the condition under which the cheap baseline "report every
+    commit written by X" returns the oracle, so the scenario is solved by the
+    author rotation rather than by any signal.  The oracle is resolved the way
+    the evaluator resolves it (default variant, inferred BICs); the history is
+    the one the generated repository will have (``resolved_commit_authors``):
+    every commit with its explicit or deterministic default author, compared as
+    Git records it (``name <email>``), plus the commits ``commit_generator``
+    expands, which the author baseline sees through ``git log --all``.  A
+    multi-commit coincidence is a warning
+    (``<prefix>413``); a one-commit oracle is solved by many cheap rules anyway,
+    so its coincidence is reported as information (``<info prefix>413``).
+    """
+    from .evaluator import _commit_level_policy   # evaluator imports nothing from here
+
+    try:
+        required = set(_commit_level_policy(data, suite, None).required)
+    except Exception:  # a scenario the evaluator cannot read is reported elsewhere
+        return
+    try:
+        history = resolved_commit_authors(data)   # scenario commits and the commits commit_generator expands
+    except Exception:
+        return
+    if not required or len(history) < 2:
+        return
+    owned: dict[str, set[str]] = {}
+    for cid, author in history:
+        owned.setdefault(author, set()).add(cid)
+    explicit_by_id = {c.get("id"): bool(c.get("author")) for c in (data.get("commits") or []) if isinstance(c, dict)}
+    info_prefix = prefix[:-1] + "I"
+    for author, ids in sorted(owned.items()):
+        if ids != required:
+            continue
+        explicit = "explicit" if all(explicit_by_id.get(cid) for cid in ids) else "generator-assigned"
+        message = (f"author {author!r} wrote exactly the required commit(s) {sorted(required)} and nothing else "
+                   f"({explicit}), so the baseline 'report every commit by this author' returns the oracle by coincidence "
+                   f"(issue #43); give the required commits distinct explicit authors")
+        if len(required) >= 2:
+            result.warning(f"{prefix}413", message, "commits")
+        else:
+            result.info(f"{info_prefix}413", message + " - or leave it: a one-commit oracle is solved by many cheap rules anyway", "commits")
+
+
 def lint_leakage(commits: Iterable[Any], bfc_ids: set[str], result: ValidationResult, *, prefix: str) -> None:
     """Answer-cue lint for commit messages and written file contents (issue #8).
 
@@ -470,6 +516,7 @@ def lint_scenario(data: dict[str, Any], snapshots: dict[str, dict[str, str]] | N
     lint_factors(factors, result, prefix="W")
     lint_tier(data.get("meta"), result, prefix="W")
     lint_leakage(commits, bfc_ids, result, prefix="W")
+    lint_author_coincidence(data, "scenarios", result, prefix="W")
     if snapshots is not None:
         result.extend(_lint_ghost_invariants(commits, bugs, factors, snapshots))
         result.extend(_lint_fault_line_integrity(commits, bugs, factors, snapshots))

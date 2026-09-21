@@ -18,8 +18,8 @@ the fault file, 3 commits, 1 ref) are unchanged.
 ## Commit structure (generated)
 
 ```text
-* 162b541  2024-07-30  Count pages and batches without an extra one for exact multiples  <- BFC (c3; PagingUtils.java and Batches.java)
-* 03e528f  2024-07-24  Move pageCount to PagingUtils and add Batches.batchCount           <- BIC of the duplicate (c2); move of the original
+* f3912ea  2024-07-30  Count pages and batches without an extra one for exact multiples  <- BFC (c3; PagingUtils.java and Batches.java)
+* 7f98d88  2024-07-24  Move pageCount to PagingUtils and add Batches.batchCount           <- BIC of the duplicate (c2); move of the original
 * 8bbc4a3  2024-07-15  Add Paging with page count and offset helpers                      <- BIC of the moved instance (c1)
 ```
 
@@ -27,6 +27,12 @@ the fault file, 3 commits, 1 ref) are unchanged.
 
 - BICs: `c1` and `c2` (`exact_set`, `required: [c1, c2]`)
 - BFC: `c3`
+
+`c2` carries an explicit author (Bruno Fischer): with the generator's default
+rotation `c1` and `c2` shared an author who wrote nothing else, so the metadata
+baseline "report every commit by this author" returned the oracle by coincidence
+(`GW413`, issue #43). The scenario is still a control — `position-all-non-fix`
+solves it — but no longer through the author.
 
 ## Measured behaviour and blame
 
