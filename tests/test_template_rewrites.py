@@ -49,8 +49,11 @@ REWRITES: dict[str, tuple[str, str, dict[str, str]]] = {
     "SZZG-0056": ("integer-overflow", 'System.out.print(new example.Bytes().toBits(1 << 28));',
                   {"c0": "2147483648", "c1": "-2147483648", "rel1": "-2147483648", "c2": "2147483648", "r2": "2147483648"}),
     # --- G5 ---
-    "SZZG-0069": ("wrong-constant", 'example.Backoff b = new example.Backoff(); System.out.print(b.delayMillis(0) + " " + b.delayMillis(10));',
-                  {"c0": "100 30000", "f1": "10 3000", "r1": "10 10240", "r2": "10 3000", "c3": "100 30000"}),
+    "SZZG-0069": ("wrong-constant",
+                  'example.Backoff b = new example.Backoff(); for (int n : new int[] {0, 10, 25, 31, 32}) System.out.print(b.delayMillis(n) + " ");',
+                  # attempts 25, 31 and 32 saturate at the cap in every snapshot (PR #61 review: the first version overflowed)
+                  {"c0": "100 30000 30000 30000 30000 ", "f1": "10 3000 3000 3000 3000 ", "r1": "10 10240 30000 30000 30000 ",
+                   "r2": "10 3000 3000 3000 3000 ", "c3": "100 30000 30000 30000 30000 "}),
     "SZZG-0070": ("off-by-one", 'System.out.print(new example.Pagination().lastIndex(1, 10));',
                   {"c0": "9", "f1": "19", "f2": "20", "r1": "20", "c2": "9"}),
     "SZZG-0073": ("api-misuse", 'System.out.print(new example.InvoiceDates().dueMonth(java.time.LocalDate.of(2024, 3, 15)));',

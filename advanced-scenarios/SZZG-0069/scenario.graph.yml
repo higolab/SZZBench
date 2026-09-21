@@ -51,9 +51,10 @@ commits:
       package example;
 
       public class Backoff {
-        /** Delay before retry number {@code attempt}: 100 ms doubling per attempt, capped at 30 s. */
+        /** Delay before retry number {@code attempt} (non-negative): 100 ms doubling per attempt, capped at 30 s. */
         public int delayMillis(int attempt) {
-          return Math.min(100 * (1 << attempt), 30000);
+          int doublings = Math.min(Math.max(attempt, 0), 30);
+          return (int) Math.min(100L << doublings, 30000L);
         }
       }
 - id: f1
@@ -65,8 +66,8 @@ commits:
   operations:
   - type: replace
     path: src/main/java/example/Backoff.java
-    old: return Math.min(100 * (1 << attempt), 30000);
-    new: return Math.min(10 * (1 << attempt), 3000);
+    old: return (int) Math.min(100L << doublings, 30000L);
+    new: return (int) Math.min(10L << doublings, 3000L);
 - id: r1
   branch: main
   parents:
@@ -76,8 +77,8 @@ commits:
   operations:
   - type: replace
     path: src/main/java/example/Backoff.java
-    old: return Math.min(100 * (1 << attempt), 30000);
-    new: return Math.min(10 * (1 << attempt), 30000);
+    old: return (int) Math.min(100L << doublings, 30000L);
+    new: return (int) Math.min(10L << doublings, 30000L);
   rebase_of: f1
   rebase_split_part: base
 - id: r2
@@ -89,8 +90,8 @@ commits:
   operations:
   - type: replace
     path: src/main/java/example/Backoff.java
-    old: return Math.min(10 * (1 << attempt), 30000);
-    new: return Math.min(10 * (1 << attempt), 3000);
+    old: return (int) Math.min(10L << doublings, 30000L);
+    new: return (int) Math.min(10L << doublings, 3000L);
   rebase_of: f1
   rebase_split_part: cap
 - id: c3
@@ -102,8 +103,8 @@ commits:
   operations:
   - type: replace
     path: src/main/java/example/Backoff.java
-    old: return Math.min(10 * (1 << attempt), 3000);
-    new: return Math.min(100 * (1 << attempt), 30000);
+    old: return (int) Math.min(10L << doublings, 3000L);
+    new: return (int) Math.min(100L << doublings, 30000L);
 bugs:
 - id: B001
   title: Backoff delays are a tenth of the intended values, split across two rebased commits
@@ -121,19 +122,19 @@ bugs:
   - id: F001
     commit: r2
     file: src/main/java/example/Backoff.java
-    statement: return Math.min(10 * (1 << attempt), 3000);
+    statement: return (int) Math.min(10L << doublings, 3000L);
     change_type: line_modification
   fixes:
   - id: X001
     commit: c3
     file: src/main/java/example/Backoff.java
-    statement: return Math.min(100 * (1 << attempt), 30000);
+    statement: return (int) Math.min(100L << doublings, 30000L);
     fix_type: line_modification
   origin_faults:
   - id: OF001
     commit: f1
     file: src/main/java/example/Backoff.java
-    statement: return Math.min(10 * (1 << attempt), 3000);
+    statement: return (int) Math.min(10L << doublings, 3000L);
     change_type: origin_line_modification
 expected_szz:
   commit_level:
@@ -160,10 +161,12 @@ expected_szz:
 scenario_design:
   purpose: Evaluate one-origin-to-multiple-direct BIC mapping after rebase.
   key_property: >
-    f1 is split into r1 and r2, both editing the same line. Measured: delayMillis(0) is 100 at c0, 10 from r1 on
-    and 100 at c3; delayMillis(10) is 30000 at c0, 10240 at r1 (the smaller base, still capped at 30000), 3000
-    at r2 and 30000 at c3. Blaming the line c3 deletes at c3^ returns r2 only, so plain blame recovers half of the required set
-    and the scenario stays in the discriminating tier.
+    f1 is split into r1 and r2, both editing the same line. The doubling count is clamped to [0, 30] and the
+    product is taken in long before the cap, so the delay saturates instead of wrapping for any attempt.
+    Measured: delayMillis(0) is 100 at c0, 10 from r1 on and 100 at c3; delayMillis(10) is 30000 at c0, 10240
+    at r1 (the smaller base, still capped at 30000), 3000 at r2 and 30000 at c3; delayMillis(25), (31) and (32)
+    are 30000 at c0, r1 and c3 and 3000 at f1 and r2. Blaming the line c3 deletes at c3^ returns r2 only, so
+    plain blame recovers half of the required set and the scenario stays in the discriminating tier.
   difference_from_SZZG_0064: SZZG-0064 covers a rebased BIC followed by a non-BIC rebased intermediate commit. This scenario
     adds a distinct rebase-related complication.
   evaluation_points:

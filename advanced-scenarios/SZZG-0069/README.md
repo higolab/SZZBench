@@ -14,16 +14,18 @@ back in the line's history.
 Rewritten 2026-09-21 (issue #13) from the shared `Range.contains` template; the
 history shape, oracle, tier and coverage dimensions (`bic_depth` 2, two
 distractors on the fault file, 5 commits, 2 refs) are unchanged.
+The backoff expression clamps and shifts in `long` so that no snapshot — buggy
+or fixed — overflows; only the two constants differ between them.
 
 ## Commit structure (generated)
 
 ```text
-* 3184fe1  2024-06-21  Restore the backoff constants: 100 ms base, 30000 ms cap  <- BFC (c3)
-* 729ff09  2024-06-19  Tune the backoff cap                                      <- BIC (r2, rebase_of f1: the cap half)
-* 5718f03  2024-06-17  Tune the backoff base                                     <- BIC (r1, rebase_of f1: the base half)
-| * ea1920e  2024-06-11  Tune the backoff to a 100 ms base and a 30 s cap        <- origin (f1, feature; both halves)
+* 6d8f2e0  2024-06-21  Restore the backoff constants: 100 ms base, 30000 ms cap  <- BFC (c3)
+* 4a55727  2024-06-19  Tune the backoff cap                                      <- BIC (r2, rebase_of f1: the cap half)
+* d021e7b  2024-06-17  Tune the backoff base                                     <- BIC (r1, rebase_of f1: the base half)
+| * bd9857e  2024-06-11  Tune the backoff to a 100 ms base and a 30 s cap        <- origin (f1, feature; both halves)
 |/
-* c10d601  2024-06-05  Add the retry backoff                                     (c0)
+* 6400cae  2024-06-05  Add the retry backoff                                     (c0)
 ```
 
 ## Expected BIC / BFC
@@ -34,15 +36,19 @@ distractors on the fault file, 5 commits, 2 refs) are unchanged.
 
 ## Measured behaviour and blame
 
-| commit | `delayMillis(0)` | `delayMillis(10)` |
-|---|---|---|
-| `c0` | 100 | 30000 |
-| `f1` | 10 | 3000 |
-| `r1` | **10** | 10240 (smaller base, still capped at 30000) |
-| `r2` | 10 | **3000** |
-| `c3` | 100 | 30000 |
+| commit | `delayMillis(0)` | `delayMillis(10)` | `delayMillis(25)`, `(31)`, `(32)` |
+|---|---|---|---|
+| `c0` | 100 | 30000 | 30000 |
+| `f1` | 10 | 3000 | 3000 |
+| `r1` | **10** | 10240 (smaller base, still capped at 30000) | 30000 |
+| `r2` | 10 | **3000** | 3000 |
+| `c3` | 100 | 30000 | 30000 |
 
-`c3` deletes one line (`return Math.min(10 * (1 << attempt), 3000);`, line 6);
+The doubling count is clamped to `[0, 30]` and shifted in `long` before the
+cap, so the delay saturates at the cap for any attempt instead of wrapping
+(PR #61 review: the first version overflowed at attempt 25 and shift-wrapped at
+31). `c3` deletes one line (`return (int) Math.min(10L << doublings, 3000L);`,
+line 7);
 blame at `c3^` returns `r2` — half of the required set. Blaming the same line
 at `r2^` returns `r1`.
 
