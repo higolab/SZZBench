@@ -123,7 +123,7 @@ With `--simulate`:
 | code | severity | meaning |
 |---|---|---|
 | E2XX | error | an operation failed during in-memory replay (message carries the cause) |
-| E250 | error | a commit produces no change in the simulated text. A `write_file` with `encoding: utf-8-sig` and unchanged content *is* a change (the simulator models the BOM as a leading U+FEFF), so a BOM-only re-save such as SZZ-0206's `c2` passes |
+| E250 | error | a commit produces no change in the simulated text. An operation whose `encoding` adds or removes the BOM *is* a change (the simulator stores a BOM as a leading U+FEFF and applies the codec on read and write, for `write_file` and `replace` alike), so a BOM-only re-save such as SZZ-0206's `c2` passes |
 | E300 | error | `fault.file` does not exist at `fault.commit` |
 | E301 | error | `fault.statement` missing, or absent at `fault.commit` |
 | W301 | warning | `fault.statement` occurs more than once at `fault.commit`. Silenced by a `meta.factors` entry matching `duplicate`, `ambiguous`, `overload` or `repetitive`, for scenarios whose point is the duplication |

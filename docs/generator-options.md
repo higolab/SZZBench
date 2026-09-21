@@ -163,10 +163,11 @@ be used for CRLF files. A BOM is not handled by this key; see `encoding`.
 ### `encoding` (*both*)
 
 Available on `write_file` and `replace` in both suites (and on the graph
-`insert_after`). It names the codec Python uses for the bytes on disk; the
-default is `utf-8`. Its one intended use is `utf-8-sig`, which writes a UTF-8
-byte order mark: a `write_file` with `encoding: utf-8-sig` and otherwise
-unchanged content is a *BOM-only re-save*, the commit shape of SZZ-0206.
+`insert_after`). It names the codec used for the bytes on disk; the default
+is `utf-8`. Its one intended use is `utf-8-sig`, which reads and writes a
+UTF-8 byte order mark: a `write_file` with `encoding: utf-8-sig` and otherwise
+unchanged content — or a `replace` with `encoding: utf-8-sig` whose `old`
+equals `new` — is a *BOM-only re-save*, the commit shape of SZZ-0206.
 
 ```yaml
 - type: write_file
@@ -179,13 +180,24 @@ unchanged content is a *BOM-only re-save*, the commit shape of SZZ-0206.
   old: "MAX_UPLOAD_KB = 6144"
   new: "MAX_UPLOAD_KB = 61440"
   # no encoding: read and written as UTF-8, so the BOM survives as U+FEFF
+- type: replace
+  path: src/limits/upload.py
+  encoding: utf-8-sig        # strips the BOM on read, writes one back: still exactly one
+  old: "61440"
+  new: "20480"
 ```
 
-The classic in-memory simulator models the BOM as a leading U+FEFF, so the
-re-save counts as a change (otherwise it would be `E250`) and statements are
-still matched as substrings of the decoded text. The graph simulator does not
-model it; a graph scenario whose commit changes only the encoding needs
-another change or `allow_empty` to pass `GE202`.
+In the classic suite the key is closed like `line_ending`: `utf-8` or
+`utf-8-sig` in any spelling Python accepts, anything else an operation error.
+The classic in-memory simulator applies the codec's read and write behaviour
+to the simulated text, which stores a BOM as a leading U+FEFF: `utf-8-sig`
+strips one on read and writes one, `utf-8` keeps it as text. A BOM added or
+removed by either operation is therefore a change (not `E250`), statements
+stay substrings of the decoded text, and the simulator accepts a history
+exactly when Git would record it as distinct commits. The graph operations
+pass any codec name to Python unchecked and the graph simulator does not model
+it; a graph commit that changes only the encoding needs another change or
+`allow_empty` to pass `GE202`.
 
 ### `write_generated_text_file.header` / `.footer` (*graph*)
 
