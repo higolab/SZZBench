@@ -27,8 +27,11 @@ commit. Nothing is passed out of band.
 - The scenario's `issues:` entry stays the oracle-side record and gains two
   keys: `document` (the path written) and `reported_at` (the timestamp the
   document states). `GW470`/`GW471` check that the document is written by some
-  commit and that it carries exactly that `Reported:` line, so the two cannot
-  drift.
+  commit and that its `Reported:` line names the same instant, so the two
+  cannot drift. Both values go through the generator's timestamp parser, so
+  `reported_at` may be quoted or unquoted in YAML (PyYAML turns the latter into
+  a `datetime`) and either side may use `Z` or an offset; a value that is not a
+  timestamp at all is `GW472`, never silence.
 - The relation between `reported_at` and the commit dates is a controlled
   property of the scenario, so every commit that matters to it pins `date` (or
   `author_date` / `committer_date`).

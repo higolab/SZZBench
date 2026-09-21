@@ -892,3 +892,39 @@ def test_issue_documents_must_be_written_and_state_their_date():
 
     del data["issues"][0]["document"]
     assert [f.code for f in validate_graph_static(data, strict_paths=True).findings if f.code.startswith("GW47")] == ["GW470"]
+
+
+def test_issue_document_checks_survive_malformed_containers():
+    """The containers GE030/GE044 diagnose are still raw when the issue-document check runs
+    (PR #56 review): a TypeError there replaced the structured diagnostics with a traceback."""
+    data = graph_scenario()
+    data["issues"] = [{"id": "ISSUE-1", "title": "t", "reported_at": "2024-01-05T10:00:00Z", "document": "docs/issues/ISSUE-1.md"}]
+    bad_ops = dict(data); bad_ops["commits"] = [dict(data["commits"][0], operations=42)] + data["commits"][1:]
+    codes = [f.code for f in validate_graph_static(bad_ops, strict_paths=True).findings]
+    assert "GE044" in codes and "GW470" in codes, codes          # reported, not raised
+    bad_commits = dict(data); bad_commits["commits"] = 42
+    codes = [f.code for f in validate_graph_static(bad_commits, strict_paths=True).findings]
+    assert "GE030" in codes, codes
+    no_issues = dict(data); no_issues["issues"] = []
+    validate_graph_static(no_issues, strict_paths=True)          # must not raise
+
+
+def test_issue_document_dates_are_compared_as_timestamps_not_strings():
+    """PyYAML turns an unquoted ISO 8601 value into a datetime; gating on str let a wrong date
+    pass with zero findings (PR #56 review). Values are normalised and compared as instants."""
+    from datetime import datetime, timezone
+
+    def scenario(reported_at, doc_line="Reported: 2024-01-05T10:00:00Z"):
+        data = graph_scenario()
+        data["commits"][1]["operations"].append({"type": "write_file", "path": "docs/issues/ISSUE-1.md",
+                                                 "content": f"# ISSUE-1\n\n{doc_line}\n\nThe check rejects the bound.\n"})
+        data["issues"] = [{"id": "ISSUE-1", "title": "t", "reported_at": reported_at, "document": "docs/issues/ISSUE-1.md"}]
+        return [f.code for f in validate_graph_static(data, strict_paths=True).findings if f.code.startswith("GW47")]
+
+    utc = timezone.utc
+    assert scenario(datetime(2024, 1, 5, 10, 0, tzinfo=utc)) == []                       # unquoted, same instant
+    assert scenario(datetime(2025, 1, 5, 10, 0, tzinfo=utc)) == ["GW471"]                # unquoted, wrong year
+    assert scenario("2024-01-05T19:00:00+09:00") == []                                    # same instant, other offset
+    assert scenario(42) == ["GW472"]                                                       # not a timestamp at all
+    assert scenario("2024-01-05T10:00:00Z", doc_line="Filed on 2024-01-05.") == ["GW471"]  # document has no Reported: line
+    assert scenario("2024-01-05T10:00:00Z", doc_line="Reported: yesterday") == ["GW471"]   # document's value unparsable

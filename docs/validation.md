@@ -260,7 +260,8 @@ With `--simulate`:
 | GW453 | warning | an `origin-aware` variant that does not accept the origin, so the variant's name promises what its policy does not deliver (D3) |
 | GW454 | warning | the sibling README's `## Expected history` block contradicts the scenario: a commit's operation list differs from `commits[].operations`, or the block names a commit the scenario does not define. Only the parenthesised operation list is compared, because only that part is mechanically derivable; READMEs that describe the history in prose have no such block and are not linted |
 | GW470 | warning | an `issues[]` entry names a `document` that no commit writes with `write_file`, or has `reported_at` without a `document` — the report would not be visible to a tool ([decisions/tool-visible-context.md](decisions/tool-visible-context.md)) |
-| GW471 | warning | the issue document does not contain the line `Reported: <reported_at>`; `reported_at` and the document are copies of each other and must agree |
+| GW471 | warning | the issue document has no `Reported: <timestamp>` line, its value is not an ISO 8601 timestamp, or it names a different instant from `issues[].reported_at`. Both values are normalised through the same parser and compared as instants, so an unquoted YAML timestamp (a `datetime`) and a different UTC offset are handled; `reported_at` and the document are copies of each other and must agree |
+| GW472 | warning | `issues[].reported_at` is neither an ISO 8601 string nor the `datetime` PyYAML makes of an unquoted one — it is reported rather than silently skipped |
 
 Ghost invariants (the graph counterparts of W420/W421) are **not**
 implemented: `graph_simulator.simulate_graph_scenario` does not expose
