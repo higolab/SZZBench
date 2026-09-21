@@ -106,14 +106,15 @@ In short, `scenario.yml` is treated as a restricted subset of `scenario.graph.ym
 `szzbench baselines` scores a declared family of cheap predictors — metadata
 only, history position only, file-touch shape, and the classic blame baseline —
 with the ordinary evaluator, so every result on SZZBench can be read against a
-floor. Measured on the shipped suite: **"report the second commit of the history",
-which opens no file at all, solves 142/225 — exactly what the classic
-`blame-deleted-lines` baseline scores**. Some cheap rule solves 203 of the
-225 scenarios, an oracle-aware upper bound rather than an attacker's score; the
-twenty-two it does not reach all have a multi-commit oracle. The metadata
+floor. Measured on the shipped suite of 251 scenarios: **"report the second
+commit of the history", which opens no file at all, solves 156/251 — within two
+of the classic `blame-deleted-lines` baseline at 158/251**, and the lead has
+changed hands with every batch of new scenarios. Some cheap rule solves 229 of
+the 251 scenarios, an oracle-aware upper bound rather than an attacker's score;
+the twenty-two it does not reach all have a multi-commit oracle. The metadata
 family is at chance, which is the leakage guarantee below holding.
 
-Every scenario declares `meta.tier`: **203 are `control`** — they check that a
+Every scenario declares `meta.tier`: **229 are `control`** — they check that a
 method handles a specific input condition, and a cheap rule may well solve them
 — and **22 are `discriminating`**, which no declared cheap baseline solves.
 Fifteen of those were designed against the measured axis: the answer is two
