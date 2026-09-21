@@ -149,6 +149,8 @@ The W41x / GW41x lints implement the leakage policy in
 | W410 | warning | a commit that is **not** the BFC has a message disclosing its role: `introduce ... bug` (with hyphenated words in between, e.g. `introduce context-sensitive bug`), `bug-introducing`, `with ... bug`, `buggy`, `faulty`, `faulty statement/line/code/commit`, `BIC`, `BFC`, `distractor`, `intermediate change`, `initial state`, `noise`, `unrelated`, `replay...`, `reintroduc...` (case-insensitive). Natural "fix" wording in the BFC is never flagged. | – |
 | W411 | warning | a message exposes a logical id: one of the scenario's own commit ids as a standalone word, wherever it appears (`c1: ...`, `WI-001 c2: ...`, `suspected c0`), or an id-shaped token used as a prefix (`Rel1:`). Hyphenated issue and work-item ids (`ISSUE-482`, `PAY-314`, `WI-001`) are legitimate and are not flagged. | – |
 | W412 | warning | text written into the repository (`write_file.content`, `replace.new`, `insert_after.content`) matches the W410 role wording | – |
+| W413 | warning | some author's set of commits equals the resolved default oracle and the oracle has two or more commits: the cheap baseline "report every commit by this author" returns the oracle by coincidence of the generator's author rotation (issue #43). Give the required commits distinct explicit `author`s. The oracle is resolved as the evaluator resolves it; authors are the explicit ones or the generator's deterministic defaults |
+| I413 | info | the same coincidence for a one-commit oracle — reported, not repaired: a one-commit oracle is solved by many cheap rules anyway |
 | W460 | warning | `meta.tier` is missing or is not one of `control` / `discriminating` (see [decisions/vocabulary.md](decisions/vocabulary.md)) | – |
 | W420 | warning | ghost invariant: the BFC deletes or modifies an existing line although the scenario is declared as an addition-only fix. Declared by a factor in {`addition-only-fix`, `ghost-fix`, `add_only_fix`} (applies to every bug) or, per bug, by `fault.change_type: omission` together with `fix.fix_type` in {`line_addition`, `file_creation`} | a factor matching `tangled\|noise\|distractor\|adjacent-edit`, which declares that the fix deliberately carries unrelated deleted lines |
 | W421 | warning | ghost invariant: a BIC adds lines although the scenario is declared as a deletion-only BIC (factor `deletion-only-bic` or `line-deletion-bic`) | – |
@@ -250,6 +252,8 @@ With `--simulate`:
 | GW410 | warning | a commit that is not a BFC (of any bug) has a role-disclosing message (same pattern as W410) |
 | GW411 | warning | a message exposes a logical id (same rule as W411) |
 | GW412 | warning | written text (`write_file.content`, `replace.new`, `insert_after.content`) contains role wording |
+| GW413 | warning | some author's set of commits equals the resolved default oracle of two or more commits (same rule as W413) |
+| GI413 | info | the same coincidence for a one-commit oracle (same rule as I413) |
 | GW440 | warning | `move_entity` / `copy_entity`: file-level approximation, the whole source file is copied under a marker header |
 | ~~GW441~~ | retired | `commit_generator` now expands into real commits (see `docs/generator-options.md`) |
 | ~~GW442~~ | retired | `chmod` is now recorded: the generator enables `core.filemode` for scenarios that use it |

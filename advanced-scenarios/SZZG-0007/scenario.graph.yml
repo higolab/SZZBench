@@ -59,6 +59,7 @@ commits:
   - c1
   message: Move pageCount to PagingUtils and add Batches.batchCount
   role: refactoring
+  author: Bruno Fischer <bruno.fischer@example.com>
   operations:
   - type: write_file
     path: src/main/java/example/Paging.java
@@ -209,3 +210,6 @@ notes:
   operations, and the BFC fixes both copies.
 - Rewritten 2026-09-21 from the shared Range.contains template to an off-by-one fault (GitHub issue 13); the history
   shape, oracle and coverage dimensions are unchanged.
+- 'c2 carries an explicit author. With the generator''s default rotation c1 and c2 shared an author who wrote nothing
+  else, so the baseline "report every commit by this author" returned the oracle {c1, c2} by coincidence (GW413, GitHub
+  issue 43).'

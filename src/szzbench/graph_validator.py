@@ -14,7 +14,7 @@ from .graph_simulator import simulate_graph_scenario
 from .gitutils import GitError, format_timestamp, parse_timestamp
 from .paths import PathValidationError, validate_repo_relative_path
 from .policies import SUPPORTED_EVALUATION_POLICIES
-from .validator import lint_factors, lint_leakage, lint_tier
+from .validator import lint_author_coincidence, lint_factors, lint_leakage, lint_tier
 
 GRAPH_ID_RE = re.compile(r"^SZZG-\d{4}$")
 
@@ -532,6 +532,7 @@ def lint_graph_scenario(data: dict[str, Any], *, scenario_path: Path | None = No
             if isinstance(role, str) and role not in ALLOWED_BFC_ROLES:
                 result.warning("GW404", f"BFC role '{role}' is not in {sorted(ALLOWED_BFC_ROLES)}.", f"bugs[{i}].bug_fixing_commits[{j}].role")
     lint_leakage(commits, bfc_ids, result, prefix="GW")
+    lint_author_coincidence(data, "advanced-scenarios", result, prefix="GW")
     _lint_approximate_operations(commits, result)
     _lint_origin_coverage(bugs, data, result)
     if scenario_path is not None:

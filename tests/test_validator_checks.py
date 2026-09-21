@@ -57,7 +57,13 @@ UNGUARDED_REINDENTED = (
 
 
 def codes(result) -> list[str]:
-    return [f.code for f in result.findings]
+    """Error and warning codes, in order. Information items (I/GI codes) do not fail
+    `--strict` and are not lint findings in the sense these tests assert; see info_codes()."""
+    return [f.code for f in result.findings if f.severity != "INFO"]
+
+
+def info_codes(result) -> list[str]:
+    return [f.code for f in result.findings if f.severity == "INFO"]
 
 
 def classic_scenario() -> dict:
@@ -66,9 +72,9 @@ def classic_scenario() -> dict:
         "meta": {"id": "SZZ-9900", "title": "Lint fixture", "category": "fixture", "tier": "control", "factors": ["single-bic", "single-bfc", "line-modification"]},
         "repository": {"name": "lint-fixture", "default_branch": "main", "language": "java"},
         "commits": [
-            {"id": "c0", "message": "Initial implementation", "role": "initial",
+            {"id": "c0", "message": "Initial implementation", "role": "initial", "author": "Ann Example <ann@example.com>",
              "operations": [{"type": "write_file", "path": JAVA, "content": RANGE_OK}]},
-            {"id": "c1", "message": "Tighten range check", "role": "bug_introducing",
+            {"id": "c1", "message": "Tighten range check", "role": "bug_introducing", "author": "Ann Example <ann@example.com>",
              "operations": [{"type": "replace", "path": JAVA, "old": "value >= min && value <= max", "new": "value > min && value < max"}]},
             {"id": "c2", "message": "Fix boundary condition", "role": "bug_fixing",
              "operations": [{"type": "replace", "path": JAVA, "old": "value > min && value < max", "new": "value >= min && value <= max"}]},
@@ -89,9 +95,9 @@ def graph_scenario() -> dict:
         "meta": {"id": "SZZG-9900", "title": "Graph lint fixture", "category": "fixture", "tier": "control", "factors": ["rebase", "branch"]},
         "repository": {"name": "graph-lint-fixture", "default_branch": "main"},
         "commits": [
-            {"id": "c0", "branch": "main", "parents": [], "message": "Initial implementation", "role": "initial",
+            {"id": "c0", "branch": "main", "parents": [], "message": "Initial implementation", "role": "initial", "author": "Ann Example <ann@example.com>",
              "operations": [{"type": "write_file", "path": JAVA, "content": RANGE_OK}]},
-            {"id": "c1", "branch": "main", "parents": ["c0"], "message": "Tighten range check", "role": "bug_introducing",
+            {"id": "c1", "branch": "main", "parents": ["c0"], "message": "Tighten range check", "role": "bug_introducing", "author": "Ann Example <ann@example.com>",
              "operations": [{"type": "replace", "path": JAVA, "old": "value >= min && value <= max", "new": "value > min && value < max"}]},
             {"id": "c2", "branch": "main", "parents": ["c1"], "message": "Fix boundary condition", "role": "bug_fixing",
              "operations": [{"type": "replace", "path": JAVA, "old": "value > min && value < max", "new": "value >= min && value <= max"}]},
@@ -574,6 +580,7 @@ def test_required_origin_needs_no_variant():
     data = graph_scenario()
     data["bugs"][0]["bug_introducing_commits"].append({"commit": "c0", "role": "origin"})
     data["expected_szz"]["commit_level"]["required"] = ["c0", "c1"]
+    data["commits"][1]["author"] = "Bob Example <bob@example.com>"   # otherwise Ann owns exactly {c0, c1}: GW413 (#43)
     assert lint_graph(data).findings == []
 
 
@@ -928,3 +935,69 @@ def test_issue_document_dates_are_compared_as_timestamps_not_strings():
     assert scenario(42) == ["GW472"]                                                       # not a timestamp at all
     assert scenario("2024-01-05T10:00:00Z", doc_line="Filed on 2024-01-05.") == ["GW471"]  # document has no Reported: line
     assert scenario("2024-01-05T10:00:00Z", doc_line="Reported: yesterday") == ["GW471"]   # document's value unparsable
+
+
+# --- author coincidence lint (#43) ---------------------------------------------
+
+def _with_authors(data: dict, *authors: str) -> dict:
+    for commit, author in zip(data["commits"], authors):
+        commit["author"] = f"{author} <{author.lower()}@example.com>"
+    return data
+
+
+def test_author_coincidence_on_a_one_commit_oracle_is_information():
+    """An author who wrote exactly the single required commit: the author baseline solves the
+    scenario by coincidence, but one-commit oracles are cheap to solve anyway -> I413 / GI413."""
+    result = lint_classic(_with_authors(classic_scenario(), "Ann", "Bob", "Ann"))
+    assert codes(result) == [] and info_codes(result) == ["I413"]
+    finding = result.findings[0]
+    assert "'Bob <bob@example.com>'" in finding.message and "['c1']" in finding.message and "(explicit)" in finding.message
+    result = lint_graph(_with_authors(graph_scenario(), "Ann", "Bob", "Ann"))
+    assert codes(result) == [] and info_codes(result) == ["GI413"]
+
+
+def test_no_author_coincidence_when_the_author_also_wrote_another_commit():
+    for result in (lint_classic(_with_authors(classic_scenario(), "Ann", "Ann", "Bob")),
+                   lint_graph(_with_authors(graph_scenario(), "Ann", "Ann", "Bob"))):
+        assert codes(result) == [] and info_codes(result) == []
+
+
+def test_author_coincidence_on_a_multi_commit_oracle_is_a_warning():
+    """SZZG-0118 and SZZG-0028 (#41, #42): two required commits, one author, nothing else by that
+    author -> GW413. Giving one of them another author clears it."""
+    data = graph_scenario()
+    data["bugs"][0]["bug_introducing_commits"] = [{"commit": "c0", "role": "direct"}, {"commit": "c1", "role": "direct"}]
+    data["expected_szz"]["commit_level"]["required"] = ["c0", "c1"]
+    result = lint_graph(_with_authors(deepcopy(data), "Ann", "Ann", "Bob"))
+    assert codes(result) == ["GW413"]
+    assert "['c0', 'c1']" in result.findings[0].message and result.findings[0].location == "commits"
+    cleared = lint_graph(_with_authors(deepcopy(data), "Ann", "Cid", "Bob"))
+    assert codes(cleared) == [] and info_codes(cleared) == []
+
+
+def test_author_coincidence_resolves_the_oracle_like_the_evaluator():
+    """A default evaluation variant supplies the oracle (SZZG-0022 style); reading
+    expected_szz.commit_level directly would see nothing."""
+    data = graph_scenario()
+    data["expected_szz"] = {
+        "evaluation_variants": [
+            {"name": "direct-only", "commit_level": {"evaluation_policy": "exact_set", "required": ["c1"]}},
+        ],
+        "default_variant": "direct-only",
+    }
+    assert info_codes(lint_graph(_with_authors(deepcopy(data), "Ann", "Bob", "Ann"))) == ["GI413"]
+    # without explicit authors the generator's deterministic rotation decides; the lint must reproduce it
+    from collections import defaultdict
+    from szzbench.gitutils import resolve_commit_metadata
+    plain = deepcopy(data)
+    for commit in plain["commits"]:
+        commit.pop("author", None)
+    owned = defaultdict(set)
+    for index, commit in enumerate(plain["commits"]):
+        owned[resolve_commit_metadata(plain, commit, index).author].add(commit["id"])
+    result = lint_graph(plain)
+    assert codes(result) == []
+    if any(ids == {"c1"} for ids in owned.values()):
+        assert info_codes(result) == ["GI413"] and "generator-assigned" in result.findings[0].message
+    else:
+        assert info_codes(result) == []
