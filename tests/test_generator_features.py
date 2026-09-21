@@ -15,7 +15,7 @@ from szzbench.generator import generate_repository
 from szzbench.gitutils import DEFAULT_AUTHOR_POOL, deterministic_author, deterministic_date, resolve_commit_metadata
 from szzbench.graph_generator import MAX_GENERATED_COMMITS, GraphGenerationError, generate_graph_repository
 from szzbench.graph_operations import apply_graph_operation_to_filesystem, commit_generator_directory
-from szzbench.operations import apply_operation_to_filesystem
+from szzbench.operations import apply_operation_to_filesystem, apply_operation_to_memory
 
 
 # ---------------------------------------------------------------------------
@@ -1144,3 +1144,24 @@ def test_octopus_merge_has_all_declared_parents(tmp_path):
     # every branch's change is in the merged tree
     for path in (A, B, C):
         assert "return 2;" in _git(out / "repo", "show", f"{commit_map['m1']['hash']}:{path}")
+
+
+def test_encoding_option_in_classic_operations(tmp_path):
+    """`encoding: utf-8-sig` writes a BOM; a later plain `replace` keeps it; the
+    in-memory simulator treats the BOM-only re-save as a change (SZZ-0206)."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    apply_operation_to_filesystem(repo, {"type": "write_file", "path": "a.py", "content": "MAX = 6144\n"})
+    assert (repo / "a.py").read_bytes() == b"MAX = 6144\n"
+    apply_operation_to_filesystem(repo, {"type": "write_file", "path": "a.py", "content": "MAX = 6144\n", "encoding": "utf-8-sig"})
+    assert (repo / "a.py").read_bytes() == b"\xef\xbb\xbfMAX = 6144\n"
+    apply_operation_to_filesystem(repo, {"type": "replace", "path": "a.py", "old": "6144", "new": "61440"})
+    assert (repo / "a.py").read_bytes() == b"\xef\xbb\xbfMAX = 61440\n"
+
+    files = {}
+    apply_operation_to_memory(files, {"type": "write_file", "path": "a.py", "content": "MAX = 6144\n"})
+    before = dict(files)
+    apply_operation_to_memory(files, {"type": "write_file", "path": "a.py", "content": "MAX = 6144\n", "encoding": "utf-8-sig"})
+    assert files != before and files["a.py"] == "﻿MAX = 6144\n"
+    apply_operation_to_memory(files, {"type": "replace", "path": "a.py", "old": "MAX = 6144", "new": "MAX = 61440"})
+    assert files["a.py"] == "﻿MAX = 61440\n"

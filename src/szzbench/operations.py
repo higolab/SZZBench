@@ -92,12 +92,23 @@ def insert_after_once(content: str, anchor: str, inserted: str, occurrence: int 
     end = start + len(anchor)
     return content[:end] + inserted + content[end:]
 
+def writes_bom(op: dict) -> bool:
+    """True when the operation's ``encoding`` makes Python emit a UTF-8 BOM."""
+    encoding = op.get("encoding")
+    return isinstance(encoding, str) and encoding.lower().replace("_", "-") == "utf-8-sig"
+
 def apply_operation_to_memory(files: dict[str, str], op: dict) -> None:
     # The in-memory simulator always works on LF-normalized text; line_ending
     # only affects the bytes written to the generated repository.
     op_type = op.get("type")
     if op_type == "write_file":
-        files[op["path"]] = normalize_newlines(op["content"])
+        text = normalize_newlines(op["content"])
+        # The BOM is the one encoding detail the simulator models: a utf-8-sig
+        # write starts the text with U+FEFF, so a BOM-only re-save of a file is
+        # a change here as it is in Git (otherwise it would be E250 "no changes").
+        if writes_bom(op) and not text.startswith("\ufeff"):
+            text = "\ufeff" + text
+        files[op["path"]] = text
         return
     if op_type == "replace":
         path = op["path"]
@@ -114,18 +125,22 @@ def apply_operation_to_filesystem(repo_dir: Path, op: dict) -> None:
     if op_type == "write_file":
         path = safe_join(repo_dir, op["path"])
         path.parent.mkdir(parents=True, exist_ok=True)
-        write_text_raw(path, encode_line_endings(op["content"], resolve_line_ending(op)))
+        # encoding: utf-8 (default) | utf-8-sig (BOM) | any codec Python knows;
+        # the in-memory simulator never sees it, only the bytes on disk do.
+        encoding = op.get("encoding") or "utf-8"
+        write_text_raw(path, encode_line_endings(op["content"], resolve_line_ending(op)), encoding)
         return
     if op_type == "replace":
         path = safe_join(repo_dir, op["path"])
         if not path.exists():
             raise OperationError(f"replace target does not exist: {op['path']}")
-        raw = read_text_raw(path)
+        encoding = op.get("encoding") or "utf-8"
+        raw = read_text_raw(path, encoding)
         line_ending = resolve_line_ending(op, raw)
         content = normalize_newlines(raw)
         old = normalize_newlines(op["old"])
         new = normalize_newlines(op["new"])
         new_content = replace_once(content, old, new, op.get("occurrence"))
-        write_text_raw(path, encode_line_endings(new_content, line_ending))
+        write_text_raw(path, encode_line_endings(new_content, line_ending), encoding)
         return
     raise OperationError(f"unsupported operation: {op_type}")
