@@ -11,6 +11,7 @@ A large group is redundancy. An empty combination is a gap.
 from __future__ import annotations
 
 import collections
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
@@ -36,13 +37,14 @@ class ScenarioShape:
     bic_depth: int | None
     fault_file_distractors: int
     factors: list[str]
+    fault_statements: list[str]
 
     def signature(self) -> tuple[Any, ...]:
         return tuple(getattr(self, field) for field in SIGNATURE_FIELDS)
 
     def to_dict(self) -> dict[str, Any]:
         return {field: getattr(self, field) for field in
-                ("scenario_id", "tier", *SIGNATURE_FIELDS, "factors")}
+                ("scenario_id", "tier", *SIGNATURE_FIELDS, "factors", "fault_statements")}
 
 
 def _oracle_ids(data: dict[str, Any], suite: str) -> set[str]:
@@ -68,6 +70,68 @@ def _fault_files(data: dict[str, Any]) -> set[str]:
                 if isinstance(entry, dict) and entry.get("file"):
                     files.add(entry["file"])
     return files
+
+
+def _fault_statements(data: dict[str, Any]) -> list[str]:
+    """Every fault statement a scenario declares (``fault.statement``,
+    ``faults[].statement``, ``origin_faults[].statement``), whitespace-normalised
+    and without duplicates, in declaration order.
+
+    This is the text issue #13 counts: the same statement in many scenarios is
+    the template monoculture, and a scenario that repeats one statement in two
+    fault entries (a copy and its origin) counts it once.
+    """
+    found: list[str] = []
+    for bug in data.get("bugs") or []:
+        if not isinstance(bug, dict):
+            continue
+        entries: list[Any] = [bug.get("fault")]
+        for key in ("faults", "origin_faults"):
+            value = bug.get(key)
+            entries.extend(value if isinstance(value, list) else [])
+        for entry in entries:
+            statement = entry.get("statement") if isinstance(entry, dict) else None
+            if isinstance(statement, str) and statement.strip():
+                normalized = re.sub(r"\s+", " ", statement.strip())
+                if normalized not in found:
+                    found.append(normalized)
+    return found
+
+
+def _fault_reuse(shapes: list[ScenarioShape]) -> dict[str, Any]:
+    """How many scenarios share each fault statement, overall and per category."""
+    carriers: dict[str, list[str]] = collections.defaultdict(list)
+    suite_of = {s.scenario_id: s.suite for s in shapes}
+    for shape in shapes:
+        for statement in shape.fault_statements:
+            carriers[statement].append(shape.scenario_id)
+    shared = []
+    for statement, ids in sorted(carriers.items(), key=lambda kv: (-len(kv[1]), kv[0])):
+        if len(ids) < 2:
+            break
+        shared.append({
+            "statement": statement,
+            "scenarios": len(ids),
+            "by_suite": dict(sorted(collections.Counter(suite_of[i] for i in ids).items())),
+            "scenario_ids": sorted(ids),
+        })
+    per_category: dict[str, Any] = {}
+    for category in sorted({str(s.category) for s in shapes}):
+        members = [s for s in shapes if str(s.category) == category]
+        counter = collections.Counter(st for s in members for st in s.fault_statements)
+        top = counter.most_common(1)
+        per_category[category] = {
+            "scenarios": len(members),
+            "distinct_statements": len(counter),
+            "most_reused": top[0][0] if top else None,
+            "most_reused_scenarios": top[0][1] if top else 0,
+        }
+    return {
+        "scenarios_with_a_statement": sum(1 for s in shapes if s.fault_statements),
+        "distinct_statements": len(carriers),
+        "shared": shared,
+        "per_category": per_category,
+    }
 
 
 def _shape(scenario: Scenario, data: dict[str, Any], git: GitProbe) -> ScenarioShape:
@@ -102,6 +166,7 @@ def _shape(scenario: Scenario, data: dict[str, Any], git: GitProbe) -> ScenarioS
         bic_depth=(last_bfc - min(bic_positions)) if bic_positions else None,
         fault_file_distractors=distractors,
         factors=sorted((data.get("meta") or {}).get("factors") or []),
+        fault_statements=_fault_statements(data),
     )
 
 
@@ -150,6 +215,7 @@ def run_coverage(
             for members in redundant
         ],
         "unique_scenarios": sorted(v[0] for v in groups.values() if len(v) == 1),
+        "fault_reuse": _fault_reuse(shapes),
         "shapes": [s.to_dict() for s in shapes],
         "errors": errors + git.failures,
         "warnings": warnings,
@@ -163,6 +229,20 @@ def format_report(report: dict[str, Any]) -> str:
         pairs = ", ".join(f"{k}:{v}" for k, v in counts.items())
         lines.append(f"      {field:22s} {pairs}")
     lines.append("")
+    reuse = report.get("fault_reuse")
+    if reuse:
+        lines.append("  fault statement reuse (fault.statement, faults[].statement, origin_faults[].statement; whitespace-normalised)")
+        lines.append(f"      {reuse['distinct_statements']} distinct statement(s) over {reuse['scenarios_with_a_statement']} scenario(s); "
+                     f"{len(reuse['shared'])} shared by two or more")
+        for item in reuse["shared"][:8]:
+            suites = ", ".join(f"{k} {v}" for k, v in item["by_suite"].items())
+            lines.append(f"      {item['scenarios']:3d}x  {item['statement']}   ({suites})")
+        if len(reuse["shared"]) > 8:
+            lines.append(f"      ... and {len(reuse['shared']) - 8} more shared statement(s)")
+        shares = ", ".join(f"{cat} {v['most_reused_scenarios']}/{v['scenarios']}"
+                           for cat, v in reuse["per_category"].items() if v["most_reused_scenarios"] > 1)
+        lines.append(f"      most reused statement per category: {shares or 'none shared'}")
+        lines.append("")
     groups = report["redundant_groups"]
     covered = sum(g["size"] for g in groups)
     lines.append(f"  {report['distinct_signatures']} distinct signatures; "
