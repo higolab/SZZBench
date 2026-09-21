@@ -94,10 +94,6 @@ scenario_design:
     Measured: AccessCopy.canView(true, false) is false and canView(false, false) is true at c1 — the inverse of
     Access.canView, which is true and false; at c2 the class no longer exists. The fix's diff deletes every line
     of AccessCopy.java, all of which blame to c1.
-  evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
 - Rewritten 2026-09-21 from the shared Range.contains template to a boolean-negation fault (GitHub issue 13); the
   history shape, oracle and coverage dimensions are unchanged.

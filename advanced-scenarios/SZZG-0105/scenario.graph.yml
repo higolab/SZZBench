@@ -137,11 +137,6 @@ scenario_design:
     therefore reaches c0, not c1. Only a tool that follows the null value back to Profile.displayName, where c1 made the
     method return null, reaches the required BIC. The fix is defensive, so the root cause introduced by c1 is still in the
     tree at the BFC and displayName keeps returning null.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: >-
-    This scenario uses factors: defensive-fix, root-cause-not-touched, context-dependent; operations: write_file,
-    replace.
   evaluation_points:
   - Whether SZZ reports c1, the commit that introduced the root cause.
   - Whether SZZ avoids reporting c0, which line-based blame at BFC^ reaches.

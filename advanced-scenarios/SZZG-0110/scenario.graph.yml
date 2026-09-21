@@ -103,10 +103,6 @@ scenario_design:
   purpose: Evaluate whether SZZ identifies the real BIC when an empty commit sits between the BIC and the BFC.
   key_property: The empty commit c2 is the direct parent of the BFC c3, so a tool that walks back from the BFC meets it first
     and must skip it; c2 has no diff at all, so it can carry no blame.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: >-
-    This scenario uses factors: single-bic, single-bfc, boundary-condition; operations: write_file, replace.
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
   - Whether the empty commit c2 between the BIC and the BFC is not reported as the BIC.

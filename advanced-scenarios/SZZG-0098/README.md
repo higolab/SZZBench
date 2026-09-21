@@ -176,19 +176,3 @@ exact and a narrow grid would not show it.
   intended change and undoes nothing else.
 
 All five commit snapshots compile with `javac` (JDK 25): 0 failures out of 5.
-
-## Required graph-schema features
-
-- Factors: context, commit_messages
-- Operation types: write_file, replace
-- Expected SZZ policy is defined in `expected_szz`.
-
----
-
-## Files
-
-```text
-SZZG-0098/
-|-- scenario.graph.yml
-`-- README.md
-```

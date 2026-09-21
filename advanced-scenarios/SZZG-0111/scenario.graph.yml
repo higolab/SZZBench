@@ -118,10 +118,6 @@ scenario_design:
   key_property: The chmod commit c2 is the direct parent of the BFC c3. It is a real, non-empty commit (the repository is
     generated with core.filemode enabled, so Git records 'mode change 100644 => 100755'), but its diff contains no content
     line, so it can carry no blame.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: >-
-    This scenario uses factors: file-mode-change; operations: write_file, chmod, replace.
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
   - Whether the mode-only commit c2 between the BIC and the BFC is not reported as the BIC.

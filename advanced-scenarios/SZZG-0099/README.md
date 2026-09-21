@@ -30,24 +30,8 @@ c3: fix rounding while incorrectly blaming c2 in the message
 
 The BFC contains a misleading developer hint that must be represented separately from the code-level fault metadata.
 
-## Required graph-schema features
-
-- Factors: developer_hints, misleading_commit_message
-- Operation types: write_file, replace
-- Expected SZZ policy is defined in expected_szz.
-
 ## Evaluation points
 
 - Whether SZZ identifies c1 as the true rounding BIC.
 - Whether c2 is treated as an incorrect message reference rather than the expected BIC.
 - Whether developer hints are distinguished from trustworthy blame evidence.
-
----
-
-## Files
-
-```text
-SZZG-0099/
-|-- scenario.graph.yml
-`-- README.md
-```

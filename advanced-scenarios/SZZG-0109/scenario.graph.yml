@@ -177,10 +177,6 @@ scenario_design:
     the registry line. Those lines were written by c0 (the faulty accepts()) and by c1 (the description string); the registry
     line the BFC rewrites also dates back to c0. Only c0 wrote the faulty statement, so a tool that returns every commit
     reached by the deleted lines over-reports c1.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: >-
-    This scenario uses factors: file-deletion; operations: write_file, replace, delete_file.
   evaluation_points:
   - Whether SZZ identifies c0 as the BIC for the deleted faulty file.
   - Whether SZZ handles a file deletion as the complete fix at all.

@@ -15,7 +15,7 @@
 
 ## Purpose
 
-Evaluate semantic-preserving rewrite between bic and bfc and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate whether a method looks past a behaviour-preserving rewrite that owns the repaired line.
 
 ## Expected history
 
@@ -24,36 +24,4 @@ c0: create age gate
 c1: introduce boundary bug
 c2: rewrite condition into explicit if statement
 c3: fix adult boundary after rewrite
-```
-
-## Why this needs `scenario.graph.yml`
-
-This history requires graph-aware scenario semantics that are difficult to express with the normal `scenario.yml` schema.
-
-## Required graph-schema features
-
-- Factors: intermediate_rewrite, formatting, line_history_break
-- Operation types: replace, write_file
-- Expected SZZ policy is defined in `expected_szz`.
-
-## Expected BICs
-
-```text
-c1
-```
-
-## Evaluation points
-
-- Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
-- Whether the expected_szz evaluation policy is applied correctly.
-
----
-
-## Files
-
-```text
-SZZG-0013/
-|-- scenario.graph.yml
-`-- README.md
 ```

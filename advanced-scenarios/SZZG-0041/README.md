@@ -118,14 +118,6 @@ and the constants written in the source: `Integer.MIN_VALUE`, `Integer.MIN_VALUE
 Contract: the BFC repairs the user check only. `withinAdminLimit(1000)` is `true` at `c0` and `false` from `c2`
 on, including at HEAD, because `c2` is a separate change that `c3` deliberately does not undo.
 
-## Files
-
-```text
-SZZG-0041/
-|-- scenario.graph.yml
-`-- README.md
-```
-
 ## History
 
 - 2026-09 (issue 4): the two statements the title calls identical were `return value <= 100;` and

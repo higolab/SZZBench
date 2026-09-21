@@ -126,10 +126,6 @@ scenario_design:
     After c1, canLogin(status) == !"ACTIVE".equals(status) (active accounts are rejected). After c2,
     canLogin(status) == !!"ACTIVE".equals(status) == "ACTIVE".equals(status), i.e. the c0 behaviour is
     restored by a double negation split across two files. The BIC and BFC touch different files.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: >-
-    This scenario uses factors: context-dependent, caller-callee, not-directly-local; operations: replace, write_file.
   evaluation_points:
   - Whether SZZ identifies c1 (the caller-side negation) as the BIC.
   - Whether SZZ avoids reporting c0, which plain blame on the fixed line returns.

@@ -95,19 +95,3 @@ choosing among the commits that the deleted lines reach. That is not a non-sourc
 generated or scalability property, so **G8 fits only loosely**; a fix-shape category (G1 /
 the classic "BFC shape" family) would fit better. The category code is kept unchanged here
 because re-categorization is a separate decision.
-
-## Required graph-schema features
-
-- Factors: delete_file
-- Operation types: write_file, replace, delete_file
-- Expected SZZ policy is defined in `expected_szz`.
-
----
-
-## Files
-
-```text
-SZZG-0109/
-|-- scenario.graph.yml
-`-- README.md
-```

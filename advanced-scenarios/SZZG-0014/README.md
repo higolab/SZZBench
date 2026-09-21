@@ -98,14 +98,6 @@ behaviour of existing code — it adds a second class with the same faulty behav
 | `B.contains` at `c1` vs `A.contains` at `c1` | identical on all 176 calls (verbatim copy) |
 | `B.contains` at `c1` vs `c2` | differs on 13 of 176 calls, exactly the calls where `value` equals `min` or `max` (e.g. `contains(5,5,10)`: `false` -> `true`) |
 
-## Files
-
-```text
-SZZG-0014/
-|-- scenario.graph.yml
-`-- README.md
-```
-
 ## History
 
 - 2026-09 (issue 10): `A.java` declared `public class Range`, so *no* commit of this scenario compiled

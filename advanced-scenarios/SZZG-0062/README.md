@@ -15,7 +15,8 @@
 
 ## Purpose
 
-Evaluate backported fix on maintenance branch traces to original mainline bic and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate whether a method traces a backported fix on a release branch to the main-line bug-
+introducing commit.
 
 ## Expected history
 
@@ -25,36 +26,4 @@ c1: introduce too-short timeout on main
 c2: release branch cut from buggy main
 c3: fix timeout on main
 c4: backport timeout fix to release branch
-```
-
-## Why this needs `scenario.graph.yml`
-
-This history requires graph-aware scenario semantics that are difficult to express with the normal `scenario.yml` schema.
-
-## Required graph-schema features
-
-- Factors: backport, maintenance_branch, cross_branch_bic
-- Operation types: replace, write_file
-- Expected SZZ policy is defined in `expected_szz`.
-
-## Expected BICs
-
-```text
-c1
-```
-
-## Evaluation points
-
-- Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
-- Whether the expected_szz evaluation policy is applied correctly.
-
----
-
-## Files
-
-```text
-SZZG-0062/
-|-- scenario.graph.yml
-`-- README.md
 ```

@@ -127,8 +127,6 @@ scenario_design:
   purpose: Evaluate whether context-aware SZZ can distinguish a valid callee behavior change from the caller commit that
     mishandled that behavior.
   current_schema_limitation: The caller/callee relationship is represented through context metadata and fault locations.
-  required_extensions_from_source: >-
-    This scenario uses factors: caller-callee, context, api-misuse; operations: write_file, replace.
   evaluation_points:
   - Whether SZZ identifies c2 as the direct BIC in the caller.
   - Whether c1 is treated as required context but not as the faulty commit.

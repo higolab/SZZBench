@@ -172,22 +172,3 @@ and `U+3000` are not, and pass through unchanged in every snapshot.
   keeps `c2`'s intended change and undoes nothing else.
 
 All five commit snapshots compile with `javac` (JDK 25): 0 failures out of 5.
-
-## Required graph-schema features
-
-- Factors: issues, context
-- Operation types: write_file, replace
-- Expected SZZ policy is defined in `expected_szz`.
-- The four issue texts are scenario metadata under the top-level `issues:` key; the
-  repository carries only the identifiers in the commit subjects. An external context
-  interface is designed in issue #23.
-
----
-
-## Files
-
-```text
-SZZG-0102/
-|-- scenario.graph.yml
-`-- README.md
-```

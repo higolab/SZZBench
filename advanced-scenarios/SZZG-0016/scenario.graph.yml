@@ -142,10 +142,6 @@ scenario_design:
     Both files live in package example and must compile together, so the copy commit renames the copied class in
     the same commit. Only the class declaration line differs between the two files; the faulty statement is
     copied verbatim, which is what copy-aware blame has to detect.
-  evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
 - >-
   2026-09 revision (issue 10): the copy commit produced a second public class of the same name, so no commit from c1

@@ -29,24 +29,8 @@ c3: ISSUE-101 fix inclusive boundary regression
 
 Issue membership and linked commits require graph-aware contextual metadata.
 
-## Required graph-schema features
-
-- Factors: issues
-- Operation types: write_file, replace
-- Expected SZZ policy is defined in expected_szz.
-
 ## Evaluation points
 
 - Whether SZZ identifies c2 as the BIC rather than the initial commit.
 - Whether both the BIC and BFC are represented as part of ISSUE-101.
 - Whether the expected_szz exact-set policy is applied correctly.
-
----
-
-## Files
-
-```text
-SZZG-0094/
-|-- scenario.graph.yml
-`-- README.md
-```

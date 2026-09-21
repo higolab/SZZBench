@@ -15,7 +15,8 @@
 
 ## Purpose
 
-Evaluate prerequisite bic and symptom bic fixed together and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate whether a method reports both relaxations when the fix restores two conditions and either
+one alone already grants access.
 
 ## Expected history
 
@@ -24,36 +25,4 @@ c0: create token verifier
 c1: weaken token trust predicate
 c2: weaken access control condition
 c3: fix access control vulnerability
-```
-
-## Why this needs `scenario.graph.yml`
-
-This history requires graph-aware scenario semantics that are difficult to express with the normal `scenario.yml` schema.
-
-## Required graph-schema features
-
-- Factors: multiple_bic, causal_chain, single_bfc
-- Operation types: replace, write_file
-- Expected SZZ policy is defined in `expected_szz`.
-
-## Expected BICs
-
-```text
-c1, c2
-```
-
-## Evaluation points
-
-- Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
-- Whether the expected_szz evaluation policy is applied correctly.
-
----
-
-## Files
-
-```text
-SZZG-0039/
-|-- scenario.graph.yml
-`-- README.md
 ```

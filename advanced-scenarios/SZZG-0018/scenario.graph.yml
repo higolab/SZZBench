@@ -157,14 +157,6 @@ scenario_design:
     Both files live in package example and must compile together, so the copy commit renames the copied class from
     A to B in the same commit. Only the class declaration line differs between A.java and B.java; the faulty
     statement is copied verbatim, which is what copy-aware blame has to detect.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: >-
-    This scenario uses factors: copy-propagation; operations: write_file, copy_file, replace.
-  evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.

@@ -30,24 +30,8 @@ c3: fix exact-stock reservation bug
 
 Work-item membership and related-but-not-correct candidates require metadata beyond the normal linear scenario schema.
 
-## Required graph-schema features
-
-- Factors: work_items, intermediate_commit, related_but_not_correct
-- Operation types: write_file, replace
-- Expected SZZ policy is defined in expected_szz.
-
 ## Evaluation points
 
 - Whether SZZ identifies c1 as the BIC.
 - Whether the intermediate audit commit c2 is not mistaken for the BIC.
 - Whether work-item membership is represented without collapsing all commits in the work item into one cause.
-
----
-
-## Files
-
-```text
-SZZG-0095/
-|-- scenario.graph.yml
-`-- README.md
-```

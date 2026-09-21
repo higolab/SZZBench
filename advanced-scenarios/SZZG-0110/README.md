@@ -72,19 +72,3 @@ f450ec3 Restore the inclusive bounds of Range.contains()          <- BFC (c3)
 against the intervals `(0,10)`, `(-5,5)`, `(7,7)`, `(MIN_VALUE,MAX_VALUE)`, `(MIN_VALUE,0)`,
 `(0,MAX_VALUE)`. The BIC `c1` differs from `c0` on the 10 boundary inputs; the BFC `c3`
 agrees with `c0` on all 96.
-
-## Required graph-schema features
-
-- Factors: allow_empty
-- Operation types: write_file, replace
-- Expected SZZ policy is defined in `expected_szz`.
-
----
-
-## Files
-
-```text
-SZZG-0110/
-|-- scenario.graph.yml
-`-- README.md
-```

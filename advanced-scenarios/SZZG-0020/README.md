@@ -30,24 +30,8 @@ c3: fix CopiedRange only
 
 Direct and origin BIC roles require graph-aware bug metadata and evaluation policy.
 
-## Required graph-schema features
-
-- Factors: copy_file, expected_szz, direct_bic, origin_bic
-- Operation types: write_file, replace, copy_file
-- Expected SZZ policy distinguishes direct-only and origin-aware variants.
-
 ## Evaluation points
 
 - Whether SZZ identifies c2 as the direct BIC for `CopiedRange`.
 - Whether c1 is tracked as the origin BIC without being required under direct-only scoring.
 - Whether evaluation variants can distinguish direct-only and origin-aware policies.
-
----
-
-## Files
-
-```text
-SZZG-0020/
-|-- scenario.graph.yml
-`-- README.md
-```

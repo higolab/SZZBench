@@ -167,10 +167,6 @@ scenario_design:
     so c2 is its direct BIC and c1 - which removed the trim from the source AmountParser.java - is the origin.
     c3 added the sign fault directly. A tool that answers c1 has named a commit that never touched the fixed
     file.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: >-
-    This scenario uses factors: clone, multi-bic, origin-and-direct-bic; operations: copy_file, replace, write_file.
   evaluation_points:
   - Whether the copy commit c2 rather than the origin c1 is reported.
   - Whether the second, directly written fault c3 is reported alongside it.

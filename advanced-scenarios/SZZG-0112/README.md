@@ -29,24 +29,8 @@ c2: fix the non-UTF-8 config
 
 The non-UTF-8 file is modeled with `write_binary_file` so that invalid UTF-8 bytes can be represented safely.
 
-## Required graph-schema features
-
-- Factors: encoding, non_utf8_file, write_binary_file
-- Operation types: write_file, write_binary_file
-- Expected SZZ policy is defined in expected_szz.
-
 ## Evaluation points
 
 - Whether SZZ identifies c1 as the BIC for the encoded configuration change.
 - Whether non-UTF-8 file content does not break parsing, generation, or verification.
 - Whether the expected_szz exact-set policy is applied correctly.
-
----
-
-## Files
-
-```text
-SZZG-0112/
-|-- scenario.graph.yml
-`-- README.md
-```

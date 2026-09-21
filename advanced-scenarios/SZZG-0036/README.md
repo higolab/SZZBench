@@ -15,7 +15,7 @@
 
 ## Purpose
 
-Evaluate Fix split across multiple commits and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate whether a test-only commit between the fault and the fix changes what a method reports.
 
 ## Expected history
 
@@ -25,30 +25,4 @@ c1: introduce bug (replace src/main/java/example/Range.java)
 c2: add test context (write_file src/test/java/example/RangeTest.java)
 c3: fix bug (replace src/main/java/example/Range.java)
 c4: fix bug (replace src/main/java/example/Range.java)
-```
-
-## Why this needs `scenario.graph.yml`
-
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
-
-## Required graph-schema features
-
-- Factors: bug_fixing_commits
-- Operation types: write_file, replace
-- Expected SZZ policy is defined in expected_szz.
-
-## Evaluation points
-
-- Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
-- Whether the expected_szz evaluation policy is applied correctly.
-
----
-
-## Files
-
-```text
-SZZG-0036/
-|-- scenario.graph.yml
-`-- README.md
 ```

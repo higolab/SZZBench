@@ -116,14 +116,6 @@ the same faulty behaviour instead of changing existing behaviour. Measured:
 `SZZG-0016` has the same three-commit prefix but fixes both instances in a single commit, so one BFC deletes two
 lines with two different line histories. Here each instance gets its own BFC and its own bug entry.
 
-## Files
-
-```text
-SZZG-0018/
-|-- scenario.graph.yml
-`-- README.md
-```
-
 ## History
 
 - 2026-09 (issue 10): the copy commit produced a second `public class A` in `B.java`, so `c1`, `c2` and `c3` did

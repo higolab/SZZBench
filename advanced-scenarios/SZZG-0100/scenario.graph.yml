@@ -165,10 +165,6 @@ scenario_design:
     All four commits after the initial one reference ISSUE-10 in their message, so an issue-linked tool collects c1, c2, c3
     and c4. Only c1 changed the containment semantics; c2 renames a parameter of an unrelated method and c3 only adds a
     documentation file. The documentation file no longer states what the fix is, so it cannot be used as a shortcut.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: >-
-    This scenario uses factors: work-item, issue-evidence; operations: write_file, replace.
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
   - Whether the other commits of the same work item are excluded instead of being reported together with the BIC.

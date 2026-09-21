@@ -139,10 +139,6 @@ scenario_design:
     c2, 30 at c3; cardFee(1000000000) is 30000000 at c0 and c2, 300000000 at c1. Each fix deletes a `return fee(cents);` line written by c0, not the faulty helper line, so plain
     blame of the fixes' deleted lines returns c0; the helper `fee` keeps its faulty constant at HEAD and is
     simply no longer called.
-  evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
 - Rewritten 2026-09-21 from the shared Range.contains template to a wrong-constant fault (GitHub issue 13); the history
   shape, oracle and coverage dimensions are unchanged.

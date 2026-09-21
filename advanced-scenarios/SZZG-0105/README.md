@@ -87,19 +87,3 @@ That is exactly the contract of a defensive fix, and it is the contract tested h
 caller's behaviour (`header`) is fully restored to the pre-bug behaviour, while the root
 cause (`displayName` returning `null`) is deliberately still present at the BFC — which is
 what makes the factor `root_cause_not_touched` true.
-
-## Required graph-schema features
-
-- Factors: defensive_fix, root_cause_not_touched, context_dependent
-- Operation types: write_file, replace
-- Expected SZZ policy is defined in `expected_szz`.
-
----
-
-## Files
-
-```text
-SZZG-0105/
-|-- scenario.graph.yml
-`-- README.md
-```

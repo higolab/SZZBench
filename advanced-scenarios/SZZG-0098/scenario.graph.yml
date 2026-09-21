@@ -170,8 +170,6 @@ scenario_design:
     is that the line-based blame baselines fail here while message evidence succeeds, not that the code is free of clues.
   current_schema_limitation: Commit-message clues are represented as contextual metadata rather than as first-class graph
     edges.
-  required_extensions_from_source: >-
-    This scenario uses factors: context, commit-messages; operations: write_file, replace.
   evaluation_points:
   - Whether SZZ identifies c1 as the BIC using the PAY-314 EU clue in the commit message, or equivalent non-line evidence.
   - Whether the behaviour-preserving refactor c3, which every tested blame variant reaches, is rejected.

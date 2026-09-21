@@ -15,7 +15,8 @@
 
 ## Purpose
 
-Evaluate one directly blamed bic and one context-only bic and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate whether a method reports a bug-introducing commit that the fix reaches only through an
+inlined value.
 
 ## Expected history
 
@@ -24,36 +25,4 @@ c0: create discount service
 c1: introduce wrong threshold
 c2: introduce wrong base discount
 c3: fix customer discount behavior by restoring threshold only
-```
-
-## Why this needs `scenario.graph.yml`
-
-This history requires graph-aware scenario semantics that are difficult to express with the normal `scenario.yml` schema.
-
-## Required graph-schema features
-
-- Factors: multiple_bic, context_dependent, partial_observability
-- Operation types: replace, write_file
-- Expected SZZ policy is defined in `expected_szz`.
-
-## Expected BICs
-
-```text
-c1, c2
-```
-
-## Evaluation points
-
-- Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
-- Whether the expected_szz evaluation policy is applied correctly.
-
----
-
-## Files
-
-```text
-SZZG-0038/
-|-- scenario.graph.yml
-`-- README.md
 ```
