@@ -860,3 +860,16 @@ def test_index_mirrors_of_slug_category_and_difficulty(tmp_path):
                        ("category_code", "S2"), ("difficulty", "hard")):
         codes = [f.code for f in validate_index_file(index(**{key: wrong}), root, "scenario.yml").findings]
         assert codes == ["IE046"], (key, codes)
+
+
+def test_gw045_does_not_fire_for_commits_git_fills_in():
+    """A `revert_of` / `cherry_pick_of` commit without operations is not empty:
+    the generator runs git revert / git cherry-pick for it (generator-options §3).
+    Until SZZG-0124–0127 no scenario used that path, so the lint had never met it."""
+    data = graph_scenario()
+    data["commits"].append({"id": "c3", "branch": "main", "parents": ["c2"], "role": "intermediate", "revert_of": "c2"})
+    data["commits"].append({"id": "c4", "branch": "main", "parents": ["c3"], "role": "intermediate", "cherry_pick_of": "c1"})
+    data["commits"].append({"id": "c5", "branch": "main", "parents": ["c4"], "role": "intermediate", "message": "truly empty"})
+    result = validate_graph_static(data, strict_paths=True)
+    codes = [(f.code, f.location) for f in result.findings if f.code == "GW045"]
+    assert codes == [("GW045", "commits[5]")], codes

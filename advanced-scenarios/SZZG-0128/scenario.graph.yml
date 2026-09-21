@@ -1,0 +1,135 @@
+schema_version: graph-1.0
+meta:
+  id: SZZG-0128
+  title: Feature branch integrated by fast-forward, no merge commit (twin of SZZG-0043)
+  slug: fast-forward-integration-twin
+  description: A feature branch introduces a bug, extends feature code that depends on the buggy method, is merged into main,
+    and is then fixed by a normal main-branch commit.
+  category: "Branch, merge, cherry-pick, backport, and release branches"
+  category_code: "G4"
+  factors:
+  - fast-forward
+  - branch
+  - merge
+  - feature-branch-bic
+  - main-branch-bfc
+  difficulty: advanced
+  status: active
+  tier: control
+repository:
+  name: SZZG-0128-fast-forward-integration-twin
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: 'c0: create initial correct implementation on main
+
+    c1: introduce bug on feature branch
+
+    c2: extend feature branch code that uses the buggy method
+
+    c3: merge feature branch into main
+
+    c4: fix bug on main after merge'
+commits:
+- id: c0
+  author: Farid Haddad <farid.haddad@example.com>
+  author_date: '2023-02-20T09:00:00Z'
+  committer_date: '2023-02-20T09:00:00Z'
+  branch: main
+  parents: []
+  message: 'Add the range check'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Range.java
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
+      \ value >= min && value <= max;\n  }\n}\n"
+- id: c1
+  author: Farid Haddad <farid.haddad@example.com>
+  author_date: '2023-02-27T17:36:00Z'
+  committer_date: '2023-02-27T17:36:00Z'
+  branch: feature
+  parents:
+  - c0
+  message: 'Make the range check exclusive'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value >= min && value <= max;
+    new: return value > min && value < max;
+- id: c2
+  author: Elena Rossi <elena.rossi@example.com>
+  author_date: '2023-03-08T08:35:00Z'
+  committer_date: '2023-03-08T08:35:00Z'
+  branch: feature
+  parents:
+  - c1
+  message: 'Add a feature-specific range wrapper'
+  role: intermediate
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n}\n"
+    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
+      \ > min && value < max;\n  }\n\n  public boolean containsForFeature(int value, int min, int max) {\n    return contains(value,\
+      \ min, max);\n  }\n}\n"
+- id: c4
+  author: Elena Rossi <elena.rossi@example.com>
+  author_date: '2023-03-21T12:05:00Z'
+  committer_date: '2023-03-21T12:05:00Z'
+  branch: main
+  parents:
+  - c2
+  message: 'Accept the range bounds again'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Range.java
+    old: return value > min && value < max;
+    new: return value >= min && value <= max;
+bugs:
+- id: B001
+  title: Feature branch BIC fixed on main
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  bug_fixing_commits:
+  - commit: c4
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/Range.java
+    statement: return value > min && value < max;
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c4
+    file: src/main/java/example/Range.java
+    statement: return value >= min && value <= max;
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+scenario_design:
+  purpose: >
+    The same three feature commits as SZZG-0043, integrated into main by a fast-forward instead of a
+    `--no-ff` merge. There is no merge commit: main's history is c0, c1, c2, c4 in a straight line, and
+    the `feature` ref still points at c2.
+  key_property: >
+    In SZZG-0043 the BIC c1 is only on main's second-parent side and `--first-parent` hides it; here it is
+    on main's only line. A tool that behaves differently between the twins is reacting to the presence of
+    the merge commit, not to the change that introduced the bug.
+  evaluation_points:
+  - Report c1.
+  - Behave the same as on SZZG-0043.
+notes:
+- Twin of SZZG-0043. The fast-forward is expressed by giving the first main commit after the branch the
+  feature tip as its parent; the generator moves `main` there and commits on top.

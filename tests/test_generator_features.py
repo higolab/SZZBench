@@ -1096,3 +1096,51 @@ def test_commit_date_checks_compare_instants_not_iso_text(tmp_path):
     # a UTC-only inversion is still caught
     codes = _dated_history(tmp_path, "utc_bad", c0="2024-01-02T10:00:00Z", c1="2024-01-01T10:00:00Z")
     assert "GE630" in codes
+
+
+# ---------------------------------------------------------------------------
+# Octopus merges (issue #22)
+# ---------------------------------------------------------------------------
+
+
+def test_octopus_merge_has_all_declared_parents(tmp_path):
+    """A commit with three parents must become a real octopus merge.
+
+    Merging the extra parents one `git merge --no-commit` at a time can never
+    produce one: the second invocation is refused with "You have not concluded
+    your merge (MERGE_HEAD exists)". All extra parents go into one merge.
+    """
+    def java(name, body):
+        return f"package example;\npublic class {name} {{ {body} }}\n"
+    A, B, C = ("src/main/java/example/A.java", "src/main/java/example/B.java", "src/main/java/example/C.java")
+    commits = [
+        {"id": "c0", "branch": "main", "parents": [], "message": "c0: three classes", "role": "initial", "operations": [
+            {"type": "write_file", "path": A, "content": java("A", "int a() { return 1; }")},
+            {"type": "write_file", "path": B, "content": java("B", "int b() { return 1; }")},
+            {"type": "write_file", "path": C, "content": java("C", "int c() { return 1; }")}]},
+        {"id": "a1", "branch": "fa", "parents": ["c0"], "message": "a1: change A", "role": "bug_introducing",
+         "operations": [{"type": "replace", "path": A, "old": "return 1;", "new": "return 2;"}]},
+        {"id": "b1", "branch": "fb", "parents": ["c0"], "message": "b1: change B", "role": "intermediate",
+         "operations": [{"type": "replace", "path": B, "old": "return 1;", "new": "return 2;"}]},
+        {"id": "c1", "branch": "fc", "parents": ["c0"], "message": "c1: change C", "role": "intermediate",
+         "operations": [{"type": "replace", "path": C, "old": "return 1;", "new": "return 2;"}]},
+        {"id": "m1", "branch": "main", "parents": ["c0", "a1", "b1", "c1"], "message": "m1: octopus", "role": "merge", "operations": []},
+        {"id": "c2", "branch": "main", "parents": ["m1"], "message": "c2: fix A", "role": "bug_fixing",
+         "operations": [{"type": "replace", "path": A, "old": "return 2;", "new": "return 1;"}]},
+    ]
+    bugs = [{"id": "B001", "bug_introducing_commits": [{"commit": "a1", "role": "direct"}],
+             "bug_fixing_commits": [{"commit": "c2", "role": "complete_fix"}],
+             "faults": [{"commit": "a1", "file": A, "statement": "return 2;"}],
+             "fixes": [{"commit": "c2", "file": A, "statement": "return 1;"}]}]
+    scenario = _write_graph_scenario(tmp_path / "s.graph.yml", commits, bugs=bugs)
+    scenario_data = yaml.safe_load(scenario.read_text())
+    scenario_data["expected_szz"] = {"commit_level": {"evaluation_policy": "exact_set", "required": ["a1"]}}
+    scenario.write_text(yaml.safe_dump(scenario_data, sort_keys=False))
+    out = tmp_path / "out"
+    commit_map, verify = generate_graph_repository(scenario, out, force=True)
+    assert not verify.has_errors(), verify.to_dict()
+    parents = _git(out / "repo", "rev-list", "--parents", "-n", "1", commit_map["m1"]["hash"]).split()[1:]
+    assert parents == [commit_map[p]["hash"] for p in ("c0", "a1", "b1", "c1")]
+    # every branch's change is in the merged tree
+    for path in (A, B, C):
+        assert "return 2;" in _git(out / "repo", "show", f"{commit_map['m1']['hash']}:{path}")

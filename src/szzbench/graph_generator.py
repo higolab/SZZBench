@@ -316,12 +316,18 @@ def _prepare_merge(
     for parent_id in extra_parent_ids:
         if parent_id not in commit_map:
             raise GraphGenerationError(f"Merge parent '{parent_id}' has not been generated yet.")
-        parent_hash = commit_map[parent_id]["hash"]
-        log(f"Merging parent {parent_id}: {parent_hash}")
-        try:
-            run_git(repo_dir, ["merge", "--no-ff", "--no-commit", parent_hash])
-        except GitError as exc:
-            conflicted.extend(_resolve_conflicts_or_fail(repo_dir, commit_spec, f"Merge of parent '{parent_id}'", exc, log))
+    hashes = [commit_map[parent_id]["hash"] for parent_id in extra_parent_ids]
+    # All extra parents go into ONE git merge: a second `git merge --no-commit`
+    # while MERGE_HEAD exists is refused ("You have not concluded your merge"),
+    # so merging them one at a time can never produce an octopus commit.  With
+    # several heads git uses the octopus strategy, which does not resolve
+    # conflicts; `resolution` therefore only applies to two-parent merges.
+    log(f"Merging parent(s) {', '.join(extra_parent_ids)}: {', '.join(hashes)}")
+    try:
+        run_git(repo_dir, ["merge", "--no-ff", "--no-commit", *hashes])
+    except GitError as exc:
+        what = f"Merge of parent '{extra_parent_ids[0]}'" if len(extra_parent_ids) == 1 else f"Octopus merge of parents {extra_parent_ids}"
+        conflicted.extend(_resolve_conflicts_or_fail(repo_dir, commit_spec, what, exc, log))
     return conflicted
 
 

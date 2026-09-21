@@ -158,7 +158,11 @@ def validate_graph_static(data: dict[str, Any], *, scenario_path: Path | None = 
         if not isinstance(operations, list):
             result.error("GE044", "commit.operations must be a list.", f"{loc}.operations")
             continue
-        if not operations and not commit.get("allow_empty") and len(parents) < 2:
+        # A commit with no operations is not empty when git supplies its content:
+        # `revert_of` runs `git revert`, `cherry_pick_of`/`backport_of` run `git cherry-pick`
+        # (docs/generator-options.md §3).  Marking those `allow_empty` would be false.
+        replayed = any(commit.get(k) for k in ("revert_of", "cherry_pick_of", "backport_of"))
+        if not operations and not commit.get("allow_empty") and not replayed and len(parents) < 2:
             result.warning("GW045", f"Commit '{cid}' has no operations and is not allow_empty.", loc)
         for j, op in enumerate(operations):
             _validate_operation(op, result, f"{loc}.operations[{j}]", strict_paths=strict_paths)

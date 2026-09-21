@@ -190,7 +190,7 @@ as one deleted and one added line, like `git blame` without `-w`.
 | GE042 | error | `cherry_pick_of` / `backport_of` is not a string |
 | GE043 | error | `cherry_pick_of` / `backport_of` refers to an unknown or later commit |
 | GE044 | error | `commit.operations` is not a list |
-| GW045 | warning | non-merge commit without operations and without `allow_empty` |
+| GW045 | warning | non-merge commit without operations and without `allow_empty`. Not reported for a commit that declares `revert_of`, `cherry_pick_of` or `backport_of`: with no operations, `git revert` / `git cherry-pick` supplies its content (generator-options §3), so it is not empty and marking it `allow_empty` would be false |
 | **GE046** | error | `rebase_of` (string or list of strings), `squashes` (list of strings) or `revert_of` (string) has the wrong type |
 | **GE047** | error | `rebase_of` / `squashes` / `revert_of` refers to an unknown, later, or the same commit (the GE043 rule for rewrite metadata; catches SZZG-0067's `rebase_of: f1`) |
 | GE050 | error | an operation is not an object |

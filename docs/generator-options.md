@@ -420,6 +420,13 @@ cherry-picks/reverts become ordinary commits and no
 `CHERRY_PICK_HEAD`/`REVERT_HEAD` is left behind. `commit-map.json` records
 `resolved_conflicts: [paths]`.
 
+A commit with **three or more parents** is generated as a real octopus merge:
+all extra parents are passed to a single `git merge --no-ff --no-commit`, because
+a second `git merge --no-commit` while `MERGE_HEAD` exists is refused. Git's
+octopus strategy does not resolve conflicts, so `resolution` applies to
+two-parent merges only; an octopus whose branches touch the same lines fails
+generation (SZZG-0129 is the in-suite example of a clean one).
+
 Limitations: `resolution` is applied only when Git reports a conflict; if the
 merge is clean the entries are ignored. `apply_squash` and `apply_patch_from`
 do not use `resolution`. The graph simulator (`validate-graph --simulate`)

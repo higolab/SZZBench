@@ -1,0 +1,138 @@
+schema_version: graph-1.0
+meta:
+  id: SZZG-0126
+  title: The fix is a git revert of the faulty commit, after another revert that is not
+  slug: fix-is-git-revert-after-noise-revert
+  description: >
+    The faulty commit is undone by a real `git revert`, whose subject quotes the faulty commit's subject
+    and whose body names its hash. Before that, a different commit was reverted for reasons unrelated to
+    the bug, so the history holds two reverts and only one of them is the fix.
+  category: "Revert-specific reintroduction"
+  category_code: "G6"
+  factors:
+  - revert
+  - revert-is-fix
+  - resolvable-message-handle
+  - revert-as-distractor
+  difficulty: advanced
+  status: active
+  tier: control
+repository:
+  name: SZZG-0126-fix-is-git-revert-after-noise-revert
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'Add the cache freshness check'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/CacheTtl.java
+    content: |
+      package example;
+
+      public class CacheTtl {
+          public boolean isFresh(int ageSeconds, int ttlSeconds) {
+              return ageSeconds <= ttlSeconds;
+          }
+      }
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'Treat an entry as stale once its age reaches the ttl'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/CacheTtl.java
+    old: return ageSeconds <= ttlSeconds;
+    new: return ageSeconds < ttlSeconds;
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'Add a describe method for the cache dashboard'
+  role: intermediate
+  operations:
+  - type: replace
+    path: src/main/java/example/CacheTtl.java
+    old: |
+      public boolean isFresh(int ageSeconds, int ttlSeconds) {
+              return ageSeconds < ttlSeconds;
+          }
+    new: |
+      public boolean isFresh(int ageSeconds, int ttlSeconds) {
+              return ageSeconds < ttlSeconds;
+          }
+
+          public String describe(int ttlSeconds) {
+              return "ttl=" + ttlSeconds + "s";
+          }
+- id: c3
+  branch: main
+  parents:
+  - c2
+  role: intermediate
+  revert_of: c2
+- id: c4
+  branch: main
+  parents:
+  - c3
+  role: bug_fixing
+  revert_of: c1
+bugs:
+- id: B001
+  title: An entry exactly as old as the ttl is reported stale
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  bug_fixing_commits:
+  - commit: c4
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/CacheTtl.java
+    statement: return ageSeconds < ttlSeconds;
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c4
+    file: src/main/java/example/CacheTtl.java
+    statement: return ageSeconds <= ttlSeconds;
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+    related_but_not_correct:
+    - c2
+    - c3
+    notes: >
+      c3 is also a revert, of the dashboard method c2 added; neither c2 nor c3 touches the freshness
+      comparison. A tool that treats "the most recent revert" or "the commit a revert undoes" as the answer
+      must pick the right revert.
+scenario_design:
+  purpose: >
+    The revert scenarios so far use a revert to reintroduce a bug. Here the revert is the fix, generated
+    by a real `git revert`, so the bug-fixing commit's subject is `Revert "<c1's subject>"` and its body
+    ends with `This reverts commit <hash of c1>.` -- a handle a message-aware tool can resolve directly.
+    A second, real revert of an unrelated commit sits in between as a distractor.
+  key_property: >
+    Blaming the line c4 deletes at c4^ returns c1. The message footer of c4 names c1's hash; the footer
+    of c3 names c2's hash. Reading the footers alone, a tool has to notice which revert restores the
+    comparison and which restores a removed method.
+  evaluation_points:
+  - Report c1.
+  - Do not report c2 or c3.
+  - Optionally, resolve the BFC's `This reverts commit` footer to c1 directly.
+notes:
+- Both reverts are produced by `git revert --no-commit` (no operations), so their subjects and footers are
+  the ones git writes.
