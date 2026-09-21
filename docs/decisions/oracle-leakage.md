@@ -127,7 +127,14 @@ that recognises the benchmark answer in the scenario's own vocabulary.
 ## 7. How this is checked
 
 - `validate --lint` / `validate-graph --lint`: `W410`/`W411`/`W412` and
-  `GW410`/`GW411`/`GW412` (see [validation.md](../validation.md)).
+  `GW410`/`GW411`/`GW412` (see [validation.md](../validation.md)); and
+  `W413`/`GW413` (issue #43), which warns when some author's set of commits is
+  exactly a multi-commit oracle — the coincidence of the author rotation that
+  twice made a discriminating scenario cheaply solvable (SZZG-0118, SZZG-0028)
+  and that the `meta.tier` check only catches for discriminating scenarios. The
+  one-commit form is reported as `I413`/`GI413` and left alone. When the lint
+  fired on the first sweep (SZZG-0007, SZZG-0039), the repair was an explicit
+  `author` on one of the required commits.
 - `tests/test_no_oracle_leakage.py` runs over the shipped scenarios: no message
   or written file discloses a role, every commit resolves to an author and a
   date, no author holds more than 45% of any role, and two metadata-only
@@ -146,10 +153,22 @@ Measured on the suite as shipped:
 
 | predictor | before | after |
 |---|---|---|
-| "report the commits written by Bob" (one author fixed across the suite) | 70/101 normal (69%) | best author 11/206 (5.3%) |
-| "report the non-BFC commits whose message announces a bug" | 51/101 normal, 30/105 graph | 0/206 |
+| "report the commits written by Bob" (one author fixed across the suite) | 70/101 normal (69%) | best author 11/249 (4.4%; 11/206 = 5.3% when first measured) |
+| "report the non-BFC commits whose message announces a bug" | 51/101 normal, 30/105 graph | 0/249 |
 
-The residual 5.3% is the rate at which a fixed author's commit set coincides
-with a one-commit oracle by chance, not a signal: the most frequent author of a
-bug-introducing commit now holds 16% of them, against 12.5% for a uniform draw
-from eight names (Bob held 94%).
+The residual is at chance, and "chance" is measured rather than asserted
+(issue #36). The statistic — the best single author fixed across the suite — is
+a maximum over authors, so its chance level is the distribution of that maximum
+when the labels carry no information: shuffle the author labels *inside* each
+scenario (keeping every scenario's multiset of authors and its commit count),
+recompute the maximum, repeat. On the 249 scenarios with a commit-level oracle
+(2026-09-21, 1000 draws): null mean 13.8, median 14, 95th percentile 17, maximum
+22; the observed 11 is *below* the null mean, with p(null ≥ observed) = 0.99 —
+the author carries no information about the oracle. The guard in
+`tests/test_no_oracle_leakage.py` asserts observed ≤ the null's 95th percentile
+(500 draws, fixed seed) instead of the hand-picked 10% it used until then; that
+constant (20.6 of 206) was below the null's maximum (21) on the suite it was
+written against, so a clean suite could have failed it. Any further
+metadata-only guard (dates, message length, e-mail domain) should be calibrated
+the same way: shuffle the field under test within each scenario and compare the
+best rule against the resulting distribution.

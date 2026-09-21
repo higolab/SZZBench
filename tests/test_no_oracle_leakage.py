@@ -8,6 +8,7 @@ date to the commit role, fails here.
 from __future__ import annotations
 
 import collections
+import random
 import re
 from pathlib import Path
 
@@ -110,6 +111,26 @@ def test_message_only_predictor_wins_nothing():
     assert wins == 0, f"message-only predictor solved {wins}/{total} scenarios: {solved}"
 
 
+def _author_sets(data):
+    """(author label per commit, commit ids) with the deterministic defaults applied."""
+    commits = data.get("commits") or []
+    return [resolve_commit_metadata(data, commit, index).author for index, commit in enumerate(commits)], [c.get("id") for c in commits]
+
+
+def _best_single_author(rows):
+    """The statistic of #36: over all scenarios, the largest number of scenarios whose oracle
+    is exactly one author's set of commits, for one author fixed across the suite."""
+    wins = collections.Counter()
+    for labels, ids, required in rows:
+        by_author = collections.defaultdict(set)
+        for author, cid in zip(labels, ids):
+            by_author[author].add(cid)
+        for author, owned in by_author.items():
+            if owned == required:
+                wins[author] += 1
+    return max(wins.values()) if wins else 0
+
+
 def test_no_single_author_predicts_the_oracle():
     """One author fixed across the suite must not identify the BICs.
 
@@ -117,23 +138,43 @@ def test_no_single_author_predicts_the_oracle():
     commits written by Bob"), which passed 70/101 normal scenarios before the
     sweep. Picking the matching author per scenario is not an attack: it needs
     the oracle, and most oracles are a single commit.
+
+    The bound is not a constant (#36): the statistic is a maximum over authors,
+    so its chance level is the distribution of that maximum when the labels
+    carry no information. That null is drawn here by shuffling the author labels
+    *inside* each scenario — the multiset of authors and the commit count of
+    every scenario are kept — and recomputing the maximum; the observed value
+    must not exceed the null's 95th percentile. The old constant (10%) sat
+    inside this null on the 206-scenario suite.
     """
-    wins = collections.Counter()
-    total = 0
-    for _, data in _scenarios():
-        required = _required(data)
+    from szzbench.evaluator import _commit_level_policy
+
+    rows = []
+    for path, data in _scenarios():
+        suite = "scenarios" if path.parent.parent.name == "scenarios" else "advanced-scenarios"
+        required = set(_commit_level_policy(data, suite, None).required)
         if not required:
             continue
-        total += 1
-        by_author = collections.defaultdict(set)
-        for index, commit in enumerate(data.get("commits") or []):
-            by_author[resolve_commit_metadata(data, commit, index).author].add(commit.get("id"))
-        for author, ids in by_author.items():
-            if ids == required:
-                wins[author] += 1
+        labels, ids = _author_sets(data)
+        rows.append((labels, ids, required))
+    total = len(rows)
     assert total > 150, "the suite scan found too few scenarios"
-    best, count = wins.most_common(1)[0] if wins else ("-", 0)
-    assert count / total < 0.10, f"author {best!r} alone solves {count}/{total} scenarios"
+    observed = _best_single_author(rows)
+
+    rng = random.Random(36)
+    draws = []
+    for _ in range(500):
+        shuffled = []
+        for labels, ids, required in rows:
+            permuted = list(labels)
+            rng.shuffle(permuted)
+            shuffled.append((permuted, ids, required))
+        draws.append(_best_single_author(shuffled))
+    draws.sort()
+    bound = draws[int(0.95 * len(draws))]
+    assert observed <= bound, (
+        f"the best fixed author solves {observed}/{total} scenarios, above the permutation null's "
+        f"95th percentile of {bound} (null mean {sum(draws) / len(draws):.1f}, max {draws[-1]})")
 
 
 def test_author_and_date_do_not_encode_the_role():
