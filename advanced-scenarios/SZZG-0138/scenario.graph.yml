@@ -1,0 +1,230 @@
+schema_version: graph-1.0
+meta:
+  id: SZZG-0138
+  title: "Partial credit with a majority threshold: two of three contributing BICs suffice"
+  slug: partial-credit-majority
+  description: >
+    One bug report — discounts come out wrong — has three contributing causes committed separately:
+    two inline percentage formulas that truncate before multiplying, and a discount kind the
+    dispatcher never handles. The fix repairs all three in one commit. Under partial_credit with
+    minimum_required 2, an answer with two of the three passes; plain blame finds exactly two,
+    because the third fix is addition-only. The sibling SZZG-0033 requires one of two; SZZG-0139
+    splits the BICs across a merge.
+  category: "Evaluation policy variants"
+  category_code: "G9"
+  factors:
+  - partial-credit
+  - multi-bic
+  - single-bfc
+  - addition-only-fix
+  difficulty: advanced
+  status: active
+  tier: control
+repository:
+  name: SZZG-0138-partial-credit-majority
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'Add the discount helper'
+  role: initial
+  date: '2024-02-05T09:20:00Z'
+  operations:
+  - type: write_file
+    path: src/main/java/example/pricing/Discounts.java
+    content: |
+      package example.pricing;
+
+      public class Discounts {
+          public int percentOf(int cents, int percent) {
+              return cents * percent / 100;
+          }
+      }
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'Apply the loyalty discount at checkout'
+  role: bug_introducing
+  date: '2024-02-12T13:05:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/pricing/Discounts.java
+    old: |
+      public int percentOf(int cents, int percent) {
+              return cents * percent / 100;
+          }
+    new: |
+      public int percentOf(int cents, int percent) {
+              return cents * percent / 100;
+          }
+
+          public int loyalty(int cents) {
+              return cents / 100 * 5;
+          }
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'Apply the seasonal discount'
+  role: bug_introducing
+  date: '2024-02-19T10:50:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/pricing/Discounts.java
+    old: |
+      public int loyalty(int cents) {
+              return cents / 100 * 5;
+          }
+    new: |
+      public int loyalty(int cents) {
+              return cents / 100 * 5;
+          }
+
+          public int seasonal(int cents, int percent) {
+              return cents / 100 * percent;
+          }
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'Dispatch discounts by kind'
+  role: bug_introducing
+  date: '2024-02-26T15:35:00Z'
+  operations:
+  - type: write_file
+    path: src/main/java/example/pricing/DiscountKind.java
+    content: |
+      package example.pricing;
+
+      public enum DiscountKind {
+          LOYALTY,
+          SEASONAL,
+          BULK
+      }
+  - type: replace
+    path: src/main/java/example/pricing/Discounts.java
+    old: |
+      public int seasonal(int cents, int percent) {
+              return cents / 100 * percent;
+          }
+    new: |
+      public int seasonal(int cents, int percent) {
+              return cents / 100 * percent;
+          }
+
+          public int forKind(DiscountKind kind, int cents) {
+              switch (kind) {
+                  case LOYALTY:
+                      return loyalty(cents);
+                  case SEASONAL:
+                      return seasonal(cents, 20);
+                  default:
+                      return 0;
+              }
+          }
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: 'Compute every discount through percentOf and handle bulk orders'
+  role: bug_fixing
+  date: '2024-03-04T11:10:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/pricing/Discounts.java
+    old: return cents / 100 * 5;
+    new: return percentOf(cents, 5);
+  - type: replace
+    path: src/main/java/example/pricing/Discounts.java
+    old: return cents / 100 * percent;
+    new: return percentOf(cents, percent);
+  - type: replace
+    path: src/main/java/example/pricing/Discounts.java
+    old: |
+      case SEASONAL:
+                      return seasonal(cents, 20);
+                  default:
+    new: |
+      case SEASONAL:
+                      return seasonal(cents, 20);
+                  case BULK:
+                      return percentOf(cents, 10);
+                  default:
+bugs:
+- id: B001
+  title: Discounts are truncated or missing
+  bug_introducing_commits:
+  - commit: c1
+    role: contributing
+  - commit: c2
+    role: contributing
+  - commit: c3
+    role: contributing
+  bug_fixing_commits:
+  - commit: c4
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/pricing/Discounts.java
+    statement: return cents / 100 * 5;
+    change_type: line_addition
+  - id: F002
+    commit: c2
+    file: src/main/java/example/pricing/Discounts.java
+    statement: return cents / 100 * percent;
+    change_type: line_addition
+  - id: F003
+    commit: c3
+    file: src/main/java/example/pricing/Discounts.java
+    change_type: omission
+    missing_statement: |
+      case BULK:
+          return percentOf(cents, 10);
+  fixes:
+  - id: X001
+    commit: c4
+    file: src/main/java/example/pricing/Discounts.java
+    statement: return percentOf(cents, 5);
+    fix_type: line_modification
+  - id: X002
+    commit: c4
+    file: src/main/java/example/pricing/Discounts.java
+    statement: return percentOf(cents, percent);
+    fix_type: line_modification
+  - id: X003
+    commit: c4
+    file: src/main/java/example/pricing/Discounts.java
+    added_statement: return percentOf(cents, 10);
+    fix_type: line_addition
+expected_szz:
+  commit_level:
+    evaluation_policy: partial_credit
+    required:
+    - c1
+    - c2
+    - c3
+    minimum_required: 2
+    notes: >
+      Three contributing causes, one fix. Two of the three must be found; a false positive still
+      fails. Plain blame of the lines c4 deletes returns {c1, c2} — c3's fault is an omission and
+      its fix adds lines only — so blame passes with c3 reported as a false negative and a credit
+      ratio of 2/3. An answer of {c1} alone fails the threshold.
+scenario_design:
+  purpose: >
+    Second member of the partial_credit family (with SZZG-0033 and SZZG-0139): a threshold above
+    one, so the policy is a majority vote rather than "any hit".
+  key_property: >
+    Measured: loyalty(199) is 5 at c1..c3 and 9 at c4; seasonal(199, 20) is 20 at c2..c3 and 39 at
+    c4; forKind(BULK, 1000) is 0 at c3 and 100 at c4. c4's diff deletes exactly two lines (from c1
+    and c2) and adds two (the BULK case); blame at c4^ returns c1 and c2.
+  evaluation_points:
+  - '{c1, c2, c3} and any two of them pass; {c1} alone fails; any set with an extra commit fails.'
+  - The report shows false_negatives and credit_ratio so a partial answer is visible as partial.

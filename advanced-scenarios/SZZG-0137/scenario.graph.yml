@@ -1,0 +1,156 @@
+schema_version: graph-1.0
+meta:
+  id: SZZG-0137
+  title: "The fault is present since the initial commit, which wrote it: c0 is the BIC"
+  slug: initial-commit-is-bic
+  description: >
+    The twin of SZZG-0136 with an authored first commit. The same billing module, the same later
+    commits, the same report and the same fix; but c0 says "Add the late-fee calculation" and
+    nothing points to an earlier history. The first commit is an ordinary change that introduced
+    the fault, so the oracle is c0 — the same contract as SZZ-0180, whose initial import wrote the
+    fault it carries.
+  category: "Evaluation policy variants"
+  category_code: "G9"
+  factors:
+  - initial-commit-bic
+  - single-bic
+  - single-bfc
+  - tool-visible-context
+  difficulty: advanced
+  status: active
+  tier: control
+repository:
+  name: SZZG-0137-initial-commit-is-bic
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'Add the late-fee calculation'
+  role: bug_introducing
+  author: 'Bruno Fischer <bruno.fischer@example.com>'
+  date: '2024-01-08T09:00:00Z'
+  operations:
+  - type: write_file
+    path: src/main/java/example/billing/LateFee.java
+    content: |
+      package example.billing;
+
+      public class LateFee {
+          /**
+           * Fee in cents for an invoice that is {@code daysLate} days overdue. The first
+           * {@code graceDays} days are free; only the days beyond the grace period are charged,
+           * at {@code centsPerDay} each.
+           */
+          public int feeCents(int daysLate, int graceDays, int centsPerDay) {
+              if (daysLate <= graceDays) {
+                  return 0;
+              }
+              return daysLate * centsPerDay;
+          }
+      }
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'Add the invoice reminder text'
+  role: intermediate
+  author: 'Chen Wei <chen.wei@example.com>'
+  date: '2024-01-15T14:30:00Z'
+  operations:
+  - type: write_file
+    path: src/main/java/example/billing/Reminder.java
+    content: |
+      package example.billing;
+
+      public class Reminder {
+          public String text(String invoiceId, int daysLate) {
+              return "Invoice " + invoiceId + " is " + daysLate + " day(s) overdue.";
+          }
+      }
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'Record the report about late fees charged from the first day'
+  role: intermediate
+  author: 'Dana Okafor <dana.okafor@example.com>'
+  date: '2024-01-22T10:15:00Z'
+  operations:
+  - type: write_file
+    path: docs/issues/ISSUE-8.md
+    content: |
+      # ISSUE-8: Late fees are charged for the grace period too
+
+      Reported: 2024-01-19T16:05:00Z
+
+      An invoice that is 5 days late with a 3-day grace period is charged 5 days of fees
+      (500 cents at 100 cents per day). Only the 2 days beyond the grace period should be charged.
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'Charge only the days beyond the grace period'
+  role: bug_fixing
+  author: 'Bruno Fischer <bruno.fischer@example.com>'
+  date: '2024-01-29T11:45:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/billing/LateFee.java
+    old: return daysLate * centsPerDay;
+    new: return (daysLate - graceDays) * centsPerDay;
+bugs:
+- id: B001
+  title: Late fees are charged for the grace period too
+  bug_introducing_commits:
+  - commit: c0
+    role: direct
+  bug_fixing_commits:
+  - commit: c3
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c0
+    file: src/main/java/example/billing/LateFee.java
+    statement: return daysLate * centsPerDay;
+    change_type: line_addition
+  fixes:
+  - id: X001
+    commit: c3
+    file: src/main/java/example/billing/LateFee.java
+    statement: return (daysLate - graceDays) * centsPerDay;
+    fix_type: line_modification
+issues:
+- id: ISSUE-8
+  title: Late fees are charged for the grace period too
+  reported_at: '2024-01-19T16:05:00Z'
+  document: docs/issues/ISSUE-8.md
+  linked_bugs:
+  - B001
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c0
+    notes: >
+      c0 wrote `return daysLate * centsPerDay;` and nothing says the code existed before it, so it
+      is the bug-introducing commit like any other. Compare SZZG-0136, where the same c0 content
+      arrives as an import with a stated earlier history and the answer is the empty set.
+scenario_design:
+  purpose: >
+    The third of three contracts for "no ordinary BIC" (issue #24) — the one where there is an
+    ordinary BIC after all: a fault present since the initial commit is attributed to that commit
+    when the commit authored the code. The twin SZZG-0136 differs only in provenance evidence.
+  key_property: >
+    Measured: feeCents(5, 3, 100) is 500 at c0, c1 and c2 and 200 at c3. Blaming the line c3
+    deletes at c3^ returns c0, which is the expected BIC. c1, c2 and c3 are byte-identical to
+    SZZG-0136's in message, author, date and source tree; only c0's message differs and
+    docs/IMPORT.md is absent.
+  evaluation_points:
+  - Report c0.
+  - Do not abstain merely because the BIC is the root commit.

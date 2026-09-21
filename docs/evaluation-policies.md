@@ -164,6 +164,11 @@ Missing required commits beyond the threshold are still reported as
 `false_negatives`, and `weighted_credit` / `credit_ratio` express how much of
 the oracle was recovered.
 
+Exercised by SZZG-0033 (one of two), SZZG-0138 (two of three: a majority
+threshold, where plain blame finds exactly two because the third fix is
+addition-only) and SZZG-0139 (one of two across a merge, where a first-parent
+walk finds one side and blaming the merge fails).
+
 ### 3.4 `top_k` (with `k_values`, `relevant`, `status_k`)
 
 The evaluator finds `best_rank`, the 1-based position of the first predicted
@@ -182,6 +187,11 @@ hit).
 scenario; they are reported as usual. Use `status_k` when the scenario should
 be strict about the top rank while still reporting `hit_at` for larger k.
 
+Exercised by SZZG-0096 (ranking inside a work item), SZZG-0115 (`k_values`
+`[1, 3, 5]`, status decided by the largest k) and SZZG-0140 (the same
+`k_values` with `status_k: 1`: a blame-recency ranking that puts the
+reformatting commit first is `hit@3` and fails there, and passes in SZZG-0115).
+
 ### 3.5 `relaxed_with_related` and `relaxed_with_credit`
 
 **PASS iff** `hard_false_positives` and `related_but_not_correct_hits` are both
@@ -191,6 +201,13 @@ commit is not, and every required commit must still be found.
 `relaxed_with_credit` is scored exactly like `relaxed_with_related`; the
 difference is that its scenarios attach `credit` values to
 `acceptable_related`, which show up in `weighted_credit`.
+
+Exercised by the `relaxed-with-credit` variants of SZZG-0022 (one origin at
+0.5), SZZG-0141 (two origins at 0.5 whose credit saturates a two-commit oracle
+without full recall: `{c3, c1, c2}` reaches `weighted_credit` 2.0 of 2.0 and
+fails for the missing `c4`) and SZZG-0142 (one origin at 1.0: `{c1}` alone has
+`credit_ratio` 1.0 and fails). Credit measures overlap; the status measures the
+required set.
 
 ## 4. The three "related" lists
 
@@ -233,6 +250,14 @@ intentionally empty oracle, for example an externally caused fault with no
 inducing commit in the repository. The required set is left empty (no
 inference), the JSON result carries `"expect_no_bic": true`, and the Markdown
 table shows `none (expect_no_bic)` as the expected set.
+
+Three scenarios fix the contracts for a fault whose fixed line belongs to the
+repository's first commit (D11 in `decisions/origin-direct-contract.md`):
+SZZG-0135 — the cause is the environment, the oracle is empty; SZZG-0136 — the
+first commit is an import that declares an earlier history, the oracle is empty
+by default and the `boundary-commit` variant accepts `c0`; SZZG-0137 — the first
+commit authored the fault and is the ordinary BIC. SZZG-0075's `main-line-only`
+variant is the fourth use: a fault that never reached the evaluated line.
 
 **PASS iff** the tool makes no prediction for the scenario. Every known
 prediction is a false positive and fails; unknown predictions fail as under any

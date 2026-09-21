@@ -1,0 +1,161 @@
+schema_version: graph-1.0
+meta:
+  id: SZZG-0140
+  title: "Top-k with a strict status cut-off: the BIC must be ranked first, hit@3 is only reported"
+  slug: top-k-strict-status
+  description: >
+    A boundary fault is introduced, the faulty line is reformatted by a later commit, and the fix
+    comes after an unrelated change. A ranked tool that orders candidates by blame recency puts the
+    reformatting commit first and the BIC second. SZZG-0115 reports hit@1/3/5 and passes whenever
+    the BIC is within the largest k; this scenario sets status_k 1, so the same ranking is
+    reported as hit@3 but fails. The two scenarios differ only in that key.
+  category: "Evaluation policy variants"
+  category_code: "G9"
+  factors:
+  - top-k
+  - formatting-noise
+  - basic-blame-distractor
+  - boundary-condition
+  - single-bic
+  - single-bfc
+  difficulty: advanced
+  status: active
+  tier: control
+repository:
+  name: SZZG-0140-top-k-strict-status
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'Add the threshold check'
+  role: initial
+  date: '2024-06-03T09:10:00Z'
+  operations:
+  - type: write_file
+    path: src/main/java/example/alerts/Threshold.java
+    content: |
+      package example.alerts;
+
+      public class Threshold {
+          /** True when {@code value} is strictly above {@code limit}; the limit itself is allowed. */
+          public boolean exceeds(int value, int limit) {
+              return value > limit;
+          }
+      }
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'Alert when the limit is reached'
+  role: bug_introducing
+  date: '2024-06-10T14:25:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/alerts/Threshold.java
+    old: return value > limit;
+    new: return value >= limit;
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'Reformat Threshold to the project style'
+  role: intermediate
+  date: '2024-06-17T10:40:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/alerts/Threshold.java
+    old: |
+      public boolean exceeds(int value, int limit) {
+              return value >= limit;
+          }
+    new: |
+      public boolean exceeds(int value, int limit) {
+              boolean exceeded = value >= limit;
+              return exceeded;
+          }
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'Add the alert message'
+  role: intermediate
+  date: '2024-06-24T15:55:00Z'
+  operations:
+  - type: write_file
+    path: src/main/java/example/alerts/AlertMessage.java
+    content: |
+      package example.alerts;
+
+      public class AlertMessage {
+          public String text(String metric, int value, int limit) {
+              return metric + " is " + value + " (limit " + limit + ")";
+          }
+      }
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: 'Allow the limit itself again'
+  role: bug_fixing
+  date: '2024-07-01T11:30:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/alerts/Threshold.java
+    old: boolean exceeded = value >= limit;
+    new: boolean exceeded = value > limit;
+bugs:
+- id: B001
+  title: An alert fires when the value equals the limit
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  bug_fixing_commits:
+  - commit: c4
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/alerts/Threshold.java
+    statement: return value >= limit;
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c4
+    file: src/main/java/example/alerts/Threshold.java
+    statement: boolean exceeded = value > limit;
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: top_k
+    relevant:
+    - c1
+    k_values:
+    - 1
+    - 3
+    - 5
+    status_k: 1
+    related_but_not_correct:
+    - c2
+    known_distractors:
+    - c2
+    notes: >
+      hit@1, hit@3 and hit@5 are reported; only hit@1 decides the status. Blame at c4^ returns c2,
+      the reformatting; a ranking of (c2, c1) is hit@3 but not hit@1 and fails. SZZG-0115 has the
+      same k_values without status_k and passes such a ranking.
+scenario_design:
+  purpose: >
+    Third member of the top_k family (with SZZG-0096 and SZZG-0115): the status_k key, which makes
+    the status strict while the report still shows the larger cut-offs.
+  key_property: >
+    Measured: exceeds(10, 10) is false at c0, true at c1, c2, c3 and false at c4. c2 rewrote the
+    faulty line into two, so the fault statement is not present at c4^ (GI701, declared by
+    formatting-noise); blaming the line c4 deletes returns c2.
+  evaluation_points:
+  - A ranking with c1 first passes; a ranking with c2 first and c1 second is hit@3 and fails.
+  - False positives never fail a top_k scenario; the rank of the first relevant commit does.

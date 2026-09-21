@@ -1,0 +1,170 @@
+schema_version: graph-1.0
+meta:
+  id: SZZG-0135
+  title: "Externally caused fault: the fix has no bug-introducing commit in the repository"
+  slug: external-cause-no-bic
+  description: >
+    A CSV export formats amounts with String.format and the default locale. Nothing in the
+    repository changes, but the build image the exports run on is replaced by one whose default
+    locale is de_DE, and amounts start carrying a decimal comma. A report records this; the fix
+    pins the format to Locale.ROOT. The oracle is the empty set: no commit of this repository
+    introduced the fault, and a tool that reports the commit blame returns (c0) has invented a cause.
+  category: "Evaluation policy variants"
+  category_code: "G9"
+  factors:
+  - expect-no-bic
+  - external-cause
+  - tool-visible-context
+  - single-bfc
+  difficulty: advanced
+  status: active
+  tier: control
+repository:
+  name: SZZG-0135-external-cause-no-bic
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'Add the CSV export of invoice rows'
+  role: initial
+  author: 'Elena Rossi <elena.rossi@example.com>'
+  date: '2024-05-06T09:40:00Z'
+  operations:
+  - type: write_file
+    path: src/main/java/example/report/CsvExport.java
+    content: |
+      package example.report;
+
+      public class CsvExport {
+          public String amountCell(double amount) {
+              return String.format("%.2f", amount);
+          }
+
+          public String row(String label, double amount) {
+              return label + "," + amountCell(amount);
+          }
+      }
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'Quote labels that contain a comma'
+  role: intermediate
+  author: 'Farid Haddad <farid.haddad@example.com>'
+  date: '2024-05-13T15:10:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/report/CsvExport.java
+    old: |
+      public String row(String label, double amount) {
+              return label + "," + amountCell(amount);
+          }
+    new: |
+      public String row(String label, double amount) {
+              return quote(label) + "," + amountCell(amount);
+          }
+
+          private static String quote(String label) {
+              if (label.indexOf(',') < 0) {
+                  return label;
+              }
+              return "\"" + label.replace("\"", "\"\"") + "\"";
+          }
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'Record the report about decimal commas in the export'
+  role: intermediate
+  author: 'Dana Okafor <dana.okafor@example.com>'
+  date: '2024-05-27T08:55:00Z'
+  operations:
+  - type: write_file
+    path: docs/issues/ISSUE-52.md
+    content: |
+      # ISSUE-52: Amounts in the CSV export contain a decimal comma
+
+      Reported: 2024-05-24T08:40:00Z
+
+      Since the nightly exports moved to the new build image on 2024-05-22, every amount cell
+      reads like `12,50` instead of `12.50`, and the importer splits the row at the comma.
+      No commit touched the export between the last good run (2024-05-21) and the first bad
+      one. The new image's default locale is de_DE; the old image's was en_US.
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'Pin the CSV number format to Locale.ROOT'
+  role: bug_fixing
+  author: 'Elena Rossi <elena.rossi@example.com>'
+  date: '2024-06-03T10:25:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/report/CsvExport.java
+    old: |
+      package example.report;
+
+      public class CsvExport {
+    new: |
+      package example.report;
+
+      import java.util.Locale;
+
+      public class CsvExport {
+  - type: replace
+    path: src/main/java/example/report/CsvExport.java
+    old: return String.format("%.2f", amount);
+    new: return String.format(Locale.ROOT, "%.2f", amount);
+bugs:
+- id: B001
+  title: Amount cells use the platform's decimal separator
+  bug_introducing_commits: []
+  bug_fixing_commits:
+  - commit: c3
+    role: complete_fix
+  faults: []
+  fixes:
+  - id: X001
+    commit: c3
+    file: src/main/java/example/report/CsvExport.java
+    statement: return String.format(Locale.ROOT, "%.2f", amount);
+    fix_type: line_modification
+issues:
+- id: ISSUE-52
+  title: Amounts in the CSV export contain a decimal comma
+  reported_at: '2024-05-24T08:40:00Z'
+  document: docs/issues/ISSUE-52.md
+  linked_bugs:
+  - B001
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    expect_no_bic: true
+    required: []
+    known_distractors:
+    - c0
+    notes: >
+      The fault is the environment's default locale, which changed outside the repository
+      (docs/issues/ISSUE-52.md). No commit introduced it, so the correct answer is the empty set.
+      c0 wrote the line the fix rewrites and is what blame returns; reporting it is a false positive.
+scenario_design:
+  purpose: >
+    The first of three contracts for "no ordinary BIC" (issue #24): an externally caused fault.
+    Its siblings are SZZG-0136 (the origin lies before the repository's first commit) and
+    SZZG-0137 (the first commit itself wrote the fault).
+  key_property: >
+    Measured on the generated snapshots with -Duser.language=de -Duser.country=DE: amountCell(12.5)
+    is "12,50" at c0, c1 and c2 and "12.50" at c3; with -Duser.language=en it is "12.50" at every
+    commit. The behaviour depends on the environment, not on any commit before c3. Blaming the line
+    c3 deletes at c3^ returns c0.
+  evaluation_points:
+  - Report nothing; the scenario passes only for an empty prediction.
+  - Do not report c0 because blame returns it; c0's line was correct in the environment it was written for.
+notes:
+- The report document is scanned by the leakage lint like any other text and GW471 checks its date.
