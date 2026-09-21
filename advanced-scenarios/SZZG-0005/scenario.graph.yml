@@ -4,16 +4,18 @@ meta:
   title: Method move between classes
   slug: method-move-between-classes
   description: >-
-    A boundary bug is introduced in Range.contains at c1. At c2 the method is moved unchanged from Range to a new
-    RangeUtils class: the method body, including the faulty line, leaves Range.java and appears in RangeUtils.java.
-    The BFC c3 fixes the moved method in RangeUtils.java. Plain blame on the fixed line stops at the move commit c2;
-    reaching the required BIC c1 requires following the method across files.
+    A wrong-variable bug is introduced in Shipping.cost at c1: the floor of the shipping cost becomes the
+    per-kilogram rate instead of the configured minimum. At c2 the method is moved unchanged from Shipping to
+    a new ShippingUtils class: the method body, including the faulty line, leaves Shipping.java and appears in
+    ShippingUtils.java. The BFC c3 fixes the moved method in ShippingUtils.java. Plain blame on the fixed line
+    stops at the move commit c2; reaching the required BIC c1 requires following the method across files.
   category: "Refactoring, move, rename, and semantic rewrite"
   category_code: "G1"
   factors:
   - refactoring
   - method-move
   - post-bic-refactoring
+  - wrong-variable
   difficulty: advanced
   status: active
   tier: control
@@ -25,86 +27,84 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create Range with contains and length
+  history_summary: 'c0: create Shipping with cost and volumetricWeight
 
-    c1: introduce boundary bug in Range.contains (BIC)
+    c1: floor the cost at the per-kilogram rate instead of the minimum (BIC)
 
-    c2: move contains from Range to a new RangeUtils class (write_file on both files)
+    c2: move cost from Shipping to a new ShippingUtils class (write_file on both files)
 
-    c3: fix the boundary bug in RangeUtils.contains (BFC)'
+    c3: floor the cost at the minimum again in ShippingUtils.cost (BFC)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: Add Range with containment and length helpers
+  message: Add Shipping with cost and volumetric weight helpers
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
+    path: src/main/java/example/Shipping.java
     content: |
       package example;
-
-      public class Range {
-        public boolean contains(int value, int min, int max) {
-          return value >= min && value <= max;
+      public class Shipping {
+        /** Cost in cents: weight times the per-kilogram rate, never below the configured minimum. */
+        public int cost(int weightGrams, int ratePerKg, int minimum) {
+          return Math.max((int) ((long) weightGrams * ratePerKg / 1000), minimum);
         }
-
-        public int length(int min, int max) {
-          return max - min;
+        public int volumetricWeight(int lengthCm, int widthCm, int heightCm) {
+          return lengthCm * widthCm * heightCm / 5;
         }
       }
 - id: c1
   branch: main
   parents:
   - c0
-  message: Use strict comparisons in Range.contains
+  message: Simplify the shipping cost floor
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
+    path: src/main/java/example/Shipping.java
+    old: return Math.max((int) ((long) weightGrams * ratePerKg / 1000), minimum);
+    new: return Math.max((int) ((long) weightGrams * ratePerKg / 1000), ratePerKg);
 - id: c2
   branch: main
   parents:
   - c1
-  message: Move contains from Range to RangeUtils
+  message: Move cost from Shipping to ShippingUtils
   role: refactoring
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
+    path: src/main/java/example/Shipping.java
     content: |
       package example;
-
-      public class Range {
-        public int length(int min, int max) {
-          return max - min;
+      public class Shipping {
+        public int volumetricWeight(int lengthCm, int widthCm, int heightCm) {
+          return lengthCm * widthCm * heightCm / 5;
         }
       }
   - type: write_file
-    path: src/main/java/example/RangeUtils.java
+    path: src/main/java/example/ShippingUtils.java
     content: |
       package example;
-
-      public class RangeUtils {
-        public boolean contains(int value, int min, int max) {
-          return value > min && value < max;
+      public class ShippingUtils {
+        /** Cost in cents: weight times the per-kilogram rate, never below the configured minimum. */
+        public int cost(int weightGrams, int ratePerKg, int minimum) {
+          return Math.max((int) ((long) weightGrams * ratePerKg / 1000), ratePerKg);
         }
       }
 - id: c3
   branch: main
   parents:
   - c2
-  message: Include the bounds in RangeUtils.contains
+  message: Floor the shipping cost at the configured minimum in ShippingUtils.cost
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/RangeUtils.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/ShippingUtils.java
+    old: return Math.max((int) ((long) weightGrams * ratePerKg / 1000), ratePerKg);
+    new: return Math.max((int) ((long) weightGrams * ratePerKg / 1000), minimum);
 bugs:
 - id: B001
-  title: Range boundary bug moved to another class before the fix
+  title: The shipping cost floor is the per-kilogram rate; the method moved to another class before the fix
   bug_introducing_commits:
   - commit: c1
     role: direct
@@ -114,28 +114,28 @@ bugs:
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/Shipping.java
+    statement: return Math.max((int) ((long) weightGrams * ratePerKg / 1000), ratePerKg);
     change_type: line_modification
     entity:
       type: method
-      signature: boolean contains(int value, int min, int max)
+      signature: int cost(int weightGrams, int ratePerKg, int minimum)
   fixes:
   - id: X001
     commit: c3
-    file: src/main/java/example/RangeUtils.java
-    statement: return value >= min && value <= max;
+    file: src/main/java/example/ShippingUtils.java
+    statement: return Math.max((int) ((long) weightGrams * ratePerKg / 1000), minimum);
     fix_type: line_modification_after_method_move
     entity:
       type: method
-      signature: boolean contains(int value, int min, int max)
+      signature: int cost(int weightGrams, int ratePerKg, int minimum)
   refactorings:
   - commit: c2
     type: move_method
-    from_file: src/main/java/example/Range.java
-    to_file: src/main/java/example/RangeUtils.java
+    from_file: src/main/java/example/Shipping.java
+    to_file: src/main/java/example/ShippingUtils.java
     moved_entities:
-    - boolean contains(int value, int min, int max)
+    - int cost(int weightGrams, int ratePerKg, int minimum)
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
@@ -144,32 +144,31 @@ expected_szz:
     related_but_not_correct:
     - c2
     notes: >-
-      The fault is introduced in Range.java at c1 and moved to RangeUtils.java by c2. Plain blame on the fixed
-      line at c3^ returns c2 because RangeUtils.java was created there; c2 is related propagation history, not
-      the BIC.
+      The fault is introduced in Shipping.java at c1 and moved to ShippingUtils.java by c2. Plain blame on the
+      fixed line at c3^ returns c2 because ShippingUtils.java was created there; c2 is related propagation
+      history, not the BIC.
 scenario_design:
   purpose: >-
     Evaluate whether SZZ can identify the original BIC when the buggy method is moved to another existing-style
     class (not an extracted class with split responsibilities, see SZZG-0006) between the BIC and the BFC.
   key_property: >-
     The BIC and BFC are in different files. The moved method is byte-for-byte identical before and after the
-    move, and Range.java is modified in the same commit that creates RangeUtils.java, so move-aware blame
-    (for example `git blame -C`) can follow the line back to Range.java.
+    move, and Shipping.java is modified in the same commit that creates ShippingUtils.java, so move-aware blame
+    (for example `git blame -C`) can follow the line back to Shipping.java. The product is taken in long before
+    the division, so no snapshot overflows for inputs whose result fits in int. Measured: cost(500, 10, 8) is 8 at
+    c0, 10 at c1 and c2 (the floor became the rate), 8 at c3; cost(3000, 10, 8) is 30 and cost(30000, 100000, 8)
+    is 3000000 throughout.
   difference_from_SZZG_0006: >-
     SZZG-0006 extracts a new class and splits responsibilities. Here a single method is moved unchanged to another
     class and the source class keeps its remaining members.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: >-
-    This scenario uses factors: refactoring, method-move, post-bic-refactoring; operations: write_file, replace.
   evaluation_points:
-  - Whether SZZ follows the moved method from RangeUtils.java back to Range.java.
+  - Whether SZZ follows the moved method from ShippingUtils.java back to Shipping.java.
   - Whether SZZ avoids treating the move commit c2 as the BIC.
   - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
 - >-
   2026-09 revision (issue 2): the c2 move was previously expressed with `move_entity`, which the generator realises as a
-  whole-file copy that leaves the source untouched. The move is now expressed with explicit write_file operations, and
-  the BFC fixes RangeUtils.java (the file that actually holds the moved method).
+  whole-file copy that leaves the source untouched. The move is expressed with explicit write_file operations, and the
+  BFC fixes the file that actually holds the moved method.
+- Rewritten 2026-09-21 from the shared Range.contains template to a wrong-variable fault (GitHub issue 13); the history
+  shape, oracle and coverage dimensions are unchanged.

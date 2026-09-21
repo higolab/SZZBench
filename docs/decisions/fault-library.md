@@ -20,9 +20,14 @@ is **at most one third of every graph category** on its most reused statement,
 which the twins keep; the G4 rewrites (SZZG-0045/0047/0049/0050/0051/0053/0054/
 0056) brought G4 to **9/28** with 21 distinct statements, the G5 rewrites
 (SZZG-0069/0070/0073/0076/0081/0082/0083) brought G5 to **6/18** with 19
-distinct statements, and the G2 rewrites (SZZG-0016/0017/0019/0021/0024)
-brought G2 to **5/16** with 15 distinct statements; the suite stands at 63
-carriers (45 graph) and 178 distinct statements. G1, G8, G6 and G3 follow. Holding the fault constant while varying the history
+distinct statements, the G2 rewrites (SZZG-0016/0017/0019/0021/0024) brought
+G2 to **5/16** with 15 distinct statements, and the last batch
+(SZZG-0005/0006/0007 in G1, SZZG-0107/0108 in G8, SZZG-0088/0091 in G6,
+SZZG-0035 in G3) brought G1 to **4/14**, G8 to **3/10**, G6 to **3/9** and G3
+to **4/14**. Every graph category is now at or below one third on its most
+reused statement; the suite stands at 57 carriers (39 graph, 18 classic) and
+186 distinct statements. The classic S3 group (11/37) keeps the template as its
+controlled noise family and was not part of the decision. Holding the fault constant while varying the history
 is a legitimate controlled-experiment device, and the twins that depend on it
 (SZZG-0043/0128, SZZG-0057/0122) keep it. But a tool that has seen the benchmark
 can match the text, and the graph suite's fault-kind coverage is thin: most

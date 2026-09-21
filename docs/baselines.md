@@ -309,22 +309,24 @@ counts how many scenarios declare each fault statement (`fault.statement`,
 `faults[].statement`, `origin_faults[].statement`, whitespace-normalised):
 
 ```text
-178 distinct statement(s) over 234 scenario(s); 12 shared by two or more
- 63x  return value > min && value < max;   (advanced-scenarios 45, scenarios 18)
-  6x  boolean belowMax = value < max;      (advanced-scenarios 6)
+186 distinct statement(s) over 234 scenario(s); 12 shared by two or more
+ 57x  return value > min && value < max;   (advanced-scenarios 39, scenarios 18)
   6x  return value > min;                  (advanced-scenarios 2, scenarios 4)
-most reused statement per category: G1 7/14, G2 5/16, G3 5/14, G4 9/28, G5 6/18,
-  G6 5/9, G7 4/16, G8 5/10, G9 2/10, S3 11/37, S4 3/16, S6 3/19
+  5x  return value > 0;                    (scenarios 5)
+most reused statement per category: G1 4/14, G2 5/16, G3 4/14, G4 9/28, G5 6/18,
+  G6 3/9, G7 4/16, G8 3/10, G9 2/10, S3 11/37, S4 3/16, S6 3/19
 ```
 
-(After the G4, G5 and G2 rewrites of issue #13, twenty scenarios; before them
+(After the 28 rewrites of issue #13 — G4, G5, G2, then G1/G8/G6/G3; before them
 the statement had 83 carriers, 65 of them graph, and G4 read 17/28, G5 13/18,
-G2 10/16.) One statement is still a declared fault of 25% of the suite and 33%
-of the graph suite;
+G2 10/16, G1 7/14, G8 5/10, G3 5/14, G6 5/9 on `boolean belowMax = value < max;`.)
+Every graph category is now at or below one third on its most reused statement.
+One statement is still a declared fault of 23% of the suite and 29% of the graph
+suite;
 `decisions/fault-library.md` catalogues the kinds a rewrite can draw on and the
-rules a rewrite follows, and the per-category share above — to be brought to at
-most one third in every graph category — is the number a rewrite is measured
-by. Read together
+rules a rewrite follows, and the per-category share above — at most one third
+in every graph category, reached on 2026-09-21 — is the number a rewrite is
+measured by. Read together
 with the baseline table, the suite still concentrates in one cell — a
 one-commit answer, one or two commits before the fix, in a three- or
 four-commit single-branch history — and **that cell is where the cheap rules

@@ -2,51 +2,68 @@
 
 ## Purpose
 
-Evaluate multiple original BICs when a later partial revert reintroduces only one of them.
+Two original BICs in `InvoiceSummary.summarize`: `c1` swaps the `PAID`/`OPEN`
+labels, `c2` adds the credit to the amount due instead of subtracting it. `c3`
+fixes both. `c4` partially reverts `c3` and adds the credit again; `c5` fixes
+that. For the final fix the direct BIC is the partial revert `c4`; `c2` is the
+origin of the reintroduced fault; `c1` and `c3` are related history a tool must
+not report.
 
-## Commit history
+Rewritten 2026-09-21 (issue #13) from the shared `aboveMin`/`belowMax` template;
+the history shape, oracle, variants and coverage dimensions (`bic_depth` 1, four
+distractors on the fault file, 6 commits, 1 ref) are unchanged — including the
+origin mapping: as in the template version, the fault `c4` reintroduces is the
+one `c2` wrote (PR #63 review).
 
-```text
-c0: create initial correct implementation
-c1: introduce lower-bound bug
-c2: introduce upper-bound bug
-c3: fix both boundary bugs
-c4: partially revert fix for upper boundary only
-c5: fix reintroduced upper-bound bug
-```
-
-## Commit table
-
-| Commit | Branch | Parents | Role | Description |
-|---|---|---|---|---|
-| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `c1` | `main` | c0 | `origin_bug_introducing` | c1: introduce lower-bound bug |
-| `c2` | `main` | c1 | `origin_bug_introducing` | c2: introduce upper-bound bug |
-| `c3` | `main` | c2 | `prior_fix` | c3: fix both boundary bugs |
-| `c4` | `main` | c3 | `bug_introducing` | c4: partially revert fix for upper boundary only |
-| `c5` | `main` | c4 | `bug_fixing` | c5: fix reintroduced upper-bound bug |
-
-## Expected SZZ result
+## Commit structure (generated)
 
 ```text
-Expected BIC(s): c4
-Related but not correct: c1, c2, c3
+* ce29e78  2025-04-07  Subtract the credit from the amount due again                    <- BFC (c5)
+* 8a92d96  2025-04-04  Revert the balance change                                        <- BIC (c4; partial revert of c3)
+* 0e5a430  2025-04-02  Subtract the credit and put the status labels the right way round (c3, prior fix)
+* 132a5c9  2025-03-31  Apply the credit to the amount due                               <- origin (c2)
+* d054567  2025-03-25  Rename the status labels                                         (c1, first origin fault; never reintroduced)
+* 0e66a70  2025-03-24  Add the invoice summary                                          (c0)
 ```
 
-## Key property
+## Expected BIC / BFC
 
-The direct BIC for the final fix is the partial revert, not the older original BIC set.
+- default: `required: [c4]`, `related_but_not_correct: [c1, c3]`, `related_origins: [c2]`
+- `origin-aware`: `relaxed_with_related`, `c2` at 0.5
+- BFC: `c5`
 
-## Difference from existing revert scenarios
+## Measured behaviour and blame
 
-This scenario isolates a double-revert or revert-derived complication beyond the existing partial revert and reintroduction scenarios.
+`summarize(100, 30, false)`:
 
-## Evaluation points
+| commit | result |
+|---|---|
+| `c0` | `OPEN 70` |
+| `c1` | **`PAID 70`** (labels swapped) |
+| `c2` | **`PAID 130`** (both faults) |
+| `c3` | `OPEN 70` |
+| `c4` | **`OPEN 130`** |
+| `c5` | `OPEN 70` |
 
-- Whether SZZ reports c4.
-- Whether SZZ avoids reporting both old BICs as exact direct answers.
+`c5` deletes one line (`int due = amount + credit;`, line 5); blame at `c5^`
+returns `c4` (verifier `GI703`).
 
-## Notes
+Under the `origin-aware` variant `{c4, c2}` passes and `{c4, c1}` fails, exactly
+as before the rewrite; `tests/test_template_rewrites.py` asserts both verdicts
+and compares the scoring-relevant oracle of every rewritten scenario with its
+pre-rewrite version.
 
-- This scenario models revert-related development history for SZZ evaluation.
-- The direct BIC is the commit that reintroduces the bug in the history observed from the BFC.
+## What a tool must do
+
+Report `c4` alone. Reporting the original BIC set `{c1, c2}` — the answer to the
+prior fix `c3` — is wrong for the final fix: `c1`'s fault never came back, and
+`c2`'s came back through `c4`.
+
+## Factors
+
+- `revert`
+- `partial-revert`
+- `multi-bic`
+- `single-fault-reintroduced`
+- `re-bic`
+- `wrong-operator`

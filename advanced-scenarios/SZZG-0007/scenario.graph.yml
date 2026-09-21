@@ -4,16 +4,18 @@ meta:
   title: Line moved and duplicated
   slug: line-moved-and-duplicated
   description: >-
-    The faulty range check is introduced in Range.contains at c1. At c2 the method is moved out of Range into a
-    new RangeUtils class and, in the same commit, the same faulty line is duplicated into a second helper,
-    Bounds.within. The BFC c3 fixes both copies. Neither fixed line existed in its file before c2, so plain
-    blame stops at the move/copy commit c2. Under the direct/origin contract the moved instance keeps c1 as its
-    direct BIC while the duplicated instance in Bounds.within has c2, so the oracle is the union {c1, c2}.
+    The faulty page count — `count / size + 1`, one page too many for exact multiples — is introduced in
+    Paging.pageCount at c1. At c2 the method is moved out of Paging into a new PagingUtils class and, in the
+    same commit, the same faulty line is duplicated into a second helper, Batches.batchCount. The BFC c3 fixes
+    both copies. Neither fixed line existed in its file before c2, so plain blame stops at the move/copy commit
+    c2. Under the direct/origin contract the moved instance keeps c1 as its direct BIC while the duplicated
+    instance in Batches.batchCount has c2, so the oracle is the union {c1, c2}.
   category: "Refactoring, move, rename, and semantic rewrite"
   category_code: "G1"
   factors:
   - method-move
   - copy-propagation
+  - off-by-one
   difficulty: advanced
   status: active
   tier: control
@@ -25,136 +27,134 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c1: create Range with a buggy contains check (BIC)
+  history_summary: 'c1: create Paging with an off-by-one pageCount (BIC)
 
-    c2: move contains from Range to a new RangeUtils class and duplicate the same check into a new Bounds.within
+    c2: move pageCount from Paging to a new PagingUtils class and duplicate the same line into a new Batches.batchCount
     (write_file on all three files)
 
-    c3: fix both copies in RangeUtils.java and Bounds.java (BFC)'
+    c3: fix both copies in PagingUtils.java and Batches.java (BFC)'
 commits:
 - id: c1
   branch: main
   parents: []
-  message: Add Range with containment and length helpers
+  message: Add Paging with page count and offset helpers
   role: bug_introducing
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
+    path: src/main/java/example/Paging.java
     content: |
       package example;
-
-      public class Range {
-        public boolean contains(int value, int min, int max) {
-          return value > min && value < max;
+      public class Paging {
+        /** Number of pages needed for {@code count} items, {@code size} to a page. */
+        public int pageCount(int count, int size) {
+          return count / size + 1;
         }
-
-        public int length(int min, int max) {
-          return max - min;
+        public int offset(int page, int size) {
+          return page * size;
         }
       }
 - id: c2
   branch: main
   parents:
   - c1
-  message: Move contains to RangeUtils and add Bounds.within
+  message: Move pageCount to PagingUtils and add Batches.batchCount
   role: refactoring
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
+    path: src/main/java/example/Paging.java
     content: |
       package example;
-
-      public class Range {
-        public int length(int min, int max) {
-          return max - min;
+      public class Paging {
+        public int offset(int page, int size) {
+          return page * size;
         }
       }
   - type: write_file
-    path: src/main/java/example/RangeUtils.java
+    path: src/main/java/example/PagingUtils.java
     content: |
       package example;
-
-      public class RangeUtils {
-        public boolean contains(int value, int min, int max) {
-          return value > min && value < max;
+      public class PagingUtils {
+        /** Number of pages needed for {@code count} items, {@code size} to a page. */
+        public int pageCount(int count, int size) {
+          return count / size + 1;
         }
       }
   - type: write_file
-    path: src/main/java/example/Bounds.java
+    path: src/main/java/example/Batches.java
     content: |
       package example;
-
-      public class Bounds {
-        public boolean within(int value, int min, int max) {
-          return value > min && value < max;
+      public class Batches {
+        /** Number of batches needed for {@code count} items, {@code size} to a batch. */
+        public int batchCount(int count, int size) {
+          return count / size + 1;
         }
       }
 - id: c3
   branch: main
   parents:
   - c2
-  message: Include the bounds in RangeUtils.contains and Bounds.within
+  message: Count pages and batches without an extra one for exact multiples
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/RangeUtils.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/PagingUtils.java
+    old: return count / size + 1;
+    new: 'return count / size + (count % size == 0 ? 0 : 1);'
   - type: replace
-    path: src/main/java/example/Bounds.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/Batches.java
+    old: return count / size + 1;
+    new: 'return count / size + (count % size == 0 ? 0 : 1);'
 bugs:
 - id: B001
-  title: Boundary bug moved and duplicated before the fix
+  title: Off-by-one page count moved and duplicated before the fix
   bug_introducing_commits:
   - commit: c1
     role: direct
-    description: Wrote the faulty line; it survives the move into RangeUtils unchanged.
+    description: Wrote the faulty line; it survives the move into PagingUtils unchanged.
   - commit: c2
     role: direct
-    description: Duplicated that line into Bounds.within, a second instance the fix also repairs.
+    description: Duplicated that line into Batches.batchCount, a second instance the fix also repairs.
   bug_fixing_commits:
   - commit: c3
     role: complete_fix
   faults:
   - id: F001
     commit: c1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/Paging.java
+    statement: return count / size + 1;
     change_type: line_modification
     entity:
       type: method
-      signature: boolean contains(int value, int min, int max)
+      signature: int pageCount(int count, int size)
   fixes:
   - id: X001
     commit: c3
-    file: src/main/java/example/RangeUtils.java
-    statement: return value >= min && value <= max;
+    file: src/main/java/example/PagingUtils.java
+    statement: 'return count / size + (count % size == 0 ? 0 : 1);'
     fix_type: line_modification_after_method_move
     entity:
       type: method
-      signature: boolean contains(int value, int min, int max)
+      signature: int pageCount(int count, int size)
   - id: X002
     commit: c3
-    file: src/main/java/example/Bounds.java
-    statement: return value >= min && value <= max;
+    file: src/main/java/example/Batches.java
+    statement: 'return count / size + (count % size == 0 ? 0 : 1);'
     fix_type: line_modification_after_line_copy
     entity:
       type: method
-      signature: boolean within(int value, int min, int max)
+      signature: int batchCount(int count, int size)
   refactorings:
   - commit: c2
     type: move_method
-    from_file: src/main/java/example/Range.java
-    to_file: src/main/java/example/RangeUtils.java
+    from_file: src/main/java/example/Paging.java
+    to_file: src/main/java/example/PagingUtils.java
     moved_entities:
-    - boolean contains(int value, int min, int max)
+    - int pageCount(int count, int size)
   - commit: c2
     type: copy_line
-    from_file: src/main/java/example/Range.java
-    to_file: src/main/java/example/Bounds.java
-    copied_statement: return value > min && value < max;
+    from_file: src/main/java/example/Paging.java
+    to_file: src/main/java/example/Batches.java
+    copied_statement: return count / size + 1;
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
@@ -163,24 +163,24 @@ expected_szz:
     - c2
     notes: >-
       Both fixed lines were introduced into their files by c2, so plain blame at c3^ returns c2 for both. c2
-      does two different things in one commit: moving `contains` into RangeUtils preserves behaviour and
+      does two different things in one commit: moving `pageCount` into PagingUtils preserves behaviour and
       leaves c1 the direct BIC of that instance (contract D4, movement), while duplicating the line into
-      Bounds.within creates a second faulty instance whose direct BIC is c2 itself (D4, copying). The fix
+      Batches.batchCount creates a second faulty instance whose direct BIC is c2 itself (D4, copying). The fix
       repairs both, so the oracle is their union (D9).
 bug_instances:
 - id: B001-origin
-  file: src/main/java/example/Range.java
+  file: src/main/java/example/Paging.java
   introduced_by: c1
   removed_by: c2
   status: moved_out_by_c2
 - id: B001-moved
-  file: src/main/java/example/RangeUtils.java
+  file: src/main/java/example/PagingUtils.java
   introduced_by: c1
   propagated_by: c2
   fixed_by: c3
   status: fixed
 - id: B001-duplicate
-  file: src/main/java/example/Bounds.java
+  file: src/main/java/example/Batches.java
   introduced_by: c2
   origin: c1
   fixed_by: c3
@@ -189,23 +189,23 @@ scenario_design:
   purpose: Evaluate whether SZZ answers the two halves of one commit differently - a move that preserves the
     original BIC and a duplication that creates a new one.
   key_property: >-
-    Commit c2 does two things at once: the line disappears from Range.java and appears in RangeUtils.java (a
-    move, behaviour-preserving, so c1 stays that instance's direct BIC) and in Bounds.java (a copy, which
+    Commit c2 does two things at once: the line disappears from Paging.java and appears in PagingUtils.java (a
+    move, behaviour-preserving, so c1 stays that instance's direct BIC) and in Batches.java (a copy, which
     creates a faulty instance that did not exist before, so c2 is its direct BIC). The BFC fixes both copies,
-    so the oracle is the union {c1, c2} and no faulty copy remains at HEAD.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: >-
-    This scenario uses factors: method-move, copy-propagation; operations: write_file, replace.
+    so the oracle is the union {c1, c2} and no faulty copy remains at HEAD. The correct form is the
+    overflow-safe `count / size + (count % size == 0 ? 0 : 1)`, not `(count + size - 1) / size`, so the fix is
+    right for every count that fits in int. Measured: pageCount(20, 10) is 3 at c1 and c2 and 2 at c3;
+    batchCount(20, 10) is 3 at c2 and 2 at c3; both are 3 for 21 items throughout, and 21474837 for
+    Integer.MAX_VALUE items throughout.
   evaluation_points:
   - Whether SZZ identifies c1 as the BIC of the moved instance despite the move in c2.
   - Whether SZZ also identifies c2 as the BIC of the instance its copy created, rather than treating the whole
     commit as propagation history.
   - Whether the expected_szz evaluation policy is applied correctly.
 notes:
-- Draft scenario.graph.yml for graph-aware SZZBench support.
-- This file is intended for graph-aware generation and verification.
 - >-
   2026-09 revision (issue 2): c2 was previously expressed with `move_entity` and `copy_entity`, which the generator realises
-  as whole-file copies that leave the source untouched (Range.java kept the buggy line at HEAD). The move and the copy are
-  now expressed with explicit write_file operations, the duplicate lives in Bounds.java, and the BFC fixes both copies.
+  as whole-file copies that leave the source untouched. The move and the copy are expressed with explicit write_file
+  operations, and the BFC fixes both copies.
+- Rewritten 2026-09-21 from the shared Range.contains template to an off-by-one fault (GitHub issue 13); the history
+  shape, oracle and coverage dimensions are unchanged.

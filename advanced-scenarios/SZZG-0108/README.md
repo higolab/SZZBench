@@ -1,43 +1,43 @@
 # SZZG-0108: Binary file change
 
-## Source
-
-- Category: Robustness and implementation-quality scenarios
-
 ## Purpose
 
-Evaluate Binary file change and whether SZZ identifies the expected bug-introducing commit set.
+The fix's diff contains a file no textual tool can read. `c1` raises the
+thumbnail edge from 256 to 512 pixels and writes `51` — a dropped digit. `c2`
+sets it to 512 and, in the same commit, refreshes a binary placeholder asset.
+The BIC is an ordinary one-line change; the question is whether the binary
+entry in the fix's diff derails a tool.
 
-## Expected history
+Rewritten 2026-09-21 (issue #13) from the shared `Range.contains` template; the
+history shape, oracle and coverage dimensions (`bic_depth` 1, one distractor on
+the fault file, 3 commits, 1 ref) are unchanged.
 
-```text
-c0: create initial state (write_file src/main/java/example/Range.java)
-c1: introduce bug (replace src/main/java/example/Range.java)
-c2: fix bug (write_binary_file assets/data.bin; replace src/main/java/example/Range.java)
-```
-
-## Why this needs `scenario.graph.yml`
-
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
-
-## Required graph-schema features
-
-- Factors: write_binary_file
-- Operation types: write_file, replace, write_binary_file
-- Expected SZZ policy is defined in expected_szz.
-
-## Evaluation points
-
-- Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
-- Whether the expected_szz evaluation policy is applied correctly.
-
----
-
-## Files
+## Commit structure (generated)
 
 ```text
-SZZG-0108/
-|-- scenario.graph.yml
-`-- README.md
+* 63e950b  2023-06-22  Use a 512-pixel thumbnail edge and refresh the placeholder asset  <- BFC (c2; assets/placeholder.bin + Thumbnails.java)
+* 01569d4  2023-06-19  Raise the thumbnail edge to 512 pixels                            <- BIC (c1; writes 51)
+* 2924a0d  2023-06-12  Add the thumbnail settings                                        (c0; 256)
 ```
+
+## Expected BIC / BFC
+
+- BIC: `c1` (`exact_set`, `required: [c1]`)
+- BFC: `c2`
+
+## Measured behaviour and blame
+
+`maxEdgePixels()` is 256 at `c0`, **51** at `c1`, 512 at `c2`. The fix's diff
+has two entries — `Binary files a/assets/placeholder.bin and
+b/assets/placeholder.bin differ` and a one-line change to `Thumbnails.java`
+(line 5); blame at `c2^` returns `c1` (verifier `GI703`).
+
+## What a tool must do
+
+Report `c1`. A diff parser must skip the binary entry rather than fail on it;
+the source hunk is one deleted line whose blame is direct.
+
+## Factors
+
+- `binary-file`
+- `wrong-constant`

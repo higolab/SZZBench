@@ -3,7 +3,9 @@ meta:
   id: SZZG-0091
   title: Multiple BICs with partial revert reintroducing one fault
   slug: multiple-bics-with-partial-revert-reintroducing-one-fault
-  description: Two original BICs are fixed together, but a later partial revert reintroduces only one fault.
+  description: >-
+    Two original BICs — the status labels are swapped, and the balance due adds the credit instead of
+    subtracting it — are fixed together, but a later partial revert reintroduces only the balance fault.
   category: "Revert-specific reintroduction"
   category_code: "G6"
   factors:
@@ -12,6 +14,7 @@ meta:
   - multi-bic
   - single-fault-reintroduced
   - re-bic
+  - wrong-operator
   difficulty: advanced
   status: active
   tier: control
@@ -23,87 +26,87 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial correct implementation
+  history_summary: 'c0: create the invoice summary (due = amount - credit; PAID/OPEN labels)
 
-    c1: introduce lower-bound bug
+    c1: swap the PAID and OPEN labels (first origin fault)
 
-    c2: introduce upper-bound bug
+    c2: add the credit to the amount due instead of subtracting it (second origin fault, the one reintroduced later)
 
-    c3: fix both boundary bugs
+    c3: fix both (prior fix)
 
-    c4: partially revert fix for upper boundary only
+    c4: partially revert c3: add the credit again (BIC)
 
-    c5: fix reintroduced upper-bound bug'
+    c5: subtract the credit again (BFC)'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'Add the range check helpers'
+  message: 'Add the invoice summary'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    boolean\
-      \ aboveMin = value >= min;\n    boolean belowMax = value <= max;\n    return aboveMin && belowMax;\n  }\n}\n"
+    path: src/main/java/example/InvoiceSummary.java
+    content: "package example;\n\npublic class InvoiceSummary {\n  public String summarize(int amount, int credit, boolean paid) {\n    int due = amount - credit;\n\
+      \    String status = paid ? \"PAID\" : \"OPEN\";\n    return status + \" \" + due;\n  }\n}\n"
 - id: c1
   branch: main
   parents:
   - c0
-  message: 'Exclude the minimum from aboveMin()'
+  message: 'Rename the status labels'
   role: origin_bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: boolean aboveMin = value >= min;
-    new: boolean aboveMin = value > min;
+    path: src/main/java/example/InvoiceSummary.java
+    old: 'String status = paid ? "PAID" : "OPEN";'
+    new: 'String status = paid ? "OPEN" : "PAID";'
 - id: c2
   branch: main
   parents:
   - c1
-  message: 'Exclude the maximum from belowMax()'
+  message: 'Apply the credit to the amount due'
   role: origin_bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: boolean belowMax = value <= max;
-    new: boolean belowMax = value < max;
+    path: src/main/java/example/InvoiceSummary.java
+    old: int due = amount - credit;
+    new: int due = amount + credit;
 - id: c3
   branch: main
   parents:
   - c2
-  message: 'Accept both bounds again'
+  message: 'Subtract the credit and put the status labels the right way round'
   role: prior_fix
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
-    new: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
+    path: src/main/java/example/InvoiceSummary.java
+    old: "int due = amount + credit;\n    String status = paid ? \"OPEN\" : \"PAID\";"
+    new: "int due = amount - credit;\n    String status = paid ? \"PAID\" : \"OPEN\";"
 - id: c4
   branch: main
   parents:
   - c3
-  message: 'Revert the upper-bound change'
+  message: 'Revert the balance change'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: boolean belowMax = value <= max;
-    new: boolean belowMax = value < max;
+    path: src/main/java/example/InvoiceSummary.java
+    old: int due = amount - credit;
+    new: int due = amount + credit;
   reverts: part_of_c3
 - id: c5
   branch: main
   parents:
   - c4
-  message: 'Include the maximum again'
+  message: 'Subtract the credit from the amount due again'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: boolean belowMax = value < max;
-    new: boolean belowMax = value <= max;
+    path: src/main/java/example/InvoiceSummary.java
+    old: int due = amount + credit;
+    new: int due = amount - credit;
 bugs:
 - id: B001
-  title: Upper-bound fault reintroduced after multiple-BIC fix
+  title: The credit is added to the amount due again after a partial revert of the two-fault fix
   bug_introducing_commits:
   - commit: c4
     role: direct
@@ -115,14 +118,14 @@ bugs:
   faults:
   - id: F001
     commit: c4
-    file: src/main/java/example/Range.java
-    statement: boolean belowMax = value < max;
-    change_type: partial_revert_upper_boundary
+    file: src/main/java/example/InvoiceSummary.java
+    statement: int due = amount + credit;
+    change_type: partial_revert_of_fix
   fixes:
   - id: X001
     commit: c5
-    file: src/main/java/example/Range.java
-    statement: boolean belowMax = value <= max;
+    file: src/main/java/example/InvoiceSummary.java
+    statement: int due = amount - credit;
     fix_type: line_modification
 expected_szz:
   commit_level:
@@ -132,7 +135,8 @@ expected_szz:
     related_but_not_correct:
     - c1
     - c3
-    notes: The final BFC targets only the fault reintroduced by c4; original BICs are related history.
+    notes: The final BFC targets only the fault reintroduced by c4; original BICs are related history, and c2 is the
+      origin of the reintroduced fault.
     related_origins:
     - c2
   evaluation_variants:
@@ -151,7 +155,10 @@ expected_szz:
       - c3
 scenario_design:
   purpose: Evaluate multiple original BICs when a later partial revert reintroduces only one of them.
-  key_property: The direct BIC for the final fix is the partial revert, not the older original BIC set.
+  key_property: >-
+    The direct BIC for the final fix is the partial revert, not the older original BIC set. Measured:
+    summarize(100, 30, false) is "OPEN 70" at c0, "PAID 70" at c1 (labels swapped), "PAID 130" at c2 (both
+    faults), "OPEN 70" at c3, "OPEN 130" at c4, "OPEN 70" at c5. Blaming the line c5 deletes at c5^ returns c4.
   difference_from_existing_revert_scenarios: This scenario isolates a double-revert or revert-derived complication beyond
     the existing partial revert and reintroduction scenarios.
   evaluation_points:
@@ -160,3 +167,6 @@ scenario_design:
 notes:
 - This scenario models revert-related development history for SZZ evaluation.
 - The direct BIC is the commit that reintroduces the bug in the history observed from the BFC.
+- Rewritten 2026-09-21 from the shared aboveMin/belowMax template to a wrong-operator fault next to a swapped-label
+  fault (GitHub issue 13); the history shape, oracle, variants and coverage dimensions are unchanged, including the
+  origin of the reintroduced fault (c2).

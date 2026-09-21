@@ -2,49 +2,58 @@
 
 ## Purpose
 
-Evaluate a partial revert where only part of a previous fix is undone.
+`Greeting.greet` has two lines that matter: a null guard for the name and the
+choice of salutation. `c1` breaks both (drops the guard, swaps "Dear" and
+"Hi"); `c2` fixes both; `c3` partially reverts `c2` and swaps the salutations
+again while leaving the guard in place; `c4` fixes the salutations. For the
+final fix the direct BIC is the partial revert `c3`, not the original `c1`
+(origin) and not the prior fix `c2` (`related_but_not_correct`).
 
-## Commit history
+Rewritten 2026-09-21 (issue #13) from the shared `aboveMin`/`belowMax` template;
+the history shape, oracle and coverage dimensions (`bic_depth` 1, three
+distractors on the fault file, 5 commits, 1 ref) are unchanged.
 
-```text
-c0: create initial correct implementation
-c1: introduce two boundary bugs
-c2: fix both boundary bugs
-c3: partially revert upper-bound fix
-c4: fix reintroduced upper-bound bug
-```
-
-## Commit table
-
-| Commit | Branch | Parents | Role | Description |
-|---|---|---|---|---|
-| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `c1` | `main` | c0 | `origin_bug_introducing` | c1: introduce two boundary bugs |
-| `c2` | `main` | c1 | `prior_fix` | c2: fix both boundary bugs |
-| `c3` | `main` | c2 | `bug_introducing` | c3: partially revert upper-bound fix |
-| `c4` | `main` | c3 | `bug_fixing` | c4: fix reintroduced upper-bound bug |
-
-## Expected SZZ result
+## Commit structure (generated)
 
 ```text
-Expected BIC(s): c3
-Related but not correct: c1, c2
+* d41f42b  2024-06-17  Use "Dear" for formal greetings again                           <- BFC (c4)
+* 0022d0b  2024-06-11  Revert the salutation change                                    <- BIC (c3; partial revert of c2)
+* f1796ef  2024-06-03  Guard the name and use the salutations the right way round      (c2, prior fix; related_but_not_correct)
+* e2d4d8e  2024-05-27  Streamline the greeting                                         <- origin (c1; both faults)
+* 2b79a48  2024-05-24  Add the greeting helper                                         (c0)
 ```
 
-## Key property
+## Expected BIC / BFC
 
-The direct BIC reintroduces only one of the previously fixed faults.
+- default: `required: [c3]`, `related_but_not_correct: [c2]`, `related_origins: [c1]`
+- `origin-aware`: `relaxed_with_related`, `c1` at 0.5
+- BFC: `c4`
 
-## Difference from existing revert scenarios
+## Measured behaviour and blame
 
-This scenario isolates a double-revert or revert-derived complication beyond the existing partial revert and reintroduction scenarios.
+| commit | `greet("Ada", true)` | `greet("Ada", false)` | `greet(null, true)` |
+|---|---|---|---|
+| `c0` | `Dear Ada` | `Hi Ada` | `Dear guest` |
+| `c1` | **`Hi Ada`** | **`Dear Ada`** | **throws `NullPointerException`** |
+| `c2` | `Dear Ada` | `Hi Ada` | `Dear guest` |
+| `c3` | **`Hi Ada`** | **`Dear Ada`** | `Hi guest` (guard still fixed) |
+| `c4` | `Dear Ada` | `Hi Ada` | `Dear guest` |
 
-## Evaluation points
+`c4` deletes one line (`String prefix = formal ? "Hi " : "Dear ";`, line 6);
+blame at `c4^` returns `c3` (verifier `GI703`).
 
-- Whether SZZ reports c3.
-- Whether SZZ does not require c1 as the direct BIC.
+## What a tool must do
 
-## Notes
+Report `c3`. The same faulty text was first written by `c1`, but that instance
+was fixed by `c2`; the instance the final fix repairs was written by the partial
+revert. A tool that searches history for the first appearance of the faulty text
+answers `c1`, which the default oracle rejects.
 
-- This scenario models revert-related development history for SZZ evaluation.
-- The direct BIC is the commit that reintroduces the bug in the history observed from the BFC.
+## Factors
+
+- `revert`
+- `partial-revert`
+- `reintroduced-bug`
+- `single-fault-reintroduced`
+- `re-bic`
+- `wrong-variable`

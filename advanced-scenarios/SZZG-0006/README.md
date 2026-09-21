@@ -2,93 +2,55 @@
 
 ## Purpose
 
-This scenario represents an extract-class refactoring after a bug-introducing commit.
+`OrderService` parses quantities and reports orders. `c1` makes `parseQuantity`
+swallow `NumberFormatException` and return 0, so a malformed quantity is
+silently accepted as none. `c2` extracts a `QuantityParser` class and moves the
+buggy method there; `c3` fixes it in the extracted class by throwing. The BIC
+and the BFC are in different files, and the file the fix touches did not exist
+at the BIC. Compare SZZG-0005, where a method is moved without splitting
+responsibilities.
 
-The bug is first introduced in `RangeService.java`. After that, a new `RangeValidator.java` class is extracted, and the buggy validation logic is moved into the extracted class. The bug is then fixed in the extracted class.
+Rewritten 2026-09-21 (issue #13) from the shared `Range.contains` template; the
+history shape, oracle and coverage dimensions (`bic_depth` 2, two distractors on
+the fault file, 4 commits, 1 ref) are unchanged.
 
-This distinguishes `SZZG-0006` from `SZZG-0005`, which represents a method move between classes. In this scenario, a new class is created and responsibility is split after the BIC.
-
-## Commit history
-
-```text
-c0: create RangeService with validation and reporting responsibilities
-c1: introduce boundary bug in RangeService.contains
-c2: extract RangeValidator class after the BIC and move the buggy validation logic there
-c3: fix the boundary bug in the extracted RangeValidator class
-```
-
-## Commit table
-
-| Commit | Branch | Parents | Role | Description |
-|---|---|---|---|---|
-| `c0` | `main` | none | initial | Creates `RangeService` with validation and reporting responsibilities. |
-| `c1` | `main` | `c0` | bug_introducing | Introduces a boundary bug in `RangeService.contains`. |
-| `c2` | `main` | `c1` | intermediate | Extracts `RangeValidator` and moves the buggy validation logic there. |
-| `c3` | `main` | `c2` | bug_fixing | Fixes the boundary bug in `RangeValidator`. |
-
-## Code states
-
-Correct validation in `c0`:
-
-```java
-return value >= min && value <= max;
-```
-
-Bug introduced in `c1`:
-
-```java
-return value > min && value < max;
-```
-
-After `c2`, the buggy logic is moved from:
+## Commit structure (generated)
 
 ```text
-src/main/java/example/RangeService.java
+* 082de7e  2024-02-08  Reject a malformed quantity in the extracted parser     <- BFC (c3; QuantityParser.java)
+* c82ff34  2024-02-05  Extract QuantityParser from OrderService                (c2, extract class)
+* 2ed3933  2024-01-25  Never fail on a malformed quantity                      <- BIC (c1; OrderService.java)
+* 5610a25  2024-01-18  Add OrderService with quantity parsing and reporting    (c0)
 ```
 
-to:
+## Expected BIC / BFC
 
-```text
-src/main/java/example/RangeValidator.java
-```
+- BIC: `c1` (`exact_set`, `required: [c1]`)
+- BFC: `c3`
 
-The follow-up fix in `c3` restores the correct condition in `RangeValidator.java`:
+## Measured behaviour and blame
 
-```java
-return value >= min && value <= max;
-```
+| commit | `describeParsed("SKU-1", " 4 ")` | `describeParsed("SKU-1", "x")` |
+|---|---|---|
+| `c0` | `SKU-1 x 4` | throws `NumberFormatException` |
+| `c1`, `c2` | `SKU-1 x 4` | **`SKU-1 x 0`** |
+| `c3` | `SKU-1 x 4` | throws `IllegalArgumentException("not a quantity: x")` |
 
-## Oracle
+`c3` deletes one line (`return 0;`, line 8 of `QuantityParser.java`); blame at
+`c3^` returns `c2`, the extraction. The declared fault statement is no longer in
+`OrderService.java` at `c3^` (verifier `GI701`, declared by the refactoring
+factors).
 
-Expected BIC:
+## What a tool must do
 
-```text
-c1
-```
+Report `c1`. The extracted method's body is identical to the one `c1` wrote in
+`OrderService.java`; a tool has to follow the code across the extraction rather
+than stop at the commit that created the new file.
 
-Bug-fixing commit:
+## Factors
 
-```text
-c3
-```
-
-The extraction commit `c2` is not the BIC. It moves the buggy logic to a new class after the bug has already been introduced.
-
-## Difference from SZZG-0005
-
-`SZZG-0005` is intended to represent a method move between classes.
-
-`SZZG-0006` is intended to represent extract class after BIC:
-
-```text
-RangeService.java
-  validation + reporting responsibilities
-        ↓
-RangeService.java
-  reporting / orchestration
-
-RangeValidator.java
-  extracted validation responsibility
-```
-
-The BIC and BFC occur in different files because the buggy code is moved by the extract-class refactoring.
+- `refactoring`
+- `extract-class`
+- `method-move`
+- `post-bic-refactoring`
+- `exception-swallowed`
