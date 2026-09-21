@@ -786,6 +786,7 @@ scenarios:
   - multi-bic
   - origin-bic
   - direct-bic
+  - wrong-constant
 - id: SZZG-0070
   title: Rebase combines multiple BICs into one commit
   category_code: G5
@@ -800,6 +801,7 @@ scenarios:
   - squash
   - multiple-origin-bic
   - direct-bic
+  - off-by-one
 - id: SZZG-0071
   title: Interactive rebase edits BIC commit
   category_code: G5
@@ -844,6 +846,7 @@ scenarios:
   - direct-bic
   - origin-bic
   - inherited-commit-metadata
+  - api-misuse
 - id: SZZG-0075
   title: Interactive rebase squashes BIC and BFC into neutral commit
   category_code: G5
@@ -873,6 +876,8 @@ scenarios:
   - rebased-bic
   - direct-bic
   - origin-bic
+  - integer-overflow
+  - wrong-operator
 - id: SZZG-0077
   title: Rebased BIC fixed by multiple BFCs
   category_code: G5
@@ -916,6 +921,7 @@ scenarios:
   - blame-stops-at-formatting
   - direct-bic
   - origin-bic
+  - null-check-omission
 - id: SZZG-0082
   title: Rebase with generated file update
   category_code: G5
@@ -929,6 +935,7 @@ scenarios:
   - generated-files
   - generated-code-noise
   - direct-bic
+  - boolean-negation
 - id: SZZG-0083
   title: Huge noisy rebased commit
   category_code: G5
@@ -945,6 +952,7 @@ scenarios:
   - robustness
   - direct-bic
   - origin-bic
+  - wrong-variable
 - id: SZZG-0084
   title: Partial revert reintroduces bug
   category_code: G6

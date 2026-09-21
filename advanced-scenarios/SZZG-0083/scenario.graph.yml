@@ -3,8 +3,11 @@ meta:
   id: SZZG-0083
   title: Huge noisy rebased commit
   slug: huge-noisy-rebased-commit
-  description: The rebased bug-introducing commit changes one line of application code and, in the same commit, regenerates a machine-written
-    status code table of about 7000 lines. The one relevant line has to be found inside a very large patch.
+  description: >
+    The rebased bug-introducing commit changes one line of application code and, in the same commit,
+    regenerates a machine-written status code table of about 7000 lines. The one relevant line — a
+    ternary whose branches were swapped, so the fallback is returned when a phrase exists and null when
+    it does not — has to be found inside a very large patch.
   category: "Rebase-specific history rewriting"
   category_code: "G5"
   factors:
@@ -16,6 +19,7 @@ meta:
   - robustness
   - direct-bic
   - origin-bic
+  - wrong-variable
   difficulty: advanced
   status: active
   tier: control
@@ -27,35 +31,35 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: Add the Range class with an inclusive contains check
+  history_summary: 'c0: Add the status text helper (phrase if present, fallback otherwise)
 
-    f1: Regenerate the status code table and use strict interval bounds (feature; ~7000 generated lines plus one source line)
+    f1: Regenerate the status code table and tidy the reason lookup (feature; ~7000 generated lines plus one swapped source line)
 
     r1: rebased f1 onto main, with the whole generated table
 
-    c2: Restore the inclusive comparison in Range.contains'
+    c2: Return the phrase when it exists and the fallback when it does not'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: Add the Range class with an inclusive contains check
+  message: Add the status text helper
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ >= min && value <= max;\n  }\n}\n"
+    path: src/main/java/example/StatusText.java
+    content: "package example;\n\npublic class StatusText {\n  /** The reason phrase of a status code, or {@code fallback} when none is known. */\n\
+      \  public String describe(String phrase, String fallback) {\n    return phrase != null ? phrase : fallback;\n  }\n}\n"
 - id: f1
   branch: feature
   parents:
   - c0
-  message: Regenerate the status code table and use strict interval bounds
+  message: Regenerate the status code table and tidy the reason lookup
   role: origin_bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
+    path: src/main/java/example/StatusText.java
+    old: 'return phrase != null ? phrase : fallback;'
+    new: 'return phrase != null ? fallback : phrase;'
   - type: write_generated_text_file
     path: src/main/java/example/StatusCodes.java
     lines: 5000
@@ -78,9 +82,9 @@ commits:
   large_noisy_rebased_commit: true
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
+    path: src/main/java/example/StatusText.java
+    old: 'return phrase != null ? phrase : fallback;'
+    new: 'return phrase != null ? fallback : phrase;'
   - type: write_generated_text_file
     path: src/main/java/example/StatusCodes.java
     lines: 5000
@@ -95,17 +99,17 @@ commits:
   branch: main
   parents:
   - r1
-  message: Restore the inclusive comparison in Range.contains
+  message: Return the phrase when it exists and the fallback when it does not
   role: bug_fixing
   date: '2024-01-09T12:40:00Z'
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/StatusText.java
+    old: 'return phrase != null ? fallback : phrase;'
+    new: 'return phrase != null ? phrase : fallback;'
 bugs:
 - id: B001
-  title: Bug hidden in a very large rebased commit
+  title: The reason lookup returns the fallback for known codes and null for unknown ones, hidden in a very large rebased commit
   bug_introducing_commits:
   - commit: r1
     role: direct
@@ -117,20 +121,20 @@ bugs:
   faults:
   - id: F001
     commit: r1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/StatusText.java
+    statement: 'return phrase != null ? fallback : phrase;'
     change_type: line_modification
   fixes:
   - id: X001
     commit: c2
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
+    file: src/main/java/example/StatusText.java
+    statement: 'return phrase != null ? phrase : fallback;'
     fix_type: line_modification
   origin_faults:
   - id: OF001
     commit: f1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/StatusText.java
+    statement: 'return phrase != null ? fallback : phrase;'
     change_type: origin_line_modification
 expected_szz:
   commit_level:
@@ -154,9 +158,11 @@ expected_szz:
         credit: 0.5
 scenario_design:
   purpose: Evaluate how robust a tool is when the bug-introducing commit is very large.
-  key_property: r1 adds a 5006-line generated Java table and a 2000-line generated properties file next to the single faulty source
-    line. Deleted-line blame is unaffected by the size; whole-patch consumers and repository-scanning tools are the ones that pay
-    for it.
+  key_property: >
+    r1 adds a 5006-line generated Java table and a 2000-line generated properties file next to the single faulty
+    source line. Measured: describe("OK", "Unknown") is "OK" at c0, "Unknown" at f1 and r1, "OK" at c2;
+    describe(null, "Unknown") is "Unknown" at c0, null at r1, "Unknown" at c2. Deleted-line blame is unaffected by
+    the size and returns r1; whole-patch consumers and repository-scanning tools are the ones that pay for it.
   difference_from_SZZG_0064: SZZG-0064 replays two small commits; here a single replayed commit carries thousands of generated
     lines around the one relevant change.
   evaluation_points:
@@ -165,4 +171,6 @@ scenario_design:
 notes:
 - The generated files are written with write_generated_text_file; header and footer make StatusCodes.java a compilable Java class.
 - 'The size burdens tools that read whole patches (diff parsers, LLM prompts, commit-level classifiers) or that scan the repository
-  at each commit, not line-level blame: the fix deletes exactly one line, and that line is in Range.java.'
+  at each commit, not line-level blame: the fix deletes exactly one line, and that line is in StatusText.java.'
+- Rewritten 2026-09-21 from the shared Range.contains template to a wrong-variable fault (GitHub issue 13); the history
+  shape, oracle and coverage dimensions are unchanged.

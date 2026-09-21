@@ -2,49 +2,55 @@
 
 ## Purpose
 
-Evaluate generated-file noise during rebase.
+A generated file is regenerated during the rebase, after the replayed BIC and
+before the fix. The fault drops the negation of the kill switch from the feature
+gate — `flag && !killSwitch` becomes `flag && killSwitch` — so the feature is on
+exactly when it should be off. `r2` touches only `generated/feature.properties`
+and is a distractor by adjacency, not by content.
 
-## Commit history
+Rewritten 2026-09-21 (issue #13) from the shared `Range.contains` template; the
+history shape, oracle and coverage dimensions (`bic_depth` 2, two distractors on
+the fault file, 5 commits, 2 refs) are unchanged.
 
-```text
-c0: create initial correct implementation
-f1: introduce range bug
-r1: rebase bug onto main
-r2: regenerate derived range metadata during rebase
-c3: fix source range bug
-```
-
-## Commit table
-
-| Commit | Branch | Parents | Role | Description |
-|---|---|---|---|---|
-| `c0` | `main` | none | `initial` | c0: create initial correct implementation |
-| `f1` | `feature` | c0 | `origin_bug_introducing` | f1: introduce range bug |
-| `r1` | `main` | c0 | `bug_introducing` | r1: rebase bug onto main |
-| `r2` | `main` | r1 | `intermediate` | r2: regenerate derived range metadata during rebase |
-| `c3` | `main` | r2 | `bug_fixing` | c3: fix source range bug |
-
-## Expected SZZ result
+## Commit structure (generated)
 
 ```text
-Expected BIC(s): r1
-Related but not correct: f1, r2
+* 3d3afcb  2023-09-15  Negate the kill switch in the feature gate again   <- BFC (c3)
+* b8c7f43  2023-09-12  Regenerate the derived feature metadata            (r2; generated/feature.properties only)
+* cb00258  2023-09-11  Honour the kill switch in the feature gate         <- BIC (r1, rebase_of f1)
+| * ac680fb  2023-09-06  Honour the kill switch in the feature gate       <- origin (f1, feature)
+|/
+* b6ec159  2023-08-28  Add the feature gate                               (c0)
 ```
 
-## Key property
+## Expected BIC / BFC
 
-r2 updates generated metadata only.
+- default: `required: [r1]`, `related_but_not_correct: [r2]`, `related_origins: [f1]`
+- `origin-aware`: `relaxed_with_related`, `f1` at 0.5
+- BFC: `c3`
 
-## Difference from SZZG-0064
+## Measured behaviour and blame
 
-SZZG-0064 covers a rebased BIC followed by a non-BIC rebased intermediate commit. This scenario adds a distinct rebase-related complication.
+| commit | `isEnabled(true, false)` | `isEnabled(true, true)` | `isEnabled(false, false)` |
+|---|---|---|---|
+| `c0` | true | false | false |
+| `f1`, `r1`, `r2` | **false** | **true** | false |
+| `c3` | true | false | false |
 
-## Evaluation points
+`c3` deletes one line (`return flag && killSwitch;`, line 6); blame at `c3^`
+returns `r1` (verifier `GI703`).
 
-- Report r1.
-- Ignore r2.
+## What a tool must do
 
-## Notes
+Report `r1`; ignore `r2`, which changed no source file. A tool that treats
+"the commit before the fix" as a candidate, or that scores generated-file churn,
+picks up `r2`.
 
-- This scenario models a rebase-related development history for SZZ evaluation.
-- Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.
+## Factors
+
+- `branch`
+- `rebase`
+- `generated-files`
+- `generated-code-noise`
+- `direct-bic`
+- `boolean-negation`

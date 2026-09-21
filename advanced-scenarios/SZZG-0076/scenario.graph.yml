@@ -3,7 +3,11 @@ meta:
   id: SZZG-0076
   title: Multiple BICs replayed by rebase
   slug: multiple-bics-replayed-by-rebase
-  description: Multiple feature BICs are replayed onto main by rebase.
+  description: >
+    Multiple feature BICs are replayed onto main by rebase. Two feature commits damage the same line
+    of the elapsed-minutes computation in two different ways — the first narrows the elapsed
+    milliseconds to an int, which overflows past 24 days, the second turns the division by 60000
+    into a multiplication — and the rebase replays them one by one.
   category: "Rebase-specific history rewriting"
   category_code: "G5"
   factors:
@@ -13,6 +17,8 @@ meta:
   - rebased-bic
   - direct-bic
   - origin-bic
+  - integer-overflow
+  - wrong-operator
   difficulty: advanced
   status: active
   tier: discriminating
@@ -24,88 +30,95 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial correct implementation
+  history_summary: 'c0: add the elapsed-minutes helper (long arithmetic, divide by 60000)
 
-    f1: introduce lower-bound bug
+    f1: narrow the elapsed milliseconds to an int (overflows past 24 days)
 
-    f2: introduce upper-bound bug
+    f2: multiply instead of dividing by 60000
 
-    r1: rebase lower-bound BIC
+    r1: rebase the int narrowing
 
-    r2: rebase upper-bound BIC
+    r2: rebase the multiplication
 
-    c3: fix both rebased BICs'
+    c3: restore the long division'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'Add the range check'
+  message: 'Add the elapsed-minutes helper'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
+    path: src/main/java/example/Elapsed.java
+    content: |
+      package example;
+
+      public class Elapsed {
+        /** Whole minutes between two instants given in epoch milliseconds. */
+        public long minutesBetween(long startMillis, long endMillis) {
+          return (endMillis - startMillis) / 60000L;
+        }
+      }
 - id: f1
   branch: feature
   parents:
   - c0
-  message: 'Tighten the lower bound'
+  message: 'Narrow the elapsed milliseconds to an int'
   role: origin_bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value <= max;
+    path: src/main/java/example/Elapsed.java
+    old: return (endMillis - startMillis) / 60000L;
+    new: return (int) (endMillis - startMillis) / 60000L;
 - id: f2
   branch: feature
   parents:
   - f1
-  message: 'Tighten the upper bound'
+  message: 'Simplify the minutes conversion'
   role: origin_bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value <= max;
-    new: return value > min && value < max;
+    path: src/main/java/example/Elapsed.java
+    old: return (int) (endMillis - startMillis) / 60000L;
+    new: return (int) (endMillis - startMillis) * 60000L;
 - id: r1
   branch: main
   parents:
   - c0
-  message: 'Tighten the lower bound'
+  message: 'Narrow the elapsed milliseconds to an int'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value <= max;
+    path: src/main/java/example/Elapsed.java
+    old: return (endMillis - startMillis) / 60000L;
+    new: return (int) (endMillis - startMillis) / 60000L;
   rebase_of: f1
 - id: r2
   branch: main
   parents:
   - r1
-  message: 'Tighten the upper bound'
+  message: 'Simplify the minutes conversion'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value <= max;
-    new: return value > min && value < max;
+    path: src/main/java/example/Elapsed.java
+    old: return (int) (endMillis - startMillis) / 60000L;
+    new: return (int) (endMillis - startMillis) * 60000L;
   rebase_of: f2
 - id: c3
   branch: main
   parents:
   - r2
-  message: 'Accept both range bounds again'
+  message: 'Divide the long elapsed time by 60000 again'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/Elapsed.java
+    old: return (int) (endMillis - startMillis) * 60000L;
+    new: return (endMillis - startMillis) / 60000L;
 bugs:
 - id: B001
-  title: Bug requiring two rebased BICs
+  title: Elapsed minutes overflow for long spans and are multiplied instead of divided
   bug_introducing_commits:
   - commit: r1
     role: direct
@@ -121,25 +134,25 @@ bugs:
   faults:
   - id: F001
     commit: r2
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/Elapsed.java
+    statement: return (int) (endMillis - startMillis) * 60000L;
     change_type: line_modification
   fixes:
   - id: X001
     commit: c3
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
+    file: src/main/java/example/Elapsed.java
+    statement: return (endMillis - startMillis) / 60000L;
     fix_type: line_modification
   origin_faults:
   - id: OF001
     commit: f1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value <= max;
+    file: src/main/java/example/Elapsed.java
+    statement: return (int) (endMillis - startMillis) / 60000L;
     change_type: origin_line_modification
   - id: OF002
     commit: f2
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/Elapsed.java
+    statement: return (int) (endMillis - startMillis) * 60000L;
     change_type: origin_line_modification
 expected_szz:
   commit_level:
@@ -152,7 +165,7 @@ expected_szz:
     - f2
   evaluation_variants:
   - name: origin-aware
-    description: The direct BIC is required; the origin is accepted as related context.
+    description: The direct BICs are required; the origins are accepted as related context.
     commit_level:
       evaluation_policy: relaxed_with_related
       required:
@@ -167,7 +180,12 @@ expected_szz:
         credit: 0.5
 scenario_design:
   purpose: Evaluate multiple-BIC handling when BICs are introduced by rebase replay.
-  key_property: Origin BIC set maps to direct BIC set.
+  key_property: >
+    Origin BIC set maps to direct BIC set, both edits landing on one line. Measured: minutesBetween(0, 120000) is
+    2 at c0 and r1, 7200000000 at r2, 2 at c3; minutesBetween(0, 3000000000) — about 35 days — is 50000 at c0,
+    -21582 at r1 (the int narrowing wraps), -77698037760000 at r2, 50000 at c3. Blaming the line c3 deletes at
+    c3^ returns r2 only, so plain blame recovers half of the required set and the scenario stays in the
+    discriminating tier.
   difference_from_SZZG_0064: SZZG-0064 covers a rebased BIC followed by a non-BIC rebased intermediate commit. This scenario
     adds a distinct rebase-related complication.
   evaluation_points:
@@ -175,3 +193,5 @@ scenario_design:
 notes:
 - This scenario models a rebase-related development history for SZZ evaluation.
 - Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.
+- Rewritten 2026-09-21 from the shared Range.contains template to an integer-overflow plus wrong-operator fault (GitHub
+  issue 13); the history shape, oracle, tier and coverage dimensions are unchanged.

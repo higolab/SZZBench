@@ -3,7 +3,11 @@ meta:
   id: SZZG-0070
   title: Rebase combines multiple BICs into one commit
   slug: rebase-combines-multiple-bics-into-one-commit
-  description: Two origin BICs are combined into one direct BIC during interactive rebase.
+  description: >
+    Two origin BICs are combined into one direct BIC during interactive rebase. On the feature branch
+    the last index of a page is first shifted by a whole page (pages treated as zero-based) and then by
+    one more element (the end treated as exclusive); the squash replays both edits as a single commit
+    on main.
   category: "Rebase-specific history rewriting"
   category_code: "G5"
   factors:
@@ -13,6 +17,7 @@ meta:
   - squash
   - multiple-origin-bic
   - direct-bic
+  - off-by-one
   difficulty: advanced
   status: active
   tier: control
@@ -24,59 +29,66 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial correct implementation
+  history_summary: 'c0: add the pagination helper (1-based pages, inclusive last index)
 
-    f1: introduce lower-bound bug
+    f1: treat pages as zero-based (one page too far)
 
-    f2: introduce upper-bound bug
+    f2: treat the last index as exclusive (one element too far)
 
-    r1: rebase combined boundary bugs as one commit
+    r1: rebase the two edits squashed into one commit
 
-    c2: fix combined rebased bug'
+    c2: restore the 1-based, inclusive last index'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'Add the range check'
+  message: 'Add the pagination helper'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
+    path: src/main/java/example/Pagination.java
+    content: |
+      package example;
+
+      public class Pagination {
+        /** Index of the last element of 1-based {@code page} when pages hold {@code size} elements; inclusive. */
+        public int lastIndex(int page, int size) {
+          return (page - 1) * size + (size - 1);
+        }
+      }
 - id: f1
   branch: feature
   parents:
   - c0
-  message: 'Tighten the lower bound'
+  message: 'Treat pages as zero-based in lastIndex'
   role: origin_bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value <= max;
+    path: src/main/java/example/Pagination.java
+    old: return (page - 1) * size + (size - 1);
+    new: return page * size + (size - 1);
 - id: f2
   branch: feature
   parents:
   - f1
-  message: 'Tighten the upper bound'
+  message: 'Return the exclusive end index from lastIndex'
   role: origin_bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value <= max;
-    new: return value > min && value < max;
+    path: src/main/java/example/Pagination.java
+    old: return page * size + (size - 1);
+    new: return page * size + size;
 - id: r1
   branch: main
   parents:
   - c0
-  message: 'Tighten both range bounds'
+  message: 'Rework the last-index arithmetic'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
+    path: src/main/java/example/Pagination.java
+    old: return (page - 1) * size + (size - 1);
+    new: return page * size + size;
   rebase_of:
   - f1
   - f2
@@ -85,16 +97,16 @@ commits:
   branch: main
   parents:
   - r1
-  message: 'Accept both range bounds again'
+  message: 'Restore the 1-based, inclusive last index'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/Pagination.java
+    old: return page * size + size;
+    new: return (page - 1) * size + (size - 1);
 bugs:
 - id: B001
-  title: Combined rebased boundary bug
+  title: The last index of a page is one page and one element too far after the squashed rebase
   bug_introducing_commits:
   - commit: r1
     role: direct
@@ -108,38 +120,38 @@ bugs:
   faults:
   - id: F001
     commit: r1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/Pagination.java
+    statement: return page * size + size;
     change_type: line_modification
   fixes:
   - id: X001
     commit: c2
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
+    file: src/main/java/example/Pagination.java
+    statement: return (page - 1) * size + (size - 1);
     fix_type: line_modification
   origin_faults:
   - id: OF001
     commit: f1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value <= max;
+    file: src/main/java/example/Pagination.java
+    statement: return page * size + (size - 1);
     change_type: origin_line_modification
   - id: OF002
     commit: f2
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/Pagination.java
+    statement: return page * size + size;
     change_type: origin_line_modification
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
     required:
     - r1
-    notes: The direct answer is combined commit r1.
+    notes: The direct answer is the combined commit r1.
     related_origins:
     - f1
     - f2
   evaluation_variants:
   - name: origin-aware
-    description: The direct BIC is required; the origin is accepted as related context.
+    description: The direct BIC is required; the origins are accepted as related context.
     commit_level:
       evaluation_policy: relaxed_with_related
       required:
@@ -153,7 +165,9 @@ expected_szz:
         credit: 0.5
 scenario_design:
   purpose: Evaluate multiple-origin-to-one-direct BIC mapping after interactive rebase.
-  key_property: f1 and f2 become one direct commit r1.
+  key_property: >
+    f1 and f2 become one direct commit r1. Measured: lastIndex(1, 10) is 9 at c0, 19 at f1, 20 at f2 and r1, 9
+    at c2. Blaming the line c2 deletes at c2^ returns r1.
   difference_from_SZZG_0064: SZZG-0064 covers a rebased BIC followed by a non-BIC rebased intermediate commit. This scenario
     adds a distinct rebase-related complication.
   evaluation_points:
@@ -161,3 +175,5 @@ scenario_design:
 notes:
 - This scenario models a rebase-related development history for SZZ evaluation.
 - Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.
+- Rewritten 2026-09-21 from the shared Range.contains template to an off-by-one fault (GitHub issue 13); the history
+  shape, oracle and coverage dimensions are unchanged.

@@ -3,9 +3,12 @@ meta:
   id: SZZG-0073
   title: Interactive rebase reorders commits before BIC
   slug: interactive-rebase-reorders-commits-before-bic
-  description: 'An interactive rebase replays the two feature commits in the opposite order: the helper commit that was written
-    after the fault is picked first, so on main it sits before the bug-introducing commit. Both replayed commits keep their original
-    subject and author date, which makes the author dates on main decrease.'
+  description: >
+    An interactive rebase replays the two feature commits in the opposite order: the helper commit that
+    was written after the fault is picked first, so on main it sits before the bug-introducing commit.
+    Both replayed commits keep their original subject and author date, which makes the author dates on
+    main decrease. The fault reads the month through Month.ordinal(), which is zero-based where
+    getMonthValue() is one-based.
   category: "Rebase-specific history rewriting"
   category_code: "G5"
   factors:
@@ -16,6 +19,7 @@ meta:
   - direct-bic
   - origin-bic
   - inherited-commit-metadata
+  - api-misuse
   difficulty: advanced
   status: active
   tier: control
@@ -27,53 +31,53 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: Add the Range class with an inclusive contains check
+  history_summary: 'c0: Add the invoice date helpers (dueMonth via getMonthValue)
 
-    f1: Use strict comparisons for the interval bounds (feature, first)
+    f1: Read the due month through the Month enum (feature, first; ordinal is zero-based)
 
-    f2: Add a clamp helper for values outside the interval (feature, second)
+    f2: Add a quarter helper for the invoice date (feature, second)
 
     r1: rebased f2: picked first after the reorder
 
     r2: rebased f1: picked second after the reorder
 
-    c3: Restore the inclusive comparison in Range.contains'
+    c3: Read the due month as a 1-based value again'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: Add the Range class with an inclusive contains check
+  message: Add the invoice date helpers
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ >= min && value <= max;\n  }\n}\n"
+    path: src/main/java/example/InvoiceDates.java
+    content: "package example;\n\nimport java.time.LocalDate;\n\npublic class InvoiceDates {\n  /** Month of the due date, 1 to 12. */\n\
+      \  public int dueMonth(LocalDate due) {\n    return due.getMonthValue();\n  }\n}\n"
 - id: f1
   branch: feature
   parents:
   - c0
-  message: Use strict comparisons for the interval bounds
+  message: Read the due month through the Month enum
   role: origin_bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
+    path: src/main/java/example/InvoiceDates.java
+    old: return due.getMonthValue();
+    new: return due.getMonth().ordinal();
 - id: f2
   branch: feature
   parents:
   - f1
-  message: Add a clamp helper for values outside the interval
+  message: Add a quarter helper for the invoice date
   role: intermediate
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n}\n"
-    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ > min && value < max;\n  }\n\n  public int clamp(int value, int min, int max) {\n    if (value < min) {\n      return min;\n\
-      \    }\n    if (value > max) {\n      return max;\n    }\n    return value;\n  }\n}\n"
+    path: src/main/java/example/InvoiceDates.java
+    old: "package example;\n\nimport java.time.LocalDate;\n\npublic class InvoiceDates {\n  /** Month of the due date, 1 to 12. */\n\
+      \  public int dueMonth(LocalDate due) {\n    return due.getMonth().ordinal();\n  }\n}\n"
+    new: "package example;\n\nimport java.time.LocalDate;\n\npublic class InvoiceDates {\n  /** Month of the due date, 1 to 12. */\n\
+      \  public int dueMonth(LocalDate due) {\n    return due.getMonth().ordinal();\n  }\n\n  /** Quarter of the due date, 1 to 4. */\n\
+      \  public int quarter(LocalDate due) {\n    return (due.getMonthValue() - 1) / 3 + 1;\n  }\n}\n"
 - id: r1
   branch: main
   parents:
@@ -86,12 +90,12 @@ commits:
   committer_date: '2024-01-06T11:00:00Z'
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ >= min && value <= max;\n  }\n}\n"
-    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return value\
-      \ >= min && value <= max;\n  }\n\n  public int clamp(int value, int min, int max) {\n    if (value < min) {\n      return\
-      \ min;\n    }\n    if (value > max) {\n      return max;\n    }\n    return value;\n  }\n}\n"
+    path: src/main/java/example/InvoiceDates.java
+    old: "package example;\n\nimport java.time.LocalDate;\n\npublic class InvoiceDates {\n  /** Month of the due date, 1 to 12. */\n\
+      \  public int dueMonth(LocalDate due) {\n    return due.getMonthValue();\n  }\n}\n"
+    new: "package example;\n\nimport java.time.LocalDate;\n\npublic class InvoiceDates {\n  /** Month of the due date, 1 to 12. */\n\
+      \  public int dueMonth(LocalDate due) {\n    return due.getMonthValue();\n  }\n\n  /** Quarter of the due date, 1 to 4. */\n\
+      \  public int quarter(LocalDate due) {\n    return (due.getMonthValue() - 1) / 3 + 1;\n  }\n}\n"
 - id: r2
   branch: main
   parents:
@@ -104,24 +108,24 @@ commits:
   committer_date: '2024-01-06T11:00:07Z'
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
+    path: src/main/java/example/InvoiceDates.java
+    old: return due.getMonthValue();
+    new: return due.getMonth().ordinal();
 - id: c3
   branch: main
   parents:
   - r2
-  message: Restore the inclusive comparison in Range.contains
+  message: Read the due month as a 1-based value again
   role: bug_fixing
   date: '2024-01-10T08:30:00Z'
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/InvoiceDates.java
+    old: return due.getMonth().ordinal();
+    new: return due.getMonthValue();
 bugs:
 - id: B001
-  title: Bug installed by the last commit of a reordered rebase
+  title: The due month is one less than the calendar month, installed by the last commit of a reordered rebase
   bug_introducing_commits:
   - commit: r2
     role: direct
@@ -133,20 +137,20 @@ bugs:
   faults:
   - id: F001
     commit: r2
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/InvoiceDates.java
+    statement: return due.getMonth().ordinal();
     change_type: line_modification
   fixes:
   - id: X001
     commit: c3
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
+    file: src/main/java/example/InvoiceDates.java
+    statement: return due.getMonthValue();
     fix_type: line_modification
   origin_faults:
   - id: OF001
     commit: f1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/InvoiceDates.java
+    statement: return due.getMonth().ordinal();
     change_type: origin_line_modification
 expected_szz:
   commit_level:
@@ -156,7 +160,7 @@ expected_szz:
     related_but_not_correct:
     - r1
     notes: r2 installs the fault on main although it replays the first commit of the feature branch. r1 replays
-      the later feature commit f2 and only adds the clamp helper. f1 is the pre-rebase source of r2 and stays reachable
+      the later feature commit f2 and only adds the quarter helper. f1 is the pre-rebase source of r2 and stays reachable
       through the feature branch.
     related_origins:
     - f1
@@ -175,9 +179,12 @@ expected_szz:
       - r1
 scenario_design:
   purpose: Evaluate whether SZZ survives a rebase that replays commits in a different order than they were written.
-  key_property: 'The replay order differs from the source order: r1 has rebase_of f2 and r2 has rebase_of f1, while on the feature
-    branch f1 precedes f2. Because both replayed commits inherit their source''s author date, the author dates decrease along main
-    (r1: 2024-01-03, r2: 2024-01-02) while they increase along feature.'
+  key_property: >
+    The replay order differs from the source order: r1 has rebase_of f2 and r2 has rebase_of f1, while on the
+    feature branch f1 precedes f2. Because both replayed commits inherit their source's author date, the author
+    dates decrease along main (r1: 2024-01-03, r2: 2024-01-02) while they increase along feature. Measured:
+    dueMonth(2024-03-15) is 3 at c0 and r1, 2 at f1, f2 and r2, 3 at c3; Month.ordinal() is 0 for January where
+    getMonthValue() is 1. Blaming the line c3 deletes at c3^ returns r2.
   difference_from_SZZG_0064: SZZG-0064 replays the same series in the same order; here the order is inverted, so position in the
     replayed series is no guide to position in the original series.
   evaluation_points:
@@ -189,3 +196,5 @@ notes:
   tip, but the intermediate trees and the per-commit patches differ.'
 - inherit_message and inherit_author_date keep the subject and the author date of each source commit, so the reorder is visible
   in git log without reading the scenario metadata.
+- Rewritten 2026-09-21 from the shared Range.contains template to an API-misuse fault (GitHub issue 13); the history shape,
+  oracle and coverage dimensions are unchanged.

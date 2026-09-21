@@ -3,7 +3,11 @@ meta:
   id: SZZG-0069
   title: Rebase splits original BIC into multiple commits
   slug: rebase-splits-original-bic-into-multiple-commits
-  description: One origin BIC is split into two direct BICs during rebase.
+  description: >
+    One origin BIC is split into two direct BICs during rebase. The feature commit mistypes both
+    constants of the retry backoff on one line (base 100 ms written as 10, cap 30000 ms written as
+    3000); the rebase replays the base change and the cap change as two commits, so the faulty line
+    on main has two authors and the oracle has two required commits.
   category: "Rebase-specific history rewriting"
   category_code: "G5"
   factors:
@@ -13,6 +17,7 @@ meta:
   - multi-bic
   - origin-bic
   - direct-bic
+  - wrong-constant
   difficulty: advanced
   status: active
   tier: discriminating
@@ -24,77 +29,84 @@ repository:
   source_root: src/main/java
 graph:
   model: commit_dag
-  history_summary: 'c0: create initial correct implementation
+  history_summary: 'c0: add the retry backoff (100 ms base, 30000 ms cap)
 
-    f1: introduce both boundary bugs
+    f1: mistype both backoff constants on the feature branch (10 and 3000)
 
-    r1: rebase lower-bound part
+    r1: rebase the base change (10)
 
-    r2: rebase upper-bound part
+    r2: rebase the cap change (3000)
 
-    c3: fix both boundary bugs'
+    c3: restore both constants'
 commits:
 - id: c0
   branch: main
   parents: []
-  message: 'Add the range check'
+  message: 'Add the retry backoff'
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Range.java
-    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    return\
-      \ value >= min && value <= max;\n  }\n}\n"
+    path: src/main/java/example/Backoff.java
+    content: |
+      package example;
+
+      public class Backoff {
+        /** Delay before retry number {@code attempt}: 100 ms doubling per attempt, capped at 30 s. */
+        public int delayMillis(int attempt) {
+          return Math.min(100 * (1 << attempt), 30000);
+        }
+      }
 - id: f1
   branch: feature
   parents:
   - c0
-  message: 'Make the range check exclusive'
+  message: 'Tune the backoff to a 100 ms base and a 30 s cap'
   role: origin_bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value < max;
+    path: src/main/java/example/Backoff.java
+    old: return Math.min(100 * (1 << attempt), 30000);
+    new: return Math.min(10 * (1 << attempt), 3000);
 - id: r1
   branch: main
   parents:
   - c0
-  message: 'Tighten the lower bound'
+  message: 'Tune the backoff base'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value >= min && value <= max;
-    new: return value > min && value <= max;
+    path: src/main/java/example/Backoff.java
+    old: return Math.min(100 * (1 << attempt), 30000);
+    new: return Math.min(10 * (1 << attempt), 30000);
   rebase_of: f1
-  rebase_split_part: lower_bound
+  rebase_split_part: base
 - id: r2
   branch: main
   parents:
   - r1
-  message: 'Tighten the upper bound'
+  message: 'Tune the backoff cap'
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value <= max;
-    new: return value > min && value < max;
+    path: src/main/java/example/Backoff.java
+    old: return Math.min(10 * (1 << attempt), 30000);
+    new: return Math.min(10 * (1 << attempt), 3000);
   rebase_of: f1
-  rebase_split_part: upper_bound
+  rebase_split_part: cap
 - id: c3
   branch: main
   parents:
   - r2
-  message: 'Accept both range bounds again'
+  message: 'Restore the backoff constants: 100 ms base, 30000 ms cap'
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Range.java
-    old: return value > min && value < max;
-    new: return value >= min && value <= max;
+    path: src/main/java/example/Backoff.java
+    old: return Math.min(10 * (1 << attempt), 3000);
+    new: return Math.min(100 * (1 << attempt), 30000);
 bugs:
 - id: B001
-  title: Bug split across two rebased commits
+  title: Backoff delays are a tenth of the intended values, split across two rebased commits
   bug_introducing_commits:
   - commit: r1
     role: direct
@@ -108,20 +120,20 @@ bugs:
   faults:
   - id: F001
     commit: r2
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/Backoff.java
+    statement: return Math.min(10 * (1 << attempt), 3000);
     change_type: line_modification
   fixes:
   - id: X001
     commit: c3
-    file: src/main/java/example/Range.java
-    statement: return value >= min && value <= max;
+    file: src/main/java/example/Backoff.java
+    statement: return Math.min(100 * (1 << attempt), 30000);
     fix_type: line_modification
   origin_faults:
   - id: OF001
     commit: f1
-    file: src/main/java/example/Range.java
-    statement: return value > min && value < max;
+    file: src/main/java/example/Backoff.java
+    statement: return Math.min(10 * (1 << attempt), 3000);
     change_type: origin_line_modification
 expected_szz:
   commit_level:
@@ -129,7 +141,8 @@ expected_szz:
     required:
     - r1
     - r2
-    notes: The direct BIC set is r1 and r2.
+    notes: The direct BIC set is r1 and r2. The fix deletes one line, which blame attributes to r2 alone; r1's
+      share of the fault (the base) is only visible one step further back in the line's history.
     related_origins:
     - f1
   evaluation_variants:
@@ -146,7 +159,11 @@ expected_szz:
         credit: 0.5
 scenario_design:
   purpose: Evaluate one-origin-to-multiple-direct BIC mapping after rebase.
-  key_property: f1 is split into r1 and r2.
+  key_property: >
+    f1 is split into r1 and r2, both editing the same line. Measured: delayMillis(0) is 100 at c0, 10 from r1 on
+    and 100 at c3; delayMillis(10) is 30000 at c0, 10240 at r1 (the smaller base, still capped at 30000), 3000
+    at r2 and 30000 at c3. Blaming the line c3 deletes at c3^ returns r2 only, so plain blame recovers half of the required set
+    and the scenario stays in the discriminating tier.
   difference_from_SZZG_0064: SZZG-0064 covers a rebased BIC followed by a non-BIC rebased intermediate commit. This scenario
     adds a distinct rebase-related complication.
   evaluation_points:
@@ -154,3 +171,5 @@ scenario_design:
 notes:
 - This scenario models a rebase-related development history for SZZ evaluation.
 - Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.
+- Rewritten 2026-09-21 from the shared Range.contains template to a wrong-constant fault (GitHub issue 13); the history
+  shape, oracle, tier and coverage dimensions are unchanged.
