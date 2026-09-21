@@ -124,7 +124,8 @@ control as evidence that a method discriminates.
 `szzbench coverage` is the companion command: it measures each scenario's
 oracle size, the depth of its bug-introducing commit, how many distractors
 touch the fault file, and the size and branchiness of its history, then groups
-the scenarios that agree on all of them.
+the scenarios that agree on all of them — and reports how many scenarios share
+each declared fault statement, overall and per category (issue #13).
 
 Read [docs/baselines.md](docs/baselines.md) before reporting or comparing
 numbers on this benchmark. Raising that floor is tracked in issues #13, #14

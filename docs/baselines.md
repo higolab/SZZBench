@@ -302,7 +302,25 @@ ref_count              1:201, 2:46, 3:3, 4:1
 
 The largest groups are 30 S3, 13 S1, 10 S4, 8 S2 and 8 G1 scenarios that agree
 on every dimension; 63 scenarios have a signature of their own (`bic_depth`
-is `none` for the two empty oracles). Read together
+is `none` for the two empty oracles).
+
+The same run prints the **fault statement reuse** block (issue #13), which
+counts how many scenarios declare each fault statement (`fault.statement`,
+`faults[].statement`, `origin_faults[].statement`, whitespace-normalised):
+
+```text
+159 distinct statement(s) over 234 scenario(s); 11 shared by two or more
+ 83x  return value > min && value < max;   (advanced-scenarios 65, scenarios 18)
+  6x  boolean belowMax = value < max;      (advanced-scenarios 6)
+  6x  return value > min;                  (advanced-scenarios 2, scenarios 4)
+most reused statement per category: G1 7/14, G2 10/16, G3 5/14, G4 17/28, G5 13/18,
+  G6 5/9, G7 4/16, G8 5/10, G9 2/10, S3 11/37, S4 3/16, S6 3/19
+```
+
+One statement is a declared fault of a third of the suite and of half the graph
+suite; `decisions/fault-library.md` catalogues the kinds a rewrite can draw on
+and the rules a rewrite follows, and the per-category share above is the number
+a rewrite is measured by. Read together
 with the baseline table, the suite still concentrates in one cell — a
 one-commit answer, one or two commits before the fix, in a three- or
 four-commit single-branch history — and **that cell is where the cheap rules

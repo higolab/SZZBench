@@ -186,3 +186,43 @@ def test_a_default_evaluation_variant_and_an_inferred_bic_are_both_picked_up(tmp
                                  "direct-only": {"evaluation_policy": "exact_set", "required": ["c2"]},
                                  "with-origin": {"evaluation_policy": "exact_set", "required": ["c1", "c2"]}}}}}]}
     assert _oracle_ids(variant, "advanced-scenarios") == {"c2"}
+
+
+# --- fault statement reuse (#13) ---------------------------------------------
+
+def test_fault_statements_are_collected_from_every_fault_list_normalised_and_deduplicated():
+    from szzbench.coverage import _fault_statements
+    data = {"bugs": [
+        {"fault": {"statement": "return  value > min\n    && value < max;"},
+         "faults": [{"statement": "return value > min && value < max;"}, {"statement": "  "}, "not a dict"],
+         "origin_faults": [{"statement": "return s.trim();"}]},
+        {"faults": [{"statement": "return s.trim();"}, {"no_statement": True}]},
+        "not a bug",
+    ]}
+    assert _fault_statements(data) == ["return value > min && value < max;", "return s.trim();"]
+    assert _fault_statements({"bugs": None}) == [] and _fault_statements({}) == []
+
+
+def test_fault_statement_reuse_is_reported_overall_and_per_category(tmp_path):
+    """Two G1 fixtures share `return v > lo;`; a G2 fixture declares its own statement.
+    The report names the shared statement, its carriers and the per-category share (#13)."""
+    _write(tmp_path, "SZZG-9931", _linear(False), _bugs(["c1"]), category="G1")
+    _write(tmp_path, "SZZG-9932", _linear(True), _bugs(["c1"]), category="G1")
+    commits = _linear(False)                       # the same history with a different fault: != instead of >
+    commits[1]["operations"][0]["new"] = "return v != lo;"
+    commits[3]["operations"][0]["old"] = "return v != lo;"
+    own = _bugs(["c1"])
+    own[0]["faults"][0]["statement"] = "return v != lo;"
+    _write(tmp_path, "SZZG-9933", commits, own, category="G2")
+    report = _run(tmp_path)
+    reuse = report["fault_reuse"]
+    assert reuse["scenarios_with_a_statement"] == 3 and reuse["distinct_statements"] == 2
+    assert reuse["shared"] == [{"statement": "return v > lo;", "scenarios": 2, "by_suite": {"advanced-scenarios": 2},
+                                "scenario_ids": ["SZZG-9931", "SZZG-9932"]}]
+    assert reuse["per_category"]["G1"] == {"scenarios": 2, "distinct_statements": 1, "most_reused": "return v > lo;", "most_reused_scenarios": 2}
+    assert reuse["per_category"]["G2"] == {"scenarios": 1, "distinct_statements": 1, "most_reused": "return v != lo;", "most_reused_scenarios": 1}
+    assert all("fault_statements" in shape for shape in report["shapes"])
+    text = format_report(report)
+    assert "fault statement reuse" in text and "  2x  return v > lo;   (advanced-scenarios 2)" in text
+    assert "most reused statement per category: G1 2/2" in text
+    json.dumps(report)
