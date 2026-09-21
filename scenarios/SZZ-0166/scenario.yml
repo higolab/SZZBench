@@ -1,15 +1,20 @@
 schema_version: '1.0'
 meta:
   id: SZZ-0166
-  title: Performance cleanup distractor with message
-  slug: context-with-cleanup-distractor
-  description: This scenario is intended for evaluating SZZ variants that use commit messages or broader patch context.
+  title: Signature-only cleanup between BIC and BFC
+  slug: signature-only-cleanup-distractor
+  description: >-
+    Between the BIC and the BFC, c2 makes `check` static -- it reads no instance state -- and says so in
+    its message. Only the signature line changes; the faulty comparison is untouched and still blames c1.
+    The commit exists to test whether a message-aware tool attributes the fix to the tidy-up commit that
+    sits next to it in the same file.
   category: "Context, message, and non-local evidence"
   factors:
   - single-bic
   - single-bfc
   - line-modification
   - context-aware
+  - intermediate-cleanup
   difficulty: medium
   status: active
   tier: control
@@ -65,7 +70,7 @@ commits:
     - B001
     - fault
 - id: c2
-  message: Cache the configured limit so callers avoid repeated lookups
+  message: Make check static; it reads no instance state
   author: Mei Tanaka <mei.tanaka@example.com>
   date: 2023-11-14T12:22:00Z
   role: cleanup
@@ -84,12 +89,8 @@ commits:
       package example;
 
       public class Scenario0166 {
-          public boolean check(int attempts, int limit) {
+          public static boolean check(int attempts, int limit) {
               return attempts <= limit;
-          }
-
-          public int cachedLimit(int limit) {
-              return limit;
           }
       }
 - id: c3
@@ -107,7 +108,7 @@ commits:
     - fix
 bugs:
 - id: B001
-  title: Performance cleanup distractor with message
+  title: Signature-only cleanup between BIC and BFC
   bug_fixing_commit: c3
   bug_introducing_commits: &id001
   - c1

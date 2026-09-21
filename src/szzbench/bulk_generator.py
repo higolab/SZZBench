@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
@@ -34,6 +34,11 @@ class GeneratedRepositoryItem:
 @dataclass(frozen=True)
 class GenerateAllRepositoriesResult:
     items: list[GeneratedRepositoryItem]
+    #: Output directories under the root whose scenario no longer exists -- left
+    #: behind when a scenario is retired (docs/retired-ids.md).  Generation only
+    #: visits scenario files, so it can neither refresh nor remove them, and the
+    #: consumers that walk the output root would otherwise trip over them.
+    orphans: list[Path] = field(default_factory=list)
 
     @property
     def total_count(self) -> int:
@@ -135,7 +140,12 @@ def generate_all_repositories(
             )
         )
 
-    return GenerateAllRepositoriesResult(items=items)
+    known = {path.parent.name for path, _ in scenario_specs}
+    orphans = sorted(
+        child for child in output_root.iterdir()
+        if child.is_dir() and child.name not in known and (child / "default").is_dir()
+    )
+    return GenerateAllRepositoriesResult(items=items, orphans=orphans)
 
 
 def _find_scenario_files(root: Path, filename: str) -> list[Path]:

@@ -1036,8 +1036,8 @@ scenarios:
   status: active
   path: scenarios/SZZ-0160/scenario.yml
 - id: SZZ-0166
-  title: Performance cleanup distractor with message
-  slug: context-with-cleanup-distractor
+  title: Signature-only cleanup between BIC and BFC
+  slug: signature-only-cleanup-distractor
   category_code: S7
   category: Context, message, and non-local evidence
   factors:
@@ -1045,6 +1045,7 @@ scenarios:
   - single-bfc
   - line-modification
   - context-aware
+  - intermediate-cleanup
   difficulty: medium
   status: active
   path: scenarios/SZZ-0166/scenario.yml
