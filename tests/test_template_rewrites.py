@@ -87,9 +87,12 @@ REWRITES: dict[str, tuple[str, str, dict[str, str]]] = {
                   'System.out.print(m.invoke(o, true, false) + " " + m.invoke(o, false, false)); } catch (ClassNotFoundException e) { System.out.print("absent"); }',
                   {"c0": "absent", "c1": "false true", "c2": "absent"}),
     "SZZG-0024": ("wrong-operator",
-                  'try { Class<?> c = Class.forName("example.RateClone"); System.out.print(c.getMethod("percentOfClone", int.class, int.class).invoke(c.getDeclaredConstructor().newInstance(), 199, 10)); } '
-                  'catch (ClassNotFoundException e) { System.out.print("absent"); }',
-                  {"c0": "absent", "f1": "10", "f2": "10", "r1": "10", "r2": "10", "c4": "19"}),
+                  'System.out.print(new example.Rate().percentOf(30000000, 100) + " "); '
+                  'try { Class<?> c = Class.forName("example.RateClone"); java.lang.reflect.Method m = c.getMethod("percentOfClone", int.class, int.class); Object o = c.getDeclaredConstructor().newInstance(); '
+                  'System.out.print(m.invoke(o, 199, 10) + " " + m.invoke(o, 30000000, 100)); } catch (ClassNotFoundException e) { System.out.print("absent"); }',
+                  # the large input (PR #62 review) must not overflow in the original or in the fixed clone
+                  {"c0": "30000000 absent", "f1": "30000000 10 30000000", "f2": "30000000 10 30000000", "r1": "30000000 10 30000000",
+                   "r2": "30000000 10 30000000", "c4": "30000000 19 30000000"}),
 }
 
 #: SZZG-0081's reformatting commit owns the faulty line under plain blame by design (GW703);

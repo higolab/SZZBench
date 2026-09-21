@@ -6,7 +6,7 @@ meta:
   description: >
     A cloned buggy implementation diverges on feature and is replayed by rebase. The clone divides before it
     multiplies — `cents / 100 * percent` truncates to a multiple of the percentage — where the original
-    multiplies first.
+    multiplies first, in long so that the intermediate product cannot overflow.
   category: "Clone, copy propagation, and origin-vs-direct BIC"
   category_code: "G2"
   factors:
@@ -49,7 +49,7 @@ commits:
   - type: write_file
     path: src/main/java/example/Rate.java
     content: "package example;\n\npublic class Rate {\n  /** {@code percent} percent of {@code cents}, in whole cents. */\n  public int percentOf(int cents, int percent) {\n\
-      \    return cents * percent / 100;\n  }\n}\n"
+      \    return (int) ((long) cents * percent / 100);\n  }\n}\n"
 - id: f1
   branch: feature
   parents:
@@ -106,7 +106,7 @@ commits:
   - type: replace
     path: src/main/java/example/RateClone.java
     old: return cents / 100 * percent; // cloned logic
-    new: return cents * percent / 100; // cloned logic, reviewed
+    new: return (int) ((long) cents * percent / 100); // cloned logic, reviewed
 bugs:
 - id: B001
   title: The cloned percentage helper truncates before multiplying; introduced by rebase
@@ -136,7 +136,7 @@ bugs:
   - id: X001
     commit: c4
     file: src/main/java/example/RateClone.java
-    statement: return cents * percent / 100; // cloned logic, reviewed
+    statement: return (int) ((long) cents * percent / 100); // cloned logic, reviewed
     fix_type: line_modification
 expected_szz:
   commit_level:
@@ -174,9 +174,12 @@ scenario_design:
   key_property: >
     The fixed instance is the cloned line that r1 replayed into main. r2's
     rebased annotation is the last commit to touch that line, so a method that
-    reports the last textual touch answers r2 and is wrong. Measured:
-    percentOfClone(199, 10) is 10 at r1 and r2 and 19 at c4; Rate.percentOf(199, 10)
-    is 19 throughout.
+    reports the last textual touch answers r2 and is wrong. The original and the
+    fixed clone multiply in long before dividing, so no snapshot overflows for
+    inputs whose result fits in int. Measured: percentOfClone(199, 10) is 10 at
+    r1 and r2 and 19 at c4; percentOfClone(30000000, 100) is 30000000 at r1, r2
+    and c4; Rate.percentOf(199, 10) is 19 and Rate.percentOf(30000000, 100) is
+    30000000 throughout.
   difference_from_SZZG_0064: SZZG-0064 covers a rebased BIC followed by a non-BIC rebased intermediate commit. This scenario
     adds a distinct rebase-related complication.
   evaluation_points:
