@@ -46,20 +46,25 @@ without `c1` the parser returns seconds and `c3`'s caller is right.
 
 ## Measured behaviour
 
-`RequestTimeout.seconds("90s")`, `RequestTimeout.seconds("2m")`,
-`RetryDelay.seconds("90s")` and `RetryDelay.seconds("2m")` at each commit
-(`tests/test_rebalance_scenarios.py`; `RetryDelay` exists from `c3`):
+`RequestTimeout.seconds` and `RetryDelay.seconds` for `"90s"`, `"2m"` and
+`"1000000000s"` — the longest duration the committed documentation supports —
+at each commit (`tests/test_rebalance_scenarios.py`; `RetryDelay` exists from
+`c3`):
 
-| commit | timeout "90s" | timeout "2m" | retry "90s" | retry "2m" |
-|---|---|---|---|---|
-| `c0`–`c2` | 90 | 120 | — | — |
-| `c3` | 90 | 120 | **90000** | **120000** |
-| `c4` | 90 | 120 | 90 | 120 |
+| commit | timeout "90s" | timeout "2m" | timeout "1000000000s" | retry "90s" | retry "2m" | retry "1000000000s" |
+|---|---|---|---|---|---|---|
+| `c0`–`c2` | 90 | 120 | 1000000000 | — | — | — |
+| `c3` | 90 | 120 | 1000000000 | **90000** | **120000** | **1000000000000** |
+| `c4` | 90 | 120 | 1000000000 | 90 | 120 | 1000000000 |
 
-`c1` changes no answer: the parser and its only caller change together.
+`c1` changes no answer: the parser and its only caller change together, and the
+parser holds the value in 64 bits, so multiplying by 1000 keeps every supported
+duration representable. The largest-duration probe is there for that: with an
+`int` parser, `"1000000000s"` would already overflow before `c1` and `"3000000s"`
+would turn negative at `c1` and stay negative after the fix.
 **Counterfactual, measured:** undoing `c1` on top of `c3` — the parser back to
-seconds, `RequestTimeout` no longer dividing — gives 90 and 120 for the retry
-delay, the fixed answers.
+seconds, `RequestTimeout` no longer dividing — gives the fixed answers for the
+retry delay on every probe, and leaves the timeout unchanged.
 
 ## Measured blame outcome at BFC^
 

@@ -120,11 +120,13 @@ public class Drive { public static void main(String[] a) {
 """,
     "SZZ-0217": """
 public class Drive { public static void main(String[] a) throws Exception {
-    StringBuilder out = new StringBuilder();
-    out.append("timeout90s=").append(new example.RequestTimeout().seconds("90s")).append(" timeout2m=").append(new example.RequestTimeout().seconds("2m"));
+    StringBuilder out = new StringBuilder(); example.RequestTimeout t = new example.RequestTimeout();
+    out.append("timeout90s=").append(t.seconds("90s")).append(" timeout2m=").append(t.seconds("2m"));
+    out.append(" timeoutBig=").append(t.seconds("1000000000s"));
     try { Object r = Class.forName("example.RetryDelay").getConstructor().newInstance();
           java.lang.reflect.Method m = r.getClass().getMethod("seconds", String.class);
-          out.append(" retry90s=").append(m.invoke(r, "90s")).append(" retry2m=").append(m.invoke(r, "2m")); }
+          out.append(" retry90s=").append(m.invoke(r, "90s")).append(" retry2m=").append(m.invoke(r, "2m"));
+          out.append(" retryBig=").append(m.invoke(r, "1000000000s")); }
     catch (ClassNotFoundException e) { out.append(" retry=absent"); }
     System.out.print(out); } }
 """,
@@ -198,11 +200,11 @@ EXPECTED = {
         "c4": "base11=500 base12=1200 base13=1200 group30x3=3600",
     },
     "SZZ-0217": {
-        "c0": "timeout90s=90 timeout2m=120 retry=absent",
-        "c1": "timeout90s=90 timeout2m=120 retry=absent",
-        "c2": "timeout90s=90 timeout2m=120 retry=absent",
-        "c3": "timeout90s=90 timeout2m=120 retry90s=90000 retry2m=120000",
-        "c4": "timeout90s=90 timeout2m=120 retry90s=90 retry2m=120",
+        "c0": "timeout90s=90 timeout2m=120 timeoutBig=1000000000 retry=absent",
+        "c1": "timeout90s=90 timeout2m=120 timeoutBig=1000000000 retry=absent",
+        "c2": "timeout90s=90 timeout2m=120 timeoutBig=1000000000 retry=absent",
+        "c3": "timeout90s=90 timeout2m=120 timeoutBig=1000000000 retry90s=90000 retry2m=120000 retryBig=1000000000000",
+        "c4": "timeout90s=90 timeout2m=120 timeoutBig=1000000000 retry90s=90 retry2m=120 retryBig=1000000000",
     },
 }
 

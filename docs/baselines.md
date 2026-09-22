@@ -171,10 +171,11 @@ Read this table before reading any result reported on SZZBench:
   (An earlier revision of this table reported `1/21` as the best fixed rule on
   two-commit oracles. That figure was wrong: recomputed on the same 215-scenario
   measurement, it is `9/21`, by `blame-deleted-lines`. The union was right.)
-- **No category is 100% solvable** by a cheap baseline any more: S6 42.1%,
-  G3 78.6%, S7 80.0%, S5 85.7%, S8 85.7%, G2 87.5%, G5 88.9%, G6 90.0%,
-  G8 90.9%, G9 90.9%, G1 92.9%, S1 92.9%, G4 93.1%, S2 93.8%, S4 94.1%,
-  G7 94.1% and S3 97.5%. Ten of these (S1, S2, S3, S4, S5, S7, G6, G7, G8,
+- **No category is 100% solvable** by a cheap baseline any more: S6 42.1%
+  (8/19), G3 78.6% (11/14), S7 83.3% (5/6), S8 85.7% (6/7), G2 87.5% (14/16),
+  S5 87.5% (7/8), G5 88.9% (16/18), G6 90.0% (9/10), G8 90.9% (10/11),
+  G9 90.9% (10/11), G1 92.9% (13/14), S1 92.9% (13/14), G4 93.1% (27/29),
+  S2 93.8% (15/16), G7 94.1% (16/17), S4 94.1% (16/17) and S3 97.5% (39/40). Ten of these (S1, S2, S3, S4, S5, S7, G6, G7, G8,
   G9) were 100% until 2026-09-22, when each received its first discriminating
   scenario (issue #35).
 - The metadata family is at chance, which is the leakage guarantee holding: the

@@ -47,9 +47,10 @@ commits:
           package example;
 
           public class DurationText {
-              /** Parses "90s" or "2m" to a number of seconds. */
-              public static int parse(String text) {
-                  int value = Integer.parseInt(text.substring(0, text.length() - 1));
+              /** Parses "90s" or "2m" to a number of seconds. The value is held in 64 bits,
+               *  so every duration the documentation accepts stays representable. */
+              public static long parse(String text) {
+                  long value = Long.parseLong(text.substring(0, text.length() - 1));
                   return text.endsWith("m") ? value * 60 : value;
               }
           }
@@ -59,7 +60,7 @@ commits:
           package example;
 
           public class RequestTimeout {
-              public int seconds(String configured) {
+              public long seconds(String configured) {
                   return DurationText.parse(configured);
               }
           }
@@ -73,15 +74,17 @@ commits:
       - type: "replace"
         path: "src/main/java/example/DurationText.java"
         old: |
-          /** Parses "90s" or "2m" to a number of seconds. */
-              public static int parse(String text) {
-                  int value = Integer.parseInt(text.substring(0, text.length() - 1));
+          /** Parses "90s" or "2m" to a number of seconds. The value is held in 64 bits,
+               *  so every duration the documentation accepts stays representable. */
+              public static long parse(String text) {
+                  long value = Long.parseLong(text.substring(0, text.length() - 1));
                   return text.endsWith("m") ? value * 60 : value;
               }
         new: |
-          /** Parses "90s" or "2m" to a number of milliseconds. */
-              public static int parse(String text) {
-                  int value = Integer.parseInt(text.substring(0, text.length() - 1));
+          /** Parses "90s" or "2m" to a number of milliseconds. The value is held in 64 bits,
+               *  so every duration the documentation accepts stays representable. */
+              public static long parse(String text) {
+                  long value = Long.parseLong(text.substring(0, text.length() - 1));
                   return (text.endsWith("m") ? value * 60 : value) * 1000;
               }
         labels: ["B001", "fault"]
@@ -102,7 +105,8 @@ commits:
           # Duration text
 
           A duration is a whole number followed by `s` for seconds or `m` for minutes,
-          for example `90s` or `2m`.
+          for example `90s` or `2m`. Durations up to one thousand million seconds
+          (about thirty-one years) are supported.
 
   - id: "c3"
     message: "Add the retry delay setting"
@@ -116,7 +120,7 @@ commits:
           package example;
 
           public class RetryDelay {
-              public int seconds(String configured) {
+              public long seconds(String configured) {
                   return DurationText.parse(configured);
               }
           }
