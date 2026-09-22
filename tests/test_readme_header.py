@@ -309,3 +309,91 @@ def test_every_shipped_readme_header_is_current(scenario_path: Path):
     assert data is not None, result.findings
     text = scenario_path.with_name("README.md").read_text(encoding="utf-8")
     assert check_readme(text, render_header(data, suite_of(scenario_path))) == []
+
+
+# --- the body is the author's, byte for byte (PR #66 review) ---------------------------
+
+FENCED_BODY = """## Evidence
+
+The fault is in this Markdown input:
+
+```markdown
+## Source
+User-authored source text.
+```
+
+And this one uses tildes:
+
+~~~
+## Factors
+- not a section either
+~~~
+
+A triple-quoted value with two blank lines inside it:
+
+```python
+text = \"\"\"first
+
+
+last\"\"\"
+assert text.count("\\n") == 3
+```
+
+This explanation must survive.
+
+
+## Expected behavior
+
+Keep every input line.
+"""
+
+
+def test_headings_inside_fenced_code_are_not_legacy_sections():
+    header = render_header(_classic(), "scenarios")
+    text = header + "\n" + FENCED_BODY
+    assert check_readme(text, header) == []
+    assert apply_header(text, header) == text, "nothing to do, nothing changed"
+
+
+def test_an_update_replaces_only_the_header_and_keeps_the_body_byte_for_byte():
+    data = _classic()
+    text = render_header(data, "scenarios") + "\n" + FENCED_BODY
+    data["meta"]["title"] = "Header fixture, retitled"
+    fresh = render_header(data, "scenarios")
+    assert check_readme(text, fresh)[0].startswith("header is stale: ")
+    written = apply_header(text, fresh)
+    assert written == fresh + "\n" + FENCED_BODY
+    assert "first\n\n\nlast" in written and written.count("\n\n\n## Expected") == 1
+
+
+def test_first_write_keeps_the_body_byte_for_byte_after_the_title():
+    header = render_header(_classic(), "scenarios")
+    written = apply_header("# SZZ-9900: Header fixture\n\n\n" + FENCED_BODY, header)
+    assert written == header + "\n" + FENCED_BODY
+
+
+def test_a_real_legacy_section_may_contain_a_fence_and_ends_at_the_next_real_heading():
+    header = render_header(_classic(), "scenarios")
+    body = ("## Purpose\n\nProse.\n\n## Factors\n\n- `single-bic`\n\n```text\n## not a heading\n```\n\n"
+            "## Expected behavior\n\nReport `c1`.\n")
+    text = header + "\n" + body
+    assert check_readme(text, header) == ["carries a `## Factors` section, a hand-written copy of what the header states"]
+    assert apply_header(text, header) == header + "\n## Purpose\n\nProse.\n\n## Expected behavior\n\nReport `c1`.\n"
+
+
+def test_removing_a_trailing_legacy_section_leaves_a_single_final_newline():
+    header = render_header(_classic(), "scenarios")
+    text = header + "\n## Purpose\n\nProse.\n\n\n## Source\n\n- Category: Old label\n"
+    assert apply_header(text, header) == header + "\n## Purpose\n\nProse.\n"
+
+
+def test_lint_ignores_headings_inside_fenced_code(tmp_path):
+    from szzbench.validator import validate_scenario_file
+
+    classic = _write_scenario(tmp_path, _classic())
+    readme = classic.with_name("README.md")
+    readme.write_text(render_header(_classic(), "scenarios") + "\n" + FENCED_BODY)
+    _, result, _ = validate_scenario_file(classic, lint=True)
+    assert [f.code for f in result.findings if f.code == "W455"] == []
+    assert main(["readme", str(classic)]) == 0
+    assert readme.read_text() == render_header(_classic(), "scenarios") + "\n" + FENCED_BODY

@@ -49,7 +49,11 @@ that comes back.
 Everything after the end marker is written by the scenario's author and is
 never touched by a tool: the purpose, the commit structure, what a tool must
 do to pass, and the evidence — behaviour at each commit, the blame of the
-lines the fix deletes, counterfactuals — that the oracle is right. The
+lines the fix deletes, counterfactuals — that the oracle is right.
+`szzbench readme --write` replaces the header and leaves the body byte for
+byte, blank lines included; the one exception is a real `## Factors` or
+`## Source` section, which it removes. A heading quoted inside a fenced code
+block (backticks or tildes) is text, not a section, and is left alone. The
 sections vary by scenario because the evidence does; the skeleton
 `new-scenario` / `new-graph-scenario` writes proposes `## Purpose`,
 `## Commit structure` (`## Expected history` in the graph suite) and

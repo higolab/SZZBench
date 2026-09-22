@@ -33,7 +33,12 @@ HEADER_END = "<!-- /szzbench:header -->"
 #: Hand-written copies of header data.  ``## Factors`` repeated ``meta.factors``
 #: and ``## Source`` carried a ``- Category:`` label; both are removed when the
 #: header is written and reported by the lint while they remain.
-LEGACY_SECTION_RE = re.compile(r"^## (?:Factors|Source)[ \t]*\n(?:(?!^#).*\n?)*", re.M)
+LEGACY_HEADING_RE = re.compile(r"^## (Factors|Source)[ \t]*$")
+HEADING_RE = re.compile(r"^#{1,6} ")
+#: A fenced code block opens with three or more backticks or tildes (indented at
+#: most three spaces) and closes with a fence of the same character at least as
+#: long.  Headings inside a fence are text, not sections.
+FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
 
 #: ``expected_szz`` sections the classic schema does not have.
 GRAPH_ONLY_ORACLE_LEVELS = ("entity_level", "branch_level", "work_item_level", "bug_level")
@@ -235,22 +240,80 @@ def render_header(data: dict[str, Any], suite: str) -> str:
 
 # --- checking and applying -----------------------------------------------------
 
+HEADER_SHAPE_RE = re.compile(
+    r"\A# [^\n]*\n\n" + re.escape(HEADER_BEGIN) + r"\n(?:\|[^\n]*\n)+" + re.escape(HEADER_END) + r"\n?")
+
+
 def split_header(text: str) -> tuple[str | None, str]:
-    """``(header, rest)``: the generated header a README carries, or ``None``."""
-    begin = text.find(HEADER_BEGIN)
-    end = text.find(HEADER_END)
-    if begin < 0 or end < begin:
+    """``(header, rest)``: the generated header a README opens with, or ``None``.
+
+    ``rest`` starts right after the end marker's line and is returned exactly
+    as the file has it, blank lines included.
+    """
+    match = HEADER_SHAPE_RE.match(text)
+    if match is None:
         return None, text
-    end += len(HEADER_END)
-    if end < len(text) and text[end] == "\n":
-        end += 1
-    return text[:end], text[end:]
+    return match.group(0), text[match.end():]
+
+
+def legacy_sections(text: str) -> list[tuple[int, int, str]]:
+    """``(first_line, end_line, title)`` of every real ``## Factors`` / ``## Source`` section.
+
+    Real means outside fenced code: a heading quoted inside a code example is
+    text, and a fenced block inside a section does not end the section.  A
+    section runs to the next heading outside fenced code, or to the end.
+    """
+    lines = text.splitlines(keepends=True)
+    found: list[tuple[int, int, str]] = []
+    fence: str | None = None
+    current: tuple[int, str] | None = None
+    for index, line in enumerate(lines):
+        opened = FENCE_RE.match(line)
+        if opened:
+            marker = opened.group(1)
+            if fence is None:
+                fence = marker
+            elif marker[0] == fence[0] and len(marker) >= len(fence):
+                fence = None
+            continue
+        if fence is not None or not HEADING_RE.match(line):
+            continue
+        if current is not None:
+            found.append((current[0], index, current[1]))
+            current = None
+        legacy = LEGACY_HEADING_RE.match(line)
+        if legacy:
+            current = (index, legacy.group(1))
+    if current is not None:
+        found.append((current[0], len(lines), current[1]))
+    return found
+
+
+def remove_legacy_sections(text: str) -> str:
+    """``text`` without its real legacy sections; every other byte is kept.
+
+    The only spacing touched is at a removal boundary: a section removed from
+    the end of the file takes the blank lines that separated it from the prose
+    before it, so the file still ends with a single newline.
+    """
+    sections = legacy_sections(text)
+    if not sections:
+        return text
+    lines = text.splitlines(keepends=True)
+    for first, end, _ in reversed(sections):
+        del lines[first:end]
+        if first >= len(lines):
+            while len(lines) > 1 and not lines[-1].strip():
+                lines.pop()
+            if lines and not lines[-1].endswith("\n"):
+                lines[-1] += "\n"
+    return "".join(lines)
 
 
 def check_readme(text: str, header: str) -> list[str]:
     """Why a README disagrees with its scenario; empty when it agrees."""
     problems: list[str] = []
-    existing, _ = split_header(text)
+    existing, rest = split_header(text)
     if existing is None:
         problems.append("has no generated header")
     elif existing != header:
@@ -260,29 +323,41 @@ def check_readme(text: str, header: str) -> list[str]:
                 break
         else:
             problems.append("header is stale: the two differ in length")
-    for match in LEGACY_SECTION_RE.finditer(text):
-        title = match.group(0).splitlines()[0].strip()
-        problems.append(f"carries a `{title}` section, a hand-written copy of what the header states")
+    for _, _, title in legacy_sections(rest):
+        problems.append(f"carries a `## {title}` section, a hand-written copy of what the header states")
     return problems
 
 
 def _strip_leading_title(text: str) -> str:
-    lines = text.split("\n")
+    """The body of a README that has no header yet: everything after its
+    ``# <id>: <title>`` line and the blank lines that follow it."""
+    lines = text.splitlines(keepends=True)
     if lines and lines[0].startswith("# "):
         lines = lines[1:]
     while lines and not lines[0].strip():
         lines = lines[1:]
-    return "\n".join(lines)
+    return "".join(lines)
 
 
 def apply_header(text: str, header: str) -> str:
-    """The README with ``header`` in place and the legacy copies removed."""
+    """The README with ``header`` in place and the real legacy copies removed.
+
+    The author's body is preserved byte for byte: on a first write the old
+    title line and the blank lines under it make room for the header, and on
+    an update only the header is replaced.  Nothing after the end marker is
+    reflowed or re-spaced except at the boundary of a removed legacy section.
+    """
     existing, rest = split_header(text)
     if existing is None:
         rest = _strip_leading_title(text)
-    rest = LEGACY_SECTION_RE.sub("", rest)
-    rest = re.sub(r"\n{3,}", "\n\n", rest).strip("\n")
-    return header + ("\n" + rest + "\n" if rest else "")
+        if rest:
+            rest = "\n" + rest
+    rest = remove_legacy_sections(rest)
+    if not rest.strip():
+        return header
+    if not rest.startswith("\n"):
+        rest = "\n" + rest
+    return header + rest
 
 
 # --- running over the suites ------------------------------------------------
