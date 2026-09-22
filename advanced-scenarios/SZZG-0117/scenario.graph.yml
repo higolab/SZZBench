@@ -172,8 +172,8 @@ scenario_design:
   - Whether a bug-introducing commit on a merged branch is considered at all.
   - Whether the value the fixed expression reads is followed to the commit that changed its unit.
   failure_mode: >-
-    A tool fails here when it stops at the line the fix deletes: the unit change arrived through a merge's
-    second parent and the consumer was written after it, so both `c1` and `c4` are required and neither is
-    reachable by a first-parent line walk.
+    A tool fails here when it stops at the line the fix deletes: blame, plain or `--first-parent`, returns
+    `c4` and nothing more, and the other required commit, `c1`, changed the unit of `INTERVAL` on the merge's
+    second parent, where neither a first-parent walk nor a blame of the deleted line reaches it.
 notes:
 - The merge c3 is clean: the release branch touches the Java file, main touches only docs.
