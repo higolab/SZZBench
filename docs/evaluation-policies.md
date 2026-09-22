@@ -7,11 +7,12 @@ the reference for scenario authors and for anyone reading the JSON or Markdown
 reports. Everything here describes the implemented behaviour; the automated
 tests in `tests/test_evaluator_semantics.py` pin the statements down.
 
-Evaluation is **commit-level** only. Oracle sections such as `bug_level`,
-`branch_level`, `entity_level`, `line_level`, `bug_instances`, and
+Evaluation is **commit-level**, plus a **branch-level** check when a graph
+scenario declares `expected_szz.branch_level` (section 1.5). Oracle sections
+such as `bug_level`, `entity_level`, `line_level`, `bug_instances`, and
 `work_item_level` are not scored; when a graph scenario declares them, the
 result carries a `result_notes` entry saying so. `Prediction.fix_commit` is
-accepted but not matched during scoring.
+matched only by the branch-level check; commit-level scoring ignores it.
 
 ## 1. Inputs
 
@@ -108,6 +109,49 @@ Markdown report ends with a `## Scenario notes` section that lists all
 `result_notes` per scenario. A PASS for a scenario such as SZZG-0116 is
 therefore always accompanied by the caveat that its `entity_level` /
 `line_level` oracle was not evaluated.
+
+### 1.5 Branch-level oracle (`expected_szz.branch_level`)
+
+Some faults are fixed on more than one branch, by different commits with
+different text, and the answer a tool must give depends on which fix it
+started from. A graph scenario declares that with
+
+```yaml
+expected_szz:
+  commit_level: { evaluation_policy: exact_set, required: [c1] }
+  branch_level:
+    main:    { bfc: c3, required: [c1] }
+    release: { bfc: r2, required: [c1] }
+```
+
+Each entry names the branch's bug-fixing commit and the commits a tool started
+from that fix must report. Scoring (since 2026-09-22, issue #22):
+
+- A prediction whose `fix_commit` resolves (hash, unique prefix or logical id,
+  like `inducing_commit`) to an entry's `bfc` is scored against that entry.
+- A prediction **without** `fix_commit` counts for **every** entry — a tool
+  that does not say which fix it started from is held to all of them.
+- A prediction whose `fix_commit` resolves to no declared `bfc` counts for no
+  entry; the result notes it.
+- Each entry is scored as an **exact set** (no policy, no allowances): PASS when
+  the attributed predictions are exactly `required`, FAIL on any false positive,
+  false negative or unresolvable prediction.
+- The block is PASS when every entry is. **A FAIL fails the scenario even when
+  the commit-level oracle passes**, with a `result_notes` entry naming the
+  failed branches. The commit-level status is computed exactly as before, so a
+  scenario without `branch_level` is unaffected.
+
+The per-scenario JSON carries `branch_level: {status, branches: {<name>: {bfc,
+required, predicted, false_positives, false_negatives, unknown_predictions,
+status}}}` (or `null`), and the summary counts `branch_level_scenarios` and
+`branch_level_failures`. The validator checks the declaration (`GE127`,
+`GE128`).
+
+SZZG-0143 is the scenario built for it: the release fix `r2` sits behind a
+whitespace-only reformat `r1` of the faulty line, so plain blame from `r2`
+returns `r1` and fails the `release` entry while the same tool passes `main`
+from `c3`. SZZG-0049 and SZZG-0050 declare the same block with `{c1}` on both
+branches.
 
 ## 2. Derived sets
 
@@ -464,8 +508,8 @@ FAIL (`unknown_predictions`).
 
 | location | field |
 |---|---|
-| per scenario (JSON) | `top_k.status_k`, `known_distractor_hits`, `expect_no_bic`, `fix_shape`, additional `result_notes` |
-| summary (JSON) | `known_distractor_hits`, `fix_shape_counts` |
-| Markdown | `- Known distractor hits:`, `- Fix shapes (per BFC):`; table columns `Top-k`, `Distractor hits`, `Fix shape`; `## Scenario notes` section listing every scenario's `result_notes` |
+| per scenario (JSON) | `top_k.status_k`, `known_distractor_hits`, `expect_no_bic`, `fix_shape`, `branch_level`, additional `result_notes` |
+| summary (JSON) | `known_distractor_hits`, `fix_shape_counts`, `branch_level_scenarios`, `branch_level_failures` |
+| Markdown | `- Known distractor hits:`, `- Branch-level failures:`, `- Fix shapes (per BFC):`; table columns `Top-k`, `Distractor hits`, `Fix shape`; `## Scenario notes` section listing every scenario's `result_notes` |
 | report `warnings` (JSON, Markdown `## Warnings`, CLI stderr) | oracle-related `result_notes` promoted with a `<scenario id>: ` prefix |
 | validator | `GI086` (info) when `bug_introducing_commits` is empty and `expect_no_bic` is declared, instead of `GE084` |

@@ -343,6 +343,26 @@ def _validate_expected_szz(expected: Any, commit_by_id: dict[str, dict[str, Any]
     for policy, loc in policies:
         if policy not in ALLOWED_EVALUATION_POLICIES:
             result.warning("GW123", f"Unknown evaluation_policy '{policy}'.", loc)
+    branch_level = expected.get("branch_level")
+    if branch_level is not None:
+        # Scored per declared BFC since 2026-09-22 (docs/evaluation-policies.md section 1.5).
+        if not isinstance(branch_level, dict) or not branch_level:
+            result.error("GE127", "expected_szz.branch_level must be a non-empty object mapping branch names to {bfc, required}.", "expected_szz.branch_level")
+        else:
+            for name, spec in branch_level.items():
+                loc = f"expected_szz.branch_level.{name}"
+                if not isinstance(spec, dict):
+                    result.error("GE127", f"{loc} must be an object with bfc and required.", loc)
+                    continue
+                bfc = spec.get("bfc")
+                if not isinstance(bfc, str):
+                    result.error("GE127", f"{loc}.bfc is required and must be a commit id.", f"{loc}.bfc")
+                elif bfc not in commit_by_id:
+                    result.error("GE128", f"{loc}.bfc refers to unknown commit '{bfc}'.", f"{loc}.bfc")
+                if "required" not in spec:
+                    result.error("GE127", f"{loc}.required is required.", f"{loc}.required")
+                else:
+                    _validate_commit_list(spec.get("required"), commit_by_id, result, f"{loc}.required")
 
 
 def _validate_commit_list(value: Any, commit_by_id: dict[str, dict[str, Any]], result: ValidationResult, loc: str) -> None:

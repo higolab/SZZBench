@@ -109,6 +109,7 @@ class ScenarioEvaluation:
     known_distractor_hits: list[str] = field(default_factory=list)
     expect_no_bic: bool = False
     fix_shape: dict[str, str] | None = None
+    branch_level: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -143,6 +144,7 @@ class ScenarioEvaluation:
             "known_distractor_hits": self.known_distractor_hits,
             "expect_no_bic": self.expect_no_bic,
             "fix_shape": self.fix_shape,
+            "branch_level": self.branch_level,
         }
 
 
@@ -164,6 +166,9 @@ class EvaluationReport:
         related_origin_hits = sum(len(item.related_origin_hits) for item in self.scenarios)
         related_but_not_correct_hits = sum(len(item.related_but_not_correct_hits) for item in self.scenarios)
         known_distractor_hits = sum(len(item.known_distractor_hits) for item in self.scenarios)
+        branch_level_scenarios = sum(1 for item in self.scenarios if item.branch_level is not None)
+        branch_level_failures = sum(1 for item in self.scenarios
+                                    if item.branch_level is not None and item.branch_level["status"] != "PASS")
         fix_shape_counts = {shape: 0 for shape in FIX_SHAPES}
         for item in self.scenarios:
             for shape in (item.fix_shape or {}).values():
@@ -192,6 +197,8 @@ class EvaluationReport:
             "related_origin_hits": related_origin_hits,
             "related_but_not_correct_hits": related_but_not_correct_hits,
             "known_distractor_hits": known_distractor_hits,
+            "branch_level_scenarios": branch_level_scenarios,
+            "branch_level_failures": branch_level_failures,
             "fix_shape_counts": fix_shape_counts,
             "weighted_credit": weighted_credit if possible_credit else None,
             "possible_credit": possible_credit if possible_credit else None,
@@ -227,6 +234,7 @@ class EvaluationReport:
             f"- Related origin hits: {summary['related_origin_hits']}",
             f"- Related-but-not-correct hits: {summary['related_but_not_correct_hits']}",
             f"- Known distractor hits: {summary['known_distractor_hits']}",
+            f"- Branch-level failures: {summary['branch_level_failures']} of {summary['branch_level_scenarios']} scenario(s) with a branch-level oracle",
             f"- Fix shapes (per BFC): {_format_fix_shape_counts(summary['fix_shape_counts'])}",
             f"- Weighted credit: {_format_credit(summary['weighted_credit'], summary['possible_credit'])}",
             f"- Precision: {_format_ratio(summary['precision'])}",
@@ -440,6 +448,12 @@ def evaluate_scenario(
     minimum_required_met = scored.minimum_required_met
     top_k = scored.top_k
     status = scored.status
+    branch_level = _branch_level_result(scenario, suite, predictions, commit_map, hash_to_id, notes,
+                                        reference_format=reference_format)
+    if branch_level is not None and branch_level["status"] != "PASS" and status == "PASS":
+        failed = [name for name, entry in branch_level["branches"].items() if entry["status"] != "PASS"]
+        notes.append(f"branch_level: the commit-level oracle passes but branch(es) {', '.join(failed)} fail, so the scenario fails.")
+        status = "FAIL"
     precision = _ratio(len(true_positives), len(true_positives) + len(false_positives))
     recall = _ratio(len(true_positives), len(true_positives) + len(false_negatives))
     category = _scenario_category(scenario)
@@ -476,7 +490,81 @@ def evaluate_scenario(
         known_distractor_hits=known_distractor_hits,
         expect_no_bic=policy.expect_no_bic,
         fix_shape=fix_shape,
+        branch_level=branch_level,
     )
+
+
+def _branch_level_result(
+    scenario: dict[str, Any],
+    suite: str,
+    predictions: list[Prediction],
+    commit_map: dict[str, Any],
+    hash_to_id: dict[str, str],
+    notes: list[str],
+    *,
+    reference_format: str = "auto",
+) -> dict[str, Any] | None:
+    """Score ``expected_szz.branch_level`` per declared bug-fixing commit.
+
+    A graph scenario may declare ``branch_level: {<branch>: {bfc: <id>,
+    required: [<ids>]}}`` when the same fault is fixed on several branches and
+    the answer a tool must give depends on the fix it started from (issue #22).
+    A prediction whose ``fix_commit`` resolves to a branch's ``bfc`` is scored
+    against that branch's ``required`` set as an exact set; a prediction without
+    ``fix_commit`` counts for every branch; one whose ``fix_commit`` resolves to
+    no declared ``bfc`` counts for none and is noted.  Each branch is PASS or
+    FAIL; the block is PASS when every branch is, and a FAIL fails the scenario
+    even when the commit-level oracle passes.  Returns ``None`` when the
+    scenario declares no branch-level oracle.
+    """
+    if suite != "advanced-scenarios":
+        return None
+    expected_szz = scenario.get("expected_szz") if isinstance(scenario.get("expected_szz"), dict) else {}
+    declared = expected_szz.get("branch_level")
+    if not isinstance(declared, dict) or not declared:
+        return None
+    resolved_fix: dict[int, str | None] = {}
+    for index, prediction in enumerate(predictions):
+        if prediction.fix_commit is not None:
+            resolved_fix[index] = _normalize_commit_ref(prediction.fix_commit, commit_map, hash_to_id,
+                                                        reference_format=reference_format)
+    declared_bfcs: set[str] = set()
+    branches: dict[str, dict[str, Any]] = {}
+    for name, spec in declared.items():
+        if not isinstance(spec, dict):
+            notes.append(f"branch_level: entry '{name}' is not an object and was skipped.")
+            continue
+        bfc = spec.get("bfc")
+        required = _string_list(spec.get("required"))
+        if isinstance(bfc, str):
+            declared_bfcs.add(bfc)
+        attributed = [
+            prediction for index, prediction in enumerate(predictions)
+            if prediction.fix_commit is None or resolved_fix.get(index) == bfc
+        ]
+        ranked, unknown = _ranked_actual_ids(attributed, commit_map, hash_to_id, reference_format=reference_format)
+        actual = set(ranked)
+        false_positives = sorted(actual - set(required))
+        false_negatives = sorted(set(required) - actual)
+        status = "PASS" if not false_positives and not false_negatives and not unknown else "FAIL"
+        branches[str(name)] = {
+            "bfc": bfc,
+            "required": list(required),
+            "predicted": sorted(actual),
+            "false_positives": false_positives,
+            "false_negatives": false_negatives,
+            "unknown_predictions": sorted(set(unknown)),
+            "status": status,
+        }
+    stray = sorted({prediction.fix_commit for index, prediction in enumerate(predictions)
+                    if prediction.fix_commit is not None and resolved_fix.get(index) not in declared_bfcs})
+    if stray:
+        notes.append(
+            f"branch_level: {len(stray)} fix_commit value(s) resolve to no declared branch BFC ({', '.join(stray)}); "
+            "those predictions count for no branch."
+        )
+    overall = "PASS" if branches and all(entry["status"] == "PASS" for entry in branches.values()) else "FAIL"
+    return {"status": overall, "branches": branches}
 
 
 def load_predictions(path: Path) -> tuple[dict[str, list[Prediction]], set[str], list[str], list[str]]:
@@ -733,7 +821,6 @@ def _graph_commit_level_policy(
 #: Oracle sections the commit-level evaluator does not read (reported as a note).
 _UNREAD_GRAPH_ORACLE_SECTIONS = {
     "bug_level",
-    "branch_level",
     "entity_level",
     "line_level",
     "bug_instances",

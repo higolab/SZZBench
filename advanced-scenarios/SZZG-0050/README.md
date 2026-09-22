@@ -9,7 +9,7 @@
 | difficulty | `advanced` |
 | language | `java` |
 | factors | `branch`, `backport`, `release-branch`, `release-specific-changes`, `copy-propagation`, `null-check-omission` |
-| oracle | `exact_set`; required `c1` · BFCs `c2`, `r2` |
+| oracle | `exact_set`; required `c1` · BFCs `c2`, `r2` · branch-level: main → `c1` (BFC `c2`); release → `c1` (BFC `r2`) |
 | graph features | 2 branches; backport `r2`; 2 BFCs; `branch_level` oracle |
 <!-- /szzbench:header -->
 

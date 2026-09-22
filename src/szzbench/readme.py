@@ -127,6 +127,16 @@ def oracle_summary(data: dict[str, Any], suite: str) -> str:
     bfcs = _scenario_bfc_ids(data)
     if bfcs:
         summary += f" · {'BFC' if len(bfcs) == 1 else 'BFCs'} {_codes(bfcs)}"
+    branch_level = expected_szz.get("branch_level")
+    if isinstance(branch_level, dict) and branch_level:
+        parts = []
+        for name, spec in branch_level.items():
+            if not isinstance(spec, dict):
+                continue
+            required = [r for r in (spec.get("required") or []) if isinstance(r, str)]
+            parts.append(f"{name} → {_codes(required) if required else 'none'} (BFC {_code(spec.get('bfc'))})")
+        if parts:
+            summary += " · branch-level: " + "; ".join(parts)
     return summary
 
 
