@@ -281,9 +281,9 @@ def blame_deleted_lines(git: GitProbe, scenario: Scenario) -> list[str]:
     """
     found: list[str] = []
     for bfc_hash in _bfc_hashes(scenario):
+        parent = git.parent_of(scenario.repo_dir, bfc_hash)      # the empty tree for a root fix
         for path in git.paths_touched(scenario.repo_dir, bfc_hash):
-            diff = git(scenario.repo_dir, "diff", "-U0", "--no-renames",
-                       f"{bfc_hash}^", bfc_hash, "--", path)
+            diff = git(scenario.repo_dir, "diff", "-U0", "--no-renames", parent, bfc_hash, "--", path)
             line_no: int | None = None
             for line in diff.splitlines():
                 if line.startswith("@@"):
@@ -291,7 +291,7 @@ def blame_deleted_lines(git: GitProbe, scenario: Scenario) -> list[str]:
                     line_no = int(match.group(1)) if match else None
                 elif line.startswith("-") and not line.startswith("---") and line_no is not None:
                     porcelain = git(scenario.repo_dir, "blame", "--line-porcelain",
-                                    "-L", f"{line_no},{line_no}", f"{bfc_hash}^", "--", path)
+                                    "-L", f"{line_no},{line_no}", parent, "--", path)
                     if porcelain:
                         found.append(porcelain.split("\n", 1)[0].split()[0])
                     line_no += 1

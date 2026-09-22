@@ -491,6 +491,8 @@ Create a skeleton for a new Graph scenario.
 szzbench new-graph-scenario   --title "BIC on feature branch and BFC on main"   --category branch-merge   --factor branch   --factor merge
 ```
 
+`--difficulty` takes `easy`, `medium` or `hard` (default `medium`; `advanced` is retired) and, like the classic suite's, is checked against the measured floor by `szzbench coverage` once the repository is generated (see [docs/decisions/vocabulary.md](docs/decisions/vocabulary.md), section 4).
+
 By default, a directory like the following is created, and `advanced-scenarios/index.yml` is also updated.
 
 ```text
@@ -1143,6 +1145,8 @@ szzbench evaluate \
 ```bash
 szzbench new-graph-scenario   --title "BIC on feature branch and BFC on main"   --category branch-merge   --factor branch   --factor merge
 ```
+
+`--difficulty` は `easy` / `medium` / `hard` のいずれか（デフォルトは `medium`、`advanced` は廃止）で、Classic スイートと同じく、リポジトリ生成後に `szzbench coverage` が計測した床と照合します（[docs/decisions/vocabulary.md](docs/decisions/vocabulary.md) の第 4 節）。
 
 デフォルトでは、次のようなディレクトリが作成され、`advanced-scenarios/index.yml` も更新されます。
 

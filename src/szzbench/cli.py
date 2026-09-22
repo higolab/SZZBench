@@ -16,7 +16,7 @@ from .generator import GenerationError, generate_repository
 from .graph_generator import GraphGenerationError, generate_graph_repository
 from .scenario_builder import DEFAULT_SCENARIOS_ROOT, NewScenarioError, create_new_scenario
 from .graph_scenario_builder import DEFAULT_GRAPH_SCENARIOS_ROOT, NewGraphScenarioError, create_new_graph_scenario
-from .validator import validate_scenario_file, validate_scenario_indexes
+from .validator import SCENARIO_DIFFICULTIES, validate_scenario_file, validate_scenario_indexes
 from .graph_validator import validate_graph_scenario_file
 from .verifier import verify_generated_repo
 from .graph_verifier import verify_graph_generated_repo
@@ -433,7 +433,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_new_graph.add_argument("--root", default=str(DEFAULT_GRAPH_SCENARIOS_ROOT), help="Graph scenario root directory")
     p_new_graph.add_argument("--slug", help="Override the generated slug")
     p_new_graph.add_argument("--factor", action="append", default=[], help="Graph scenario factor; can be repeated")
-    p_new_graph.add_argument("--difficulty", default="advanced", help="Graph scenario difficulty")
+    p_new_graph.add_argument("--difficulty", default="medium", choices=SCENARIO_DIFFICULTIES,
+                             help="Graph scenario difficulty (default: medium; check it against the measured floor with 'szzbench coverage')")
     p_new_graph.add_argument("--status", default="draft", help="Graph scenario status")
     p_new_graph.set_defaults(func=cmd_new_graph_scenario)
 
@@ -447,7 +448,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_new.add_argument("--root", default=str(DEFAULT_SCENARIOS_ROOT), help="Scenario root directory")
     p_new.add_argument("--slug", help="Override the generated slug")
     p_new.add_argument("--factor", action="append", default=[], help="Scenario factor; can be repeated")
-    p_new.add_argument("--difficulty", default="medium", help="Scenario difficulty")
+    p_new.add_argument("--difficulty", default="medium", choices=SCENARIO_DIFFICULTIES,
+                       help="Scenario difficulty (default: medium; check it against the measured floor with 'szzbench coverage')")
     p_new.add_argument("--status", default="draft", help="Scenario status")
     p_new.set_defaults(func=cmd_new_scenario)
     return parser

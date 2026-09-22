@@ -169,8 +169,11 @@ def _blame_class(scenario: Scenario, git: GitProbe, required_hashes: set[str]) -
     bfcs = _bfc_hashes(scenario)
     if not bfcs:
         return None
+    # The first parent, or the empty tree for a root fix: a root commit has no
+    # ``<hash>^``, and a failed Git call must not read as an empty merge diff.
     shapes = [classify_diff_text(git(scenario.repo_dir, "diff", "--no-color", "--no-ext-diff", "-U0",
-                                     "--no-renames", f"{bfc}^", bfc)) for bfc in bfcs]
+                                     "--no-renames", git.parent_of(scenario.repo_dir, bfc), bfc))
+              for bfc in bfcs]
     if all(shape == "empty_first_parent" for shape in shapes):
         return "empty-first-parent"
     if all(shape in ("empty_first_parent", "addition_only") for shape in shapes):

@@ -20,7 +20,7 @@ PATH = "src/main/java/example/Range.java"
 NOTE = "docs/note.md"
 
 
-def _write(tmp_path: Path, scenario_id: str, commits, bugs, category="G1") -> None:
+def _write(tmp_path: Path, scenario_id: str, commits, bugs, category="G1", **top_level) -> None:
     data = {
         "schema_version": "graph-0.1-draft",
         "meta": {"id": scenario_id, "title": "coverage fixture", "category": "test",
@@ -30,6 +30,7 @@ def _write(tmp_path: Path, scenario_id: str, commits, bugs, category="G1") -> No
         "graph": {"model": "commit_dag"},
         "commits": commits,
         "bugs": bugs,
+        **top_level,
     }
     directory = tmp_path / "advanced-scenarios" / scenario_id
     directory.mkdir(parents=True, exist_ok=True)
@@ -341,3 +342,21 @@ def test_difficulty_floor_follows_the_blame_class_and_declarations_are_checked_a
     assert "1 below, 1 above (allowed overrides), 1 ungraded" in text
     assert "[BELOW FLOOR] SZZG-9141 declares medium but blame is miss, so at least hard" in text
     assert "[UNGRADED] SZZG-9144 declares 'advanced'" in text
+
+def test_a_root_bug_fixing_commit_is_diffed_against_the_empty_tree(tmp_path):
+    """A one-commit scenario whose root commit is the fix (PR #74 review): the root has no
+    ``<hash>^``, and the failed Git call must not be read as an empty first-parent diff."""
+    commits = [{"id": "c0", "branch": "main", "parents": [], "message": "add the range check with its guard",
+                "role": "bug_fixing",
+                "operations": [{"type": "write_file", "path": PATH, "content": JAVA % ">="}]}]
+    bugs = [{"id": "B001", "bug_introducing_commits": [],
+             "bug_fixing_commits": [{"commit": "c0", "role": "complete_fix"}],
+             "faults": [],
+             "fixes": [{"id": "X001", "commit": "c0", "file": PATH, "statement": "return v >= lo;",
+                        "fix_type": "line_addition"}]}]
+    # a bug without introducing commits is accepted when the scenario declares expect_no_bic (GI086)
+    _write(tmp_path, "SZZG-9150", commits, bugs,
+           expected_szz={"commit_level": {"evaluation_policy": "exact_set", "expect_no_bic": True, "required": []}})
+    report = _run(tmp_path)
+    assert report["errors"] == []
+    assert [s["blame_class"] for s in report["shapes"]] == ["addition-only"]
