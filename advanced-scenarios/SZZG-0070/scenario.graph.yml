@@ -21,6 +21,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0070-rebase-combines-multiple-bics-into-one-commit
   default_branch: main
@@ -172,6 +173,9 @@ scenario_design:
     adds a distinct rebase-related complication.
   evaluation_points:
   - Report r1.
+  failure_mode: >-
+    A tool fails here when it follows the feature branch and reports `f1` and `f2`: the squash `r1` is the
+    change that put the fault on main, and the two sources are false positives under the default oracle.
 notes:
 - This scenario models a rebase-related development history for SZZ evaluation.
 - Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

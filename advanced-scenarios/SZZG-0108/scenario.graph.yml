@@ -15,6 +15,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0108-binary-file
   default_branch: main
@@ -95,6 +96,9 @@ scenario_design:
   key_property: >-
     Measured: maxEdgePixels() is 256 at c0, 51 at c1, 512 at c2. The fix's diff has two entries, a binary asset
     (`Binary files differ`) and a one-line change to Thumbnails.java; blaming the deleted line at c2^ returns c1.
+  failure_mode: >-
+    A tool fails here when its diff parser fails on the binary entry in the fix instead of skipping it and
+    blaming the one deleted source line.
 notes:
 - Rewritten 2026-09-21 from the shared Range.contains template to a wrong-constant fault (GitHub issue 13); the history
   shape, oracle and coverage dimensions are unchanged.

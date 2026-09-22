@@ -528,3 +528,32 @@ def test_silence_is_credited_only_to_the_abstain_rule(tmp_path):
         passing = evaluate_prediction_map(predictions, include_generated=False, **roots)
         if any(i.status == "PASS" for i in passing.scenarios):
             assert index in retained, f"position-{index} passes but was not enumerated"
+
+
+# --- meta.defeats: the families a scenario is built to make fail (issue #35) -----------
+
+def _with_defeats(tmp_path, sid, defeats, tier="control"):
+    path = tmp_path / "advanced-scenarios" / sid / "scenario.graph.yml"
+    data = yaml.safe_load(path.read_text())
+    data["meta"]["defeats"] = defeats
+    data["meta"]["tier"] = tier
+    path.write_text(yaml.safe_dump(data, sort_keys=False))
+
+
+def test_a_declared_defeat_that_a_rule_solves_is_reported(tmp_path):
+    """The four-commit range fixture is solved by blame, by position-1 and by the last toucher."""
+    _generate(tmp_path, "SZZG-9020", _range_commits(), _range_bugs())
+    _generate(tmp_path, "SZZG-9021", _range_commits(), _range_bugs())
+    _generate(tmp_path, "SZZG-9022", _range_commits(), _range_bugs())
+    _with_defeats(tmp_path, "SZZG-9020", ["blame"])              # wrong: blame solves it
+    _with_defeats(tmp_path, "SZZG-9021", [])                     # a control that promises nothing
+    # SZZG-9022 declares nothing at all
+    report = _run(tmp_path)
+    assert report["scenarios_declaring_defeats"] == 2
+    assert report["declared_defeated_but_solved"] == [
+        {"scenario_id": "SZZG-9020", "family": "blame", "solved_by": ["blame-deleted-lines"]}]
+    # a filtered run only checks the families it ran
+    position_only = run_baselines(generated_root=tmp_path / "repos", scenarios_root=tmp_path,
+                                  advanced_scenarios_root=tmp_path / "advanced-scenarios", families=["position"])
+    assert position_only["declared_defeated_but_solved"] == []
+    assert "declared defeat" in format_report(report).lower() or "defeat" in format_report(report).lower()

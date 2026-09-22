@@ -10,6 +10,7 @@
 | language | `java` |
 | factors | `work-item`, `evaluation-variant` |
 | oracle | `top_k`; relevant `c2` · BFC `c4` |
+| defeats | `shape` |
 | graph features | policy `top_k`; `work_items` |
 <!-- /szzbench:header -->
 

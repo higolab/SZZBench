@@ -19,6 +19,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0075-interactive-rebase-squashes-bic-and-bfc-into-neutral-commit
   default_branch: main
@@ -145,6 +146,10 @@ scenario_design:
   - Given the feature-branch fix f2, report f1.
   - 'Given only the main line, report nothing: r1 is neither a BIC nor a BFC for B001.'
   - Do not treat the squashed commit r1 as the bug-introducing commit of a bug that its tree does not contain.
+  failure_mode: >-
+    A tool fails here when it reports the squashed main-line commit `r1` under the default oracle, or anything
+    at all under `main-line-only`: the BIC and BFC were squashed into one neutral commit whose tree does not
+    contain the fault.
 notes:
 - The squash is generated with apply_squash, which cherry-picks f1 and then f2 with --no-commit, so the main-line tree really is
   the result of applying both patches.

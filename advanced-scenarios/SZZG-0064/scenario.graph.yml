@@ -19,6 +19,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: [shape]
 repository:
   name: SZZG-0064-rebase-with-non-bic-intermediate-commit
   default_branch: main
@@ -180,6 +181,9 @@ scenario_design:
   - Report r1.
   - Avoid r2.
   - Do not answer with the pre-rebase source f1 alone.
+  failure_mode: >-
+    A tool fails here when it reports `r2`, the other half of the replayed series that touches the same
+    method, or the pre-rebase origin `f1`, instead of `r1` alone.
 notes:
 - Rebase relationships are recorded with rebase_of; inherit_message and inherit_author_date reproduce what git rebase keeps from
   the source commit.

@@ -12,6 +12,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0114-huge-history
   default_branch: main
@@ -169,6 +170,9 @@ scenario_design:
   - Whether SZZ identifies the expected BIC set.
   - Whether the tool walks back over a thousand intervening commits without truncating the history or timing out.
   - Whether the generated commits, which never touch the source tree, are excluded.
+  failure_mode: >-
+    A tool fails here when it truncates, samples or times out on a history of a thousand intervening commits,
+    or reports any of the generated commits, none of which touches `src/`.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.

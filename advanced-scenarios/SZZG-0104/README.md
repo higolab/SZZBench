@@ -10,6 +10,7 @@
 | language | `java` |
 | factors | `configuration-change`, `cross-artifact-fix`, `context-dependent` |
 | oracle | `exact_set`; required `c1` · BFC `c2` |
+| defeats | `blame`, `shape` |
 | graph features | none: a linear history with one bug and an exact-set oracle, kept in the graph suite for its category |
 <!-- /szzbench:header -->
 

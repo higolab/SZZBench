@@ -17,6 +17,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0129-octopus-merge-bic-on-later-parent
   default_branch: main
@@ -174,6 +175,9 @@ scenario_design:
   evaluation_points:
   - Report q1.
   - Do not report the merge m1.
+  failure_mode: >-
+    A tool fails here when it follows only the first parent, or only the last listed parent, of the octopus
+    merge and attributes the change to `m1` instead of `q1`.
 notes:
 - The merge is generated with a single `git merge --no-ff --no-commit <a1> <q1> <f1>`; the commit has four
   parents (c0 first).

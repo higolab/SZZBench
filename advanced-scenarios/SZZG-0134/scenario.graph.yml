@@ -18,6 +18,7 @@ meta:
   difficulty: hard
   status: active
   tier: control
+  defeats: [blame, shape]
 repository:
   name: SZZG-0134-gitattributes-line-ending-bic
   default_branch: main
@@ -139,6 +140,9 @@ scenario_design:
   evaluation_points:
   - Report c1 from a fix that changed only Java.
   - Do not report c0, which owns the line the fix rewrote.
+  failure_mode: >-
+    A tool fails here when it stays in the files the fix touched: the fix's deleted line is `c0`'s, and `c1`
+    changed the `.gitattributes` rule that decides how the resource the fixed line reads is checked out.
 notes:
 - Whether git stores modes.txt with CRLF or normalises it to LF and converts on checkout depends on the
   attribute; the README records what the generated repository actually contains.

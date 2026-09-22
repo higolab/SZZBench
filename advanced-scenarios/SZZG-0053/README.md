@@ -10,6 +10,7 @@
 | language | `java` |
 | factors | `release-branch`, `branch-only-bug`, `boolean-negation` |
 | oracle | `exact_set`; required `c2` · BFC `c4` |
+| defeats | none (a control: every declared cheap rule may solve it) |
 | graph features | 2 branches |
 <!-- /szzbench:header -->
 

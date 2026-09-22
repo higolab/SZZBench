@@ -15,6 +15,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0068-rebase-changes-patch-content-during-replay
   default_branch: main
@@ -146,6 +147,9 @@ scenario_design:
   evaluation_points:
   - Report r1.
   - Treat f1 as origin.
+  failure_mode: >-
+    A tool fails here when it maps the replay to its source by patch equality: the rebase changed the patch
+    content, so patch-id matching does not identify the pair.
 notes:
 - This scenario models a rebase-related development history for SZZ evaluation.
 - Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

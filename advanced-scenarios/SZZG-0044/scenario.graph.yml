@@ -14,6 +14,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0044-bic-before-merge-bfc-after-merge
   default_branch: main
@@ -115,5 +116,8 @@ scenario_design:
   - Pre-merge main BIC
   - Unrelated feature merge between BIC and BFC
   - Post-merge main BFC.
+  failure_mode: >-
+    A tool fails here when it attributes the fault to the merge or to the merged feature branch instead of to
+    `c1` on main, which changed the line before the branch was merged.
 notes:
 - This scenario separates pre-merge main-line bug introduction from feature-branch bug introduction.

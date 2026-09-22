@@ -34,6 +34,7 @@ comments.
 | `language` | `repository.language` | `java` or `python` today |
 | `factors` | `meta.factors` | the controlled vocabulary of `decisions/vocabulary.md` §1 |
 | `oracle` | the evaluator's own policy resolution (`_commit_level_policy`) | the default variant first, then every other declared variant; an inferred direct BIC, a `top_k` ranking oracle and an `expect_no_bic` contract appear exactly as a scored run reads them, followed by the BFC ids and, when declared, the branch-level entries (`main → c1 (BFC c3)`) |
+| `defeats` (when declared) | `meta.defeats` | the cheap-rule families the scenario is built to make fail (`decisions/vocabulary.md` §8), checked by `szzbench baselines` |
 | `graph features` (graph suite only) | the scenario file | what the scenario uses that the classic schema cannot express: branches and merges, replayed commits (`rebase_of`, `cherry_pick_of`, …), generated commits, the ref lifecycle, operations beyond `write_file`/`replace`, several bugs, BICs, BFCs or fault sites, origin faults, a policy other than `exact_set`, evaluation variants, oracle levels beyond commit and line, and context sections (`issues`, `work_items`, …). A linear single-bug exact-set scenario says so: it is in the graph suite for its category, not for a feature |
 
 Nothing in the header is typed by hand, so nothing in it can drift from the

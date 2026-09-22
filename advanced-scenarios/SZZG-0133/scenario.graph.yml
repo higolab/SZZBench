@@ -17,6 +17,7 @@ meta:
   difficulty: medium
   status: active
   tier: control
+  defeats: [blame]
 repository:
   name: SZZG-0133-binary-asset-changed-in-bic-and-bfc
   default_branch: main
@@ -126,6 +127,9 @@ scenario_design:
   evaluation_points:
   - Report c1 from a fix whose only change is a binary blob.
   - Do not fall back to the text files, none of which changed after c0.
+  failure_mode: >-
+    A tool fails here when it needs deleted lines: the asset is binary, so only commit-level reasoning over
+    which commits touched the file the fix touched finds `c1`.
 notes:
 - The bytes are a 4-byte header ('PAL' + version) followed by three RGB triples; the export at c1 zeroes
   the header. tests/test_twins_and_transitions.py loads the palette at every commit.

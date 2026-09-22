@@ -15,6 +15,7 @@ meta:
   difficulty: hard
   status: active
   tier: control
+  defeats: [blame, shape]
 repository:
   name: SZZG-0098-commit-message
   default_branch: main
@@ -174,6 +175,9 @@ scenario_design:
   - Whether SZZ identifies c1 as the BIC using the PAY-314 EU clue in the commit message, or equivalent non-line evidence.
   - Whether the behaviour-preserving refactor c3, which every tested blame variant reaches, is rejected.
   - Whether the equally shaped but innocent CA relaxation c2 is rejected, although it is one commit closer to the fix.
+  failure_mode: >-
+    A tool fails here when it reports `c3`, where line-based blame lands under every variant, or the Canada
+    commit `c2`: only the messages separate `c1`, which bypassed the EU challenge the fix restores.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.

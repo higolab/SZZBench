@@ -12,6 +12,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0113-huge-file
   default_branch: main
@@ -147,6 +148,9 @@ scenario_design:
   - Whether SZZ identifies the expected BIC set.
   - Whether the tool handles a single-line diff inside a file of more than 10,000 lines without truncating or timing out.
   - Whether the expected_szz evaluation policy is applied correctly.
+  failure_mode: >-
+    A tool fails here when it caps the file size, the diff size or the blame depth and either misses the
+    changed line in the middle of a 437 KiB file or falls back to the file's creating commit.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.

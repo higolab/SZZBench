@@ -10,6 +10,7 @@
 | language | `java` |
 | factors | `branch`, `rebase`, `release-branch`, `main-fix-to-release`, `rebased-bfc`, `multi-bfc`, `integer-overflow` |
 | oracle | `exact_set`; required `c1`; related but not correct `c2` · BFCs `c2`, `r2` |
+| defeats | none (a control: every declared cheap rule may solve it) |
 | graph features | 2 branches; rebase `r2`; 2 BFCs |
 <!-- /szzbench:header -->
 

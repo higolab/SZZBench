@@ -16,6 +16,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0054-fixed-on-main-unfixed-on-release
   default_branch: main
@@ -141,6 +142,9 @@ scenario_design:
   - Main fixed
   - Release unfixed
   - Bug instance remains active on release.
+  failure_mode: >-
+    A tool fails here when it reports anything but `c1` for the main fix `c3`; a branch-aware tool is
+    additionally expected to notice that `release` still carries the BIC and no fix.
 notes:
 - The release branch intentionally remains buggy at c4.
 - Rewritten 2026-09-21 from the shared Range.contains template to a wrong-variable fault (GitHub issue 13); the history shape,

@@ -19,6 +19,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0049-cherry-pick-bfc
   default_branch: main
@@ -166,6 +167,9 @@ scenario_design:
   - Whether SZZ treats the release BFC r2 as a fixing commit.
   - Whether SZZ traces from r2 back to the original BIC c1 rather than to the main-line BFC c2.
   - Whether a cherry-picked fix is handled as a branch-specific bug-fixing instance.
+  failure_mode: >-
+    A tool fails here when, starting from the release fix `r2`, it reports the commit `r2` was cherry-picked
+    from (a fix, not a cause) or stops at the release branch point `r1`, which touched only a note.
 notes:
 - The release branch is created from the buggy state at c1.
 - The main fix c2 is cherry-picked onto release as r2 with a real `git cherry-pick` (`apply_patch_from`).

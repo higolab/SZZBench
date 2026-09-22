@@ -15,6 +15,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0061-cherry-picked-bic-duplicates
   default_branch: main
@@ -126,6 +127,9 @@ expected_szz:
         credit: 0.5
 scenario_design:
   purpose: Evaluate whether a method reports the copy of a cherry-picked commit that is in the fix's own history.
+  failure_mode: >-
+    A tool fails here when it reports the cherry-pick's source on the other branch instead of the copy that is
+    in the fix's own history.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.

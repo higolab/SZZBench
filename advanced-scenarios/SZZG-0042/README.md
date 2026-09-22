@@ -10,6 +10,7 @@
 | language | `java` |
 | factors | `merge-commit`, `bug-fixing-commit`, `branch` |
 | oracle | `exact_set`; required `c1` · BFC `c3` |
+| defeats | `blame`, `shape` |
 | graph features | 2 branches; merge commit `c3` |
 <!-- /szzbench:header -->
 

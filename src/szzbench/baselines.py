@@ -67,6 +67,8 @@ class Scenario:
     commits: list[CommitInfo]
     bfc_hashes: set[str]
     repo_dir: Path
+    #: the cheap-rule families the scenario declares it defeats (``meta.defeats``); None when undeclared
+    defeats: list[str] | None = None
 
     @property
     def hashes(self) -> list[str]:
@@ -418,8 +420,15 @@ def _load_scenarios(generated_root: Path, scenarios_root: Path, advanced_scenari
             commits=commits,
             bfc_hashes={hash_of[b] for b in bfc_ids if b in hash_of},
             repo_dir=repo_dir,
+            defeats=_declared_defeats((data.get("meta") or {}).get("defeats")),
         ))
     return scenarios, errors
+
+
+def _declared_defeats(value: Any) -> list[str] | None:
+    if isinstance(value, list) and all(isinstance(item, str) for item in value):
+        return list(value)
+    return None
 
 
 def _answer_hashes(scenarios: list[Scenario], scenarios_root: Path,
@@ -525,6 +534,30 @@ def run_baselines(
     unsolved_controls = sorted(s.scenario_id for s in scenarios
                                if s.tier == "control" and s.scenario_id not in solved_any) if complete else None
 
+    # `meta.defeats` (issue #35): the families a scenario is built to make fail.
+    # A declared family that does solve the scenario is a contradiction, and it
+    # can be refuted by any run that includes that family.  The abstain rule is
+    # scored on its silence and is not a way of "solving" a scenario a tool
+    # could copy, so it does not count against a declaration.
+    solved_by_rule: dict[str, list[str]] = defaultdict(list)
+    for result in results:
+        if result.name == ABSTAIN:
+            continue
+        for sid in result.passed:
+            solved_by_rule[sid].append(f"{result.family}:{result.name}")
+    defeated_but_solved = []
+    declaring = 0
+    for scenario in scenarios:
+        if scenario.defeats is None:
+            continue
+        declaring += 1
+        for family in scenario.defeats:
+            if family not in selected:
+                continue
+            rules = sorted(name for tag in solved_by_rule.get(scenario.scenario_id, []) for fam, name in [tag.split(":", 1)] if fam == family)
+            if rules:
+                defeated_but_solved.append({"scenario_id": scenario.scenario_id, "family": family, "solved_by": rules})
+
     best_per_family = {}
     for family in selected:
         family_results = [r for r in results if r.family == family]
@@ -548,6 +581,8 @@ def run_baselines(
         "tiers": dict(sorted(declared.items())),
         "declared_discriminating_but_solved": wrongly_discriminating,
         "declared_control_but_unsolved": unsolved_controls,
+        "scenarios_declaring_defeats": declaring,
+        "declared_defeated_but_solved": defeated_but_solved,
         "errors": errors + git.failures,
         "warnings": warnings,
     }
@@ -583,6 +618,14 @@ def format_report(report: dict[str, Any]) -> str:
                      f"a control can only be promoted when no declared family solves it")
     elif promote:
         lines.append(f"  declared control but solved by no cheap rule (promotion candidates): {', '.join(promote)}")
+    declaring = report.get("scenarios_declaring_defeats", 0)
+    if declaring:
+        contradictions = report.get("declared_defeated_but_solved", [])
+        lines.append(f"  declared defeats (meta.defeats): {declaring} scenario(s) declare the families they defeat; "
+                     f"{len(contradictions)} contradiction(s)")
+        for item in contradictions:
+            lines.append(f"  [WARNING] {item['scenario_id']} declares it defeats {item['family']} but "
+                         f"{', '.join(item['solved_by'])} solves it")
     lines.append("")
     lines.append("  per category (solved by any baseline / total)")
     for category in sorted(report["per_category"]):

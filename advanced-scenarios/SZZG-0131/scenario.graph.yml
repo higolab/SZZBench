@@ -19,6 +19,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0131-report-date-heuristic-wrong-for-rebased-bic
   default_branch: main
@@ -188,6 +189,9 @@ scenario_design:
   - Report r1.
   - Do not exclude r1 because its committer date is after the report.
   - Treat f1 as origin, not as the answer.
+  failure_mode: >-
+    A tool fails here when it drops commits by committer date and loses the rebased `r1`, or reaches the
+    pre-rebase `f1` through `git log --all` and reports it: `r1` is the answer.
 notes:
 - The rebase keeps f1's subject and author date (inherit_message, inherit_author_date) and sets its own
   committer date, as a real rebase does.

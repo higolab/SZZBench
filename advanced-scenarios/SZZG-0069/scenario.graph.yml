@@ -21,6 +21,7 @@ meta:
   difficulty: hard
   status: active
   tier: discriminating
+  defeats: [blame, shape, position]
 repository:
   name: SZZG-0069-rebase-splits-original-bic-into-multiple-commits
   default_branch: main
@@ -171,6 +172,9 @@ scenario_design:
     adds a distinct rebase-related complication.
   evaluation_points:
   - Return r1 and r2.
+  failure_mode: >-
+    A tool fails here when it stops at the most recent change to the line, `r2`, and misses `r1`: the rebase
+    split one faulty commit into two, and both are required.
 notes:
 - This scenario models a rebase-related development history for SZZ evaluation.
 - Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

@@ -18,6 +18,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0124-cherry-pick-adaptation-introduces-bug
   default_branch: main
@@ -146,6 +147,9 @@ scenario_design:
   evaluation_points:
   - Report r1.
   - Do not report c1; it is correct code.
+  failure_mode: >-
+    A tool fails here when it follows the cherry-pick trailer to `c1`: the conflict adaptation `r1` introduced
+    the bug, and the source it came from is not faulty.
 notes:
 - The cherry-pick conflict is real (rel1 renamed the parameters on the line c1 changes); `resolution`
   supplies the adapted file, and that adaptation is where `||` became `&&`.

@@ -10,6 +10,7 @@
 | language | `java` |
 | factors | `encoding`, `non-utf8-file`, `binary-file`, `config-bic`, `config-bfc` |
 | oracle | `exact_set`; required `c1` · BFC `c2` |
+| defeats | none (a control: every declared cheap rule may solve it) |
 | graph features | operation `write_binary_file` |
 <!-- /szzbench:header -->
 

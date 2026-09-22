@@ -14,7 +14,7 @@ from .graph_simulator import simulate_graph_scenario
 from .gitutils import GitError, format_timestamp, parse_timestamp
 from .paths import PathValidationError, validate_repo_relative_path
 from .policies import SUPPORTED_EVALUATION_POLICIES
-from .validator import lint_author_coincidence, lint_difficulty, lint_factors, lint_leakage, lint_readme_header, lint_tier
+from .validator import lint_author_coincidence, lint_defeats, lint_difficulty, lint_factors, lint_leakage, lint_readme_header, lint_tier
 
 GRAPH_ID_RE = re.compile(r"^SZZG-\d{4}$")
 
@@ -539,6 +539,7 @@ def lint_graph_scenario(data: dict[str, Any], *, scenario_path: Path | None = No
     lint_factors(meta.get("factors"), result, prefix="GW")
     lint_tier(meta, result, prefix="GW")
     lint_difficulty(meta, result, prefix="GW")
+    lint_defeats(meta, result, prefix="GW")
     for i, bug in enumerate(bugs):
         for j, entry in enumerate(graph_bic_entries(bug)):
             role = entry.get("role")

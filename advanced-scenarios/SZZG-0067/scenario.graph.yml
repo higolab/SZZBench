@@ -18,6 +18,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0067-rebase-conflict-resolution-fixes-bug
   default_branch: main
@@ -207,6 +208,9 @@ scenario_design:
   - Start from r2 and return r1.
   - Do not return f1 or f2 (pre-rebase commits) for the main-line BFC.
   - Do not return m1 (its constant is unrelated to the fault).
+  failure_mode: >-
+    A tool fails here when it looks for the fix on the feature branch: it never existed there and appears only
+    in the rebase's conflict-resolution commit.
 notes:
 - Rebase relationships are recorded with rebase_of and rebase_conflict_resolution; the replayed commits are ordinary
   commits in the generated repository.

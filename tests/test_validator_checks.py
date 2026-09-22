@@ -1238,3 +1238,31 @@ def test_every_shipped_scenario_declares_a_graded_difficulty():
     for path in sorted(root.glob("scenarios/SZZ-*/scenario.yml")) + sorted(root.glob("advanced-scenarios/SZZG-*/scenario.graph.yml")):
         difficulty = yaml.safe_load(path.read_text(encoding="utf-8"))["meta"].get("difficulty")
         assert difficulty in SCENARIO_DIFFICULTIES, f"{path.parent.name}: {difficulty!r}"
+
+
+def test_defeats_lint_checks_the_family_vocabulary_and_the_tier():
+    """W462 / GW462: `meta.defeats` names cheap-rule families; a discriminating scenario defeats them all (issue #35)."""
+    from szzbench.validator import DEFEATABLE_FAMILIES
+
+    assert DEFEATABLE_FAMILIES == ("blame", "shape", "position")
+    data = classic_scenario()
+    assert "W462" not in codes(lint_classic(data))                      # optional
+    data["meta"]["defeats"] = ["blame", "shape"]
+    assert "W462" not in codes(lint_classic(data))
+    data["meta"]["defeats"] = []
+    assert "W462" not in codes(lint_classic(data))
+    data["meta"]["defeats"] = ["blame", "blame-deleted-lines"]         # a rule name, not a family
+    assert "W462" in codes(lint_classic(data))
+    data["meta"]["defeats"] = "blame"
+    assert "W462" in codes(lint_classic(data))
+    data["meta"]["defeats"] = ["blame", "blame"]
+    assert "W462" in codes(lint_classic(data))
+    data["meta"]["defeats"] = ["blame"]
+    data["meta"]["tier"] = "discriminating"
+    assert "W462" in codes(lint_classic(data))                          # must list every family
+    data["meta"]["defeats"] = ["blame", "shape", "position"]
+    assert "W462" not in codes(lint_classic(data))
+
+    graph = graph_scenario()
+    graph["meta"]["defeats"] = ["merge"]
+    assert "GW462" in codes(lint_graph(graph))

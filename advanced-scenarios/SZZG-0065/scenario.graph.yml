@@ -18,6 +18,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0065-rebase-conflict-resolution-introduces-bug
   default_branch: main
@@ -139,6 +140,9 @@ scenario_design:
   evaluation_points:
   - Report r1.
   - 'Do not follow the rebase_of link to f1: f1 never contained the fault.'
+  failure_mode: >-
+    A tool fails here when it reports `f1` or `m1`, neither of which contained the faulty statement, instead
+    of the conflict resolution `r1` that created it.
 notes:
 - 'r1 declares rebase_of (the rewrite relation) and cherry_pick_of (the mechanism: a rebase replays a commit by cherry-picking
   it). Because r1 has no operations, the generator really runs git cherry-pick --no-commit, Git reports the conflict and the resolution

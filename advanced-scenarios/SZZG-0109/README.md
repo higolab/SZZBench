@@ -10,6 +10,7 @@
 | language | `java` |
 | factors | `file-deletion` |
 | oracle | `exact_set`; required `c0`; related but not correct `c1`, `c3` · BFC `c4` |
+| defeats | `blame`, `shape` |
 | graph features | operation `delete_file` |
 <!-- /szzbench:header -->
 

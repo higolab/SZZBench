@@ -10,6 +10,7 @@
 | language | `java` |
 | factors | `binary-file`, `binary-bic`, `binary-bfc`, `no-line-level-evidence` |
 | oracle | `exact_set`; required `c1` · BFC `c2` |
+| defeats | `blame` |
 | graph features | operation `write_binary_file` |
 <!-- /szzbench:header -->
 

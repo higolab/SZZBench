@@ -10,6 +10,7 @@
 | language | `java` |
 | factors | `generated-files`, `boolean-negation` |
 | oracle | `exact_set`; required `c1` · BFC `c2` |
+| defeats | none (a control: every declared cheap rule may solve it) |
 | graph features | operation `write_generated_text_file` |
 <!-- /szzbench:header -->
 

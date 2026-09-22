@@ -15,6 +15,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0062-backported-fix-maintenance-branch
   default_branch: main
@@ -112,6 +113,9 @@ expected_szz:
 scenario_design:
   purpose: >-
     Evaluate whether a method traces a backported fix on a release branch to the main-line bug-introducing commit.
+  failure_mode: >-
+    A tool fails here when, starting from the backported fix on the release branch, it reports release-branch
+    commits instead of tracing back to the main-line bug-introducing commit the release shares.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.

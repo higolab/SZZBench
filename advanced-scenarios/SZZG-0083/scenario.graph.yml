@@ -23,6 +23,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0083-huge-noisy-rebased-commit
   default_branch: main
@@ -168,6 +169,9 @@ scenario_design:
   evaluation_points:
   - Report r1.
   - Stay within time and memory limits on a commit whose patch is about 7000 lines.
+  failure_mode: >-
+    A tool fails here when it cannot handle a 7000-line patch within its time and memory limits, or feeds
+    whole patches to a classifier: the fix deletes one line and its blame is direct.
 notes:
 - The generated files are written with write_generated_text_file; header and footer make StatusCodes.java a compilable Java class.
 - 'The size burdens tools that read whole patches (diff parsers, LLM prompts, commit-level classifiers) or that scan the repository

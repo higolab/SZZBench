@@ -16,6 +16,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0122-rebase-branch-deleted-twin
   default_branch: main
@@ -191,5 +192,8 @@ scenario_design:
   - Report r1.
   - Do not report m1/m2.
   - Behave the same as on SZZG-0057; a tool whose answer differs between the twins depends on ref reachability.
+  failure_mode: >-
+    A tool fails here when its answer differs from SZZG-0057's: the pre-rebase branch was deleted, and a tool
+    that reads ref reachability behaves differently between the twins.
 notes:
 - Twin of SZZG-0057; the only difference is graph.ref_lifecycle.delete_branches.

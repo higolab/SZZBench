@@ -10,6 +10,7 @@
 | language | `java` |
 | factors | `feature-branch`, `merge-commit`, `bfc-after-merge` |
 | oracle | `exact_set`; required `c1` · BFC `c4` |
+| defeats | none (a control: every declared cheap rule may solve it) |
 | graph features | 2 branches; merge commit `c3` |
 <!-- /szzbench:header -->
 

@@ -22,6 +22,7 @@ meta:
   difficulty: hard
   status: active
   tier: discriminating
+  defeats: [blame, shape, position]
 repository:
   name: SZZG-0076-multiple-bics-replayed-by-rebase
   default_branch: main
@@ -190,6 +191,9 @@ scenario_design:
     adds a distinct rebase-related complication.
   evaluation_points:
   - Return r1 and r2.
+  failure_mode: >-
+    A tool fails here when it stops at the most recent edit of the line and reports `r2` alone: both replays
+    `r1` and `r2` are genuine faults, and the answer is the pair.
 notes:
 - This scenario models a rebase-related development history for SZZ evaluation.
 - Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

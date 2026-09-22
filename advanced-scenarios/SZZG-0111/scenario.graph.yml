@@ -11,6 +11,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0111-chmod-only-intermediate
   default_branch: main
@@ -123,6 +124,9 @@ scenario_design:
   - Whether the mode-only commit c2 between the BIC and the BFC is not reported as the BIC.
   - Whether a tool that reads diffs survives a commit whose only change is a file mode.
   - Whether the expected_szz evaluation policy is applied correctly.
+  failure_mode: >-
+    A tool fails here when it reads a mode-only change as a changed file with changed lines, or crashes on a
+    diff without hunks: `c2` appears in `--name-status` but changes no line.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.

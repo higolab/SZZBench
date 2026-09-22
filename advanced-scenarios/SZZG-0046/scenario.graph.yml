@@ -15,6 +15,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0046-bfc-in-merge-commit
   default_branch: main
@@ -127,6 +128,9 @@ scenario_design:
   - Merge commit as BFC
   - Bug introduced before branch divergence
   - Both branches contain relevant intermediate context before the merge.
+  failure_mode: >-
+    A tool fails here when it starts from one of the merge's parents instead of from the merge itself: the fix
+    exists only in the merge's resolution, and neither parent contains it.
 notes:
 - >-
   Distinguishes SZZG-0046 from SZZG-0042: there the BIC is on the merged feature branch, while here it

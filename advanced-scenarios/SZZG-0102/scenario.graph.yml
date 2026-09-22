@@ -15,6 +15,7 @@ meta:
   difficulty: hard
   status: active
   tier: control
+  defeats: [blame, shape]
 repository:
   name: SZZG-0102-issue-description
   default_branch: main
@@ -186,6 +187,9 @@ scenario_design:
   - Whether SZZ identifies c1 as the BIC from the issue texts, or from equivalent non-line evidence.
   - Whether the nickname change c2 is rejected, although it is equivalent in behaviour and one commit closer to the fix.
   - Whether the deduplication c3, which every tested blame variant reaches, is rejected.
+  failure_mode: >-
+    A tool fails here when it reports `c3`, which every blame variant reaches, or `c2`: only the issue texts,
+    matched from the fix message's `ISSUE-482` to `ISSUE-401` and `ISSUE-377`, separate `c1`.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.

@@ -14,6 +14,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: [shape]
 repository:
   name: SZZG-0100-issue-commit
   default_branch: main
@@ -169,6 +170,9 @@ scenario_design:
   - Whether SZZ identifies the expected BIC set.
   - Whether the other commits of the same work item are excluded instead of being reported together with the BIC.
   - Whether the expected_szz evaluation policy is applied correctly.
+  failure_mode: >-
+    A tool fails here when it widens the answer to every commit that references `ISSUE-10` (`c2`, `c3`) or
+    reads the documentation file as a shortcut: only `c1` changed the check.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.

@@ -16,6 +16,7 @@ meta:
   difficulty: hard
   status: active
   tier: control
+  defeats: [blame, shape]
 repository:
   name: SZZG-0104-config-bic-fixed-in-code
   default_branch: main
@@ -145,6 +146,9 @@ scenario_design:
   evaluation_points:
   - Whether SZZ reaches a commit that changed only a properties file from a fix that changed only Java.
   - Whether the fix's deleted line (owned by c0) is mistaken for the answer.
+  failure_mode: >-
+    A tool fails here when it stays in the Java file the fix touched: blame points at `c0`, and the fault is
+    `c1`'s change to the properties file the code reads.
 notes:
 - >-
   Until 2026-09-21 no code read api.host, so the declared BIC could not cause the fault the BFC fixed

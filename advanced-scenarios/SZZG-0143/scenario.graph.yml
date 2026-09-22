@@ -22,6 +22,7 @@ meta:
   difficulty: medium
   status: active
   tier: control
+  defeats: [blame, shape]
 repository:
   name: SZZG-0143-divergent-bfcs-branch-level-oracle
   default_branch: main
@@ -206,6 +207,10 @@ scenario_design:
   - Whether a tool started from r2 crosses the reformat r1 and reports c1 rather than r1.
   - Whether predictions carrying fix_commit are scored per branch (expected_szz.branch_level) and a failure
     on one branch fails the scenario.
+  failure_mode: >-
+    A tool fails here when, from the release fix `r2`, it reports the re-wrap `r1` that blame returns under
+    every variant instead of stepping past the formatting-only commit to `c1`; the branch-level oracle scores
+    each fix separately.
 notes:
 - >-
   The first scenario whose expected_szz.branch_level is read by the evaluator (GitHub issue 22, decided

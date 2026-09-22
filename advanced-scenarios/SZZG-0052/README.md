@@ -10,6 +10,7 @@
 | language | `java` |
 | factors | `branch`, `merge`, `criss-cross-merge`, `multiple-merge-bases` |
 | oracle | `exact_set`; required `a1` · BFC `c5` |
+| defeats | `shape` |
 | graph features | 3 branches; merge commits `a2`, `b2`, `c4` |
 <!-- /szzbench:header -->
 

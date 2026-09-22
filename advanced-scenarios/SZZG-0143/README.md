@@ -10,6 +10,7 @@
 | language | `java` |
 | factors | `branch`, `release-branch`, `single-bic`, `multi-bfc`, `divergent-fix`, `branch-level-oracle`, `formatting-noise`, `wrong-constant` |
 | oracle | `exact_set`; required `c1`; related but not correct `r1`; known distractors `r1`, `c2` · BFCs `c3`, `r2` · branch-level: main → `c1` (BFC `c3`); release → `c1` (BFC `r2`) |
+| defeats | `blame`, `shape` |
 | graph features | 2 branches; 2 BFCs; `branch_level` oracle |
 <!-- /szzbench:header -->
 
