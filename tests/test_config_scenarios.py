@@ -120,3 +120,17 @@ def test_szzg_0112_config_is_not_utf8(tmp_path):
     with pytest.raises(UnicodeDecodeError):
         raw.decode("utf-8")
     assert json.loads(json.dumps(raw.decode("cp1252"))) == "min=0\nmax=10\nlabel=café\n"
+
+
+def test_szzg_0112_git_sees_text_lines_and_blame_reaches_the_bic(tmp_path):
+    """The file is non-UTF-8, but Git diffs and blames it as text (PR #70 review)."""
+    hashes, repo = _generate(tmp_path, "SZZG-0112")
+    path = "config/range-limits.properties"
+    assert _git(repo, "diff", "--numstat", hashes["c1"], hashes["c2"]) == f"2\t2\t{path}"
+    hunk = [line for line in _git(repo, "diff", "-U0", hashes["c1"], hashes["c2"]).split("\n") if line[:1] in "+-" and line[:3] not in ("---", "+++")]
+    assert hunk == ["-min=1", "-max=9", "+min=0", "+max=10"]
+    parent = _git(repo, "show", f"{hashes['c2']}^:{path}").split("\n")
+    for deleted in ("min=1", "max=9"):
+        no = parent.index(deleted) + 1
+        blamed = _git(repo, "blame", "-l", "-L", f"{no},{no}", f"{hashes['c2']}^", "--", path).split()[0].lstrip("^")
+        assert hashes["c1"].startswith(blamed), (deleted, blamed[:7])

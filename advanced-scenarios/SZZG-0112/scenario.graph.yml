@@ -136,7 +136,9 @@ scenario_design:
     Measured on the generated snapshots (tests/test_config_scenarios.py): ConfigBackedRange.contains(0) and
     contains(10) are true at c0, false at c1 and true again at c2, while contains(1) and contains(9) stay true; the
     label is read as the four characters caf\u00e9 at every commit, because Properties.load decodes the file as
-    ISO-8859-1, in which the CP1252 byte 0xE9 is \u00e9. The BIC and the BFC each rewrite the whole binary file.
+    ISO-8859-1, in which the CP1252 byte 0xE9 is \u00e9. Git treats the file as text: c1 and c2 each change two
+    lines (min and max), and blame on both lines c2 deletes returns c1, so the blame-deleted-lines baseline solves
+    the scenario; the encoding tests decoding, not diffing.
   current_schema_limitation: The non-UTF-8 file is modeled with write_binary_file so that invalid UTF-8 bytes can be represented safely.
   evaluation_points:
   - Whether SZZ identifies c1 as the BIC for the encoded configuration change.

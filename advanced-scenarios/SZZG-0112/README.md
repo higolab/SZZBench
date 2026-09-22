@@ -68,10 +68,15 @@ verifier's text-based statement lookup is not used for them.
 
 ## What a tool must do
 
-Report `c1`. The BIC and the BFC each rewrite the whole binary file, so a
-line-oriented diff sees the file replaced rather than a line changed; a tool
-that skips files it cannot decode as UTF-8, or that only follows source files,
-has no candidate at all.
+Report `c1`. Git treats the file as text with ordinary line structure:
+`git diff --numstat c1 c2` reports `2 2 config/range-limits.properties`, the
+zero-context hunk is `-min=1 -max=9 +min=0 +max=10`, and `git blame` on both
+deleted lines at `c2^` returns `c1` — the `blame-deleted-lines` baseline solves
+the scenario (`tests/test_config_scenarios.py` asserts all three). What the
+encoding tests is a tool's *decoding*, not its diffing: a tool that decodes
+every changed file as UTF-8 fails on the `0xE9` byte of the `label` line and
+loses the file, and a tool that only inspects source files has no candidate at
+all.
 
 ## Evaluation points
 
