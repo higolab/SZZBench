@@ -15,6 +15,7 @@ import yaml
 
 from szzbench.cli import main
 from szzbench.readme import (
+    legacy_sections,
     HEADER_BEGIN,
     HEADER_END,
     NO_GRAPH_FEATURE,
@@ -397,3 +398,44 @@ def test_lint_ignores_headings_inside_fenced_code(tmp_path):
     assert [f.code for f in result.findings if f.code == "W455"] == []
     assert main(["readme", str(classic)]) == 0
     assert readme.read_text() == render_header(_classic(), "scenarios") + "\n" + FENCED_BODY
+
+
+# --- a closing fence is markers followed by nothing (PR #66 re-review) --------------------
+
+def _fence_suffix_body(fence: str) -> str:
+    return (f"## Evidence\n\n{fence}text\n{fence}literal\n## Source\nThis is example data, not a section.\n{fence}\n\n"
+            "This explanation must survive.\n\n## Expected behavior\n\nKeep all of the example.\n")
+
+
+@pytest.mark.parametrize("fence", ["~~~", "```"], ids=["tilde", "backtick"])
+def test_a_fence_marker_with_a_suffix_does_not_close_the_block(fence):
+    header = render_header(_classic(), "scenarios")
+    text = header + "\n" + _fence_suffix_body(fence)
+    assert legacy_sections(text) == []
+    assert check_readme(text, header) == []
+    assert apply_header(text, header) == text
+
+
+@pytest.mark.parametrize("fence", ["~~~", "```"], ids=["tilde", "backtick"])
+def test_readme_command_and_lint_keep_a_block_open_past_a_suffixed_marker(tmp_path, fence):
+    from szzbench.validator import validate_scenario_file
+
+    classic = _write_scenario(tmp_path, _classic())
+    readme = classic.with_name("README.md")
+    text = render_header(_classic(), "scenarios") + "\n" + _fence_suffix_body(fence)
+    readme.write_text(text)
+    assert main(["readme", str(classic)]) == 0
+    assert main(["readme", "--write", str(classic)]) == 0
+    assert readme.read_text() == text
+    _, result, _ = validate_scenario_file(classic, lint=True)
+    assert [f.code for f in result.findings if f.code == "W455"] == []
+
+
+def test_fence_rules_follow_commonmark_for_length_and_info_strings():
+    # a longer closing fence closes; a shorter one is content; a backtick fence whose info
+    # string contains a backtick is not a fence at all, so the heading after it is real
+    assert legacy_sections("````\n```\n## Factors\n````\n## Source\n\n- x\n") == [(4, 7, "Source")]
+    assert legacy_sections("```\n## Factors\n`````\n## Source\n") == [(3, 4, "Source")]
+    assert legacy_sections("````\n## Factors\n```\n## Source\n") == []
+    assert legacy_sections("```not`a`fence\n## Factors\n\n- x\n") == [(1, 4, "Factors")]
+    assert legacy_sections("   ~~~\n## Factors\n   ~~~\n## Source\n") == [(3, 4, "Source")]

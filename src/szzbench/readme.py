@@ -35,10 +35,15 @@ HEADER_END = "<!-- /szzbench:header -->"
 #: header is written and reported by the lint while they remain.
 LEGACY_HEADING_RE = re.compile(r"^## (Factors|Source)[ \t]*$")
 HEADING_RE = re.compile(r"^#{1,6} ")
-#: A fenced code block opens with three or more backticks or tildes (indented at
-#: most three spaces) and closes with a fence of the same character at least as
-#: long.  Headings inside a fence are text, not sections.
-FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
+#: Fenced code blocks, by the CommonMark rules that matter here.  A block opens
+#: with three or more backticks or tildes indented at most three spaces, followed
+#: by an info string (which may not contain a backtick after a backtick fence).
+#: It closes with a fence of the same character, at least as long, indented at
+#: most three spaces, and followed by nothing but spaces or tabs -- so a line
+#: such as ``~~~literal`` inside a tilde block is content, not the closing fence.
+#: Headings inside a block are text, not sections.
+OPEN_FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
+CLOSE_FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})[ \t]*$")
 
 #: ``expected_szz`` sections the classic schema does not have.
 GRAPH_ONLY_ORACLE_LEVELS = ("entity_level", "branch_level", "work_item_level", "bug_level")
@@ -268,15 +273,16 @@ def legacy_sections(text: str) -> list[tuple[int, int, str]]:
     fence: str | None = None
     current: tuple[int, str] | None = None
     for index, line in enumerate(lines):
-        opened = FENCE_RE.match(line)
-        if opened:
-            marker = opened.group(1)
-            if fence is None:
-                fence = marker
-            elif marker[0] == fence[0] and len(marker) >= len(fence):
+        if fence is not None:
+            closing = CLOSE_FENCE_RE.match(line.rstrip("\n"))
+            if closing and closing.group(1)[0] == fence[0] and len(closing.group(1)) >= len(fence):
                 fence = None
+            continue                      # every line inside a block is content
+        opening = OPEN_FENCE_RE.match(line.rstrip("\n"))
+        if opening and not (opening.group(1)[0] == "`" and "`" in opening.group(2)):
+            fence = opening.group(1)
             continue
-        if fence is not None or not HEADING_RE.match(line):
+        if not HEADING_RE.match(line):
             continue
         if current is not None:
             found.append((current[0], index, current[1]))
