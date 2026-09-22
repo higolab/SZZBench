@@ -52,15 +52,15 @@ correct → faulty. "In the suite" cites scenarios that carry the kind today
 | `null-check-omission` | `return s.trim();` without `if (s == null)`; `CARRIERS[code]` without `in` | `NullPointerException` / `KeyError` on the absent case | SZZ-0047, SZZ-0174, SZZ-0203 (Python) |
 | `missing-break` | a `case` without `break` | fall-through into the next case | SZZ-0175 |
 | `missing-branch` | a `switch` with no `case BULK` | the default value for a real kind | SZZ-0176, SZZG-0138 |
-| `guard-removed` | `if (count == 0) return 0;` deleted | division by zero / empty-input misbehaviour | SZZ-0078, SZZ-0080, SZZ-0177 |
+| `guard-removed` | `if (count == 0) return 0;` deleted; half of `if (user == null \|\| !user.isActive())` dropped | division by zero / empty-input misbehaviour; an authorization check that inactive accounts pass | SZZ-0078, SZZ-0080, SZZ-0177, SZZ-0211 |
 | `resource-not-closed` | a `BufferedWriter` never closed | data not flushed, handle leaked | SZZ-0189 |
-| `api-misuse` | `String.format("%.2f", x)` without a `Locale`; `def f(tags=[])`; `Optional.get()` without a presence check | environment-dependent output; shared state; `NoSuchElementException` | SZZG-0135, SZZ-0202 (Python), SZZG-0101, SZZG-0103 |
+| `api-misuse` | `String.format("%.2f", x)` without a `Locale`; `def f(tags=[])`; `Optional.get()` without a presence check; `startsWith` where `contains` was meant | environment-dependent output; shared state; `NoSuchElementException`; a path-traversal check that only catches a leading `..` | SZZG-0135, SZZ-0202 (Python), SZZG-0101, SZZG-0103, SZZG-0073, SZZ-0171, SZZ-0209 |
 | `config-value` | a unit, limit or key changed in a `.properties` / `.gitattributes` file | code reads a raw, narrowed or missing value | SZZ-0172, SZZ-0199, SZZ-0208, SZZG-0104, SZZG-0112, SZZG-0134 |
 | `duplicate-statement` | the same faulty statement in two places, one fixed | the copy keeps failing | S6 scenarios (SZZ-0132, SZZ-0136, …) |
 | `composite-fault` | an attempted fix that repairs one fault and introduces another | two observable effects in one commit | SZZG-0030 |
 | `string-comparison` | `a.equals(b)` → `a == b`; comparing against a literal in the wrong case | equal strings compare unequal; a configured value stops matching | SZZG-0045, SZZ-0207 |
 | `exception-swallowed` | `catch (IOException e) { }` | a failure is silently ignored | *none yet* |
-| `integer-overflow` | `int total = a * b;` on large inputs | wrap-around | *none yet* |
+| `integer-overflow` | `int total = a * b;` on large inputs; a dropped `(long)` cast | wrap-around; a size limit that a large declaration passes | SZZG-0056, SZZG-0076, SZZ-0210 |
 
 Two kinds the suite uses have no canonical name yet and are filed under the
 nearest one: **arithmetic truncation** (`cents * percent / 100` →
