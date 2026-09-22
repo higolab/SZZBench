@@ -51,33 +51,34 @@ otherwise pass it for free, and so would every other silent rule.
 Predicting nothing is a strategy, so it is published as one: `abstain` is the
 single rule scored on its silence. It is the honest version of that free pass —
 one rule with one number, rather than an invisible bonus spread across the
-family. It scores **2/251** on the shipped suite: SZZG-0135 and SZZG-0136 are
+family. It scores **2/253** on the shipped suite: SZZG-0135 and SZZG-0136 are
 the two scenarios whose default oracle is empty by contract — an externally
 caused fault and an import boundary (issue #24, D11) — and abstaining is the
 correct answer there. Everywhere else it scores nothing.
 
 ## Measured on the shipped suite
 
-251 generated scenarios, measured 2026-09-21 (after the history-rewriting scenarios of
+253 generated scenarios, measured 2026-09-22 (after the history-rewriting scenarios of
 issue #22, SZZG-0122–0129, the tool-visible-context scenarios of issue #23, SZZG-0130–0134,
 the Python scenarios of issue #24, SZZ-0200–0206, and its root-commit-contract and
-policy-family scenarios, SZZG-0135–0142):
+policy-family scenarios, SZZG-0135–0142, and the two configuration scenarios that
+closed issue #23, SZZ-0207 and SZZ-0208):
 
 | baseline | family | solves |
 |---|---|---|
-| `blame-deleted-lines` | blame | **158/251 = 62.9%** |
-| `position-1` | position | **156/251 = 62.2%** |
-| `shape-last-toucher` | shape | 121/251 = 48.2% |
-| `position-before-fix` | position | 106/251 = 42.2% |
-| `position-2` | position | 23/251 = 9.2% |
-| `position-3` | position | 22/251 = 8.8% |
-| `position-4` | position | 7/251 = 2.8% |
-| `position-all-non-fix` | position | 6/251 = 2.4% |
-| `position-0` | position | 6/251 = 2.4% |
-| `position-5` | position | 2/251 = 0.8% |
-| best `author:…` | metadata | 11/251 = 4.4% (chance) |
-| `abstain` | position | **2/251** (the two empty oracles) |
-| `message-admits-fault` | metadata | **0/251** |
+| `blame-deleted-lines` | blame | **158/253 = 62.5%** |
+| `position-1` | position | **158/253 = 62.5%** |
+| `shape-last-toucher` | shape | 121/253 = 47.8% |
+| `position-before-fix` | position | 106/253 = 41.9% |
+| `position-2` | position | 23/253 = 9.1% |
+| `position-3` | position | 22/253 = 8.7% |
+| `position-4` | position | 7/253 = 2.8% |
+| `position-all-non-fix` | position | 6/253 = 2.4% |
+| `position-0` | position | 6/253 = 2.4% |
+| `position-5` | position | 2/253 = 0.8% |
+| best `author:…` | metadata | 12/253 = 4.7% (chance) |
+| `abstain` | position | **2/253** (the two empty oracles) |
+| `message-admits-fault` | metadata | **0/253** |
 
 **A fixed rule versus the union.** Each row is one rule applied to every
 scenario, which is what an attacker can actually do. The union of the rows is
@@ -88,9 +89,9 @@ a cheap rule could explain — headroom, not a result.
 Read this table before reading any result reported on SZZBench:
 
 - **A rule that opens no file is level with the classic B-SZZ baseline.**
-  "Report the second commit of the history" solves **156 of 251** and
-  `blame-deleted-lines` **158 of 251**; on the 225-scenario suite the two were
-  exactly tied at 142. The eight history-rewriting scenarios of issue
+  "Report the second commit of the history" solves **158 of 253** and so does
+  `blame-deleted-lines` — exactly tied, as they were at 142 on the 225-scenario
+  suite. The eight history-rewriting scenarios of issue
   #22 are all blame-solvable and only two of them put the BIC second, which
   opened a gap of six; the five tool-visible-context scenarios of issue #23
   closed half of it the other way — four put the BIC second and only one is
@@ -103,7 +104,10 @@ Read this table before reading any result reported on SZZBench:
   one; the eight root-commit-contract and policy-family scenarios of the same
   issue (SZZG-0135–0142) handed it back — five are blame-solvable, two put the
   BIC second, two have an empty oracle and one has the root commit as its
-  answer — so blame leads by two. Most scenarios are still four commits long with a single-commit oracle in
+  answer — so blame led by two; and the two configuration scenarios that closed
+  issue #23 (SZZ-0207, SZZ-0208) both put the BIC second and both hide it from
+  blame, because the line the fix deletes belongs to the initial commit, so the
+  two rules are exactly tied again. Most scenarios are still four commits long with a single-commit oracle in
   second position, so the floor a real method has to beat is set by either
   rule, and a method that only matches B-SZZ has not shown it uses anything
   blame does not.
@@ -119,7 +123,7 @@ Read this table before reading any result reported on SZZBench:
   of the position rule was an artefact of oracles that named the wrong commit,
   and the lead has since changed hands with every batch of five to eight
   scenarios — a property of the last batch's composition, not of the suite.
-- **Upper bound (oracle-aware): 229 of 251 scenarios are solved by *some*
+- **Upper bound (oracle-aware): 231 of 253 scenarios are solved by *some*
   cheap rule.** Twenty-two resist all of them — SZZ-0132, SZZ-0136, SZZ-0190 to
   SZZ-0199, SZZG-0028, SZZG-0038, SZZG-0040, SZZG-0069, SZZG-0076 and
   SZZG-0117 to SZZG-0121 — and every one of them has a **multi-commit oracle**.
@@ -127,14 +131,14 @@ Read this table before reading any result reported on SZZBench:
 
   | | best fixed rule | union over all rules |
   |---|---|---|
-  | 212 scenarios with a one-commit oracle | 154/212 = 72.6% (`position-1`) | **212/212** |
+  | 214 scenarios with a one-commit oracle | 156/214 = 72.9% (`position-1`) | **214/214** |
   | 36 scenarios with a two-commit oracle | 13/36 = 36.1% (`blame-deleted-lines`) | 14/36 |
   | 1 scenario with a three-commit oracle (SZZG-0138, `minimum_required: 2`) | 1/1 (`blame-deleted-lines`) | 1/1 |
   | 2 scenarios with an empty oracle (SZZG-0135, SZZG-0136) | 2/2 (`abstain`) | 2/2 |
 
   A one-commit answer inside a three- or four-commit history is reachable by
   *some* cheap rule in every single case, at every depth — 105/105 at depth 1,
-  85/85 at depth 2, 18/18 at depth 3 and 4/4 beyond. Oracle size is the
+  87/87 at depth 2, 18/18 at depth 3 and 4/4 beyond. Oracle size is the
   dimension that separates them, and a longer or deeper history on its own
   will not raise the floor.
 
@@ -158,14 +162,14 @@ Read this table before reading any result reported on SZZBench:
   measurement, it is `9/21`, by `blame-deleted-lines`. The union was right.)
 - **Ten of the seventeen categories are 100% solvable** by a cheap baseline
   (S1, S2, S3, S4, S5, S7, G6, G7, G8, G9); the rest have headroom — S6 42.1%,
-  G3 78.6%, S8 80.0%, G2 87.5%, G5 88.9%, G1 92.9%, G4 92.9%.
+  G3 78.6%, S8 85.7%, G2 87.5%, G5 88.9%, G1 92.9%, G4 92.9%.
 - The metadata family is at chance, which is the leakage guarantee holding: the
-  best author rule (4.4%) sits *below* the mean of a label-shuffled null, and
+  best author rule (4.7%) sits *below* the mean of a label-shuffled null, and
   the message rule scores zero.
 
   This family is the sharpest illustration of the fixed-rule-versus-union
-  distinction above. The *union* over all author rules solves **89/251 =
-  35.5%**: in more than a third of the scenarios *some* author's set of commits
+  distinction above. The *union* over all author rules solves **91/253 =
+  36.0%**: in more than a third of the scenarios *some* author's set of commits
   happens to be exactly the oracle, usually because the oracle is one commit and
   the generator's author rotation gave that commit an author it gave no other.
   An attacker cannot use that — they must fix one author and apply it
@@ -192,7 +196,7 @@ Every scenario declares `meta.tier`, which says what it is for:
 
 | tier | meaning | count |
 |---|---|---|
-| `control` | checks that a method handles a specific input condition; a cheap rule may well solve it | **229** |
+| `control` | checks that a method handles a specific input condition; a cheap rule may well solve it | **231** |
 | `discriminating` | designed so that none of the declared cheap baselines solves it | **22** |
 
 Every one of the twenty-two has a multi-commit oracle. Seven are pre-existing
@@ -289,17 +293,17 @@ szzbench coverage --out studies/coverage
 direct BIC are read the same way a scored run reads them. `bic_depth` measures
 the **farthest** required BIC — the deepest commit a tool has to reach.
 
-Measured on the shipped suite (251 scenarios):
+Measured on the shipped suite (253 scenarios):
 
 ```text
-tier                   control:229, discriminating:22
-oracle_size            0:2, 1:212, 2:36, 3:1
-bic_depth              1:105, 2:105, 3:33, 4:2, 5:2, 6:1, 1003:1, none:2
-fault_file_distractors 0:13, 1:106, 2:95, 3:28, 4:8, 5:1
-commit_count           2:3, 3:60, 4:107, 5:58, 6:17, 7:4, 8:1, 1005:1
-ref_count              1:201, 2:46, 3:3, 4:1
+tier                   control:231, discriminating:22
+oracle_size            0:2, 1:214, 2:36, 3:1
+bic_depth              1:105, 2:107, 3:33, 4:2, 5:2, 6:1, 1003:1, none:2
+fault_file_distractors 0:13, 1:107, 2:96, 3:28, 4:8, 5:1
+commit_count           2:3, 3:60, 4:109, 5:58, 6:17, 7:4, 8:1, 1005:1
+ref_count              1:203, 2:46, 3:3, 4:1
 
-106 distinct signatures; 43 groups of two or more, covering 188 scenarios
+107 distinct signatures; 44 groups of two or more, covering 190 scenarios
 ```
 
 The largest groups are 30 S3, 13 S1, 10 S4, 8 S2 and 8 G1 scenarios that agree
@@ -311,7 +315,7 @@ counts how many scenarios declare each fault statement (`fault.statement`,
 `faults[].statement`, `origin_faults[].statement`, whitespace-normalised):
 
 ```text
-186 distinct statement(s) over 234 scenario(s); 12 shared by two or more
+188 distinct statement(s) over 236 scenario(s); 12 shared by two or more
  57x  return value > min && value < max;   (advanced-scenarios 39, scenarios 18)
   6x  return value > min;                  (advanced-scenarios 2, scenarios 4)
   5x  return value > 0;                    (scenarios 5)

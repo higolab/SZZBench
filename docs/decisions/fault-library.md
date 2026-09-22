@@ -55,10 +55,10 @@ correct → faulty. "In the suite" cites scenarios that carry the kind today
 | `guard-removed` | `if (count == 0) return 0;` deleted | division by zero / empty-input misbehaviour | SZZ-0078, SZZ-0080, SZZ-0177 |
 | `resource-not-closed` | a `BufferedWriter` never closed | data not flushed, handle leaked | SZZ-0189 |
 | `api-misuse` | `String.format("%.2f", x)` without a `Locale`; `def f(tags=[])`; `Optional.get()` without a presence check | environment-dependent output; shared state; `NoSuchElementException` | SZZG-0135, SZZ-0202 (Python), SZZG-0101, SZZG-0103 |
-| `config-value` | a unit or key changed in a `.properties` / `.gitattributes` file | code reads a raw or missing value | SZZ-0199, SZZG-0104, SZZG-0134 |
+| `config-value` | a unit, limit or key changed in a `.properties` / `.gitattributes` file | code reads a raw, narrowed or missing value | SZZ-0172, SZZ-0199, SZZ-0208, SZZG-0104, SZZG-0112, SZZG-0134 |
 | `duplicate-statement` | the same faulty statement in two places, one fixed | the copy keeps failing | S6 scenarios (SZZ-0132, SZZ-0136, …) |
 | `composite-fault` | an attempted fix that repairs one fault and introduces another | two observable effects in one commit | SZZG-0030 |
-| `string-comparison` | `a.equals(b)` → `a == b` | equal strings compare unequal | *none yet* |
+| `string-comparison` | `a.equals(b)` → `a == b`; comparing against a literal in the wrong case | equal strings compare unequal; a configured value stops matching | SZZG-0045, SZZ-0207 |
 | `exception-swallowed` | `catch (IOException e) { }` | a failure is silently ignored | *none yet* |
 | `integer-overflow` | `int total = a * b;` on large inputs | wrap-around | *none yet* |
 
