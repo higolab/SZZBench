@@ -94,8 +94,8 @@ public class Drive { public static void main(String[] a) throws Exception {
 """,
     "SZZG-0146": """
 public class Drive { public static void main(String[] a) throws Exception {
-    StringBuilder out = new StringBuilder();
-    out.append("apply=").append(new example.Discount().apply(2000, "15%"));
+    StringBuilder out = new StringBuilder(); example.Discount d = new example.Discount();
+    out.append("apply=").append(d.apply(2000, "15%")).append(" applyBig=").append(d.apply(2000000, "15%"));
     try { Object rc = Class.forName("example.Receipt").getConstructor().newInstance();
           java.lang.reflect.Method m = rc.getClass().getMethod("describe", String.class);
           out.append(" d15=").append(m.invoke(rc, "15%")).append(" d7=").append(m.invoke(rc, "7%")); }
@@ -176,11 +176,11 @@ EXPECTED = {
         "c4": "cents3=300 cents1250=125000 label3=3 USD label1250=1250 USD",
     },
     "SZZG-0146": {
-        "c0": "apply=1700 receipt=absent",
-        "c1": "apply=1700 receipt=absent",
-        "c2": "apply=1700 receipt=absent",
-        "c3": "apply=1700 d15=1500 percent off d7=700 percent off",
-        "c4": "apply=1700 d15=15 percent off d7=7 percent off",
+        "c0": "apply=1700 applyBig=1700000 receipt=absent",
+        "c1": "apply=1700 applyBig=1700000 receipt=absent",
+        "c2": "apply=1700 applyBig=1700000 receipt=absent",
+        "c3": "apply=1700 applyBig=1700000 d15=1500 percent off d7=700 percent off",
+        "c4": "apply=1700 applyBig=1700000 d15=15 percent off d7=7 percent off",
     },
     "SZZG-0147": {
         "c0": "wait3=6 first=absent",
@@ -369,7 +369,7 @@ def test_both_commits_are_necessary(generated, tmp_path):
         work = tmp_path / "undo-c1-on-c3"
         _snapshot(repo, hashes["c3"], work)
         _edit(work, "src/main/java/example/Percent.java", ('.trim()) * 100;', '.trim());'))
-        _edit(work, "src/main/java/example/Discount.java", ("/ 10000;", "/ 100;"))
+        _edit(work, "src/main/java/example/Discount.java", ("/ 10000)", "/ 100)"))
         assert _run_driver(work, sid) == EXPECTED[sid]["c4"]
     elif sid == "SZZG-0147":
         work = tmp_path / "undo-c3-on-c4"
