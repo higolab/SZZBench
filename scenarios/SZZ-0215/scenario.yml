@@ -1,0 +1,154 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0215"
+  title: "A correct change on the faulty line takes ownership of it: two single-token faults, one fix"
+  slug: "correct-change-owns-the-faulty-line"
+  description: >
+    The loyalty bonus condition loses its equality, so the fifth visit no
+    longer earns the bonus. A later, correct commit raises the threshold on the
+    same line and keeps the wrong operator, so the line is now owned by a
+    commit that introduced nothing. Another single-token slip turns the points
+    division into a remainder. One fix repairs both lines; blaming what it
+    deletes returns the threshold change and the second slip, and the commit
+    that dropped the equality is behind a line its own successor rewrote.
+  category: "Basic semantic line changes"
+  factors:
+    - "multi-bic"
+    - "single-bfc"
+    - "deep-line-history"
+    - "candidate-selection-distractor"
+    - "off-by-one"
+    - "wrong-operator"
+    - "blame-unreachable-bic"
+  difficulty: "hard"
+  status: "active"
+  tier: "discriminating"
+  defeats: ["blame", "shape", "position"]
+  category_code: "S1"
+
+repository:
+  name: "SZZ-0215-correct-change-owns-the-faulty-line"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Add the loyalty points and the visit bonus"
+    author: "Dana Okafor <dana.okafor@example.com>"
+    date: "2024-10-07T09:20:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/example/LoyaltyPoints.java"
+        content: |
+          package example;
+
+          public class LoyaltyPoints {
+              public int points(int cents) {
+                  return cents / 100;
+              }
+
+              public boolean bonus(int visits) {
+                  return visits >= 5;
+              }
+          }
+
+  - id: "c1"
+    message: "Tidy the bonus condition"
+    author: "Priya Raman <priya.raman@example.com>"
+    date: "2024-10-09T11:05:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/LoyaltyPoints.java"
+        old: "return visits >= 5;"
+        new: "return visits > 5;"
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Raise the bonus threshold to eight visits"
+    author: "Jonas Berg <jonas.berg@example.com>"
+    date: "2024-10-11T15:40:00Z"
+    role: "distractor"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/LoyaltyPoints.java"
+        old: "return visits > 5;"
+        new: "return visits > 8;"
+
+  - id: "c3"
+    message: "Adjust the points computation"
+    author: "Aiko Tanaka <aiko.tanaka@example.com>"
+    date: "2024-10-14T10:15:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/LoyaltyPoints.java"
+        old: "return cents / 100;"
+        new: "return cents % 100;"
+        labels: ["B001", "fault"]
+
+  - id: "c4"
+    message: "Award one point per whole euro and the bonus from the eighth visit"
+    author: "Mei Tanaka <mei.tanaka@example.com>"
+    date: "2024-10-16T13:50:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/LoyaltyPoints.java"
+        old: "return cents % 100;"
+        new: "return cents / 100;"
+        labels: ["B001", "fix"]
+      - type: "replace"
+        path: "src/main/java/example/LoyaltyPoints.java"
+        old: "return visits > 8;"
+        new: "return visits >= 8;"
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "The eighth visit earns no bonus and the points are the cents left over instead of the whole euros"
+    bug_fixing_commit: "c4"
+    bug_introducing_commits: ["c1", "c3"]
+    fault:
+      commit: "c3"
+      file: "src/main/java/example/LoyaltyPoints.java"
+      entity:
+        type: "method"
+        name: "points"
+        signature: "int points(int cents)"
+      statement: "return cents % 100;"
+      change_type: "line_modification"
+    fix:
+      commit: "c4"
+      file: "src/main/java/example/LoyaltyPoints.java"
+      entity:
+        type: "method"
+        name: "points"
+        signature: "int points(int cents)"
+      statement: "return cents / 100;"
+      fix_type: "line_modification"
+    expected_szz:
+      commit_level:
+        true_positives: ["c1", "c3"]
+        primary_observable_bic: "c3"
+        contributing_bics: ["c1"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "return visits > 8;"
+          - "return cents % 100;"
+        note: >
+          The fix deletes two lines. The points line was written by c3 and
+          blames to it. The bonus line was made faulty by c1, which dropped
+          the equality, and then rewritten by c2, which changed the threshold
+          and kept the operator; blame returns c2 under every variant, a
+          correct commit, and c1 is on no line that still exists.
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3", "c4"]

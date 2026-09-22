@@ -75,6 +75,42 @@ public class Drive { public static void main(String[] a) throws Exception {
     catch (NoSuchMethodException e) { out.append("rem=absent"); }
     System.out.print(out.toString().trim()); } }
 """,
+    "SZZ-0215": """
+public class Drive { public static void main(String[] a) {
+    example.LoyaltyPoints p = new example.LoyaltyPoints(); StringBuilder out = new StringBuilder();
+    for (int v : new int[] {4, 5, 6, 8, 9}) out.append("b").append(v).append('=').append(p.bonus(v) ? "T" : "F").append(' ');
+    out.append("p250=").append(p.points(250)).append(" p199=").append(p.points(199));
+    System.out.print(out); } }
+""",
+    "SZZG-0145": """
+import java.lang.reflect.Method;
+public class Drive { public static void main(String[] a) throws Exception {
+    example.ZoneRates r = new example.ZoneRates(); StringBuilder out = new StringBuilder();
+    out.append("cents3=").append(r.rateCents("zone-3")).append(" cents1250=").append(r.rateCents("zone-1250"));
+    try { Method m = r.getClass().getMethod("rateLabel", String.class);
+          out.append(" label3=").append(m.invoke(r, "zone-3")).append(" label1250=").append(m.invoke(r, "zone-1250")); }
+    catch (NoSuchMethodException e) { out.append(" label=absent"); }
+    System.out.print(out); } }
+""",
+    "SZZG-0146": """
+public class Drive { public static void main(String[] a) throws Exception {
+    StringBuilder out = new StringBuilder();
+    out.append("apply=").append(new example.Discount().apply(2000, "15%"));
+    try { Object rc = Class.forName("example.Receipt").getConstructor().newInstance();
+          java.lang.reflect.Method m = rc.getClass().getMethod("describe", String.class);
+          out.append(" d15=").append(m.invoke(rc, "15%")).append(" d7=").append(m.invoke(rc, "7%")); }
+    catch (ClassNotFoundException e) { out.append(" receipt=absent"); }
+    System.out.print(out); } }
+""",
+    "SZZG-0147": """
+import java.lang.reflect.Method;
+public class Drive { public static void main(String[] a) throws Exception {
+    example.RetryPolicy p = new example.RetryPolicy(); StringBuilder out = new StringBuilder();
+    out.append("wait3=").append(p.waitSeconds(3));
+    try { Method m = p.getClass().getMethod("firstWaitSeconds"); out.append(" first=").append(m.invoke(p)); }
+    catch (NoSuchMethodException e) { out.append(" first=absent"); }
+    System.out.print(out); } }
+""",
 }
 
 EXPECTED = {
@@ -108,6 +144,35 @@ EXPECTED = {
         "c5": "exp899=false exp900=false exp901=true rem20=-5 rem600=-585",
         "c6": "exp899=false exp900=false exp901=true rem20=880 rem600=300",
     },
+    "SZZ-0215": {
+        "c0": "b4=F b5=T b6=T b8=T b9=T p250=2 p199=1",
+        "c1": "b4=F b5=F b6=T b8=T b9=T p250=2 p199=1",
+        "c2": "b4=F b5=F b6=F b8=F b9=T p250=2 p199=1",
+        "c3": "b4=F b5=F b6=F b8=F b9=T p250=50 p199=99",
+        "c4": "b4=F b5=F b6=F b8=T b9=T p250=2 p199=1",
+    },
+    "SZZG-0145": {
+        "c0": "cents3=300 cents1250=125000 label=absent",
+        "c1": "cents3=300 cents1250=125000 label=absent",
+        "c2": "cents3=300 cents1250=125000 label=absent",
+        "c3": "cents3=300 cents1250=125000 label3=300 USD label1250=125000 USD",
+        "c4": "cents3=300 cents1250=125000 label3=3 USD label1250=1250 USD",
+    },
+    "SZZG-0146": {
+        "c0": "apply=1700 receipt=absent",
+        "c1": "apply=1700 receipt=absent",
+        "c2": "apply=1700 receipt=absent",
+        "c3": "apply=1700 d15=1500 percent off d7=700 percent off",
+        "c4": "apply=1700 d15=15 percent off d7=7 percent off",
+    },
+    "SZZG-0147": {
+        "c0": "wait3=6 first=absent",
+        "c1": "wait3=6 first=absent",
+        "c2": "wait3=6 first=absent",
+        "c3": "wait3=6 first=absent",
+        "c4": "wait3=6 first=2000",
+        "c5": "wait3=6 first=2",
+    },
 }
 
 # deleted line (stripped) -> (plain, -w, -w -C -C) owner, at BFC^
@@ -120,9 +185,14 @@ BLAME = {
                  "return netCents + netCents / 100 * TAX_PERCENT;": ("c1", "c1", "c1")},
     "SZZ-0214": {},
     "SZZG-0144": {"return IDLE_TIMEOUT - idleSeconds;": ("c4", "c4", "c4")},
+    "SZZ-0215": {"return cents % 100;": ("c3", "c3", "c3"), "return visits > 8;": ("c2", "c2", "c2")},
+    "SZZG-0145": {'return rawRate(zone) + " USD";': ("c3", "c3", "c3")},
+    "SZZG-0146": {'return Percent.parse(percent) + " percent off";': ("c3", "c3", "c3")},
+    "SZZG-0147": {"return BACKOFF;": ("c4", "c4", "c4")},
 }
 
-REQUIRED = {"SZZ-0212": {"c1", "c3"}, "SZZ-0213": {"c1", "c3"}, "SZZ-0214": {"c1", "c3"}, "SZZG-0144": {"c2", "c4"}}
+REQUIRED = {"SZZ-0212": {"c1", "c3"}, "SZZ-0213": {"c1", "c3"}, "SZZ-0214": {"c1", "c3"}, "SZZG-0144": {"c2", "c4"},
+            "SZZ-0215": {"c1", "c3"}, "SZZG-0145": {"c1", "c3"}, "SZZG-0146": {"c1", "c3"}, "SZZG-0147": {"c3", "c4"}}
 
 
 def _git(repo: Path, *args: str) -> str:
@@ -161,7 +231,7 @@ def _run_driver(work: Path, sid: str) -> str:
     (work / "Drive.java").write_text(DRIVERS[sid])
     sources = [str(p) for p in work.rglob("*.java")]
     subprocess.run(["javac", "-d", str(work / "out"), *sources], check=True, capture_output=True)
-    return subprocess.run(["java", "-cp", str(work / "out"), "Drive"], capture_output=True, text=True, check=True).stdout.strip()
+    return subprocess.run(["java", "-cp", str(work / "out"), "Drive"], cwd=work, capture_output=True, text=True, check=True).stdout.strip()
 
 
 def test_every_deleted_line_of_the_fix_blames_as_the_readme_says(generated):
@@ -243,6 +313,35 @@ def test_both_commits_are_necessary(generated, tmp_path):
         _snapshot(repo, hashes["c3"], only_surcharge)
         _edit(only_surcharge, "src/main/java/example/ShippingFee.java", ("return base - surcharge;", "return base + surcharge;"))
         assert _run_driver(only_surcharge, sid) == EXPECTED[sid]["c1"]
+    elif sid == "SZZ-0215":
+        only_bonus = tmp_path / "only-bonus"
+        _snapshot(repo, hashes["c3"], only_bonus)
+        _edit(only_bonus, "src/main/java/example/LoyaltyPoints.java", ("return visits > 8;", "return visits >= 8;"))
+        assert _run_driver(only_bonus, sid) == "b4=F b5=F b6=F b8=T b9=T p250=50 p199=99"
+        only_points = tmp_path / "only-points"
+        _snapshot(repo, hashes["c3"], only_points)
+        _edit(only_points, "src/main/java/example/LoyaltyPoints.java", ("return cents % 100;", "return cents / 100;"))
+        assert _run_driver(only_points, sid) == "b4=F b5=F b6=F b8=F b9=T p250=2 p199=1"
+    elif sid == "SZZG-0145":
+        work = tmp_path / "undo-c1-on-c3"
+        _snapshot(repo, hashes["c3"], work)
+        _edit(work, "src/main/java/example/ZoneRates.java",
+              ("return Integer.parseInt(rawRate(zone));", "return Integer.parseInt(rawRate(zone)) * 100;"))
+        table = work / "src/main/resources/zone-rates.csv"
+        table.write_text("zone,rate_dollars\n" + "".join(f"zone-{i},{i}\n" for i in range(1, 5001)))
+        assert _run_driver(work, sid) == EXPECTED[sid]["c4"]
+    elif sid == "SZZG-0146":
+        work = tmp_path / "undo-c1-on-c3"
+        _snapshot(repo, hashes["c3"], work)
+        _edit(work, "src/main/java/example/Percent.java", ('.trim()) * 100;', '.trim());'))
+        _edit(work, "src/main/java/example/Discount.java", ("/ 10000;", "/ 100;"))
+        assert _run_driver(work, sid) == EXPECTED[sid]["c4"]
+    elif sid == "SZZG-0147":
+        work = tmp_path / "undo-c3-on-c4"
+        _snapshot(repo, hashes["c4"], work)
+        _edit(work, "src/main/java/example/RetryPolicy.java",
+              ("BACKOFF = 2000;", "BACKOFF = 2;"), ("return BACKOFF * attempt / 1000;", "return BACKOFF * attempt;"))
+        assert _run_driver(work, sid) == EXPECTED[sid]["c5"]
     elif sid == "SZZ-0213":
         only_tax = tmp_path / "only-tax"
         _snapshot(repo, hashes["c3"], only_tax)
@@ -287,3 +386,47 @@ def test_szzg_0144_issue_documents_and_message_evidence(generated):
     assert mentioning == {"c1", "c2", "c6"}
     touching = {cid for cid in mentioning if "src/main/java/example/SessionPolicy.java" in _git(repo, "show", "--name-only", "--format=", hashes[cid])}
     assert touching == {"c2", "c6"}
+
+
+def _changed_lines(repo: Path, commit: str) -> tuple[set[str], set[str]]:
+    diff = _git(repo, "show", "--format=", "-U0", commit).splitlines()
+    removed = {l[1:] for l in diff if l.startswith("-") and not l.startswith("---")}
+    added = {l[1:] for l in diff if l.startswith("+") and not l.startswith("+++")}
+    return removed, added
+
+
+def test_szzg_0147_reverts_are_real_and_the_second_restores_the_first_change(generated):
+    sid, hashes, repo = generated
+    if sid != "SZZG-0147":
+        pytest.skip("only SZZG-0147 has the revert pair")
+    c1_removed, c1_added = _changed_lines(repo, hashes["c1"])
+    c2_removed, c2_added = _changed_lines(repo, hashes["c2"])
+    c3_removed, c3_added = _changed_lines(repo, hashes["c3"])
+    assert (c2_removed, c2_added) == (c1_added, c1_removed)            # c2 is the inverse of c1
+    assert (c3_removed, c3_added) == (c1_removed, c1_added)            # c3 is c1 again
+    subjects = {cid: _git(repo, "log", "-1", "--format=%s", hashes[cid]).strip() for cid in ("c1", "c2", "c3")}
+    assert subjects["c2"] == f'Revert "{subjects["c1"]}"' and subjects["c3"] == f'Revert "{subjects["c2"]}"'
+    assert _git(repo, "log", "--first-parent", "--format=%h").count("\n") + 1 == 6 or len(_git(repo, "log", "--first-parent", "--format=%h").split()) == 6
+
+
+def test_szzg_0145_unit_change_rewrites_every_line_of_the_table(generated):
+    sid, hashes, repo = generated
+    if sid != "SZZG-0145":
+        pytest.skip("only SZZG-0145 has the generated table")
+    stat = _git(repo, "show", "--numstat", "--format=", hashes["c1"]).split("\n")
+    rows = {line.split("\t")[2]: (int(line.split("\t")[0]), int(line.split("\t")[1])) for line in stat if line}
+    assert rows["src/main/resources/zone-rates.csv"] == (5001, 5001)
+    assert rows["src/main/java/example/ZoneRates.java"] == (1, 1)
+    fix_files = _git(repo, "diff", "--name-only", f"{hashes['c4']}^", hashes["c4"]).split()
+    assert fix_files == ["src/main/java/example/ZoneRates.java"]
+
+
+def test_szzg_0146_default_variant_is_the_strict_one():
+    from szzbench.evaluator import _commit_level_policy, _load_scenario_for_evaluation
+    scenario, notes = _load_scenario_for_evaluation(ROOT / "advanced-scenarios" / "SZZG-0146" / "scenario.graph.yml", "advanced-scenarios")
+    assert scenario is not None, notes
+    default = _commit_level_policy(scenario, "advanced-scenarios", None)
+    assert (default.evaluation_variant, default.evaluation_policy, set(default.required)) == ("full-cause", "exact_set", {"c1", "c3"})
+    lenient = _commit_level_policy(scenario, "advanced-scenarios", "observable-only")
+    assert (lenient.evaluation_variant, lenient.evaluation_policy, set(lenient.required)) == ("observable-only", "relaxed_with_related", {"c3"})
+    assert set(lenient.related_origins) == {"c1"}

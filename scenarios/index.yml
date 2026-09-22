@@ -1722,3 +1722,19 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0214/scenario.yml
+- id: SZZ-0215
+  title: "A correct change on the faulty line takes ownership of it: two single-token faults, one fix"
+  slug: correct-change-owns-the-faulty-line
+  category_code: S1
+  category: Basic semantic line changes
+  factors:
+  - multi-bic
+  - single-bfc
+  - deep-line-history
+  - candidate-selection-distractor
+  - off-by-one
+  - wrong-operator
+  - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0215/scenario.yml

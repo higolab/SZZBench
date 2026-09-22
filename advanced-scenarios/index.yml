@@ -1,6 +1,6 @@
 schema_version: graph-index-0.1-draft
 description: Index of draft advanced graph scenarios for SZZBench.
-scenario_count: 137
+scenario_count: 140
 scenarios:
 - id: SZZG-0001
   title: BFC performs rename and fix in the same commit
@@ -1652,6 +1652,53 @@ scenarios:
   - issue-evidence
   - message-evidence
   - tool-visible-context
+  - value-flow
+  - wrong-constant
+  - blame-unreachable-bic
+- id: SZZG-0145
+  title: The unit change is a regenerated five-thousand-line table the fix never opens
+  category_code: G8
+  category: Non-source, binary, generated, and scalability edge cases
+  path: advanced-scenarios/SZZG-0145/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0145/README.md
+  status: active
+  factors:
+  - multi-bic
+  - single-bfc
+  - generated-file
+  - non-source-file
+  - config-bic
+  - value-flow
+  - config-value
+  - blame-unreachable-bic
+- id: SZZG-0146
+  title: "One history, two contracts: the default variant requires the cause, the other only the commit that made it visible"
+  category_code: G9
+  category: Evaluation policy variants
+  path: advanced-scenarios/SZZG-0146/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0146/README.md
+  status: active
+  factors:
+  - multi-bic
+  - single-bfc
+  - evaluation-variant
+  - caller-callee
+  - value-flow
+  - wrong-constant
+  - blame-unreachable-bic
+- id: SZZG-0147
+  title: A revert of a revert brings the unit change back, and a consumer is written after it
+  category_code: G6
+  category: Revert-specific reintroduction
+  path: advanced-scenarios/SZZG-0147/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0147/README.md
+  status: active
+  factors:
+  - multi-bic
+  - single-bfc
+  - revert
+  - revert-of-revert
+  - origin-vs-direct
   - value-flow
   - wrong-constant
   - blame-unreachable-bic

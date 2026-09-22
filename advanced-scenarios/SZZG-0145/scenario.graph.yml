@@ -1,0 +1,208 @@
+schema_version: graph-1.0
+meta:
+  id: SZZG-0145
+  title: The unit change is a regenerated five-thousand-line table the fix never opens
+  slug: unit-change-in-a-generated-table
+  description: >
+    A generated tariff table is regenerated in cents instead of dollars, and
+    the one reader that interprets it is changed in the same commit, so nothing
+    observable moves. A later commit adds a label that prints the raw table
+    value as dollars. The fix repairs the label, so the line it deletes belongs
+    to the later commit; the unit change is a five-thousand-line diff of a
+    non-source file the fix never opens, plus one line of the reader the fix
+    does not touch.
+  category: "Non-source, binary, generated, and scalability edge cases"
+  category_code: "G8"
+  factors:
+  - multi-bic
+  - single-bfc
+  - generated-file
+  - non-source-file
+  - config-bic
+  - value-flow
+  - config-value
+  - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  tier: discriminating
+  defeats: [blame, shape, position]
+repository:
+  name: SZZG-0145-unit-change-in-a-generated-table
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'Add the zone tariff table and its reader'
+  author: 'Farid Haddad <farid.haddad@example.com>'
+  role: initial
+  date: '2024-06-03T09:00:00Z'
+  operations:
+  - type: write_generated_text_file
+    path: src/main/resources/zone-rates.csv
+    lines: 5000
+    template: 'zone-${line},${line}'
+    header: |
+      zone,rate_dollars
+  - type: write_file
+    path: src/main/java/example/ZoneRates.java
+    content: |
+      package example;
+
+      import java.io.IOException;
+      import java.nio.file.Files;
+      import java.nio.file.Path;
+
+      public class ZoneRates {
+          static final Path TABLE = Path.of("src/main/resources/zone-rates.csv");
+
+          static String rawRate(String zone) throws IOException {
+              for (String line : Files.readAllLines(TABLE)) {
+                  String[] cells = line.split(",");
+                  if (cells[0].equals(zone)) {
+                      return cells[1];
+                  }
+              }
+              throw new IllegalArgumentException("unknown zone " + zone);
+          }
+
+          public int rateCents(String zone) throws IOException {
+              return Integer.parseInt(rawRate(zone)) * 100;
+          }
+      }
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'Regenerate the zone tariff table in cents'
+  author: 'Luca Moretti <luca.moretti@example.com>'
+  role: bug_introducing
+  date: '2024-06-05T14:30:00Z'
+  operations:
+  - type: write_generated_text_file
+    path: src/main/resources/zone-rates.csv
+    lines: 5000
+    template: 'zone-${line},${line}00'
+    header: |
+      zone,rate_cents
+  - type: replace
+    path: src/main/java/example/ZoneRates.java
+    old: return Integer.parseInt(rawRate(zone)) * 100;
+    new: return Integer.parseInt(rawRate(zone));
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'Describe the zone table in the README'
+  author: 'Elena Rossi <elena.rossi@example.com>'
+  role: intermediate
+  date: '2024-06-07T10:10:00Z'
+  operations:
+  - type: write_file
+    path: README.md
+    content: |
+      # Zone tariffs
+
+      `zone-rates.csv` is generated from the tariff sheet; do not edit it by hand.
+      `ZoneRates` looks a zone up by name.
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'Show the tariff of a zone on the quote'
+  author: 'Aiko Mori <aiko.mori@example.com>'
+  role: bug_introducing
+  date: '2024-06-10T16:20:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/ZoneRates.java
+    old: |
+      public int rateCents(String zone) throws IOException {
+              return Integer.parseInt(rawRate(zone));
+          }
+    new: |
+      public int rateCents(String zone) throws IOException {
+              return Integer.parseInt(rawRate(zone));
+          }
+
+          public String rateLabel(String zone) throws IOException {
+              return rawRate(zone) + " USD";
+          }
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: 'Print the zone tariff in dollars on the quote'
+  author: 'Tom Becker <tom.becker@example.com>'
+  role: bug_fixing
+  date: '2024-06-12T11:45:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/ZoneRates.java
+    old: return rawRate(zone) + " USD";
+    new: return (rateCents(zone) / 100) + " USD";
+bugs:
+- id: B001
+  title: The quote prints the tariff in cents labelled as dollars
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  - commit: c3
+    role: direct
+  bug_fixing_commits:
+  - commit: c4
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/resources/zone-rates.csv
+    statement: zone,rate_cents
+    change_type: line_modification
+  - id: F002
+    commit: c3
+    file: src/main/java/example/ZoneRates.java
+    statement: return rawRate(zone) + " USD";
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c4
+    file: src/main/java/example/ZoneRates.java
+    statement: return (rateCents(zone) / 100) + " USD";
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+    - c3
+    notes: >
+      Both commits are required. Without c3 nothing prints the raw table value; without c1 the table
+      is in dollars and c3's label is right. Blame on the line c4 deletes returns c3 alone; c1 rewrites every one of the
+      5,001 lines of a generated CSV the fix never opens (5,001 deletions, 5,001 insertions), plus
+      one line of rateCents() the fix does not touch.
+scenario_design:
+  purpose: >
+    A discriminating scenario for G8: the second required commit is in a large generated non-source
+    file, so reaching it means following the value the fixed expression reads into a file whose diff
+    is five thousand lines, not into another line of Java.
+  key_property: >
+    Measured: rateCents("zone-3") is 300 and rateCents("zone-1250") is 125000 at every commit;
+    rateLabel("zone-3") is "300 USD" at c3 and "3 USD" at c4, rateLabel("zone-1250") "125000 USD" and
+    "1250 USD". Undoing c1 on top of c3 (the table in dollars, rateCents() multiplying by 100) gives
+    "3 USD" and "1250 USD": the fixed answers. Blaming the line c4 deletes at c4^ returns c3 under
+    every variant; c1's diff rewrites all 5,001 lines of zone-rates.csv and one line of ZoneRates.java.
+  evaluation_points:
+  - Report exactly {c1, c3}.
+  - Whether the value the fixed expression reads is followed into the non-source file and to the commit that changed its unit.
+  - Whether a five-thousand-line diff of a generated file is examined rather than skipped as noise.
+  failure_mode: >-
+    A tool fails here when it stops at blame's `c3`, or when it skips `c1` because its diff is a
+    regenerated five-thousand-line table: the header line of that table, `zone,rate_cents`, is where
+    the unit `c3`'s label assumed was changed.
+notes:
+- The table is produced by write_generated_text_file at c0 and c1 with a different template; every data row changes at c1.
