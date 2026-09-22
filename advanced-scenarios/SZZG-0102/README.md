@@ -117,8 +117,8 @@ identifiers in the commit subjects. A tool handed the repository alone therefore
 the texts this section relies on — an adapter has to supply them from the YAML. The
 tool-visible-context decision ([`docs/decisions/tool-visible-context.md`](../../docs/decisions/tool-visible-context.md),
 issue #23) now commits such reports into the repository as `docs/issues/<ISSUE-ID>.md`
-documents (SZZG-0130–SZZG-0134); this scenario's reports have **not** been materialized that
-way, so its issue evidence stays adapter-supplied.
+documents (SZZG-0130, SZZG-0131 and SZZG-0135–SZZG-0137); this scenario's reports have **not**
+been materialized that way, so its issue evidence stays adapter-supplied.
 
 ## What the code still reveals
 
