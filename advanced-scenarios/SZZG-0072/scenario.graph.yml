@@ -20,6 +20,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0072-interactive-rebase-drops-original-bic-but-bug-remains
   default_branch: main
@@ -219,6 +220,9 @@ scenario_design:
   - Whether a tool that has access to the pre-rebase commits reports f1 or f2 although they are unreachable.
   - Whether a tool that reasons about origins keeps the dropped commit f1 out of the commit-level answer even though it is
     the origin of the comparison that r2 re-installs.
+  failure_mode: >-
+    A tool fails here when it maps the replay back to the dropped pre-rebase commits `f1`/`f2` (through a
+    reflog, fork, ORIG_HEAD or patch-id index) and reports them: only `r2` is in the fix's history.
 notes:
 - The interactive rebase is recorded with rebase_of (f2), interactive_rebase (drop_f1) and inherit_message / inherit_author_date,
   so r2 keeps f2's subject and author date while its committer date is the rebase date.

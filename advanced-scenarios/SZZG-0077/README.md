@@ -10,6 +10,7 @@
 | language | `java` |
 | factors | `branch`, `rebase`, `rebased-bic`, `multi-bfc`, `partial-fix`, `complete-fix` |
 | oracle | default: `exact_set`; required `r1`; related origins `f1` · `origin-aware`: `relaxed_with_related`; required `r1`; acceptable `f1` (credit 0.5) · BFCs `c3`, `c4` |
+| defeats | `shape` |
 | graph features | 2 branches; rebase `r1`; 2 BICs; 2 BFCs; origin faults; 2 fault sites; 1 evaluation variant (`origin-aware`) |
 <!-- /szzbench:header -->
 

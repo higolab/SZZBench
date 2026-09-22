@@ -18,6 +18,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0123-fix-on-unrebased-branch-merged-later
   default_branch: main
@@ -155,5 +156,8 @@ scenario_design:
   - Report f1 for the fix f2.
   - Do not report r1, the replay that is not an ancestor of the fix.
   - Do not report the merge c3.
+  failure_mode: >-
+    A tool fails here when it evaluates the fix on the main-line copy `r1` or on the merge `c3` where it
+    became visible: the fix `f1` lives on the un-rebased branch and is the one to start from.
 notes:
 - The merge conflict is real; `resolution` supplies the fix's version of the file.

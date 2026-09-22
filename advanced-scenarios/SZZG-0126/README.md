@@ -10,6 +10,7 @@
 | language | `java` |
 | factors | `revert`, `revert-is-fix`, `resolvable-message-handle`, `revert-as-distractor` |
 | oracle | `exact_set`; required `c1`; related but not correct `c2`, `c3` · BFC `c4` |
+| defeats | `shape` |
 | graph features | revert `c3`, `c4` |
 <!-- /szzbench:header -->
 

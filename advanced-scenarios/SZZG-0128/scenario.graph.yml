@@ -16,6 +16,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: [shape]
 repository:
   name: SZZG-0128-fast-forward-integration-twin
   default_branch: main
@@ -130,6 +131,9 @@ scenario_design:
   evaluation_points:
   - Report c1.
   - Behave the same as on SZZG-0043.
+  failure_mode: >-
+    A tool fails here when its answer differs from SZZG-0043's: the branch was integrated by fast-forward, and
+    a tool reacting to the presence of a merge commit behaves differently between the twins.
 notes:
 - Twin of SZZG-0043. The fast-forward is expressed by giving the first main commit after the branch the
   feature tip as its parent; the generator moves `main` there and commits on top.

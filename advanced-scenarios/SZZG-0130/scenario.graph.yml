@@ -18,6 +18,7 @@ meta:
   difficulty: hard
   status: active
   tier: control
+  defeats: [blame, shape]
 repository:
   name: SZZG-0130-report-date-excludes-later-rewrite
   default_branch: main
@@ -161,5 +162,8 @@ scenario_design:
   evaluation_points:
   - Report c1.
   - Do not report c3, which blame returns and which post-dates the report.
+  failure_mode: >-
+    A tool fails here when it takes plain blame's `c3`: the bug report is dated before `c3`, and dropping
+    commits made after the report leaves `c1`.
 notes:
 - The report document is written by an ordinary commit and scanned by the leakage lint like any other text.

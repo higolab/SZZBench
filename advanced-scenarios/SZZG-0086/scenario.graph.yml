@@ -15,6 +15,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0086-revert-of-fix-reintroduces-bug
   default_branch: main
@@ -153,6 +154,9 @@ scenario_design:
   - Whether SZZ reports c3.
   - Whether c1 is treated as origin rather than the direct answer.
   - Whether the prior fix c2 is not reported as BIC.
+  failure_mode: >-
+    A tool fails here when it reports the original BIC instead of the revert of the fix, which is the commit
+    that reintroduced the bug for the later fix.
 notes:
 - This scenario models revert-related development history for SZZ evaluation.
 - The direct BIC is the commit that reintroduces the bug in the history observed from the BFC.

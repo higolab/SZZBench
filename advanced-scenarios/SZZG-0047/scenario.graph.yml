@@ -20,6 +20,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0047-squash-merge
   default_branch: main
@@ -207,6 +208,9 @@ scenario_design:
   - Whether SZZ reports the direct main-line BIC c3.
   - Whether the origin BIC c1 is distinguished from the direct squash BIC.
   - Whether the benchmark can represent squash merge history without making the squash commit a two-parent merge.
+  failure_mode: >-
+    A tool fails here when it follows the squashed branch to `c1` and reports it: `c1` is not an ancestor of
+    the fix, and under the default oracle the squash commit `c3` alone is the answer.
 notes:
 - c3 carries the GitHub squash subject of the pull request. The generator writes single-line subjects only (the verifier compares
   `%s` with `message`, GE623), so the bullet list of squashed subjects that GitHub puts in the body is represented by `squashes`

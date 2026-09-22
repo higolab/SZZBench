@@ -18,6 +18,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0045-bic-in-merge-commit
   default_branch: main
@@ -142,6 +143,10 @@ scenario_design:
   - Merge commit as BIC
   - Later normal BFC
   - No parent contains the identity comparison before the merge.
+  failure_mode: >-
+    A tool fails here when it excludes merge commits from the candidate set (`git log --no-merges`, or a walk
+    that skips two-parent commits): the identity comparison is in neither parent, only in the merge's own diff
+    against either of them, so with merges skipped there is nothing left to report.
 notes:
 - This scenario requires support for operations on merge commits.
 - Rewritten 2026-09-21 from the shared Range.contains template to a string-comparison fault (GitHub issue 13); the history

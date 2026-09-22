@@ -20,6 +20,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0084-partial-revert
   default_branch: main
@@ -166,6 +167,9 @@ scenario_design:
   - Whether SZZ identifies c3 as the reintroducing BIC for the final fix.
   - Whether SZZ treats the original BIC c1 as related history, not the required direct answer.
   - Whether a revert-aware tool notices that only part of c2 was reverted.
+  failure_mode: >-
+    A tool fails here when it reports `c1`, where the faulty statement first appeared, instead of the partial
+    revert `c3` that reintroduced it, or when it reads the revert footer as undoing the whole of `c2`.
 notes:
 - 'c3 has no message of its own: git revert''s default subject ''Revert "<subject of c2>"'' is used, which is what a developer
   who reverts and then fixes up the working tree normally keeps.'

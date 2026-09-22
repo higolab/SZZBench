@@ -439,3 +439,12 @@ def test_fence_rules_follow_commonmark_for_length_and_info_strings():
     assert legacy_sections("````\n## Factors\n```\n## Source\n") == []
     assert legacy_sections("```not`a`fence\n## Factors\n\n- x\n") == [(1, 4, "Factors")]
     assert legacy_sections("   ~~~\n## Factors\n   ~~~\n## Source\n") == [(3, 4, "Source")]
+
+
+def test_header_shows_the_declared_defeats():
+    data = _graph()
+    assert "defeats" not in _rows(data, "advanced-scenarios")           # optional: absent when undeclared
+    data["meta"]["defeats"] = ["blame", "shape"]
+    assert _rows(data, "advanced-scenarios")["defeats"] == "`blame`, `shape`"
+    data["meta"]["defeats"] = []
+    assert _rows(data, "advanced-scenarios")["defeats"].startswith("none (a control")

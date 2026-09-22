@@ -10,6 +10,7 @@
 | language | `java` |
 | factors | `multi-bic`, `merge`, `release-branch`, `value-flow`, `blame-unreachable-bic` |
 | oracle | `exact_set`; required `c1`, `c4` · BFC `c5` |
+| defeats | `blame`, `shape`, `position` |
 | graph features | 2 branches; merge commit `c3`; 2 BICs; 2 fault sites |
 <!-- /szzbench:header -->
 

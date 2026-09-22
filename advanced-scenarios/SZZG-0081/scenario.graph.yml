@@ -21,6 +21,7 @@ meta:
   difficulty: hard
   status: active
   tier: control
+  defeats: [blame, shape]
 repository:
   name: SZZG-0081-rebase-with-formatting-rewrite-noise
   default_branch: main
@@ -165,6 +166,9 @@ scenario_design:
   evaluation_points:
   - Report r1.
   - Avoid r2, although plain git blame points at it.
+  failure_mode: >-
+    A tool fails here when it takes plain blame's answer, the formatting rewrite: reaching `r1` needs
+    whitespace-insensitive attribution (`git blame -w`, `--ignore-rev`, or a token-level comparison).
 notes:
 - 'The generated repository is designed so that plain blame misses the BIC: the graph verifier therefore reports GW703 for this
   scenario. That warning is expected and documents the difficulty, it is not a defect.'

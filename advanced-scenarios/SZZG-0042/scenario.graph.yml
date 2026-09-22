@@ -14,6 +14,7 @@ meta:
   difficulty: hard
   status: active
   tier: control
+  defeats: [blame, shape]
 repository:
   name: SZZG-0042-bfc-merge-commit
   default_branch: main
@@ -109,6 +110,9 @@ scenario_design:
   - BFC is a merge commit rather than a normal linear commit.
   - The BIC is on the merged feature branch.
   - An unrelated main-branch change exists before the merge.
+  failure_mode: >-
+    A tool fails here when it cannot treat a merge commit as the fix: the merge's first-parent diff is empty,
+    so a first-parent-only diff finds nothing to blame and a tool that skips merges has no fix to start from.
 notes:
 - This scenario intentionally makes c3 both a merge commit and the bug-fixing commit.
 - If generate-graph cannot apply operations on merge commits, graph_generator.py must be updated to support merge commits

@@ -18,6 +18,7 @@ meta:
   difficulty: hard
   status: active
   tier: control
+  defeats: [blame, shape]
 repository:
   name: SZZG-0132-message-and-blame-both-point-at-rewrite
   default_branch: main
@@ -127,5 +128,8 @@ scenario_design:
   evaluation_points:
   - Report c1.
   - Do not report c2, whatever the fix message says and whatever blame returns.
+  failure_mode: >-
+    A tool fails here when it trusts the fix message's quoted subject or plain blame, which both name the
+    rewrite `c2`: the zero delay first appears at `c1`, whose snapshot behaves exactly like `c2`'s.
 notes:
 - The fix message's quotation is exact, so a tool that resolves quoted subjects finds c2 unambiguously.

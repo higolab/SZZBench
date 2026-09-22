@@ -14,6 +14,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0060-bfc-main-after-feature-merge
   default_branch: main
@@ -112,6 +113,9 @@ scenario_design:
   purpose: >-
     Evaluate whether a method reaches a feature-branch bug-introducing commit from a fix made on main after the
     merge.
+  failure_mode: >-
+    A tool fails here when it stops at the merge on main instead of following the fixed line through the merge
+    into the feature branch commit that wrote it.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.

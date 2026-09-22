@@ -23,6 +23,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0073-interactive-rebase-reorders-commits-before-bic
   default_branch: main
@@ -191,6 +192,9 @@ scenario_design:
   - Report r2.
   - Avoid r1.
   - Do not assume that the n-th replayed commit corresponds to the n-th source commit.
+  failure_mode: >-
+    A tool fails here when it assumes the n-th replayed commit is the n-th source commit or sorts candidates
+    by author date: the interactive rebase reordered them, and the older-dated commit is the later one.
 notes:
 - 'The reorder is what git rebase -i does when the pick lines are swapped: the final tree of main equals the tree of the feature
   tip, but the intermediate trees and the per-commit patches differ.'

@@ -18,6 +18,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0088-partial-revert-of-fix-reintroduces-one-fault
   default_branch: main
@@ -149,6 +150,9 @@ scenario_design:
   evaluation_points:
   - Whether SZZ reports c3.
   - Whether SZZ does not require c1 as the direct BIC.
+  failure_mode: >-
+    A tool fails here when it searches history for the first appearance of the faulty text and reports `c1`:
+    that instance was fixed by `c2`, and the instance the fix repairs was written by the partial revert `c3`.
 notes:
 - This scenario models revert-related development history for SZZ evaluation.
 - The direct BIC is the commit that reintroduces the bug in the history observed from the BFC.

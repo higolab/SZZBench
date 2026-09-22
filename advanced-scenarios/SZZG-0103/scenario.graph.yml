@@ -17,6 +17,7 @@ meta:
   difficulty: hard
   status: active
   tier: control
+  defeats: [blame, shape]
 repository:
   name: SZZG-0103-caller-context-needed
   default_branch: main
@@ -130,6 +131,9 @@ scenario_design:
   - Whether SZZ identifies c1 (the caller-side negation) as the BIC.
   - Whether SZZ avoids reporting c0, which plain blame on the fixed line returns.
   - Whether the expected_szz evaluation policy is applied correctly.
+  failure_mode: >-
+    A tool fails here when it stays in the callee that the fix repairs: the line the fix changed was written
+    by the initial commit, and the fault lives at the call site `c1` changed.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.

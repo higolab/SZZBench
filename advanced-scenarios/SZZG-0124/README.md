@@ -10,6 +10,7 @@
 | language | `java` |
 | factors | `cherry-pick`, `conflict-resolution`, `adaptation-introduces-bug`, `release-branch` |
 | oracle | `exact_set`; required `r1`; related but not correct `c1` · BFC `r2` |
+| defeats | none (a control: every declared cheap rule may solve it) |
 | graph features | 2 branches; cherry-pick `r1` |
 <!-- /szzbench:header -->
 

@@ -10,6 +10,7 @@
 | language | `java` |
 | factors | `branch`, `rebase`, `formatting-rewrite`, `whitespace-only-change`, `blame-stops-at-formatting`, `direct-bic`, `origin-bic`, `null-check-omission` |
 | oracle | default: `exact_set`; required `r1`; related origins `f1`; related but not correct `r2` · `origin-aware`: `relaxed_with_related`; required `r1`; acceptable `f1` (credit 0.5); related but not correct `r2` · BFC `c3` |
+| defeats | `blame`, `shape` |
 | graph features | 2 branches; rebase `r1`; 2 BICs; origin faults; 1 evaluation variant (`origin-aware`) |
 <!-- /szzbench:header -->
 

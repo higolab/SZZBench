@@ -18,6 +18,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0091-multiple-bics-with-partial-revert-reintroducing-one-fault
   default_branch: main
@@ -164,6 +165,9 @@ scenario_design:
   evaluation_points:
   - Whether SZZ reports c4.
   - Whether SZZ avoids reporting both old BICs as exact direct answers.
+  failure_mode: >-
+    A tool fails here when it reports the original pair `{c1, c2}`, the answer to the prior fix: only `c2`'s
+    fault came back, through the partial revert `c4`, and `c4` alone is the answer.
 notes:
 - This scenario models revert-related development history for SZZ evaluation.
 - The direct BIC is the commit that reintroduces the bug in the history observed from the BFC.

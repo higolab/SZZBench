@@ -18,6 +18,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0078-rebase-commit-message-reveals-origin
   default_branch: main
@@ -145,6 +146,9 @@ scenario_design:
   evaluation_points:
   - Report r1.
   - Do not answer with f1 because the message points at it.
+  failure_mode: >-
+    A tool fails here when it replaces `r1` with the `f1` that `r1`'s message names: the footer points at the
+    origin, which is related but not correct.
 notes:
 - 'r1 declares both rebase_of and cherry_pick_of: rebase_of records the rewrite relation, cherry_pick_of is the source of the ''(cherry
   picked from commit ...)'' footer that cherry_pick_trailer writes into the body. Because r1 carries operations, the generator

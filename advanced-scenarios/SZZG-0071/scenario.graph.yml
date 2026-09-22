@@ -16,6 +16,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0071-interactive-rebase-edits-bic-commit
   default_branch: main
@@ -131,6 +132,9 @@ scenario_design:
     adds a distinct rebase-related complication.
   evaluation_points:
   - Report r1.
+  failure_mode: >-
+    A tool fails here when it reports the pre-rebase source `f1` instead of `r1`, the edited replay whose
+    content differs from its source.
 notes:
 - This scenario models a rebase-related development history for SZZ evaluation.
 - Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

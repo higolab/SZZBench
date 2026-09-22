@@ -11,6 +11,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0094-bic-bfc-issue-commit
   default_branch: main
@@ -95,6 +96,9 @@ scenario_design:
   - Whether SZZ identifies c2 as the BIC rather than the initial commit.
   - Whether both the BIC and BFC are represented as part of ISSUE-101.
   - Whether the expected_szz exact-set policy is applied correctly.
+  failure_mode: >-
+    A tool fails here when it reports the initial commit instead of `c2`, or lets the shared issue id
+    `ISSUE-101` pull the fix and the cause into one unit.
 notes:
 - This scenario intentionally keeps the source change simple while making issue membership explicit.
 issues:

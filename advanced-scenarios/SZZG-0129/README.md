@@ -10,6 +10,7 @@
 | language | `java` |
 | factors | `merge`, `octopus-merge`, `bic-on-non-first-parent`, `multi-branch-integration` |
 | oracle | `exact_set`; required `q1`; related but not correct `m1` · BFC `c2` |
+| defeats | none (a control: every declared cheap rule may solve it) |
 | graph features | 4 branches; merge commit `m1` |
 <!-- /szzbench:header -->
 

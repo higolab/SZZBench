@@ -16,6 +16,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0053-release-branch-only-bug
   default_branch: main
@@ -133,6 +134,9 @@ scenario_design:
   - Release-only BIC
   - Release-only BFC
   - Main branch has unrelated correct development.
+  failure_mode: >-
+    A tool fails here when it mines only the default branch: the bug and its fix exist on the release branch
+    alone, and `main` offers no candidate.
 notes:
 - This scenario should not be collapsed into feature-to-main merge scenarios.
 - Rewritten 2026-09-21 from the shared Range.contains template to a boolean-negation fault (GitHub issue 13); the history

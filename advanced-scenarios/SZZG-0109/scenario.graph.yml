@@ -12,6 +12,7 @@ meta:
   difficulty: medium
   status: active
   tier: control
+  defeats: [blame, shape]
 repository:
   name: SZZG-0109-file-deletion
   default_branch: main
@@ -182,6 +183,9 @@ scenario_design:
   - Whether SZZ handles a file deletion as the complete fix at all.
   - Whether the cosmetic change c1 to the deleted file and the guard c3 in the registry are excluded.
   - Whether the expected_szz evaluation policy is applied correctly.
+  failure_mode: >-
+    A tool fails here when it cannot handle a fix that deletes a whole file, or returns every commit the
+    deleted lines reach (`c1`, `c3`) instead of `c0`, which wrote the faulty line.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.

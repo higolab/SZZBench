@@ -17,6 +17,7 @@ meta:
   difficulty: hard
   status: active
   tier: control
+  defeats: [blame, shape]
 repository:
   name: SZZG-0089-revert-of-revert-with-conflict-resolution
   default_branch: main
@@ -173,6 +174,10 @@ scenario_design:
   evaluation_points:
   - Whether SZZ reports c3.
   - Whether the intermediate c4 is not selected.
+  failure_mode: >-
+    A tool fails here when it takes blame's answer `c4` (the rename before the fix), or treats the
+    revert-of-revert as restoring `c2` and reports the earlier fix: `c3`, the revert of that fix, is the
+    answer.
 notes:
 - >-
   Until 2026-09-22 the two reverts were prose subjects with hand-written operations (GitHub issue 22); they

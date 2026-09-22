@@ -10,6 +10,7 @@
 | language | `java` |
 | factors | `branch`, `merge`, `merge-commit-bic`, `string-comparison` |
 | oracle | `exact_set`; required `c3` · BFC `c4` |
+| defeats | none (a control: every declared cheap rule may solve it) |
 | graph features | 2 branches; merge commit `c3` |
 <!-- /szzbench:header -->
 
@@ -20,8 +21,9 @@ The merge commit itself introduces the bug: while merging the feature branch int
 the two strings by identity, which is true for the interned literal a unit test
 would pass and false for any role that arrives from input. A later ordinary
 commit restores `equals`. The point is the shape — a two-parent commit that is
-the BIC — and a tool that skips merge commits when walking back, or that blames
-only first parents, cannot name it.
+the BIC — and a tool that skips merge commits when walking back cannot name it.
+Blame can, plain or `--first-parent`, because the merge changed the line against
+both of its parents.
 
 Rewritten 2026-09-21 (issue #13) from the shared `Range.contains` template; the
 history shape, oracle and coverage dimensions (`bic_depth` 1, one distractor on
@@ -60,6 +62,9 @@ happens to work, which is how such a change passes review. `c4` deletes one line
 ## What a tool must do
 
 Report `c3`, a two-parent commit. A tool that excludes merges from the candidate
-set, or diffs a merge only against its first parent and finds "no change" there
-for this file, has nothing to report — the change exists only in the merge
-commit's own diff against both parents.
+set (`git log --no-merges`, or a walk that skips two-parent commits) has nothing
+to report: neither parent contains the identity comparison, so the change exists
+only in the merge commit's own diff — against its first parent as much as against
+its second (`git diff c3^1 c3 -- RoleCheck.java` shows `equals` → `==`). Working
+along first parents is therefore *not* a failure here: plain blame and
+`git blame --first-parent` at `c4^` both return `c3`.

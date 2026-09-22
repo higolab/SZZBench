@@ -17,6 +17,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: [shape]
 repository:
   name: SZZG-0097-work-item-inference-without-issue-id
   default_branch: main
@@ -169,6 +170,9 @@ scenario_design:
   - Whether the work item can be inferred from context without issue IDs.
   - Whether c2 is selected as the BIC rather than neighboring contextual commits c1 or c3.
   - Whether c4's fix message helps connect the regression to the inferred range-filter work.
+  failure_mode: >-
+    A tool fails here when it infers a work item from message similarity and reports its neighbouring commits
+    `c1`/`c3` with the answer `c2`.
 notes:
 - This revision makes SZZG-0097 distinct from SZZG-0096 by removing explicit issue IDs from commit messages and adding inference
   signals.

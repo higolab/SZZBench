@@ -18,6 +18,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0082-rebase-with-generated-file-update
   default_branch: main
@@ -157,6 +158,9 @@ scenario_design:
   evaluation_points:
   - Report r1.
   - Ignore r2.
+  failure_mode: >-
+    A tool fails here when it treats the commit before the fix, `r2`, as a candidate: it changed only a
+    generated file and no source.
 notes:
 - This scenario models a rebase-related development history for SZZ evaluation.
 - Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

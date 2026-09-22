@@ -14,6 +14,7 @@ meta:
   difficulty: hard
   status: active
   tier: control
+  defeats: [blame, shape]
 repository:
   name: SZZG-0105-defensive-check-masks-root-cause
   default_branch: main
@@ -141,6 +142,9 @@ scenario_design:
   - Whether SZZ reports c1, the commit that introduced the root cause.
   - Whether SZZ avoids reporting c0, which line-based blame at BFC^ reaches.
   - Whether the fix is recognized as a defensive one that leaves the root cause in place.
+  failure_mode: >-
+    A tool fails here when it reports `c0`, the caller's author that plain blame reaches, instead of following
+    the guarded `null` back to `c1`, which made `Profile.displayName` return it.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.

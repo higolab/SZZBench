@@ -15,6 +15,7 @@ meta:
   difficulty: hard
   status: active
   tier: control
+  defeats: [blame, shape]
 repository:
   name: SZZG-0059-merge-commit-as-bic
   default_branch: main
@@ -119,6 +120,10 @@ scenario_design:
   purpose: >-
     Evaluate whether a method reports a merge commit as the bug-introducing commit when the fault is in the merge
     resolution.
+  failure_mode: >-
+    A tool fails here when it refuses to name a merge commit as the bug-introducing commit: the fault is in
+    the merge resolution, so blame on the fix's deleted line stops at the merge's parents and a tool that
+    skips merges has no candidate.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.

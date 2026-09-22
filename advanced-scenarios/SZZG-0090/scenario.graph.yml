@@ -16,6 +16,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0090-repeated-revert-toggling-before-final-fix
   default_branch: main
@@ -188,6 +189,9 @@ scenario_design:
   evaluation_points:
   - Whether SZZ reports c5.
   - Whether older origin/reintroducing commits are not counted as exact direct answers.
+  failure_mode: >-
+    A tool fails here when it reports one of the earlier BIC-like commits in the revert toggling instead of
+    the latest reintroduction the final fix repairs.
 notes:
 - This scenario models revert-related development history for SZZ evaluation.
 - The direct BIC is the commit that reintroduces the bug in the history observed from the BFC.

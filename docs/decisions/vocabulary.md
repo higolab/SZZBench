@@ -163,3 +163,36 @@ index drifted before (issue #19). The scenario file is the single source of
 truth; `szzbench coverage --json` joins the tier with the difficulty
 dimensions for anyone who wants to select on it.
 
+## 8. `meta.defeats` and `scenario_design.failure_mode`: what a scenario is built to break (issue #35)
+
+Added 2026-09-22. A scenario may declare the **cheap-rule families it is built to
+make fail**:
+
+```yaml
+meta:
+  tier: control
+  defeats: [blame, shape]      # or [] for a control that promises nothing
+scenario_design:
+  failure_mode: >-
+    A tool fails here when it takes plain blame's answer, the formatting
+    rewrite, instead of attributing the line whitespace-insensitively.
+```
+
+- `defeats` lists families from `blame` (`blame-deleted-lines`), `shape`
+  (`shape-last-toucher`) and `position` (every positional rule); a family is
+  defeated when **none** of its declared baselines solves the scenario. The
+  declaration is checked against the measurement by `szzbench baselines`
+  (`declared_defeated_but_solved`), the way the tier is; a filtered run checks
+  only the families it ran. `tier: discriminating` means defeating every
+  family, and `W462` / `GW462` require the two declarations to agree.
+- `failure_mode` is one sentence, "A tool fails here when it …": the concrete
+  wrong step the history exercises. It is prose for the reader; the checkable
+  part is `defeats`.
+- Both are optional. On 2026-09-22 the G4–G8 scenarios (82) were audited and
+  declare them; the declarations were taken from the measurement (blame
+  defeated in 19, shape in 28, position in the 4 `discriminating` ones), so the
+  check passes by construction and guards against drift. The audit raised no
+  `difficulty` above its floor: for an `exact` scenario a blame-based tool
+  passes, so the failure modes the READMEs describe belong to other strategies
+  (following metadata, walking the wrong parent, excluding merges), and the
+  floor of §4 stands.

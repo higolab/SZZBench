@@ -10,6 +10,7 @@
 | language | `java` |
 | factors | `rebase`, `merge`, `fix-on-feature-branch`, `origin-and-replay-both-reachable` |
 | oracle | `exact_set`; required `f1`; related but not correct `r1`, `c3` · BFC `f2` |
+| defeats | none (a control: every declared cheap rule may solve it) |
 | graph features | 2 branches; merge commit `c3`; rebase `r1` |
 <!-- /szzbench:header -->
 

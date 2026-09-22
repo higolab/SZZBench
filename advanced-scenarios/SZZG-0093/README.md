@@ -10,6 +10,7 @@
 | language | `java` |
 | factors | `work-item`, `feature-work`, `bic-inside-work-item`, `commit-series` |
 | oracle | `exact_set`; required `c2`; related but not correct `c1`, `c3` · BFC `c4` |
+| defeats | `shape` |
 | graph features | `work_items` |
 <!-- /szzbench:header -->
 

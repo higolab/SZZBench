@@ -20,6 +20,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0050-backport-fix
   default_branch: main
@@ -195,6 +196,9 @@ scenario_design:
   - Whether SZZ traces the release backport r2 to c1.
   - Whether backport metadata is handled without treating c2 as the BIC.
   - Whether release-specific changes before the backport do not hide the original BIC.
+  failure_mode: >-
+    A tool fails here when, starting from the backport `r2`, it follows `backport_of` to the main-line fix
+    `c2` and reports it, or stops at the release-only commits `r1`/`r0` before reaching the shared history.
 notes:
 - The release branch carries release-specific changes so that the source history is not a simple correct-buggy-fixed sequence.
 - r2 is an explicit backport of c2.

@@ -15,6 +15,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: [shape]
 repository:
   name: SZZG-0093-feature-bic
   default_branch: main
@@ -134,6 +135,9 @@ scenario_design:
   - Whether SZZ identifies c2 as the BIC.
   - Whether neighboring work-item commits c1 and c3 are avoided as false positives.
   - Whether work-item metadata can be used without collapsing all commits in the work item into one cause.
+  failure_mode: >-
+    A tool fails here when it reports the neighbouring commits of the same work item, `c1` and `c3`, together
+    with `c2`: only `c2` introduced the fault.
 notes:
 - This revision makes the work-item structure explicit through the top-level work_items section and per-commit work_item fields.
 - c1 and c3 are related feature-work commits but are not the BIC.

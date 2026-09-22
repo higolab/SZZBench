@@ -16,6 +16,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0085-old-bic-and-re-bic-plausible
   default_branch: main
@@ -157,6 +158,9 @@ scenario_design:
   - Whether SZZ identifies c3 as the direct reintroducing BIC for c4.
   - Whether c1 can be treated as an origin-related answer under an alternative evaluation policy.
   - Whether a partial revert is distinguished from the old original BIC.
+  failure_mode: >-
+    A tool fails here when it reports the old BIC `c1` as the answer: the reintroducing revert `c3` is the
+    direct BIC for the final fix, and `c1` is accepted only as origin context.
 notes:
 - This revision makes SZZG-0085 an evaluation-variant scenario for old BIC versus re-BIC.
 - c3 partially reverts c2 only for the boundary condition; it keeps the source-label refactoring from c2.

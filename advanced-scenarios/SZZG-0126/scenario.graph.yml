@@ -17,6 +17,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: [shape]
 repository:
   name: SZZG-0126-fix-is-git-revert-after-noise-revert
   default_branch: main
@@ -133,6 +134,9 @@ scenario_design:
   - Report c1.
   - Do not report c2 or c3.
   - Optionally, resolve the BFC's `This reverts commit` footer to c1 directly.
+  failure_mode: >-
+    A tool fails here when it reports every reverted commit named by a footer: only `c4`, the revert that
+    restores the freshness comparison, undid the fix; `c3` restored a removed method.
 notes:
 - Both reverts are produced by `git revert --no-commit` (no operations), so their subjects and footers are
   the ones git writes.

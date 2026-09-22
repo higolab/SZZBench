@@ -10,6 +10,7 @@
 | language | `java` |
 | factors | `work-item`, `issue-evidence` |
 | oracle | `exact_set`; required `c1`; related but not correct `c2`, `c3` · BFC `c4` |
+| defeats | `shape` |
 | graph features | `issues`; `work_items` |
 <!-- /szzbench:header -->
 

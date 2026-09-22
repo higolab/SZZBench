@@ -15,6 +15,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0107-bfc-generated-file
   default_branch: main
@@ -107,6 +108,9 @@ scenario_design:
   - Whether SZZ identifies c1 as the BIC.
   - Whether generated files added or refreshed in the BFC are ignored as blame targets.
   - Whether the expected_szz exact-set policy is applied correctly.
+  failure_mode: >-
+    A tool fails here when it scores the generated file the fix regenerates or weights commits by size: the
+    generated file has no deleted lines and contributes nothing.
 notes:
 - The generated file is intentionally changed only in the BFC.
 - The source fix remains in src/main/java/example/Retention.java.

@@ -17,6 +17,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0125-cherry-pick-adaptation-faithful
   default_branch: main
@@ -161,5 +162,8 @@ scenario_design:
   evaluation_points:
   - Report r1.
   - Treat c1 as origin, not as the answer (direct/origin contract D4).
+  failure_mode: >-
+    A tool fails here when it reports the trailer's source `c1` instead of `r1`: `c1` is faulty and is
+    credited as origin, but it is not an ancestor of the fix.
 notes:
 - The cherry-pick conflict is real; `resolution` supplies the adapted file with the same exclusive bounds.

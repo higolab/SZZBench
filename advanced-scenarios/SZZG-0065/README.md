@@ -10,6 +10,7 @@
 | language | `java` |
 | factors | `branch`, `rebase`, `rebase-conflict-resolution`, `conflict-resolution-bic`, `direct-bic`, `fault-in-neither-parent` |
 | oracle | `exact_set`; required `r1` · BFC `c2` |
+| defeats | none (a control: every declared cheap rule may solve it) |
 | graph features | 2 branches; rebase `r1`; cherry-pick `r1` |
 <!-- /szzbench:header -->
 

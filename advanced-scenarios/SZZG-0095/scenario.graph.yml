@@ -14,6 +14,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0095-bic-bfc-intermediate-work-item
   default_branch: main
@@ -119,6 +120,9 @@ scenario_design:
   - Whether SZZ identifies c1 as the BIC.
   - Whether the intermediate audit commit c2 is not mistaken for the BIC.
   - Whether work-item membership is represented without collapsing all commits in the work item into one cause.
+  failure_mode: >-
+    A tool fails here when it reports the intermediate work-item commit `c2` or collapses the work item into
+    one cause: only `c1` introduced the fault.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.

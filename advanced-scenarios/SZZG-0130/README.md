@@ -10,6 +10,7 @@
 | language | `java` |
 | factors | `bug-report-date`, `tool-visible-context`, `rewrite-after-bic`, `basic-blame-distractor` |
 | oracle | `exact_set`; required `c1`; related but not correct `c3` · BFC `c4` |
+| defeats | `blame`, `shape` |
 | graph features | `issues` |
 <!-- /szzbench:header -->
 

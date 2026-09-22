@@ -13,6 +13,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0101-caller-callee
   default_branch: main
@@ -131,6 +132,9 @@ scenario_design:
   - Whether SZZ identifies c2 as the direct BIC in the caller.
   - Whether c1 is treated as required context but not as the faulty commit.
   - Whether the analysis can connect the BFC line to the callee contract.
+  failure_mode: >-
+    A tool fails here when it reports the callee commit `c1` as the fault instead of the caller change `c2`
+    that stopped handling the callee's empty result.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.

@@ -449,6 +449,35 @@ def lint_difficulty(meta: Any, result: ValidationResult, *, prefix: str) -> None
                        "'szzbench coverage' reports the floor the blame class sets.", "meta.difficulty")
 
 
+#: The cheap-rule families a scenario may declare it defeats (issue #35).  A
+#: family is defeated when none of its declared baselines solves the scenario;
+#: ``szzbench baselines`` checks the declaration against the measurement.
+DEFEATABLE_FAMILIES = ("blame", "shape", "position")
+
+
+def lint_defeats(meta: Any, result: ValidationResult, *, prefix: str) -> None:
+    """``<prefix>462``: ``meta.defeats`` names the cheap-rule families the scenario is built to make fail.
+
+    Optional.  When present it must be a list of distinct family names, and a
+    ``discriminating`` scenario must list every family, because that is what
+    the tier means.
+    """
+    if not isinstance(meta, dict) or "defeats" not in meta:
+        return
+    defeats = meta.get("defeats")
+    if not isinstance(defeats, list) or not all(isinstance(item, str) for item in defeats):
+        result.warning(f"{prefix}462", f"meta.defeats must be a list of family names from {DEFEATABLE_FAMILIES}.", "meta.defeats")
+        return
+    unknown = [item for item in defeats if item not in DEFEATABLE_FAMILIES]
+    if unknown:
+        result.warning(f"{prefix}462", f"meta.defeats names unknown families {unknown}; use {DEFEATABLE_FAMILIES}.", "meta.defeats")
+    if len(set(defeats)) != len(defeats):
+        result.warning(f"{prefix}462", "meta.defeats lists a family twice.", "meta.defeats")
+    if meta.get("tier") == "discriminating" and set(defeats) != set(DEFEATABLE_FAMILIES):
+        result.warning(f"{prefix}462", "a discriminating scenario defeats every family; list all of "
+                       f"{DEFEATABLE_FAMILIES} or change the tier.", "meta.defeats")
+
+
 def lint_tier(meta: Any, result: ValidationResult, *, prefix: str) -> None:
     """``<prefix>460``: every scenario declares a tier from the vocabulary."""
     tier = meta.get("tier") if isinstance(meta, dict) else None
@@ -566,6 +595,7 @@ def lint_scenario(data: dict[str, Any], snapshots: dict[str, dict[str, str]] | N
     lint_factors(factors, result, prefix="W")
     lint_tier(data.get("meta"), result, prefix="W")
     lint_difficulty(data.get("meta"), result, prefix="W")
+    lint_defeats(data.get("meta"), result, prefix="W")
     lint_leakage(commits, bfc_ids, result, prefix="W")
     lint_author_coincidence(data, "scenarios", result, prefix="W")
     if scenario_path is not None:

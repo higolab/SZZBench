@@ -18,6 +18,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0112-non-utf-8-file
   default_branch: main
@@ -144,6 +145,9 @@ scenario_design:
   - Whether SZZ identifies c1 as the BIC for the encoded configuration change.
   - Whether non-UTF-8 file content does not break parsing, generation, or verification.
   - Whether the expected_szz exact-set policy is applied correctly.
+  failure_mode: >-
+    A tool fails here when it decodes every changed file as UTF-8 and loses the CP1252 properties file, or
+    inspects source files only: Git diffs and blames the file as text, and the fault is in it.
 notes:
 - Until 2026-09-22 nothing read config/range-limits.properties, so the declared BIC could not cause a fault the
   code showed (issue #23). ConfigBackedRange now loads the file and the effect is measured at every commit.

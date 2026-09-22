@@ -10,6 +10,7 @@
 | language | `java` |
 | factors | `single-bic`, `single-bfc`, `boundary-condition` |
 | oracle | `exact_set`; required `c1` · BFC `c3` |
+| defeats | none (a control: every declared cheap rule may solve it) |
 | graph features | none: a linear history with one bug and an exact-set oracle, kept in the graph suite for its category |
 <!-- /szzbench:header -->
 

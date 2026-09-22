@@ -20,6 +20,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0056-main-fix-rebased-onto-release-branch
   default_branch: main
@@ -142,6 +143,9 @@ scenario_design:
   evaluation_points:
   - Start from r2.
   - Return c1.
+  failure_mode: >-
+    A tool fails here when, starting from `r2`, it reports `c2`, the main-line fix that `r2` replays, instead
+    of the bug-introducing `c1`.
 notes:
 - This scenario models a rebase-related development history for SZZ evaluation.
 - Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

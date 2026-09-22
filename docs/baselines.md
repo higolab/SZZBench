@@ -269,6 +269,18 @@ scoped to the families that ran.
 Raising the discriminating count is the work tracked in issues #13, #14 and
 #35; the measured axis is oracle size.
 
+Between the two tiers sits a finer declaration, `meta.defeats`: the cheap-rule
+**families** a scenario is built to make fail (`blame`, `shape`, `position`;
+`decisions/vocabulary.md` §8), with the wrong step spelled out in
+`scenario_design.failure_mode`. A `discriminating` scenario defeats all three;
+a control may defeat one or two — SZZG-0081 defeats `blame` and `shape`
+because its formatting rewrite absorbs the blame, yet `position-1` still finds
+its BIC — or none. `szzbench baselines` reports every declared family that
+some rule of that family solves after all (`declared_defeated_but_solved`),
+scoped to the families that ran. The 82 G4–G8 scenarios declare it since
+2026-09-22 (blame defeated in 19, shape in 28, position in 4), with no
+contradiction.
+
 The check earns its keep. `SZZG-0118` was first declared `discriminating` and
 the measurement refused it: the generator's author rotation had given its two
 bug-introducing commits the same author and no other commit that author, so

@@ -10,6 +10,7 @@
 | language | `java` |
 | factors | `file-mode-change` |
 | oracle | `exact_set`; required `c1` · BFC `c3` |
+| defeats | none (a control: every declared cheap rule may solve it) |
 | graph features | operation `chmod` |
 <!-- /szzbench:header -->
 

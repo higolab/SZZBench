@@ -15,6 +15,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: [shape]
 repository:
   name: SZZG-0043-bic-on-feature-branch-bfc-on-main
   default_branch: main
@@ -121,5 +122,8 @@ scenario_design:
   - Feature-branch BIC
   - Normal main-branch BFC
   - Intermediate feature code uses the buggy method before merge.
+  failure_mode: >-
+    A tool fails here when it stops at the merge that brought the feature branch in, or at the main-line
+    commit that extended the buggy method, instead of following the line into the feature branch to `c1`.
 notes:
 - This scenario is intentionally distinct from SZZG-0046 and SZZG-0042 because the BFC is not a merge commit.

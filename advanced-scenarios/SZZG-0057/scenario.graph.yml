@@ -16,6 +16,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0057-rebase-old-feature-branch-after-unrelated-main-changes
   default_branch: main
@@ -165,6 +166,9 @@ scenario_design:
   evaluation_points:
   - Report r1.
   - Avoid m1/m2.
+  failure_mode: >-
+    A tool fails here when it reports the unrelated main-line commits `m1`/`m2` that the feature branch was
+    rebased over, or the pre-rebase origin, instead of the replay `r1`.
 notes:
 - This scenario models a rebase-related development history for SZZ evaluation.
 - Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.

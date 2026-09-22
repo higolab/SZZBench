@@ -16,6 +16,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: []
 repository:
   name: SZZG-0051-backport-introduces-bug
   default_branch: main
@@ -131,6 +132,9 @@ scenario_design:
   - Whether SZZ identifies r1 as the release-specific BIC.
   - Whether backport_of metadata does not cause SZZ to blame the main-line source change c1.
   - Whether the expected_szz evaluation policy is applied correctly.
+  failure_mode: >-
+    A tool fails here when it trusts `backport_of` and the shared subject and reports the main-line source
+    `c1`: the faulty line was written on the release branch by the adaptation `r1`.
 notes:
 - Rewritten 2026-09-21 from the shared Range.contains template to a wrong-constant fault (GitHub issue 13); the history shape,
   oracle and coverage dimensions are unchanged.

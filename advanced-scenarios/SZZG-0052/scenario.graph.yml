@@ -15,6 +15,7 @@ meta:
   difficulty: easy
   status: active
   tier: control
+  defeats: [shape]
 repository:
   name: SZZG-0052-criss-cross-merge
   default_branch: main
@@ -186,6 +187,9 @@ scenario_design:
   evaluation_points:
   - Whether a tool walks the faulty line through a merge with two merge bases back to a1.
   - Whether the two merge commits a2, b2 or the integration merge c4 are reported instead of a1.
+  failure_mode: >-
+    A tool fails here when its own history walk stops at one of the merges `a2`, `b2` or `c4` instead of
+    resolving the criss-cross to `a1`, the commit that wrote the line.
 notes:
 - The two branches touch disjoint files, so every merge is conflict-free; the criss-cross is structural, not a conflict
   scenario.
