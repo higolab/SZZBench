@@ -11,6 +11,8 @@ meta:
   - revert-of-revert
   - conflict-resolution
   - intermediate-change
+  - variable-rename
+  - revert-footer
   - re-bic
   difficulty: advanced
   status: active
@@ -29,11 +31,11 @@ graph:
 
     c2: fix boundary bug
 
-    c3: revert c2 and reintroduce boundary bug
+    c3: git revert of c2, reintroducing the boundary bug
 
-    c4: add description before resolving revert conflict
+    c4: rename the bound checks on the reverted lines and add a description
 
-    c5: revert c3 with conflict resolution and restore boundary fix'
+    c5: git revert of c3, conflicting with c4 and resolved by hand'
 commits:
 - id: c0
   branch: main
@@ -71,41 +73,32 @@ commits:
   branch: main
   parents:
   - c2
-  message: 'Revert the bounds change'
+  message: 'Revert "Accept both bounds again"'
   role: bug_introducing
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
-    new: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
-  reverts: c2
+  revert_of: c2
 - id: c4
   branch: main
   parents:
   - c3
-  message: 'Add a range description method'
+  message: 'Name the bound checks after what they check and add a description'
   role: intermediate
   operations:
-  - type: replace
+  - type: write_file
     path: src/main/java/example/Range.java
-    old: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    boolean\
-      \ aboveMin = value > min;\n    boolean belowMax = value < max;\n    return aboveMin && belowMax;\n  }\n}\n"
-    new: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    boolean\
-      \ aboveMin = value > min;\n    boolean belowMax = value < max;\n    return aboveMin && belowMax;\n  }\n\n  public String\
-      \ description() {\n    return \"exclusive range after revert\";\n  }\n}\n"
+    content: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min, int max) {\n    boolean\
+      \ lowerOk = value > min;\n    boolean upperOk = value < max;\n    return lowerOk && upperOk;\n  }\n\n  public String\
+      \ description() {\n    return \"exclusive range\";\n  }\n}\n"
 - id: c5
   branch: main
   parents:
   - c4
-  message: 'Restore the inclusive bounds after the revert'
+  message: 'Revert "Revert "Accept both bounds again""'
   role: bug_fixing
-  operations:
-  - type: replace
-    path: src/main/java/example/Range.java
-    old: "boolean aboveMin = value > min;\n    boolean belowMax = value < max;"
-    new: "boolean aboveMin = value >= min;\n    boolean belowMax = value <= max;"
-  reverts: c3
-  revert_conflict_resolution: true
+  revert_of: c3
+  resolution:
+    src/main/java/example/Range.java: "package example;\n\npublic class Range {\n  public boolean contains(int value, int min,\
+      \ int max) {\n    boolean lowerOk = value >= min;\n    boolean upperOk = value <= max;\n    return lowerOk && upperOk;\n\
+      \  }\n\n  public String description() {\n    return \"inclusive range\";\n  }\n}\n"
 bugs:
 - id: B001
   title: Boundary bug fixed by conflict-resolved revert of revert
@@ -132,12 +125,12 @@ bugs:
   - id: X001
     commit: c5
     file: src/main/java/example/Range.java
-    statement: boolean belowMax = value <= max;
+    statement: boolean upperOk = value <= max;
     fix_type: conflict_resolved_revert_fix
   - id: X002
     commit: c5
     file: src/main/java/example/Range.java
-    statement: boolean aboveMin = value >= min;
+    statement: boolean lowerOk = value >= min;
     fix_type: conflict_resolved_revert_fix
 expected_szz:
   commit_level:
@@ -147,7 +140,7 @@ expected_szz:
     related_but_not_correct:
     - c2
     - c4
-    notes: The direct BIC is c3 even though the BFC c5 is a conflict-resolved revert-of-revert.
+    notes: The direct BIC is c3 even though the BFC c5 is a conflict-resolved revert-of-revert of it.
     related_origins:
     - c1
   evaluation_variants:
@@ -165,13 +158,23 @@ expected_szz:
       - c2
       - c4
 scenario_design:
-  purpose: Evaluate a revert-of-revert BFC that includes conflict resolution after intervening code changes.
-  key_property: The BFC restores the earlier fix while preserving unrelated intervening changes.
+  purpose: >-
+    Evaluate a revert-of-revert BFC that is a real git revert of the BIC, applied with conflict resolution
+    after an intervening commit rewrote the reverted lines.
+  key_property: >-
+    c3 and c5 are real git reverts (their bodies carry "This reverts commit <hash>."). c4 renames the two
+    helper variables on exactly the lines c3 reverted, so git revert c3 conflicts and c5's resolution keeps
+    c4's names while restoring the inclusive bounds. Measured on the generated snapshots: contains(0, 0, 10)
+    and contains(10, 0, 10) are true at c0, false at c1, true at c2, false at c3 and c4, true at c5; the two
+    lines c5 deletes were last written by c4, so blame on them returns c4, a related-but-not-correct commit,
+    and the declared fault lines are no longer present at c5^ (GI701 by the variable-rename factor).
   difference_from_existing_revert_scenarios: This scenario isolates a double-revert or revert-derived complication beyond
     the existing partial revert and reintroduction scenarios.
   evaluation_points:
   - Whether SZZ reports c3.
   - Whether the intermediate c4 is not selected.
 notes:
-- This scenario models revert-related development history for SZZ evaluation.
+- >-
+  Until 2026-09-22 the two reverts were prose subjects with hand-written operations (GitHub issue 22); they
+  are now produced by git revert, and c5's conflict with c4 is real.
 - The direct BIC is the commit that reintroduces the bug in the history observed from the BFC.
