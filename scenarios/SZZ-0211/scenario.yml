@@ -6,9 +6,9 @@ meta:
   description: >-
     The BIC drops half of an authorization guard, so inactive accounts pass. Four later commits rewrite the
     guard line without changing its behaviour: a whitespace-only re-indentation, a variable rename, a brace
-    removal and a trailing comment. Plain blame at the BFC parent stops at the comment; git blame -w skips the
-    re-indentation but nothing else, so a tool has to combine whitespace-insensitive blame with recursion to
-    reach the BIC four steps back.
+    removal and a trailing comment. One-shot blame at the BFC parent stops at the comment, with or without -w;
+    plain recursion reaches the BIC in four steps, and recursion with -w skips exactly the re-indentation and
+    needs three.
   category: "Intermediate noise and history noise"
   category_code: "S3"
   factors:

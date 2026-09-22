@@ -17,10 +17,11 @@
 The deepest line history in the suite (issue #24): four behaviour-preserving
 rewrites of the faulty line between the BIC and the BFC, one of them
 whitespace-only. The fault is an authorization guard that lost its
-`isActive()` half, so inactive accounts may open reports. The whitespace hop
-is the point of the fourth step: `git blame -w` skips it, but only it, so a
-tool has to combine whitespace-insensitive blame with recursion — neither
-alone reaches the BIC.
+`isActive()` half, so inactive accounts may open reports. One-shot blame,
+with or without `-w`, stops at the last rewrite; plain recursion reaches the
+BIC in four steps; recursion with `-w` skips exactly the whitespace hop and
+needs three. The whitespace hop is there to show that `-w` shortens the
+chain without replacing the recursion.
 
 ## Commit structure
 
