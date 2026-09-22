@@ -1,0 +1,142 @@
+schema_version: '1.0'
+meta:
+  id: SZZ-0207
+  title: Code BIC fixed by a configuration change
+  slug: code-bic-fixed-in-config
+  description: >-
+    The mirror image of SZZ-0172: the bug-introducing commit changes only Java (the retry policy starts
+    comparing the configured unit against TimeUnit.SECONDS.name(), i.e. "SECONDS", so the configured
+    lower-case "seconds" is read as milliseconds), and the bug-fixing commit changes only the properties file
+    so that the configured unit matches the code again. The line the fix deletes was written by the initial
+    commit, so blame on it never reaches the BIC.
+  category: "Non-source, configuration, test-only, and file-level edge cases"
+  category_code: "S8"
+  factors:
+  - single-bic
+  - single-bfc
+  - line-modification
+  - config-bfc
+  - cross-artifact-fix
+  - string-comparison
+  - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  tier: control
+repository:
+  name: SZZ-0207-code-bic-fixed-in-config
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+commits:
+- id: c0
+  message: 'Add the retry delay configuration and its interpreter'
+  author: Priya Raman <priya.raman@example.com>
+  date: 2025-10-06T09:20:00Z
+  role: initial
+  operations:
+  - type: write_file
+    path: config/retry.properties
+    content: |
+      retry.delay.value=2
+      retry.delay.unit=seconds
+  - type: write_file
+    path: src/main/java/example/RetryPolicy.java
+    content: |
+      package example;
+
+      import java.io.FileInputStream;
+      import java.io.IOException;
+      import java.io.InputStream;
+      import java.util.Properties;
+
+      public class RetryPolicy {
+        private final int configuredDelay;
+        private final String unit;
+
+        public RetryPolicy() {
+          this("config/retry.properties");
+        }
+
+        public RetryPolicy(String path) {
+          Properties properties = new Properties();
+          try (InputStream in = new FileInputStream(path)) {
+            properties.load(in);
+          } catch (IOException e) {
+            throw new IllegalStateException("cannot read " + path, e);
+          }
+          this.configuredDelay = Integer.parseInt(properties.getProperty("retry.delay.value"));
+          this.unit = properties.getProperty("retry.delay.unit");
+        }
+
+        public int delayMillis() {
+          return unit.equals("seconds") ? configuredDelay * 1000 : configuredDelay;
+        }
+      }
+- id: c1
+  message: 'Compare the retry unit against the TimeUnit constant name'
+  author: Tom Becker <tom.becker@example.com>
+  date: 2025-10-13T15:45:00Z
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/RetryPolicy.java
+    old: 'return unit.equals("seconds") ? configuredDelay * 1000 : configuredDelay;'
+    new: 'return unit.equals(java.util.concurrent.TimeUnit.SECONDS.name()) ? configuredDelay * 1000 : configuredDelay;'
+- id: c2
+  message: 'Document the retry unit names'
+  author: Aiko Mori <aiko.mori@example.com>
+  date: 2025-10-20T11:10:00Z
+  role: distractor
+  operations:
+  - type: write_file
+    path: docs/retry-units.md
+    content: |
+      # Retry units
+
+      `retry.delay.unit` selects the unit of `retry.delay.value` and is the name of a `TimeUnit`
+      constant: `SECONDS` for seconds; any other value is read as milliseconds.
+- id: c3
+  message: 'Spell the retry unit as the TimeUnit constant name'
+  author: Chen Wei <chen.wei@example.com>
+  date: 2025-10-27T08:55:00Z
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: config/retry.properties
+    old: retry.delay.unit=seconds
+    new: retry.delay.unit=SECONDS
+bugs:
+- id: B001
+  title: The configured retry delay is read as milliseconds after the unit comparison changed
+  bug_fixing_commit: c3
+  bug_introducing_commits:
+  - c1
+  fault:
+    commit: c1
+    file: src/main/java/example/RetryPolicy.java
+    statement: 'return unit.equals(java.util.concurrent.TimeUnit.SECONDS.name()) ? configuredDelay * 1000 : configuredDelay;'
+    change_type: line_modification
+  fix:
+    commit: c3
+    file: config/retry.properties
+    statement: retry.delay.unit=SECONDS
+    fix_type: config_modification
+  expected_szz:
+    commit_level:
+      true_positives:
+      - c1
+      false_positives_allowed: []
+      known_distractors:
+      - c2
+    line_level:
+      available: true
+      faulty_statements:
+      - 'return unit.equals(java.util.concurrent.TimeUnit.SECONDS.name()) ? configuredDelay * 1000 : configuredDelay;'
+checks:
+- type: git_history_contains
+  commits:
+  - c0
+  - c1
+  - c2
+  - c3

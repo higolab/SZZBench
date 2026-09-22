@@ -8,14 +8,25 @@
 | status | `active` |
 | difficulty | `advanced` |
 | language | `java` |
-| factors | `encoding`, `non-utf8-file`, `binary-file` |
+| factors | `encoding`, `non-utf8-file`, `binary-file`, `config-bic`, `config-bfc` |
 | oracle | `exact_set`; required `c1` · BFC `c2` |
 | graph features | operation `write_binary_file` |
 <!-- /szzbench:header -->
 
 ## Purpose
 
-Evaluate whether SZZBench tooling handles non-UTF-8 files without assuming all changed files are UTF-8 text.
+The fault and the fix both live in `config/range-limits.properties`, a
+CP1252-encoded file (its `label=café` line carries the byte `0xE9`, which is not
+valid UTF-8 on its own). `ConfigBackedRange` reads `min` and `max` from that
+file, so the BIC's narrowing of the limits is a behaviour change the code
+shows, not a change to an unread asset. The scenario checks two things: that a
+method attributes a fault in a configuration file the code consumes, and that
+SZZBench's own tooling handles a non-UTF-8 file without assuming every changed
+file is UTF-8 text.
+
+Until 2026-09-22 nothing in the repository read the file, so the declared BIC
+could not cause a fault the code showed (issue #23). The effect is now measured
+below.
 
 ## Expected history
 
@@ -25,9 +36,42 @@ c1: introduce boundary bug in the non-UTF-8 config
 c2: fix the non-UTF-8 config
 ```
 
+- `c0`: `ConfigBackedRange` loads `config/range-limits.properties` with `Properties.load`
+  and answers `contains(value)` from the configured `min=0` / `max=10`.
+- `c1` (BIC): rewrites the file with `min=1` / `max=9`; the label line is unchanged.
+- `c2` (BFC): rewrites the file with `min=0` / `max=10` again.
+
+## Measured behaviour
+
+`new ConfigBackedRange()` at each commit, run from the snapshot root
+(`tests/test_config_scenarios.py`):
+
+| commit | `contains(0)` | `contains(1)` | `contains(9)` | `contains(10)` | `label()` |
+|---|---|---|---|---|---|
+| `c0` | true | true | true | true | 4 characters, the fourth `U+00E9` |
+| `c1` | **false** | true | true | **false** | same |
+| `c2` | true | true | true | true | same |
+
+The label is read as `café` at every commit because `Properties.load` decodes
+the stream as ISO-8859-1, in which the CP1252 byte `0xE9` is `é`.
+
+## Expected BIC / BFC
+
+- BIC: `c1` (`exact_set`, `required: [c1]`)
+- BFC: `c2`
+
 ## Why this needs `scenario.graph.yml`
 
 The non-UTF-8 file is modeled with `write_binary_file` so that invalid UTF-8 bytes can be represented safely.
+The fault and fix entries therefore carry a `description` and an `encoding` instead of a `statement`, and the
+verifier's text-based statement lookup is not used for them.
+
+## What a tool must do
+
+Report `c1`. The BIC and the BFC each rewrite the whole binary file, so a
+line-oriented diff sees the file replaced rather than a line changed; a tool
+that skips files it cannot decode as UTF-8, or that only follows source files,
+has no candidate at all.
 
 ## Evaluation points
 
