@@ -1,0 +1,178 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0217"
+  title: "The fix message quotes the commit that changed what the callee returns"
+  slug: "fix-message-quotes-the-callee-change"
+  description: >
+    A duration parser starts returning milliseconds and its only caller is
+    converted with it, so nothing observable moves. A later commit adds a
+    caller that treats the result as seconds. The fix divides in that caller,
+    and its message says why, quoting the subject of the commit that changed
+    the parser. Blame on the line the fix deletes reaches the new caller only;
+    the route to the parser change is the message, or the callee the fixed
+    expression calls.
+  category: "Context, message, and non-local evidence"
+  factors:
+    - "multi-bic"
+    - "single-bfc"
+    - "message-evidence"
+    - "caller-callee"
+    - "value-flow"
+    - "wrong-constant"
+    - "blame-unreachable-bic"
+  difficulty: "hard"
+  status: "active"
+  tier: "discriminating"
+  defeats: ["blame", "shape", "position"]
+  category_code: "S7"
+
+repository:
+  name: "SZZ-0217-fix-message-quotes-the-callee-change"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Add the duration text parser and the request timeout"
+    author: "Farid Haddad <farid.haddad@example.com>"
+    date: "2025-02-03T09:25:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/example/DurationText.java"
+        content: |
+          package example;
+
+          public class DurationText {
+              /** Parses "90s" or "2m" to a number of seconds. */
+              public static int parse(String text) {
+                  int value = Integer.parseInt(text.substring(0, text.length() - 1));
+                  return text.endsWith("m") ? value * 60 : value;
+              }
+          }
+      - type: "write_file"
+        path: "src/main/java/example/RequestTimeout.java"
+        content: |
+          package example;
+
+          public class RequestTimeout {
+              public int seconds(String configured) {
+                  return DurationText.parse(configured);
+              }
+          }
+
+  - id: "c1"
+    message: "Return durations in milliseconds from DurationText.parse"
+    author: "Luca Moretti <luca.moretti@example.com>"
+    date: "2025-02-05T14:00:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/DurationText.java"
+        old: |
+          /** Parses "90s" or "2m" to a number of seconds. */
+              public static int parse(String text) {
+                  int value = Integer.parseInt(text.substring(0, text.length() - 1));
+                  return text.endsWith("m") ? value * 60 : value;
+              }
+        new: |
+          /** Parses "90s" or "2m" to a number of milliseconds. */
+              public static int parse(String text) {
+                  int value = Integer.parseInt(text.substring(0, text.length() - 1));
+                  return (text.endsWith("m") ? value * 60 : value) * 1000;
+              }
+        labels: ["B001", "fault"]
+      - type: "replace"
+        path: "src/main/java/example/RequestTimeout.java"
+        old: "return DurationText.parse(configured);"
+        new: "return DurationText.parse(configured) / 1000;"
+
+  - id: "c2"
+    message: "Document the accepted duration suffixes"
+    author: "Elena Rossi <elena.rossi@example.com>"
+    date: "2025-02-07T10:10:00Z"
+    role: "distractor"
+    operations:
+      - type: "write_file"
+        path: "docs/durations.md"
+        content: |
+          # Duration text
+
+          A duration is a whole number followed by `s` for seconds or `m` for minutes,
+          for example `90s` or `2m`.
+
+  - id: "c3"
+    message: "Add the retry delay setting"
+    author: "Aiko Tanaka <aiko.tanaka@example.com>"
+    date: "2025-02-10T15:35:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/example/RetryDelay.java"
+        content: |
+          package example;
+
+          public class RetryDelay {
+              public int seconds(String configured) {
+                  return DurationText.parse(configured);
+              }
+          }
+        labels: ["B001", "fault"]
+
+  - id: "c4"
+    message: "Divide the parsed retry delay by 1000: DurationText.parse has returned milliseconds since \"Return durations in milliseconds from DurationText.parse\""
+    author: "Tom Becker <tom.becker@example.com>"
+    date: "2025-02-12T12:20:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/RetryDelay.java"
+        old: "return DurationText.parse(configured);"
+        new: "return DurationText.parse(configured) / 1000;"
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "The retry delay is a thousand times too long"
+    bug_fixing_commit: "c4"
+    bug_introducing_commits: ["c1", "c3"]
+    fault:
+      commit: "c3"
+      file: "src/main/java/example/RetryDelay.java"
+      entity:
+        type: "method"
+        name: "seconds"
+        signature: "int seconds(String configured)"
+      statement: "return DurationText.parse(configured);"
+      change_type: "line_modification"
+    fix:
+      commit: "c4"
+      file: "src/main/java/example/RetryDelay.java"
+      entity:
+        type: "method"
+        name: "seconds"
+        signature: "int seconds(String configured)"
+      statement: "return DurationText.parse(configured) / 1000;"
+      fix_type: "line_modification"
+    expected_szz:
+      commit_level:
+        true_positives: ["c1", "c3"]
+        primary_observable_bic: "c3"
+        contributing_bics: ["c1"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "return DurationText.parse(configured);"
+        note: >
+          The fix deletes a line written by c3, in a file c3 created. c1
+          changed what the callee on that line returns and converted the only
+          caller that existed; it is not reachable from the deleted line by
+          blame. The fix message quotes c1's subject.
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3", "c4"]

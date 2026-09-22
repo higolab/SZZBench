@@ -1,0 +1,188 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0216"
+  title: "A method moved to a new class between two faults carries the first one's line into a file blame reads as new"
+  slug: "method-move-between-two-faults"
+  description: >
+    The child-fare age check is made inclusive, then the fare table is moved
+    out of the pricing class into a class of its own without changing a token,
+    and later the group price multiplies with a plus. One fix repairs both
+    lines, in two files. The moved line is new text in a new file as far as
+    blame is concerned — plain, -w, -M and -C at Git's default score all stop
+    at the move — so blame returns the move and the second fault; a lower copy
+    score (-C10) or following the new file's history as a copy of the old one
+    is what reaches the first fault.
+  category: "Refactoring, move, and rename after BIC"
+  factors:
+    - "multi-bic"
+    - "single-bfc"
+    - "multi-file-bfc"
+    - "method-move"
+    - "refactoring-after-bic"
+    - "candidate-selection-distractor"
+    - "boundary-condition"
+    - "wrong-operator"
+    - "blame-unreachable-bic"
+  difficulty: "hard"
+  status: "active"
+  tier: "discriminating"
+  defeats: ["blame", "shape", "position"]
+  category_code: "S5"
+
+repository:
+  name: "SZZ-0216-method-move-between-two-faults"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Add the ticket pricing"
+    author: "Chen Wei <chen.wei@example.com>"
+    date: "2025-01-06T09:40:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/example/TicketPricing.java"
+        content: |
+          package example;
+
+          public class TicketPricing {
+              static final int CHILD_CENTS = 500;
+              static final int ADULT_CENTS = 1200;
+
+              public int basePriceCents(int age) {
+                  return age < 12 ? CHILD_CENTS : ADULT_CENTS;
+              }
+
+              public int groupPriceCents(int age, int count) {
+                  return basePriceCents(age) * count;
+              }
+          }
+
+  - id: "c1"
+    message: "Tidy the child fare condition"
+    author: "Hana Sato <hana.sato@example.com>"
+    date: "2025-01-08T13:15:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/TicketPricing.java"
+        old: "return age < 12 ? CHILD_CENTS : ADULT_CENTS;"
+        new: "return age <= 12 ? CHILD_CENTS : ADULT_CENTS;"
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Move the fare table into its own class"
+    author: "Jonas Berg <jonas.berg@example.com>"
+    date: "2025-01-10T10:30:00Z"
+    role: "refactoring"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/example/FareTable.java"
+        content: |
+          package example;
+
+          public class FareTable {
+              static final int CHILD_CENTS = 500;
+              static final int ADULT_CENTS = 1200;
+
+              public int basePriceCents(int age) {
+                  return age <= 12 ? CHILD_CENTS : ADULT_CENTS;
+              }
+          }
+      - type: "write_file"
+        path: "src/main/java/example/TicketPricing.java"
+        content: |
+          package example;
+
+          public class TicketPricing {
+              private final FareTable fares = new FareTable();
+
+              public int basePriceCents(int age) {
+                  return fares.basePriceCents(age);
+              }
+
+              public int groupPriceCents(int age, int count) {
+                  return basePriceCents(age) * count;
+              }
+          }
+
+  - id: "c3"
+    message: "Rework the group price arithmetic"
+    author: "Aiko Mori <aiko.mori@example.com>"
+    date: "2025-01-13T16:05:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/TicketPricing.java"
+        old: "return basePriceCents(age) * count;"
+        new: "return basePriceCents(age) + count;"
+        labels: ["B001", "fault"]
+
+  - id: "c4"
+    message: "Charge the adult fare from age twelve and multiply the group price by the head count"
+    author: "Diego Alvarez <diego.alvarez@example.com>"
+    date: "2025-01-15T11:50:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/FareTable.java"
+        old: "return age <= 12 ? CHILD_CENTS : ADULT_CENTS;"
+        new: "return age < 12 ? CHILD_CENTS : ADULT_CENTS;"
+        labels: ["B001", "fix"]
+      - type: "replace"
+        path: "src/main/java/example/TicketPricing.java"
+        old: "return basePriceCents(age) + count;"
+        new: "return basePriceCents(age) * count;"
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "Twelve-year-olds pay the child fare and a group pays the base fare plus its head count"
+    bug_fixing_commit: "c4"
+    bug_introducing_commits: ["c1", "c3"]
+    fault:
+      commit: "c3"
+      file: "src/main/java/example/TicketPricing.java"
+      entity:
+        type: "method"
+        name: "groupPriceCents"
+        signature: "int groupPriceCents(int age, int count)"
+      statement: "return basePriceCents(age) + count;"
+      change_type: "line_modification"
+    fix:
+      commit: "c4"
+      file: "src/main/java/example/TicketPricing.java"
+      entity:
+        type: "method"
+        name: "groupPriceCents"
+        signature: "int groupPriceCents(int age, int count)"
+      statement: "return basePriceCents(age) * count;"
+      fix_type: "line_modification"
+    expected_szz:
+      commit_level:
+        true_positives: ["c1", "c3"]
+        primary_observable_bic: "c3"
+        contributing_bics: ["c1"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "return age <= 12 ? CHILD_CENTS : ADULT_CENTS;"
+          - "return basePriceCents(age) + count;"
+        note: >
+          The fix deletes one line in each of two files. The group-price line
+          was written by c3 and blames to it. The fare line was made faulty by
+          c1 in TicketPricing.java and moved, token for token, into
+          FareTable.java by c2. Blame in FareTable.java stops at c2, the
+          commit that created the file, under plain, -w, -M and -C at the
+          default score; git blame -C10 reaches c1, and git log --follow on
+          FareTable.java lists c1 because Git sees the new file as a copy of
+          TicketPricing.java.
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3", "c4"]

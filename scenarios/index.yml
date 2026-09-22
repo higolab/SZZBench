@@ -1738,3 +1738,37 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0215/scenario.yml
+- id: SZZ-0216
+  title: A method moved to a new class between two faults carries the first one's line into a file blame reads as new
+  slug: method-move-between-two-faults
+  category_code: S5
+  category: Refactoring, move, and rename after BIC
+  factors:
+  - multi-bic
+  - single-bfc
+  - multi-file-bfc
+  - method-move
+  - refactoring-after-bic
+  - candidate-selection-distractor
+  - boundary-condition
+  - wrong-operator
+  - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0216/scenario.yml
+- id: SZZ-0217
+  title: The fix message quotes the commit that changed what the callee returns
+  slug: fix-message-quotes-the-callee-change
+  category_code: S7
+  category: Context, message, and non-local evidence
+  factors:
+  - multi-bic
+  - single-bfc
+  - message-evidence
+  - caller-callee
+  - value-flow
+  - wrong-constant
+  - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0217/scenario.yml

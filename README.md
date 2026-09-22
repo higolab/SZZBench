@@ -106,18 +106,18 @@ In short, `scenario.yml` is treated as a restricted subset of `scenario.graph.ym
 `szzbench baselines` scores a declared family of cheap predictors — metadata
 only, history position only, file-touch shape, and the classic blame baseline —
 with the ordinary evaluator, so every result on SZZBench can be read against a
-floor. Measured on the shipped suite of 265 scenarios: **"report the second
-commit of the history", which opens no file at all, solves 162/265 — five more
-than the classic `blame-deleted-lines` baseline at 157/265**, and the lead has
+floor. Measured on the shipped suite of 267 scenarios: **"report the second
+commit of the history", which opens no file at all, solves 162/267 — five more
+than the classic `blame-deleted-lines` baseline at 157/267**, and the lead has
 changed hands with every batch of new scenarios. Some cheap rule solves 235 of
-the 265 scenarios, an oracle-aware upper bound rather than an attacker's score;
-the thirty it does not reach all have a multi-commit oracle. The metadata
+the 267 scenarios, an oracle-aware upper bound rather than an attacker's score;
+the thirty-two it does not reach all have a multi-commit oracle. The metadata
 family is at chance, which is the leakage guarantee below holding.
 
 Every scenario declares `meta.tier`: **235 are `control`** — they check that a
 method handles a specific input condition, and a cheap rule may well solve them
-— and **30 are `discriminating`**, which no declared cheap baseline solves.
-Twenty-three of those were designed against the measured axis: the answer is two
+— and **32 are `discriminating`**, which no declared cheap baseline solves.
+Twenty-five of those were designed against the measured axis: the answer is two
 commits, and the fix's deleted lines do not blame to one of them. A control
 being cheaply solvable is not a defect; what the tier prevents is reading a
 control as evidence that a method discriminates.
@@ -791,9 +791,9 @@ szzbench new-graph-scenario
 
 ### このベンチマークが検証しないもの
 
-`szzbench baselines` は、宣言された安価な予測器の族（メタデータのみ、履歴上の位置のみ、ファイル接触の形、古典的な blame ベースライン）を通常の evaluator で採点します。そのため、SZZBench 上のあらゆる結果は床（floor）と比べて読めます。265 シナリオの出荷スイートでの計測結果：**ファイルを一つも開かない「履歴の 2 番目のコミットを報告する」規則が 162/265 を解き、古典的な `blame-deleted-lines` ベースラインの 157/265 を 5 件上回ります**。両者の優劣は、新しいシナリオのバッチごとに入れ替わっています。何らかの安価な規則が 265 シナリオのうち 235 を解きますが、これは oracle を知っている前提の上界であり、攻撃者のスコアではありません。届かない 30 件はすべて複数コミットの oracle を持ちます。メタデータ族は偶然の水準にあり、これは下記の漏洩保証が成り立っていることを意味します。
+`szzbench baselines` は、宣言された安価な予測器の族（メタデータのみ、履歴上の位置のみ、ファイル接触の形、古典的な blame ベースライン）を通常の evaluator で採点します。そのため、SZZBench 上のあらゆる結果は床（floor）と比べて読めます。267 シナリオの出荷スイートでの計測結果：**ファイルを一つも開かない「履歴の 2 番目のコミットを報告する」規則が 162/267 を解き、古典的な `blame-deleted-lines` ベースラインの 157/267 を 5 件上回ります**。両者の優劣は、新しいシナリオのバッチごとに入れ替わっています。何らかの安価な規則が 267 シナリオのうち 235 を解きますが、これは oracle を知っている前提の上界であり、攻撃者のスコアではありません。届かない 32 件はすべて複数コミットの oracle を持ちます。メタデータ族は偶然の水準にあり、これは下記の漏洩保証が成り立っていることを意味します。
 
-すべてのシナリオは `meta.tier` を宣言します。**235 件が `control`** で、手法が特定の入力条件を扱えることを確認するものであり、安価な規則が解けても構いません。**30 件が `discriminating`** で、宣言されたどの安価なベースラインも解けません。そのうち 23 件は計測された軸に対して設計されたもので、答えは 2 コミットであり、修正が削除した行を blame しても片方には到達しません。control が安価に解けることは欠陥ではありません。tier が防ぐのは、control を「手法が識別力を持つ証拠」として読むことです。
+すべてのシナリオは `meta.tier` を宣言します。**235 件が `control`** で、手法が特定の入力条件を扱えることを確認するものであり、安価な規則が解けても構いません。**32 件が `discriminating`** で、宣言されたどの安価なベースラインも解けません。そのうち 25 件は計測された軸に対して設計されたもので、答えは 2 コミットであり、修正が削除した行を blame しても片方には到達しません。control が安価に解けることは欠陥ではありません。tier が防ぐのは、control を「手法が識別力を持つ証拠」として読むことです。
 
 `szzbench coverage` は対になるコマンドです。各シナリオの oracle のサイズ、バグ混入コミットの深さ、fault ファイルに触れる distractor の数、履歴の大きさと分岐の多さ、そして素朴な blame が oracle をどう扱うか（`blame_class`）を計測し、形状の次元がすべて一致するシナリオをグループ化します。また、宣言された各 fault statement を共有するシナリオ数を、全体とカテゴリごとに報告します（issue #13）。
 
