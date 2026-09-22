@@ -359,10 +359,11 @@ def _validate_expected_szz(expected: Any, commit_by_id: dict[str, dict[str, Any]
                     result.error("GE127", f"{loc}.bfc is required and must be a commit id.", f"{loc}.bfc")
                 elif bfc not in commit_by_id:
                     result.error("GE128", f"{loc}.bfc refers to unknown commit '{bfc}'.", f"{loc}.bfc")
-                if "required" not in spec:
-                    result.error("GE127", f"{loc}.required is required.", f"{loc}.required")
+                if not isinstance(spec.get("required"), list):
+                    # a blank `required:` is None and would become an oracle that expects nothing
+                    result.error("GE127", f"{loc}.required must be a list of commit ids (write [] for an intentionally empty answer).", f"{loc}.required")
                 else:
-                    _validate_commit_list(spec.get("required"), commit_by_id, result, f"{loc}.required")
+                    _validate_commit_list(spec["required"], commit_by_id, result, f"{loc}.required")
 
 
 def _validate_commit_list(value: Any, commit_by_id: dict[str, dict[str, Any]], result: ValidationResult, loc: str) -> None:

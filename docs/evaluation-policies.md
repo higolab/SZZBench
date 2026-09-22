@@ -129,13 +129,17 @@ from that fix must report. Scoring (since 2026-09-22, issue #22):
 
 - A prediction whose `fix_commit` resolves (hash, unique prefix or logical id,
   like `inducing_commit`) to an entry's `bfc` is scored against that entry.
-- A prediction **without** `fix_commit` counts for **every** entry — a tool
-  that does not say which fix it started from is held to all of them.
+- A prediction **without** `fix_commit` (the key omitted or `null`) counts for
+  **every** entry — a tool that does not say which fix it started from is held
+  to all of them. A supplied `fix_commit` (or `bug_fixing_commit` /
+  `fix_commit_hash`) that is not a non-empty string is a loading error and the
+  record is skipped, so an invalid reference can never be read as "unspecified".
 - A prediction whose `fix_commit` resolves to no declared `bfc` counts for no
   entry; the result notes it.
 - Each entry is scored as an **exact set** (no policy, no allowances): PASS when
   the attributed predictions are exactly `required`, FAIL on any false positive,
-  false negative or unresolvable prediction.
+  false negative or unresolvable prediction. `required` must be a list — an
+  intentionally empty answer is written `required: []`; a blank value is `GE127`.
 - The block is PASS when every entry is. **A FAIL fails the scenario even when
   the commit-level oracle passes**, with a `result_notes` entry naming the
   failed branches. The commit-level status is computed exactly as before, so a

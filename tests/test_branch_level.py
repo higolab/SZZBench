@@ -149,6 +149,49 @@ def test_validator_accepts_the_declaration_and_rejects_malformed_ones():
     broken = _scenario()
     broken["expected_szz"]["branch_level"]["main"]["required"] = ["c1", "zz"]
     assert _codes(broken) == ["GE126"]
+    # a blank `required:` is None in YAML and must not become an oracle that expects nothing (PR #71 review)
+    broken = _scenario()
+    broken["expected_szz"]["branch_level"]["release"]["required"] = None
+    assert _codes(broken) == ["GE127"]
+    explicit_empty = _scenario()
+    explicit_empty["expected_szz"]["branch_level"]["release"]["required"] = []
+    assert _codes(explicit_empty) == []
+
+
+def test_a_null_required_fails_the_branch_even_before_validation(tmp_path):
+    scenario = _scenario()
+    scenario["expected_szz"]["branch_level"]["release"]["required"] = None
+    result = _evaluate([{"inducing_commit": "c1", "fix_commit": "c3"}], tmp_path, scenario)
+    assert result.branch_level["branches"]["release"]["status"] == "FAIL"
+    assert result.branch_level["branches"]["release"]["required"] is None
+    assert result.status == "FAIL"
+    assert any("has no list under required" in note for note in result.result_notes)
+
+
+def test_an_invalid_fix_reference_in_a_predictions_file_is_an_error_not_an_unspecified_fix(tmp_path):
+    """The loader used to coerce 123, [] or "" to None, which the branch-level rule reads as
+    'counts for every branch' (PR #71 review)."""
+    import json
+    from szzbench.evaluator import load_predictions
+
+    path = tmp_path / "predictions.jsonl"
+    records = [
+        {"scenario_id": "SZZG-9910", "inducing_commit": "c1", "fix_commit": 123},
+        {"scenario_id": "SZZG-9910", "inducing_commit": "c1", "fix_commit": []},
+        {"scenario_id": "SZZG-9910", "inducing_commit": "c1", "bug_fixing_commit": ""},
+        {"scenario_id": "SZZG-9910", "inducing_commit": "c1", "fix_commit": None},      # allowed: unspecified
+        {"scenario_id": "SZZG-9910", "inducing_commit": "c1"},                          # allowed: omitted
+        {"scenario_id": "SZZG-9910", "inducing_commit": "c1", "fix_commit": "r2"},      # valid
+    ]
+    path.write_text("\n".join(json.dumps(record) for record in records) + "\n")
+    predictions, explicit, errors, _ = load_predictions(path)
+    assert len(errors) == 3 and all("must be a non-empty string when present" in error for error in errors)
+    assert "fix_commit" in errors[0] and "123" in errors[0] and "bug_fixing_commit" in errors[2]
+    loaded = predictions["SZZG-9910"]
+    assert [p.fix_commit for p in loaded] == [None, None, "r2"]
+    # the surviving records score as before: two unspecified (every branch) and one for release
+    result = evaluate_scenario("SZZG-9910", _scenario(), tmp_path / "s.yml", "advanced-scenarios", COMMIT_MAP, loaded)
+    assert result.status == "PASS" and result.branch_level["status"] == "PASS"
 
 
 # --- SZZG-0143 ------------------------------------------------------------------------------

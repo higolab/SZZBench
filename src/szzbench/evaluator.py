@@ -535,9 +535,14 @@ def _branch_level_result(
             notes.append(f"branch_level: entry '{name}' is not an object and was skipped.")
             continue
         bfc = spec.get("bfc")
-        required = _string_list(spec.get("required"))
         if isinstance(bfc, str):
             declared_bfcs.add(bfc)
+        if not isinstance(spec.get("required"), list):
+            notes.append(f"branch_level: entry '{name}' has no list under required (GE127); the branch fails.")
+            branches[str(name)] = {"bfc": bfc, "required": None, "predicted": [], "false_positives": [],
+                                   "false_negatives": [], "unknown_predictions": [], "status": "FAIL"}
+            continue
+        required = _string_list(spec["required"])
         attributed = [
             prediction for index, prediction in enumerate(predictions)
             if prediction.fix_commit is None or resolved_fix.get(index) == bfc
@@ -649,15 +654,31 @@ def _prediction_from_record(
     if confidence is not None and not isinstance(confidence, (int, float)):
         errors.append(f"{location}: confidence must be a number when present.")
         return None
+    fix_commit = _first_string(record, FIX_COMMIT_KEYS)
+    if fix_commit is None:
+        # An omitted or null fix reference means "unspecified" and, under a
+        # branch-level oracle, the prediction counts for every branch.  A
+        # supplied value that is not a non-empty string must not be read
+        # that way (PR #71 review): it is an input error.
+        supplied = [key for key in FIX_COMMIT_KEYS if record.get(key) is not None]
+        if supplied:
+            errors.append(
+                f"{location}: {supplied[0]} must be a non-empty string when present (got {record[supplied[0]]!r})."
+            )
+            return None
     return Prediction(
         scenario_id=scenario_id,
-        fix_commit=_first_string(record, ["fix_commit", "bug_fixing_commit", "fix_commit_hash"]),
+        fix_commit=fix_commit,
         inducing_commit=inducing_commit,
         rank=rank,
         confidence=float(confidence) if confidence is not None else None,
         tool=_first_string(record, ["tool"]),
         raw_file=_first_string(record, ["raw_file"]),
     )
+
+
+#: Record keys that name the bug-fixing commit a prediction was made from.
+FIX_COMMIT_KEYS = ["fix_commit", "bug_fixing_commit", "fix_commit_hash"]
 
 
 def _first_string(record: dict[str, Any], keys: list[str]) -> str | None:

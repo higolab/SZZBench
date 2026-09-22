@@ -232,7 +232,7 @@ as one deleted and one added line, like `git blame` without `-w`.
 | GE124 | error | a commit list (`required`, `relevant`, `related_origins`, `related_but_not_correct`) is not a list |
 | GE125 | error | a commit list entry is not a commit id |
 | GE126 | error | a commit list entry refers to an unknown commit |
-| GE127 | error | `expected_szz.branch_level` is not a non-empty object, or an entry lacks an object with `bfc` (a commit id) and `required` ([evaluation-policies.md](evaluation-policies.md) §1.5) |
+| GE127 | error | `expected_szz.branch_level` is not a non-empty object, or an entry is not an object with `bfc` (a commit id) and `required` (a list; a blank `required:` is rejected, `[]` is an intentionally empty answer) ([evaluation-policies.md](evaluation-policies.md) §1.5) |
 | GE128 | error | a `branch_level` entry's `bfc` refers to an unknown commit |
 | GE140 | error | `work_items` / `issues` / `developer_hints` is not a list |
 | GE141 | error | a developer hint refers to an unknown commit |
