@@ -1,0 +1,165 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0212"
+  title: "A whitespace-only reformat between two faults takes ownership of the first"
+  slug: "reformat-between-two-faults"
+  description: >
+    The free-shipping weight check is made exclusive, the file is re-indented
+    without any other change, and a later commit turns the express surcharge
+    into a deduction. One fix repairs both lines. The re-indentation rewrote
+    every line of the file, so blaming what the fix deletes returns the
+    reformat and the second fault: the first fault is one whitespace-only hop
+    behind the commit blame names, and `git blame -w` is what reaches it.
+  category: "Intermediate noise and history noise"
+  factors:
+    - "multi-bic"
+    - "single-bfc"
+    - "formatting-noise"
+    - "boundary-condition"
+    - "wrong-operator"
+    - "blame-unreachable-bic"
+  difficulty: "hard"
+  status: "active"
+  tier: "discriminating"
+  defeats: ["blame", "shape", "position"]
+  category_code: "S3"
+
+repository:
+  name: "SZZ-0212-reformat-between-two-faults"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Add the shipping fee calculation"
+    author: "Hana Sato <hana.sato@example.com>"
+    date: "2024-07-01T09:30:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/example/ShippingFee.java"
+        content: |
+          package example;
+
+          public class ShippingFee {
+              static final int FREE_UP_TO_GRAMS = 2000;
+              static final int STANDARD_FEE_CENTS = 300;
+              static final int EXPRESS_SURCHARGE_CENTS = 500;
+
+              public int feeCents(int weightGrams, boolean express) {
+                  int base = weightGrams <= FREE_UP_TO_GRAMS ? 0 : STANDARD_FEE_CENTS;
+                  int surcharge = express ? EXPRESS_SURCHARGE_CENTS : 0;
+                  return base + surcharge;
+              }
+          }
+
+  - id: "c1"
+    message: "Tighten the free-shipping weight check"
+    author: "Luca Moretti <luca.moretti@example.com>"
+    date: "2024-07-03T14:05:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/ShippingFee.java"
+        old: "int base = weightGrams <= FREE_UP_TO_GRAMS ? 0 : STANDARD_FEE_CENTS;"
+        new: "int base = weightGrams < FREE_UP_TO_GRAMS ? 0 : STANDARD_FEE_CENTS;"
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Re-indent ShippingFee to the two-space style"
+    author: "Aiko Mori <aiko.mori@example.com>"
+    date: "2024-07-05T10:20:00Z"
+    role: "distractor"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/example/ShippingFee.java"
+        content: |
+          package example;
+
+          public class ShippingFee {
+            static final int FREE_UP_TO_GRAMS = 2000;
+            static final int STANDARD_FEE_CENTS = 300;
+            static final int EXPRESS_SURCHARGE_CENTS = 500;
+
+            public int feeCents(int weightGrams, boolean express) {
+              int base = weightGrams < FREE_UP_TO_GRAMS ? 0 : STANDARD_FEE_CENTS;
+              int surcharge = express ? EXPRESS_SURCHARGE_CENTS : 0;
+              return base + surcharge;
+            }
+          }
+
+  - id: "c3"
+    message: "Rework how the surcharge enters the total"
+    author: "Tom Becker <tom.becker@example.com>"
+    date: "2024-07-08T16:45:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/ShippingFee.java"
+        old: "return base + surcharge;"
+        new: "return base - surcharge;"
+        labels: ["B001", "fault"]
+
+  - id: "c4"
+    message: "Ship parcels at the free limit for free and add the express surcharge"
+    author: "Diego Alvarez <diego.alvarez@example.com>"
+    date: "2024-07-10T11:10:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/ShippingFee.java"
+        old: "int base = weightGrams < FREE_UP_TO_GRAMS ? 0 : STANDARD_FEE_CENTS;"
+        new: "int base = weightGrams <= FREE_UP_TO_GRAMS ? 0 : STANDARD_FEE_CENTS;"
+        labels: ["B001", "fix"]
+      - type: "replace"
+        path: "src/main/java/example/ShippingFee.java"
+        old: "return base - surcharge;"
+        new: "return base + surcharge;"
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "A parcel at the free limit is charged and express delivery is deducted instead of added"
+    bug_fixing_commit: "c4"
+    bug_introducing_commits: ["c1", "c3"]
+    fault:
+      commit: "c3"
+      file: "src/main/java/example/ShippingFee.java"
+      entity:
+        type: "method"
+        name: "feeCents"
+        signature: "int feeCents(int weightGrams, boolean express)"
+      statement: "return base - surcharge;"
+      change_type: "line_modification"
+    fix:
+      commit: "c4"
+      file: "src/main/java/example/ShippingFee.java"
+      entity:
+        type: "method"
+        name: "feeCents"
+        signature: "int feeCents(int weightGrams, boolean express)"
+      statement: "return base + surcharge;"
+      fix_type: "line_modification"
+    expected_szz:
+      commit_level:
+        true_positives: ["c1", "c3"]
+        primary_observable_bic: "c3"
+        contributing_bics: ["c1"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "int base = weightGrams < FREE_UP_TO_GRAMS ? 0 : STANDARD_FEE_CENTS;"
+          - "return base - surcharge;"
+        note: >
+          The fix deletes two lines. The surcharge line was written by c3 and
+          blames to it. The weight-check line was made faulty by c1 but
+          re-indented by c2, so plain blame returns c2, a commit that changed
+          no token; `git blame -w` returns c1.
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3", "c4"]

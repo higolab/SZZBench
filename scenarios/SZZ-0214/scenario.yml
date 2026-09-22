@@ -1,0 +1,187 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0214"
+  title: "A null check deleted while nothing reached it, a caller added later, and a fix that only adds"
+  slug: "guard-deleted-then-reached-ghost-fix"
+  description: >
+    The null check in a name normaliser is deleted because its only caller
+    passes a required login name, so nothing observable changes. A later
+    commit adds a profile screen that passes an optional nickname, and the
+    normaliser throws. The fix puts the check back, adding lines and deleting
+    none, so blame has nothing to work from at all: the commit that removed the
+    check deleted lines only, and the commit that first reached its absence
+    created a new file the fix never opens.
+  category: "Omission and deletion bugs"
+  factors:
+    - "multi-bic"
+    - "single-bfc"
+    - "addition-only-fix"
+    - "null-check-omission"
+    - "prerequisite-bic"
+    - "blame-unreachable-bic"
+  difficulty: "hard"
+  status: "active"
+  tier: "discriminating"
+  defeats: ["blame", "shape", "position"]
+  category_code: "S2"
+
+repository:
+  name: "SZZ-0214-guard-deleted-then-reached-ghost-fix"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Add the name normaliser and the greeting"
+    author: "Priya Raman <priya.raman@example.com>"
+    date: "2024-09-02T09:00:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/example/Nickname.java"
+        content: |
+          package example;
+
+          public class Nickname {
+              public static String normalize(String raw) {
+                  if (raw == null) {
+                      return "";
+                  }
+                  return raw.trim().toLowerCase();
+              }
+          }
+      - type: "write_file"
+        path: "src/main/java/example/Greeting.java"
+        content: |
+          package example;
+
+          public class Greeting {
+              /** @param loginName the account's login name; required, never null */
+              public String greet(String loginName) {
+                  return "Hello, " + Nickname.normalize(loginName) + "!";
+              }
+          }
+
+  - id: "c1"
+    message: "Drop the null check from normalize(): its caller passes a required name"
+    author: "Hana Sato <hana.sato@example.com>"
+    date: "2024-09-04T11:30:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/Nickname.java"
+        old: |
+          if (raw == null) {
+                      return "";
+                  }
+                  return raw.trim().toLowerCase();
+        new: |
+          return raw.trim().toLowerCase();
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Add the farewell line"
+    author: "Aiko Tanaka <aiko.tanaka@example.com>"
+    date: "2024-09-06T15:10:00Z"
+    role: "distractor"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/Greeting.java"
+        old: |
+          return "Hello, " + Nickname.normalize(loginName) + "!";
+              }
+        new: |
+          return "Hello, " + Nickname.normalize(loginName) + "!";
+              }
+
+              public String farewell(String loginName) {
+                  return "Goodbye, " + Nickname.normalize(loginName) + ".";
+              }
+
+  - id: "c3"
+    message: "Show the chosen nickname on the profile"
+    author: "Farid Haddad <farid.haddad@example.com>"
+    date: "2024-09-09T10:45:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/example/Profile.java"
+        content: |
+          package example;
+
+          public class Profile {
+              /** @param nickname the chosen nickname, or null when the user has not chosen one */
+              public String displayName(String nickname) {
+                  return Nickname.normalize(nickname);
+              }
+          }
+        labels: ["B001", "fault"]
+
+  - id: "c4"
+    message: "Treat a missing name as empty in normalize()"
+    author: "Chen Wei <chen.wei@example.com>"
+    date: "2024-09-11T14:20:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/Nickname.java"
+        old: |
+          return raw.trim().toLowerCase();
+        new: |
+          if (raw == null) {
+                      return "";
+                  }
+                  return raw.trim().toLowerCase();
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "The profile throws for a user who has not chosen a nickname"
+    bug_fixing_commit: "c4"
+    bug_introducing_commits: ["c1", "c3"]
+    fault:
+      commit: "c1"
+      file: "src/main/java/example/Nickname.java"
+      entity:
+        type: "method"
+        name: "normalize"
+        signature: "String normalize(String raw)"
+      change_type: "omission"
+      missing_statement: |2
+        if (raw == null) {
+            return "";
+        }
+      description: >
+        The check existed in c0 and was deleted by c1 without any other change.
+        Its absence is harmless until c3 passes a nullable nickname.
+    fix:
+      commit: "c4"
+      file: "src/main/java/example/Nickname.java"
+      entity:
+        type: "method"
+        name: "normalize"
+        signature: "String normalize(String raw)"
+      added_statement: |2
+                if (raw == null) {
+                    return "";
+                }
+      fix_type: "line_addition"
+    expected_szz:
+      commit_level:
+        true_positives: ["c1", "c3"]
+        primary_observable_bic: "c3"
+        contributing_bics: ["c1"]
+        false_positives_allowed: []
+      line_level:
+        available: false
+        reason: >
+          The fix only adds lines and c1 only deleted lines, so there is no
+          faulty deleted line at the fix; c3 created a file the fix does not
+          touch.
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3", "c4"]

@@ -1675,3 +1675,50 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0211/scenario.yml
+- id: SZZ-0212
+  title: A whitespace-only reformat between two faults takes ownership of the first
+  slug: reformat-between-two-faults
+  category_code: S3
+  category: Intermediate noise and history noise
+  factors:
+  - multi-bic
+  - single-bfc
+  - formatting-noise
+  - boundary-condition
+  - wrong-operator
+  - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0212/scenario.yml
+- id: SZZ-0213
+  title: "A tangled three-hunk fix: one hunk blames a bystander, one repairs an omission by adding lines"
+  slug: tangled-fix-bystander-and-omission
+  category_code: S4
+  category: BFC-side noise and tangled commits
+  factors:
+  - multi-bic
+  - single-bfc
+  - tangled-bfc
+  - multi-hunk-bfc
+  - mixed-origin-hunks
+  - wrong-operator
+  - null-check-omission
+  - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0213/scenario.yml
+- id: SZZ-0214
+  title: A null check deleted while nothing reached it, a caller added later, and a fix that only adds
+  slug: guard-deleted-then-reached-ghost-fix
+  category_code: S2
+  category: Omission and deletion bugs
+  factors:
+  - multi-bic
+  - single-bfc
+  - addition-only-fix
+  - null-check-omission
+  - prerequisite-bic
+  - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0214/scenario.yml
