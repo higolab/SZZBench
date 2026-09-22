@@ -9,7 +9,7 @@ meta:
   category_code: "G8"
   factors:
   - generated-history
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

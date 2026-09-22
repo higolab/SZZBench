@@ -14,7 +14,7 @@ meta:
   - revert-is-fix
   - resolvable-message-handle
   - revert-as-distractor
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

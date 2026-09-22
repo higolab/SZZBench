@@ -6,7 +6,7 @@
 | category | `G9` Evaluation policy variants |
 | tier | `control` |
 | status | `active` |
-| difficulty | `advanced` |
+| difficulty | `easy` |
 | language | `java` |
 | factors | `partial-credit`, `multi-bic`, `single-bfc`, `branch-merge` |
 | oracle | `partial_credit`; required `m1`, `f1`; minimum 1; known distractors `c2` · BFC `c3` |

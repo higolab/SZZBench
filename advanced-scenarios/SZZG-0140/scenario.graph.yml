@@ -18,7 +18,7 @@ meta:
   - boundary-condition
   - single-bic
   - single-bfc
-  difficulty: advanced
+  difficulty: hard
   status: active
   tier: control
 repository:

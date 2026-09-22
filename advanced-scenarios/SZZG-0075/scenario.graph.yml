@@ -16,7 +16,7 @@ meta:
   - transient-bug
   - scope-boundary
   - no-main-line-bfc
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

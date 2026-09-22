@@ -15,7 +15,7 @@ meta:
   - rebase-conflict-resolution
   - conflict-resolution-bfc
   - rebased-bic
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

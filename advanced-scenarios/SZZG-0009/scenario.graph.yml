@@ -12,7 +12,7 @@ meta:
   - intermediate-refactoring
   - extract-method
   - line-history-break
-  difficulty: advanced
+  difficulty: hard
   status: active
   tier: control
 repository:

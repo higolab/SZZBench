@@ -10,7 +10,7 @@ meta:
   factors:
   - message-evidence
   - misleading-commit-message
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

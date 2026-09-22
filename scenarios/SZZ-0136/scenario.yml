@@ -9,7 +9,7 @@ meta:
   - multi-bic
   - single-bfc
   - line-modification
-  difficulty: medium
+  difficulty: hard
   status: active
   tier: discriminating
   category_code: "S6"

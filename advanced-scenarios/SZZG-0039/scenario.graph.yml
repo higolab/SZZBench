@@ -13,7 +13,7 @@ meta:
   - multi-bic
   - causal-chain
   - single-bfc
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

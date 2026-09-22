@@ -14,7 +14,7 @@ meta:
   - binary-bic
   - binary-bfc
   - no-line-level-evidence
-  difficulty: advanced
+  difficulty: medium
   status: active
   tier: control
 repository:

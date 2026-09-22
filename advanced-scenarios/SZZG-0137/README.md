@@ -6,7 +6,7 @@
 | category | `G9` Evaluation policy variants |
 | tier | `control` |
 | status | `active` |
-| difficulty | `advanced` |
+| difficulty | `easy` |
 | language | `java` |
 | factors | `initial-commit-bic`, `single-bic`, `single-bfc`, `tool-visible-context` |
 | oracle | `exact_set`; required `c0` · BFC `c3` |

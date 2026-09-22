@@ -20,7 +20,7 @@ meta:
   - origin-bic
   - inherited-commit-metadata
   - api-misuse
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

@@ -6,7 +6,7 @@
 | category | `S6` Multiple BICs, duplicate faults, and composite faults |
 | tier | `discriminating` |
 | status | `active` |
-| difficulty | `medium` |
+| difficulty | `hard` |
 | language | `java` |
 | factors | `multi-bic`, `single-bfc`, `line-modification` |
 | oracle | `exact_set`; required `c1`, `c2` · BFC `c3` |
@@ -26,3 +26,9 @@ This scenario requires treating two bug-introducing commits as contributing to t
 ## Expected behavior
 
 The expected BFC is `c3`; the expected BIC set is `{c1, c2}`.
+
+## Difficulty
+
+`hard` by the floor rule of `decisions/vocabulary.md` §4 (decided 2026-09-22): plain
+first-parent blame on the lines the fix deletes is `miss` for this scenario, and a scenario may not
+declare less than that class sets. The author's grade was `medium`.

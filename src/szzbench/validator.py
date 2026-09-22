@@ -433,6 +433,22 @@ def lint_readme_header(data: dict[str, Any], suite: str, scenario_path: Path, re
 SCENARIO_TIERS = ("control", "discriminating")
 
 
+#: The graded difficulties (``decisions/vocabulary.md`` section 4).  ``advanced``
+#: was the graph suite's placeholder until 2026-09-22, when the suite was graded
+#: from the measured blame class.
+SCENARIO_DIFFICULTIES = ("easy", "medium", "hard")
+
+
+def lint_difficulty(meta: Any, result: ValidationResult, *, prefix: str) -> None:
+    """``<prefix>461``: every scenario declares a graded difficulty."""
+    difficulty = meta.get("difficulty") if isinstance(meta, dict) else None
+    if difficulty is None:
+        result.warning(f"{prefix}461", "meta.difficulty is missing; declare 'easy', 'medium' or 'hard'.", "meta.difficulty")
+    elif difficulty not in SCENARIO_DIFFICULTIES:
+        result.warning(f"{prefix}461", f"meta.difficulty '{difficulty}' is not one of {SCENARIO_DIFFICULTIES}; "
+                       "'szzbench coverage' reports the floor the blame class sets.", "meta.difficulty")
+
+
 def lint_tier(meta: Any, result: ValidationResult, *, prefix: str) -> None:
     """``<prefix>460``: every scenario declares a tier from the vocabulary."""
     tier = meta.get("tier") if isinstance(meta, dict) else None
@@ -549,6 +565,7 @@ def lint_scenario(data: dict[str, Any], snapshots: dict[str, dict[str, str]] | N
 
     lint_factors(factors, result, prefix="W")
     lint_tier(data.get("meta"), result, prefix="W")
+    lint_difficulty(data.get("meta"), result, prefix="W")
     lint_leakage(commits, bfc_ids, result, prefix="W")
     lint_author_coincidence(data, "scenarios", result, prefix="W")
     if scenario_path is not None:

@@ -12,7 +12,7 @@ meta:
   - multi-bic
   - context-dependent
   - partial-observability
-  difficulty: advanced
+  difficulty: hard
   status: active
   tier: discriminating
 repository:

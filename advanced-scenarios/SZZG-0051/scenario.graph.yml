@@ -13,7 +13,7 @@ meta:
   - branch
   - backport
   - wrong-constant
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

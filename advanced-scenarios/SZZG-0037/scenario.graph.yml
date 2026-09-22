@@ -10,7 +10,7 @@ meta:
   - multi-bic
   - multiple-file
   - single-bfc
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

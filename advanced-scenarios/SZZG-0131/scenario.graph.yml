@@ -16,7 +16,7 @@ meta:
   - rebase
   - origin-and-direct-bic
   - author-date-vs-committer-date
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

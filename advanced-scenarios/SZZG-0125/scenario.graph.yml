@@ -14,7 +14,7 @@ meta:
   - conflict-resolution
   - origin-and-direct-bic
   - release-branch
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

@@ -11,7 +11,7 @@ meta:
   - work-item
   - intermediate-commit
   - related-but-not-correct
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

@@ -6,7 +6,7 @@
 | category | `G5` Rebase-specific history rewriting |
 | tier | `control` |
 | status | `active` |
-| difficulty | `advanced` |
+| difficulty | `easy` |
 | language | `java` |
 | factors | `branch`, `rebase`, `interactive-rebase`, `squash`, `transient-bug`, `scope-boundary`, `no-main-line-bfc` |
 | oracle | default: `exact_set`; required `f1`; related but not correct `r1` · `main-line-only`: `exact_set`; expects no BIC · BFC `f2` |

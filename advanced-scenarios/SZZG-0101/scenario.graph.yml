@@ -10,7 +10,7 @@ meta:
   - caller-callee
   - context
   - api-misuse
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

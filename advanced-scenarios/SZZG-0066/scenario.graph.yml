@@ -12,7 +12,7 @@ meta:
   - rebase-conflict-resolution
   - origin-bic
   - direct-bic
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

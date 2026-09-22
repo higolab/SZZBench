@@ -16,7 +16,7 @@ meta:
   - external-cause
   - tool-visible-context
   - single-bfc
-  difficulty: advanced
+  difficulty: medium
   status: active
   tier: control
 repository:

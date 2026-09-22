@@ -11,7 +11,7 @@ meta:
   - merge
   - pre-merge-bic
   - post-merge-bfc
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

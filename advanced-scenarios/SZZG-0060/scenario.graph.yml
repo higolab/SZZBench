@@ -11,7 +11,7 @@ meta:
   - feature-branch
   - merge-commit
   - bfc-after-merge
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

@@ -6,7 +6,7 @@
 | category | `G4` Branch, merge, cherry-pick, backport, and release branches |
 | tier | `control` |
 | status | `active` |
-| difficulty | `advanced` |
+| difficulty | `easy` |
 | language | `java` |
 | factors | `merge`, `octopus-merge`, `bic-on-non-first-parent`, `multi-branch-integration` |
 | oracle | `exact_set`; required `q1`; related but not correct `m1` · BFC `c2` |

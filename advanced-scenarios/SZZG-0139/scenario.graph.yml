@@ -17,7 +17,7 @@ meta:
   - multi-bic
   - single-bfc
   - branch-merge
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

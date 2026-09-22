@@ -6,7 +6,7 @@
 | category | `G1` Refactoring, move, rename, and semantic rewrite |
 | tier | `control` |
 | status | `active` |
-| difficulty | `advanced` |
+| difficulty | `hard` |
 | language | `java` |
 | factors | `refactoring`, `method-move`, `post-bic-refactoring`, `wrong-variable` |
 | oracle | `exact_set`; required `c1`; related but not correct `c2` · BFC `c3` |

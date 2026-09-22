@@ -15,7 +15,7 @@ meta:
   - generated-code-noise
   - direct-bic
   - boolean-negation
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

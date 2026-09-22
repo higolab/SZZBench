@@ -19,7 +19,7 @@ meta:
   - tool-visible-context
   - evaluation-variant
   - single-bfc
-  difficulty: advanced
+  difficulty: medium
   status: active
   tier: control
 repository:

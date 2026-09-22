@@ -6,7 +6,7 @@
 | category | `G3` Multiple BICs, multiple BFCs, and partial fixes |
 | tier | `control` |
 | status | `active` |
-| difficulty | `advanced` |
+| difficulty | `hard` |
 | language | `java` |
 | factors | `root-cause`, `wrong-constant` |
 | oracle | `exact_set`; required `c1` · BFCs `c2`, `c3` |

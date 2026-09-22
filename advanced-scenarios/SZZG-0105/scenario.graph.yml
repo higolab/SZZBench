@@ -11,7 +11,7 @@ meta:
   - defensive-fix
   - root-cause-not-touched
   - context-dependent
-  difficulty: advanced
+  difficulty: hard
   status: active
   tier: control
 repository:

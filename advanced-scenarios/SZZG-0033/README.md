@@ -6,7 +6,7 @@
 | category | `G3` Multiple BICs, multiple BFCs, and partial fixes |
 | tier | `control` |
 | status | `active` |
-| difficulty | `advanced` |
+| difficulty | `easy` |
 | language | `java` |
 | factors | `multi-bic`, `partial-credit`, `evaluation-variant` |
 | oracle | `partial_credit`; required `c1`, `c2`; minimum 1 · BFC `c3` |

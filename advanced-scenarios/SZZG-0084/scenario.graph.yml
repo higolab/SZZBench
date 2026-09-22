@@ -17,7 +17,7 @@ meta:
   - re-bic
   - origin-bic
   - revert-footer
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

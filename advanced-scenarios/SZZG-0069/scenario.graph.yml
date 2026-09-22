@@ -18,7 +18,7 @@ meta:
   - origin-bic
   - direct-bic
   - wrong-constant
-  difficulty: advanced
+  difficulty: hard
   status: active
   tier: discriminating
 repository:

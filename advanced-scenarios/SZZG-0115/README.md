@@ -6,7 +6,7 @@
 | category | `G9` Evaluation policy variants |
 | tier | `control` |
 | status | `active` |
-| difficulty | `advanced` |
+| difficulty | `easy` |
 | language | `java` |
 | factors | `evaluation-variant` |
 | oracle | `top_k`; relevant `c1`; k = 1, 3, 5 · BFC `c4` |

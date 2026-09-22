@@ -6,7 +6,7 @@
 | category | `G9` Evaluation policy variants |
 | tier | `control` |
 | status | `active` |
-| difficulty | `advanced` |
+| difficulty | `medium` |
 | language | `java` |
 | factors | `expect-no-bic`, `external-cause`, `tool-visible-context`, `single-bfc` |
 | oracle | `exact_set`; expects no BIC; known distractors `c0` · BFC `c3` |

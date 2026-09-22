@@ -6,7 +6,7 @@
 | category | `G2` Clone, copy propagation, and origin-vs-direct BIC |
 | tier | `control` |
 | status | `active` |
-| difficulty | `advanced` |
+| difficulty | `hard` |
 | language | `java` |
 | factors | `clone`, `clone-divergence`, `ambiguous-blame` |
 | oracle | default: `exact_set`; required `c2`; related origins `c1`; related but not correct `c3` · `origin-aware`: `relaxed_with_related`; required `c2`; acceptable `c1` (credit 0.5); related but not correct `c3` · BFC `c4` |

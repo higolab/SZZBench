@@ -6,7 +6,7 @@
 | category | `S3` Intermediate noise and history noise |
 | tier | `control` |
 | status | `active` |
-| difficulty | `medium` |
+| difficulty | `hard` |
 | language | `python` |
 | factors | `single-bic`, `single-bfc`, `line-modification`, `wrong-constant`, `robustness`, `bom-only-rewrite`, `basic-blame-distractor` |
 | oracle | `exact_set`; required `c1`; known distractors `c2` · BFC `c3` |
@@ -88,3 +88,9 @@ filter, or a pre-pass that strips U+FEFF), or follow the line one step
 further (`git log -L1,1:src/limits/upload.py` lists `c3`, `c2`, `c1`, `c0`).
 A tool that reports `{c2}` has blamed an encoding re-save for a wrong
 constant.
+
+## Difficulty
+
+`hard` by the floor rule of `decisions/vocabulary.md` §4 (decided 2026-09-22): plain
+first-parent blame on the lines the fix deletes is `miss` for this scenario, and a scenario may not
+declare less than that class sets. The author's grade was `medium`.

@@ -12,7 +12,7 @@ meta:
   factors:
   - copy-propagation
   - boolean-negation
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

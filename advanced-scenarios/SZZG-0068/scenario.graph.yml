@@ -12,7 +12,7 @@ meta:
   - patch-modified-during-rebase
   - origin-bic
   - direct-bic
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

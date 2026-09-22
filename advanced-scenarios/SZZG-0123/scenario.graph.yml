@@ -15,7 +15,7 @@ meta:
   - merge
   - fix-on-feature-branch
   - origin-and-replay-both-reachable
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

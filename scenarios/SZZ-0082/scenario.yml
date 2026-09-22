@@ -16,7 +16,7 @@ meta:
     - "formatting-after-bic"
     - "line-number-shift"
     - "basic-blame-distractor"
-  difficulty: "medium"
+  difficulty: "hard"
   status: "active"
   tier: "control"
   category_code: "S3"

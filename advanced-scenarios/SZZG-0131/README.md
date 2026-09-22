@@ -6,7 +6,7 @@
 | category | `G7` Issue, message, context, and non-local evidence |
 | tier | `control` |
 | status | `active` |
-| difficulty | `advanced` |
+| difficulty | `easy` |
 | language | `java` |
 | factors | `bug-report-date`, `tool-visible-context`, `rebase`, `origin-and-direct-bic`, `author-date-vs-committer-date` |
 | oracle | default: `exact_set`; required `r1`; related origins `f1` · `origin-aware`: `relaxed_with_related`; required `r1`; acceptable `f1` (credit 0.5) · BFC `c3` |

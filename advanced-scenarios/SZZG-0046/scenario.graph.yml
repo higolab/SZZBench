@@ -12,7 +12,7 @@ meta:
   - merge
   - merge-commit-bfc
   - partial-fix
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

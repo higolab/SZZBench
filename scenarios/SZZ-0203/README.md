@@ -6,7 +6,7 @@
 | category | `S2` Omission and deletion bugs |
 | tier | `control` |
 | status | `active` |
-| difficulty | `easy` |
+| difficulty | `medium` |
 | language | `python` |
 | factors | `single-bic`, `single-bfc`, `omission-bug`, `line-addition-fix`, `missing-key-check` |
 | oracle | `exact_set`; required `c1` · BFC `c2` |
@@ -48,3 +48,9 @@ The BFC deletes no line, so B-SZZ returns the empty set; a tool must
 attribute an added guard to the commit that added the unguarded statement
 (`c1`), for example by blaming the surrounding lines or the enclosing
 function.
+
+## Difficulty
+
+`medium` by the floor rule of `decisions/vocabulary.md` §4 (decided 2026-09-22): plain
+first-parent blame on the lines the fix deletes is `addition-only` for this scenario, and a scenario may not
+declare less than that class sets. The author's grade was `easy`.

@@ -13,7 +13,7 @@ meta:
   - partial-revert
   - origin-bic
   - evaluation-variant
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

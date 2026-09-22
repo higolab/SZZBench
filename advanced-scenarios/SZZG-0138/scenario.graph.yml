@@ -17,7 +17,7 @@ meta:
   - multi-bic
   - single-bfc
   - addition-only-fix
-  difficulty: advanced
+  difficulty: hard
   status: active
   tier: control
 repository:

@@ -11,7 +11,7 @@ meta:
   - merge-commit
   - bug-fixing-commit
   - branch
-  difficulty: advanced
+  difficulty: hard
   status: active
   tier: control
 repository:

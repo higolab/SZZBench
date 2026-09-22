@@ -15,7 +15,7 @@ meta:
   factors:
   - null-check-omission
   - copy-propagation
-  difficulty: advanced
+  difficulty: medium
   status: active
   tier: control
 repository:

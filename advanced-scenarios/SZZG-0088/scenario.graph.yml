@@ -15,7 +15,7 @@ meta:
   - single-fault-reintroduced
   - re-bic
   - wrong-variable
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

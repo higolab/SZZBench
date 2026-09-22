@@ -16,7 +16,7 @@ meta:
   - method-move
   - post-bic-refactoring
   - wrong-variable
-  difficulty: advanced
+  difficulty: hard
   status: active
   tier: control
 repository:

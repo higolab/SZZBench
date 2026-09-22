@@ -6,7 +6,7 @@
 | category | `G7` Issue, message, context, and non-local evidence |
 | tier | `control` |
 | status | `active` |
-| difficulty | `advanced` |
+| difficulty | `easy` |
 | language | `java` |
 | factors | `work-item`, `work-item-inference`, `no-issue-id`, `commit-series`, `related-but-not-correct` |
 | oracle | `exact_set`; required `c2`; related but not correct `c1`, `c3` · BFC `c4` |

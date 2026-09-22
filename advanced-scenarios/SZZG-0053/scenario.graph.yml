@@ -13,7 +13,7 @@ meta:
   - release-branch
   - branch-only-bug
   - boolean-negation
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

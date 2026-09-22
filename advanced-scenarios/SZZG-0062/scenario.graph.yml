@@ -12,7 +12,7 @@ meta:
   - backport
   - maintenance-branch
   - cross-branch-bic
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

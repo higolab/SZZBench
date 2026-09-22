@@ -6,7 +6,7 @@
 | category | `G4` Branch, merge, cherry-pick, backport, and release branches |
 | tier | `control` |
 | status | `active` |
-| difficulty | `advanced` |
+| difficulty | `easy` |
 | language | `java` |
 | factors | `branch`, `rebase`, `release-branch`, `release-to-main`, `direct-bic`, `origin-bic` |
 | oracle | default: `exact_set`; required `r1`; related origins `rel1` · `origin-aware`: `relaxed_with_related`; required `r1`; acceptable `rel1` (credit 0.5) · BFC `c2` |

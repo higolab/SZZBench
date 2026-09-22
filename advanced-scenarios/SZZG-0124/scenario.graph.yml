@@ -15,7 +15,7 @@ meta:
   - conflict-resolution
   - adaptation-introduces-bug
   - release-branch
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

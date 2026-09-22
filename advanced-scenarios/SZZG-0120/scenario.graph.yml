@@ -19,7 +19,7 @@ meta:
   - guard-removal
   - caller-callee-interaction
   - blame-unreachable-bic
-  difficulty: advanced
+  difficulty: hard
   status: active
   tier: discriminating
 repository:

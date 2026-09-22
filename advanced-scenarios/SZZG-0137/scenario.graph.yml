@@ -16,7 +16,7 @@ meta:
   - single-bic
   - single-bfc
   - tool-visible-context
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

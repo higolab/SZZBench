@@ -6,7 +6,7 @@
 | category | `G5` Rebase-specific history rewriting |
 | tier | `discriminating` |
 | status | `active` |
-| difficulty | `advanced` |
+| difficulty | `hard` |
 | language | `java` |
 | factors | `branch`, `rebase`, `multi-bic`, `rebased-bic`, `direct-bic`, `origin-bic`, `integer-overflow`, `wrong-operator` |
 | oracle | default: `exact_set`; required `r1`, `r2`; related origins `f1`, `f2` · `origin-aware`: `relaxed_with_related`; required `r1`, `r2`; acceptable `f1` (credit 0.5), `f2` (credit 0.5) · BFC `c3` |

@@ -10,7 +10,7 @@ meta:
   factors:
   - work-item
   - evaluation-variant
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

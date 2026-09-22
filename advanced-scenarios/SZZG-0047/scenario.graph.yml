@@ -17,7 +17,7 @@ meta:
   - direct-bic
   - origin-bic
   - exception-swallowed
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

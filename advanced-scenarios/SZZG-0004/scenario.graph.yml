@@ -9,7 +9,7 @@ meta:
   factors:
   - file-rename
   - file-move
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

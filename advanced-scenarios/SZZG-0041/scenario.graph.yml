@@ -15,7 +15,7 @@ meta:
   - ambiguous-blame
   - duplicate-code
   - same-statement-multiple-locations
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

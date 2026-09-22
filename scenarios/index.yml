@@ -222,7 +222,7 @@ scenarios:
   - formatting-after-bic
   - line-number-shift
   - basic-blame-distractor
-  difficulty: medium
+  difficulty: hard
   status: active
   path: scenarios/SZZ-0081/scenario.yml
 - id: SZZ-0082
@@ -237,7 +237,7 @@ scenarios:
   - formatting-after-bic
   - line-number-shift
   - basic-blame-distractor
-  difficulty: medium
+  difficulty: hard
   status: active
   path: scenarios/SZZ-0082/scenario.yml
 - id: SZZ-0083
@@ -251,7 +251,7 @@ scenarios:
   - line-modification
   - whitespace-only-after-bic
   - basic-blame-distractor
-  difficulty: medium
+  difficulty: hard
   status: active
   path: scenarios/SZZ-0083/scenario.yml
 - id: SZZ-0084
@@ -915,7 +915,7 @@ scenarios:
   - multi-bic
   - single-bfc
   - line-modification
-  difficulty: medium
+  difficulty: hard
   status: active
   path: scenarios/SZZ-0136/scenario.yml
 - id: SZZ-0137
@@ -1541,7 +1541,7 @@ scenarios:
   - omission-bug
   - line-addition-fix
   - missing-key-check
-  difficulty: easy
+  difficulty: medium
   status: active
   path: scenarios/SZZ-0203/scenario.yml
 - id: SZZ-0204
@@ -1557,7 +1557,7 @@ scenarios:
   - deep-line-history
   - basic-blame-distractor
   - type-annotation-rewrite
-  difficulty: medium
+  difficulty: hard
   status: active
   path: scenarios/SZZ-0204/scenario.yml
 - id: SZZ-0205
@@ -1573,7 +1573,7 @@ scenarios:
   - deep-line-history
   - basic-blame-distractor
   - string-format-rewrite
-  difficulty: medium
+  difficulty: hard
   status: active
   path: scenarios/SZZ-0205/scenario.yml
 - id: SZZ-0206
@@ -1589,7 +1589,7 @@ scenarios:
   - robustness
   - bom-only-rewrite
   - basic-blame-distractor
-  difficulty: medium
+  difficulty: hard
   status: active
   path: scenarios/SZZ-0206/scenario.yml
 - id: SZZ-0207

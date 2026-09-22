@@ -14,7 +14,7 @@ meta:
   - origin-bic
   - evaluation-variant
   - relaxed-with-credit
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:
