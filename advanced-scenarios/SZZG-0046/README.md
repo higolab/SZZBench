@@ -1,5 +1,18 @@
 # SZZG-0046: BFC in merge commit
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G4` Branch, merge, cherry-pick, backport, and release branches |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `branch`, `merge`, `merge-commit-bfc`, `partial-fix` |
+| oracle | `exact_set`; required `c1` · BFC `c4` |
+| graph features | 2 branches; merge commit `c4` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 A bug is introduced before branches diverge; main and feature apply complementary partial changes, and the merge commit performs the final fix.

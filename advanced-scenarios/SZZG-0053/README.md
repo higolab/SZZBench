@@ -1,5 +1,18 @@
 # SZZG-0053: Release-branch-only bug
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G4` Branch, merge, cherry-pick, backport, and release branches |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `release-branch`, `branch-only-bug`, `boolean-negation` |
+| oracle | `exact_set`; required `c2` · BFC `c4` |
+| graph features | 2 branches |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 A bug that exists only on the `release` branch: `c2` means to keep serving
@@ -46,9 +59,3 @@ admin;`, line 6); blame at `c4^` returns `c2` (verifier `GI703`).
 
 Report `c2`. `main` offers no candidate at all; a tool that mines only the
 default branch never sees this bug or its fix.
-
-## Factors
-
-- `release-branch`
-- `branch-only-bug`
-- `boolean-negation`

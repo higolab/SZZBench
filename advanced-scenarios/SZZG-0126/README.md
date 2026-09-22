@@ -1,5 +1,18 @@
 # SZZG-0126: The fix is a git revert of the faulty commit, after another revert that is not
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G6` Revert-specific reintroduction |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `revert`, `revert-is-fix`, `resolvable-message-handle`, `revert-as-distractor` |
+| oracle | `exact_set`; required `c1`; related but not correct `c2`, `c3` · BFC `c4` |
+| graph features | revert `c3`, `c4` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 The other revert scenarios use a revert to bring a bug back. Here the revert is
@@ -42,10 +55,3 @@ Report `c1`. Reading footers alone, a tool sees two `This reverts commit`
 lines; it has to notice that `c4` restores the freshness comparison while `c3`
 restores a removed method. "The most recent revert's target" happens to be
 right here; "every reverted commit" is not.
-
-## Factors
-
-- `revert`
-- `revert-is-fix`
-- `resolvable-message-handle`
-- `revert-as-distractor`

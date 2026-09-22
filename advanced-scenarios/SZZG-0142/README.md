@@ -1,5 +1,18 @@
 # SZZG-0142: An origin worth a full point: credit 1.0 fills the metric while the status still needs the direct BIC
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G9` Evaluation policy variants |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `relaxed-credit`, `origin-vs-direct`, `copy-propagation`, `wrong-constant`, `single-bic`, `single-bfc`, `evaluation-variant` |
+| oracle | default (`direct-only`): `exact_set`; required `c2`; related origins `c1` · `origin-aware`: `relaxed_with_related`; required `c2`; acceptable `c1` (credit 0.5) · `relaxed-with-credit`: `relaxed_with_credit`; required `c2`; acceptable `c1` (credit 1) · BFC `c3` |
+| graph features | 2 BICs; origin faults; 3 evaluation variants (`direct-only`, `origin-aware`, `relaxed-with-credit`); `copy_relationships` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 Third member of the `relaxed_with_credit` family ([SZZG-0022](../SZZG-0022/README.md),
@@ -44,13 +57,3 @@ at `c3^` returns `c2`.
 | `relaxed-with-credit` | `{c1}` | **1.0 / 1.0** | **FAIL** (`c2` missing) |
 | `relaxed-with-credit` | `{c2, c1}` | min(1, 1 + 1.0) = 1.0 / 1.0 | PASS |
 | `origin-aware` | `{c1}` | 0.5 / 1.0 | FAIL |
-
-## Factors
-
-- `relaxed-credit`
-- `origin-vs-direct`
-- `copy-propagation`
-- `wrong-constant`
-- `single-bic`
-- `single-bfc`
-- `evaluation-variant`

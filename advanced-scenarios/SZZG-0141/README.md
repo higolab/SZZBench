@@ -1,5 +1,18 @@
 # SZZG-0141: Credit that saturates: two origins at half credit each can fill a two-commit oracle without full recall
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G9` Evaluation policy variants |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `relaxed-credit`, `origin-vs-direct`, `copy-propagation`, `multi-bic`, `single-bfc`, `evaluation-variant` |
+| oracle | default (`direct-only`): `exact_set`; required `c3`, `c4`; related origins `c1`, `c2` · `origin-aware`: `relaxed_with_related`; required `c3`, `c4`; acceptable `c1` (credit 0.5), `c2` (credit 0.5) · `relaxed-with-credit`: `relaxed_with_credit`; required `c3`, `c4`; acceptable `c1` (credit 0.5), `c2` (credit 0.5) · BFC `c5` |
+| graph features | 4 BICs; origin faults; 2 fault sites; 3 evaluation variants (`direct-only`, `origin-aware`, `relaxed-with-credit`); `copy_relationships` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 Second member of the `relaxed_with_credit` family ([SZZG-0022](../SZZG-0022/README.md):
@@ -56,12 +69,3 @@ measures overlap; status measures recall.
 
 Under the default variant any origin in the answer is a false positive
 (`{c3, c4, c1}` fails).
-
-## Factors
-
-- `relaxed-credit`
-- `origin-vs-direct`
-- `copy-propagation`
-- `multi-bic`
-- `single-bfc`
-- `evaluation-variant`

@@ -1,5 +1,17 @@
 # SZZ-0088: Class body reformat after BIC
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S3` Intermediate noise and history noise |
+| tier | `control` |
+| status | `active` |
+| difficulty | `easy` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `class-body-reformat-after-bic`, `blame-reaches-bic` |
+| oracle | `exact_set`; required `c1`; known distractors `c2` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 An intermediate commit reformats the class body without changing behaviour,
@@ -50,11 +62,3 @@ the tool does not widen the fix beyond the lines it changed.
 Before this repair, `c2` changed `public class` to `public final class`,
 which is a semantic modifier and not a reformat (issue #5), and the BFC
 removed it again. `c2` is now a genuine behaviour-preserving reformat.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `class-body-reformat-after-bic`
-- `blame-reaches-bic`

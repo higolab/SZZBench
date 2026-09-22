@@ -1,5 +1,17 @@
 # SZZ-0195: Scale change carried in stored state, and a later reader of the raw field
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S6` Multiple BICs, duplicate faults, and composite faults |
+| tier | `discriminating` |
+| status | `active` |
+| difficulty | `hard` |
+| language | `java` |
+| factors | `multi-bic`, `single-bfc`, `line-modification`, `value-flow`, `blame-unreachable-bic` |
+| oracle | `exact_set`; required `c1`, `c4` · BFC `c5` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 A discriminating-tier scenario on the measured axis: the answer is two commits,

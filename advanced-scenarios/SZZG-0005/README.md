@@ -1,5 +1,18 @@
 # SZZG-0005: Method move between classes
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G1` Refactoring, move, rename, and semantic rewrite |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `refactoring`, `method-move`, `post-bic-refactoring`, `wrong-variable` |
+| oracle | `exact_set`; required `c1`; related but not correct `c2` · BFC `c3` |
+| graph features | none: a linear history with one bug and an exact-set oracle, kept in the graph suite for its category |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 `Shipping.cost` floors the cost at a configured minimum; `c1` "simplifies" the
@@ -50,10 +63,3 @@ verifier reports `GI701` (declared by the refactoring factors).
 Report `c1`, not `c2`. The moved method is byte-for-byte identical before and
 after the move and `Shipping.java` shrinks in the same commit that creates
 `ShippingUtils.java`, so move-aware blame can follow the line back.
-
-## Factors
-
-- `refactoring`
-- `method-move`
-- `post-bic-refactoring`
-- `wrong-variable`

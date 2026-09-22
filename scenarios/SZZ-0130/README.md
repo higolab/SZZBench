@@ -1,5 +1,17 @@
 # SZZ-0130: Field extraction after BIC
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S5` Refactoring, move, and rename after BIC |
+| tier | `control` |
+| status | `active` |
+| difficulty | `hard` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `field-extraction-after-bic`, `basic-blame-distractor` |
+| oracle | `exact_set`; required `c1`; known distractors `c2` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 A repeated literal is extracted into a private constant between the BIC and
@@ -64,11 +76,3 @@ and were probed over
 `c1` differs from `c0` in exactly one case, `uploadedFiles == 50` (the full
 batch), `c2` reproduces `c1` exactly (the extraction is
 behaviour-preserving), and `c3` agrees with `c0` on all 15 inputs.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `field-extraction-after-bic`
-- `basic-blame-distractor`

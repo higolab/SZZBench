@@ -1,8 +1,17 @@
 # SZZG-0028: The copy and the later edit are both required; the origin is not
 
-## Source
-
-- Category: Clone propagation scenarios
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G2` Clone, copy propagation, and origin-vs-direct BIC |
+| tier | `discriminating` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `clone`, `multi-bic`, `origin-and-direct-bic` |
+| oracle | default: `exact_set`; required `c2`, `c3`; related origins `c1` · `origin-aware`: `relaxed_with_related`; required `c2`, `c3`; acceptable `c1` (credit 0.5) · BFC `c4` |
+| graph features | operation `copy_file`; 3 BICs; origin faults; 2 fault sites; 1 evaluation variant (`origin-aware`) |
+<!-- /szzbench:header -->
 
 ## Purpose
 

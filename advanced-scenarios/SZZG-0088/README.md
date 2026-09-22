@@ -1,5 +1,18 @@
 # SZZG-0088: Partial revert of fix reintroduces one fault
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G6` Revert-specific reintroduction |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `revert`, `partial-revert`, `reintroduced-bug`, `single-fault-reintroduced`, `re-bic`, `wrong-variable` |
+| oracle | default: `exact_set`; required `c3`; related origins `c1`; related but not correct `c2` · `origin-aware`: `relaxed_with_related`; required `c3`; acceptable `c1` (credit 0.5); related but not correct `c2` · BFC `c4` |
+| graph features | 2 BICs; 1 evaluation variant (`origin-aware`) |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 `Greeting.greet` has two lines that matter: a null guard for the name and the
@@ -48,12 +61,3 @@ Report `c3`. The same faulty text was first written by `c1`, but that instance
 was fixed by `c2`; the instance the final fix repairs was written by the partial
 revert. A tool that searches history for the first appearance of the faulty text
 answers `c1`, which the default oracle rejects.
-
-## Factors
-
-- `revert`
-- `partial-revert`
-- `reintroduced-bug`
-- `single-fault-reintroduced`
-- `re-bic`
-- `wrong-variable`

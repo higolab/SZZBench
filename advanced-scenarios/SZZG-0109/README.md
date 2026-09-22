@@ -1,8 +1,17 @@
 # SZZG-0109: File deletion
 
-## Source
-
-- Category: Non-source, binary, generated, and scalability edge cases (G8)
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G8` Non-source, binary, generated, and scalability edge cases |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `file-deletion` |
+| oracle | `exact_set`; required `c0`; related but not correct `c1`, `c3` · BFC `c4` |
+| graph features | operation `delete_file` |
+<!-- /szzbench:header -->
 
 ## Purpose
 

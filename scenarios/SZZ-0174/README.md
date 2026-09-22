@@ -1,5 +1,17 @@
 # SZZ-0174: Addition-only fix for a missing null check
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S2` Omission and deletion bugs |
+| tier | `control` |
+| status | `active` |
+| difficulty | `hard` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `omission-bug`, `addition-only-fix`, `missing-null-check` |
+| oracle | `exact_set`; required `c1` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 This scenario checks how SZZ implementations behave when the bug is an
@@ -34,11 +46,3 @@ To pass, a tool has to map the *added* guard to the code it protects, for
 example by blaming the surrounding context lines (`String label =
 labels.get(key);`, `return label.toUpperCase();`), or by identifying the
 commit that added the enclosing method `displayLabel`. Both lead to `c1`.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `omission-bug`
-- `addition-only-fix`
-- `missing-null-check`

@@ -1,8 +1,17 @@
 # SZZG-0041: Ambiguous blame with duplicate faulty lines
 
-## Source
-
-- Category: Multiple BICs, multiple BFCs, and partial fixes (`G3`)
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G3` Multiple BICs, multiple BFCs, and partial fixes |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `ambiguous-blame`, `duplicate-code`, `same-statement-multiple-locations` |
+| oracle | `exact_set`; required `c1` · BFC `c3` |
+| graph features | none: a linear history with one bug and an exact-set oracle, kept in the graph suite for its category |
+<!-- /szzbench:header -->
 
 ## Purpose
 

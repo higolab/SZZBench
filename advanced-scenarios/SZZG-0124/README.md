@@ -1,5 +1,18 @@
 # SZZG-0124: A cherry-pick whose conflict adaptation introduces the bug
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G4` Branch, merge, cherry-pick, backport, and release branches |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `cherry-pick`, `conflict-resolution`, `adaptation-introduces-bug`, `release-branch` |
+| oracle | `exact_set`; required `r1`; related but not correct `c1` · BFC `r2` |
+| graph features | 2 branches; cherry-pick `r1` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 Twin of [SZZG-0125](../SZZG-0125/README.md). A correct change on `main` is
@@ -63,10 +76,3 @@ Report `r1` and not follow the trailer to `c1`. In SZZG-0125 the same trailer
 leads to the origin of the fault; here it leads away from it. A tool that
 treats "the commit a cherry-pick came from" as the answer passes one twin and
 fails the other.
-
-## Factors
-
-- `cherry-pick`
-- `conflict-resolution`
-- `adaptation-introduces-bug`
-- `release-branch`

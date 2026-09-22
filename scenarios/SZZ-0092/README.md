@@ -1,5 +1,17 @@
 # SZZ-0092: Loop to conditional rewrite after BIC
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S3` Intermediate noise and history noise |
+| tier | `control` |
+| status | `active` |
+| difficulty | `hard` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `loop-rewrite-after-bic`, `basic-blame-distractor` |
+| oracle | `exact_set`; required `c1`; known distractors `c2` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 This scenario checks how SZZ implementations behave when a behaviour-preserving
@@ -48,11 +60,3 @@ library call plus conditional), or searching the history for the comparison
   four names whose only dot is at position 0 and is followed by something
   (`".bashrc"`, `".a"`, `".ab"` and the generated name with the dot at position
   0), and the `c3` snapshot agrees with `c0` on all 326 probe outputs.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `loop-rewrite-after-bic`
-- `basic-blame-distractor`

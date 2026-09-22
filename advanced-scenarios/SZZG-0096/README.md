@@ -1,8 +1,17 @@
 # SZZG-0096: Multiple candidate BICs inside a work item
 
-## Source
-
-- Category: Work-item and commit-series scenarios
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G7` Issue, message, context, and non-local evidence |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `work-item`, `evaluation-variant` |
+| oracle | `top_k`; relevant `c2` · BFC `c4` |
+| graph features | policy `top_k`; `work_items` |
+<!-- /szzbench:header -->
 
 ## Purpose
 

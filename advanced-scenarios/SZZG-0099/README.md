@@ -1,8 +1,17 @@
 # SZZG-0099: BFC message references the wrong commit
 
-## Source
-
-- Category: Work-item and commit-series scenarios
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G7` Issue, message, context, and non-local evidence |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `message-evidence`, `misleading-commit-message` |
+| oracle | `exact_set`; required `c1`; related but not correct `c2` · BFC `c3` |
+| graph features | `developer_hints` |
+<!-- /szzbench:header -->
 
 ## Purpose
 

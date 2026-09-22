@@ -1,5 +1,17 @@
 # SZZ-0177: Deletion-only BIC removes a guard that an addition-only BFC restores
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S2` Omission and deletion bugs |
+| tier | `control` |
+| status | `active` |
+| difficulty | `hard` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `deletion-only-bic`, `addition-only-fix`, `guard-removal` |
+| oracle | `exact_set`; required `c1` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 This scenario realizes the shape that SZZ-0078 to SZZ-0080 intended but did
@@ -37,11 +49,3 @@ To pass, a tool has to notice that the added lines previously existed in the
 file and find the commit that removed them, e.g. with `git log -S` on the
 guard text or by searching the file history for a deletion of the added
 lines. Only `c1` deletes them.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `deletion-only-bic`
-- `addition-only-fix`
-- `guard-removal`

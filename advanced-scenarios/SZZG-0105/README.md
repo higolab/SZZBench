@@ -1,8 +1,17 @@
 # SZZG-0105: Defensive check BFC masks an earlier root-cause BIC
 
-## Source
-
-- Category: Issue, message, context, and non-local evidence (G7)
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G7` Issue, message, context, and non-local evidence |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `defensive-fix`, `root-cause-not-touched`, `context-dependent` |
+| oracle | `exact_set`; required `c1`; related but not correct `c0` · BFC `c3` |
+| graph features | none: a linear history with one bug and an exact-set oracle, kept in the graph suite for its category |
+<!-- /szzbench:header -->
 
 ## Purpose
 

@@ -1,5 +1,17 @@
 # SZZ-0099: Synchronized modifier after BIC
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S3` Intermediate noise and history noise |
+| tier | `control` |
+| status | `active` |
+| difficulty | `easy` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `synchronized-after-bic`, `plain-blame-control` |
+| oracle | `exact_set`; required `c1`; known distractors `c2` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 This scenario is an honest **control** for modifier noise: between the BIC and
@@ -49,11 +61,3 @@ nor because `c2` changed the signature line of the very method that is fixed.
   exactly when `used == limit` (and grants 2 instead of 1, and 6 instead of 5,
   requests in the two loops); the `c3` snapshot agrees with `c0` on every probed
   input.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `synchronized-after-bic`
-- `plain-blame-control`

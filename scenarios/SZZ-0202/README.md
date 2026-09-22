@@ -1,5 +1,17 @@
 # SZZ-0202: Mutable default argument: the fault is on the def line
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S1` Basic semantic line changes |
+| tier | `control` |
+| status | `active` |
+| difficulty | `medium` |
+| language | `python` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `mutable-default-argument`, `signature-line-fault` |
+| oracle | `exact_set`; required `c1` · BFC `c2` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 Python evaluates a default argument once, when the `def` statement runs, so
@@ -38,11 +50,3 @@ Three calls in one interpreter, `with_tag("a")`, `with_tag("b")`,
 
 At `c1` the second call returns the list the first call filled: the default
 is shared. `git blame` at `c2^` attributes the deleted def line to `c1`.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `mutable-default-argument`
-- `signature-line-fault`

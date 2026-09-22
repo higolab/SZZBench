@@ -1,5 +1,18 @@
 # SZZG-0133: A binary asset is changed by both the BIC and the BFC
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G8` Non-source, binary, generated, and scalability edge cases |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `binary-file`, `binary-bic`, `binary-bfc`, `no-line-level-evidence` |
+| oracle | `exact_set`; required `c1` · BFC `c2` |
+| graph features | operation `write_binary_file` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 [SZZG-0108](../SZZG-0108/README.md) changes a binary in the fix only, next to a
@@ -48,10 +61,3 @@ so the verifier has no line to blame and performs no blame check.
 Report `c1`. Line-level SZZ has nothing to work with; commit-level reasoning over
 which commits touched the file the fix touched finds `c1` and `c0`, and only `c1`
 changed the bytes the loader validates.
-
-## Factors
-
-- `binary-file`
-- `binary-bic`
-- `binary-bfc`
-- `no-line-level-evidence`

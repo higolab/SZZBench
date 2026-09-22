@@ -1,5 +1,18 @@
 # SZZG-0052: Criss-cross merge
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G4` Branch, merge, cherry-pick, backport, and release branches |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `branch`, `merge`, `criss-cross-merge`, `multiple-merge-bases` |
+| oracle | `exact_set`; required `a1` · BFC `c5` |
+| graph features | 3 branches; merge commits `a2`, `b2`, `c4` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 Two feature branches exchange merges before they are integrated: `a2` merges
@@ -113,9 +126,3 @@ constants, ±1).
   differences, so the fault survives both merges.
 * `c5` (BFC) agrees with `c0` on **all 13** shared probes; its 26 extra probes
   (`clampTimeout`, `describeTimeout`) have no counterpart at `c0`.
-
-## Factors
-
-`branch`, `merge`, `criss_cross_merge`, `multiple_merge_bases`.
-Changed: `multiple_merge_bases` added (the property that is now actually
-realised).

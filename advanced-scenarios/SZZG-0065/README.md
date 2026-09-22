@@ -1,5 +1,18 @@
 # SZZG-0065: Rebase conflict resolution introduces bug
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G5` Rebase-specific history rewriting |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `branch`, `rebase`, `rebase-conflict-resolution`, `conflict-resolution-bic`, `direct-bic`, `fault-in-neither-parent` |
+| oracle | `exact_set`; required `r1` · BFC `c2` |
+| graph features | 2 branches; rebase `r1`; cherry-pick `r1` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 Evaluate a bug that is created by the **manual resolution of a rebase

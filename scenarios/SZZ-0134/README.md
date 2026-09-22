@@ -1,5 +1,17 @@
 # SZZ-0134: Validation weakening plus caller acceptance
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S6` Multiple BICs, duplicate faults, and composite faults |
+| tier | `control` |
+| status | `active` |
+| difficulty | `medium` |
+| language | `java` |
+| factors | `multi-bic`, `single-bfc`, `line-modification` |
+| oracle | `exact_set`; required `c1`, `c2` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 This scenario requires treating two bug-introducing commits as contributing to the same later fix.
@@ -14,9 +26,3 @@ This scenario requires treating two bug-introducing commits as contributing to t
 ## Expected behavior
 
 The expected BFC is `c3`; the expected BIC set is `{c1, c2}`.
-
-## Factors
-
-- `multi-bic`
-- `single-bfc`
-- `line-modification`

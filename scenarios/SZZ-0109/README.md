@@ -1,5 +1,17 @@
 # SZZ-0109: Comment-only intermediate before fix
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S3` Intermediate noise and history noise |
+| tier | `control` |
+| status | `active` |
+| difficulty | `easy` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `robustness`, `comment-only-intermediate` |
+| oracle | `exact_set`; required `c1`; known distractors `c2` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 This scenario checks that a comment-only commit between the BIC and the BFC
@@ -40,11 +52,3 @@ Blame class: **exact** — B-SZZ returns `{c1}`, which is the expected set.
 Blame the deleted line and stop. A tool fails by adding `c2` because it is the
 most recent commit on the file, or because a hunk-level change model widens
 the fix hunk to the comment that immediately precedes the method.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `robustness`
-- `comment-only-intermediate`

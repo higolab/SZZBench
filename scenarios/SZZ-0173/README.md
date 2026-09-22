@@ -1,5 +1,17 @@
 # SZZ-0173: File creation only as fix
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S8` Non-source, configuration, test-only, and file-level edge cases |
+| tier | `control` |
+| status | `active` |
+| difficulty | `hard` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `omission-bug`, `file-creation-fix` |
+| oracle | `exact_set`; required `c0` · BFC `c1` |
+<!-- /szzbench:header -->
+
 ## Summary
 
 The BFC consists solely of adding a new file. `PluginLoader.loadDefault()` resolves `example.DefaultPlugin`
@@ -42,13 +54,6 @@ The BFC diff is `DefaultPlugin.java | 7 +++++++` (additions only). Consequently:
 A classic SZZ that blames only the lines deleted or modified by the BFC finds no candidate. Reaching `c0`
 requires other evidence, for example blaming the line that references the newly created class, or treating
 the commit that introduced the dangling reference as the origin of the omission.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `omission-bug`
-- `file-creation-fix`
 
 ## Notes
 

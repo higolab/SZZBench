@@ -1,5 +1,18 @@
 # SZZG-0104: Configuration BIC is fixed by code-side normalization
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G7` Issue, message, context, and non-local evidence |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `configuration-change`, `cross-artifact-fix`, `context-dependent` |
+| oracle | `exact_set`; required `c1` · BFC `c2` |
+| graph features | none: a linear history with one bug and an exact-set oracle, kept in the graph suite for its category |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 The fault is a trailing slash added to `api.host` in a properties file; the fix
@@ -40,9 +53,3 @@ nothing the fix touches was written by `c1`.
 
 Report `c1`, a commit that changed only a properties file, from a fix that
 changed only Java. Blame on the fix points at `c0`.
-
-## Factors
-
-- `configuration-change`
-- `cross-artifact-fix`
-- `context-dependent`

@@ -1,5 +1,18 @@
 # SZZG-0006: Extract class after BIC
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G1` Refactoring, move, rename, and semantic rewrite |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `refactoring`, `extract-class`, `method-move`, `post-bic-refactoring`, `exception-swallowed` |
+| oracle | `exact_set`; required `c1` · BFC `c3` |
+| graph features | none: a linear history with one bug and an exact-set oracle, kept in the graph suite for its category |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 `OrderService` parses quantities and reports orders. `c1` makes `parseQuantity`
@@ -46,11 +59,3 @@ factors).
 Report `c1`. The extracted method's body is identical to the one `c1` wrote in
 `OrderService.java`; a tool has to follow the code across the extraction rather
 than stop at the commit that created the new file.
-
-## Factors
-
-- `refactoring`
-- `extract-class`
-- `method-move`
-- `post-bic-refactoring`
-- `exception-swallowed`

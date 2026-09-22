@@ -1,5 +1,17 @@
 # SZZ-0108: CRLF-like full file rewrite
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S3` Intermediate noise and history noise |
+| tier | `control` |
+| status | `active` |
+| difficulty | `hard` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `robustness`, `line-ending-noise`, `full-file-rewrite` |
+| oracle | `exact_set`; required `c1`; known distractors `c2` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 This scenario checks whether an SZZ implementation survives a line-ending
@@ -59,12 +71,3 @@ skip commits whose diff is empty under `--ignore-cr-at-eol` when walking back,
 or follow the line history (`git log -L`) instead of a single blame step.
 A tool that reports `{c2}` has reported a pure formatting commit as the cause
 of a boundary fault.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `robustness`
-- `line-ending-noise`
-- `full-file-rewrite`

@@ -1,8 +1,17 @@
 # SZZG-0111: Chmod-only intermediate
 
-## Source
-
-- Category: Non-source, binary, generated, and scalability edge cases (G8)
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G8` Non-source, binary, generated, and scalability edge cases |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `file-mode-change` |
+| oracle | `exact_set`; required `c1` · BFC `c3` |
+| graph features | operation `chmod` |
+<!-- /szzbench:header -->
 
 ## Purpose
 

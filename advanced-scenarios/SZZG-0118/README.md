@@ -1,5 +1,18 @@
 # SZZG-0118: A reduced copy of a helper, and a later call routed through it
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G2` Clone, copy propagation, and origin-vs-direct BIC |
+| tier | `discriminating` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `multi-bic`, `clone`, `origin-and-direct-bic`, `caller-callee-interaction`, `blame-unreachable-bic` |
+| oracle | `exact_set`; required `c1`, `c3` · BFC `c4` |
+| graph features | operation `copy_file`; 2 BICs; 2 fault sites |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 A discriminating-tier scenario on the measured axis: the answer is two commits,

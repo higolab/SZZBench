@@ -1,5 +1,17 @@
 # SZZ-0206: BOM-only rewrite of the faulty line
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S3` Intermediate noise and history noise |
+| tier | `control` |
+| status | `active` |
+| difficulty | `medium` |
+| language | `python` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `wrong-constant`, `robustness`, `bom-only-rewrite`, `basic-blame-distractor` |
+| oracle | `exact_set`; required `c1`; known distractors `c2` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 The third member of the "the bytes of the faulty line changed but the code
@@ -76,13 +88,3 @@ filter, or a pre-pass that strips U+FEFF), or follow the line one step
 further (`git log -L1,1:src/limits/upload.py` lists `c3`, `c2`, `c1`, `c0`).
 A tool that reports `{c2}` has blamed an encoding re-save for a wrong
 constant.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `wrong-constant`
-- `robustness`
-- `bom-only-rewrite`
-- `basic-blame-distractor`

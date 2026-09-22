@@ -1,5 +1,18 @@
 # SZZG-0076: Multiple BICs replayed by rebase
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G5` Rebase-specific history rewriting |
+| tier | `discriminating` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `branch`, `rebase`, `multi-bic`, `rebased-bic`, `direct-bic`, `origin-bic`, `integer-overflow`, `wrong-operator` |
+| oracle | default: `exact_set`; required `r1`, `r2`; related origins `f1`, `f2` · `origin-aware`: `relaxed_with_related`; required `r1`, `r2`; acceptable `f1` (credit 0.5), `f2` (credit 0.5) · BFC `c3` |
+| graph features | 2 branches; rebase `r1`, `r2`; 4 BICs; origin faults; 1 evaluation variant (`origin-aware`) |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 Two feature commits damage the same line in two different ways and a rebase
@@ -50,14 +63,3 @@ Return both `r1` and `r2`. Each replay is a genuine fault of its own — the
 overflow is there before the multiplication arrives and survives after the
 multiplication is repaired — so a tool has to follow the line through two
 edits, not stop at the most recent one.
-
-## Factors
-
-- `branch`
-- `rebase`
-- `multi-bic`
-- `rebased-bic`
-- `direct-bic`
-- `origin-bic`
-- `integer-overflow`
-- `wrong-operator`

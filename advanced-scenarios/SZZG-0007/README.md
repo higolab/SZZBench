@@ -1,5 +1,18 @@
 # SZZG-0007: Line moved and duplicated
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G1` Refactoring, move, rename, and semantic rewrite |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `method-move`, `copy-propagation`, `off-by-one` |
+| oracle | `exact_set`; required `c1`, `c2` · BFC `c3` |
+| graph features | 2 BICs; `bug_instances` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 One commit does two different things to one faulty line. `c1` writes
@@ -58,9 +71,3 @@ Return both `c1` and `c2`, for different reasons: `c2` because it created a new
 faulty instance by copying the line, `c1` because the other fixed instance is
 the moved original. A tool that treats the whole of `c2` as propagation history
 misses `c2`; one that stops at the last touch misses `c1`.
-
-## Factors
-
-- `method-move`
-- `copy-propagation`
-- `off-by-one`

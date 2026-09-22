@@ -1,5 +1,18 @@
 # SZZG-0042: BFC is a merge commit
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G4` Branch, merge, cherry-pick, backport, and release branches |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `merge-commit`, `bug-fixing-commit`, `branch` |
+| oracle | `exact_set`; required `c1` · BFC `c3` |
+| graph features | 2 branches; merge commit `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 This scenario evaluates a case where the bug-fixing commit is itself a merge commit.

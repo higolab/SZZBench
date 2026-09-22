@@ -1,8 +1,17 @@
 # SZZG-0008: Semantically equivalent rewrite
 
-## Source
-
-- Category: Context-aware and LLM-based SZZ scenarios
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G1` Refactoring, move, rename, and semantic rewrite |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `semantic-rewrite`, `related-but-not-correct` |
+| oracle | `exact_set`; required `c1`; related but not correct `c2` · BFC `c3` |
+| graph features | 2 fault sites; `semantic_rewrites` |
+<!-- /szzbench:header -->
 
 ## Purpose
 

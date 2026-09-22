@@ -1,5 +1,18 @@
 # SZZG-0045: BIC in merge commit
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G4` Branch, merge, cherry-pick, backport, and release branches |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `branch`, `merge`, `merge-commit-bic`, `string-comparison` |
+| oracle | `exact_set`; required `c3` · BFC `c4` |
+| graph features | 2 branches; merge commit `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 The merge commit itself introduces the bug: while merging the feature branch into
@@ -50,10 +63,3 @@ Report `c3`, a two-parent commit. A tool that excludes merges from the candidate
 set, or diffs a merge only against its first parent and finds "no change" there
 for this file, has nothing to report — the change exists only in the merge
 commit's own diff against both parents.
-
-## Factors
-
-- `branch`
-- `merge`
-- `merge-commit-bic`
-- `string-comparison`

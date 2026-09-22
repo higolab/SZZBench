@@ -1,5 +1,18 @@
 # SZZG-0035: One BIC causes multiple bug symptoms
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G3` Multiple BICs, multiple BFCs, and partial fixes |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `root-cause`, `wrong-constant` |
+| oracle | `exact_set`; required `c1` · BFCs `c2`, `c3` |
+| graph features | 2 bugs; `bug_groups` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 One faulty helper, two symptoms, two fixes. `Fees.fee` computes a 3 percent
@@ -53,8 +66,3 @@ Report `c1` for either fix. The fixes route around the fault rather than
 editing it, so a tool that blames only deleted lines lands on `c0` and has to
 look at what the deleted call *reached* — the helper `c1` changed — to find the
 cause.
-
-## Factors
-
-- `root-cause`
-- `wrong-constant`

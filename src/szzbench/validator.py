@@ -120,7 +120,7 @@ def validate_scenario_file(
         if snapshots is not None and not sim_result.has_errors():
             result.extend(validate_oracle_against_snapshots(data, snapshots))
     if lint and not result.has_errors():
-        result.extend(lint_scenario(data, snapshots))
+        result.extend(lint_scenario(data, snapshots, scenario_path=path))
     return data, result, snapshots
 
 def validate_static(data: dict[str, Any], *, scenario_path: Path | None = None) -> ValidationResult:
@@ -374,24 +374,56 @@ def validate_oracle_against_snapshots(data: dict[str, Any], snapshots: dict[str,
 
 # --- opt-in lints (shared helpers) ------------------------------------------
 
+def error_prefix(prefix: str) -> str:
+    """The error-code prefix of a lint family: ``W`` -> ``E``, ``GW`` -> ``GE``."""
+    return prefix[:-1] + "E"
+
+
 def lint_factors(factors: Any, result: ValidationResult, *, prefix: str, location: str = "meta.factors") -> None:
     """Vocabulary lint for meta.factors.
 
-    Emits ``<prefix>400`` (factor is a schema key / operation name),
-    ``<prefix>401`` (empty factor list) and ``<prefix>402`` (hyphen and
-    underscore styles mixed within one scenario).
+    Emits ``E400`` / ``GE400`` (factor is a schema key / operation name),
+    ``E401`` / ``GE401`` (empty factor list) and ``E402`` / ``GE402`` (hyphen
+    and underscore styles mixed within one scenario).  These were warnings
+    while the suites were being migrated to the vocabulary of
+    ``decisions/vocabulary.md``; since the migration is complete they are
+    errors (section 6, step 4 of that decision).
     """
     if not isinstance(factors, list):
         return
+    code = error_prefix(prefix)
     if not factors:
-        result.warning(f"{prefix}401", "meta.factors is empty; declare at least one semantic factor.", location)
+        result.error(f"{code}401", "meta.factors is empty; declare at least one semantic factor.", location)
         return
     names = [f for f in factors if isinstance(f, str)]
     for i, name in enumerate(names):
         if name in RESERVED_FACTOR_WORDS:
-            result.warning(f"{prefix}400", f"Factor '{name}' is a schema key or operation name, not a semantic factor.", f"{location}[{i}]")
+            result.error(f"{code}400", f"Factor '{name}' is a schema key or operation name, not a semantic factor.", f"{location}[{i}]")
     if any("-" in n for n in names) and any("_" in n for n in names):
-        result.warning(f"{prefix}402", "Factors mix hyphen and underscore styles; use one convention per scenario.", location)
+        result.error(f"{code}402", "Factors mix hyphen and underscore styles; use one convention per scenario.", location)
+
+
+def lint_readme_header(data: dict[str, Any], suite: str, scenario_path: Path, result: ValidationResult, *,
+                       prefix: str) -> None:
+    """W455 / GW455: the sibling README disagrees with the scenario.
+
+    A README opens with a header rendered from the scenario file (``szzbench
+    readme``, ``docs/scenario-readme.md``).  The lint reports a README without
+    that header, one whose header no longer matches the YAML, and one that
+    still carries a hand-written ``## Factors`` or ``## Source`` copy of what
+    the header states -- the copies that drifted in issue #19.  A missing
+    README is not a lint finding.
+    """
+    from .readme import check_readme, render_header
+
+    readme = scenario_path.with_name("README.md")
+    try:
+        text = readme.read_text(encoding="utf-8")
+    except OSError:
+        return
+    header = render_header(data, suite)
+    for problem in check_readme(text, header):
+        result.warning(f"{prefix}455", f"README {problem}; run `szzbench readme --write`.", readme.name)
 
 
 #: What a scenario is for (issue #14).  ``control`` verifies that a method
@@ -499,12 +531,14 @@ def factor_matches(factors: Any, pattern: re.Pattern[str]) -> bool:
 
 # --- opt-in lints (classic suite) -------------------------------------------
 
-def lint_scenario(data: dict[str, Any], snapshots: dict[str, dict[str, str]] | None) -> ValidationResult:
+def lint_scenario(data: dict[str, Any], snapshots: dict[str, dict[str, str]] | None, *,
+                  scenario_path: Path | None = None) -> ValidationResult:
     """Run the W4xx lints on a statically valid classic scenario.
 
     ``snapshots`` (from :func:`simulate_commits`) enables the ghost-invariant
     and fault-line-integrity lints; without it only the vocabulary and
-    leakage lints run.
+    leakage lints run.  ``scenario_path`` enables the lint that compares the
+    scenario with its sibling README (W455).
     """
     result = ValidationResult()
     meta = data.get("meta") if isinstance(data.get("meta"), dict) else {}
@@ -517,6 +551,8 @@ def lint_scenario(data: dict[str, Any], snapshots: dict[str, dict[str, str]] | N
     lint_tier(data.get("meta"), result, prefix="W")
     lint_leakage(commits, bfc_ids, result, prefix="W")
     lint_author_coincidence(data, "scenarios", result, prefix="W")
+    if scenario_path is not None:
+        lint_readme_header(data, "scenarios", scenario_path, result, prefix="W")
     if snapshots is not None:
         result.extend(_lint_ghost_invariants(commits, bugs, factors, snapshots))
         result.extend(_lint_fault_line_integrity(commits, bugs, factors, snapshots))

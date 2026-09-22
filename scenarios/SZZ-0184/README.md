@@ -1,5 +1,17 @@
 # SZZ-0184: BFC also modifies existing test lines owned by another commit
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S4` BFC-side noise and tangled commits |
+| tier | `control` |
+| status | `active` |
+| difficulty | `medium` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `test-line-noise`, `multi-file-bfc` |
+| oracle | `exact_set`; required `c1`; known distractors `c2` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 SZZ-0117 covers a BFC that *adds* a test file. This scenario covers a BFC
@@ -36,11 +48,3 @@ reached, with one extra candidate.
 To pass, a tool must exclude the test-file hunk from candidate generation
 (path filter on `src/test/java`, or a filter on test-only commits) or
 otherwise rank the production hunk above the test hunk.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `test-line-noise`
-- `multi-file-bfc`

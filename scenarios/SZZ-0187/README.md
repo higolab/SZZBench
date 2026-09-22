@@ -1,5 +1,17 @@
 # SZZ-0187: BFC touching three files with a single BIC
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S4` BFC-side noise and tangled commits |
+| tier | `control` |
+| status | `active` |
+| difficulty | `medium` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `multi-file-bfc`, `three-file-bfc`, `caller-update-in-bfc` |
+| oracle | `exact_set`; required `c1` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 None of the existing BFCs touches three or more files. This scenario adds a
@@ -49,12 +61,3 @@ semantics outranks the commit that wrote the callers, e.g. by scoring per
 hunk, by preferring the hunk in the file named by the changed API, or by
 noticing that `c0` is the initial commit of the repository and that the
 caller hunks only adapt to an API change.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `multi-file-bfc`
-- `three-file-bfc`
-- `caller-update-in-bfc`

@@ -1,5 +1,17 @@
 # SZZ-0203: Dictionary lookup added without a key check (Python omission twin of SZZ-0047)
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S2` Omission and deletion bugs |
+| tier | `control` |
+| status | `active` |
+| difficulty | `easy` |
+| language | `python` |
+| factors | `single-bic`, `single-bfc`, `omission-bug`, `line-addition-fix`, `missing-key-check` |
+| oracle | `exact_set`; required `c1` · BFC `c2` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 The Python counterpart of SZZ-0047. A function is added that indexes a
@@ -36,11 +48,3 @@ The BFC deletes no line, so B-SZZ returns the empty set; a tool must
 attribute an added guard to the commit that added the unguarded statement
 (`c1`), for example by blaming the surrounding lines or the enclosing
 function.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `omission-bug`
-- `line-addition-fix`
-- `missing-key-check`

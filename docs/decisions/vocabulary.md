@@ -84,7 +84,7 @@ Keep the normal-suite set as the canonical list for both suites: `initial`, `bug
 
 ## 3. Categories
 
-One code system for both suites, stored as `category_code` and `category` in YAML and index; README files are regenerated from YAML so the legacy "## Source / Category" labels disappear.
+One code system for both suites, stored as `category_code` and `category` in YAML and index. Every README states the code and name in its generated header (`szzbench readme`, [scenario-readme.md](../scenario-readme.md)); the legacy "## Source / Category" labels were removed with the header's introduction on 2026-09-22, and `W455` / `GW455` reports one that comes back. The paper's C1–C17 numbering stays in this table only.
 
 | code | name | paper |
 |---|---|---|
@@ -125,9 +125,9 @@ Legacy README labels map as follows: "BFC shape scenarios" → S4/G1 by content;
 ## 6. Sweep plan (after issues #15–#18 land)
 
 1. Apply the factor synonym table and role mapping to all scenarios with a script; commit as one change.
-2. Regenerate README files from YAML (single template per suite); remove boilerplate (`Evaluates <title> and checks whether…`, `Draft status`, `c0: c0:` prefixes, stale `difference_from_*` keys, garbled text in SZZG-0046). **Partly done, and the rest needs re-scoping before it is run.** Gone as of 2026-09-19: the `Draft status` sections (52 of them), the `c0: c0:` prefixes, and SZZG-0046's garbled text; the machine-shaped `## Expected history` blocks (16 READMEs) are now re-derived from the YAML instead of hand-maintained. Still present: the `Evaluates <title> and checks whether…` opening in 31 graph READMEs, and 42 `difference_from_*` keys. The single-template regeneration itself is deferred to issue #19 — 98 of the 114 graph READMEs now carry hand-written per-scenario prose added in #41–#47, which one template would overwrite, so the template has to be defined as *augmenting* the generated sections rather than replacing the file.
+2. Regenerate README files from YAML (single template per suite); remove boilerplate (`Evaluates <title> and checks whether…`, `Draft status`, `c0: c0:` prefixes, stale `difference_from_*` keys, garbled text in SZZG-0046). **Re-scoped and done on 2026-09-22 (issue #19).** A single template would have overwritten the hand-written prose that 98 of the graph READMEs had gained in #41–#47, so the regeneration was defined as *augmenting*: every README opens with a **generated header** — title, category code and name, tier, status, difficulty, language, factors, the oracle as the evaluator resolves it and, in the graph suite, the graph-only features the scenario uses — rendered by `szzbench readme` and checked by `W455` / `GW455`; everything after it is the author's ([scenario-readme.md](../scenario-readme.md)). The hand-written `## Factors` and `## Source` copies (8 of the former disagreed with the YAML, 35 of the latter used the legacy category names) were removed by the same command. Gone earlier, on 2026-09-19: the `Draft status` sections (52), the `c0: c0:` prefixes, SZZG-0046's garbled text; the `## Expected history` blocks are re-derived from the YAML (`GW454`). The template-era boilerplate sections and the `Evaluate <title> and whether…` purposes of the 44 oldest graph READMEs, and the `current_schema_limitation` boilerplate in their YAML, are handled by the follow-up PR of issue #19.
 3. Run `validate --strict --lint` and `validate-index`; fix residuals; flip `status` to `active` for scenarios that pass.
-4. Turn the `--lint` vocabulary warnings into errors.
+4. Turn the `--lint` vocabulary warnings into errors. **Done 2026-09-22**: `W400`–`W402` and `GW400`–`GW404` are `E400`–`E402` / `GE400`–`GE404`; both suites were at zero findings when the severity changed.
 
 ## 7. `meta.tier`: what a scenario is for (issue #14)
 

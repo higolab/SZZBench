@@ -1,8 +1,17 @@
 # SZZG-0095: BIC separated from BFC by an intermediate work-item commit
 
-## Source
-
-- Category: Work-item and commit-series scenarios
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G7` Issue, message, context, and non-local evidence |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `work-item`, `intermediate-commit`, `related-but-not-correct` |
+| oracle | `exact_set`; required `c1`; related but not correct `c2` · BFC `c3` |
+| graph features | `work_items` |
+<!-- /szzbench:header -->
 
 ## Purpose
 

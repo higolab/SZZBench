@@ -1,5 +1,17 @@
 # SZZ-0193: A widened precondition that only becomes a fault once a later commit can reach it
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S6` Multiple BICs, duplicate faults, and composite faults |
+| tier | `discriminating` |
+| status | `active` |
+| difficulty | `hard` |
+| language | `java` |
+| factors | `multi-bic`, `single-bfc`, `prerequisite-bic`, `blame-unreachable-bic` |
+| oracle | `exact_set`; required `c1`, `c3` · BFC `c4` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 A discriminating-tier scenario whose unreachable commit is a **prerequisite**:

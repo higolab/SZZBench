@@ -1,5 +1,18 @@
 # SZZG-0090: Repeated revert toggling before final fix
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G6` Revert-specific reintroduction |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `revert`, `revert-of-revert`, `repeated-toggling`, `reintroduced-bug`, `re-bic` |
+| oracle | default: `exact_set`; required `c5`; related origins `c1`; related but not correct `c3`, `c2`, `c4` · `origin-aware`: `relaxed_with_related`; required `c5`; acceptable `c1` (credit 0.5); related but not correct `c3`, `c2`, `c4` · BFC `c6` |
+| graph features | 3 BICs; 2 fault sites; 1 evaluation variant (`origin-aware`) |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 Evaluate repeated toggling where the latest reintroducing revert should be identified as the direct BIC.

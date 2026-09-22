@@ -1,8 +1,17 @@
 # SZZG-0115: Top-k evaluation
 
-## Source
-
-- Category: Schema and evaluation-policy scenarios
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G9` Evaluation policy variants |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `evaluation-variant` |
+| oracle | `top_k`; relevant `c1`; k = 1, 3, 5 · BFC `c4` |
+| graph features | policy `top_k` |
+<!-- /szzbench:header -->
 
 ## Purpose
 

@@ -1,5 +1,17 @@
 # SZZ-0128: Extract helper after BIC
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S5` Refactoring, move, and rename after BIC |
+| tier | `control` |
+| status | `active` |
+| difficulty | `hard` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `extract-method-after-bic`, `basic-blame-distractor` |
+| oracle | `exact_set`; required `c1`; known distractors `c2` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 An extract-method refactoring moves the faulty line out of an `if` block
@@ -76,11 +88,3 @@ four snapshots were probed with the same driver over 720 input combinations:
 `pickedUnits - reservedUnits` overflows. `c1` differs from `c0` in 22 of
 them, `c2` reproduces `c1` exactly (the extraction is behaviour-preserving),
 and `c3` agrees with `c0` in all 720.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `extract-method-after-bic`
-- `basic-blame-distractor`

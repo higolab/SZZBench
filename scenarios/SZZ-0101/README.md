@@ -1,5 +1,17 @@
 # SZZ-0101: Throws declaration after BIC
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S3` Intermediate noise and history noise |
+| tier | `control` |
+| status | `active` |
+| difficulty | `easy` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `throws-after-bic` |
+| oracle | `exact_set`; required `c1`; known distractors `c2` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 This scenario checks that an intermediate, purely declarative signature change
@@ -45,10 +57,3 @@ Blame class: **exact** — B-SZZ returns `{c1}`, which is the expected set.
 Blame the deleted line and stop. The only way to fail is to add `c2` because
 it is the most recent commit on the file, or because its signature change
 overlaps the enclosing class.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `throws-after-bic`

@@ -1,5 +1,18 @@
 # SZZG-0122: Rebased feature branch deleted after the rebase (twin of SZZG-0057)
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G4` Branch, merge, cherry-pick, backport, and release branches |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `branch`, `rebase`, `old-base`, `unrelated-main-changes`, `direct-bic`, `origin-bic` |
+| oracle | default: `exact_set`; required `r1`; related origins `f1`; related but not correct `m1`, `m2` · `origin-aware`: `relaxed_with_related`; required `r1`; acceptable `f1` (credit 0.5); related but not correct `m1`, `m2` · BFC `c3` |
+| graph features | 2 branches; rebase `r1`; ref lifecycle; 2 BICs; origin faults; 1 evaluation variant (`origin-aware`) |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 The same commits as [SZZG-0057](../SZZG-0057/README.md), with one difference in
@@ -46,9 +59,3 @@ blame solves both twins.
 Report `r1` and behave exactly as on SZZG-0057. A tool whose answer differs
 between the twins is reading ref reachability: here it cannot reach `f1` at
 all, there it can and must still not prefer it.
-
-## Factors
-
-- `rebase`
-- `origin-and-direct-bic`
-- `ref-lifecycle`

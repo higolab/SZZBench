@@ -1,8 +1,17 @@
 # SZZG-0110: Empty intermediate commit
 
-## Source
-
-- Category: Non-source, binary, generated, and scalability edge cases (G8)
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G8` Non-source, binary, generated, and scalability edge cases |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `boundary-condition` |
+| oracle | `exact_set`; required `c1` · BFC `c3` |
+| graph features | none: a linear history with one bug and an exact-set oracle, kept in the graph suite for its category |
+<!-- /szzbench:header -->
 
 ## Purpose
 

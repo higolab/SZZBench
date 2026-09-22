@@ -1,5 +1,18 @@
 # SZZG-0097: Work item inference without issue ID
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G7` Issue, message, context, and non-local evidence |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `work-item`, `work-item-inference`, `no-issue-id`, `commit-series`, `related-but-not-correct` |
+| oracle | `exact_set`; required `c2`; related but not correct `c1`, `c3` · BFC `c4` |
+| graph features | `work_item_level` oracle; `work_items` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 This scenario represents a work-item inference case where commit messages do not contain explicit issue IDs.

@@ -1,5 +1,18 @@
 # SZZG-0023: Rebase with copy propagation
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G2` Clone, copy propagation, and origin-vs-direct BIC |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `branch`, `rebase`, `copy-propagation`, `duplicate-code`, `direct-bic`, `origin-bic` |
+| oracle | default: `exact_set`; required `r2`; related origins `r1`, `f2`, `f1` · `origin-aware`: `relaxed_with_related`; required `r2`; acceptable `r1` (credit 0.5), `f2` (credit 0.5), `f1` (credit 0.5) · BFC `c3` |
+| graph features | 2 branches; rebase `r1`, `r2`; operation `apply_patch_from`; 4 BICs; origin faults; 1 evaluation variant (`origin-aware`) |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 A feature branch makes the score band exclusive (`f1`) and then copies the same
@@ -131,9 +144,3 @@ constants, ±1).
   the scenario's core property: if the BFC also repaired `ScoreBand`, `r1` would
   be a second direct BIC of the same fix and the origin-vs-direct distinction
   would disappear.
-
-## Factors
-
-`branch`, `rebase`, `copy_propagation`, `duplicate_code`, `direct_bic`,
-`origin_bic`.
-Changed: `copy_file` (an operation name, `GW400`) replaced by `duplicate_code`.

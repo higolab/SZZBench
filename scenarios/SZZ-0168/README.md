@@ -1,5 +1,17 @@
 # SZZ-0168: Cause can be inferred from test failure
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S7` Context, message, and non-local evidence |
+| tier | `control` |
+| status | `active` |
+| difficulty | `hard` |
+| language | `java` |
+| factors | `test-context`, `context` |
+| oracle | `exact_set`; required `c1` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Summary
 
 Evaluates a case where the BFC is a small parser change and the specific cause is clarified by a failing test message.

@@ -1,8 +1,17 @@
 # SZZG-0014: Buggy code copied to a new file
 
-## Source
-
-- Category: Clone, copy propagation, and origin-vs-direct BIC (`G2`)
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G2` Clone, copy propagation, and origin-vs-direct BIC |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `copy-propagation` |
+| oracle | default: `exact_set`; required `c1`; related origins `c0` · `origin-aware`: `relaxed_with_related`; required `c1`; acceptable `c0` (credit 0.5) · BFC `c2` |
+| graph features | operation `copy_file`; 2 BICs; 1 evaluation variant (`origin-aware`) |
+<!-- /szzbench:header -->
 
 ## Purpose
 

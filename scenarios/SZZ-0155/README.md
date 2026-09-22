@@ -1,5 +1,17 @@
 # SZZ-0155: Same bug introduced independently
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S6` Multiple BICs, duplicate faults, and composite faults |
+| tier | `control` |
+| status | `active` |
+| difficulty | `hard` |
+| language | `java` |
+| factors | `multi-bic`, `single-bfc`, `boundary-condition`, `duplicate-statement` |
+| oracle | `exact_set`; required `c1`, `c2` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Summary
 
 Evaluates same bug introduced independently and checks whether SZZ identifies the expected bug-introducing commit set.

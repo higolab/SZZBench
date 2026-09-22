@@ -1,5 +1,17 @@
 # SZZ-0105: Dead code addition after BIC
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S3` Intermediate noise and history noise |
+| tier | `control` |
+| status | `active` |
+| difficulty | `easy` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `dead-code-after-bic` |
+| oracle | `exact_set`; required `c1`; known distractors `c2` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 This scenario checks that code added between the BIC and the BFC, which is
@@ -43,10 +55,3 @@ Blame class: **exact** — B-SZZ returns `{c1}`, which is the expected set.
 Blame the deleted line and stop. A tool fails by adding `c2` because it is the
 most recent commit on the file, or because a file-level change model counts
 every commit since the BIC that touched `StockLevel.java`.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `dead-code-after-bic`

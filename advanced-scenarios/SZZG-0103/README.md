@@ -1,5 +1,18 @@
 # SZZG-0103: Caller-side context is needed to identify the BIC
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G7` Issue, message, context, and non-local evidence |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `context-dependent`, `caller-callee`, `not-directly-local` |
+| oracle | `exact_set`; required `c1` · BFC `c2` |
+| graph features | none: a linear history with one bug and an exact-set oracle, kept in the graph suite for its category |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 Evaluate whether SZZ can identify a BIC that lives at a call site when the BFC repairs the observed behaviour

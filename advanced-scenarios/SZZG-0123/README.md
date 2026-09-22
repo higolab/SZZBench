@@ -1,5 +1,18 @@
 # SZZG-0123: The fix lands on the un-rebased branch, which is merged after its commits were rebased
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G5` Rebase-specific history rewriting |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `rebase`, `merge`, `fix-on-feature-branch`, `origin-and-replay-both-reachable` |
+| oracle | `exact_set`; required `f1`; related but not correct `r1`, `c3` · BFC `f2` |
+| graph features | 2 branches; merge commit `c3`; rebase `r1` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 The rebase scenarios of the suite fix the bug on the rebased line. Here the
@@ -44,10 +57,3 @@ fix to `c3`.
 Evaluate the fix in its own history and report `f1`. Reporting `r1` because it
 is the copy on `main`, or `c3` because the fix became visible there, are the
 two ways to be wrong.
-
-## Factors
-
-- `rebase`
-- `merge`
-- `fix-on-feature-branch`
-- `origin-and-replay-both-reachable`

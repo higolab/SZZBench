@@ -1,8 +1,17 @@
 # SZZG-0112: Non-UTF-8 file
 
-## Source
-
-- Category: Robustness and implementation-quality scenarios
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G8` Non-source, binary, generated, and scalability edge cases |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `encoding`, `non-utf8-file`, `binary-file` |
+| oracle | `exact_set`; required `c1` · BFC `c2` |
+| graph features | operation `write_binary_file` |
+<!-- /szzbench:header -->
 
 ## Purpose
 

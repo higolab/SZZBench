@@ -1,5 +1,17 @@
 # SZZ-0102: Import reorder after BIC
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S3` Intermediate noise and history noise |
+| tier | `control` |
+| status | `active` |
+| difficulty | `easy` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `import-reorder-after-bic` |
+| oracle | `exact_set`; required `c1`; known distractors `c2` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 This scenario checks that a pure import *reorder* between the BIC and the BFC
@@ -46,10 +58,3 @@ Blame the deleted line and stop. A tool fails by adding `c2`, for example
 because it is the latest commit on the file or because a file-level (rather
 than line-level) change model treats the reordered import block as part of the
 fix's context.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `import-reorder-after-bic`

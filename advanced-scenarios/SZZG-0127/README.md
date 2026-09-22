@@ -1,5 +1,18 @@
 # SZZG-0127: Reverting a merge commit brings the merged branch's fix back out
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G6` Revert-specific reintroduction |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `revert`, `merge-revert`, `reintroduction`, `fix-on-feature-branch` |
+| oracle | default: `exact_set`; required `c4`; related origins `c1`; related but not correct `f1`, `c3` · `origin-aware`: `relaxed_with_related`; required `c4`; acceptable `c1` (credit 0.5); related but not correct `f1`, `c3` · BFC `c5` |
+| graph features | 2 branches; merge commit `c3`; revert `c4`; 2 BICs; origin faults; 1 evaluation variant (`origin-aware`) |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 A fault on `main` is fixed on a feature branch and the branch is merged. The
@@ -45,10 +58,3 @@ Report `c4`. Its footer names the merge `c3`, not `c1`; following footers
 leads to the merge, and from there a tool needs the merge's second parent to
 see that `f1` is what was undone. Reporting `c1` alone misses that the fault had
 been fixed and returned.
-
-## Factors
-
-- `revert`
-- `merge-revert`
-- `reintroduction`
-- `fix-on-feature-branch`

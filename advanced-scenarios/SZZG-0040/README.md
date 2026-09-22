@@ -1,8 +1,17 @@
 # SZZG-0040: Multiple BICs where one true BIC is not directly touched by the BFC
 
-## Source
-
-- Category: Multiple-BIC scenarios
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G3` Multiple BICs, multiple BFCs, and partial fixes |
+| tier | `discriminating` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `multi-bic`, `not-directly-touched-by-fix`, `context-dependent` |
+| oracle | `exact_set`; required `c1`, `c2` · BFC `c3` |
+| graph features | 2 BICs; 2 fault sites |
+<!-- /szzbench:header -->
 
 ## Purpose
 

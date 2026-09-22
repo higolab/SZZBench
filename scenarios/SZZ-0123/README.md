@@ -1,5 +1,17 @@
 # SZZ-0123: BFC with two faulty expressions fixed
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S4` BFC-side noise and tangled commits |
+| tier | `control` |
+| status | `active` |
+| difficulty | `medium` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `single-line-bfc`, `two-faulty-expressions`, `statement-granularity` |
+| oracle | `exact_set`; required `c1` · BFC `c2` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 This scenario checks the *granularity* at which a tool reports a fault. The
@@ -48,12 +60,3 @@ answer is right.
 and `min`, `max ∈ {Integer.MIN_VALUE, MIN_VALUE+1, -10, -1, 0, 1, 5, 10, MAX_VALUE-1, MAX_VALUE}`:
 `c1` differs from `c0` in 100 of them (exactly the cases in which `value`
 sits on a bound), and `c2` agrees with `c0` in all 1600.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `single-line-bfc`
-- `two-faulty-expressions`
-- `statement-granularity`

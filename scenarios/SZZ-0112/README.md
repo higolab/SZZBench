@@ -1,5 +1,17 @@
 # SZZ-0112: Huge method surrounding small bug
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S3` Intermediate noise and history noise |
+| tier | `control` |
+| status | `active` |
+| difficulty | `medium` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `robustness`, `large-method`, `small-fault` |
+| oracle | `exact_set`; required `c1` · BFC `c2` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 A one-token fault sits in the middle of a genuinely large method:
@@ -66,12 +78,3 @@ commit. S4 ("BFC-side noise and tangled commits") would not be a better
 home either: neither the BIC nor the BFC is tangled — both are single-line
 commits. What the scenario really varies is the *size of the surrounding
 entity*, which is a robustness/scale factor rather than a history factor.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `robustness`
-- `large-method`
-- `small-fault`

@@ -1,8 +1,17 @@
 # SZZG-0102: Issue text names the regressed column
 
-## Source
-
-- Category: Issue, message, context, and non-local evidence (G7)
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G7` Issue, message, context, and non-local evidence |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `issue-evidence`, `context` |
+| oracle | `exact_set`; required `c1`; related but not correct `c2`, `c3` · BFC `c4` |
+| graph features | `issues`; `context` |
+<!-- /szzbench:header -->
 
 ## Purpose
 

@@ -1,5 +1,18 @@
 # SZZG-0054: Fixed on main but unfixed on release
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G4` Branch, merge, cherry-pick, backport, and release branches |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `release-branch`, `partial-fix-propagation`, `unfixed-release`, `wrong-variable` |
+| oracle | `exact_set`; required `c1` · BFC `c3` |
+| graph features | 2 branches |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 `c1` spells out the grand total "component by component" and types `tax`
@@ -39,10 +52,3 @@ tax + tax;`, line 6); blame at `c3^` returns `c1` (verifier `GI703`).
 Report `c1` for the fix `c3`. The scenario also asks a branch-aware tool to
 notice that `release` contains the BIC and no fix: the bug instance there is
 open, which SZZ alone does not say.
-
-## Factors
-
-- `release-branch`
-- `partial-fix-propagation`
-- `unfixed-release`
-- `wrong-variable`

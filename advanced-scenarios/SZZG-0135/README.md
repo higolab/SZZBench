@@ -1,5 +1,18 @@
 # SZZG-0135: Externally caused fault: the fix has no bug-introducing commit in the repository
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G9` Evaluation policy variants |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `expect-no-bic`, `external-cause`, `tool-visible-context`, `single-bfc` |
+| oracle | `exact_set`; expects no BIC; known distractors `c0` · BFC `c3` |
+| graph features | `issues` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 The first of three contracts for "the line the fix rewrites belongs to the first
@@ -53,10 +66,3 @@ Report nothing. Blame offers `c0`, and `c0` is not wrong code — it was correct
 the environment it was written for. The report in the repository names the
 external cause; a tool that reads it can abstain with reason. Reporting `c0` is
 a false positive, and under `expect_no_bic` every prediction is one.
-
-## Factors
-
-- `expect-no-bic`
-- `external-cause`
-- `tool-visible-context`
-- `single-bfc`

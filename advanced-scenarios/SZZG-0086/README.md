@@ -1,5 +1,18 @@
 # SZZG-0086: Revert of fix reintroduces bug
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G6` Revert-specific reintroduction |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `revert`, `revert-of-fix`, `reintroduced-bug`, `re-bic`, `origin-bic` |
+| oracle | default: `exact_set`; required `c3`; related origins `c1`; related but not correct `c2` · `origin-aware`: `relaxed_with_related`; required `c3`; acceptable `c1` (credit 0.5); related but not correct `c2` · BFC `c4` |
+| graph features | 2 BICs; 2 fault sites; 1 evaluation variant (`origin-aware`) |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 Evaluate whether SZZ returns the revert commit that reintroduced the bug rather than the original historical BIC.

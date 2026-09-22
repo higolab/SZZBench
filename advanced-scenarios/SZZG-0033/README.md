@@ -1,8 +1,17 @@
 # SZZG-0033: Partial credit when only some BICs are returned
 
-## Source
-
-- Category: Multiple BIC and BFC scenarios
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G3` Multiple BICs, multiple BFCs, and partial fixes |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `multi-bic`, `partial-credit`, `evaluation-variant` |
+| oracle | `partial_credit`; required `c1`, `c2`; minimum 1 · BFC `c3` |
+| graph features | 2 BICs; 2 fault sites; policy `partial_credit` |
+<!-- /szzbench:header -->
 
 ## Purpose
 

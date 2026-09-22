@@ -1,5 +1,17 @@
 # SZZ-0089: Import addition after BIC
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S3` Intermediate noise and history noise |
+| tier | `control` |
+| status | `active` |
+| difficulty | `easy` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `import-addition-after-bic`, `line-number-shift`, `blame-reaches-bic` |
+| oracle | `exact_set`; required `c1`; known distractors `c2` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 An intermediate commit adds an import to the file that contains the fault.
@@ -42,12 +54,3 @@ Plain line-based blame already answers correctly, because blame follows the
 line through the shift. A tool that maps the fix hunk back by line number
 instead of by blame lands on a `describe` line owned by `c2` and fails.
 `false_positives_allowed` is empty, so returning `{c1, c2}` fails.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `import-addition-after-bic`
-- `line-number-shift`
-- `blame-reaches-bic`

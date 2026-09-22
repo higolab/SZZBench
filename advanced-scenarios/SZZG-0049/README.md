@@ -1,5 +1,18 @@
 # SZZG-0049: Cherry-pick BFC
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G4` Branch, merge, cherry-pick, backport, and release branches |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `branch`, `cherry-pick`, `multi-bfc`, `copy-propagation`, `backport-like-fix`, `off-by-one` |
+| oracle | `exact_set`; required `c1` · BFCs `c2`, `r2` |
+| graph features | 2 branches; cherry-pick `r2`; operation `apply_patch_from`; 2 BFCs; `branch_level` oracle; `bug_instances` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 The page count is "simplified" from ceiling division to `items / perPage + 1`,
@@ -47,12 +60,3 @@ line 6); blame at `c2^` and at `r2^` returns `c1` (verifier `GI703`).
 Starting from either BFC, report `c1`. Starting from `r2`, a tool must not
 report `c2` (the commit it was cherry-picked from is a fix, not a cause) and
 must not stop at `r1`, the release branch point, which touched only a note.
-
-## Factors
-
-- `branch`
-- `cherry-pick`
-- `multi-bfc`
-- `copy-propagation`
-- `backport-like-fix`
-- `off-by-one`

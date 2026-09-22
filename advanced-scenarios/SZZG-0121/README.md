@@ -1,5 +1,18 @@
 # SZZG-0121: A cherry-picked unit change in a file the fix never opens
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G4` Branch, merge, cherry-pick, backport, and release branches |
+| tier | `discriminating` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `multi-bic`, `cherry-pick`, `origin-and-direct-bic`, `value-flow`, `blame-unreachable-bic` |
+| oracle | default: `exact_set`; required `r1`, `c2`; related origins `c1` · `origin-aware`: `relaxed_with_related`; required `r1`, `c2`; acceptable `c1` (credit 0.5) · BFC `c3` |
+| graph features | 2 branches; cherry-pick `r1`; operation `apply_patch_from`; 3 BICs; 2 fault sites; 1 evaluation variant (`origin-aware`) |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 A discriminating-tier scenario on the measured axis: the answer is two commits,

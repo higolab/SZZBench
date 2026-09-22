@@ -1,5 +1,17 @@
 # SZZ-0200: Wrong threshold constant in a Python module
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S1` Basic semantic line changes |
+| tier | `control` |
+| status | `active` |
+| difficulty | `easy` |
+| language | `python` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `wrong-constant` |
+| oracle | `exact_set`; required `c1` · BFC `c2` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 The Python twin of SZZ-0021. The history is the same three commits with the
@@ -34,10 +46,3 @@ The BFC's first-parent diff deletes one line, `return score >= 90`, and
 `git blame` at `c2^` attributes it to `c1`. Every snapshot byte-compiles
 (`tests/test_python_scenarios.py`, which also checks that the twins' authors,
 dates and messages agree commit by commit).
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `wrong-constant`

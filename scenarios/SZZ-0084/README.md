@@ -1,5 +1,17 @@
 # SZZ-0084: Whitespace-only rewrite after BIC with preserved line
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S3` Intermediate noise and history noise |
+| tier | `control` |
+| status | `active` |
+| difficulty | `easy` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `whitespace-preserved-after-bic`, `blame-reaches-bic`, `matched-control` |
+| oracle | `exact_set`; required `c1`; known distractors `c2` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 A whitespace-only reformat lands between the bug-introducing and the
@@ -42,12 +54,3 @@ Plain line-based blame already answers correctly. To pass, a tool must *not*
 add `c2`: it must not extend the blame region to the reformatted context
 lines, and it must not treat "the most recent commit in this method" as a
 candidate. `false_positives_allowed` is empty, so returning `{c1, c2}` fails.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `whitespace-preserved-after-bic`
-- `blame-reaches-bic`
-- `matched-control`

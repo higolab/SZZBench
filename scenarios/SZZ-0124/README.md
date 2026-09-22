@@ -1,5 +1,17 @@
 # SZZ-0124: Variable rename after BIC
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S5` Refactoring, move, and rename after BIC |
+| tier | `control` |
+| status | `active` |
+| difficulty | `hard` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `variable-rename-after-bic`, `basic-blame-distractor` |
+| oracle | `exact_set`; required `c1`; known distractors `c2` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 A behaviour-preserving rename rewrites the *faulty line itself*, so the line
@@ -67,11 +79,3 @@ Returning `{c1, c2}` counts as a false positive
 including the combinations in which the subtraction overflows. `c1` differs
 from `c0` in 546 of them, and `c3` agrees with `c0` in all 875 — the rename
 of `c2` survives in the fixed code without changing behaviour.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `variable-rename-after-bic`
-- `basic-blame-distractor`

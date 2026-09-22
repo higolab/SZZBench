@@ -1,5 +1,17 @@
 # SZZ-0201: Floor division mistaken for a typo: `//` becomes `/` in an index expression
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S1` Basic semantic line changes |
+| tier | `control` |
+| status | `active` |
+| difficulty | `easy` |
+| language | `python` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `wrong-operator` |
+| oracle | `exact_set`; required `c1` · BFC `c2` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 A one-character, Python-specific semantic fault. `//` is floor division and
@@ -34,10 +46,3 @@ The expected BFC is `c2` and the expected BIC is `c1`.
 The BFC deletes one line, `return items[len(items) / 2]`, and `git blame` at
 `c2^` attributes it to `c1`. Every snapshot byte-compiles: the fault is a
 runtime error, not a syntax error.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `wrong-operator`

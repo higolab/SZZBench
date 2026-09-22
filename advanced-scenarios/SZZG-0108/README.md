@@ -1,5 +1,18 @@
 # SZZG-0108: Binary file change
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G8` Non-source, binary, generated, and scalability edge cases |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `binary-file`, `wrong-constant` |
+| oracle | `exact_set`; required `c1` · BFC `c2` |
+| graph features | operation `write_binary_file` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 The fix's diff contains a file no textual tool can read. `c1` raises the
@@ -36,8 +49,3 @@ b/assets/placeholder.bin differ` and a one-line change to `Thumbnails.java`
 
 Report `c1`. A diff parser must skip the binary entry rather than fail on it;
 the source hunk is one deleted line whose blame is direct.
-
-## Factors
-
-- `binary-file`
-- `wrong-constant`

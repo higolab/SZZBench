@@ -1,5 +1,17 @@
 # SZZ-0178: Faulty line rewritten twice before the fix (depth-2 line history)
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S3` Intermediate noise and history noise |
+| tier | `control` |
+| status | `active` |
+| difficulty | `hard` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `deep-line-history`, `rewrite-depth-2`, `basic-blame-distractor` |
+| oracle | `exact_set`; required `c1`; known distractors `c2`, `c3` · BFC `c4` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 This scenario checks whether an SZZ implementation can follow the history of
@@ -41,12 +53,3 @@ To pass, a tool has to trace the line history recursively (TC-SZZ-style) or
 to recognise `c2` and `c3` as behaviour-preserving edits (rename, added
 parentheses) and continue past them, stopping at `c1`, where the faulty
 sub-expression `weightGrams / 1000` first appears.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `deep-line-history`
-- `rewrite-depth-2`
-- `basic-blame-distractor`

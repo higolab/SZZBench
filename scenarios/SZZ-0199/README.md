@@ -1,5 +1,17 @@
 # SZZ-0199: The unit of a configuration value changes, and a later reader shows it raw
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S8` Non-source, configuration, test-only, and file-level edge cases |
+| tier | `discriminating` |
+| status | `active` |
+| difficulty | `hard` |
+| language | `java` |
+| factors | `multi-bic`, `single-bfc`, `non-source-file`, `configuration-change`, `value-flow`, `blame-unreachable-bic` |
+| oracle | `exact_set`; required `c1`, `c3` · BFC `c4` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 A discriminating-tier scenario on the measured axis: the answer is two commits,

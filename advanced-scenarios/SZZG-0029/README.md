@@ -1,8 +1,17 @@
 # SZZG-0029: Partial fix followed by complete fix
 
-## Source
-
-- Category: BFC shape scenarios
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G3` Multiple BICs, multiple BFCs, and partial fixes |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `multi-bfc` |
+| oracle | `exact_set`; required `c1` · BFCs `c2`, `c3` |
+| graph features | 2 BFCs |
+<!-- /szzbench:header -->
 
 ## Purpose
 

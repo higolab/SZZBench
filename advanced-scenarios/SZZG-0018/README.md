@@ -1,8 +1,17 @@
 # SZZG-0018: Only one clone instance is fixed first
 
-## Source
-
-- Category: Clone, copy propagation, and origin-vs-direct BIC (`G2`)
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G2` Clone, copy propagation, and origin-vs-direct BIC |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `copy-propagation` |
+| oracle | `exact_set`; required `c0`, `c1` · BFCs `c2`, `c3` |
+| graph features | operation `copy_file`; 2 bugs; 2 BICs; `clone_relationships`; `bug_instances` |
+<!-- /szzbench:header -->
 
 ## Purpose
 

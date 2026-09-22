@@ -1,5 +1,17 @@
 # SZZ-0127: Method signature extension after BIC
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S5` Refactoring, move, and rename after BIC |
+| tier | `control` |
+| status | `active` |
+| difficulty | `hard` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `method-signature-change-after-bic`, `basic-blame-distractor` |
+| oracle | `exact_set`; required `c1`; known distractors `c2` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 The refactoring between BIC and BFC turns a hard-coded threshold into a
@@ -67,11 +79,3 @@ signature. Inputs:
 threshold itself, and `Integer.MIN_VALUE`, where `quantity - 1` underflows);
 `c2` reproduces `c1` exactly, which confirms that the signature extension is
 behaviour-preserving; `c3` agrees with `c0` on all 13.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `method-signature-change-after-bic`
-- `basic-blame-distractor`

@@ -1,5 +1,18 @@
 # SZZG-0034: One BFC fixes multiple independent bugs
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G3` Multiple BICs, multiple BFCs, and partial fixes |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `multiple-bug`, `single-bfc`, `independent-faults`, `different-files` |
+| oracle | `exact_set`; required `c1`, `c2` · BFC `c3` |
+| graph features | 2 bugs; `bug_level` oracle |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 This scenario represents one bug-fixing commit that fixes two independent bugs.

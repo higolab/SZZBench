@@ -1,5 +1,18 @@
 # SZZG-0070: Rebase combines multiple BICs into one commit
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G5` Rebase-specific history rewriting |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `branch`, `rebase`, `interactive-rebase`, `squash`, `multiple-origin-bic`, `direct-bic`, `off-by-one` |
+| oracle | default: `exact_set`; required `r1`; related origins `f1`, `f2` · `origin-aware`: `relaxed_with_related`; required `r1`; acceptable `f1` (credit 0.5), `f2` (credit 0.5) · BFC `c2` |
+| graph features | 2 branches; rebase `r1`; 3 BICs; origin faults; 1 evaluation variant (`origin-aware`) |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 Two origin BICs become one direct BIC. On the feature branch `f1` treats pages
@@ -46,13 +59,3 @@ returns `r1` (verifier `GI703`).
 Report `r1`. A tool that follows the `feature` branch finds `f1` and `f2`,
 which the default oracle counts as false positives and the origin-aware variant
 tolerates; the squash commit is the change that put the fault on `main`.
-
-## Factors
-
-- `branch`
-- `rebase`
-- `interactive-rebase`
-- `squash`
-- `multiple-origin-bic`
-- `direct-bic`
-- `off-by-one`

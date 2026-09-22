@@ -1,5 +1,18 @@
 # SZZG-0017: Clone diverges before fix
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G2` Clone, copy propagation, and origin-vs-direct BIC |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `copy-propagation`, `off-by-one` |
+| oracle | default: `exact_set`; required `c1`; related origins `c0` · `origin-aware`: `relaxed_with_related`; required `c1`; acceptable `c0` (credit 0.5) · BFC `c3` |
+| graph features | operation `copy_file`; 2 BICs; 1 evaluation variant (`origin-aware`); `clone_relationships` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 `Cursor.lastPosition(length)` returns `length` where the last position of a
@@ -46,8 +59,3 @@ the rename `c2` touched the signature line, not the faulty return.
 Report `c1`. The fixed method's name (`endPosition`) never existed in the
 origin file and did not exist at the copy commit; the line, not the method
 name, carries the history.
-
-## Factors
-
-- `copy-propagation`
-- `off-by-one`

@@ -1,5 +1,17 @@
 # SZZ-0175: Addition-only fix for a missing break in a switch
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S2` Omission and deletion bugs |
+| tier | `control` |
+| status | `active` |
+| difficulty | `hard` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `omission-bug`, `addition-only-fix`, `missing-break` |
+| oracle | `exact_set`; required `c1` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 This scenario checks how SZZ implementations behave when the fault is a
@@ -35,11 +47,3 @@ To pass, a tool has to relate the inserted `break;` to its context, for
 example by blaming the neighbouring lines `level = URGENT;` and
 `case "high":` at `c3^`. The first belongs to `c1`; the second belongs to
 `c0` and must be rejected, e.g. because `c0` did not create the fall-through.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `omission-bug`
-- `addition-only-fix`
-- `missing-break`

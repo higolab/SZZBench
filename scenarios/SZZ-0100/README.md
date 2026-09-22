@@ -1,5 +1,17 @@
 # SZZ-0100: Try block rewrite after BIC
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S3` Intermediate noise and history noise |
+| tier | `control` |
+| status | `active` |
+| difficulty | `hard` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `try-block-after-bic`, `basic-blame-distractor` |
+| oracle | `exact_set`; required `c1`; known distractors `c2` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 This scenario checks how SZZ implementations behave when an intermediate commit
@@ -56,11 +68,3 @@ following the line history one step past `c2`.
   `NumberFormatException` while `c2` and `c3` return the default of 3000 ms.
   That difference is introduced by `c2`, the commit that added the fallback, and
   is deliberately preserved by the fix.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `try-block-after-bic`
-- `basic-blame-distractor`

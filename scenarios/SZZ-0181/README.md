@@ -1,5 +1,17 @@
 # SZZ-0181: Omission fix with an adjacent unrelated line edit
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S2` Omission and deletion bugs |
+| tier | `control` |
+| status | `active` |
+| difficulty | `hard` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `omission-bug`, `line-addition-fix`, `tangled-bfc`, `adjacent-edit-noise` |
+| oracle | `exact_set`; required `c1`; known distractors `c2` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 This scenario asks what a tool should return when the bug is an omission and
@@ -41,12 +53,3 @@ to the omitted check instead, e.g. by blaming the context of the added lines
 (`String[] parts = token.split("\\.");` belongs to `c1`) or by tracing the
 enclosing method `expiresAt` to the commit that added it. Simply returning
 the blame of every deleted line yields `{c2}` and fails.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `omission-bug`
-- `line-addition-fix`
-- `tangled-bfc`
-- `adjacent-edit-noise`

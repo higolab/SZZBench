@@ -1,5 +1,18 @@
 # SZZG-0044: BIC before merge, BFC after merge
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `G4` Branch, merge, cherry-pick, backport, and release branches |
+| tier | `control` |
+| status | `active` |
+| difficulty | `advanced` |
+| language | `java` |
+| factors | `branch`, `merge`, `pre-merge-bic`, `post-merge-bfc` |
+| oracle | `exact_set`; required `c1` · BFC `c4` |
+| graph features | 2 branches; merge commit `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 A bug is introduced on main before a feature branch is merged, and the bug is fixed on main after the merge.

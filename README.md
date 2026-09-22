@@ -529,6 +529,23 @@ Add `--no-verify` to skip post-generation verification for all generated reposit
 szzbench generate-all-repos --no-verify
 ```
 
+## readme
+
+Check that every scenario README opens with the header generated from its scenario file, or regenerate the headers.
+
+```bash
+szzbench readme
+```
+
+The header — title, category, tier, status, difficulty, language, factors, the oracle as the evaluator resolves it and, for Graph scenarios, the graph-only features the scenario uses — is the only part of a README a tool writes; the prose after it belongs to the author and is never touched. `szzbench readme` exits with 1 when a header is missing or no longer matches the scenario, and `validate --lint` / `validate-graph --lint` report the same disagreement as `W455` / `GW455`.
+
+```bash
+szzbench readme --write
+szzbench readme --write advanced-scenarios/SZZG-0022
+```
+
+`--write` regenerates the stale or missing headers, for both suites or for the scenarios named on the command line. See [docs/scenario-readme.md](docs/scenario-readme.md).
+
 ## clean
 
 Delete generated repositories under `generated-input-repos/`.
@@ -1125,6 +1142,23 @@ szzbench generate-all-repos --overwrite
 ```bash
 szzbench generate-all-repos --no-verify
 ```
+
+## readme
+
+各シナリオの README が、シナリオファイルから生成したヘッダで始まっているかを確認し、必要なら再生成します。
+
+```bash
+szzbench readme
+```
+
+ヘッダ（タイトル、カテゴリ、tier、status、difficulty、言語、factors、evaluator が解決するオラクル、Graph シナリオでは使用している graph 専用機能）は、README のうちツールが書く唯一の部分です。ヘッダより後の本文は作者のものであり、ツールは触りません。ヘッダが無い、またはシナリオと一致しない README があると `szzbench readme` は終了コード 1 を返し、`validate --lint` / `validate-graph --lint` も同じ不一致を `W455` / `GW455` として報告します。
+
+```bash
+szzbench readme --write
+szzbench readme --write advanced-scenarios/SZZG-0022
+```
+
+`--write` は、両スイート全体、またはコマンドラインで指定したシナリオについて、古い・欠けているヘッダを再生成します。詳細は [docs/scenario-readme.md](docs/scenario-readme.md) を参照してください。
 
 ## clean
 

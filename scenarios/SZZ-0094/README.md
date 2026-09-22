@@ -1,5 +1,17 @@
 # SZZ-0094: Annotation addition after BIC
 
+<!-- szzbench:header (generated from the scenario file: edit the YAML and run `szzbench readme --write`) -->
+| | |
+|---|---|
+| category | `S3` Intermediate noise and history noise |
+| tier | `control` |
+| status | `active` |
+| difficulty | `easy` |
+| language | `java` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `annotation-after-bic`, `plain-blame-control` |
+| oracle | `exact_set`; required `c1`; known distractors `c2` · BFC `c3` |
+<!-- /szzbench:header -->
+
 ## Purpose
 
 This scenario is an honest **control** for language-specific noise: between the
@@ -48,11 +60,3 @@ method but not the fault).
   `lowStock`: the `c1` snapshot differs from `c0` for every probed input except
   `onHand == 5` (the one value at which both comparisons are false), and the `c3`
   snapshot agrees with `c0` on all 117 probe outputs.
-
-## Factors
-
-- `single-bic`
-- `single-bfc`
-- `line-modification`
-- `annotation-after-bic`
-- `plain-blame-control`

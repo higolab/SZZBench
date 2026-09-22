@@ -69,10 +69,7 @@ def create_new_graph_scenario(
         ),
         encoding="utf-8",
     )
-    readme_path.write_text(
-        _readme_template(scenario_id=scenario_id, title=title),
-        encoding="utf-8",
-    )
+    readme_path.write_text(_readme_template(scenario_path), encoding="utf-8")
     _append_index_entry(
         index_path,
         scenario_id=scenario_id,
@@ -260,33 +257,31 @@ notes:
 '''
 
 
-def _readme_template(*, scenario_id: str, title: str) -> str:
-    return f'''# {scenario_id}: {title}
+def _readme_template(scenario_path: Path) -> str:
+    """The generated header rendered from the skeleton, then the sections a
+    graph scenario README carries by hand (``docs/scenario-readme.md``).  The
+    header's ``graph features`` row states which graph-only features the
+    scenario uses, so the README does not repeat that."""
+    from .readme import render_header, suite_of
 
+    data, _ = load_yaml(scenario_path)
+    return render_header(data or {}, suite_of(scenario_path)) + """
 ## Purpose
 
-TODO: Describe what SZZ behavior this graph scenario evaluates.
+TODO: What this scenario checks, and what a tool has to get right to pass it.
 
 ## Expected history
 
 ```text
-TODO: Describe the commit graph.
+c0: create initial state (write_file TODO)
+c1: introduce bug (replace TODO)
+c2: fix bug (replace TODO)
 ```
 
-## Why `scenario.graph.yml` is needed
+## Expected BIC / BFC
 
-TODO: Explain which advanced features are required, such as branch, merge, copy, direct/origin BIC, multiple BFC, work item, or evaluation variants.
-
-## Expected SZZ behavior
-
-- Bug-introducing commit(s): TODO
-- Bug-fixing commit(s): TODO
-- Evaluation policy: TODO
-
-## Notes
-
-TODO
-'''
+TODO: The expected BICs and BFCs, the policy, and the evidence (behaviour at each commit, blame of the deleted lines) that the oracle is right.
+"""
 
 
 def _append_index_entry(
