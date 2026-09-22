@@ -129,7 +129,9 @@ def test_szzg_0112_git_sees_text_lines_and_blame_reaches_the_bic(tmp_path):
     assert _git(repo, "diff", "--numstat", hashes["c1"], hashes["c2"]) == f"2\t2\t{path}"
     hunk = [line for line in _git(repo, "diff", "-U0", hashes["c1"], hashes["c2"]).split("\n") if line[:1] in "+-" and line[:3] not in ("---", "+++")]
     assert hunk == ["-min=1", "-max=9", "+min=0", "+max=10"]
-    parent = _git(repo, "show", f"{hashes['c2']}^:{path}").split("\n")
+    # the file is CP1252 -- reading it through a UTF-8 text pipe is exactly the trap the README describes
+    raw = subprocess.run(["git", "show", f"{hashes['c2']}^:{path}"], cwd=repo, capture_output=True, check=True).stdout
+    parent = raw.decode("cp1252").split("\n")
     for deleted in ("min=1", "max=9"):
         no = parent.index(deleted) + 1
         blamed = _git(repo, "blame", "-l", "-L", f"{no},{no}", f"{hashes['c2']}^", "--", path).split()[0].lstrip("^")
