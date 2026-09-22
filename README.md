@@ -451,7 +451,7 @@ It can also be one record per predicted BIC:
 {"scenario_id":"SZZ-0006","fix_commit":"<actual hash>","inducing_commit":"<actual hash>"}
 ```
 
-`fix_commit` is optional for evaluation. `inducing_commit` may be an actual Git hash, a unique hash prefix, or a logical commit id from `commit-map.json`.
+`scenario_id` and `inducing_commit` are required for evaluation; `fix_commit` is optional. `inducing_commit` may be an actual Git hash, a unique hash prefix, or a logical commit id from `commit-map.json`.
 
 Use `--include-generated` when the predictions file only contains scenarios where a tool produced at least one BIC. SZZBench then evaluates every generated repository under `--generated-root` and treats missing prediction records as empty predictions.
 
@@ -762,6 +762,45 @@ szzbench new-graph-scenario
 ```
 
 `scenario.graph.yml` は、通常の `scenario.yml` より表現力が高いスキーマです。すでに draft ではなく、バージョンは `graph-1.0` です。凍結時に満たした基準は `docs/decisions/vocabulary.md` の §4 に記録しています。
+
+### シナリオスキーマの境界方針
+
+`scenario.yml` は、`main` 上の線形履歴と単純なファイル操作、単純な commit-level exact-set oracle で表現できる、制限された部分集合のシナリオに使います。
+
+実際には、次のすべてが成り立つときに `scenario.yml` が適切です。
+
+- 履歴が `main` 上の単一の線形チェーンである
+- コミットの親が暗黙である、または各コミットが直前のコミットだけに依存する
+- 操作が `write_file` と `replace` に限られる
+- 1 つのコミットが複数の操作を含んでよい
+- 期待される答えが commit-level の exact set であり続ける限り、1 つのバグに複数の BIC があってよい
+- 各バグの BFC は 1 つである
+
+グラフ固有の履歴、関係メタデータ、特殊な操作、高度な評価セマンティクスが必要なシナリオには `scenario.graph.yml` を使います。次のものが含まれます。
+
+- 明示的な DAG 履歴、branch、merge コミット、squash merge、release branch、cherry-pick、backport
+- 通常の部分集合の外にある操作（rename、move、copy、delete、バイナリ書き込み、chmod、生成ファイル操作、エンティティの移動/コピー、commit generator、patch-from/squash 操作など）
+- work item、issue、developer hint、clone/copy 関係、bug instance、origin fault、direct/origin BIC 関係、リファクタリングのメタデータ
+- 主要な評価単位としての複数 BFC、または複数の独立したバグ
+- 評価 variant、top-k 評価、部分的または緩和されたクレジット、acceptable related コミット、related-but-not-correct コミット、line/entity/branch/work-item/bug-level の評価ポリシー
+
+要するに、`scenario.yml` は `scenario.graph.yml` の制限された部分集合として扱います。すなわち、`main` の線形履歴と単純な commit-level exact-set oracle です。グラフ構造やより豊かな評価メタデータを必要とするものはすべて `scenario.graph.yml` に置きます。
+
+### このベンチマークが検証しないもの
+
+`szzbench baselines` は、宣言された安価な予測器の族（メタデータのみ、履歴上の位置のみ、ファイル接触の形、古典的な blame ベースライン）を通常の evaluator で採点します。そのため、SZZBench 上のあらゆる結果は床（floor）と比べて読めます。251 シナリオの出荷スイートでの計測結果：**ファイルを一つも開かない「履歴の 2 番目のコミットを報告する」規則が 156/251 を解き、古典的な `blame-deleted-lines` ベースラインの 158/251 と 2 件差です**。両者の優劣は、新しいシナリオのバッチごとに入れ替わっています。何らかの安価な規則が 251 シナリオのうち 229 を解きますが、これは oracle を知っている前提の上界であり、攻撃者のスコアではありません。届かない 22 件はすべて複数コミットの oracle を持ちます。メタデータ族は偶然の水準にあり、これは下記の漏洩保証が成り立っていることを意味します。
+
+すべてのシナリオは `meta.tier` を宣言します。**229 件が `control`** で、手法が特定の入力条件を扱えることを確認するものであり、安価な規則が解けても構いません。**22 件が `discriminating`** で、宣言されたどの安価なベースラインも解けません。そのうち 15 件は計測された軸に対して設計されたもので、答えは 2 コミットであり、修正が削除した行を blame しても片方には到達しません。control が安価に解けることは欠陥ではありません。tier が防ぐのは、control を「手法が識別力を持つ証拠」として読むことです。
+
+`szzbench coverage` は対になるコマンドです。各シナリオの oracle のサイズ、バグ混入コミットの深さ、fault ファイルに触れる distractor の数、履歴の大きさと分岐の多さを計測し、これらすべてが一致するシナリオをグループ化します。また、宣言された各 fault statement を共有するシナリオ数を、全体とカテゴリごとに報告します（issue #13）。
+
+このベンチマーク上の数字を報告・比較する前に [docs/baselines.md](docs/baselines.md) を読んでください。この床を引き上げる作業は issue #13、#14、#35 で追跡しています。
+
+### 生成リポジトリが明かさないもの
+
+ツールには生成リポジトリとバグ修正コミットが与えられます。そのリポジトリの中に、コミットの oracle 上の役割を示すものは何もありません。コミットメッセージは作者の視点から変更を説明し、シナリオ id、役割を表す語、操作の一覧を決して含みません。作者と日付はシナリオ id とコミットの番号から導かれ、役割からは導かれません。どのファイル内容もパスも、どのコミットが答えかを述べません。バグ修正コミットは自然な修正の文言を保ちます。BFC は答えの一部ではなく、SZZ への入力だからです。
+
+シナリオ id、タイトル、リポジトリの生成先ディレクトリはシナリオを説明しますし、修正は当然、何を直したかを名指しします。意図的に隠していないものや、予測がコミットをどう名指しできるか（`evaluate --reference-format`）を含む完全な方針は [docs/decisions/oracle-leakage.md](docs/decisions/oracle-leakage.md) にあり、`validate --lint` と `tests/test_no_oracle_leakage.py` が検査します。
 
 ## ディレクトリ構成
 
