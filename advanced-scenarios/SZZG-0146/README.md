@@ -51,19 +51,24 @@ receipt is right.
 
 ## Measured behaviour
 
-`apply(2000, "15%")`, `describe("15%")` and `describe("7%")` at each commit
-(`tests/test_rebalance_scenarios.py`; `Receipt` exists from `c3`):
+`apply(2000, "15%")`, `apply(2000000, "15%")`, `describe("15%")` and
+`describe("7%")` at each commit (`tests/test_rebalance_scenarios.py`; `Receipt`
+exists from `c3`):
 
-| commit | apply(2000, "15%") | describe("15%") | describe("7%") |
-|---|---|---|---|
-| `c0`–`c2` | 1700 | — | — |
-| `c3` | 1700 | **1500 percent off** | **700 percent off** |
-| `c4` | 1700 | 15 percent off | 7 percent off |
+| commit | apply(2000, "15%") | apply(2000000, "15%") | describe("15%") | describe("7%") |
+|---|---|---|---|---|
+| `c0`–`c2` | 1700 | 1700000 | — | — |
+| `c3` | 1700 | 1700000 | **1500 percent off** | **700 percent off** |
+| `c4` | 1700 | 1700000 | 15 percent off | 7 percent off |
 
-`c1` changes no answer: the parser and its only caller change together.
+`c1` changes no answer: the parser and its only caller change together, and
+`apply` multiplies in 64 bits, so the hundredfold parser result does not
+overflow at any `int` price. The large-price probe is there for that: with an
+`int` product, `apply(2000000, "15%")` would return 2129496 from `c1` onwards
+and the fix would not repair it.
 **Counterfactual, measured:** undoing `c1` on top of `c3` — `parse()` returning
 whole percent, `apply()` dividing by 100 — gives `15 percent off` and
-`7 percent off`, the fixed answers.
+`7 percent off`, the fixed answers, and leaves both `apply` probes unchanged.
 
 ## Measured blame outcome at BFC^
 

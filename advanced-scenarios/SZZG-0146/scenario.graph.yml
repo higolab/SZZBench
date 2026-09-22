@@ -59,8 +59,10 @@ commits:
       package example;
 
       public class Discount {
+          /** Applies a percentage to a price. The product is computed in 64 bits, so
+           *  any int price and any percentage the parser accepts are representable. */
           public int apply(int priceCents, String percent) {
-              return priceCents - priceCents * Percent.parse(percent) / 100;
+              return priceCents - (int) ((long) priceCents * Percent.parse(percent) / 100);
           }
       }
 - id: c1
@@ -78,8 +80,8 @@ commits:
     new: return Integer.parseInt(text.replace("%", "").trim()) * 100;
   - type: replace
     path: src/main/java/example/Discount.java
-    old: return priceCents - priceCents * Percent.parse(percent) / 100;
-    new: return priceCents - priceCents * Percent.parse(percent) / 10000;
+    old: return priceCents - (int) ((long) priceCents * Percent.parse(percent) / 100);
+    new: return priceCents - (int) ((long) priceCents * Percent.parse(percent) / 10000);
 - id: c2
   branch: main
   parents:
@@ -187,10 +189,12 @@ scenario_design:
     The scenario exists so that a method's pass under the lenient contract cannot be reported as a
     pass on the tier.
   key_property: >
-    Measured: apply(2000, "15%") is 1700 at every commit; describe("15%") is "1500 percent off" at c3
-    and "15 percent off" at c4, describe("7%") "700 percent off" and "7 percent off". Undoing c1 on top
-    of c3 (parse() returning whole percent, apply() dividing by 100) gives "15 percent off" and "7
-    percent off": the fixed answers. Blaming the line c4 deletes at c4^ returns c3 under every variant.
+    Measured: apply(2000, "15%") is 1700 and apply(2000000, "15%") is 1700000 at every commit - the
+    product is computed in 64 bits, so the hundredfold parser result of c1 changes no answer of the
+    existing caller at any int price. describe("15%") is "1500 percent off" at c3 and "15 percent off"
+    at c4, describe("7%") "700 percent off" and "7 percent off". Undoing c1 on top of c3 (parse()
+    returning whole percent, apply() dividing by 100) gives "15 percent off" and "7 percent off": the
+    fixed answers. Blaming the line c4 deletes at c4^ returns c3 under every variant.
   evaluation_points:
   - Report exactly {c1, c3} under the default variant.
   - Whether the value the fixed expression reads is followed through the parser to the commit that changed its scale.
