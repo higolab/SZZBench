@@ -1,6 +1,6 @@
 schema_version: graph-index-0.1-draft
 description: Index of draft advanced graph scenarios for SZZBench.
-scenario_count: 136
+scenario_count: 137
 scenarios:
 - id: SZZG-0001
   title: BFC performs rename and fix in the same commit
@@ -1639,5 +1639,21 @@ scenarios:
   - branch-level-oracle
   - formatting-noise
   - wrong-constant
+- id: SZZG-0144
+  title: The fix message names the issue whose change blame cannot reach
+  category_code: G7
+  category: Issue, message, context, and non-local evidence
+  path: advanced-scenarios/SZZG-0144/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0144/README.md
+  status: active
+  factors:
+  - multi-bic
+  - single-bfc
+  - issue-evidence
+  - message-evidence
+  - tool-visible-context
+  - value-flow
+  - wrong-constant
+  - blame-unreachable-bic
 notes:
 - Scenario IDs are ordered by the SZZBench scenario taxonomy.

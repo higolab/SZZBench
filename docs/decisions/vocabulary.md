@@ -146,9 +146,11 @@ any `control` that no cheap rule solves (a promotion candidate).
 
 The initial assignment followed the measurement at `6ed60a0`: **203 control and
 7 discriminating** — SZZ-0132, SZZ-0136, SZZG-0028, SZZG-0038, SZZG-0040,
-SZZG-0069 and SZZG-0076, all of which have a multi-commit oracle. Fifteen
-scenarios designed against that axis have been added since, so the suite now
-declares **203 control and 22 discriminating**; the list and the reasons are in
+SZZG-0069 and SZZG-0076, all of which have a multi-commit oracle. Nineteen
+scenarios designed against that axis have been added since — the last four on
+2026-09-22 (issue #35), one in each of the four largest categories that had none:
+SZZ-0212 (S3), SZZ-0213 (S4), SZZ-0214 (S2) and SZZG-0144 (G7) — so the suite now
+declares **235 control and 26 discriminating**; the list and the reasons are in
 [baselines.md](../baselines.md#the-two-tiers).
 
 A declaration is a claim the measurement can refuse, and has. SZZG-0118 was

@@ -1,0 +1,199 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0213"
+  title: "A tangled three-hunk fix: one hunk blames a bystander, one repairs an omission by adding lines"
+  slug: "tangled-fix-bystander-and-omission"
+  description: >
+    The tax arithmetic is reordered so that it truncates, and a later commit
+    adds a loyalty discount that dereferences the customer without a null
+    check. One commit fixes both and, in the same change, deletes an obsolete
+    constant. Its three hunks blame to three different places: the tax line to
+    the commit that reordered it, the constant to the initial commit, and the
+    null check to nothing at all, because that hunk only adds lines. Blame
+    therefore returns one right commit, one bystander, and misses the second
+    fault entirely.
+  category: "BFC-side noise and tangled commits"
+  factors:
+    - "multi-bic"
+    - "single-bfc"
+    - "tangled-bfc"
+    - "multi-hunk-bfc"
+    - "mixed-origin-hunks"
+    - "wrong-operator"
+    - "null-check-omission"
+    - "blame-unreachable-bic"
+  difficulty: "hard"
+  status: "active"
+  tier: "discriminating"
+  defeats: ["blame", "shape", "position"]
+  category_code: "S4"
+
+repository:
+  name: "SZZ-0213-tangled-fix-bystander-and-omission"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Add the invoice total with tax"
+    author: "Mei Tanaka <mei.tanaka@example.com>"
+    date: "2024-08-05T09:15:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/example/InvoiceTotal.java"
+        content: |
+          package example;
+
+          public class InvoiceTotal {
+              /** Rounding step of the 2023 statements; kept until the archive export is retired. */
+              static final int LEGACY_ROUNDING_CENTS = 5;
+
+              static final int TAX_PERCENT = 10;
+
+              public int withTaxCents(int netCents) {
+                  return netCents + netCents * TAX_PERCENT / 100;
+              }
+          }
+
+  - id: "c1"
+    message: "Reorder the tax arithmetic"
+    author: "Jonas Berg <jonas.berg@example.com>"
+    date: "2024-08-07T13:40:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/InvoiceTotal.java"
+        old: "return netCents + netCents * TAX_PERCENT / 100;"
+        new: "return netCents + netCents / 100 * TAX_PERCENT;"
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Add the customer record with its loyalty tier"
+    author: "Farid Haddad <farid.haddad@example.com>"
+    date: "2024-08-09T10:00:00Z"
+    role: "distractor"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/example/Customer.java"
+        content: |
+          package example;
+
+          public class Customer {
+              public enum Tier { STANDARD, GOLD }
+
+              private final Tier tier;
+
+              public Customer(Tier tier) {
+                  this.tier = tier;
+              }
+
+              public Tier tier() {
+                  return tier;
+              }
+          }
+
+  - id: "c3"
+    message: "Grant gold customers a tenth off"
+    author: "Chen Wei <chen.wei@example.com>"
+    date: "2024-08-12T15:25:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/InvoiceTotal.java"
+        old: |
+          public int withTaxCents(int netCents) {
+                  return netCents + netCents / 100 * TAX_PERCENT;
+              }
+        new: |
+          public int withTaxCents(int netCents) {
+                  return netCents + netCents / 100 * TAX_PERCENT;
+              }
+
+              public int discountCents(Customer customer, int netCents) {
+                  return customer.tier() == Customer.Tier.GOLD ? netCents / 10 : 0;
+              }
+        labels: ["B001", "fault"]
+
+  - id: "c4"
+    message: "Multiply before dividing in the tax, skip the discount for anonymous customers, drop the legacy rounding step"
+    author: "Bruno Fischer <bruno.fischer@example.com>"
+    date: "2024-08-14T17:50:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/InvoiceTotal.java"
+        old: |
+          /** Rounding step of the 2023 statements; kept until the archive export is retired. */
+              static final int LEGACY_ROUNDING_CENTS = 5;
+
+              static final int TAX_PERCENT = 10;
+        new: |
+          static final int TAX_PERCENT = 10;
+      - type: "replace"
+        path: "src/main/java/example/InvoiceTotal.java"
+        old: "return netCents + netCents / 100 * TAX_PERCENT;"
+        new: "return netCents + netCents * TAX_PERCENT / 100;"
+        labels: ["B001", "fix"]
+      - type: "replace"
+        path: "src/main/java/example/InvoiceTotal.java"
+        old: |
+          public int discountCents(Customer customer, int netCents) {
+                  return customer.tier() == Customer.Tier.GOLD ? netCents / 10 : 0;
+              }
+        new: |
+          public int discountCents(Customer customer, int netCents) {
+                  if (customer == null) {
+                      return 0;
+                  }
+                  return customer.tier() == Customer.Tier.GOLD ? netCents / 10 : 0;
+              }
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "The tax truncates on amounts that are not whole euros, and an anonymous customer crashes the discount"
+    bug_fixing_commit: "c4"
+    bug_introducing_commits: ["c1", "c3"]
+    fault:
+      commit: "c1"
+      file: "src/main/java/example/InvoiceTotal.java"
+      entity:
+        type: "method"
+        name: "withTaxCents"
+        signature: "int withTaxCents(int netCents)"
+      statement: "return netCents + netCents / 100 * TAX_PERCENT;"
+      change_type: "line_modification"
+    fix:
+      commit: "c4"
+      file: "src/main/java/example/InvoiceTotal.java"
+      entity:
+        type: "method"
+        name: "withTaxCents"
+        signature: "int withTaxCents(int netCents)"
+      statement: "return netCents + netCents * TAX_PERCENT / 100;"
+      fix_type: "line_modification"
+    expected_szz:
+      commit_level:
+        true_positives: ["c1", "c3"]
+        primary_observable_bic: "c1"
+        contributing_bics: ["c3"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "return netCents + netCents / 100 * TAX_PERCENT;"
+          - "return customer.tier() == Customer.Tier.GOLD ? netCents / 10 : 0;"
+        note: >
+          The fix has three hunks. The tax hunk deletes c1's line and blames to
+          c1. The cleanup hunk deletes the legacy constant and its comment,
+          which blame to c0, a commit that is not part of the answer. The
+          discount hunk adds the null check above c3's dereference and deletes
+          nothing, so c3 is on no deleted line.
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3", "c4"]
