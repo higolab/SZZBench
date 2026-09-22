@@ -1,0 +1,213 @@
+schema_version: graph-1.0
+meta:
+  id: SZZG-0147
+  title: A revert of a revert brings the unit change back, and a consumer is written after it
+  slug: revert-of-revert-reintroduces-the-unit-change
+  description: >
+    The retry backoff is restated in milliseconds together with its only
+    reader, reverted, and reverted again, so the unit change is in force
+    through a revert-of-revert commit. A later commit returns the constant as
+    a number of seconds. The fix repairs that reader. Blame on the line the fix
+    deletes reaches the reader only; the commit that put the unit change back
+    is a revert whose own diff is a copy of the original change.
+  category: "Revert-specific reintroduction"
+  category_code: "G6"
+  factors:
+  - multi-bic
+  - single-bfc
+  - revert
+  - revert-of-revert
+  - origin-vs-direct
+  - value-flow
+  - wrong-constant
+  - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  tier: discriminating
+  defeats: [blame, shape, position]
+repository:
+  name: SZZG-0147-revert-of-revert-reintroduces-the-unit-change
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'Add the retry backoff policy'
+  author: 'Hana Sato <hana.sato@example.com>'
+  role: initial
+  date: '2024-11-04T09:15:00Z'
+  operations:
+  - type: write_file
+    path: src/main/java/example/RetryPolicy.java
+    content: |
+      package example;
+
+      public class RetryPolicy {
+          static final int BACKOFF = 2;
+
+          public int waitSeconds(int attempt) {
+              return BACKOFF * attempt;
+          }
+      }
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'Express the backoff in milliseconds'
+  author: 'Luca Moretti <luca.moretti@example.com>'
+  role: intermediate
+  date: '2024-11-06T13:30:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/RetryPolicy.java
+    old: |
+      static final int BACKOFF = 2;
+
+          public int waitSeconds(int attempt) {
+              return BACKOFF * attempt;
+          }
+    new: |
+      static final int BACKOFF = 2000;
+
+          public int waitSeconds(int attempt) {
+              return BACKOFF * attempt / 1000;
+          }
+- id: c2
+  branch: main
+  parents:
+  - c1
+  author: 'Bruno Fischer <bruno.fischer@example.com>'
+  role: intermediate
+  date: '2024-11-08T10:05:00Z'
+  revert_of: c1
+- id: c3
+  branch: main
+  parents:
+  - c2
+  author: 'Chen Wei <chen.wei@example.com>'
+  role: bug_introducing
+  date: '2024-11-11T15:45:00Z'
+  revert_of: c2
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: 'Report the first wait before a retry'
+  author: 'Aiko Mori <aiko.mori@example.com>'
+  role: bug_introducing
+  date: '2024-11-13T11:20:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/RetryPolicy.java
+    old: |
+      public int waitSeconds(int attempt) {
+              return BACKOFF * attempt / 1000;
+          }
+    new: |
+      public int waitSeconds(int attempt) {
+              return BACKOFF * attempt / 1000;
+          }
+
+          public int firstWaitSeconds() {
+              return BACKOFF;
+          }
+- id: c5
+  branch: main
+  parents:
+  - c4
+  message: 'Report the first wait in seconds'
+  author: 'Diego Alvarez <diego.alvarez@example.com>'
+  role: bug_fixing
+  date: '2024-11-15T14:00:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/RetryPolicy.java
+    old: return BACKOFF;
+    new: return BACKOFF / 1000;
+bugs:
+- id: B001
+  title: The first wait is reported as two thousand seconds
+  bug_introducing_commits:
+  - commit: c3
+    role: direct
+  - commit: c4
+    role: direct
+  - commit: c1
+    role: origin
+  bug_fixing_commits:
+  - commit: c5
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c3
+    file: src/main/java/example/RetryPolicy.java
+    statement: static final int BACKOFF = 2000;
+    change_type: line_modification
+  - id: F002
+    commit: c4
+    file: src/main/java/example/RetryPolicy.java
+    statement: return BACKOFF;
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c5
+    file: src/main/java/example/RetryPolicy.java
+    statement: return BACKOFF / 1000;
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: reintroduction_direct
+    required:
+    - c3
+    - c4
+    related_origins:
+    - c1
+    related_but_not_correct:
+    - c2
+    notes: >
+      c3 is the commit that put the unit change in force at the fix: it is a real git revert of c2,
+      itself a real git revert of c1, so c3's diff is c1's change again. c1 is the origin and is not
+      required (D-contract: a reintroduction is attributed to the commit that reintroduced it); c2
+      undid the change and is related but not correct. c4 is the reader that assumed seconds. Blame on
+      the line c5 deletes returns c4 alone.
+  evaluation_variants:
+  - name: origin-aware
+    description: >
+      The same required set; reporting the origin c1 as well is tolerated (direct/origin contract D3),
+      reporting c2 is not.
+    commit_level:
+      evaluation_policy: exact_set
+      required:
+      - c3
+      - c4
+      related_origins:
+      - c1
+      related_but_not_correct:
+      - c2
+scenario_design:
+  purpose: >
+    A discriminating scenario for G6: the required commit that blame cannot reach is a
+    revert-of-revert, so a tool has to follow the value the fixed expression reads to the commit
+    that last changed its meaning, and then attribute that change to the revert that brought it
+    back rather than to the original commit or to the revert that removed it.
+  key_property: >
+    Measured: waitSeconds(3) is 6 at every commit; firstWaitSeconds() is 2000 at c4 and 2 at c5.
+    Undoing c3 on top of c4 (BACKOFF = 2, waitSeconds() multiplying directly, firstWaitSeconds()
+    returning the constant) gives 2, the fixed answer. Blaming the line c5 deletes at c5^ returns c4
+    under every variant. git log --first-parent lists all six commits; c2's diff is the inverse of
+    c1's and c3's diff equals c1's.
+  evaluation_points:
+  - Report exactly {c3, c4}.
+  - Whether the unit change in force at the fix is attributed to the revert-of-revert c3 rather than to c1 or c2.
+  - Whether the value the fixed expression reads is followed at all.
+  failure_mode: >-
+    A tool fails here when it stops at blame's `c4`, or when it follows the constant to the change
+    that made it milliseconds and reports the original `c1` or the undoing `c2` instead of `c3`, the
+    revert of the revert that put the change back.
+notes:
+- c2 and c3 are real `git revert` commits with the messages Git writes for them; neither has hand-written operations.

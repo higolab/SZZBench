@@ -1,0 +1,207 @@
+schema_version: graph-1.0
+meta:
+  id: SZZG-0146
+  title: "One history, two contracts: the default variant requires the cause, the other only the commit that made it visible"
+  slug: two-contracts-cause-and-observable
+  description: >
+    A percentage parser starts returning basis points and its only caller is
+    converted with it, so nothing observable moves. A later commit prints the
+    parser's result as a percentage. The fix repairs the printing. The default
+    evaluation variant requires both commits, as the tier's other two-commit
+    oracles do; a second variant requires only the commit that made the fault
+    visible and tolerates the parser change as a related origin. Blame passes
+    the second and fails the first, which is the point: the scenario makes the
+    choice of contract explicit and scores the strict one by default.
+  category: "Evaluation policy variants"
+  category_code: "G9"
+  factors:
+  - multi-bic
+  - single-bfc
+  - evaluation-variant
+  - caller-callee
+  - value-flow
+  - wrong-constant
+  - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  tier: discriminating
+  defeats: [blame, shape, position]
+repository:
+  name: SZZG-0146-two-contracts-cause-and-observable
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'Add the percentage parser and the discount'
+  author: 'Mei Tanaka <mei.tanaka@example.com>'
+  role: initial
+  date: '2024-12-02T09:30:00Z'
+  operations:
+  - type: write_file
+    path: src/main/java/example/Percent.java
+    content: |
+      package example;
+
+      public class Percent {
+          public static int parse(String text) {
+              return Integer.parseInt(text.replace("%", "").trim());
+          }
+      }
+  - type: write_file
+    path: src/main/java/example/Discount.java
+    content: |
+      package example;
+
+      public class Discount {
+          /** Applies a percentage to a price. The product is computed in 64 bits, so
+           *  any int price and any percentage the parser accepts are representable. */
+          public int apply(int priceCents, String percent) {
+              return priceCents - (int) ((long) priceCents * Percent.parse(percent) / 100);
+          }
+      }
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'Parse percentages to basis points'
+  author: 'Jonas Berg <jonas.berg@example.com>'
+  role: bug_introducing
+  date: '2024-12-04T14:10:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/Percent.java
+    old: return Integer.parseInt(text.replace("%", "").trim());
+    new: return Integer.parseInt(text.replace("%", "").trim()) * 100;
+  - type: replace
+    path: src/main/java/example/Discount.java
+    old: return priceCents - (int) ((long) priceCents * Percent.parse(percent) / 100);
+    new: return priceCents - (int) ((long) priceCents * Percent.parse(percent) / 10000);
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'Describe the discount rules'
+  author: 'Elena Rossi <elena.rossi@example.com>'
+  role: intermediate
+  date: '2024-12-06T10:00:00Z'
+  operations:
+  - type: write_file
+    path: docs/discounts.md
+    content: |
+      # Discounts
+
+      A discount is given as a percentage string such as `15%` and applied to a
+      price in cents. The result is rounded down to a whole cent.
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'Describe a discount on the receipt'
+  author: 'Aiko Tanaka <aiko.tanaka@example.com>'
+  role: bug_introducing
+  date: '2024-12-09T16:25:00Z'
+  operations:
+  - type: write_file
+    path: src/main/java/example/Receipt.java
+    content: |
+      package example;
+
+      public class Receipt {
+          public String describe(String percent) {
+              return Percent.parse(percent) + " percent off";
+          }
+      }
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: 'Describe the discount as a percentage on the receipt'
+  author: 'Farid Haddad <farid.haddad@example.com>'
+  role: bug_fixing
+  date: '2024-12-11T11:40:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/Receipt.java
+    old: return Percent.parse(percent) + " percent off";
+    new: return (Percent.parse(percent) / 100) + " percent off";
+bugs:
+- id: B001
+  title: The receipt describes a fifteen percent discount as fifteen hundred percent
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  - commit: c3
+    role: direct
+  bug_fixing_commits:
+  - commit: c4
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/Percent.java
+    statement: return Integer.parseInt(text.replace("%", "").trim()) * 100;
+    change_type: line_modification
+  - id: F002
+    commit: c3
+    file: src/main/java/example/Receipt.java
+    statement: return Percent.parse(percent) + " percent off";
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c4
+    file: src/main/java/example/Receipt.java
+    statement: return (Percent.parse(percent) / 100) + " percent off";
+    fix_type: line_modification
+expected_szz:
+  evaluation_variants:
+  - name: full-cause
+    description: Both commits are required, as in every two-commit oracle of the discriminating tier.
+    commit_level:
+      evaluation_policy: exact_set
+      required:
+      - c1
+      - c3
+  - name: observable-only
+    description: >
+      Only the commit that made the fault visible is required; the parser change is tolerated as a
+      related origin but not required. Plain blame passes this variant.
+    commit_level:
+      evaluation_policy: relaxed_with_related
+      required:
+      - c3
+      related_origins:
+      - c1
+  default_variant: full-cause
+  notes: >
+    The default is the strict variant, and szzbench baselines scores the default. Blame on the line c4
+    deletes returns {c3}: it fails full-cause with c1 as a false negative and passes observable-only.
+    {c1, c3} passes both. A report on this scenario has to say which variant it was scored under.
+scenario_design:
+  purpose: >
+    A discriminating scenario for G9: the same repository under two contracts. The strict one asks
+    for the cause and the commit that exposed it; the lenient one asks only for the exposing commit.
+    The scenario exists so that a method's pass under the lenient contract cannot be reported as a
+    pass on the tier.
+  key_property: >
+    Measured: apply(2000, "15%") is 1700 and apply(2000000, "15%") is 1700000 at every commit - the
+    product is computed in 64 bits, so the hundredfold parser result of c1 changes no answer of the
+    existing caller at any int price. describe("15%") is "1500 percent off" at c3 and "15 percent off"
+    at c4, describe("7%") "700 percent off" and "7 percent off". Undoing c1 on top of c3 (parse()
+    returning whole percent, apply() dividing by 100) gives "15 percent off" and "7 percent off": the
+    fixed answers. Blaming the line c4 deletes at c4^ returns c3 under every variant.
+  evaluation_points:
+  - Report exactly {c1, c3} under the default variant.
+  - Whether the value the fixed expression reads is followed through the parser to the commit that changed its scale.
+  - Whether a result is reported together with the variant it was scored under.
+  failure_mode: >-
+    A tool fails here when it stops at blame's `c3`: under the default variant `c1`, which changed
+    what `Percent.parse()` returns, is a missing half of the answer, even though the `observable-only`
+    variant would accept `{c3}`.
+notes:
+- The variant names follow docs/evaluation-policies.md section 4; observable-only tolerates c1 through its relaxed policy, not through its name.
