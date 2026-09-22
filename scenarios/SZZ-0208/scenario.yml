@@ -1,0 +1,139 @@
+schema_version: '1.0'
+meta:
+  id: SZZ-0208
+  title: Configuration key rename as the BIC
+  slug: config-key-rename-bic
+  description: >-
+    The bug-introducing commit renames a key in a properties file without changing its value: retry.delay.unit
+    becomes retry.delayUnit, the code keeps reading the old key and falls back to its default of milliseconds,
+    so the configured two-second delay becomes two milliseconds. The fix teaches the code the new key. The
+    line the fix deletes was written by the initial commit and last touched by nobody else, so blame on it
+    reaches neither the BIC nor anything in the properties file.
+  category: "Non-source, configuration, test-only, and file-level edge cases"
+  category_code: "S8"
+  factors:
+  - single-bic
+  - single-bfc
+  - line-modification
+  - config-bic
+  - config-key-rename
+  - cross-artifact-fix
+  - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  tier: control
+repository:
+  name: SZZ-0208-config-key-rename-bic
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+commits:
+- id: c0
+  message: 'Add the retry delay configuration and its interpreter'
+  author: Farid Haddad <farid.haddad@example.com>
+  date: 2025-11-03T10:05:00Z
+  role: initial
+  operations:
+  - type: write_file
+    path: config/retry.properties
+    content: |
+      retry.delay.value=2
+      retry.delay.unit=seconds
+  - type: write_file
+    path: src/main/java/example/RetryPolicy.java
+    content: |
+      package example;
+
+      import java.io.FileInputStream;
+      import java.io.IOException;
+      import java.io.InputStream;
+      import java.util.Properties;
+
+      public class RetryPolicy {
+        private final int configuredDelay;
+        private final String unit;
+
+        public RetryPolicy() {
+          this("config/retry.properties");
+        }
+
+        public RetryPolicy(String path) {
+          Properties properties = new Properties();
+          try (InputStream in = new FileInputStream(path)) {
+            properties.load(in);
+          } catch (IOException e) {
+            throw new IllegalStateException("cannot read " + path, e);
+          }
+          this.configuredDelay = Integer.parseInt(properties.getProperty("retry.delay.value"));
+          this.unit = properties.getProperty("retry.delay.unit", "milliseconds");
+        }
+
+        public int delayMillis() {
+          return unit.equals("seconds") ? configuredDelay * 1000 : configuredDelay;
+        }
+      }
+- id: c1
+  message: 'Rename the retry unit key to retry.delayUnit'
+  author: Elena Rossi <elena.rossi@example.com>
+  date: 2025-11-10T16:30:00Z
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: config/retry.properties
+    old: retry.delay.unit=seconds
+    new: retry.delayUnit=seconds
+- id: c2
+  message: 'Add a description of the retry policy'
+  author: Jonas Berg <jonas.berg@example.com>
+  date: 2025-11-17T09:40:00Z
+  role: distractor
+  operations:
+  - type: replace
+    path: src/main/java/example/RetryPolicy.java
+    old: "  }\n}\n"
+    new: "  }\n\n  public String describe() {\n    return configuredDelay + \" \" + unit;\n  }\n}\n"
+- id: c3
+  message: 'Read the retry unit from its renamed key'
+  author: Dana Okafor <dana.okafor@example.com>
+  date: 2025-11-24T13:15:00Z
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/RetryPolicy.java
+    old: 'this.unit = properties.getProperty("retry.delay.unit", "milliseconds");'
+    new: 'this.unit = properties.getProperty("retry.delayUnit", "milliseconds");'
+bugs:
+- id: B001
+  title: The configured retry delay falls back to milliseconds after the unit key was renamed
+  bug_fixing_commit: c3
+  bug_introducing_commits:
+  - c1
+  fault:
+    commit: c1
+    file: config/retry.properties
+    statement: retry.delayUnit=seconds
+    change_type: config_modification
+  fix:
+    commit: c3
+    file: src/main/java/example/RetryPolicy.java
+    statement: 'this.unit = properties.getProperty("retry.delayUnit", "milliseconds");'
+    fix_type: line_modification
+  expected_szz:
+    commit_level:
+      true_positives:
+      - c1
+      false_positives_allowed: []
+      known_distractors:
+      - c2
+    line_level:
+      available: true
+      faulty_statements:
+      - retry.delayUnit=seconds
+checks:
+- type: git_history_contains
+  commits:
+  - c0
+  - c1
+  - c2
+  - c3

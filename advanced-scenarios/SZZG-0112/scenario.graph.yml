@@ -3,13 +3,18 @@ meta:
   id: SZZG-0112
   title: Non-UTF-8 file
   slug: non-utf-8-file
-  description: Evaluates a bug introduced and fixed in a non-UTF-8 encoded configuration file.
+  description: >-
+    A bug introduced and fixed in a CP1252-encoded properties file that the Java code really reads: the BIC
+    narrows the configured range limits from min=0/max=10 to min=1/max=9, so the boundary values stop being
+    contained, and the BFC restores them. Every commit that matters touches only the non-UTF-8 file.
   category: "Non-source, binary, generated, and scalability edge cases"
   category_code: "G8"
   factors:
   - encoding
   - non-utf8-file
   - binary-file
+  - config-bic
+  - config-bfc
   difficulty: advanced
   status: active
   tier: control
@@ -37,9 +42,39 @@ commits:
     path: src/main/java/example/ConfigBackedRange.java
     content: |
       package example;
+
+      import java.io.FileInputStream;
+      import java.io.IOException;
+      import java.io.InputStream;
+      import java.util.Properties;
+
       public class ConfigBackedRange {
-        public boolean contains(int value, int min, int max) {
+        private final int min;
+        private final int max;
+        private final String label;
+
+        public ConfigBackedRange() {
+          this("config/range-limits.properties");
+        }
+
+        public ConfigBackedRange(String path) {
+          Properties properties = new Properties();
+          try (InputStream in = new FileInputStream(path)) {
+            properties.load(in);
+          } catch (IOException e) {
+            throw new IllegalStateException("cannot read " + path, e);
+          }
+          this.min = Integer.parseInt(properties.getProperty("min"));
+          this.max = Integer.parseInt(properties.getProperty("max"));
+          this.label = properties.getProperty("label");
+        }
+
+        public boolean contains(int value) {
           return value >= min && value <= max;
+        }
+
+        public String label() {
+          return label;
         }
       }
   - type: write_binary_file
@@ -94,13 +129,24 @@ expected_szz:
     required:
     - c1
 scenario_design:
-  purpose: Evaluate whether SZZBench tooling handles non-UTF-8 files without assuming all changed files are UTF-8 text.
+  purpose: >-
+    Evaluate whether a method attributes a fault in a non-UTF-8 configuration file that the code consumes, and
+    whether SZZBench tooling handles such a file without assuming all changed files are UTF-8 text.
+  key_property: >-
+    Measured on the generated snapshots (tests/test_config_scenarios.py): ConfigBackedRange.contains(0) and
+    contains(10) are true at c0, false at c1 and true again at c2, while contains(1) and contains(9) stay true; the
+    label is read as the four characters caf\u00e9 at every commit, because Properties.load decodes the file as
+    ISO-8859-1, in which the CP1252 byte 0xE9 is \u00e9. Git treats the file as text: c1 and c2 each change two
+    lines (min and max), and blame on both lines c2 deletes returns c1, so the blame-deleted-lines baseline solves
+    the scenario; the encoding tests decoding, not diffing.
   current_schema_limitation: The non-UTF-8 file is modeled with write_binary_file so that invalid UTF-8 bytes can be represented safely.
   evaluation_points:
   - Whether SZZ identifies c1 as the BIC for the encoded configuration change.
   - Whether non-UTF-8 file content does not break parsing, generation, or verification.
   - Whether the expected_szz exact-set policy is applied correctly.
 notes:
+- Until 2026-09-22 nothing read config/range-limits.properties, so the declared BIC could not cause a fault the
+  code showed (issue #23). ConfigBackedRange now loads the file and the effect is measured at every commit.
 - The properties file contains the byte 0xE9 in the word cafe encoded as CP1252, which is not valid standalone UTF-8.
 - Fault and fix descriptions avoid relying on text-line lookup inside the binary file.
 encoding:

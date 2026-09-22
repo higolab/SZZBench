@@ -1253,6 +1253,8 @@ scenarios:
   - encoding
   - non-utf8-file
   - binary-file
+  - config-bic
+  - config-bfc
 - id: SZZG-0113
   title: Huge file
   category_code: G8
