@@ -16,8 +16,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
-from .baselines import GitProbe, Scenario, _load_scenarios
-from .evaluator import _commit_level_policy, _load_scenario_for_evaluation
+from .baselines import GitProbe, Scenario, _bfc_hashes, _load_scenarios, blame_deleted_lines
+from .evaluator import _commit_level_policy, _load_scenario_for_evaluation, classify_diff_text
+
+#: What plain first-parent blame on the lines the fix deletes does with the
+#: oracle (``decisions/vocabulary.md`` section 4).  Measured, never hand-edited.
+BLAME_CLASSES = ("exact", "extra", "miss", "addition-only", "empty-first-parent")
 
 #: The dimensions a scenario is grouped by.  ``category`` keeps scenarios that
 #: test different failure modes apart even when their shape agrees.
@@ -31,6 +35,8 @@ class ScenarioShape:
     suite: str
     category: str | None
     tier: str | None
+    difficulty: str | None
+    blame_class: str | None
     commit_count: int
     ref_count: int
     oracle_size: int
@@ -44,7 +50,7 @@ class ScenarioShape:
 
     def to_dict(self) -> dict[str, Any]:
         return {field: getattr(self, field) for field in
-                ("scenario_id", "tier", *SIGNATURE_FIELDS, "factors", "fault_statements")}
+                ("scenario_id", "tier", "difficulty", "blame_class", *SIGNATURE_FIELDS, "factors", "fault_statements")}
 
 
 def _oracle_ids(data: dict[str, Any], suite: str) -> set[str]:
@@ -134,6 +140,38 @@ def _fault_reuse(shapes: list[ScenarioShape]) -> dict[str, Any]:
     }
 
 
+def _blame_class(scenario: Scenario, git: GitProbe, required_hashes: set[str]) -> str | None:
+    """Classify what naive blame does with this scenario's oracle.
+
+    ``empty-first-parent``: no bug-fixing commit changes anything against its
+    first parent (a merge that only records the fix arriving).
+    ``addition-only``: the fixes only add lines, so there is nothing to blame.
+    Otherwise the lines every fix deletes are blamed at the fix's first parent
+    and the set of commits compared with the required set: ``exact`` when they
+    are the same, ``extra`` when every required commit is blamed and others
+    besides, ``miss`` when a required commit is not blamed at all.  An empty
+    oracle (``expect_no_bic``) with any blamed commit is ``extra``.
+    """
+    bfcs = _bfc_hashes(scenario)
+    if not bfcs:
+        return None
+    # The first parent, or the empty tree for a root fix: a root commit has no
+    # ``<hash>^``, and a failed Git call must not read as an empty merge diff.
+    shapes = [classify_diff_text(git(scenario.repo_dir, "diff", "--no-color", "--no-ext-diff", "-U0",
+                                     "--no-renames", git.parent_of(scenario.repo_dir, bfc), bfc))
+              for bfc in bfcs]
+    if all(shape == "empty_first_parent" for shape in shapes):
+        return "empty-first-parent"
+    if all(shape in ("empty_first_parent", "addition_only") for shape in shapes):
+        return "addition-only"
+    blamed = set(blame_deleted_lines(git, scenario))
+    if blamed == required_hashes:
+        return "exact"
+    if required_hashes <= blamed:
+        return "extra"
+    return "miss"
+
+
 def _shape(scenario: Scenario, data: dict[str, Any], git: GitProbe) -> ScenarioShape:
     required = _oracle_ids(data, scenario.suite)
     files = _fault_files(data)
@@ -154,20 +192,36 @@ def _shape(scenario: Scenario, data: dict[str, Any], git: GitProbe) -> ScenarioS
         if set(git.paths_touched(scenario.repo_dir, commit.hash)) & files:
             distractors += 1
     refs = [r for r in git(scenario.repo_dir, "for-each-ref", "--format=%(refname)").splitlines() if r]
+    meta = data.get("meta") if isinstance(data.get("meta"), dict) else {}
     return ScenarioShape(
         scenario_id=scenario.scenario_id,
         suite=scenario.suite,
         category=scenario.category,
-        tier=(data.get("meta") or {}).get("tier"),
+        tier=meta.get("tier"),
+        difficulty=str(meta["difficulty"]) if meta.get("difficulty") is not None else None,
+        blame_class=_blame_class(scenario, git, required_hashes),
         commit_count=len(order),
         ref_count=len(refs),
         oracle_size=len(required),
         # the *farthest* required BIC: the deepest one a tool has to reach
         bic_depth=(last_bfc - min(bic_positions)) if bic_positions else None,
         fault_file_distractors=distractors,
-        factors=sorted((data.get("meta") or {}).get("factors") or []),
+        factors=sorted(meta.get("factors") or []),
         fault_statements=_fault_statements(data),
     )
+
+
+def _difficulty_by_blame_class(shapes: list[ScenarioShape]) -> dict[str, dict[str, dict[str, int]]]:
+    """Per suite, how many scenarios declare each ``difficulty`` for each measured
+    ``blame_class`` -- the table the grading rule of ``decisions/vocabulary.md``
+    section 4 is checked against."""
+    table: dict[str, dict[str, dict[str, int]]] = {}
+    for shape in shapes:
+        by_class = table.setdefault(shape.suite, {})
+        row = by_class.setdefault(str(shape.blame_class), {})
+        row[str(shape.difficulty)] = row.get(str(shape.difficulty), 0) + 1
+    return {suite: {cls: dict(sorted(row.items())) for cls, row in sorted(by_class.items())}
+            for suite, by_class in sorted(table.items())}
 
 
 def run_coverage(
@@ -199,7 +253,7 @@ def run_coverage(
     distributions = {
         field: dict(sorted(collections.Counter(getattr(s, field) for s in shapes).items(),
                            key=lambda kv: (kv[0] is None, str(kv[0]))))
-        for field in ("tier", "oracle_size", "bic_depth", "fault_file_distractors",
+        for field in ("tier", "blame_class", "oracle_size", "bic_depth", "fault_file_distractors",
                       "commit_count", "ref_count")
     }
     redundant = sorted((sorted(v) for v in groups.values() if len(v) > 1), key=len, reverse=True)
@@ -216,6 +270,7 @@ def run_coverage(
         ],
         "unique_scenarios": sorted(v[0] for v in groups.values() if len(v) == 1),
         "fault_reuse": _fault_reuse(shapes),
+        "difficulty_by_blame_class": _difficulty_by_blame_class(shapes),
         "shapes": [s.to_dict() for s in shapes],
         "errors": errors + git.failures,
         "warnings": warnings,
@@ -242,6 +297,14 @@ def format_report(report: dict[str, Any]) -> str:
         shares = ", ".join(f"{cat} {v['most_reused_scenarios']}/{v['scenarios']}"
                            for cat, v in reuse["per_category"].items() if v["most_reused_scenarios"] > 1)
         lines.append(f"      most reused statement per category: {shares or 'none shared'}")
+        lines.append("")
+    cross = report.get("difficulty_by_blame_class")
+    if cross:
+        lines.append("  declared difficulty by measured blame class (decisions/vocabulary.md section 4)")
+        for suite, by_class in cross.items():
+            for cls, row in by_class.items():
+                cells = ", ".join(f"{difficulty}:{count}" for difficulty, count in row.items())
+                lines.append(f"      {suite:19s} {cls:19s} {cells}")
         lines.append("")
     groups = report["redundant_groups"]
     covered = sum(g["size"] for g in groups)

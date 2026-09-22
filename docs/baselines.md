@@ -294,6 +294,7 @@ szzbench coverage --out studies/coverage
 | `bic_depth` | commits between the deepest required BIC and the fix |
 | `fault_file_distractors` | commits before the fix that touch a file the fault lives in and are **not** the answer |
 | `commit_count`, `ref_count` | size and branchiness of the history |
+| `blame_class` | what plain first-parent blame on the lines the fix deletes does with the oracle: `exact` (returns exactly the required set), `extra` (the required set and more), `miss` (a required commit is not blamed), `addition-only` (the fix deletes nothing) or `empty-first-parent` (the fix is a merge whose first-parent diff is empty). Measured, never hand-edited; not part of the redundancy signature |
 
 `oracle_size` and `bic_depth` come from the evaluator's own policy resolution
 (`_commit_level_policy`), so a default evaluation variant and an inferred
@@ -304,6 +305,7 @@ Measured on the shipped suite (257 scenarios):
 
 ```text
 tier                   control:235, discriminating:22
+blame_class            addition-only:15, empty-first-parent:1, exact:156, extra:16, miss:69
 oracle_size            0:2, 1:218, 2:36, 3:1
 bic_depth              1:105, 2:107, 3:33, 4:5, 5:3, 6:1, 1003:1, none:2
 fault_file_distractors 0:13, 1:107, 2:96, 3:29, 4:10, 5:2
@@ -316,6 +318,22 @@ ref_count              1:206, 2:47, 3:3, 4:1
 The largest groups are 30 S3, 13 S1, 10 S4, 8 S2 and 8 G1 scenarios that agree
 on every dimension; 67 scenarios have a signature of their own (`bic_depth`
 is `none` for the two empty oracles).
+
+`blame_class` is the `blame-deleted-lines` baseline read per scenario rather
+than as a pass count, and the two agree: the 156 `exact` scenarios are exactly
+the ones that baseline solves, except SZZG-0138, which it solves although its
+class is `miss` — blame reaches two of the three required commits, and the
+scenario's `partial_credit` policy with `minimum_required: 2` accepts that. The
+22 `discriminating` scenarios are all `miss`. The same run prints **declared
+difficulty by measured blame class**, the table the grading rule of
+`decisions/vocabulary.md` §4 is checked against. On the classic suite the
+authors' judgement and the measurement mostly agree: `miss` is `hard` 30 times
+and `medium` 7; `exact` is `easy` 31, `medium` 27 and `hard` 5 (S6, S7, S8
+scenarios whose difficulty lies elsewhere than in blame); `extra` is `medium`
+7; `addition-only` is `medium` 7, `hard` 6 and `easy` once. The graph suite is
+`advanced` throughout (93 `exact`, 32 `miss`, 9 `extra`, 1 `addition-only`,
+1 `empty-first-parent`), which is what the re-grading of issue #35 starts
+from.
 
 The same run prints the **fault statement reuse** block (issue #13), which
 counts how many scenarios declare each fault statement (`fault.statement`,

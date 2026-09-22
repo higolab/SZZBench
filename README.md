@@ -124,9 +124,10 @@ control as evidence that a method discriminates.
 
 `szzbench coverage` is the companion command: it measures each scenario's
 oracle size, the depth of its bug-introducing commit, how many distractors
-touch the fault file, and the size and branchiness of its history, then groups
-the scenarios that agree on all of them — and reports how many scenarios share
-each declared fault statement, overall and per category (issue #13).
+touch the fault file, the size and branchiness of its history, and what plain
+blame does with its oracle (`blame_class`), then groups the scenarios that
+agree on the shape dimensions — and reports how many scenarios share each
+declared fault statement, overall and per category (issue #13).
 
 Read [docs/baselines.md](docs/baselines.md) before reporting or comparing
 numbers on this benchmark. Raising that floor is tracked in issues #13, #14
@@ -792,7 +793,7 @@ szzbench new-graph-scenario
 
 すべてのシナリオは `meta.tier` を宣言します。**235 件が `control`** で、手法が特定の入力条件を扱えることを確認するものであり、安価な規則が解けても構いません。**22 件が `discriminating`** で、宣言されたどの安価なベースラインも解けません。そのうち 15 件は計測された軸に対して設計されたもので、答えは 2 コミットであり、修正が削除した行を blame しても片方には到達しません。control が安価に解けることは欠陥ではありません。tier が防ぐのは、control を「手法が識別力を持つ証拠」として読むことです。
 
-`szzbench coverage` は対になるコマンドです。各シナリオの oracle のサイズ、バグ混入コミットの深さ、fault ファイルに触れる distractor の数、履歴の大きさと分岐の多さを計測し、これらすべてが一致するシナリオをグループ化します。また、宣言された各 fault statement を共有するシナリオ数を、全体とカテゴリごとに報告します（issue #13）。
+`szzbench coverage` は対になるコマンドです。各シナリオの oracle のサイズ、バグ混入コミットの深さ、fault ファイルに触れる distractor の数、履歴の大きさと分岐の多さ、そして素朴な blame が oracle をどう扱うか（`blame_class`）を計測し、形状の次元がすべて一致するシナリオをグループ化します。また、宣言された各 fault statement を共有するシナリオ数を、全体とカテゴリごとに報告します（issue #13）。
 
 このベンチマーク上の数字を報告・比較する前に [docs/baselines.md](docs/baselines.md) を読んでください。この床を引き上げる作業は issue #13、#14、#35 で追跡しています。
 

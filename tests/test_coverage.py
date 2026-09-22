@@ -20,7 +20,7 @@ PATH = "src/main/java/example/Range.java"
 NOTE = "docs/note.md"
 
 
-def _write(tmp_path: Path, scenario_id: str, commits, bugs, category="G1") -> None:
+def _write(tmp_path: Path, scenario_id: str, commits, bugs, category="G1", **top_level) -> None:
     data = {
         "schema_version": "graph-0.1-draft",
         "meta": {"id": scenario_id, "title": "coverage fixture", "category": "test",
@@ -30,6 +30,7 @@ def _write(tmp_path: Path, scenario_id: str, commits, bugs, category="G1") -> No
         "graph": {"model": "commit_dag"},
         "commits": commits,
         "bugs": bugs,
+        **top_level,
     }
     directory = tmp_path / "advanced-scenarios" / scenario_id
     directory.mkdir(parents=True, exist_ok=True)
@@ -226,3 +227,98 @@ def test_fault_statement_reuse_is_reported_overall_and_per_category(tmp_path):
     assert "fault statement reuse" in text and "  2x  return v > lo;   (advanced-scenarios 2)" in text
     assert "most reused statement per category: G1 2/2" in text
     json.dumps(report)
+
+
+# --- blame_class: what naive blame does with the oracle (issue #35) ---------------
+
+def _rewriting_noise():
+    """c2 rewrites the faulty line (parentheses) without changing behaviour, and c3 fixes from that."""
+    commits = _linear(noise_touches_fault_file=False)
+    commits[2]["operations"] = [{"type": "replace", "path": PATH, "old": "return v > lo;", "new": "return (v > lo);"}]
+    commits[3]["operations"] = [{"type": "replace", "path": PATH, "old": "return (v > lo);", "new": "return v >= lo;"}]
+    return commits
+
+
+def _fix_also_touching_an_old_line():
+    """c3 fixes the faulty line and rewrites the class header c0 wrote, so blame names c1 and c0."""
+    commits = _linear(noise_touches_fault_file=False)
+    commits[3]["operations"] = [
+        {"type": "replace", "path": PATH, "old": "return v > lo;", "new": "return v >= lo;"},
+        {"type": "replace", "path": PATH, "old": "public class Range {", "new": "public final class Range {"},
+    ]
+    return commits
+
+
+def _addition_only_fix():
+    """c1 drops a guard; c3 puts a guard back by inserting a line, deleting nothing."""
+    commits = _linear(noise_touches_fault_file=False)
+    commits[0]["operations"] = [{"type": "write_file", "path": PATH, "content": JAVA % ">=" }]
+    commits[1]["operations"] = [{"type": "replace", "path": PATH, "old": "return v >= lo;", "new": "return v >= lo; // no guard"}]
+    # insert_after appends right after the anchor text, so the content starts with the line break
+    commits[3]["operations"] = [{"type": "insert_after", "path": PATH, "anchor": "  public boolean contains(int v, int lo) {",
+                                 "content": "\n    if (lo < 0) return false;"}]
+    return commits
+
+
+def test_blame_class_is_measured_from_the_generated_repository(tmp_path):
+    _write(tmp_path, "SZZG-9120", _linear(noise_touches_fault_file=False), _bugs(["c1"]))     # exact
+    _write(tmp_path, "SZZG-9121", _rewriting_noise(), _bugs(["c1"]))                          # miss: blame stops at c2
+    _write(tmp_path, "SZZG-9122", _fix_also_touching_an_old_line(), _bugs(["c1"]))            # extra: c1 and c0
+    _write(tmp_path, "SZZG-9123", _linear(noise_touches_fault_file=False), _bugs(["c1", "c2"]))  # miss: c2 never blamed
+    bugs = _bugs(["c1"])
+    bugs[0]["faults"][0]["statement"] = "return v >= lo; // no guard"
+    bugs[0]["fixes"][0]["statement"] = "if (lo < 0) return false;"
+    _write(tmp_path, "SZZG-9124", _addition_only_fix(), bugs)                                 # addition-only
+    report = _run(tmp_path)
+    assert report["errors"] == [], report["errors"]
+    classes = {s["scenario_id"]: s["blame_class"] for s in report["shapes"]}
+    assert classes == {"SZZG-9120": "exact", "SZZG-9121": "miss", "SZZG-9122": "extra", "SZZG-9123": "miss",
+                       "SZZG-9124": "addition-only"}
+    assert report["distributions"]["blame_class"] == {"addition-only": 1, "exact": 1, "extra": 1, "miss": 2}
+    # the class is measured, so it is not part of the redundancy signature
+    assert "blame_class" not in SIGNATURE_FIELDS
+    assert "blame_class            " in format_report(report)
+
+
+def test_declared_difficulty_is_tabulated_against_the_measured_blame_class(tmp_path):
+    _write(tmp_path, "SZZG-9130", _linear(noise_touches_fault_file=False), _bugs(["c1"]))
+    _write(tmp_path, "SZZG-9131", _rewriting_noise(), _bugs(["c1"]))
+    scenario = tmp_path / "advanced-scenarios" / "SZZG-9131" / "scenario.graph.yml"
+    data = yaml.safe_load(scenario.read_text())
+    data["meta"]["difficulty"] = "hard"
+    scenario.write_text(yaml.safe_dump(data, sort_keys=False))
+    report = _run(tmp_path)
+    assert report["difficulty_by_blame_class"] == {"advanced-scenarios": {"exact": {"None": 1}, "miss": {"hard": 1}}}
+    assert "declared difficulty by measured blame class" in format_report(report)
+
+
+def test_empty_first_parent_fix_is_its_own_class(tmp_path):
+    """SZZG-0042's fix is a merge that records the fix arriving from the branch; its first-parent
+    diff is empty, so there is nothing to blame at all."""
+    from pathlib import Path as _P
+    root = _P(__file__).resolve().parents[1]
+    src = root / "advanced-scenarios" / "SZZG-0042" / "scenario.graph.yml"
+    generate_graph_repository(src, tmp_path / "repos" / "SZZG-0042" / "default", force=True)
+    report = run_coverage(generated_root=tmp_path / "repos", scenarios_root=root / "scenarios",
+                          advanced_scenarios_root=root / "advanced-scenarios")
+    assert report["errors"] == []
+    assert [s["blame_class"] for s in report["shapes"]] == ["empty-first-parent"]
+
+
+def test_a_root_bug_fixing_commit_is_diffed_against_the_empty_tree(tmp_path):
+    """A one-commit scenario whose root commit is the fix (PR #74 review): the root has no
+    ``<hash>^``, and the failed Git call must not be read as an empty first-parent diff."""
+    commits = [{"id": "c0", "branch": "main", "parents": [], "message": "add the range check with its guard",
+                "role": "bug_fixing",
+                "operations": [{"type": "write_file", "path": PATH, "content": JAVA % ">="}]}]
+    bugs = [{"id": "B001", "bug_introducing_commits": [],
+             "bug_fixing_commits": [{"commit": "c0", "role": "complete_fix"}],
+             "faults": [],
+             "fixes": [{"id": "X001", "commit": "c0", "file": PATH, "statement": "return v >= lo;",
+                        "fix_type": "line_addition"}]}]
+    # a bug without introducing commits is accepted when the scenario declares expect_no_bic (GI086)
+    _write(tmp_path, "SZZG-9150", commits, bugs,
+           expected_szz={"commit_level": {"evaluation_policy": "exact_set", "expect_no_bic": True, "required": []}})
+    report = _run(tmp_path)
+    assert report["errors"] == []
+    assert [s["blame_class"] for s in report["shapes"]] == ["addition-only"]

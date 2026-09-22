@@ -267,34 +267,41 @@ def _last_toucher(git: GitProbe) -> Predictor:
 _HUNK_RE = re.compile(r"@@ -(\d+)")
 
 
-def _blame_deleted_lines(git: GitProbe) -> Predictor:
-    """Naive B-SZZ: blame every line the fix deletes, against its first parent.
+def blame_deleted_lines(git: GitProbe, scenario: Scenario) -> list[str]:
+    """The commits naive B-SZZ names: blame every line the fix deletes, against
+    its first parent, over every bug-fixing commit of the scenario.
 
     The diff is taken one file at a time, with the path coming from the
     NUL-delimited file list rather than from a ``--- a/`` header: Git
     terminates that header with a tab when the path contains a space and
-    quotes paths with special characters.
+    quotes paths with special characters.  Shared by the ``blame-deleted-lines``
+    baseline and by ``szzbench coverage``'s ``blame_class``.
     """
+    found: list[str] = []
+    for bfc_hash in _bfc_hashes(scenario):
+        parent = git.parent_of(scenario.repo_dir, bfc_hash)      # the empty tree for a root fix
+        for path in git.paths_touched(scenario.repo_dir, bfc_hash):
+            diff = git(scenario.repo_dir, "diff", "-U0", "--no-renames", parent, bfc_hash, "--", path)
+            line_no: int | None = None
+            for line in diff.splitlines():
+                if line.startswith("@@"):
+                    match = _HUNK_RE.match(line)
+                    line_no = int(match.group(1)) if match else None
+                elif line.startswith("-") and not line.startswith("---") and line_no is not None:
+                    porcelain = git(scenario.repo_dir, "blame", "--line-porcelain",
+                                    "-L", f"{line_no},{line_no}", parent, "--", path)
+                    if porcelain:
+                        found.append(porcelain.split("\n", 1)[0].split()[0])
+                    line_no += 1
+                elif line.startswith(" ") and line_no is not None:
+                    line_no += 1
+    return sorted(set(found))
+
+
+def _blame_deleted_lines(git: GitProbe) -> Predictor:
+    """Naive B-SZZ as a baseline predictor (see :func:`blame_deleted_lines`)."""
     def predict(scenario: Scenario) -> list[str]:
-        found: list[str] = []
-        for bfc_hash in _bfc_hashes(scenario):
-            for path in git.paths_touched(scenario.repo_dir, bfc_hash):
-                diff = git(scenario.repo_dir, "diff", "-U0", "--no-renames",
-                           f"{bfc_hash}^", bfc_hash, "--", path)
-                line_no: int | None = None
-                for line in diff.splitlines():
-                    if line.startswith("@@"):
-                        match = _HUNK_RE.match(line)
-                        line_no = int(match.group(1)) if match else None
-                    elif line.startswith("-") and not line.startswith("---") and line_no is not None:
-                        porcelain = git(scenario.repo_dir, "blame", "--line-porcelain",
-                                        "-L", f"{line_no},{line_no}", f"{bfc_hash}^", "--", path)
-                        if porcelain:
-                            found.append(porcelain.split("\n", 1)[0].split()[0])
-                        line_no += 1
-                    elif line.startswith(" ") and line_no is not None:
-                        line_no += 1
-        return sorted(set(found))
+        return blame_deleted_lines(git, scenario)
     return predict
 
 
