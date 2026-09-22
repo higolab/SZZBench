@@ -15,7 +15,8 @@
 
 ## Purpose
 
-Evaluate Multiple candidate BICs inside a work item and whether SZZ identifies the expected bug-introducing commit set.
+Evaluate whether a method picks the one commit of a work item that introduced the fault, rather than
+the work item.
 
 ## Expected history
 
@@ -25,30 +26,4 @@ c1: add candidate change (replace src/main/java/example/RangeService.java)
 c2: introduce bug (replace src/main/java/example/RangeService.java)
 c3: add candidate change (replace src/main/java/example/RangeService.java)
 c4: fix bug (replace src/main/java/example/RangeService.java)
-```
-
-## Why this needs `scenario.graph.yml`
-
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
-
-## Required graph-schema features
-
-- Factors: work_items, expected_szz
-- Operation types: write_file, replace
-- Expected SZZ policy is defined in expected_szz.
-
-## Evaluation points
-
-- Whether SZZ identifies the expected BIC set.
-- Whether structural or contextual history is handled according to the scenario factors.
-- Whether the expected_szz evaluation policy is applied correctly.
-
----
-
-## Files
-
-```text
-SZZG-0096/
-|-- scenario.graph.yml
-`-- README.md
 ```

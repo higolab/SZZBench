@@ -71,14 +71,6 @@ Plain blame on the fixed line reaches `c0`, which is not the BIC. Reaching `c1` 
 the callee `active` is only called from `LoginController.canLogin`, and the change history of that call site
 (negated in `c1`) explains why the callee-side inversion fixes the bug. This is a non-trivial G7 case by design.
 
-## Files
-
-```text
-SZZG-0103/
-|-- scenario.graph.yml
-`-- README.md
-```
-
 ## History
 
 - 2026-09 (issue 1): the BFC previously changed the callee to `return !"DISABLED".equals(status);`, which left

@@ -111,14 +111,6 @@ the same faulty behaviour instead of changing existing behaviour. Measured:
 `SZZG-0014` never fixes the original: `A.java` still excludes the bounds at HEAD. Here `c2` fixes the original
 first, which adds a second, wrong candidate BFC for the copied instance.
 
-## Files
-
-```text
-SZZG-0015/
-|-- scenario.graph.yml
-`-- README.md
-```
-
 ## History
 
 - 2026-09 (issue 10): `A.java` declared `public class Range`, so *no* commit of this scenario compiled

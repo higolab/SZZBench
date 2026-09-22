@@ -122,10 +122,6 @@ scenario_design:
   key_property: >-
     Measured: maxRetries() is 30 at c1 and 3 at c2; the template still says 30 and is not fixed here, so the
     next regeneration would reintroduce the fault. Blaming the line c2 deletes at c2^ returns c1.
-  evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
 - Rewritten 2026-09-21 from the shared Range.contains template to a wrong-constant fault (GitHub issue 13); the history
   shape, oracle and coverage dimensions are unchanged.

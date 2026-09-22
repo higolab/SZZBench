@@ -30,24 +30,8 @@ c3: fix both checkout policy faults
 
 This scenario needs graph-aware expected-SZZ metadata because the oracle allows partial credit for returning only one of the two required BICs.
 
-## Required graph-schema features
-
-- Factors: multiple_bic, partial_credit, expected_szz
-- Operation types: write_file, replace
-- Expected SZZ policy is defined in expected_szz.
-
 ## Evaluation points
 
 - Whether SZZ can identify both checkout-policy BICs for one bug.
 - Whether returning only c1 or only c2 receives partial credit rather than full exact-set credit.
 - Whether the BFC that edits two files is evaluated against both required BICs.
-
----
-
-## Files
-
-```text
-SZZG-0033/
-|-- scenario.graph.yml
-`-- README.md
-```

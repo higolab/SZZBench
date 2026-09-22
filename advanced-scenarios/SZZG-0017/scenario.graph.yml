@@ -132,10 +132,6 @@ scenario_design:
     Measured: Selection's helper returns 10 for length 10 at c1 and c2 (as lastPosition and as endPosition) and 9
     at c3; Cursor.lastPosition(10) stays 10, the origin is not fixed here. Blaming the line c3 deletes at c3^
     returns c1: the rename commit c2 touched the signature line, not the faulty return.
-  evaluation_points:
-  - Whether SZZ identifies the expected BIC set.
-  - Whether structural or contextual history is handled according to the scenario factors.
-  - Whether the expected_szz evaluation policy is applied correctly.
 notes:
 - Rewritten 2026-09-21 from the shared Range.contains template to an off-by-one fault (GitHub issue 13); the history
   shape, oracle and coverage dimensions are unchanged.

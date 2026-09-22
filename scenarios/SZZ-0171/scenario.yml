@@ -3,7 +3,11 @@ meta:
   id: SZZ-0171
   title: Dependency update as BIC
   slug: bic-dependency-update
-  description: Evaluates dependency update as bic and checks whether SZZ identifies the expected bug-introducing commit set.
+  description: >-
+    The BIC is a dependency upgrade, not a source edit: `c1` touches only `pom.xml`, moving `range-lib` to
+    2.0.0 where the range semantics changed, and `c2` fixes the fault in source by calling
+    `containsInclusive`. The line the fix rewrites was written by `c0`, so blame on the deleted line cannot
+    reach the BIC.
   category: "Non-source, configuration, test-only, and file-level edge cases"
   factors:
   - single-bic

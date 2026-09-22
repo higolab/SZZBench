@@ -26,28 +26,8 @@ c1: create initial buggy range implementation (write_file src/main/java/example/
 c2: fix bug (replace src/main/java/example/Range.java)
 ```
 
-## Why this needs `scenario.graph.yml`
-
-This history requires graph-aware scenario semantics that are difficult to express with the normal scenario.yml schema.
-
-## Required graph-schema features
-
-- Factors: expected_szz
-- Operation types: write_file, replace
-- Expected SZZ policy defines line-level evaluation as unavailable and method-level entity evaluation as available.
-
 ## Evaluation points
 
 - Whether SZZ output can be evaluated at method-entity level.
 - Whether tooling respects the line_level.available=false policy.
 - Whether the expected_szz entity-level oracle is applied correctly.
-
----
-
-## Files
-
-```text
-SZZG-0116/
-|-- scenario.graph.yml
-`-- README.md
-```

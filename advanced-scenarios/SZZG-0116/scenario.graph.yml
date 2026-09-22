@@ -85,10 +85,6 @@ scenario_design:
     disabled.
   key_property: This is an oracle-policy scenario. The faulty line is recorded for traceability, but line-level evaluation
     is deliberately unavailable and the expected answer is the Range.contains method entity.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: >-
-    This scenario uses factors: evaluation-variant; operations: write_file, replace.
   evaluation_points:
   - Whether SZZ output can be evaluated at method-entity level.
   - Whether tooling respects the line_level.available=false policy.

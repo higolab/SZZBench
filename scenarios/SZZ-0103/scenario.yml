@@ -3,7 +3,9 @@ meta:
   id: SZZ-0103
   title: Comment deletion after BIC
   slug: comment-deletion-after-bic
-  description: This scenario inserts an intermediate intermediate-history change between the BIC and BFC.
+  description: >-
+    This scenario inserts a comment-only change between the BIC and BFC: `c2` deletes an outdated comment
+    above the faulty line without touching the code.
   category: "Intermediate noise and history noise"
   factors:
   - single-bic

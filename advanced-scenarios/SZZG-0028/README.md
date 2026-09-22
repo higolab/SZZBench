@@ -28,16 +28,6 @@ c3: introduce copied parser sign bug
 c4: fix invoice parsing behavior
 ```
 
-## Why this needs `scenario.graph.yml`
-
-This history requires graph-aware scenario semantics that are difficult to express with the normal `scenario.yml` schema.
-
-## Required graph-schema features
-
-- Factors: clone, multiple_bic, origin_and_direct_bic
-- Operation types: copy_file, replace, write_file
-- Expected SZZ policy is defined in `expected_szz`.
-
 ## Expected SZZ result
 
 ```text
@@ -56,13 +46,3 @@ accepted with credit 0.5 under `origin-aware`.
 - Whether the copy commit `c2` rather than the origin `c1` is reported.
 - Whether the second, directly written fault `c3` is reported alongside it.
 - Whether the expected_szz evaluation policy is applied correctly.
-
----
-
-## Files
-
-```text
-SZZG-0028/
-|-- scenario.graph.yml
-`-- README.md
-```

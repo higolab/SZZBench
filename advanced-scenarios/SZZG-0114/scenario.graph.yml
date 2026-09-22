@@ -165,10 +165,6 @@ scenario_design:
     plus 500 catalog-synchronization and 500 telemetry-export commits), which is exactly what commit_generators declares.
     None of the 1000 generated commits touches src/, so the fault line survives unchanged from c1 to the parent of the BFC
     and blame has to walk back over the whole history.
-  current_schema_limitation: This history requires graph-aware scenario semantics that are difficult to express with the normal
-    scenario.yml schema.
-  required_extensions_from_source: >-
-    This scenario uses factors: generated-history; operations: write_generated_text_file, write_file, replace, commit_generator.
   evaluation_points:
   - Whether SZZ identifies the expected BIC set.
   - Whether the tool walks back over a thousand intervening commits without truncating the history or timing out.

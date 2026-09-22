@@ -30,24 +30,8 @@ c3: fix caller fallback for empty guest names
 
 The relevant fault depends on the relationship between caller and callee rather than on an isolated changed line.
 
-## Required graph-schema features
-
-- Factors: caller_callee, context, faults
-- Operation types: write_file, replace
-- Expected SZZ policy is defined in expected_szz.
-
 ## Evaluation points
 
 - Whether SZZ identifies c2 as the direct BIC in the caller.
 - Whether c1 is treated as required context but not as the faulty commit.
 - Whether the analysis can connect the BFC line to the callee contract.
-
----
-
-## Files
-
-```text
-SZZG-0101/
-|-- scenario.graph.yml
-`-- README.md
-```

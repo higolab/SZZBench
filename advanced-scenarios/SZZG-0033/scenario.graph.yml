@@ -135,8 +135,6 @@ scenario_design:
   purpose: Evaluate scoring behavior when a complete answer contains two BICs but an SZZ implementation returns only one
     of them.
   current_schema_limitation: Partial-credit evaluation is represented as graph-specific expected_szz metadata.
-  required_extensions_from_source: >-
-    This scenario uses factors: multi-bic, partial-credit, evaluation-variant; operations: write_file, replace.
   evaluation_points:
   - Whether SZZ can identify both checkout-policy BICs for one bug.
   - Whether returning only c1 or only c2 receives partial credit rather than full exact-set credit.

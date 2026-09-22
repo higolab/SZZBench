@@ -30,24 +30,8 @@ c3: fix the length requirement inside the rewritten predicate
 
 The intermediate rewrite preserves the bug, so it needs semantic metadata to avoid treating the rewrite as the BIC.
 
-## Required graph-schema features
-
-- Factors: semantic_rewrite, related_but_not_correct
-- Operation types: write_file, replace
-- Expected SZZ policy is defined in expected_szz.
-
 ## Evaluation points
 
 - Whether SZZ identifies c1 as the BIC.
 - Whether c2 is recognized as preserving the already-buggy predicate rather than introducing it.
 - Whether blame can pass through the predicate rewrite to the original weakening commit.
-
----
-
-## Files
-
-```text
-SZZG-0008/
-|-- scenario.graph.yml
-`-- README.md
-```

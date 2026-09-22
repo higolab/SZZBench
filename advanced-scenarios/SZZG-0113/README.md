@@ -92,19 +92,3 @@ the 10,000 public constants of `LargeRange` read reflectively and compared with 
 - `c1` (BIC): `upperBound(5000) = 500`; constants sum `50000500`, exactly 1 mismatch
   (`VALUE_5000 = 500`).
 - `c3` (BFC): **identical to `c0`** on all 10,015 probes.
-
-## Required graph-schema features
-
-- Factors: write_generated_text_file
-- Operation types: write_generated_text_file (with `header`/`footer`), write_file, replace
-- Expected SZZ policy is defined in `expected_szz`.
-
----
-
-## Files
-
-```text
-SZZG-0113/
-|-- scenario.graph.yml
-`-- README.md
-```

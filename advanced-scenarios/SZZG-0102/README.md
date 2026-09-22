@@ -111,6 +111,15 @@ were measured on the line the BFC really modifies.
   the two commits are indistinguishable by line-based blame.
 - Report exactly `{c1}`, and not `c3`, which every blame variant reaches, nor `c2`.
 
+The four issue texts (`ISSUE-482`, `ISSUE-401`, `ISSUE-377`, `ISSUE-510`) are scenario
+metadata under the top-level `issues:` key; the generated repository carries only the
+identifiers in the commit subjects. A tool handed the repository alone therefore cannot read
+the texts this section relies on — an adapter has to supply them from the YAML. The
+tool-visible-context decision ([`docs/decisions/tool-visible-context.md`](../../docs/decisions/tool-visible-context.md),
+issue #23) now commits such reports into the repository as `docs/issues/<ISSUE-ID>.md`
+documents (SZZG-0130, SZZG-0131 and SZZG-0135–SZZG-0137); this scenario's reports have **not**
+been materialized that way, so its issue evidence stays adapter-supplied.
+
 ## What the code still reveals
 
 Issue-text evidence here is **sufficient and direct, not strictly necessary**. A tool that
@@ -172,22 +181,3 @@ and `U+3000` are not, and pass through unchanged in every snapshot.
   keeps `c2`'s intended change and undoes nothing else.
 
 All five commit snapshots compile with `javac` (JDK 25): 0 failures out of 5.
-
-## Required graph-schema features
-
-- Factors: issues, context
-- Operation types: write_file, replace
-- Expected SZZ policy is defined in `expected_szz`.
-- The four issue texts are scenario metadata under the top-level `issues:` key; the
-  repository carries only the identifiers in the commit subjects. An external context
-  interface is designed in issue #23.
-
----
-
-## Files
-
-```text
-SZZG-0102/
-|-- scenario.graph.yml
-`-- README.md
-```

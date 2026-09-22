@@ -95,19 +95,3 @@ would otherwise report `GE202`), and file systems without an executable bit.
 against the intervals `(0,10)`, `(-5,5)`, `(7,7)`, `(MIN_VALUE,MAX_VALUE)`, `(MIN_VALUE,0)`,
 `(0,MAX_VALUE)`. The BIC `c1` differs from `c0` on the 10 boundary inputs; the BFC `c3`
 agrees with `c0` on all 96.
-
-## Required graph-schema features
-
-- Factors: chmod
-- Operation types: write_file, chmod, replace
-- Expected SZZ policy is defined in `expected_szz`.
-
----
-
-## Files
-
-```text
-SZZG-0111/
-|-- scenario.graph.yml
-`-- README.md
-```

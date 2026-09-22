@@ -113,8 +113,6 @@ expected_szz:
 scenario_design:
   purpose: Evaluate whether SZZ resists an incorrect BFC-message hint and still identifies the true code-level BIC.
   current_schema_limitation: Misleading developer hints are represented as metadata attached to the BFC.
-  required_extensions_from_source: >-
-    This scenario uses factors: message-evidence, misleading-commit-message; operations: write_file, replace.
   evaluation_points:
   - Whether SZZ identifies c1 as the true rounding BIC.
   - Whether c2 is treated as an incorrect message reference rather than the expected BIC.

@@ -78,19 +78,3 @@ against the intervals `(0,10)`, `(-5,5)`, `(7,7)`, `(MIN_VALUE,MAX_VALUE)`, `(MI
 - `c2` and `c3` are **identical to `c1`** on all 113 probes (the rename and the docs file
   change no behaviour).
 - `c4` (BFC) is **identical to `c0`** on all 113 probes.
-
-## Required graph-schema features
-
-- Factors: work_items, issues
-- Operation types: write_file, replace
-- Expected SZZ policy is defined in `expected_szz`.
-
----
-
-## Files
-
-```text
-SZZG-0100/
-|-- scenario.graph.yml
-`-- README.md
-```
