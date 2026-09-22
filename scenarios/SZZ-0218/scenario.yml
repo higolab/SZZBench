@@ -1,0 +1,182 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0218"
+  title: "Blame names every required commit and one more: the fix also removes an instrumentation counter"
+  slug: "blame-over-reports-a-cleanup"
+  description: >
+    Two independent faults — a ceiling division made floor, and a label that
+    stops asking for the box count — are repaired by one commit that also
+    drops an unused call counter a third commit had added. Blame on the lines
+    that commit deletes therefore returns **both** required commits **and** the
+    counter's author. Every other discriminating scenario in the suite asks a
+    tool to reach a commit blame does not name; this one asks it to reject a
+    commit blame does name.
+  category: "BFC-side noise and tangled commits"
+  factors:
+    - "multi-bic"
+    - "single-bfc"
+    - "tangled-bfc"
+    - "multi-hunk-bfc"
+    - "blame-over-reports"
+    - "off-by-one"
+    - "wrong-variable"
+  difficulty: "hard"
+  status: "active"
+  tier: "discriminating"
+  defeats: ["blame", "shape", "position"]
+  category_code: "S4"
+
+repository:
+  name: "SZZ-0218-blame-over-reports-a-cleanup"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Add the batch summary"
+    author: "Mei Tanaka <mei.tanaka@example.com>"
+    date: "2025-03-03T09:20:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/example/BatchSummary.java"
+        content: |
+          package example;
+
+          public class BatchSummary {
+              static final int PER_BOX = 12;
+
+              public int boxes(int items) {
+                  return (items + PER_BOX - 1) / PER_BOX;
+              }
+
+              public String describe(int items) {
+                  return boxes(items) + " boxes";
+              }
+          }
+
+  - id: "c1"
+    message: "Simplify the box count"
+    author: "Jonas Berg <jonas.berg@example.com>"
+    date: "2025-03-05T13:45:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/BatchSummary.java"
+        old: "return (items + PER_BOX - 1) / PER_BOX;"
+        new: "return items / PER_BOX;"
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Count how often a batch is described"
+    author: "Farid Haddad <farid.haddad@example.com>"
+    date: "2025-03-07T10:30:00Z"
+    role: "distractor"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/BatchSummary.java"
+        old: |
+          public class BatchSummary {
+              static final int PER_BOX = 12;
+        new: |
+          public class BatchSummary {
+              private int described;
+
+              static final int PER_BOX = 12;
+      - type: "replace"
+        path: "src/main/java/example/BatchSummary.java"
+        old: |
+          public String describe(int items) {
+                  return boxes(items) + " boxes";
+        new: |
+          public String describe(int items) {
+                  described++;
+                  return boxes(items) + " boxes";
+
+  - id: "c3"
+    message: "Report the batch size on the label"
+    author: "Chen Wei <chen.wei@example.com>"
+    date: "2025-03-10T16:10:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/BatchSummary.java"
+        old: "return boxes(items) + \" boxes\";"
+        new: "return items + \" boxes\";"
+        labels: ["B001", "fault"]
+
+  - id: "c4"
+    message: "Count a partly filled box, label the box count again, and drop the unused counter"
+    author: "Jonas Berg <jonas.berg@example.com>"
+    date: "2025-03-12T11:55:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/BatchSummary.java"
+        old: "return items / PER_BOX;"
+        new: "return (items + PER_BOX - 1) / PER_BOX;"
+        labels: ["B001", "fix"]
+      - type: "replace"
+        path: "src/main/java/example/BatchSummary.java"
+        old: |
+          described++;
+                  return items + " boxes";
+        new: |
+          return boxes(items) + " boxes";
+        labels: ["B001", "fix"]
+      - type: "replace"
+        path: "src/main/java/example/BatchSummary.java"
+        old: |
+          private int described;
+
+              static final int PER_BOX = 12;
+        new: |
+          static final int PER_BOX = 12;
+
+bugs:
+  - id: "B001"
+    title: "A partly filled box is not counted and the label shows the item count"
+    bug_fixing_commit: "c4"
+    bug_introducing_commits: ["c1", "c3"]
+    fault:
+      commit: "c3"
+      file: "src/main/java/example/BatchSummary.java"
+      entity:
+        type: "method"
+        name: "describe"
+        signature: "String describe(int items)"
+      statement: "return items + \" boxes\";"
+      change_type: "line_modification"
+    fix:
+      commit: "c4"
+      file: "src/main/java/example/BatchSummary.java"
+      entity:
+        type: "method"
+        name: "describe"
+        signature: "String describe(int items)"
+      statement: "return boxes(items) + \" boxes\";"
+      fix_type: "line_modification"
+    expected_szz:
+      commit_level:
+        true_positives: ["c1", "c3"]
+        primary_observable_bic: "c3"
+        contributing_bics: ["c1"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "return items / PER_BOX;"
+          - "return items + \" boxes\";"
+        note: >
+          The fix deletes five lines in one file: the two faulty ones, written
+          by c1 and c3, and three belonging to c2's call counter — the field,
+          the blank line after it and the increment. Blame therefore returns
+          {c1, c2, c3}, a superset of the answer, and the scenario fails on the
+          false positive rather than on a false negative.
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3", "c4"]
