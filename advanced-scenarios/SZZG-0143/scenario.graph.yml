@@ -1,0 +1,213 @@
+schema_version: graph-1.0
+meta:
+  id: SZZG-0143
+  title: Divergent fixes on main and release for one BIC, with a branch-level oracle
+  slug: divergent-bfcs-branch-level-oracle
+  description: >-
+    One bug-introducing commit on main before the release branch is cut; two bug-fixing commits with different
+    fix texts, one on main and one on release. The release branch reformatted the faulty line before its fix, so
+    blame from the release fix lands on the reformat while blame from the main fix reaches the BIC. The
+    branch-level oracle says which BIC a tool started from each fix must report.
+  category: "Branch, merge, cherry-pick, backport, and release branches"
+  category_code: "G4"
+  factors:
+  - branch
+  - release-branch
+  - single-bic
+  - multi-bfc
+  - divergent-fix
+  - branch-level-oracle
+  - formatting-noise
+  - wrong-constant
+  difficulty: advanced
+  status: active
+  tier: control
+repository:
+  name: SZZG-0143-divergent-bfcs-branch-level-oracle
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  history_summary: 'c0: create the ticket validity check
+
+    c1: introduce the unit fault (main)
+
+    r1: cut the release branch and reformat the check
+
+    c2: unrelated main change
+
+    c3: fix on main with a named constant
+
+    r2: fix on release with TimeUnit'
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'Add the ticket validity check'
+  role: initial
+  author: Mei Tanaka <mei.tanaka@example.com>
+  date: '2025-02-03T09:15:00Z'
+  operations:
+  - type: write_file
+    path: src/main/java/example/Ticket.java
+    content: |
+      package example;
+
+      public class Ticket {
+        /** A ticket issued at {@code issuedAtSeconds} is valid for {@code ttlMinutes} minutes. */
+        public boolean isValid(long nowSeconds, long issuedAtSeconds, int ttlMinutes) {
+          return nowSeconds - issuedAtSeconds <= ttlMinutes * 60;
+        }
+      }
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'Express the ticket lifetime with the standard multiplier'
+  role: bug_introducing
+  author: Bruno Fischer <bruno.fischer@example.com>
+  date: '2025-02-10T14:40:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/Ticket.java
+    old: return nowSeconds - issuedAtSeconds <= ttlMinutes * 60;
+    new: return nowSeconds - issuedAtSeconds <= ttlMinutes * 1000;
+- id: r1
+  branch: release
+  parents:
+  - c1
+  message: 'Cut the 2.1 release branch and wrap the long lines'
+  role: release_branch_point
+  author: Aiko Tanaka <aiko.tanaka@example.com>
+  date: '2025-02-17T10:05:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/Ticket.java
+    old: "    return nowSeconds - issuedAtSeconds <= ttlMinutes * 1000;\n"
+    new: "    return nowSeconds - issuedAtSeconds\n        <= ttlMinutes * 1000;\n"
+  - type: write_file
+    path: docs/release-note.md
+    content: 'Release branch cut for the 2.1 line.
+
+      '
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'Document the validity check'
+  role: intermediate
+  author: Luca Moretti <luca.moretti@example.com>
+  date: '2025-02-24T16:20:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/Ticket.java
+    old: '  /** A ticket issued at {@code issuedAtSeconds} is valid for {@code ttlMinutes} minutes. */'
+    new: |-
+        /**
+         * A ticket issued at {@code issuedAtSeconds} is valid for {@code ttlMinutes} minutes.
+         * Both instants are Unix timestamps in seconds.
+         */
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'Convert the ticket lifetime to seconds with a named constant'
+  role: bug_fixing
+  author: Dana Okafor <dana.okafor@example.com>
+  date: '2025-03-03T11:30:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/Ticket.java
+    old: "public class Ticket {\n"
+    new: "public class Ticket {\n  private static final int SECONDS_PER_MINUTE = 60;\n\n"
+  - type: replace
+    path: src/main/java/example/Ticket.java
+    old: return nowSeconds - issuedAtSeconds <= ttlMinutes * 1000;
+    new: return nowSeconds - issuedAtSeconds <= ttlMinutes * SECONDS_PER_MINUTE;
+- id: r2
+  branch: release
+  parents:
+  - r1
+  message: 'Convert the ticket lifetime to seconds with TimeUnit'
+  role: bug_fixing
+  author: Farid Haddad <farid.haddad@example.com>
+  date: '2025-03-05T08:50:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/Ticket.java
+    old: "    return nowSeconds - issuedAtSeconds\n        <= ttlMinutes * 1000;\n"
+    new: "    return nowSeconds - issuedAtSeconds\n        <= java.util.concurrent.TimeUnit.MINUTES.toSeconds(ttlMinutes);\n"
+bugs:
+- id: B001
+  title: Ticket lifetime multiplied by 1000 instead of 60, so expired tickets stay valid
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  bug_fixing_commits:
+  - commit: c3
+    role: complete_fix
+    description: The main-line fix, a named constant.
+  - commit: r2
+    role: complete_fix
+    description: The release fix, written independently with TimeUnit; not a cherry-pick.
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/Ticket.java
+    statement: return nowSeconds - issuedAtSeconds <= ttlMinutes * 1000;
+    change_type: line_modification
+  fixes:
+  - id: X001
+    commit: c3
+    file: src/main/java/example/Ticket.java
+    statement: return nowSeconds - issuedAtSeconds <= ttlMinutes * SECONDS_PER_MINUTE;
+    fix_type: line_modification
+  - id: X002
+    commit: r2
+    file: src/main/java/example/Ticket.java
+    statement: <= java.util.concurrent.TimeUnit.MINUTES.toSeconds(ttlMinutes);
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+    related_but_not_correct:
+    - r1
+    known_distractors:
+    - r1
+    - c2
+    notes: >-
+      The two fixes repair the same fault with different text. r1 only re-wrapped the faulty line on the release
+      branch, so blame from r2 stops there.
+  branch_level:
+    main:
+      bfc: c3
+      required:
+      - c1
+    release:
+      bfc: r2
+      required:
+      - c1
+scenario_design:
+  purpose: >-
+    Evaluate whether a method started from either of two divergent fixes reaches the one commit that introduced
+    the fault, and whether an evaluation can say which fix a tool started from when it fails.
+  key_property: >-
+    Measured on the generated snapshots: isValid(4000, 1000, 10) is false at c0, true at c1, r1 and c2 (a
+    3000-second-old ticket with a 10-minute lifetime is accepted), and false again at c3 and r2. Blame on the line
+    c3 deletes returns c1; blame on the line r2 deletes returns r1, the release-branch re-wrap, with and without
+    -w (r1 split the line, it did not change whitespace inside it), so a blame-based tool run from the release
+    fix reports r1 and fails the release branch of the oracle while passing the main branch.
+  evaluation_points:
+  - Whether a tool started from c3 reports c1.
+  - Whether a tool started from r2 crosses the reformat r1 and reports c1 rather than r1.
+  - Whether predictions carrying fix_commit are scored per branch (expected_szz.branch_level) and a failure
+    on one branch fails the scenario.
+notes:
+- >-
+  The first scenario whose expected_szz.branch_level is read by the evaluator (GitHub issue 22, decided
+  2026-09-22): predictions whose fix_commit resolves to a declared BFC are scored against that branch's
+  required set; predictions without fix_commit count for every branch.

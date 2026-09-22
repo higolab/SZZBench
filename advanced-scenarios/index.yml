@@ -1,6 +1,6 @@
 schema_version: graph-index-0.1-draft
 description: Index of draft advanced graph scenarios for SZZBench.
-scenario_count: 135
+scenario_count: 136
 scenarios:
 - id: SZZG-0001
   title: BFC performs rename and fix in the same commit
@@ -1026,6 +1026,8 @@ scenarios:
   - revert-of-revert
   - conflict-resolution
   - intermediate-change
+  - variable-rename
+  - revert-footer
   - re-bic
 - id: SZZG-0090
   title: Repeated revert toggling before final fix
@@ -1621,5 +1623,21 @@ scenarios:
   - single-bic
   - single-bfc
   - evaluation-variant
+- id: SZZG-0143
+  title: Divergent fixes on main and release for one BIC, with a branch-level oracle
+  category_code: G4
+  category: Branch, merge, cherry-pick, backport, and release branches
+  path: advanced-scenarios/SZZG-0143/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0143/README.md
+  status: active
+  factors:
+  - branch
+  - release-branch
+  - single-bic
+  - multi-bfc
+  - divergent-fix
+  - branch-level-oracle
+  - formatting-noise
+  - wrong-constant
 notes:
 - Scenario IDs are ordered by the SZZBench scenario taxonomy.

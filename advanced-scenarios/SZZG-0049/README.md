@@ -9,7 +9,7 @@
 | difficulty | `advanced` |
 | language | `java` |
 | factors | `branch`, `cherry-pick`, `multi-bfc`, `copy-propagation`, `backport-like-fix`, `off-by-one` |
-| oracle | `exact_set`; required `c1` · BFCs `c2`, `r2` |
+| oracle | `exact_set`; required `c1` · BFCs `c2`, `r2` · branch-level: main → `c1` (BFC `c2`); release → `c1` (BFC `r2`) |
 | graph features | 2 branches; cherry-pick `r2`; operation `apply_patch_from`; 2 BFCs; `branch_level` oracle; `bug_instances` |
 <!-- /szzbench:header -->
 
