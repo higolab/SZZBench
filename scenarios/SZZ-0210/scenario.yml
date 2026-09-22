@@ -1,0 +1,154 @@
+schema_version: '1.0'
+meta:
+  id: SZZ-0210
+  title: Size check that overflows, moved into a helper and rewritten twice more before the fix (depth-3 line history across a method extraction)
+  slug: deep-line-history-depth-3-method-extract-overflow
+  description: >-
+    The BIC multiplies a declared block count by the block size in int arithmetic, so a large declaration overflows
+    to a negative number and passes the size check. Three later commits rewrite the faulty expression without
+    changing its behaviour: the variable is renamed, the check is extracted into a private helper method (the
+    expression moves to another line and another method), and the helper is reformatted. Plain blame at the BFC
+    parent stops at the reformat; the BIC is three steps of line history back, one of them across the extraction.
+  category: "Refactoring, move, and rename after BIC"
+  category_code: "S5"
+  factors:
+  - single-bic
+  - single-bfc
+  - line-modification
+  - deep-line-history
+  - rewrite-depth-3
+  - method-extract
+  - basic-blame-distractor
+  - integer-overflow
+  difficulty: hard
+  status: active
+  tier: control
+repository:
+  name: SZZ-0210-deep-line-history-depth-3-method-extract-overflow
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+commits:
+- id: c0
+  message: 'Add the upload size check'
+  author: Luca Moretti <luca.moretti@example.com>
+  date: 2025-06-02T09:00:00Z
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/UploadLimit.java
+    content: |
+      package example;
+
+      public class UploadLimit {
+        static final long MAX_BYTES = 2_000_000_000L;
+
+        public boolean accepts(int declaredBlocks, int blockSize) {
+          long bytes = (long) declaredBlocks * blockSize;
+          return bytes <= MAX_BYTES;
+        }
+      }
+- id: c1
+  message: 'Simplify the size computation'
+  author: Aiko Tanaka <aiko.tanaka@example.com>
+  date: 2025-06-09T13:35:00Z
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/UploadLimit.java
+    old: '    long bytes = (long) declaredBlocks * blockSize;'
+    new: '    long bytes = declaredBlocks * blockSize;'
+- id: c2
+  message: 'Name the computed size for what it is'
+  author: Dana Okafor <dana.okafor@example.com>
+  date: 2025-06-16T10:20:00Z
+  role: refactoring
+  operations:
+  - type: replace
+    path: src/main/java/example/UploadLimit.java
+    old: "    long bytes = declaredBlocks * blockSize;\n    return bytes <= MAX_BYTES;\n"
+    new: "    long declaredBytes = declaredBlocks * blockSize;\n    return declaredBytes <= MAX_BYTES;\n"
+- id: c3
+  message: 'Extract the declared size into a helper'
+  author: Farid Haddad <farid.haddad@example.com>
+  date: 2025-06-23T15:45:00Z
+  role: refactoring
+  operations:
+  - type: replace
+    path: src/main/java/example/UploadLimit.java
+    old: "  public boolean accepts(int declaredBlocks, int blockSize) {\n    long declaredBytes = declaredBlocks * blockSize;\n    return declaredBytes <= MAX_BYTES;\n  }\n"
+    new: "  public boolean accepts(int declaredBlocks, int blockSize) {\n    return declaredBytes(declaredBlocks, blockSize) <= MAX_BYTES;\n  }\n\n  private long declaredBytes(int declaredBlocks, int blockSize) {\n    return declaredBlocks * blockSize;\n  }\n"
+- id: c4
+  message: 'Spell out the helper with a local before returning'
+  author: Mei Tanaka <mei.tanaka@example.com>
+  date: 2025-06-30T11:10:00Z
+  role: formatting
+  operations:
+  - type: replace
+    path: src/main/java/example/UploadLimit.java
+    old: "  private long declaredBytes(int declaredBlocks, int blockSize) {\n    return declaredBlocks * blockSize;\n  }\n"
+    new: "  private long declaredBytes(int declaredBlocks, int blockSize) {\n    long product = declaredBlocks * blockSize;\n    return product;\n  }\n"
+- id: c5
+  message: 'Compute the declared size in long arithmetic'
+  author: Bruno Fischer <bruno.fischer@example.com>
+  date: 2025-07-07T09:55:00Z
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/UploadLimit.java
+    old: '    long product = declaredBlocks * blockSize;'
+    new: '    long product = (long) declaredBlocks * blockSize;'
+bugs:
+- id: B001
+  title: A large declared upload overflows the size product and passes the limit check
+  bug_fixing_commit: c5
+  bug_introducing_commits:
+  - c1
+  fault:
+    commit: c1
+    file: src/main/java/example/UploadLimit.java
+    entity:
+      type: method
+      name: accepts
+      signature: boolean accepts(int declaredBlocks, int blockSize)
+    statement: long bytes = declaredBlocks * blockSize;
+    change_type: line_modification
+    description: >-
+      The (long) cast is dropped, so the product is computed in int and wraps for large declarations; c2 renames
+      the variable, c3 moves the product into a helper method, c4 splits the helper's return into a local.
+  fix:
+    commit: c5
+    file: src/main/java/example/UploadLimit.java
+    entity:
+      type: method
+      name: declaredBytes
+      signature: long declaredBytes(int declaredBlocks, int blockSize)
+    statement: long product = (long) declaredBlocks * blockSize;
+    fix_type: line_modification
+  expected_szz:
+    commit_level:
+      true_positives:
+      - c1
+      known_distractors:
+      - c2
+      - c3
+      - c4
+      false_positives_allowed: []
+    line_level:
+      available: true
+      faulty_statements:
+      - long bytes = declaredBlocks * blockSize;
+      note: >-
+        The faulty product is rewritten by c2 (variable renamed), moved into a new method by c3 and split into a
+        local by c4. Blame at c5^ returns c4; the line c4 replaced was written by c3 in a different method; the
+        expression c3 moved was written by c2; the line c2 replaced was written by c1.
+checks:
+- type: git_history_contains
+  commits:
+  - c0
+  - c1
+  - c2
+  - c3
+  - c4
+  - c5

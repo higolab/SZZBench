@@ -1,0 +1,192 @@
+schema_version: '1.0'
+meta:
+  id: SZZ-0211
+  title: Authorization guard weakened, then rewritten four times before the fix (depth-4 line history with one whitespace-only hop)
+  slug: deep-line-history-depth-4-authorization-guard
+  description: >-
+    The BIC drops half of an authorization guard, so inactive accounts pass. Four later commits rewrite the
+    guard line without changing its behaviour: a whitespace-only re-indentation, a variable rename, a brace
+    removal and a trailing comment. One-shot blame at the BFC parent stops at the comment, with or without -w;
+    plain recursion reaches the BIC in four steps, and recursion with -w skips exactly the re-indentation and
+    needs three.
+  category: "Intermediate noise and history noise"
+  category_code: "S3"
+  factors:
+  - single-bic
+  - single-bfc
+  - line-modification
+  - deep-line-history
+  - rewrite-depth-4
+  - whitespace-only-hop
+  - comment-noise
+  - basic-blame-distractor
+  - guard-removed
+  difficulty: hard
+  status: active
+  tier: control
+repository:
+  name: SZZ-0211-deep-line-history-depth-4-authorization-guard
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+commits:
+- id: c0
+  message: 'Add the report access check'
+  author: Diego Alvarez <diego.alvarez@example.com>
+  date: 2025-07-14T09:05:00Z
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/ReportAccess.java
+    content: |
+      package example;
+
+      public class ReportAccess {
+        public boolean mayOpen(Account user, String reportId) {
+          if (user == null || !user.isActive()) {
+            return false;
+          }
+          return reportId != null && !reportId.isEmpty();
+        }
+      }
+  - type: write_file
+    path: src/main/java/example/Account.java
+    content: |
+      package example;
+
+      public class Account {
+        private final boolean active;
+
+        public Account(boolean active) {
+          this.active = active;
+        }
+
+        public boolean isActive() {
+          return active;
+        }
+      }
+- id: c1
+  message: 'Let the session layer own the active check'
+  author: Hana Sato <hana.sato@example.com>
+  date: 2025-07-21T14:30:00Z
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/ReportAccess.java
+    old: '    if (user == null || !user.isActive()) {'
+    new: '    if (user == null) {'
+- id: c2
+  message: 'Re-indent ReportAccess to four spaces'
+  author: Jonas Berg <jonas.berg@example.com>
+  date: 2025-07-28T10:15:00Z
+  role: formatting
+  operations:
+  - type: write_file
+    path: src/main/java/example/ReportAccess.java
+    content: |
+      package example;
+
+      public class ReportAccess {
+          public boolean mayOpen(Account user, String reportId) {
+              if (user == null) {
+                  return false;
+              }
+              return reportId != null && !reportId.isEmpty();
+          }
+      }
+- id: c3
+  message: 'Rename the parameter to account'
+  author: Elena Rossi <elena.rossi@example.com>
+  date: 2025-08-04T11:50:00Z
+  role: refactoring
+  operations:
+  - type: replace
+    path: src/main/java/example/ReportAccess.java
+    old: "    public boolean mayOpen(Account user, String reportId) {\n        if (user == null) {\n"
+    new: "    public boolean mayOpen(Account account, String reportId) {\n        if (account == null) {\n"
+- id: c4
+  message: 'Drop the braces around the single-statement guard'
+  author: Tom Becker <tom.becker@example.com>
+  date: 2025-08-11T16:40:00Z
+  role: formatting
+  operations:
+  - type: replace
+    path: src/main/java/example/ReportAccess.java
+    old: "        if (account == null) {\n            return false;\n        }\n"
+    new: "        if (account == null) return false;\n"
+- id: c5
+  message: 'Say why the guard is there'
+  author: Chen Wei <chen.wei@example.com>
+  date: 2025-08-18T09:20:00Z
+  role: formatting
+  operations:
+  - type: replace
+    path: src/main/java/example/ReportAccess.java
+    old: '        if (account == null) return false;'
+    new: '        if (account == null) return false; // anonymous callers never see reports'
+- id: c6
+  message: 'Require an active account to open a report'
+  author: Priya Raman <priya.raman@example.com>
+  date: 2025-08-25T13:05:00Z
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/ReportAccess.java
+    old: '        if (account == null) return false; // anonymous callers never see reports'
+    new: '        if (account == null || !account.isActive()) return false; // anonymous and inactive callers never see reports'
+bugs:
+- id: B001
+  title: An inactive account may open reports
+  bug_fixing_commit: c6
+  bug_introducing_commits:
+  - c1
+  fault:
+    commit: c1
+    file: src/main/java/example/ReportAccess.java
+    entity:
+      type: method
+      name: mayOpen
+      signature: boolean mayOpen(Account user, String reportId)
+    statement: if (user == null) {
+    change_type: line_modification
+    description: >-
+      The isActive() half of the guard is dropped; c2 re-indents the file, c3 renames the parameter, c4 drops the
+      braces and c5 appends a comment, each touching the guard line without restoring the check.
+  fix:
+    commit: c6
+    file: src/main/java/example/ReportAccess.java
+    entity:
+      type: method
+      name: mayOpen
+      signature: boolean mayOpen(Account account, String reportId)
+    statement: if (account == null || !account.isActive()) return false; // anonymous and inactive callers never see reports
+    fix_type: line_modification
+  expected_szz:
+    commit_level:
+      true_positives:
+      - c1
+      known_distractors:
+      - c2
+      - c3
+      - c4
+      - c5
+      false_positives_allowed: []
+    line_level:
+      available: true
+      faulty_statements:
+      - if (user == null) {
+      note: >-
+        The guard line is rewritten by c2 (whitespace only), c3 (rename), c4 (braces) and c5 (comment). Blame at c6^
+        returns c5; blame -w also returns c5; following the line history returns c4, c3, then c2, which -w skips
+        to reach c1.
+checks:
+- type: git_history_contains
+  commits:
+  - c0
+  - c1
+  - c2
+  - c3
+  - c4
+  - c5
+  - c6

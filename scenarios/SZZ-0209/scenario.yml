@@ -1,0 +1,155 @@
+schema_version: '1.0'
+meta:
+  id: SZZ-0209
+  title: Path-traversal check weakened, then rewritten three times before the fix (depth-3 line history)
+  slug: deep-line-history-depth-3-path-traversal
+  description: >-
+    The BIC weakens a path-traversal check from contains("..") to startsWith(".."), so "uploads/../etc/passwd" is
+    accepted. Three later commits rewrite that same line without changing its behaviour: a constant is extracted,
+    the parameter is renamed, and the braces are dropped. Plain blame at the BFC parent stops at the last rewrite;
+    the BIC is three steps of line history further back. SZZ-0178 is the depth-2 counterpart.
+  category: "Intermediate noise and history noise"
+  category_code: "S3"
+  factors:
+  - single-bic
+  - single-bfc
+  - line-modification
+  - deep-line-history
+  - rewrite-depth-3
+  - basic-blame-distractor
+  - api-misuse
+  difficulty: hard
+  status: active
+  tier: control
+repository:
+  name: SZZ-0209-deep-line-history-depth-3-path-traversal
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+commits:
+- id: c0
+  message: 'Add the upload path policy'
+  author: Hana Sato <hana.sato@example.com>
+  date: 2025-04-07T09:10:00Z
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/UploadPathPolicy.java
+    content: |
+      package example;
+
+      public class UploadPathPolicy {
+        public boolean accepts(String path) {
+          if (path.contains("..")) {
+            return false;
+          }
+          return path.startsWith("uploads/");
+        }
+      }
+- id: c1
+  message: 'Reject only paths that begin with a parent reference'
+  author: Tom Becker <tom.becker@example.com>
+  date: 2025-04-14T15:25:00Z
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/UploadPathPolicy.java
+    old: '    if (path.contains("..")) {'
+    new: '    if (path.startsWith("..")) {'
+- id: c2
+  message: 'Name the parent segment'
+  author: Chen Wei <chen.wei@example.com>
+  date: 2025-04-21T11:40:00Z
+  role: refactoring
+  operations:
+  - type: replace
+    path: src/main/java/example/UploadPathPolicy.java
+    old: "public class UploadPathPolicy {\n"
+    new: "public class UploadPathPolicy {\n  private static final String PARENT_SEGMENT = \"..\";\n\n"
+  - type: replace
+    path: src/main/java/example/UploadPathPolicy.java
+    old: '    if (path.startsWith("..")) {'
+    new: '    if (path.startsWith(PARENT_SEGMENT)) {'
+- id: c3
+  message: 'Call the parameter what it is, a relative path'
+  author: Elena Rossi <elena.rossi@example.com>
+  date: 2025-04-28T14:05:00Z
+  role: refactoring
+  operations:
+  - type: replace
+    path: src/main/java/example/UploadPathPolicy.java
+    old: "  public boolean accepts(String path) {\n    if (path.startsWith(PARENT_SEGMENT)) {\n      return false;\n    }\n    return path.startsWith(\"uploads/\");\n"
+    new: "  public boolean accepts(String relativePath) {\n    if (relativePath.startsWith(PARENT_SEGMENT)) {\n      return false;\n    }\n    return relativePath.startsWith(\"uploads/\");\n"
+- id: c4
+  message: 'Drop the braces around the single-statement guard'
+  author: Jonas Berg <jonas.berg@example.com>
+  date: 2025-05-05T10:30:00Z
+  role: formatting
+  operations:
+  - type: replace
+    path: src/main/java/example/UploadPathPolicy.java
+    old: "    if (relativePath.startsWith(PARENT_SEGMENT)) {\n      return false;\n    }\n"
+    new: "    if (relativePath.startsWith(PARENT_SEGMENT)) return false;\n"
+- id: c5
+  message: 'Reject a parent reference anywhere in the path'
+  author: Priya Raman <priya.raman@example.com>
+  date: 2025-05-12T16:50:00Z
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/UploadPathPolicy.java
+    old: '    if (relativePath.startsWith(PARENT_SEGMENT)) return false;'
+    new: '    if (relativePath.contains(PARENT_SEGMENT)) return false;'
+bugs:
+- id: B001
+  title: A parent reference after the first segment passes the upload path check
+  bug_fixing_commit: c5
+  bug_introducing_commits:
+  - c1
+  fault:
+    commit: c1
+    file: src/main/java/example/UploadPathPolicy.java
+    entity:
+      type: method
+      name: accepts
+      signature: boolean accepts(String path)
+    statement: 'if (path.startsWith("..")) {'
+    change_type: line_modification
+    description: >-
+      contains("..") became startsWith(".."), so only a leading parent reference is rejected; c2, c3 and c4 rewrite
+      the line without touching the comparison.
+  fix:
+    commit: c5
+    file: src/main/java/example/UploadPathPolicy.java
+    entity:
+      type: method
+      name: accepts
+      signature: boolean accepts(String relativePath)
+    statement: if (relativePath.contains(PARENT_SEGMENT)) return false;
+    fix_type: line_modification
+  expected_szz:
+    commit_level:
+      true_positives:
+      - c1
+      known_distractors:
+      - c2
+      - c3
+      - c4
+      false_positives_allowed: []
+    line_level:
+      available: true
+      faulty_statements:
+      - 'if (path.startsWith("..")) {'
+      note: >-
+        The faulty line is rewritten by c2 (constant extracted), c3 (parameter renamed) and c4 (braces dropped).
+        Blame at c5^ returns c4; one step of line history returns c3, two return c2, three return c1.
+checks:
+- type: git_history_contains
+  commits:
+  - c0
+  - c1
+  - c2
+  - c3
+  - c4
+  - c5

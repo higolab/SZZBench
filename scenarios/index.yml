@@ -1624,3 +1624,54 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0208/scenario.yml
+- id: SZZ-0209
+  title: Path-traversal check weakened, then rewritten three times before the fix (depth-3 line history)
+  slug: deep-line-history-depth-3-path-traversal
+  category_code: S3
+  category: Intermediate noise and history noise
+  factors:
+  - single-bic
+  - single-bfc
+  - line-modification
+  - deep-line-history
+  - rewrite-depth-3
+  - basic-blame-distractor
+  - api-misuse
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0209/scenario.yml
+- id: SZZ-0210
+  title: Size check that overflows, moved into a helper and rewritten twice more before the fix (depth-3 line history across a method extraction)
+  slug: deep-line-history-depth-3-method-extract-overflow
+  category_code: S5
+  category: Refactoring, move, and rename after BIC
+  factors:
+  - single-bic
+  - single-bfc
+  - line-modification
+  - deep-line-history
+  - rewrite-depth-3
+  - method-extract
+  - basic-blame-distractor
+  - integer-overflow
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0210/scenario.yml
+- id: SZZ-0211
+  title: Authorization guard weakened, then rewritten four times before the fix (depth-4 line history with one whitespace-only hop)
+  slug: deep-line-history-depth-4-authorization-guard
+  category_code: S3
+  category: Intermediate noise and history noise
+  factors:
+  - single-bic
+  - single-bfc
+  - line-modification
+  - deep-line-history
+  - rewrite-depth-4
+  - whitespace-only-hop
+  - comment-noise
+  - basic-blame-distractor
+  - guard-removed
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0211/scenario.yml
