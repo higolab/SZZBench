@@ -12,7 +12,7 @@ meta:
   - cherry-pick
   - duplicate-patch
   - non-linear-history
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

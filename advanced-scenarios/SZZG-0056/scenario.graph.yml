@@ -17,7 +17,7 @@ meta:
   - rebased-bfc
   - multi-bfc
   - integer-overflow
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

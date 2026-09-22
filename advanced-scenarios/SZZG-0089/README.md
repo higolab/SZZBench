@@ -6,7 +6,7 @@
 | category | `G6` Revert-specific reintroduction |
 | tier | `control` |
 | status | `active` |
-| difficulty | `advanced` |
+| difficulty | `hard` |
 | language | `java` |
 | factors | `revert`, `revert-of-revert`, `conflict-resolution`, `intermediate-change`, `variable-rename`, `revert-footer`, `re-bic` |
 | oracle | default: `exact_set`; required `c3`; related origins `c1`; related but not correct `c2`, `c4` · `origin-aware`: `relaxed_with_related`; required `c3`; acceptable `c1` (credit 0.5); related but not correct `c2`, `c4` · BFC `c5` |

@@ -12,7 +12,7 @@ meta:
   - bfc-refactoring
   - extract-method
   - mixed-bfc
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

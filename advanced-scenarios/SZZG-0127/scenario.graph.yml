@@ -14,7 +14,7 @@ meta:
   - merge-revert
   - reintroduction
   - fix-on-feature-branch
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

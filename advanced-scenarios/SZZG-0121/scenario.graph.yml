@@ -19,7 +19,7 @@ meta:
   - origin-and-direct-bic
   - value-flow
   - blame-unreachable-bic
-  difficulty: advanced
+  difficulty: hard
   status: active
   tier: discriminating
 repository:

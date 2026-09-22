@@ -12,7 +12,7 @@ meta:
   - bug-introducing-refactoring
   - mixed-change
   - rename-method
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

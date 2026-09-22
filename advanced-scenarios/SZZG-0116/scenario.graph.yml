@@ -9,7 +9,7 @@ meta:
   category_code: "G9"
   factors:
   - evaluation-variant
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

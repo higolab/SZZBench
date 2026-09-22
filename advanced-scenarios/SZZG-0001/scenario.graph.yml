@@ -10,7 +10,7 @@ meta:
   category_code: "G1"
   factors:
   - file-rename
-  difficulty: advanced
+  difficulty: medium
   status: active
   tier: control
 repository:

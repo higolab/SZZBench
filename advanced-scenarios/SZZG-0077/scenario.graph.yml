@@ -13,7 +13,7 @@ meta:
   - multi-bfc
   - partial-fix
   - complete-fix
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

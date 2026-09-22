@@ -12,7 +12,7 @@ meta:
   - attempted-fix
   - follow-up-fix
   - incorrect-fix
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

@@ -7,6 +7,7 @@ import re
 import unicodedata
 
 from .scenario import load_yaml
+from .validator import SCENARIO_DIFFICULTIES
 
 DEFAULT_SCENARIOS_ROOT = Path("scenarios")
 SCENARIO_ID_RE = re.compile(r"^SZZ-(\d+)$")
@@ -41,6 +42,8 @@ def create_new_scenario(
         raise NewScenarioError("--title must not be empty")
     if not category:
         raise NewScenarioError("--category must not be empty")
+    if difficulty not in SCENARIO_DIFFICULTIES:
+        raise NewScenarioError(f"--difficulty must be one of {', '.join(SCENARIO_DIFFICULTIES)}, not '{difficulty}'")
 
     root = root.resolve()
     index_path = root / "index.yml"

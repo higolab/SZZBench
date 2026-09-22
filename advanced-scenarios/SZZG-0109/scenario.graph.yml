@@ -9,7 +9,7 @@ meta:
   category_code: "G8"
   factors:
   - file-deletion
-  difficulty: advanced
+  difficulty: medium
   status: active
   tier: control
 repository:

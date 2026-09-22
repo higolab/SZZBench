@@ -18,7 +18,7 @@ meta:
     - "omission-bug"
     - "line-addition-fix"
     - "missing-key-check"
-  difficulty: "easy"
+  difficulty: "medium"
   status: "active"
   tier: "control"
   category_code: "S2"

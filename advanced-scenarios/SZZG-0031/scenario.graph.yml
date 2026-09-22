@@ -8,7 +8,7 @@ meta:
   category_code: "G3"
   factors:
   - multi-bfc
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

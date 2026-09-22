@@ -23,6 +23,14 @@ from .evaluator import _commit_level_policy, _load_scenario_for_evaluation, clas
 #: oracle (``decisions/vocabulary.md`` section 4).  Measured, never hand-edited.
 BLAME_CLASSES = ("exact", "extra", "miss", "addition-only", "empty-first-parent")
 
+#: The difficulty a scenario must declare at least, given what plain blame does
+#: with its oracle (``decisions/vocabulary.md`` section 4, decided 2026-09-22).
+#: A scenario may declare more when its README names another failure mode; it
+#: may never declare less.
+DIFFICULTY_FLOOR = {"exact": "easy", "extra": "medium", "addition-only": "medium",
+                    "miss": "hard", "empty-first-parent": "hard"}
+DIFFICULTIES = ("easy", "medium", "hard")
+
 #: The dimensions a scenario is grouped by.  ``category`` keeps scenarios that
 #: test different failure modes apart even when their shape agrees.
 SIGNATURE_FIELDS = ("suite", "category", "oracle_size", "bic_depth",
@@ -48,9 +56,15 @@ class ScenarioShape:
     def signature(self) -> tuple[Any, ...]:
         return tuple(getattr(self, field) for field in SIGNATURE_FIELDS)
 
+    @property
+    def difficulty_floor(self) -> str | None:
+        return DIFFICULTY_FLOOR.get(self.blame_class or "")
+
     def to_dict(self) -> dict[str, Any]:
-        return {field: getattr(self, field) for field in
+        data = {field: getattr(self, field) for field in
                 ("scenario_id", "tier", "difficulty", "blame_class", *SIGNATURE_FIELDS, "factors", "fault_statements")}
+        data["difficulty_floor"] = self.difficulty_floor
+        return data
 
 
 def _oracle_ids(data: dict[str, Any], suite: str) -> set[str]:
@@ -211,6 +225,31 @@ def _shape(scenario: Scenario, data: dict[str, Any], git: GitProbe) -> ScenarioS
     )
 
 
+def _difficulty_check(shapes: list[ScenarioShape]) -> dict[str, list[dict[str, Any]]]:
+    """Declared ``difficulty`` against the floor its ``blame_class`` sets.
+
+    ``below_floor`` is a contradiction to fix (a scenario claims to be easier
+    than plain blame shows it is); ``above_floor`` is an allowed override,
+    listed so the reason can be looked for in the README; ``ungraded`` is a
+    declaration outside ``easy``/``medium``/``hard`` (the graph suite's old
+    ``advanced``) or a scenario without a measurable class.
+    """
+    below: list[dict[str, Any]] = []
+    above: list[dict[str, Any]] = []
+    ungraded: list[dict[str, Any]] = []
+    for shape in shapes:
+        floor = shape.difficulty_floor
+        entry = {"scenario_id": shape.scenario_id, "declared": shape.difficulty, "floor": floor,
+                 "blame_class": shape.blame_class}
+        if floor is None or shape.difficulty not in DIFFICULTIES:
+            ungraded.append(entry)
+        elif DIFFICULTIES.index(shape.difficulty) < DIFFICULTIES.index(floor):
+            below.append(entry)
+        elif DIFFICULTIES.index(shape.difficulty) > DIFFICULTIES.index(floor):
+            above.append(entry)
+    return {"below_floor": below, "above_floor": above, "ungraded": ungraded}
+
+
 def _difficulty_by_blame_class(shapes: list[ScenarioShape]) -> dict[str, dict[str, dict[str, int]]]:
     """Per suite, how many scenarios declare each ``difficulty`` for each measured
     ``blame_class`` -- the table the grading rule of ``decisions/vocabulary.md``
@@ -271,6 +310,7 @@ def run_coverage(
         "unique_scenarios": sorted(v[0] for v in groups.values() if len(v) == 1),
         "fault_reuse": _fault_reuse(shapes),
         "difficulty_by_blame_class": _difficulty_by_blame_class(shapes),
+        "difficulty_check": _difficulty_check(shapes),
         "shapes": [s.to_dict() for s in shapes],
         "errors": errors + git.failures,
         "warnings": warnings,
@@ -305,6 +345,19 @@ def format_report(report: dict[str, Any]) -> str:
             for cls, row in by_class.items():
                 cells = ", ".join(f"{difficulty}:{count}" for difficulty, count in row.items())
                 lines.append(f"      {suite:19s} {cls:19s} {cells}")
+        lines.append("")
+    check = report.get("difficulty_check")
+    if check is not None:
+        floor = ", ".join(f"{cls}->{level}" for cls, level in DIFFICULTY_FLOOR.items())
+        lines.append(f"  difficulty floor ({floor}): {len(check['below_floor'])} below, "
+                     f"{len(check['above_floor'])} above (allowed overrides), {len(check['ungraded'])} ungraded")
+        for entry in check["below_floor"]:
+            lines.append(f"      [BELOW FLOOR] {entry['scenario_id']} declares {entry['declared']} but blame is "
+                         f"{entry['blame_class']}, so at least {entry['floor']}")
+        for entry in check["ungraded"][:10]:
+            lines.append(f"      [UNGRADED] {entry['scenario_id']} declares {entry['declared']!r}")
+        if len(check["ungraded"]) > 10:
+            lines.append(f"      ... and {len(check['ungraded']) - 10} more ungraded")
         lines.append("")
     groups = report["redundant_groups"]
     covered = sum(g["size"] for g in groups)

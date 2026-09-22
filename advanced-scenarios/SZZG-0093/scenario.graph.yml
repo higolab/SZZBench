@@ -12,7 +12,7 @@ meta:
   - feature-work
   - bic-inside-work-item
   - commit-series
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

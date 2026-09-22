@@ -18,7 +18,7 @@ meta:
   - multiple-origin-bic
   - direct-bic
   - off-by-one
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

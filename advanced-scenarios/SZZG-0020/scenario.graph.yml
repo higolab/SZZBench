@@ -12,7 +12,7 @@ meta:
   - evaluation-variant
   - direct-bic
   - origin-bic
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

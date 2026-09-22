@@ -7,6 +7,7 @@ import re
 import unicodedata
 
 from .scenario import load_yaml
+from .validator import SCENARIO_DIFFICULTIES
 
 DEFAULT_GRAPH_SCENARIOS_ROOT = Path("advanced-scenarios")
 GRAPH_SCENARIO_ID_RE = re.compile(r"^SZZG-(\d+)$")
@@ -32,7 +33,7 @@ def create_new_graph_scenario(
     root: Path = DEFAULT_GRAPH_SCENARIOS_ROOT,
     slug: str | None = None,
     factors: list[str] | None = None,
-    difficulty: str = "advanced",
+    difficulty: str = "medium",
     status: str = "draft",
 ) -> NewGraphScenarioResult:
     title = title.strip()
@@ -41,6 +42,10 @@ def create_new_graph_scenario(
         raise NewGraphScenarioError("--title must not be empty")
     if not category:
         raise NewGraphScenarioError("--category must not be empty")
+    if difficulty not in SCENARIO_DIFFICULTIES:
+        # ``advanced`` was the graph suite's placeholder until 2026-09-22; a new
+        # scenario is graded like any other (decisions/vocabulary.md section 4).
+        raise NewGraphScenarioError(f"--difficulty must be one of {', '.join(SCENARIO_DIFFICULTIES)}, not '{difficulty}'")
 
     root = root.resolve()
     index_path = root / "index.yml"
@@ -162,7 +167,7 @@ meta:
   title: {_quote(title)}
   slug: {_quote(slug)}
   description: >
-    TODO: Describe the advanced graph scenario and why it is useful for SZZ evaluation.
+    TODO: Describe the graph scenario and why it is useful for SZZ evaluation.
   category: {_quote(category)}
   factors: {_inline_list(factors)}
   difficulty: {_quote(difficulty)}

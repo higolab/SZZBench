@@ -69,7 +69,7 @@ def info_codes(result) -> list[str]:
 def classic_scenario() -> dict:
     return {
         "schema_version": "1.0",
-        "meta": {"id": "SZZ-9900", "title": "Lint fixture", "category": "fixture", "tier": "control", "factors": ["single-bic", "single-bfc", "line-modification"]},
+        "meta": {"id": "SZZ-9900", "title": "Lint fixture", "category": "fixture", "tier": "control", "difficulty": "medium", "factors": ["single-bic", "single-bfc", "line-modification"]},
         "repository": {"name": "lint-fixture", "default_branch": "main", "language": "java"},
         "commits": [
             {"id": "c0", "message": "Initial implementation", "role": "initial", "author": "Ann Example <ann@example.com>",
@@ -92,7 +92,7 @@ def classic_scenario() -> dict:
 def graph_scenario() -> dict:
     return {
         "schema_version": "graph-0.1-draft",
-        "meta": {"id": "SZZG-9900", "title": "Graph lint fixture", "category": "fixture", "tier": "control", "factors": ["rebase", "branch"]},
+        "meta": {"id": "SZZG-9900", "title": "Graph lint fixture", "category": "fixture", "tier": "control", "difficulty": "medium", "factors": ["rebase", "branch"]},
         "repository": {"name": "graph-lint-fixture", "default_branch": "main"},
         "commits": [
             {"id": "c0", "branch": "main", "parents": [], "message": "Initial implementation", "role": "initial", "author": "Ann Example <ann@example.com>",
@@ -1206,3 +1206,35 @@ def test_history_model_matches_git_log_all_with_a_tag_inside_a_generated_chain(t
     assert dict(resolved_commit_authors(data)) == from_git
     expected_generated = {"d1.g1": {"d1.g1"}, "d1.g2": {"d1.g1", "d1.g2"}, None: set()}[tag_at]
     assert {cid for cid in from_git if cid.startswith("d1")} == expected_generated
+
+
+def test_difficulty_lint_requires_a_graded_value():
+    """W461 / GW461: difficulty is easy, medium or hard; the graph suite's `advanced` is retired (issue #35)."""
+    from szzbench.validator import SCENARIO_DIFFICULTIES
+
+    assert SCENARIO_DIFFICULTIES == ("easy", "medium", "hard")
+    data = classic_scenario()
+    data["meta"].pop("difficulty", None)
+    result = lint_classic(data)
+    assert "W461" in codes(result)
+    assert "meta.difficulty is missing" in [f.message for f in result.findings if f.code == "W461"][0]
+    data["meta"]["difficulty"] = "advanced"
+    assert "W461" in codes(lint_classic(data))
+    for difficulty in SCENARIO_DIFFICULTIES:
+        data["meta"]["difficulty"] = difficulty
+        assert "W461" not in codes(lint_classic(data))
+
+    graph = graph_scenario()
+    graph["meta"]["difficulty"] = "advanced"
+    assert "GW461" in codes(lint_graph(graph))
+    graph["meta"]["difficulty"] = "hard"
+    assert "GW461" not in codes(lint_graph(graph))
+
+
+def test_every_shipped_scenario_declares_a_graded_difficulty():
+    from szzbench.validator import SCENARIO_DIFFICULTIES
+
+    root = Path(__file__).resolve().parents[1]
+    for path in sorted(root.glob("scenarios/SZZ-*/scenario.yml")) + sorted(root.glob("advanced-scenarios/SZZG-*/scenario.graph.yml")):
+        difficulty = yaml.safe_load(path.read_text(encoding="utf-8"))["meta"].get("difficulty")
+        assert difficulty in SCENARIO_DIFFICULTIES, f"{path.parent.name}: {difficulty!r}"

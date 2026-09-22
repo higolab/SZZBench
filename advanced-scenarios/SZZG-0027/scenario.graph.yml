@@ -12,7 +12,7 @@ meta:
   - clone
   - clone-divergence
   - ambiguous-blame
-  difficulty: advanced
+  difficulty: hard
   status: active
   tier: control
 repository:

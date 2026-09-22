@@ -13,7 +13,7 @@ meta:
   - repeated-toggling
   - reintroduced-bug
   - re-bic
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

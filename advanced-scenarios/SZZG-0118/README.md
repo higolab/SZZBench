@@ -6,7 +6,7 @@
 | category | `G2` Clone, copy propagation, and origin-vs-direct BIC |
 | tier | `discriminating` |
 | status | `active` |
-| difficulty | `advanced` |
+| difficulty | `hard` |
 | language | `java` |
 | factors | `multi-bic`, `clone`, `origin-and-direct-bic`, `caller-callee-interaction`, `blame-unreachable-bic` |
 | oracle | `exact_set`; required `c1`, `c3` · BFC `c4` |

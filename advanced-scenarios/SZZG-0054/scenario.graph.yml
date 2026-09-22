@@ -13,7 +13,7 @@ meta:
   - partial-fix-propagation
   - unfixed-release
   - wrong-variable
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

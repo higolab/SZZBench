@@ -15,7 +15,7 @@ meta:
   - message-trailer
   - origin-bic
   - direct-bic
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

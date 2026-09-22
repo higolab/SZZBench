@@ -19,7 +19,7 @@ meta:
   - branch-level-oracle
   - formatting-noise
   - wrong-constant
-  difficulty: advanced
+  difficulty: medium
   status: active
   tier: control
 repository:

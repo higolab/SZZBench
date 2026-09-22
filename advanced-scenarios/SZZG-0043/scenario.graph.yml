@@ -12,7 +12,7 @@ meta:
   - merge
   - feature-branch-bic
   - main-branch-bfc
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

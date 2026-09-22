@@ -6,7 +6,7 @@
 | category | `G9` Evaluation policy variants |
 | tier | `control` |
 | status | `active` |
-| difficulty | `advanced` |
+| difficulty | `easy` |
 | language | `java` |
 | factors | `relaxed-credit`, `origin-vs-direct`, `copy-propagation`, `wrong-constant`, `single-bic`, `single-bfc`, `evaluation-variant` |
 | oracle | default (`direct-only`): `exact_set`; required `c2`; related origins `c1` · `origin-aware`: `relaxed_with_related`; required `c2`; acceptable `c1` (credit 0.5) · `relaxed-with-credit`: `relaxed_with_credit`; required `c2`; acceptable `c1` (credit 1) · BFC `c3` |

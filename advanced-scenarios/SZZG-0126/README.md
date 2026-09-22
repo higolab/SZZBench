@@ -6,7 +6,7 @@
 | category | `G6` Revert-specific reintroduction |
 | tier | `control` |
 | status | `active` |
-| difficulty | `advanced` |
+| difficulty | `easy` |
 | language | `java` |
 | factors | `revert`, `revert-is-fix`, `resolvable-message-handle`, `revert-as-distractor` |
 | oracle | `exact_set`; required `c1`; related but not correct `c2`, `c3` · BFC `c4` |

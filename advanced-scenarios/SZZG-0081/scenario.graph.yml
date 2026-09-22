@@ -18,7 +18,7 @@ meta:
   - direct-bic
   - origin-bic
   - null-check-omission
-  difficulty: advanced
+  difficulty: hard
   status: active
   tier: control
 repository:

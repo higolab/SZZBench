@@ -15,7 +15,7 @@ meta:
   - rewrite-after-bic
   - basic-blame-distractor
   - semantics-required
-  difficulty: advanced
+  difficulty: hard
   status: active
   tier: control
 repository:

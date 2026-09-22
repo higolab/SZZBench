@@ -20,7 +20,7 @@ meta:
     - "deep-line-history"
     - "basic-blame-distractor"
     - "string-format-rewrite"
-  difficulty: "medium"
+  difficulty: "hard"
   status: "active"
   tier: "control"
   category_code: "S3"

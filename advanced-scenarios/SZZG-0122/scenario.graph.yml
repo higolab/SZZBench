@@ -13,7 +13,7 @@ meta:
   - unrelated-main-changes
   - direct-bic
   - origin-bic
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

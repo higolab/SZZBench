@@ -14,7 +14,7 @@ meta:
   - same-bug
   - partial-fix
   - complete-fix
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

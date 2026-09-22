@@ -305,6 +305,44 @@ def test_empty_first_parent_fix_is_its_own_class(tmp_path):
     assert [s["blame_class"] for s in report["shapes"]] == ["empty-first-parent"]
 
 
+# --- the difficulty floor (issue #35, decided 2026-09-22) ----------------------------
+
+def _with_difficulty(tmp_path, sid, difficulty):
+    scenario = tmp_path / "advanced-scenarios" / sid / "scenario.graph.yml"
+    data = yaml.safe_load(scenario.read_text())
+    if difficulty is None:
+        data["meta"].pop("difficulty", None)
+    else:
+        data["meta"]["difficulty"] = difficulty
+    scenario.write_text(yaml.safe_dump(data, sort_keys=False))
+
+
+def test_difficulty_floor_follows_the_blame_class_and_declarations_are_checked_against_it(tmp_path):
+    from szzbench.coverage import DIFFICULTY_FLOOR
+    assert DIFFICULTY_FLOOR == {"exact": "easy", "extra": "medium", "addition-only": "medium",
+                                "miss": "hard", "empty-first-parent": "hard"}
+    _write(tmp_path, "SZZG-9140", _linear(noise_touches_fault_file=False), _bugs(["c1"]))   # exact
+    _write(tmp_path, "SZZG-9141", _rewriting_noise(), _bugs(["c1"]))                         # miss
+    _write(tmp_path, "SZZG-9142", _rewriting_noise(), _bugs(["c1"]))                         # miss
+    _write(tmp_path, "SZZG-9143", _fix_also_touching_an_old_line(), _bugs(["c1"]))           # extra
+    _write(tmp_path, "SZZG-9144", _linear(noise_touches_fault_file=False), _bugs(["c1"]))   # exact
+    _with_difficulty(tmp_path, "SZZG-9140", "hard")        # above the floor: an override, allowed
+    _with_difficulty(tmp_path, "SZZG-9141", "medium")      # below the floor: a contradiction
+    _with_difficulty(tmp_path, "SZZG-9142", "hard")        # on the floor
+    _with_difficulty(tmp_path, "SZZG-9143", "medium")      # on the floor
+    _with_difficulty(tmp_path, "SZZG-9144", "advanced")    # ungraded
+    report = _run(tmp_path)
+    floors = {s["scenario_id"]: s["difficulty_floor"] for s in report["shapes"]}
+    assert floors == {"SZZG-9140": "easy", "SZZG-9141": "hard", "SZZG-9142": "hard", "SZZG-9143": "medium", "SZZG-9144": "easy"}
+    check = report["difficulty_check"]
+    assert check["below_floor"] == [{"scenario_id": "SZZG-9141", "declared": "medium", "floor": "hard", "blame_class": "miss"}]
+    assert [e["scenario_id"] for e in check["above_floor"]] == ["SZZG-9140"]
+    assert [e["scenario_id"] for e in check["ungraded"]] == ["SZZG-9144"]
+    text = format_report(report)
+    assert "1 below, 1 above (allowed overrides), 1 ungraded" in text
+    assert "[BELOW FLOOR] SZZG-9141 declares medium but blame is miss, so at least hard" in text
+    assert "[UNGRADED] SZZG-9144 declares 'advanced'" in text
+
 def test_a_root_bug_fixing_commit_is_diffed_against_the_empty_tree(tmp_path):
     """A one-commit scenario whose root commit is the fix (PR #74 review): the root has no
     ``<hash>^``, and the failed Git call must not be read as an empty first-parent diff."""

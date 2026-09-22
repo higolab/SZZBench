@@ -14,7 +14,7 @@ meta:
   - no-issue-id
   - commit-series
   - related-but-not-correct
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

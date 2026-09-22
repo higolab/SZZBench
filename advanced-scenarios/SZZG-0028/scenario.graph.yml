@@ -12,7 +12,7 @@ meta:
   - clone
   - multi-bic
   - origin-and-direct-bic
-  difficulty: advanced
+  difficulty: hard
   status: active
   tier: discriminating
 repository:

@@ -13,7 +13,7 @@ meta:
   - file-move
   - package-rename
   - intermediate-refactoring
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

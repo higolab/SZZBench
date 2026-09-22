@@ -14,7 +14,7 @@ meta:
   - context-dependent
   - caller-callee
   - not-directly-local
-  difficulty: advanced
+  difficulty: hard
   status: active
   tier: control
 repository:

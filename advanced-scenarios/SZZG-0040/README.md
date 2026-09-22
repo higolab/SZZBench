@@ -6,7 +6,7 @@
 | category | `G3` Multiple BICs, multiple BFCs, and partial fixes |
 | tier | `discriminating` |
 | status | `active` |
-| difficulty | `advanced` |
+| difficulty | `hard` |
 | language | `java` |
 | factors | `multi-bic`, `not-directly-touched-by-fix`, `context-dependent` |
 | oracle | `exact_set`; required `c1`, `c2` · BFC `c3` |

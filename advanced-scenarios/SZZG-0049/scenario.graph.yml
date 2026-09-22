@@ -16,7 +16,7 @@ meta:
   - copy-propagation
   - backport-like-fix
   - off-by-one
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

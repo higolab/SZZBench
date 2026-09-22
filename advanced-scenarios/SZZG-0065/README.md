@@ -6,7 +6,7 @@
 | category | `G5` Rebase-specific history rewriting |
 | tier | `control` |
 | status | `active` |
-| difficulty | `advanced` |
+| difficulty | `easy` |
 | language | `java` |
 | factors | `branch`, `rebase`, `rebase-conflict-resolution`, `conflict-resolution-bic`, `direct-bic`, `fault-in-neither-parent` |
 | oracle | `exact_set`; required `r1` · BFC `c2` |

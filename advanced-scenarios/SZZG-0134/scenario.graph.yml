@@ -15,7 +15,7 @@ meta:
   - line-ending
   - non-source-bic
   - cross-artifact-fix
-  difficulty: advanced
+  difficulty: hard
   status: active
   tier: control
 repository:

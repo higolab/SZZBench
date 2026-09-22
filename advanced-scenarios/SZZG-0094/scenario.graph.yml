@@ -8,7 +8,7 @@ meta:
   category_code: "G7"
   factors:
   - issue-evidence
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

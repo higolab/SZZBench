@@ -158,6 +158,7 @@ The W41x / GW41x lints implement the leakage policy in
 | I413 | info | the same coincidence for a one-commit oracle — reported, not repaired: a one-commit oracle is solved by many cheap rules anyway |
 | W455 | warning | the sibling README disagrees with the scenario: its generated header is missing, differs from what the scenario renders (the message quotes the first differing line), or a hand-written `## Factors` / `## Source` copy is present. `szzbench readme --write` regenerates it ([scenario-readme.md](scenario-readme.md)) | – |
 | W460 | warning | `meta.tier` is missing or is not one of `control` / `discriminating` (see [decisions/vocabulary.md](decisions/vocabulary.md)) | – |
+| W461 | warning | `meta.difficulty` is missing or is not one of `easy` / `medium` / `hard`; the floor a scenario may not go below is measured by `szzbench coverage` ([decisions/vocabulary.md](decisions/vocabulary.md) §4) | – |
 | W420 | warning | ghost invariant: the BFC deletes or modifies an existing line although the scenario is declared as an addition-only fix. Declared by a factor in {`addition-only-fix`, `ghost-fix`, `add_only_fix`} (applies to every bug) or, per bug, by `fault.change_type: omission` together with `fix.fix_type` in {`line_addition`, `file_creation`} | a factor matching `tangled\|noise\|distractor\|adjacent-edit`, which declares that the fix deliberately carries unrelated deleted lines |
 | W421 | warning | ghost invariant: a BIC adds lines although the scenario is declared as a deletion-only BIC (factor `deletion-only-bic` or `line-deletion-bic`) | – |
 | W430 | warning | an intermediate non-BIC commit between `fault.commit` and the BFC removes the fault statement from `fault.file` | a factor matching `after-bic\|rewrite\|refactor\|format\|whitespace\|rename\|move\|inline\|extract` |
@@ -257,6 +258,7 @@ With `--simulate`:
 | GE403 | error | a BIC entry role is a non-canonical spelling; canonical roles are {`direct`, `origin`, `contributing`, `reintroducing`}. Consumers normalize known aliases (the evaluator/verifier role normalization of #27 does), but a scenario declares the canonical spelling (was `GW403`) |
 | GE404 | error | a BFC entry role is not in {`complete_fix`, `partial_fix`} (was `GW404`) |
 | GW460 | warning | `meta.tier` is missing or outside the vocabulary (same rule as W460) |
+| GW461 | warning | `meta.difficulty` is missing or outside `easy` / `medium` / `hard` (same rule as W461; `advanced` is retired) |
 | GW410 | warning | a commit that is not a BFC (of any bug) has a role-disclosing message (same pattern as W410) |
 | GW411 | warning | a message exposes a logical id (same rule as W411) |
 | GW412 | warning | written text (`write_file.content`, `replace.new`, `insert_after.content`) contains role wording |

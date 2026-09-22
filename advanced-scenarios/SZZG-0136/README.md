@@ -6,7 +6,7 @@
 | category | `G9` Evaluation policy variants |
 | tier | `control` |
 | status | `active` |
-| difficulty | `advanced` |
+| difficulty | `medium` |
 | language | `java` |
 | factors | `expect-no-bic`, `history-boundary`, `import-commit`, `tool-visible-context`, `evaluation-variant`, `single-bfc` |
 | oracle | default: `exact_set`; expects no BIC; known distractors `c0` · `boundary-commit`: `exact_set`; required `c0` · BFC `c3` |

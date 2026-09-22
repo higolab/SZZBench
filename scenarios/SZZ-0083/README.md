@@ -6,7 +6,7 @@
 | category | `S3` Intermediate noise and history noise |
 | tier | `control` |
 | status | `active` |
-| difficulty | `medium` |
+| difficulty | `hard` |
 | language | `java` |
 | factors | `single-bic`, `single-bfc`, `line-modification`, `whitespace-only-after-bic`, `basic-blame-distractor` |
 | oracle | `exact_set`; required `c1`; known distractors `c2` · BFC `c3` |
@@ -27,3 +27,9 @@ whitespace-only rewrite as the BIC.
 ## Expected behavior
 
 SZZ should report `c1`, not the whitespace-only commit `c2`.
+
+## Difficulty
+
+`hard` by the floor rule of `decisions/vocabulary.md` §4 (decided 2026-09-22): plain
+first-parent blame on the lines the fix deletes is `miss` for this scenario, and a scenario may not
+declare less than that class sets. The author's grade was `medium`. `git blame -w` does recover the BIC here, but the floor is measured with plain blame.

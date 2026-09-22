@@ -19,7 +19,7 @@ meta:
   - multi-bic
   - single-bfc
   - evaluation-variant
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

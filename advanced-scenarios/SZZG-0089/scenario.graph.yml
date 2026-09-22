@@ -14,7 +14,7 @@ meta:
   - variable-rename
   - revert-footer
   - re-bic
-  difficulty: advanced
+  difficulty: hard
   status: active
   tier: control
 repository:

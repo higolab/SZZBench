@@ -12,7 +12,7 @@ meta:
   - multi-bic
   - not-directly-touched-by-fix
   - context-dependent
-  difficulty: advanced
+  difficulty: hard
   status: active
   tier: discriminating
 repository:

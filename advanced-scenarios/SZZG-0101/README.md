@@ -6,7 +6,7 @@
 | category | `G7` Issue, message, context, and non-local evidence |
 | tier | `control` |
 | status | `active` |
-| difficulty | `advanced` |
+| difficulty | `easy` |
 | language | `java` |
 | factors | `caller-callee`, `context`, `api-misuse` |
 | oracle | `exact_set`; required `c2`; related but not correct `c1` · BFC `c3` |

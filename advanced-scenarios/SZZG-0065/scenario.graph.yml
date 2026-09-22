@@ -15,7 +15,7 @@ meta:
   - conflict-resolution-bic
   - direct-bic
   - fault-in-neither-parent
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

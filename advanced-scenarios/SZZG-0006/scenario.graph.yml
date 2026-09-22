@@ -16,7 +16,7 @@ meta:
   - method-move
   - post-bic-refactoring
   - exception-swallowed
-  difficulty: advanced
+  difficulty: hard
   status: active
   tier: control
 repository:

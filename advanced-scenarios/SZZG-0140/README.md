@@ -6,7 +6,7 @@
 | category | `G9` Evaluation policy variants |
 | tier | `control` |
 | status | `active` |
-| difficulty | `advanced` |
+| difficulty | `hard` |
 | language | `java` |
 | factors | `top-k`, `formatting-noise`, `basic-blame-distractor`, `boundary-condition`, `single-bic`, `single-bfc` |
 | oracle | `top_k`; relevant `c1`; k = 1, 3, 5; status at k = 1; related but not correct `c2`; known distractors `c2` · BFC `c4` |

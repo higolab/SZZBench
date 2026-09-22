@@ -6,7 +6,7 @@
 | category | `S3` Intermediate noise and history noise |
 | tier | `control` |
 | status | `active` |
-| difficulty | `medium` |
+| difficulty | `hard` |
 | language | `java` |
 | factors | `single-bic`, `single-bfc`, `line-modification`, `formatting-after-bic`, `line-number-shift`, `basic-blame-distractor` |
 | oracle | `exact_set`; required `c1`; known distractors `c2` · BFC `c3` |
@@ -31,3 +31,9 @@ The expected bug-introducing commit is `c1`.
 
 A simple line-based blame may incorrectly point to `c2`, because `c2` rewrites
 the faulty line during formatting.
+
+## Difficulty
+
+`hard` by the floor rule of `decisions/vocabulary.md` §4 (decided 2026-09-22): plain
+first-parent blame on the lines the fix deletes is `miss` for this scenario, and a scenario may not
+declare less than that class sets. The author's grade was `medium`.

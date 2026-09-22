@@ -19,7 +19,7 @@ meta:
   - inline-refactoring
   - behaviour-preserving-rewrite
   - blame-unreachable-bic
-  difficulty: advanced
+  difficulty: hard
   status: active
   tier: discriminating
 repository:

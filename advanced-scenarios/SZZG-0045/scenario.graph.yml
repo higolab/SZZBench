@@ -15,7 +15,7 @@ meta:
   - merge
   - merge-commit-bic
   - string-comparison
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

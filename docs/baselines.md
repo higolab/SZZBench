@@ -295,6 +295,7 @@ szzbench coverage --out studies/coverage
 | `fault_file_distractors` | commits before the fix that touch a file the fault lives in and are **not** the answer |
 | `commit_count`, `ref_count` | size and branchiness of the history |
 | `blame_class` | what plain first-parent blame on the lines the fix deletes does with the oracle: `exact` (returns exactly the required set), `extra` (the required set and more), `miss` (a required commit is not blamed), `addition-only` (the fix deletes nothing) or `empty-first-parent` (the fix is a merge whose first-parent diff is empty). Measured, never hand-edited; not part of the redundancy signature |
+| `difficulty_floor` | the least `difficulty` the blame class allows (`exact` → `easy`, `extra` / `addition-only` → `medium`, `miss` / `empty-first-parent` → `hard`); the report lists declarations below it as contradictions and above it as overrides |
 
 `oracle_size` and `bic_depth` come from the evaluator's own policy resolution
 (`_commit_level_policy`), so a default evaluation variant and an inferred
@@ -330,10 +331,16 @@ difficulty by measured blame class**, the table the grading rule of
 authors' judgement and the measurement mostly agree: `miss` is `hard` 30 times
 and `medium` 7; `exact` is `easy` 31, `medium` 27 and `hard` 5 (S6, S7, S8
 scenarios whose difficulty lies elsewhere than in blame); `extra` is `medium`
-7; `addition-only` is `medium` 7, `hard` 6 and `easy` once. The graph suite is
-`advanced` throughout (93 `exact`, 32 `miss`, 9 `extra`, 1 `addition-only`,
-1 `empty-first-parent`), which is what the re-grading of issue #35 starts
-from.
+7; `addition-only` is `medium` 7, `hard` 6 and `easy` once — that table was
+measured before the grading of 2026-09-22. Since then `difficulty` has a
+**floor** set by the blame class (`exact` → `easy`, `extra` → `medium`,
+`addition-only` → `medium`, `miss` → `hard`, `empty-first-parent` → `hard`;
+`decisions/vocabulary.md` §4): the graph suite was graded from it (93 `easy`,
+10 `medium`, 33 `hard`, from `advanced` throughout), the eight classic
+scenarios below their floor were raised (SZZ-0203 to `medium`; SZZ-0081,
+0082, 0083, 0136, 0204, 0205, 0206 to `hard`), and the 38 classic scenarios
+above their floor keep the author's grade as an override. The same run
+reports the check: **0 below the floor, 38 above, 0 ungraded.**
 
 The same run prints the **fault statement reuse** block (issue #13), which
 counts how many scenarios declare each fault statement (`fault.statement`,

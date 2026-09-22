@@ -8,7 +8,7 @@ meta:
   category_code: "G8"
   factors:
   - file-mode-change
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

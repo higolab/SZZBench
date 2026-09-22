@@ -19,7 +19,7 @@ meta:
   - origin-bic
   - integer-overflow
   - wrong-operator
-  difficulty: advanced
+  difficulty: hard
   status: active
   tier: discriminating
 repository:

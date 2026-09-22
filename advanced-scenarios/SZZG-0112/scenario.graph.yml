@@ -15,7 +15,7 @@ meta:
   - binary-file
   - config-bic
   - config-bfc
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

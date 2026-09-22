@@ -10,7 +10,7 @@ meta:
   factors:
   - semantic-rewrite
   - related-but-not-correct
-  difficulty: advanced
+  difficulty: hard
   status: active
   tier: control
 repository:

@@ -16,7 +16,7 @@ meta:
   - direct-bic
   - origin-bic
   - inherited-commit-metadata
-  difficulty: advanced
+  difficulty: easy
   status: active
   tier: control
 repository:

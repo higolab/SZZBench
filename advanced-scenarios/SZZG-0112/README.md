@@ -6,7 +6,7 @@
 | category | `G8` Non-source, binary, generated, and scalability edge cases |
 | tier | `control` |
 | status | `active` |
-| difficulty | `advanced` |
+| difficulty | `easy` |
 | language | `java` |
 | factors | `encoding`, `non-utf8-file`, `binary-file`, `config-bic`, `config-bfc` |
 | oracle | `exact_set`; required `c1` · BFC `c2` |
