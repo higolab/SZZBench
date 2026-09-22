@@ -111,6 +111,25 @@ public class Drive { public static void main(String[] a) throws Exception {
     catch (NoSuchMethodException e) { out.append(" first=absent"); }
     System.out.print(out); } }
 """,
+    "SZZ-0216": """
+public class Drive { public static void main(String[] a) {
+    example.TicketPricing t = new example.TicketPricing(); StringBuilder out = new StringBuilder();
+    for (int age : new int[] {11, 12, 13}) out.append("base").append(age).append('=').append(t.basePriceCents(age)).append(' ');
+    out.append("group30x3=").append(t.groupPriceCents(30, 3));
+    System.out.print(out); } }
+""",
+    "SZZ-0217": """
+public class Drive { public static void main(String[] a) throws Exception {
+    StringBuilder out = new StringBuilder(); example.RequestTimeout t = new example.RequestTimeout();
+    out.append("timeout90s=").append(t.seconds("90s")).append(" timeout2m=").append(t.seconds("2m"));
+    out.append(" timeoutBig=").append(t.seconds("1000000000s"));
+    try { Object r = Class.forName("example.RetryDelay").getConstructor().newInstance();
+          java.lang.reflect.Method m = r.getClass().getMethod("seconds", String.class);
+          out.append(" retry90s=").append(m.invoke(r, "90s")).append(" retry2m=").append(m.invoke(r, "2m"));
+          out.append(" retryBig=").append(m.invoke(r, "1000000000s")); }
+    catch (ClassNotFoundException e) { out.append(" retry=absent"); }
+    System.out.print(out); } }
+""",
 }
 
 EXPECTED = {
@@ -173,6 +192,20 @@ EXPECTED = {
         "c4": "wait3=6 first=2000",
         "c5": "wait3=6 first=2",
     },
+    "SZZ-0216": {
+        "c0": "base11=500 base12=1200 base13=1200 group30x3=3600",
+        "c1": "base11=500 base12=500 base13=1200 group30x3=3600",
+        "c2": "base11=500 base12=500 base13=1200 group30x3=3600",
+        "c3": "base11=500 base12=500 base13=1200 group30x3=1203",
+        "c4": "base11=500 base12=1200 base13=1200 group30x3=3600",
+    },
+    "SZZ-0217": {
+        "c0": "timeout90s=90 timeout2m=120 timeoutBig=1000000000 retry=absent",
+        "c1": "timeout90s=90 timeout2m=120 timeoutBig=1000000000 retry=absent",
+        "c2": "timeout90s=90 timeout2m=120 timeoutBig=1000000000 retry=absent",
+        "c3": "timeout90s=90 timeout2m=120 timeoutBig=1000000000 retry90s=90000 retry2m=120000 retryBig=1000000000000",
+        "c4": "timeout90s=90 timeout2m=120 timeoutBig=1000000000 retry90s=90 retry2m=120 retryBig=1000000000",
+    },
 }
 
 # deleted line (stripped) -> (plain, -w, -w -C -C) owner, at BFC^
@@ -189,10 +222,14 @@ BLAME = {
     "SZZG-0145": {'return rawRate(zone) + " USD";': ("c3", "c3", "c3")},
     "SZZG-0146": {'return Percent.parse(percent) + " percent off";': ("c3", "c3", "c3")},
     "SZZG-0147": {"return BACKOFF;": ("c4", "c4", "c4")},
+    "SZZ-0216": {"return age <= 12 ? CHILD_CENTS : ADULT_CENTS;": ("c2", "c2", "c2"),
+                 "return basePriceCents(age) + count;": ("c3", "c3", "c3")},
+    "SZZ-0217": {"return DurationText.parse(configured);": ("c3", "c3", "c3")},
 }
 
 REQUIRED = {"SZZ-0212": {"c1", "c3"}, "SZZ-0213": {"c1", "c3"}, "SZZ-0214": {"c1", "c3"}, "SZZG-0144": {"c2", "c4"},
-            "SZZ-0215": {"c1", "c3"}, "SZZG-0145": {"c1", "c3"}, "SZZG-0146": {"c1", "c3"}, "SZZG-0147": {"c3", "c4"}}
+            "SZZ-0215": {"c1", "c3"}, "SZZG-0145": {"c1", "c3"}, "SZZG-0146": {"c1", "c3"}, "SZZG-0147": {"c3", "c4"},
+            "SZZ-0216": {"c1", "c3"}, "SZZ-0217": {"c1", "c3"}}
 
 
 def _git(repo: Path, *args: str) -> str:
@@ -342,6 +379,22 @@ def test_both_commits_are_necessary(generated, tmp_path):
         _edit(work, "src/main/java/example/RetryPolicy.java",
               ("BACKOFF = 2000;", "BACKOFF = 2;"), ("return BACKOFF * attempt / 1000;", "return BACKOFF * attempt;"))
         assert _run_driver(work, sid) == EXPECTED[sid]["c5"]
+    elif sid == "SZZ-0216":
+        only_fare = tmp_path / "only-fare"
+        _snapshot(repo, hashes["c3"], only_fare)
+        _edit(only_fare, "src/main/java/example/FareTable.java", ("age <= 12", "age < 12"))
+        assert _run_driver(only_fare, sid) == "base11=500 base12=1200 base13=1200 group30x3=1203"
+        only_group = tmp_path / "only-group"
+        _snapshot(repo, hashes["c3"], only_group)
+        _edit(only_group, "src/main/java/example/TicketPricing.java", ("basePriceCents(age) + count;", "basePriceCents(age) * count;"))
+        assert _run_driver(only_group, sid) == EXPECTED[sid]["c1"]
+    elif sid == "SZZ-0217":
+        work = tmp_path / "undo-c1-on-c3"
+        _snapshot(repo, hashes["c3"], work)
+        _edit(work, "src/main/java/example/DurationText.java",
+              ('return (text.endsWith("m") ? value * 60 : value) * 1000;', 'return text.endsWith("m") ? value * 60 : value;'))
+        _edit(work, "src/main/java/example/RequestTimeout.java", ("parse(configured) / 1000;", "parse(configured);"))
+        assert _run_driver(work, sid) == EXPECTED[sid]["c4"]
     elif sid == "SZZ-0213":
         only_tax = tmp_path / "only-tax"
         _snapshot(repo, hashes["c3"], only_tax)
@@ -430,3 +483,31 @@ def test_szzg_0146_default_variant_is_the_strict_one():
     lenient = _commit_level_policy(scenario, "advanced-scenarios", "observable-only")
     assert (lenient.evaluation_variant, lenient.evaluation_policy, set(lenient.required)) == ("observable-only", "relaxed_with_related", {"c3"})
     assert set(lenient.related_origins) == {"c1"}
+
+
+def test_szz_0216_the_move_is_reached_only_by_a_lower_copy_score_or_by_following_the_file(generated):
+    sid, hashes, repo = generated
+    if sid != "SZZ-0216":
+        pytest.skip("only SZZ-0216 moves the method")
+    path = "src/main/java/example/FareTable.java"
+    parent = f"{hashes['c4']}^"
+    lines = _git(repo, "show", f"{parent}:{path}").split("\n")
+    number = next(i for i, l in enumerate(lines, 1) if "age <= 12" in l)
+    def owner(*flags):
+        return _owner(repo, hashes, _git(repo, "blame", "-l", *flags, "-L", f"{number},{number}", parent, "--", path).split()[0])
+    assert (owner(), owner("-w"), owner("-M"), owner("-C"), owner("-C", "-C")) == ("c2", "c2", "c2", "c2", "c2")
+    assert owner("-C10") == "c1"
+    followed = _git(repo, "log", "--follow", "--format=%H", parent, "--", path).split()
+    assert [ _owner(repo, hashes, h) for h in followed ] == ["c2", "c1", "c0"]
+    assert _git(repo, "diff", "-w", hashes["c1"], hashes["c2"], "--", "src/main/java/example/TicketPricing.java").strip() != ""
+
+
+def test_szz_0217_fix_message_quotes_the_callee_change(generated):
+    sid, hashes, repo = generated
+    if sid != "SZZ-0217":
+        pytest.skip("only SZZ-0217 quotes a subject")
+    subject_c1 = _git(repo, "log", "-1", "--format=%s", hashes["c1"]).strip()
+    fix_message = _git(repo, "log", "-1", "--format=%s", hashes["c4"])
+    assert f'"{subject_c1}"' in fix_message
+    matching = _git(repo, "log", "--all", f"--grep={subject_c1}", "--fixed-strings", "--format=%H").split()
+    assert {_owner(repo, hashes, h) for h in matching} == {"c1", "c4"}
