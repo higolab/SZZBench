@@ -105,8 +105,20 @@ proposed with the first rewrite that needs it.
    place twice (SZZ-0218 uses `boxes(Integer.MAX_VALUE)`, SZZG-0148
    `netCents(999999999, 33)`).
 
+   A bound has to clear **every** method that consumes the bounded quantity, not
+   only the one whose expression was flagged: SZZG-0139's base price fits `int`
+   for one night longer than the booking with its weekend surcharge does, so the
+   scenario's bound is the surcharge's, 195 225 nights (PR #83 review).
+
    Where overflow *is* the declared fault — SZZ-0210, SZZG-0056, SZZG-0076, and
    SZZG-0141's `c2`, whose message gives avoiding it as the motive for the
    truncation it introduces — the arithmetic is correct as written. Repairing
    SZZG-0141 meant widening the **fix**, not the faulty form: `c2`'s motive was
    sound and its cure was not, which is the sharper lesson.
+
+   Where a scenario **probes its own overflow on purpose**, widening is a
+   regression, not a repair: SZZ-0100's README pins 24 settings that include the
+   values where `seconds * 1000` wraps, and `c0` and `c3` share their answers,
+   so a 64-bit conversion there both breaks pinned probes and lets a negative
+   setting past the cap the scenario is about. Such a scenario writes its domain
+   down and keeps its arithmetic.

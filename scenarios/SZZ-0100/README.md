@@ -23,13 +23,13 @@ place.
 ## Commit structure
 
 - `c0`: Adds `TimeoutSetting` with `timeoutMillis(String)`
-  (`Math.min((long) seconds * 1000, MAX_TIMEOUT_MS)`, cast back to `int`) and `defaultTimeoutMillis()`.
+  (`Math.min(seconds * 1000, MAX_TIMEOUT_MS)`) and `defaultTimeoutMillis()`.
 - `c1`: Rewrites the clamp as `Math.min(seconds, MAX_TIMEOUT_MS) * 1000`, which
   compares a value in seconds with a maximum in milliseconds, so the cap is
   effectively never applied. This is the BIC.
 - `c2`: Wraps the method body in `try { … } catch (NumberFormatException e) { return DEFAULT_TIMEOUT_MS; }`.
   The faulty statement itself is unchanged apart from its indentation.
-- `c3`: Restores `return (int) Math.min((long) seconds * 1000, MAX_TIMEOUT_MS);` at the new
+- `c3`: Restores `return Math.min(seconds * 1000, MAX_TIMEOUT_MS);` at the new
   indentation. This is the BFC. Its first-parent diff is `+1 -1` on a single
   line; the `try`/`catch` stays.
 
@@ -59,7 +59,12 @@ following the line history one step past `c2`.
   `"-1"`, `"-60"`, `"-2147483648"`, `"2147483647"`, `"2147483646"`, `"2147483"`,
   `"2147484"`, `" 30 "`, `"\t45\n"`, `"+7"`, `"000012"`), which include the
   values where `seconds * 1000` overflows, plus `defaultTimeoutMillis()` and a
-  `null` setting. The `c1` snapshot differs from `c0` for every setting above 60
+  `null` setting. Those overflow probes are deliberate and `c0` and `c3` share
+  their answers, so the conversion stays in `int`: the domain over which
+  `timeoutMillis` is *correct* is a setting whose millisecond value fits `int`,
+  from `-2147483` upward, and the probes beyond it pin what the shared overflow
+  does rather than claiming it is right (issue #82;
+  `tests/test_reference_arithmetic.py` holds the bound). The `c1` snapshot differs from `c0` for every setting above 60
   seconds and for the overflow values (10 of the numeric outputs); the `c3`
   snapshot agrees with `c0` on **all** numeric settings and on `null` (both throw
   `NullPointerException`).

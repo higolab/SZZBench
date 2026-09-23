@@ -46,7 +46,7 @@ commits:
 
           public int timeoutMillis(String rawSeconds) {
               int seconds = Integer.parseInt(rawSeconds.trim());
-              return (int) Math.min((long) seconds * 1000, MAX_TIMEOUT_MS);
+              return Math.min(seconds * 1000, MAX_TIMEOUT_MS);
           }
 
           public int defaultTimeoutMillis() {
@@ -62,7 +62,7 @@ commits:
   - type: replace
     path: src/main/java/com/example/config/TimeoutSetting.java
     old: |2
-              return (int) Math.min((long) seconds * 1000, MAX_TIMEOUT_MS);
+              return Math.min(seconds * 1000, MAX_TIMEOUT_MS);
     new: |2
               return Math.min(seconds, MAX_TIMEOUT_MS) * 1000;
     labels:
@@ -99,7 +99,7 @@ commits:
     old: |2
                   return Math.min(seconds, MAX_TIMEOUT_MS) * 1000;
     new: |2
-                  return (int) Math.min((long) seconds * 1000, MAX_TIMEOUT_MS);
+                  return Math.min(seconds * 1000, MAX_TIMEOUT_MS);
     labels:
     - B001
     - fix
@@ -130,7 +130,7 @@ bugs:
       type: method
       name: timeoutMillis
       signature: int timeoutMillis(String rawSeconds)
-    statement: return (int) Math.min((long) seconds * 1000, MAX_TIMEOUT_MS);
+    statement: return Math.min(seconds * 1000, MAX_TIMEOUT_MS);
     fix_type: line_modification
   expected_szz:
     commit_level:

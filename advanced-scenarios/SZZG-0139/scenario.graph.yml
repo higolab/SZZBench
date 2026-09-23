@@ -167,5 +167,7 @@ scenario_design:
   - '{m1, f1}, {m1} and {f1} pass; {c2}, {m1, c2} and {} fail.'
   - The merge commit introduces nothing and is a known distractor.
 notes:
-- The domain this scenario supports is at most 200 000 nights, the most that fits int at 10 000 cents
-  each; the bound is probed by tests/test_reference_arithmetic.py (issue #82).
+- The domain this scenario supports is at most 195 225 nights. The base price is 10 000 cents a night and
+  the weekend surcharge adds a tenth of it, so the complete booking leaves the int range one night later,
+  before the base price alone does; both are probed at the bound by tests/test_reference_arithmetic.py
+  (issue #82).

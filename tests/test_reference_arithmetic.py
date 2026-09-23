@@ -31,34 +31,45 @@ from szzbench.graph_generator import generate_graph_repository  # noqa: E402
 
 needs_jdk = pytest.mark.skipif(shutil.which("javac") is None or shutil.which("java") is None, reason="needs a JDK")
 
-#: scenario -> (class, method, arguments at the top of the domain, expected answer, why the domain stops there)
+#: scenario -> (why the domain stops there, [(class, method, arguments at the top of it, expected answer)])
+#:
+#: A scenario's bound must clear **every** method that consumes the bounded quantity, not just the
+#: one whose expression the grep flagged: SZZG-0139's base price fits int for one night longer than
+#: the booking with its weekend surcharge does (PR #83 review).
 CASES = {
     # repaired on 2026-09-23: the product is taken in 64 bits, so the whole int range is supported
-    "SZZ-0093": ("com.example.pricing.DiscountCalculator", "discountCents", [2147483647], 214748364,
-                 "any int order total: the discount is taken in 64 bits"),
-    "SZZ-0100": ("com.example.config.TimeoutSetting", "timeoutMillis", ["2147483647"], 60000,
-                 "any parseable int: the clamp exists to accept an absurd setting, so it must survive one"),
-    "SZZ-0213": ("example.InvoiceTotal", "withTaxCents", [1000000000], 1100000000,
-                 "a net whose taxed total still fits int, which bounds the input whatever the intermediate width"),
-    "SZZG-0138": ("example.pricing.Discounts", "percentOf", [1000000000, 20], 200000000,
-                  "any int amount and any percentage 0..100"),
-    "SZZG-0141": ("example.invoice.InvoiceLine", "discountedCents", [1000000000, 20], 800000000,
-                  "any int amount and any percentage 0..100"),
+    "SZZ-0093": ("any int order total: the discount is taken in 64 bits",
+                 [("com.example.pricing.DiscountCalculator", "discountCents", [2147483647], 214748364)]),
+    "SZZ-0213": ("a net whose taxed total still fits int, which bounds the input whatever the intermediate width",
+                 [("example.InvoiceTotal", "withTaxCents", [1000000000], 1100000000)]),
+    "SZZG-0138": ("any int amount and any percentage 0..100",
+                  [("example.pricing.Discounts", "percentOf", [1000000000, 20], 200000000)]),
+    "SZZG-0141": ("any int amount and any percentage 0..100",
+                  [("example.invoice.InvoiceLine", "discountedCents", [1000000000, 20], 800000000)]),
+    # left in int: the scenario probes its own overflow on purpose, so the domain is written down instead
+    "SZZ-0100": ("a setting whose millisecond value fits int, from -2147483 upward; the probes beyond it "
+                 "pin what the shared overflow does rather than claiming it is right",
+                 [("com.example.config.TimeoutSetting", "timeoutMillis", ["-2147483"], -2147483000),
+                  ("com.example.config.TimeoutSetting", "timeoutMillis", ["2147483"], 60000),
+                  ("com.example.config.TimeoutSetting", "timeoutMillis", ["60"], 60000)]),
     # not repaired: the product leaves the int range only outside the domain the scenario describes
-    "SZZG-0005": ("example.Shipping", "volumetricWeight", [1000, 1000, 1000], 200000000,
-                  "a parcel of at most 1000 cm a side; 1290 cm cubed leaves the int range"),
-    "SZZG-0007": ("example.Paging", "offset", [1000000, 1000], 1000000000,
-                  "a page index times a page size that still fits int"),
-    "SZZG-0070": ("example.Pagination", "lastIndex", [1000000, 1000], 999999999,
-                  "a page index times a page size that still fits int"),
-    "SZZG-0136": ("example.billing.LateFee", "feeCents", [2000000, 0, 1000], 2000000000,
-                  "a charge that still fits int: 2 000 000 days at 1000 cents"),
-    "SZZG-0137": ("example.billing.LateFee", "feeCents", [2000000, 0, 1000], 2000000000,
-                  "a charge that still fits int: 2 000 000 days at 1000 cents"),
-    "SZZG-0139": ("example.booking.Pricing", "basePrice", [200000], 2000000000,
-                  "200 000 nights, the most that fits int at 10 000 cents each"),
-    "SZZG-0147": ("example.RetryPolicy", "waitSeconds", [1000000], 2000000,
-                  "a million attempts at a 2000 ms backoff, the most that fits int"),
+    "SZZG-0005": ("a parcel of at most 1000 cm a side, and a shipping cost that still fits int",
+                  [("example.Shipping", "volumetricWeight", [1000, 1000, 1000], 200000000),
+                   ("example.ShippingUtils", "cost", [200000000, 10, 0], 2000000)]),
+    "SZZG-0007": ("a page index times a page size that still fits int",
+                  [("example.Paging", "offset", [1000000, 1000], 1000000000)]),
+    "SZZG-0070": ("a page index times a page size that still fits int",
+                  [("example.Pagination", "lastIndex", [1000000, 1000], 999999999)]),
+    "SZZG-0136": ("a late fee that still fits int: 2 000 000 chargeable days at 1000 cents",
+                  [("example.billing.LateFee", "feeCents", [2000000, 0, 1000], 2000000000)]),
+    "SZZG-0137": ("a late fee that still fits int: 2 000 000 chargeable days at 1000 cents",
+                  [("example.billing.LateFee", "feeCents", [2000000, 0, 1000], 2000000000)]),
+    "SZZG-0139": ("195 225 nights: the weekend surcharge adds a tenth, so the complete booking leaves the "
+                  "int range one night before the base price alone does",
+                  [("example.booking.Pricing", "basePrice", [195225], 1952250000),
+                   ("example.booking.Surcharge", "weekend", [1952250000], 2147475000)]),
+    "SZZG-0147": ("a million attempts at a 2000 ms backoff, the most that fits int",
+                  [("example.RetryPolicy", "waitSeconds", [1000000], 2000000)]),
 }
 
 DRIVER = """
@@ -103,21 +114,24 @@ def fixed_snapshot(request, tmp_path_factory):
 @needs_jdk
 def test_the_fixed_snapshot_is_exact_at_the_top_of_its_domain(fixed_snapshot, tmp_path):
     sid, repo = fixed_snapshot
-    cls, method, args, expected, domain = CASES[sid]
+    domain, probes = CASES[sid]
     work = tmp_path / sid
     work.mkdir(parents=True, exist_ok=True)
     tar = subprocess.run(["git", "archive", "HEAD"], cwd=repo, capture_output=True, check=True).stdout
     subprocess.run(["tar", "-x", "-C", str(work)], input=tar, check=True)
-    (work / "Drive.java").write_text(DRIVER % {"cls": json.dumps(cls), "method": json.dumps(method),
-                                               "args": _java_args(args)})
-    sources = [str(p) for p in work.rglob("*.java")]
-    subprocess.run(["javac", "-nowarn", "-d", str(work / "out"), *sources], check=True, capture_output=True)
-    answer = subprocess.run(["java", "-cp", str(work / "out"), "Drive"], cwd=work,
-                            capture_output=True, text=True, check=True).stdout.strip()
-    assert answer == str(expected), textwrap.fill(
-        f"{sid}: {cls}.{method}{tuple(args)} answered {answer}, not {expected}. "
-        f"The supported domain is {domain}; an answer that differs here means the "
-        f"expression the scenario calls correct overflows inside it (issue #82).", 100)
+    wrong = []
+    for cls, method, args, expected in probes:
+        (work / "Drive.java").write_text(DRIVER % {"cls": json.dumps(cls), "method": json.dumps(method),
+                                                   "args": _java_args(args)})
+        sources = [str(p) for p in work.rglob("*.java")]
+        subprocess.run(["javac", "-nowarn", "-d", str(work / "out"), *sources], check=True, capture_output=True)
+        answer = subprocess.run(["java", "-cp", str(work / "out"), "Drive"], cwd=work,
+                                capture_output=True, text=True, check=True).stdout.strip()
+        if answer != str(expected):
+            wrong.append(f"{cls}.{method}{tuple(args)} answered {answer}, not {expected}")
+    assert wrong == [], textwrap.fill(
+        f"{sid}: " + "; ".join(wrong) + f". The supported domain is {domain}; an answer that differs "
+        f"here means the expression the scenario calls correct overflows inside it (issue #82).", 100)
 
 
 def test_every_audited_scenario_is_still_in_the_suite():
