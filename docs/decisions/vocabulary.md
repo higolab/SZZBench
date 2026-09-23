@@ -146,16 +146,16 @@ any `control` that no cheap rule solves (a promotion candidate).
 
 The initial assignment followed the measurement at `6ed60a0`: **203 control and
 7 discriminating** — SZZ-0132, SZZ-0136, SZZG-0028, SZZG-0038, SZZG-0040,
-SZZG-0069 and SZZG-0076, all of which have a multi-commit oracle. Twenty-seven
-scenarios designed against that axis have been added since — ten on 2026-09-22
-(issue #35), one in each of the ten categories that had none: SZZ-0212 (S3),
-SZZ-0213 (S4), SZZ-0214 (S2), SZZG-0144 (G7), SZZ-0215 (S1), SZZG-0145 (G8),
-SZZG-0146 (G9), SZZG-0147 (G6), SZZ-0216 (S5) and SZZ-0217 (S7); and two the
-same day for issue #80, which fail the cheap rules a different way — SZZ-0218,
-where blame names a commit that is not an answer, and SZZG-0148, where blame is
-right about what it names and still short of a credit threshold. So the suite
-declares **235 control and 34 discriminating**, and every category has at least
-one; the list and the reasons are in
+SZZG-0069 and SZZG-0076, all of which have a multi-commit oracle. Twenty-five
+scenarios designed against that axis have been added since, ten of them on
+2026-09-22 (issue #35), one in each of the ten categories that had none:
+SZZ-0212 (S3), SZZ-0213 (S4), SZZ-0214 (S2), SZZG-0144 (G7), SZZ-0215 (S1),
+SZZG-0145 (G8), SZZG-0146 (G9), SZZG-0147 (G6), SZZ-0216 (S5) and SZZ-0217 (S7).
+Two more, added the same day for issue #80, are in the tier **without being on
+that axis**: SZZ-0218, where blame reaches both required commits and names a
+third that is not an answer, and SZZG-0148, where blame is right about what it
+names and still short of a credit threshold. So the suite declares **235 control
+and 34 discriminating**, and every category has at least one; the list and the reasons are in
 [baselines.md](../baselines.md#the-two-tiers).
 
 A scenario can be `discriminating` **only if its oracle names at least two

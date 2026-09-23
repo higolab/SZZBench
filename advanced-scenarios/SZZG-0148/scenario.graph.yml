@@ -51,8 +51,9 @@ commits:
       package example.payroll;
 
       public class Payslip {
+          /** The tax is taken in 64 bits, so every int gross and every percentage are representable. */
           public int netCents(int grossCents, int taxPercent) {
-              return grossCents - grossCents * taxPercent / 100;
+              return grossCents - (int) ((long) grossCents * taxPercent / 100);
           }
       }
 - id: c1
@@ -66,8 +67,8 @@ commits:
   operations:
   - type: replace
     path: src/main/java/example/payroll/Payslip.java
-    old: return grossCents - grossCents * taxPercent / 100;
-    new: return grossCents - grossCents / 100 * taxPercent;
+    old: return grossCents - (int) ((long) grossCents * taxPercent / 100);
+    new: return grossCents - (int) ((long) grossCents / 100 * taxPercent);
 - id: c2
   branch: main
   parents:
@@ -97,15 +98,15 @@ commits:
     path: src/main/java/example/payroll/Payslip.java
     old: |
       public int netCents(int grossCents, int taxPercent) {
-              return grossCents - grossCents / 100 * taxPercent;
+              return grossCents - (int) ((long) grossCents / 100 * taxPercent);
           }
     new: |
       public int netCents(int grossCents, int taxPercent) {
-              return grossCents - grossCents / 100 * taxPercent;
+              return grossCents - (int) ((long) grossCents / 100 * taxPercent);
           }
 
-          public int allowanceCents(Integer declaredEuros) {
-              return declaredEuros * 100;
+          public long allowanceCents(Integer declaredEuros) {
+              return declaredEuros * 100L;
           }
 - id: c4
   branch: main
@@ -119,12 +120,12 @@ commits:
   - type: replace
     path: src/main/java/example/payroll/Payslip.java
     old: |
-      public int allowanceCents(Integer declaredEuros) {
-              return declaredEuros * 100;
+      public long allowanceCents(Integer declaredEuros) {
+              return declaredEuros * 100L;
           }
     new: |
-      public int allowanceCents(Integer declaredEuros) {
-              return declaredEuros * 100;
+      public long allowanceCents(Integer declaredEuros) {
+              return declaredEuros * 100L;
           }
 
           public int contributionCents(String contract, int grossCents) {
@@ -148,20 +149,20 @@ commits:
   operations:
   - type: replace
     path: src/main/java/example/payroll/Payslip.java
-    old: return grossCents - grossCents / 100 * taxPercent;
-    new: return grossCents - grossCents * taxPercent / 100;
+    old: return grossCents - (int) ((long) grossCents / 100 * taxPercent);
+    new: return grossCents - (int) ((long) grossCents * taxPercent / 100);
   - type: replace
     path: src/main/java/example/payroll/Payslip.java
     old: |
-      public int allowanceCents(Integer declaredEuros) {
-              return declaredEuros * 100;
+      public long allowanceCents(Integer declaredEuros) {
+              return declaredEuros * 100L;
           }
     new: |
-      public int allowanceCents(Integer declaredEuros) {
+      public long allowanceCents(Integer declaredEuros) {
               if (declaredEuros == null) {
                   return 0;
               }
-              return declaredEuros * 100;
+              return declaredEuros * 100L;
           }
   - type: replace
     path: src/main/java/example/payroll/Payslip.java
@@ -190,7 +191,7 @@ bugs:
   - id: F001
     commit: c1
     file: src/main/java/example/payroll/Payslip.java
-    statement: return grossCents - grossCents / 100 * taxPercent;
+    statement: return grossCents - (int) ((long) grossCents / 100 * taxPercent);
     change_type: line_modification
   - id: F002
     commit: c3
@@ -211,7 +212,7 @@ bugs:
   - id: X001
     commit: c5
     file: src/main/java/example/payroll/Payslip.java
-    statement: return grossCents - grossCents * taxPercent / 100;
+    statement: return grossCents - (int) ((long) grossCents * taxPercent / 100);
     fix_type: line_modification
   - id: X002
     commit: c5
@@ -244,9 +245,11 @@ scenario_design:
     pass condition is a threshold, so a tool fails by finding too few causes rather than by missing a
     particular one.
   key_property: >
-    Measured: netCents(19999, 20) is 16000 at c0, 16019 from c1 and 16000 again at c5;
-    allowanceCents(50) is 5000 from c3 and allowanceCents(null) throws NullPointerException at c3 and c4
-    and returns 0 at c5; contributionCents("PERMANENT", 100000) is 10000 from c4 and
+    Measured: netCents(19999, 20) is 16000 at c0, 16019 from c1 and 16000 again at c5, and
+    netCents(999999999, 33) - whose correct product exceeds the int range - is 670000000 at c0 and c5 and
+    670000032 from c1, so the reorder is the only difference between the two expressions and neither
+    overflows; allowanceCents(50) is 5000 from c3 and allowanceCents(null) throws NullPointerException at
+    c3 and c4 and returns 0 at c5; contributionCents("PERMANENT", 100000) is 10000 from c4 and
     contributionCents("CONTRACTOR", 100000) is 0 at c4 and 6666 at c5. The fix deletes exactly one line,
     c1's, so blame at c5^ returns {c1} under every variant; two of three are required, so one true
     positive is not enough.
@@ -259,4 +262,6 @@ scenario_design:
     the policy requires two, so the answer is short of the threshold rather than wrong.
 notes:
 - The two addition-only repairs are what keep blame below the threshold; neither c3 nor c4 is on a line the fix deletes.
+- Every amount is computed in 64 bits where the product could leave the int range, so the faulty and the correct
+  expressions differ only in the order of the division and the multiplication, at any gross and any percentage.
 - Authors are assigned so that every author rule of the baseline family also names a commit outside the required set.

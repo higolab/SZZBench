@@ -16,12 +16,12 @@
 ## Purpose
 
 The suite's first `discriminating` scenario whose failure is a **false
-positive**. Every other scenario of the tier asks a tool to reach a commit
+positive**. The thirty-two that preceded it all ask a tool to reach a commit
 blame does not name; this one asks it to reject a commit blame does name. The
 fix repairs two independent faults and, in the same commit, drops an unused
 call counter a third commit had added, so blaming what it deletes returns a
 strict superset of the answer. It is the first `blame_class: extra` scenario in
-the tier — the other 32 are `miss` or `addition-only`.
+the tier — of the other 33, one is `addition-only` and the rest are `miss`.
 
 Issue #80 asked for a second discriminating mechanism. This is one of the two;
 the other is [SZZG-0148](../../advanced-scenarios/SZZG-0148/README.md), where
@@ -30,7 +30,7 @@ the failure is a credit threshold.
 ## Commit structure
 
 ```text
-c0  Add the batch summary                    boxes() rounds up; describe() reports the box count
+c0  Add the batch summary                    boxes() rounds up in 64 bits; describe() reports the box count
 c1  Simplify the box count                   items / PER_BOX  (rounds down)                      <- BIC
 c2  Count how often a batch is described     adds a private counter field and its increment      (distractor)
 c3  Report the batch size on the label        describe() returns the item count                   <- BIC
@@ -48,16 +48,22 @@ faulty.
 
 ## Measured behaviour
 
-`boxes(24)`, `boxes(25)`, `describe(24)` and `describe(25)` at each commit
-(`tests/test_second_mechanism.py`):
+`boxes(24)`, `boxes(25)`, `boxes(Integer.MAX_VALUE)`, `describe(24)` and
+`describe(25)` at each commit (`tests/test_second_mechanism.py`):
 
-| commit | boxes(24) | boxes(25) | describe(24) | describe(25) |
-|---|---|---|---|---|
-| `c0` | 2 | 3 | 2 boxes | 3 boxes |
-| `c1` | 2 | **2** | 2 boxes | **2 boxes** |
-| `c2` | 2 | 2 | 2 boxes | 2 boxes |
-| `c3` | 2 | 2 | **24 boxes** | **25 boxes** |
-| `c4` | 2 | 3 | 2 boxes | 3 boxes |
+| commit | boxes(24) | boxes(25) | boxes(MAX_VALUE) | describe(24) | describe(25) |
+|---|---|---|---|---|---|
+| `c0` | 2 | 3 | 178956971 | 2 boxes | 3 boxes |
+| `c1` | 2 | **2** | **178956970** | 2 boxes | **2 boxes** |
+| `c2` | 2 | 2 | **178956970** | 2 boxes | 2 boxes |
+| `c3` | 2 | 2 | **178956970** | **24 boxes** | **25 boxes** |
+| `c4` | 2 | 3 | 178956971 | 2 boxes | 3 boxes |
+
+The largest item count is probed because `boxes()` rounds up: the sum
+`items + PER_BOX - 1` leaves the `int` range there, so the method adds in 64
+bits. Written as a plain `int` sum it would answer −178956969 at `c0` and `c4`
+— a negative box count in the *correct* snapshots, and the faulty floor
+division would be the more sensible of the two.
 
 `c2` moves no answer. Both faults are needed, measured by the partial fix at
 `c3`: restoring the ceiling division alone still labels the batch `25 boxes`,

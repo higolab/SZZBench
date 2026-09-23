@@ -219,10 +219,11 @@ Every scenario declares `meta.tier`, which says what it is for:
 
 Every one of the thirty-four has a multi-commit oracle, which section *Why a
 discriminating scenario needs a multi-commit oracle* below shows is forced.
-Seven are pre-existing scenarios that turned out to resist the baselines; the
-other twenty-seven were
-**designed** against the measured axis, on one skeleton — the answer is two
-commits, one of which the fix's deleted lines do not blame to. There are five
+Seven are pre-existing scenarios that turned out to resist the baselines;
+twenty-five were **designed** against one axis, on one skeleton — the answer is
+two commits, one of which the fix's deleted lines do not blame to — and the last
+two, SZZ-0218 and SZZG-0148, fail the cheap rules in two further ways described
+under *Two mechanisms inside that room* below. For the twenty-five there are five
 reasons that half can be out of reach, and three scenarios for each:
 
 | why the second commit is out of blame's reach | | | |
@@ -439,11 +440,13 @@ measured before the grading of 2026-09-22. Since then `difficulty` has a
 `decisions/vocabulary.md` §4): the graph suite was graded from it (93 `easy`,
 10 `medium`, 33 `hard`, from `advanced` throughout), the eight classic
 scenarios below their floor were raised (SZZ-0203 to `medium`; SZZ-0081,
-0082, 0083, 0136, 0204, 0205, 0206 to `hard`), and the 39 classic scenarios
-above their floor keep the author's grade as an override (the 39th is SZZ-0214,
-added on 2026-09-22: an addition-only fix, floor `medium`, declared `hard` for
-the reason its README gives). The same run reports the check: **0 below the
-floor, 39 above, 0 ungraded.**
+0082, 0083, 0136, 0204, 0205, 0206 to `hard`), and the 40 classic scenarios
+above their floor keep the author's grade as an override. Two of those were
+added on 2026-09-22 and say why in a `## Difficulty` section: SZZ-0214, whose
+fix is addition-only, floor `medium`; and SZZ-0218, whose blame class is
+`extra`, floor `medium`, declared `hard` because its difficulty is in rejecting
+a commit rather than in reaching one. The same run reports the check: **0 below
+the floor, 40 above, 0 ungraded.**
 
 The same run prints the **fault statement reuse** block (issue #13), which
 counts how many scenarios declare each fault statement (`fault.statement`,

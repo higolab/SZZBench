@@ -49,8 +49,10 @@ commits:
           public class BatchSummary {
               static final int PER_BOX = 12;
 
+              /** Boxes needed for a batch, rounding up. The sum is taken in 64 bits, so every
+               *  non-negative item count is representable. */
               public int boxes(int items) {
-                  return (items + PER_BOX - 1) / PER_BOX;
+                  return (int) (((long) items + PER_BOX - 1) / PER_BOX);
               }
 
               public String describe(int items) {
@@ -66,7 +68,7 @@ commits:
     operations:
       - type: "replace"
         path: "src/main/java/example/BatchSummary.java"
-        old: "return (items + PER_BOX - 1) / PER_BOX;"
+        old: "return (int) (((long) items + PER_BOX - 1) / PER_BOX);"
         new: "return items / PER_BOX;"
         labels: ["B001", "fault"]
 
@@ -117,7 +119,7 @@ commits:
       - type: "replace"
         path: "src/main/java/example/BatchSummary.java"
         old: "return items / PER_BOX;"
-        new: "return (items + PER_BOX - 1) / PER_BOX;"
+        new: "return (int) (((long) items + PER_BOX - 1) / PER_BOX);"
         labels: ["B001", "fix"]
       - type: "replace"
         path: "src/main/java/example/BatchSummary.java"

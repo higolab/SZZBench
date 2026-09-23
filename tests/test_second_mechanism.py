@@ -34,6 +34,7 @@ DRIVERS = {
 public class Drive { public static void main(String[] a) {
     example.BatchSummary b = new example.BatchSummary(); StringBuilder out = new StringBuilder();
     out.append("boxes24=").append(b.boxes(24)).append(" boxes25=").append(b.boxes(25));
+    out.append(" boxesMax=").append(b.boxes(Integer.MAX_VALUE));
     out.append(" d24=").append(b.describe(24)).append(" d25=").append(b.describe(25));
     System.out.print(out); } }
 """,
@@ -41,7 +42,7 @@ public class Drive { public static void main(String[] a) {
 import java.lang.reflect.Method;
 public class Drive { public static void main(String[] a) throws Exception {
     example.payroll.Payslip p = new example.payroll.Payslip(); StringBuilder out = new StringBuilder();
-    out.append("net=").append(p.netCents(19999, 20));
+    out.append("net=").append(p.netCents(19999, 20)).append(" netBig=").append(p.netCents(999999999, 33));
     try { Method m = p.getClass().getMethod("allowanceCents", Integer.class);
           out.append(" allow50=").append(m.invoke(p, Integer.valueOf(50)));
           String an; try { an = String.valueOf(m.invoke(p, (Object) null)); }
@@ -58,19 +59,19 @@ public class Drive { public static void main(String[] a) throws Exception {
 
 EXPECTED = {
     "SZZ-0218": {
-        "c0": "boxes24=2 boxes25=3 d24=2 boxes d25=3 boxes",
-        "c1": "boxes24=2 boxes25=2 d24=2 boxes d25=2 boxes",
-        "c2": "boxes24=2 boxes25=2 d24=2 boxes d25=2 boxes",
-        "c3": "boxes24=2 boxes25=2 d24=24 boxes d25=25 boxes",
-        "c4": "boxes24=2 boxes25=3 d24=2 boxes d25=3 boxes",
+        "c0": "boxes24=2 boxes25=3 boxesMax=178956971 d24=2 boxes d25=3 boxes",
+        "c1": "boxes24=2 boxes25=2 boxesMax=178956970 d24=2 boxes d25=2 boxes",
+        "c2": "boxes24=2 boxes25=2 boxesMax=178956970 d24=2 boxes d25=2 boxes",
+        "c3": "boxes24=2 boxes25=2 boxesMax=178956970 d24=24 boxes d25=25 boxes",
+        "c4": "boxes24=2 boxes25=3 boxesMax=178956971 d24=2 boxes d25=3 boxes",
     },
     "SZZG-0148": {
-        "c0": "net=16000 allow=absent contrib=absent",
-        "c1": "net=16019 allow=absent contrib=absent",
-        "c2": "net=16019 allow=absent contrib=absent",
-        "c3": "net=16019 allow50=5000 allowNull=NullPointerException contrib=absent",
-        "c4": "net=16019 allow50=5000 allowNull=NullPointerException perm=10000 contractor=0",
-        "c5": "net=16000 allow50=5000 allowNull=0 perm=10000 contractor=6666",
+        "c0": "net=16000 netBig=670000000 allow=absent contrib=absent",
+        "c1": "net=16019 netBig=670000032 allow=absent contrib=absent",
+        "c2": "net=16019 netBig=670000032 allow=absent contrib=absent",
+        "c3": "net=16019 netBig=670000032 allow50=5000 allowNull=NullPointerException contrib=absent",
+        "c4": "net=16019 netBig=670000032 allow50=5000 allowNull=NullPointerException perm=10000 contractor=0",
+        "c5": "net=16000 netBig=670000000 allow50=5000 allowNull=0 perm=10000 contractor=6666",
     },
 }
 
@@ -84,7 +85,7 @@ BLAME = {
         'return items + " boxes";': ("c3", "c3", "c3"),
     },
     "SZZG-0148": {
-        "return grossCents - grossCents / 100 * taxPercent;": ("c1", "c1", "c1"),
+        "return grossCents - (int) ((long) grossCents / 100 * taxPercent);": ("c1", "c1", "c1"),
     },
 }
 
@@ -210,19 +211,38 @@ def test_szz_0218_both_faults_are_necessary_and_the_counter_is_not_one(generated
     only_boxes = tmp_path / "only-boxes"
     _snapshot(repo, hashes["c3"], only_boxes)
     _edit(only_boxes, "src/main/java/example/BatchSummary.java",
-          ("return items / PER_BOX;", "return (items + PER_BOX - 1) / PER_BOX;"))
-    assert _run_driver(only_boxes, sid) == "boxes24=2 boxes25=3 d24=24 boxes d25=25 boxes"
+          ("return items / PER_BOX;", "return (int) (((long) items + PER_BOX - 1) / PER_BOX);"))
+    assert _run_driver(only_boxes, sid) == "boxes24=2 boxes25=3 boxesMax=178956971 d24=24 boxes d25=25 boxes"
     only_label = tmp_path / "only-label"
     _snapshot(repo, hashes["c3"], only_label)
     _edit(only_label, "src/main/java/example/BatchSummary.java",
           ('return items + " boxes";', 'return boxes(items) + " boxes";'))
-    assert _run_driver(only_label, sid) == "boxes24=2 boxes25=2 d24=2 boxes d25=2 boxes"
+    assert _run_driver(only_label, sid) == "boxes24=2 boxes25=2 boxesMax=178956970 d24=2 boxes d25=2 boxes"
     # removing c2's counter alone changes nothing: it is written and never read
     without_counter = tmp_path / "without-counter"
     _snapshot(repo, hashes["c3"], without_counter)
     _edit(without_counter, "src/main/java/example/BatchSummary.java",
           ("        described++;\n", ""), ("    private int described;\n\n", ""))
     assert _run_driver(without_counter, sid) == EXPECTED[sid]["c3"]
+
+
+def test_neither_new_scenario_overflows_on_a_supported_input(generated, tmp_path):
+    """The reference and the fixed expression must be right across the declared int domain, not
+    only on the small probes: a conversion that overflows makes the scenario's own premise false
+    (PR #81 review). The boundary probes are part of EXPECTED, so this test states what they guard."""
+    sid, hashes, repo = generated
+    if shutil.which("javac") is None or shutil.which("java") is None:
+        pytest.skip("needs a JDK")
+    fixed = max(EXPECTED[sid])
+    work = tmp_path / "boundary"
+    _snapshot(repo, hashes[fixed], work)
+    answers = dict(part.split("=", 1) for part in _run_driver(work, sid).split(" ") if "=" in part)
+    if sid == "SZZ-0218":
+        # ceiling of Integer.MAX_VALUE / 12, computed in 64 bits; an int sum wraps negative
+        assert answers["boxesMax"] == "178956971"
+    else:
+        # 999999999 * 33 leaves the int range; the correct net is the gross less a third of it
+        assert answers["netBig"] == "670000000"
 
 
 def test_only_a_multi_commit_oracle_can_discriminate():

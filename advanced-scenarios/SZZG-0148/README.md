@@ -16,9 +16,9 @@
 
 ## Purpose
 
-A second discriminating mechanism for the suite (issue #80). Every other
-scenario of the tier is a two-commit oracle under `exact_set` whose failure is
-one unreachable half. Here the oracle names **three** commits and the pass
+A second discriminating mechanism for the suite (issue #80). The thirty-two
+scenarios that preceded this one and SZZ-0218 are all two-commit oracles under
+`exact_set` whose failure is one unreachable half. Here the oracle names **three** commits and the pass
 condition is a **threshold**: `partial_credit` with `minimum_required: 2`. Only
 one of the three repairs deletes a line, so blame returns one true positive and
 no false positive, and fails by being short rather than by being wrong.
@@ -31,7 +31,7 @@ same policy, one reachable cause fewer.
 ## Commit structure
 
 ```text
-c0  Add the payslip net calculation                         grossCents * taxPercent / 100
+c0  Add the payslip net calculation                         grossCents * taxPercent / 100, in 64 bits
 c1  Take the tax off the gross in percent steps             grossCents / 100 * taxPercent  (truncates)   <- BIC
 c2  Write down what a payslip contains                      docs only
 c3  Add the declared allowance to the payslip               allowanceCents() dereferences a nullable      <- BIC
@@ -50,24 +50,29 @@ does under every policy.
 
 ## Measured behaviour
 
-`netCents(19999, 20)`, `allowanceCents(50)`, `allowanceCents(null)`,
-`contributionCents("PERMANENT", 100000)` and
+`netCents(19999, 20)`, `netCents(999999999, 33)`, `allowanceCents(50)`,
+`allowanceCents(null)`, `contributionCents("PERMANENT", 100000)` and
 `contributionCents("CONTRACTOR", 100000)` at each commit
 (`tests/test_second_mechanism.py`; `allowanceCents` exists from `c3`,
 `contributionCents` from `c4`):
 
-| commit | net | allowance(50) | allowance(null) | permanent | contractor |
-|---|---|---|---|---|---|
-| `c0` | 16000 | — | — | — | — |
-| `c1`, `c2` | **16019** | — | — | — | — |
-| `c3` | 16019 | 5000 | **NullPointerException** | — | — |
-| `c4` | 16019 | 5000 | **NullPointerException** | 10000 | **0** |
-| `c5` | 16000 | 5000 | 0 | 10000 | 6666 |
+| commit | net(19999, 20) | net(999999999, 33) | allowance(50) | allowance(null) | permanent | contractor |
+|---|---|---|---|---|---|---|
+| `c0` | 16000 | 670000000 | — | — | — | — |
+| `c1`, `c2` | **16019** | **670000032** | — | — | — | — |
+| `c3` | 16019 | **670000032** | 5000 | **NullPointerException** | — | — |
+| `c4` | 16019 | **670000032** | 5000 | **NullPointerException** | 10000 | **0** |
+| `c5` | 16000 | 670000000 | 5000 | 0 | 10000 | 6666 |
 
-Ten percent of 19999 cents is 1999 after truncation; `c1` divides first,
-`19999 / 100 = 199`, and takes 3980 instead of 3999. The three causes are
-independent: each moves answers the others do not touch, and the fix repairs
-all three.
+Twenty percent of 19999 cents is 3999 after truncation; `c1` divides first,
+`19999 / 100 = 199`, and takes 3980. The second probe is there because
+`999999999 * 33` leaves the `int` range: both expressions take the product in
+64 bits, so the *only* difference between them is the order of the division and
+the multiplication, at any gross and any percentage. Written as a plain `int`
+product the correct expression would answer 67949672 for a gross of 50000000 at
+50% — more than the gross — and the faulty one would be the accurate of the
+two. The three causes are independent: each moves answers the others do not
+touch, and the fix repairs all three.
 
 ## Measured blame outcome at BFC^
 
@@ -75,7 +80,7 @@ The fix's diff is **one deletion and six additions**. The single deleted line
 is `c1`'s:
 
 ```text
-"return grossCents - grossCents / 100 * taxPercent;"   plain -> c1   -w -> c1   -w -C -C -> c1
+"return grossCents - (int) ((long) grossCents / 100 * taxPercent);"   plain -> c1   -w -> c1   -w -C -C -> c1
 ```
 
 The repair of `c3`'s omission adds a null guard above the dereference, and the
