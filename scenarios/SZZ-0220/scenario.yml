@@ -1,0 +1,178 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0220"
+  title: "The fix also deletes the deprecated alias an intermediate commit added, so blame names one commit too many"
+  slug: "fix-deletes-a-dead-alias"
+  description: >
+    A minimum-length check loses its equality and a strength score is divided
+    where it should be multiplied. Between them an intermediate commit adds a
+    deprecated alias that forwards to the check. The fix repairs both faults and
+    drops the alias, which no caller uses, so blaming what it deletes returns
+    both required commits and the alias's author as well. The suite's second
+    scenario whose failure is a false positive, and the first in S3, where every
+    other member has a one-commit oracle that a positional rule names.
+  category: "Intermediate noise and history noise"
+  factors:
+    - "multi-bic"
+    - "single-bfc"
+    - "tangled-bfc"
+    - "multi-hunk-bfc"
+    - "blame-over-reports"
+    - "boundary-condition"
+    - "wrong-operator"
+  difficulty: "hard"
+  status: "active"
+  tier: "discriminating"
+  defeats: ["blame", "shape", "position"]
+  category_code: "S3"
+
+repository:
+  name: "SZZ-0220-fix-deletes-a-dead-alias"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Add the password policy"
+    author: "Mei Tanaka <mei.tanaka@example.com>"
+    date: "2025-06-02T09:15:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/example/PasswordPolicy.java"
+        content: |
+          package example;
+
+          public class PasswordPolicy {
+              public boolean longEnough(String value) {
+                  return value.length() >= 8;
+              }
+
+              public int score(String value) {
+                  return value.length() * 2;
+              }
+          }
+
+  - id: "c1"
+    message: "Require more than the minimum length"
+    author: "Farid Haddad <farid.haddad@example.com>"
+    date: "2025-06-04T13:50:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/PasswordPolicy.java"
+        old: "return value.length() >= 8;"
+        new: "return value.length() > 8;"
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Add a deprecated alias for the old method name"
+    author: "Hana Sato <hana.sato@example.com>"
+    date: "2025-06-06T10:25:00Z"
+    role: "distractor"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/PasswordPolicy.java"
+        old: |
+          return value.length() > 8;
+              }
+        new: |
+          return value.length() > 8;
+              }
+
+              /** @deprecated renamed to longEnough */
+              @Deprecated
+              public boolean isLongEnough(String value) {
+                  return longEnough(value);
+              }
+
+  - id: "c3"
+    message: "Rework the strength score"
+    author: "Bruno Fischer <bruno.fischer@example.com>"
+    date: "2025-06-09T15:35:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/PasswordPolicy.java"
+        old: "return value.length() * 2;"
+        new: "return value.length() / 2;"
+        labels: ["B001", "fault"]
+
+  - id: "c4"
+    message: "Accept a password of exactly the minimum length, score by length again, and drop the unused alias"
+    author: "Farid Haddad <farid.haddad@example.com>"
+    date: "2025-06-11T12:05:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/PasswordPolicy.java"
+        old: "return value.length() > 8;"
+        new: "return value.length() >= 8;"
+        labels: ["B001", "fix"]
+      - type: "replace"
+        path: "src/main/java/example/PasswordPolicy.java"
+        old: |
+          }
+
+              /** @deprecated renamed to longEnough */
+              @Deprecated
+              public boolean isLongEnough(String value) {
+                  return longEnough(value);
+              }
+        new: |
+          }
+      - type: "replace"
+        path: "src/main/java/example/PasswordPolicy.java"
+        old: "return value.length() / 2;"
+        new: "return value.length() * 2;"
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "A password of exactly the minimum length is rejected and every score is a quarter of what it should be"
+    bug_fixing_commit: "c4"
+    bug_introducing_commits: ["c1", "c3"]
+    fault:
+      commit: "c3"
+      file: "src/main/java/example/PasswordPolicy.java"
+      entity:
+        type: "method"
+        name: "score"
+        signature: "int score(String value)"
+      statement: "return value.length() / 2;"
+      change_type: "line_modification"
+    fix:
+      commit: "c4"
+      file: "src/main/java/example/PasswordPolicy.java"
+      entity:
+        type: "method"
+        name: "score"
+        signature: "int score(String value)"
+      statement: "return value.length() * 2;"
+      fix_type: "line_modification"
+    expected_szz:
+      commit_level:
+        true_positives: ["c1", "c3"]
+        primary_observable_bic: "c3"
+        contributing_bics: ["c1"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "return value.length() > 8;"
+          - "return value.length() / 2;"
+        note: >
+          The fix deletes both faulty lines, which blame to c1 and c3, and the
+          alias c2 added. Removing a block that begins with a closing brace and
+          a blank line makes git's aligner delete the first such pair in the
+          file, which c0 wrote, so blame returns {c0, c1, c2, c3}: both required
+          commits and two more. The scenario fails on the false positives rather
+          than on a false negative, and a tool has to reject two commits rather
+          than one.
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3", "c4"]

@@ -1,6 +1,6 @@
 schema_version: graph-index-0.1-draft
 description: Index of draft advanced graph scenarios for SZZBench.
-scenario_count: 141
+scenario_count: 142
 scenarios:
 - id: SZZG-0001
   title: BFC performs rename and fix in the same commit
@@ -1717,6 +1717,24 @@ scenarios:
   - null-check-omission
   - missing-branch
   - wrong-operator
+  - blame-unreachable-bic
+- id: SZZG-0149
+  title: Three release branches, three causes, and a credit threshold blame cannot meet
+  category_code: G4
+  category: Branch, merge, cherry-pick, backport, and release branches
+  path: advanced-scenarios/SZZG-0149/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0149/README.md
+  status: active
+  factors:
+  - branch
+  - release-branch
+  - merge
+  - multi-bic
+  - single-bfc
+  - partial-credit
+  - addition-only-fix
+  - missing-branch
+  - off-by-one
   - blame-unreachable-bic
 notes:
 - Scenario IDs are ordered by the SZZBench scenario taxonomy.
