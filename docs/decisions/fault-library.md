@@ -85,3 +85,51 @@ proposed with the first rewrite that needs it.
    or not at all, with pinned metadata, and their identity tests keep passing.
 5. Re-run `szzbench coverage` and report the per-category share before and
    after in the PR.
+6. **The reference arithmetic must be right across the domain the scenario
+   admits** (decided 2026-09-23, issue #82). Four PR reviews in a row found the
+   same defect: an expression presented as the *reference* or the *fix*
+   overflows Java `int` for an input inside the declared range, so the
+   scenario's premise is false there and the faulty expression is the accurate
+   one. A README's behaviour table, a counterfactual and the claim that the BFC
+   is a fix all rest on that premise. Either:
+   - take the product in 64 bits — `(int) ((long) a * b / c)` — **in the faulty
+     form as well as the correct one**, so the declared fault stays the only
+     difference between them at every input; or
+   - state the supported domain in the scenario's `notes` and probe its
+     boundary.
+
+   Either way the boundary is measured: `tests/test_reference_arithmetic.py`
+   holds one row per audited scenario — the domain and the exact answer at the
+   top of it, evaluated against the bug-fixing snapshot. Pick a boundary value
+   that **also exposes the fault** where one exists, so the probe earns its
+   place twice (SZZ-0218 uses `boxes(Integer.MAX_VALUE)`, SZZG-0148
+   `netCents(999999999, 33)`).
+
+   A bound has to clear **every** method that consumes the bounded quantity, not
+   only the one whose expression was flagged: SZZG-0139's base price fits `int`
+   for one night longer than the booking with its weekend surcharge does, so the
+   scenario's bound is the surcharge's, 195 225 nights (PR #83 review).
+
+   A bound is often **coupled across arguments** rather than a limit on each:
+   SZZG-0005's cost returns `int`, so its parcel bound and its rate bound
+   constrain a product — at the maximum volumetric weight the rate may be at
+   most 10 737 cents per kilogram, and one above that the method answers 8
+   instead of 2 147 600 000. Widening the intermediate does not help when it is
+   the *result* that must fit, which is also why SZZ-0213's bound is a net whose
+   taxed total fits rather than any `int` net. Where a probe can do it, give the
+   boundary arguments a value that **also separates the fix from the fault**:
+   SZZG-0005 probes `cost(100, 10737, 8)`, which is 1073 at the fix and 10737
+   where the floor is the rate.
+
+   Where overflow *is* the declared fault — SZZ-0210, SZZG-0056, SZZG-0076, and
+   SZZG-0141's `c2`, whose message gives avoiding it as the motive for the
+   truncation it introduces — the arithmetic is correct as written. Repairing
+   SZZG-0141 meant widening the **fix**, not the faulty form: `c2`'s motive was
+   sound and its cure was not, which is the sharper lesson.
+
+   Where a scenario **probes its own overflow on purpose**, widening is a
+   regression, not a repair: SZZ-0100's README pins 24 settings that include the
+   values where `seconds * 1000` wraps, and `c0` and `c3` share their answers,
+   so a 64-bit conversion there both breaks pinned probes and lets a negative
+   setting past the cap the scenario is about. Such a scenario writes its domain
+   down and keeps its arithmetic.

@@ -181,3 +181,5 @@ notes:
 - Rebase relationships are recorded using metadata such as rebase_of, interactive_rebase, or rebase_conflict_resolution.
 - Rewritten 2026-09-21 from the shared Range.contains template to an off-by-one fault (GitHub issue 13); the history
   shape, oracle and coverage dimensions are unchanged.
+- The domain this scenario supports is a page index times a page size that still fits int, since the
+  last index multiplies them in int; the bound is probed by tests/test_reference_arithmetic.py (issue #82).
