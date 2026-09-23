@@ -110,6 +110,17 @@ proposed with the first rewrite that needs it.
    for one night longer than the booking with its weekend surcharge does, so the
    scenario's bound is the surcharge's, 195 225 nights (PR #83 review).
 
+   A bound is often **coupled across arguments** rather than a limit on each:
+   SZZG-0005's cost returns `int`, so its parcel bound and its rate bound
+   constrain a product — at the maximum volumetric weight the rate may be at
+   most 10 737 cents per kilogram, and one above that the method answers 8
+   instead of 2 147 600 000. Widening the intermediate does not help when it is
+   the *result* that must fit, which is also why SZZ-0213's bound is a net whose
+   taxed total fits rather than any `int` net. Where a probe can do it, give the
+   boundary arguments a value that **also separates the fix from the fault**:
+   SZZG-0005 probes `cost(100, 10737, 8)`, which is 1073 at the fix and 10737
+   where the floor is the rate.
+
    Where overflow *is* the declared fault — SZZ-0210, SZZG-0056, SZZG-0076, and
    SZZG-0141's `c2`, whose message gives avoiding it as the motive for the
    truncation it introduces — the arithmetic is correct as written. Repairing

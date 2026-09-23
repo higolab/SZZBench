@@ -53,9 +53,15 @@ CASES = {
                   ("com.example.config.TimeoutSetting", "timeoutMillis", ["2147483"], 60000),
                   ("com.example.config.TimeoutSetting", "timeoutMillis", ["60"], 60000)]),
     # not repaired: the product leaves the int range only outside the domain the scenario describes
-    "SZZG-0005": ("a parcel of at most 1000 cm a side, and a shipping cost that still fits int",
+    # the weight bound and the rate bound are coupled, because the cost returns int: at the maximum
+    # volumetric weight the rate may be at most 10737 cents/kg (PR #83 review)
+    "SZZG-0005": ("a parcel of at most 1000 cm a side, weighing 200 000 000 g, at a rate low enough that "
+                  "weight times rate stays under 2 147 483 647 000 - at that weight, 10 737 cents per kilogram",
                   [("example.Shipping", "volumetricWeight", [1000, 1000, 1000], 200000000),
-                   ("example.ShippingUtils", "cost", [200000000, 10, 0], 2000000)]),
+                   ("example.ShippingUtils", "cost", [200000000, 10737, 8], 2147400000),
+                   # below both floors, so this one also separates the fix from the faulty snapshots,
+                   # where the floor is the rate rather than the minimum: 10737 instead of 1073
+                   ("example.ShippingUtils", "cost", [100, 10737, 8], 1073)]),
     "SZZG-0007": ("a page index times a page size that still fits int",
                   [("example.Paging", "offset", [1000000, 1000], 1000000000)]),
     "SZZG-0070": ("a page index times a page size that still fits int",

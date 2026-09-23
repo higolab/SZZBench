@@ -172,6 +172,9 @@ notes:
   BFC fixes the file that actually holds the moved method.
 - Rewritten 2026-09-21 from the shared Range.contains template to a wrong-variable fault (GitHub issue 13); the history
   shape, oracle and coverage dimensions are unchanged.
-- The domain this scenario supports is a parcel of at most 1000 cm a side. The volumetric weight
-  multiplies three dimensions in int, which leaves the range at about 1290 cm cubed; the bound is
-  probed by tests/test_reference_arithmetic.py (issue #82).
+- The domain this scenario supports is a parcel of at most 1000 cm a side, whose volumetric weight is
+  then 200 000 000 g, together with a per-kilogram rate low enough that the cost still fits int. The
+  two bounds are coupled, because cost returns int, so weight times rate must not exceed 2 147 483 647 000
+  so at the maximum weight the rate must be at most 10 737 cents per kilogram. One rate above that,
+  cost(200000000, 10738, 8) answers 8 instead of 2 147 600 000 at c0 and c3. Both bounds are probed by
+  tests/test_reference_arithmetic.py (issue #82).
