@@ -1,0 +1,178 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0219"
+  title: "Two faults with two behaviour-preserving rewrites of the first one's line between them"
+  slug: "two-faults-across-two-rewrites"
+  description: >
+    A quota check is made inclusive, the comparison is then extracted into a
+    named local and the local is renamed, and only afterwards is the remaining
+    count made one too small. One commit repairs both. Blame on what it deletes
+    returns the rename and the second fault, so reaching the first fault means
+    following the line two behaviour-preserving steps back — one more than
+    SZZ-0212 needs, and the steps are of two different kinds.
+  category: "Intermediate noise and history noise"
+  factors:
+    - "multi-bic"
+    - "single-bfc"
+    - "deep-line-history"
+    - "rewrite-depth-2"
+    - "refactoring-after-bic"
+    - "candidate-selection-distractor"
+    - "boundary-condition"
+    - "off-by-one"
+    - "blame-unreachable-bic"
+  difficulty: "hard"
+  status: "active"
+  tier: "discriminating"
+  defeats: ["blame", "shape", "position"]
+  category_code: "S3"
+
+repository:
+  name: "SZZ-0219-two-faults-across-two-rewrites"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Add the request quota check"
+    author: "Dana Okafor <dana.okafor@example.com>"
+    date: "2025-05-05T09:30:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/example/RateLimit.java"
+        content: |
+          package example;
+
+          public class RateLimit {
+              public boolean allowed(int used, int quota) {
+                  return used < quota;
+              }
+
+              public int remaining(int used, int quota) {
+                  return quota - used;
+              }
+          }
+
+  - id: "c1"
+    message: "Let a client reach its quota exactly"
+    author: "Priya Raman <priya.raman@example.com>"
+    date: "2025-05-07T14:10:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/RateLimit.java"
+        old: "return used < quota;"
+        new: "return used <= quota;"
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Name the quota comparison"
+    author: "Jonas Berg <jonas.berg@example.com>"
+    date: "2025-05-09T10:45:00Z"
+    role: "refactoring"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/RateLimit.java"
+        old: |
+          public boolean allowed(int used, int quota) {
+                  return used <= quota;
+              }
+        new: |
+          public boolean allowed(int used, int quota) {
+                  boolean underQuota = used <= quota;
+                  return underQuota;
+              }
+
+  - id: "c3"
+    message: "Say within rather than under in the quota check"
+    author: "Aiko Tanaka <aiko.tanaka@example.com>"
+    date: "2025-05-12T16:20:00Z"
+    role: "refactoring"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/RateLimit.java"
+        old: |
+          boolean underQuota = used <= quota;
+                  return underQuota;
+        new: |
+          boolean withinQuota = used <= quota;
+                  return withinQuota;
+
+  - id: "c4"
+    message: "Rework the remaining count"
+    author: "Chen Wei <chen.wei@example.com>"
+    date: "2025-05-14T11:05:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/RateLimit.java"
+        old: "return quota - used;"
+        new: "return quota - used - 1;"
+        labels: ["B001", "fault"]
+
+  - id: "c5"
+    message: "Stop a client at its quota and report the full remainder"
+    author: "Tom Becker <tom.becker@example.com>"
+    date: "2025-05-16T13:40:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/RateLimit.java"
+        old: "boolean withinQuota = used <= quota;"
+        new: "boolean withinQuota = used < quota;"
+        labels: ["B001", "fix"]
+      - type: "replace"
+        path: "src/main/java/example/RateLimit.java"
+        old: "return quota - used - 1;"
+        new: "return quota - used;"
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "A client is allowed one request past its quota and told it has one fewer left"
+    bug_fixing_commit: "c5"
+    bug_introducing_commits: ["c1", "c4"]
+    fault:
+      commit: "c4"
+      file: "src/main/java/example/RateLimit.java"
+      entity:
+        type: "method"
+        name: "remaining"
+        signature: "int remaining(int used, int quota)"
+      statement: "return quota - used - 1;"
+      change_type: "line_modification"
+    fix:
+      commit: "c5"
+      file: "src/main/java/example/RateLimit.java"
+      entity:
+        type: "method"
+        name: "remaining"
+        signature: "int remaining(int used, int quota)"
+      statement: "return quota - used;"
+      fix_type: "line_modification"
+    expected_szz:
+      commit_level:
+        true_positives: ["c1", "c4"]
+        primary_observable_bic: "c4"
+        contributing_bics: ["c1"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "boolean withinQuota = used <= quota;"
+          - "return quota - used - 1;"
+        note: >
+          The fix deletes two lines. The remaining-count line was written by c4
+          and blames to it. The quota line carries c1's comparison, but c2
+          extracted it into a local and c3 renamed that local, so blame returns
+          c3; c1 is two behaviour-preserving steps back along the line's
+          history, and no blame variant shortens the walk, because both steps
+          changed tokens.
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3", "c4", "c5"]

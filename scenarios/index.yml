@@ -1788,3 +1788,37 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0218/scenario.yml
+- id: SZZ-0219
+  title: Two faults with two behaviour-preserving rewrites of the first one's line between them
+  slug: two-faults-across-two-rewrites
+  category_code: S3
+  category: Intermediate noise and history noise
+  factors:
+  - multi-bic
+  - single-bfc
+  - deep-line-history
+  - rewrite-depth-2
+  - refactoring-after-bic
+  - candidate-selection-distractor
+  - boundary-condition
+  - off-by-one
+  - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0219/scenario.yml
+- id: SZZ-0220
+  title: The fix also deletes the deprecated alias an intermediate commit added, so blame names one commit too many
+  slug: fix-deletes-a-dead-alias
+  category_code: S3
+  category: Intermediate noise and history noise
+  factors:
+  - multi-bic
+  - single-bfc
+  - tangled-bfc
+  - multi-hunk-bfc
+  - blame-over-reports
+  - boundary-condition
+  - wrong-operator
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0220/scenario.yml

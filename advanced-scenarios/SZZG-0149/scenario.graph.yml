@@ -1,0 +1,284 @@
+schema_version: graph-1.0
+meta:
+  id: SZZG-0149
+  title: "Three release branches, three causes, and a credit threshold blame cannot meet"
+  slug: three-branches-one-threshold
+  description: >
+    A delivery quote is wrong for three separate reasons, each committed on its
+    own branch and brought to main by a merge: a day dropped from the transit
+    estimate, a zone the surcharge table never handles, and an express quote
+    with no floor. One commit on main repairs all three, but only the first
+    repair deletes a line — the other two add a case and a guard. Blame returns
+    one of the three required commits and the policy asks for two, so the
+    scenario fails on the threshold rather than on anything blame got wrong. It
+    is G4's first three-commit oracle and its first history with three branches.
+  category: "Branch, merge, cherry-pick, backport, and release branches"
+  category_code: "G4"
+  factors:
+  - branch
+  - release-branch
+  - merge
+  - multi-bic
+  - single-bfc
+  - partial-credit
+  - addition-only-fix
+  - missing-branch
+  - off-by-one
+  - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  tier: discriminating
+  defeats: [blame, shape, position]
+repository:
+  name: SZZG-0149-three-branches-one-threshold
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'Add the delivery quote'
+  author: 'Elena Rossi <elena.rossi@example.com>'
+  role: initial
+  date: '2025-07-07T09:20:00Z'
+  operations:
+  - type: write_file
+    path: src/main/java/example/quote/Quote.java
+    content: |
+      package example.quote;
+
+      public class Quote {
+          public int deliveryDays(int distanceKm) {
+              return distanceKm / 500 + 1;
+          }
+      }
+- id: c1
+  branch: release-transit
+  parents:
+  - c0
+  message: 'Count only the full 500 km legs of the transit'
+  author: 'Elena Rossi <elena.rossi@example.com>'
+  role: bug_introducing
+  date: '2025-07-09T13:45:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/quote/Quote.java
+    old: return distanceKm / 500 + 1;
+    new: return distanceKm / 500;
+- id: c2
+  branch: main
+  parents:
+  - c0
+  - c1
+  message: "Merge branch 'release-transit'"
+  author: 'Dana Okafor <dana.okafor@example.com>'
+  role: merge
+  date: '2025-07-10T10:30:00Z'
+- id: c3
+  branch: release-zones
+  parents:
+  - c0
+  message: 'Add the zone surcharge table'
+  author: 'Bruno Fischer <bruno.fischer@example.com>'
+  role: bug_introducing
+  date: '2025-07-11T15:10:00Z'
+  operations:
+  - type: write_file
+    path: src/main/java/example/quote/Surcharge.java
+    content: |
+      package example.quote;
+
+      public class Surcharge {
+          public int cents(String zone) {
+              switch (zone) {
+                  case "CITY":
+                      return 0;
+                  case "RURAL":
+                      return 500;
+                  default:
+                      return 0;
+              }
+          }
+      }
+- id: c4
+  branch: main
+  parents:
+  - c2
+  - c3
+  message: "Merge branch 'release-zones'"
+  author: 'Bruno Fischer <bruno.fischer@example.com>'
+  role: merge
+  date: '2025-07-14T09:55:00Z'
+- id: c5
+  branch: main
+  parents:
+  - c4
+  message: 'Quote express delivery a day sooner'
+  author: 'Aiko Tanaka <aiko.tanaka@example.com>'
+  role: bug_introducing
+  date: '2025-07-16T16:25:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/quote/Quote.java
+    old: |
+      public int deliveryDays(int distanceKm) {
+              return distanceKm / 500;
+          }
+    new: |
+      public int deliveryDays(int distanceKm) {
+              return distanceKm / 500;
+          }
+
+          public int expressDays(int distanceKm) {
+              return deliveryDays(distanceKm) - 1;
+          }
+- id: c6
+  branch: main
+  parents:
+  - c5
+  message: 'Document what the quote and the surcharge table are for'
+  author: 'Dana Okafor <dana.okafor@example.com>'
+  role: intermediate
+  date: '2025-07-17T09:30:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/quote/Quote.java
+    old: |
+      public class Quote {
+    new: |
+      /** Transit and express estimates for a delivery quote. */
+      public class Quote {
+  - type: replace
+    path: src/main/java/example/quote/Surcharge.java
+    old: |
+      public class Surcharge {
+    new: |
+      /** Per-zone surcharge applied on top of a quote. */
+      public class Surcharge {
+- id: c7
+  branch: main
+  parents:
+  - c6
+  message: 'Count the last leg, charge the remote zone and keep express at a day'
+  author: 'Aiko Tanaka <aiko.tanaka@example.com>'
+  role: bug_fixing
+  date: '2025-07-18T12:40:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/quote/Quote.java
+    old: return distanceKm / 500;
+    new: return distanceKm / 500 + 1;
+  - type: replace
+    path: src/main/java/example/quote/Quote.java
+    old: |
+      public int expressDays(int distanceKm) {
+              return deliveryDays(distanceKm) - 1;
+          }
+    new: |
+      public int expressDays(int distanceKm) {
+              if (deliveryDays(distanceKm) - 1 < 1) {
+                  return 1;
+              }
+              return deliveryDays(distanceKm) - 1;
+          }
+  - type: replace
+    path: src/main/java/example/quote/Surcharge.java
+    old: |
+      case "RURAL":
+                      return 500;
+    new: |
+      case "RURAL":
+                      return 500;
+                  case "REMOTE":
+                      return 1500;
+bugs:
+- id: B001
+  title: The quote loses a transit day, charges nothing for a remote zone and offers express in no days
+  bug_introducing_commits:
+  - commit: c1
+    role: contributing
+  - commit: c3
+    role: contributing
+  - commit: c5
+    role: contributing
+  bug_fixing_commits:
+  - commit: c7
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/quote/Quote.java
+    statement: return distanceKm / 500;
+    change_type: line_modification
+  - id: F002
+    commit: c3
+    file: src/main/java/example/quote/Surcharge.java
+    change_type: omission
+    missing_statement: |
+      case "REMOTE":
+          return 1500;
+  - id: F003
+    commit: c5
+    file: src/main/java/example/quote/Quote.java
+    change_type: omission
+    missing_statement: |
+      if (deliveryDays(distanceKm) - 1 < 1) {
+          return 1;
+      }
+  fixes:
+  - id: X001
+    commit: c7
+    file: src/main/java/example/quote/Quote.java
+    statement: return distanceKm / 500 + 1;
+    fix_type: line_modification
+  - id: X002
+    commit: c7
+    file: src/main/java/example/quote/Surcharge.java
+    added_statement: 'case "REMOTE":'
+    fix_type: line_addition
+  - id: X003
+    commit: c7
+    file: src/main/java/example/quote/Quote.java
+    added_statement: if (deliveryDays(distanceKm) - 1 < 1) {
+    fix_type: line_addition
+expected_szz:
+  commit_level:
+    evaluation_policy: partial_credit
+    required:
+    - c1
+    - c3
+    - c5
+    minimum_required: 2
+    notes: >
+      Three contributing causes on three branches, one fix, two of the three needed to pass. Only c1's
+      fault is on a line the fix deletes; the other two repairs add a case and a guard. Blame therefore
+      returns {c1} - one true positive, no false positive - and fails the threshold. SZZG-0148 is the
+      linear twin of this shape and SZZG-0138 the control where blame reaches two of three.
+scenario_design:
+  purpose: >
+    Reduce the largest pocket of cheaply-solved scenarios (issue #80, proposal 3). G4 held 27 of its 29
+    scenarios in that pocket and every one of them had a one-commit oracle, which a positional rule names
+    by construction; this one names three commits under a threshold, and puts them on three branches so
+    that the reader has to cross two merges as well.
+  key_property: >
+    Measured: deliveryDays(1200) is 3 at c0 and 2 from c1 until c7, where it is 3 again; Surcharge
+    cents("REMOTE") is 0 from c3 and 1500 at c7, while cents("RURAL") is 500 throughout; expressDays(200)
+    is -1 at c5 and 1 at c7, expressDays(1200) is 1 at c5 and 2 at c7. The fix deletes exactly one line,
+    c1's, so blame at c7^ returns {c1} under every variant; two of three are required, so one true
+    positive is not enough.
+  evaluation_points:
+  - Whether two of the three contributing commits are reported, which is what the policy asks for.
+  - Whether a repair that only adds lines is traced to the commit whose omission it repairs, across a merge.
+  - Whether a report states the credit ratio and the threshold it was scored against.
+  failure_mode: >-
+    A tool fails here when it reports only what the fix deletes: blame's `c1` is one of three causes and
+    the policy requires two, so the answer is short of the threshold rather than wrong.
+notes:
+- The two merges are clean: release-transit edits Quote.java and release-zones adds Surcharge.java.
+- c6 touches both files the fix touches and introduces nothing, so the shape baseline - which names the newest commit
+  to touch each of those files - answers c6 rather than two of the three required commits.
+- Authors are assigned so that every author rule of the baseline family also names a commit outside the required set.

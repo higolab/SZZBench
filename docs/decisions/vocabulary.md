@@ -154,9 +154,12 @@ SZZG-0145 (G8), SZZG-0146 (G9), SZZG-0147 (G6), SZZ-0216 (S5) and SZZ-0217 (S7).
 Two more, added the same day for issue #80, are in the tier **without being on
 that axis**: SZZ-0218, where blame reaches both required commits and names a
 third that is not an answer, and SZZG-0148, where blame is right about what it
-names and still short of a credit threshold. So the suite declares **235 control
-and 34 discriminating**, and every category has at least one; the list and the reasons are in
-[baselines.md](../baselines.md#the-two-tiers).
+names and still short of a credit threshold. Three more on 2026-09-24 shrank the
+two largest cheaply-solved pockets (issue #80, proposal 3): SZZ-0219 and
+SZZ-0220 in S3, where thirty-nine of forty scenarios had a one-commit oracle,
+and SZZG-0149 in G4. So the suite declares **235 control and 37
+discriminating**, and every category has at least one; the list and the reasons
+are in [baselines.md](../baselines.md#the-two-tiers).
 
 A scenario can be `discriminating` **only if its oracle names at least two
 commits**, and that is a property of the declared baseline family rather than a
