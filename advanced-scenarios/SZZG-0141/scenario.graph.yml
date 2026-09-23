@@ -138,7 +138,7 @@ commits:
   - type: replace
     path: src/main/java/example/invoice/InvoiceLine.java
     old: return cents - cents / 100 * percent;
-    new: return cents - cents * percent / 100;
+    new: return cents - (int) ((long) cents * percent / 100);
 bugs:
 - id: B001
   title: Invoice lines lose cents to truncation
@@ -183,7 +183,7 @@ bugs:
   - id: X002
     commit: c5
     file: src/main/java/example/invoice/InvoiceLine.java
-    statement: return cents - cents * percent / 100;
+    statement: return cents - (int) ((long) cents * percent / 100);
     fix_type: line_modification
 expected_szz:
   commit_level:

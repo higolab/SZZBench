@@ -211,3 +211,5 @@ scenario_design:
     revert of the revert that put the change back.
 notes:
 - c2 and c3 are real `git revert` commits with the messages Git writes for them; neither has hand-written operations.
+- The domain this scenario supports is at most a million retry attempts at the 2000 ms backoff, the most
+  that fits int; the bound is probed by tests/test_reference_arithmetic.py (issue #82).

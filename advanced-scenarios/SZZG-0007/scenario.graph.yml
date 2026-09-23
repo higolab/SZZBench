@@ -213,3 +213,5 @@ notes:
 - 'c2 carries an explicit author. With the generator''s default rotation c1 and c2 shared an author who wrote nothing
   else, so the baseline "report every commit by this author" returned the oracle {c1, c2} by coincidence (GW413, GitHub
   issue 43).'
+- The domain this scenario supports is a page index times a page size that still fits int, since the
+  offset multiplies them in int; the bound is probed by tests/test_reference_arithmetic.py (issue #82).

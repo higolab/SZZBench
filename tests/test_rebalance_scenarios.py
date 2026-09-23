@@ -215,7 +215,7 @@ BLAME = {
     "SZZ-0213": {"/** Rounding step of the 2023 statements; kept until the archive export is retired. */": ("c0", "c0", "c0"),
                  "static final int LEGACY_ROUNDING_CENTS = 5;": ("c0", "c0", "c0"),
                  "": ("c0", "c0", "c0"),
-                 "return netCents + netCents / 100 * TAX_PERCENT;": ("c1", "c1", "c1")},
+                 "return netCents + (int) ((long) netCents / 100 * TAX_PERCENT);": ("c1", "c1", "c1")},
     "SZZ-0214": {},
     "SZZG-0144": {"return IDLE_TIMEOUT - idleSeconds;": ("c4", "c4", "c4")},
     "SZZ-0215": {"return cents % 100;": ("c3", "c3", "c3"), "return visits > 8;": ("c2", "c2", "c2")},
@@ -398,7 +398,7 @@ def test_both_commits_are_necessary(generated, tmp_path):
     elif sid == "SZZ-0213":
         only_tax = tmp_path / "only-tax"
         _snapshot(repo, hashes["c3"], only_tax)
-        _edit(only_tax, "src/main/java/example/InvoiceTotal.java", ("netCents / 100 * TAX_PERCENT", "netCents * TAX_PERCENT / 100"))
+        _edit(only_tax, "src/main/java/example/InvoiceTotal.java", ("(long) netCents / 100 * TAX_PERCENT", "(long) netCents * TAX_PERCENT / 100"))
         assert _run_driver(only_tax, sid) == "tax1999=2198 tax2000=2200 gold=100 std=0 anon=NullPointerException"
         only_check = tmp_path / "only-check"
         _snapshot(repo, hashes["c3"], only_check)

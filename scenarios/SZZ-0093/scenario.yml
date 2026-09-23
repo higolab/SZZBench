@@ -48,7 +48,7 @@ commits:
               if (orderTotalCents < MIN_ORDER_CENTS) {
                   return 0;
               } else {
-                  return orderTotalCents * DISCOUNT_PERCENT / 100;
+                  return (int) ((long) orderTotalCents * DISCOUNT_PERCENT / 100);
               }
           }
 
@@ -81,11 +81,11 @@ commits:
     path: src/main/java/com/example/pricing/DiscountCalculator.java
     old: |2
               } else {
-                  return orderTotalCents * DISCOUNT_PERCENT / 100;
+                  return (int) ((long) orderTotalCents * DISCOUNT_PERCENT / 100);
               }
     new: |2
               }
-              return orderTotalCents * DISCOUNT_PERCENT / 100;
+              return (int) ((long) orderTotalCents * DISCOUNT_PERCENT / 100);
     labels:
     - non_bug_introducing_change
 - id: c3

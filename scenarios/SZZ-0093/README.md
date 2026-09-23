@@ -55,8 +55,10 @@ it must not follow the line history further back to `c0`.
 - Behaviour probe over 18 edge values (`Integer.MIN_VALUE`, `Integer.MIN_VALUE + 1`,
   `-100000`, `-5000`, `-1`, `0`, `1`, `4998`…`5002`, `9999`, `10000`, `21474836`,
   `21474837`, `Integer.MAX_VALUE - 1`, `Integer.MAX_VALUE`; the two values around
-  21474836 and the two maxima exercise the `orderTotalCents * DISCOUNT_PERCENT`
-  overflow, which `c0` and `c3` share), every value in `[4900, 5100]`, and a sweep
+  21474836 and the two maxima used to exercise an `orderTotalCents * DISCOUNT_PERCENT`
+  overflow that `c0` and `c3` shared — the product is taken in 64 bits since
+  2026-09-23, so the discount is exact for every `int` order total and those
+  probes now check that), every value in `[4900, 5100]`, and a sweep
   of `[-20000, 200000]` in steps of 137 — 1825 outputs in total. The `c1`
   snapshot differs from `c0` at `orderTotalCents == 5000`; the `c3` snapshot
   agrees with `c0` on every probed input.

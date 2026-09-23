@@ -154,3 +154,7 @@ scenario_design:
   evaluation_points:
   - Report c0.
   - Do not abstain merely because the BIC is the root commit.
+notes:
+- The domain this scenario supports is a late fee that still fits int, for instance 2 000 000 chargeable
+  days at 1000 cents, since the fee multiplies days by a daily rate in int; the bound is probed by
+  tests/test_reference_arithmetic.py (issue #82).

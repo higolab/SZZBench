@@ -172,3 +172,6 @@ notes:
   BFC fixes the file that actually holds the moved method.
 - Rewritten 2026-09-21 from the shared Range.contains template to a wrong-variable fault (GitHub issue 13); the history
   shape, oracle and coverage dimensions are unchanged.
+- The domain this scenario supports is a parcel of at most 1000 cm a side. The volumetric weight
+  multiplies three dimensions in int, which leaves the range at about 1290 cm cubed; the bound is
+  probed by tests/test_reference_arithmetic.py (issue #82).

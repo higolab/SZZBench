@@ -43,7 +43,7 @@ commits:
 
       public class Discounts {
           public int percentOf(int cents, int percent) {
-              return cents * percent / 100;
+              return (int) ((long) cents * percent / 100);
           }
       }
 - id: c1
@@ -58,11 +58,11 @@ commits:
     path: src/main/java/example/pricing/Discounts.java
     old: |
       public int percentOf(int cents, int percent) {
-              return cents * percent / 100;
+              return (int) ((long) cents * percent / 100);
           }
     new: |
       public int percentOf(int cents, int percent) {
-              return cents * percent / 100;
+              return (int) ((long) cents * percent / 100);
           }
 
           public int loyalty(int cents) {

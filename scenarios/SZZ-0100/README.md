@@ -23,13 +23,13 @@ place.
 ## Commit structure
 
 - `c0`: Adds `TimeoutSetting` with `timeoutMillis(String)`
-  (`Math.min(seconds * 1000, MAX_TIMEOUT_MS)`) and `defaultTimeoutMillis()`.
+  (`Math.min((long) seconds * 1000, MAX_TIMEOUT_MS)`, cast back to `int`) and `defaultTimeoutMillis()`.
 - `c1`: Rewrites the clamp as `Math.min(seconds, MAX_TIMEOUT_MS) * 1000`, which
   compares a value in seconds with a maximum in milliseconds, so the cap is
   effectively never applied. This is the BIC.
 - `c2`: Wraps the method body in `try { … } catch (NumberFormatException e) { return DEFAULT_TIMEOUT_MS; }`.
   The faulty statement itself is unchanged apart from its indentation.
-- `c3`: Restores `return Math.min(seconds * 1000, MAX_TIMEOUT_MS);` at the new
+- `c3`: Restores `return (int) Math.min((long) seconds * 1000, MAX_TIMEOUT_MS);` at the new
   indentation. This is the BFC. Its first-parent diff is `+1 -1` on a single
   line; the `try`/`catch` stays.
 

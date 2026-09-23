@@ -26,8 +26,8 @@ right commit, one bystander, and cannot reach the second fault at all.
 ## Commit structure
 
 ```text
-c0  Add the invoice total with tax                netCents * TAX_PERCENT / 100; an unused legacy constant
-c1  Reorder the tax arithmetic                    netCents / 100 * TAX_PERCENT  (divides first, truncates)   <- BIC
+c0  Add the invoice total with tax                (long) netCents * TAX_PERCENT / 100; an unused legacy constant
+c1  Reorder the tax arithmetic                    (long) netCents / 100 * TAX_PERCENT  (divides first, truncates)   <- BIC
 c2  Add the customer record with its loyalty tier Customer.java (distractor)
 c3  Grant gold customers a tenth off              discountCents() dereferences customer without a null check   <- BIC
 c4  Multiply before dividing in the tax, skip the discount for anonymous customers, drop the legacy rounding step   <- BFC
@@ -71,7 +71,7 @@ The fix deletes four lines, one of them blank:
 "/** Rounding step of the 2023 statements; kept until the archive export is retired. */"   plain -> c0   -w -> c0   -w -C -C -> c0
 "static final int LEGACY_ROUNDING_CENTS = 5;"                                             plain -> c0   -w -> c0   -w -C -C -> c0
 ""                                                                                        plain -> c0   -w -> c0   -w -C -C -> c0
-"return netCents + netCents / 100 * TAX_PERCENT;"                                         plain -> c1   -w -> c1   -w -C -C -> c1
+"return netCents + (int) ((long) netCents / 100 * TAX_PERCENT);"                          plain -> c1   -w -> c1   -w -C -C -> c1
 ```
 
 The null-check hunk adds three lines and deletes none. Blame therefore returns

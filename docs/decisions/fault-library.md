@@ -85,3 +85,28 @@ proposed with the first rewrite that needs it.
    or not at all, with pinned metadata, and their identity tests keep passing.
 5. Re-run `szzbench coverage` and report the per-category share before and
    after in the PR.
+6. **The reference arithmetic must be right across the domain the scenario
+   admits** (decided 2026-09-23, issue #82). Four PR reviews in a row found the
+   same defect: an expression presented as the *reference* or the *fix*
+   overflows Java `int` for an input inside the declared range, so the
+   scenario's premise is false there and the faulty expression is the accurate
+   one. A README's behaviour table, a counterfactual and the claim that the BFC
+   is a fix all rest on that premise. Either:
+   - take the product in 64 bits — `(int) ((long) a * b / c)` — **in the faulty
+     form as well as the correct one**, so the declared fault stays the only
+     difference between them at every input; or
+   - state the supported domain in the scenario's `notes` and probe its
+     boundary.
+
+   Either way the boundary is measured: `tests/test_reference_arithmetic.py`
+   holds one row per audited scenario — the domain and the exact answer at the
+   top of it, evaluated against the bug-fixing snapshot. Pick a boundary value
+   that **also exposes the fault** where one exists, so the probe earns its
+   place twice (SZZ-0218 uses `boxes(Integer.MAX_VALUE)`, SZZG-0148
+   `netCents(999999999, 33)`).
+
+   Where overflow *is* the declared fault — SZZ-0210, SZZG-0056, SZZG-0076, and
+   SZZG-0141's `c2`, whose message gives avoiding it as the motive for the
+   truncation it introduces — the arithmetic is correct as written. Repairing
+   SZZG-0141 meant widening the **fix**, not the faulty form: `c2`'s motive was
+   sound and its cure was not, which is the sharper lesson.
