@@ -1772,3 +1772,19 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0217/scenario.yml
+- id: SZZ-0218
+  title: "Blame names every required commit and one more: the fix also removes an instrumentation counter"
+  slug: blame-over-reports-a-cleanup
+  category_code: S4
+  category: BFC-side noise and tangled commits
+  factors:
+  - multi-bic
+  - single-bfc
+  - tangled-bfc
+  - multi-hunk-bfc
+  - blame-over-reports
+  - off-by-one
+  - wrong-variable
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0218/scenario.yml

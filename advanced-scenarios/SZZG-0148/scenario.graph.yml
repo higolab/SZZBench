@@ -1,0 +1,267 @@
+schema_version: graph-1.0
+meta:
+  id: SZZG-0148
+  title: "Partial credit whose threshold blame cannot meet: three causes, one reachable"
+  slug: partial-credit-threshold-blame-misses
+  description: >
+    One payslip is wrong for three separate reasons committed separately: an
+    arithmetic reorder that truncates, an allowance that dereferences a
+    declaration that may be absent, and a contract kind the contribution table
+    never handles. One commit repairs all three, but only the first repair
+    deletes a line: the other two add a guard and a case. Blame therefore
+    returns exactly one of the three required commits, and the
+    ``minimum_required`` threshold of two is what it fails. It is the
+    discriminating twin of SZZG-0138, where the same policy passes because
+    blame reaches two of the three.
+  category: "Evaluation policy variants"
+  category_code: "G9"
+  factors:
+  - multi-bic
+  - single-bfc
+  - partial-credit
+  - addition-only-fix
+  - null-check-omission
+  - missing-branch
+  - wrong-operator
+  - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  tier: discriminating
+  defeats: [blame, shape, position]
+repository:
+  name: SZZG-0148-partial-credit-threshold-blame-misses
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'Add the payslip net calculation'
+  author: 'Elena Rossi <elena.rossi@example.com>'
+  role: initial
+  date: '2025-04-07T09:15:00Z'
+  operations:
+  - type: write_file
+    path: src/main/java/example/payroll/Payslip.java
+    content: |
+      package example.payroll;
+
+      public class Payslip {
+          /** The tax is taken in 64 bits, so every int gross and every percentage are representable. */
+          public int netCents(int grossCents, int taxPercent) {
+              return grossCents - (int) ((long) grossCents * taxPercent / 100);
+          }
+      }
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'Take the tax off the gross in percent steps'
+  author: 'Elena Rossi <elena.rossi@example.com>'
+  role: bug_introducing
+  date: '2025-04-09T14:30:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/payroll/Payslip.java
+    old: return grossCents - (int) ((long) grossCents * taxPercent / 100);
+    new: return grossCents - (int) ((long) grossCents / 100 * taxPercent);
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'Write down what a payslip contains'
+  author: 'Bruno Fischer <bruno.fischer@example.com>'
+  role: intermediate
+  date: '2025-04-11T10:05:00Z'
+  operations:
+  - type: write_file
+    path: docs/payroll.md
+    content: |
+      # Payslip
+
+      A payslip states the net amount, the declared allowance and the employer
+      contribution. Every amount is in cents.
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'Add the declared allowance to the payslip'
+  author: 'Bruno Fischer <bruno.fischer@example.com>'
+  role: bug_introducing
+  date: '2025-04-14T15:50:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/payroll/Payslip.java
+    old: |
+      public int netCents(int grossCents, int taxPercent) {
+              return grossCents - (int) ((long) grossCents / 100 * taxPercent);
+          }
+    new: |
+      public int netCents(int grossCents, int taxPercent) {
+              return grossCents - (int) ((long) grossCents / 100 * taxPercent);
+          }
+
+          public long allowanceCents(Integer declaredEuros) {
+              return declaredEuros * 100L;
+          }
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: 'Add the employer contribution per contract kind'
+  author: 'Aiko Tanaka <aiko.tanaka@example.com>'
+  role: bug_introducing
+  date: '2025-04-16T11:40:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/payroll/Payslip.java
+    old: |
+      public long allowanceCents(Integer declaredEuros) {
+              return declaredEuros * 100L;
+          }
+    new: |
+      public long allowanceCents(Integer declaredEuros) {
+              return declaredEuros * 100L;
+          }
+
+          public int contributionCents(String contract, int grossCents) {
+              switch (contract) {
+                  case "PERMANENT":
+                      return grossCents / 10;
+                  case "TEMPORARY":
+                      return grossCents / 20;
+                  default:
+                      return 0;
+              }
+          }
+- id: c5
+  branch: main
+  parents:
+  - c4
+  message: 'Take the tax off the whole gross, accept an absent declaration and pay the contractor rate'
+  author: 'Aiko Tanaka <aiko.tanaka@example.com>'
+  role: bug_fixing
+  date: '2025-04-18T13:25:00Z'
+  operations:
+  - type: replace
+    path: src/main/java/example/payroll/Payslip.java
+    old: return grossCents - (int) ((long) grossCents / 100 * taxPercent);
+    new: return grossCents - (int) ((long) grossCents * taxPercent / 100);
+  - type: replace
+    path: src/main/java/example/payroll/Payslip.java
+    old: |
+      public long allowanceCents(Integer declaredEuros) {
+              return declaredEuros * 100L;
+          }
+    new: |
+      public long allowanceCents(Integer declaredEuros) {
+              if (declaredEuros == null) {
+                  return 0;
+              }
+              return declaredEuros * 100L;
+          }
+  - type: replace
+    path: src/main/java/example/payroll/Payslip.java
+    old: |
+      case "TEMPORARY":
+                      return grossCents / 20;
+    new: |
+      case "TEMPORARY":
+                      return grossCents / 20;
+                  case "CONTRACTOR":
+                      return grossCents / 15;
+bugs:
+- id: B001
+  title: The payslip truncates the tax, fails on an absent declaration and pays a contractor nothing
+  bug_introducing_commits:
+  - commit: c1
+    role: contributing
+  - commit: c3
+    role: contributing
+  - commit: c4
+    role: contributing
+  bug_fixing_commits:
+  - commit: c5
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/payroll/Payslip.java
+    statement: return grossCents - (int) ((long) grossCents / 100 * taxPercent);
+    change_type: line_modification
+  - id: F002
+    commit: c3
+    file: src/main/java/example/payroll/Payslip.java
+    change_type: omission
+    missing_statement: |
+      if (declaredEuros == null) {
+          return 0;
+      }
+  - id: F003
+    commit: c4
+    file: src/main/java/example/payroll/Payslip.java
+    change_type: omission
+    missing_statement: |
+      case "CONTRACTOR":
+          return grossCents / 15;
+  fixes:
+  - id: X001
+    commit: c5
+    file: src/main/java/example/payroll/Payslip.java
+    statement: return grossCents - (int) ((long) grossCents * taxPercent / 100);
+    fix_type: line_modification
+  - id: X002
+    commit: c5
+    file: src/main/java/example/payroll/Payslip.java
+    added_statement: if (declaredEuros == null) {
+    fix_type: line_addition
+  - id: X003
+    commit: c5
+    file: src/main/java/example/payroll/Payslip.java
+    added_statement: 'case "CONTRACTOR":'
+    fix_type: line_addition
+expected_szz:
+  commit_level:
+    evaluation_policy: partial_credit
+    required:
+    - c1
+    - c3
+    - c4
+    minimum_required: 2
+    notes: >
+      Three contributing causes, one fix, two of the three needed to pass. Only c1's fault is on a line
+      the fix deletes: the other two repairs add a guard and a case and delete nothing. Blame therefore
+      returns exactly {c1} — one true positive, no false positive — and fails the threshold rather than
+      naming anything wrong. SZZG-0138 is the control twin: the same policy and threshold, with two of
+      its three causes on deleted lines, so blame passes there.
+scenario_design:
+  purpose: >
+    A second discriminating mechanism for the suite (issue #80). Every other scenario of the tier is a
+    two-commit oracle whose failure is one unreachable half; here the oracle names three commits and the
+    pass condition is a threshold, so a tool fails by finding too few causes rather than by missing a
+    particular one.
+  key_property: >
+    Measured: netCents(19999, 20) is 16000 at c0, 16019 from c1 and 16000 again at c5, and
+    netCents(999999999, 33) - whose correct product exceeds the int range - is 670000000 at c0 and c5 and
+    670000032 from c1, so the reorder is the only difference between the two expressions and neither
+    overflows; allowanceCents(50) is 5000 from c3 and allowanceCents(null) throws NullPointerException at
+    c3 and c4 and returns 0 at c5; contributionCents("PERMANENT", 100000) is 10000 from c4 and
+    contributionCents("CONTRACTOR", 100000) is 0 at c4 and 6666 at c5. The fix deletes exactly one line,
+    c1's, so blame at c5^ returns {c1} under every variant; two of three are required, so one true
+    positive is not enough.
+  evaluation_points:
+  - Whether two of the three contributing commits are reported, which is what the policy asks for.
+  - Whether a repair that only adds lines is traced to the commit whose omission it repairs.
+  - Whether a report states the credit ratio and the threshold it was scored against, not only pass or fail.
+  failure_mode: >-
+    A tool fails here when it reports only what the fix deletes: blame's `c1` is one of three causes and
+    the policy requires two, so the answer is short of the threshold rather than wrong.
+notes:
+- The two addition-only repairs are what keep blame below the threshold; neither c3 nor c4 is on a line the fix deletes.
+- Every amount is computed in 64 bits where the product could leave the int range, so the faulty and the correct
+  expressions differ only in the order of the division and the multiplication, at any gross and any percentage.
+- Authors are assigned so that every author rule of the baseline family also names a commit outside the required set.
