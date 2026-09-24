@@ -29,7 +29,7 @@ repository.
 
 ```text
 c0  Add the zone tariff table and its reader   zone-rates.bin = "ZRTD" + 9, 12, 15, 20; rateCents honours the header
-c1  Re-export the zone tariff table in cents   zone-rates.bin = "ZRTC" + 900, 1200, 1500, 2000   <- BIC
+c1  Re-export the zone tariff table from the tariff system   zone-rates.bin = "ZRTC" + 900, 1200, 1500, 2000   <- BIC
 c2  Describe the zone tariff table             docs only (distractor)
 c3  Show the tariff of a zone on the quote     rateLabel(zone) = rawValue(zone) + " USD"          <- BIC
 c4  Print the zone tariff in dollars on the quote   rateCents(zone) / 100 + " USD"                <- BFC
@@ -84,15 +84,22 @@ git blame c1 -- src/main/resources/zone-rates.bin     ->  c1, with all twenty by
 ```
 
 Blaming the file does name `c1` — git treats a binary file as one line — but it
-names it for the whole table at once, which says the table was re-exported and
-not that its unit changed. The fourth byte is what turns that into the answer.
+names it for the whole table at once, and `c1`'s subject is *"Re-export the zone
+tariff table from the tariff system"*, which is what a regeneration commit says.
+No commit message in the history names a unit except the fix's own. The fourth
+byte is what turns the file's history into the answer.
+
+(An earlier revision subjected `c1` *"Re-export the zone tariff table in
+cents"*, which told a reader what the header byte says as soon as the file's
+history was reached, and left the binary carrying nothing the message had not
+already given away — PR #87 review.)
 
 ## What a tool must do to pass
 
 Report exactly `{c1, c3}`. `c3` is blame's answer. Reaching `c1` means
 considering a commit whose diff adds and deletes no line, and then reading the
-file rather than the diff: the accessor the fixed line calls reads
-`zone-rates.bin`, and the byte that decides the unit changed there.
+file rather than the diff or the message: the accessor the fixed line calls
+reads `zone-rates.bin`, and the byte that decides the unit changed there.
 
 ## Baseline outcome (measured)
 

@@ -7,7 +7,8 @@ meta:
     A zone tariff table is a twenty-byte binary file whose header says which
     unit its values are in, and the reader honours that header, so re-exporting
     the table in cents changes nothing an outside caller can see. That commit
-    touches the binary file and nothing else. A commit written afterwards
+    touches the binary file and nothing else, and its subject says only that
+    the table was re-exported from the tariff system. A commit written afterwards
     prints a raw table value as if it were dollars. The fix repairs the label,
     so blame on the line it deletes stops at that later commit, and the other
     required commit changes only that binary file, whose diff adds and deletes
@@ -90,7 +91,7 @@ commits:
   branch: main
   parents:
   - c0
-  message: 'Re-export the zone tariff table in cents'
+  message: 'Re-export the zone tariff table from the tariff system'
   author: 'Luca Moretti <luca.moretti@example.com>'
   role: bug_introducing
   operations:
@@ -191,8 +192,9 @@ scenario_design:
     carries no diff at all: git reports Bin 20 -> 20 bytes with zero insertions
     and zero deletions, so every step that reads diff hunks has nothing to look
     at. Blaming the file itself does answer c1, but with the whole twenty-byte
-    file as one line, which says that the table was re-exported and not that
-    its unit changed; the fourth byte is what turns that into the answer.
+    file as one line, and the commit message says only that the table was
+    re-exported, not what changed in it; the fourth byte is what turns that
+    into the answer.
   evaluation_points:
   - Whether the expected BIC set is reported exactly.
   - Whether a commit that touches only a binary file is considered a candidate at all.
@@ -200,14 +202,18 @@ scenario_design:
   failure_mode: >-
     A tool fails here when it stops at the line the fix deletes, which blame attributes to `c3`, or when
     it skips commits whose diff adds and deletes no line; the other required commit, `c1`, changes only
-    `zone-rates.bin`, whose diff is `Bin 20 -> 20 bytes`, and reaching it means blaming a file git
-    treats as a single line and then reading the header byte that carries the unit.
+    `zone-rates.bin`, whose diff is `Bin 20 -> 20 bytes` and whose subject names no unit, so reaching it
+    means blaming a file git treats as a single line and then reading the header byte for itself.
 notes:
 - >-
   The table is twenty bytes, a four-byte header followed by four big-endian ints. The header's fourth
   byte is the unit, D for dollars and C for cents, and both versions of the file have the same length,
   so git reports the change as Bin 20 -> 20 bytes with no insertions or deletions. Measured: git blame
   on the file answers c1 and treats all twenty bytes as line 1.
+- >-
+  Measured (PR #87 review): no commit message names the unit. An earlier revision subjected c1
+  "Re-export the zone tariff table in cents", which told a reader what the header byte says as soon as
+  the file's history was reached.
 - >-
   Supported domain, zones 0 to 3, the rows the table holds. rateCents multiplies by 100 only while
   the table is in dollars, where the largest row is 20; tests/test_reference_arithmetic.py holds the

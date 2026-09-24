@@ -169,3 +169,34 @@ proposed with the first rewrite that needs it.
    interchangeable: *interaction* needs the unreachable commit to be harmless,
    *disjoint effects* does not. A scenario that cannot support the first can
    still be sound under the second, and saying which one it is costs a sentence.
+
+8. **A scenario that names an evidence path is claiming it is the *shortest*
+   one** (decided 2026-09-24, PR #87 review). G7 and G8 scenarios earn their
+   category by making a tool read something other than the diff — an issue
+   document, a changelog, a release range, the bytes of a file. That claim is
+   false the moment a **commit message** says the same thing, because
+   `git log --grep` is shorter than every route the README describes.
+
+   - **Write the commit that changes the meaning in the language of its
+     feature, not of its representation.** SZZG-0152's unit change was
+     subjected *"Hold the metering price in tenths of a cent"*, which a grep
+     turns into the answer; it now says that finer price bands were added.
+     SZZG-0153's binary re-export said *"…in cents"*, which gave away what the
+     header byte carries as soon as the file's history was reached; it now says
+     only that the table was re-exported. The bug-fixing commit is exempt: its
+     message is where a tool starts.
+   - **Put a changelog or release note in the commit that publishes it**, not
+     in the commit it describes, or the entry names its own author through
+     `git log -S` and the release range is decorative. After the change,
+     SZZG-0152's entry is written by the release commit and the work is
+     choosing among the three commits the tag contains.
+   - **Grep the generated history for the words the evidence carries** and keep
+     the result in a test
+     (`test_no_commit_message_gives_the_unit_away`). Reading the scenario file
+     is not enough: the messages that matter are the ones git ends up with,
+     including the ones `git revert` and `git merge` write themselves.
+
+   The general form, and what it shares with rule 7: a scenario states the
+   route it intends, so every other route is part of the claim. Measure the
+   ones a tool would actually try — blame, the value, the message, the tests —
+   before writing the README, not after a reviewer does.

@@ -255,6 +255,10 @@ def test_the_release_tag_and_changelog_lead_to_the_unit_change(generated):
     assert set(released) == {"c1", "c2", "c3"}
     changelog = _git(repo, "show", f"{hashes['c4']}:CHANGELOG.md")
     assert "## 2.4.0" in changelog and "tenths of a cent" in changelog
+    # the entry belongs to the release, not to the commit it describes, so it names no commit
+    assert "## 2.4.0" not in _git(repo, "show", f"{hashes['c1']}:CHANGELOG.md")
+    wrote_entry = [_owner(hashes, h) for h in _git(repo, "log", "-S", "tenths", "--format=%H").split()]
+    assert wrote_entry == ["c3"], wrote_entry
     assert "v2.4.0" in _git(repo, "log", "--format=%s", "-1", hashes["c5"])
     path = "src/main/java/example/Metering.java"
     assert _blame_of(repo, hashes, "c4", path, "static final int METERED_UNIT_PRICE") == "c2", "the rename owns it"
@@ -277,3 +281,25 @@ def test_the_binary_change_carries_no_diff(generated):
     assert len(blame) == 1, "git treats the whole binary file as one line"
     assert _owner(hashes, blame[0].split()[0].decode()) == "c1"
     assert _git(repo, "diff", "--name-only", f"{hashes['c1']}^", hashes["c1"]).split() == [table]
+
+
+#: words that would give the unit away if a commit message carried them (PR #87 review).  The
+#: bug-fixing commit is exempt: its own message is where a tool starts.
+UNIT_WORDS = {"SZZG-0152": ("cent", "tenth"), "SZZG-0153": ("cent", "dollar", "usd")}
+
+
+def test_no_commit_message_gives_the_unit_away(generated):
+    """The evidence these two scenarios claim is the only one: greping the log must not shortcut it."""
+    sid, hashes, repo = generated
+    if sid not in UNIT_WORDS:
+        pytest.skip("only SZZG-0152 and SZZG-0153 rest on evidence outside the commit messages")
+    telling = []
+    for cid, sha in hashes.items():
+        if cid == BFC[sid]:
+            continue
+        message = _git(repo, "log", "--format=%B", "-1", sha).lower()
+        telling += [f"{cid}: {word}" for word in UNIT_WORDS[sid] if word in message]
+    assert telling == [], f"{sid} names the unit in a commit message: {telling}"
+    for word in UNIT_WORDS[sid]:
+        found = {_owner(hashes, h) for h in _git(repo, "log", "--all", "-i", f"--grep={word}", "--format=%H").split()}
+        assert found <= {BFC[sid]}, f"git log --grep={word} reaches {sorted(found)}"

@@ -381,8 +381,8 @@ not:
 | SZZ-0225 | S8 | SZZ-0199: the fault is in a properties file the fix never opens | the first cause is a **test-only** commit — the wrong expectation is written into `LateFeeTest` and a later production change satisfies it, so blame on the fix's deleted lines answers a rename of the test's helper and the production change, and never the test |
 | SZZG-0150 | G1 | SZZG-0119: a move that inlines two named conditions | the rewrite is a **merge's conflict resolution**: main renamed the constant while a branch moved the boundary, so the lines the resolution wrote match neither parent and blame attributes the whole semantic change to the merge |
 | SZZG-0151 | G6 | SZZG-0147: a revert of a revert puts the unit change back | the reintroduction is a **merge that takes the branch's side**, so no commit says the change came back; blame leads instead to the origin the revert already undid, which the direct/origin contract refuses |
-| SZZG-0152 | G7 | SZZG-0144: the fix message names the issue whose commit changed the unit | the evidence is a **release tag and a changelog**, and the value-flow route is closed: a rename owns the constant's line, so the only way back is resolving the release the fix cites to the commits the tag contains |
-| SZZG-0153 | G8 | SZZG-0145: the unit change is a regenerated 5,001-line table | the unit lives in a **binary** table, so the commit that changed it adds and deletes no line anywhere — `Bin 20 -> 20 bytes` — and blaming the file names it for all twenty bytes at once |
+| SZZG-0152 | G7 | SZZG-0144: the fix message names the issue whose commit changed the unit | the evidence is a **release tag and a changelog**, and both shortcuts are closed: a rename owns the constant's line, and no commit message names the unit, so the only way back is resolving the release the fix cites and choosing among the three commits the tag contains |
+| SZZG-0153 | G8 | SZZG-0145: the unit change is a regenerated 5,001-line table | the unit lives in a **binary** table, so the commit that changed it adds and deletes no line anywhere — `Bin 20 -> 20 bytes` — and blaming the file names it for all twenty bytes at once, under a subject that says only that the table was re-exported |
 
 SZZ-0222 is the first scenario in the suite whose blame answer contains **no**
 required commit. Everywhere else blame either reaches part of the answer or is
@@ -409,6 +409,17 @@ them turn on what a **merge** does — absorbing a rewrite, and quietly
 reinstating a reverted change — one on a **tag and the range it names**, and one
 on a file whose diff has no lines. None of the four could be stated in
 `scenario.yml`.
+
+Two of them also had to have a **commit message** taken away from them. A
+scenario whose point is that the evidence lives outside the diff is only as
+good as its messages are quiet: SZZG-0152 first subjected its unit change
+*"Hold the metering price in tenths of a cent"* and SZZG-0153 *"Re-export the
+zone tariff table in cents"*, either of which a `git log --grep` turns into the
+answer without the changelog or the header byte ever being read (PR #87
+review). Both subjects are now neutral, SZZG-0152's changelog entry is written
+by the release commit rather than by the commit it describes, and
+`tests/test_graph_deepened_categories.py::test_no_commit_message_gives_the_unit_away`
+greps the generated histories for the words that would give it away.
 
 A control being cheaply solvable is not a defect: a benchmark needs cases that
 verify the basics, and a method that fails one of them is broken on that input
