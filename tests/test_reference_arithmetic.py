@@ -93,6 +93,24 @@ CASES = {
     "SZZ-0225": ("0 to 42 949 672 overdue days, the largest fee that still fits int at 50 cents a day",
                  [("example.LateFee", "cents", [42949672], 2147483600),
                   ("example.LateFee", "cents", [3], 150)]),
+    # the four graph scenarios of issue #80's proposal 2, added with the scenarios themselves
+    "SZZG-0150": ("any int weight: the band is a comparison, and the fix's HEAVY_FROM_KILOGRAMS + 1 is 20",
+                  [("example.Quote", "surchargeCents", [2147483647], 500),
+                   ("example.Quote", "surchargeCents", [19], 0)]),
+    "SZZG-0151": ("0 to 4 294 967 days: the daily total is five hundred cents a day either side of the "
+                  "euro conversion, so the bound is the same before and after it",
+                  [("example.RateCard", "totalCents", [4294967], 2147483500),
+                   # 550 at the fix and 55 where the surcharge is added to a rate held in euros
+                   ("example.RateCard", "expressCents", [], 550)]),
+    "SZZG-0152": ("0 to 17 895 697 units: after c1 the product units * 120 leaves the int range one unit "
+                  "before the quotient does, and the fix keeps that form",
+                  [("example.Metering", "costCents", [17895697], 214748364),
+                   ("example.Metering", "costCents", [25], 300)]),
+    "SZZG-0153": ("zones 0 to 3, the rows the binary table holds; rateCents multiplies by 100 only while "
+                  "the table is in dollars, where the largest row is 20",
+                  [("example.Quote", "shippingCents", [3], 2000),
+                   # "20 USD" at the fix and "2000 USD" where the raw value is printed as dollars
+                   ("example.Quote", "rateLabel", [3], "20 USD")]),
 }
 
 DRIVER = """

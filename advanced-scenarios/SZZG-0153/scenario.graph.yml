@@ -1,0 +1,220 @@
+schema_version: graph-1.0
+meta:
+  id: SZZG-0153
+  title: The unit lives in a binary table, and the commit that changed it has no line to blame
+  slug: the-unit-lives-in-a-binary-table
+  description: >
+    A zone tariff table is a twenty-byte binary file whose header says which
+    unit its values are in, and the reader honours that header, so re-exporting
+    the table in cents changes nothing an outside caller can see. That commit
+    touches the binary file and nothing else, and its subject says only that
+    the table was re-exported from the tariff system. A commit written afterwards
+    prints a raw table value as if it were dollars. The fix repairs the label,
+    so blame on the line it deletes stops at that later commit, and the other
+    required commit changes only that binary file, whose diff adds and deletes
+    no line at all.
+  category: "Non-source, binary, generated, and scalability edge cases"
+  category_code: "G8"
+  factors:
+  - multi-bic
+  - single-bfc
+  - binary-file
+  - non-source-bic
+  - value-flow
+  - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  tier: discriminating
+  defeats: [blame, shape, position]
+repository:
+  name: SZZG-0153-the-unit-lives-in-a-binary-table
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'Add the zone tariff table and its reader'
+  author: 'Elena Rossi <elena.rossi@example.com>'
+  role: initial
+  operations:
+  - type: write_binary_file
+    path: src/main/resources/zone-rates.bin
+    content_base64: WlJURAAAAAkAAAAMAAAADwAAABQ=
+  - type: write_file
+    path: src/main/java/example/ZoneRates.java
+    content: |
+      package example;
+
+      import java.io.IOException;
+      import java.nio.file.Files;
+      import java.nio.file.Path;
+
+      public class ZoneRates {
+          private final byte[] table;
+
+          public ZoneRates() {
+              try {
+                  table = Files.readAllBytes(Path.of("src/main/resources/zone-rates.bin"));
+              } catch (IOException e) {
+                  throw new IllegalStateException("zone-rates.bin is unreadable", e);
+              }
+          }
+
+          int rawValue(int zone) {
+              int at = 4 + zone * 4;
+              return ((table[at] & 0xff) << 24) | ((table[at + 1] & 0xff) << 16)
+                      | ((table[at + 2] & 0xff) << 8) | (table[at + 3] & 0xff);
+          }
+
+          public int rateCents(int zone) {
+              return table[3] == 'C' ? rawValue(zone) : rawValue(zone) * 100;
+          }
+      }
+  - type: write_file
+    path: src/main/java/example/Quote.java
+    content: |
+      package example;
+
+      public class Quote {
+          private final ZoneRates rates = new ZoneRates();
+
+          public int shippingCents(int zone) {
+              return rates.rateCents(zone);
+          }
+      }
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'Re-export the zone tariff table from the tariff system'
+  author: 'Luca Moretti <luca.moretti@example.com>'
+  role: bug_introducing
+  operations:
+  - type: write_binary_file
+    path: src/main/resources/zone-rates.bin
+    content_base64: WlJUQwAAA4QAAASwAAAF3AAAB9A=
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'Describe the zone tariff table'
+  author: 'Hana Sato <hana.sato@example.com>'
+  role: intermediate
+  operations:
+  - type: write_file
+    path: docs/zone-rates.md
+    content: |
+      The zone tariff table is exported from the tariff system. It is a
+      four-byte header followed by one big-endian int per zone.
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'Show the tariff of a zone on the quote'
+  author: 'Chen Wei <chen.wei@example.com>'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Quote.java
+    old: |
+      public int shippingCents(int zone) {
+              return rates.rateCents(zone);
+          }
+    new: |
+      public int shippingCents(int zone) {
+              return rates.rateCents(zone);
+          }
+
+          public String rateLabel(int zone) {
+              return rates.rawValue(zone) + " USD";
+          }
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: 'Print the zone tariff in dollars on the quote'
+  author: 'Tom Becker <tom.becker@example.com>'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Quote.java
+    old: return rates.rawValue(zone) + " USD";
+    new: return rates.rateCents(zone) / 100 + " USD";
+bugs:
+- id: B001
+  title: The quote prints a zone tariff of nine hundred dollars
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  - commit: c3
+    role: direct
+  bug_fixing_commits:
+  - commit: c4
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/resources/zone-rates.bin
+    change_type: binary_change
+  - id: F002
+    commit: c3
+    file: src/main/java/example/Quote.java
+    statement: return rates.rawValue(zone) + " USD";
+    change_type: line_addition
+  fixes:
+  - id: X001
+    commit: c4
+    file: src/main/java/example/Quote.java
+    statement: return rates.rateCents(zone) / 100 + " USD";
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+    - c3
+scenario_design:
+  purpose: >
+    Give G8 a second discriminating scenario in which the unreachable half of
+    the answer is inside a binary file, so that every step working from a diff
+    hunk has nothing to read and the only route is the file's own history and
+    the meaning of its header.
+  key_property: >
+    The reader honours the unit byte in the table's header, so c1 re-exports
+    the table in cents without changing any answer. c1 touches nothing but the
+    binary file. c3 prints a raw table value as dollars, which it stopped being
+    at c1. Blame on the line the fix deletes returns c3. The binary change
+    carries no diff at all: git reports Bin 20 -> 20 bytes with zero insertions
+    and zero deletions, so every step that reads diff hunks has nothing to look
+    at. Blaming the file itself does answer c1, but with the whole twenty-byte
+    file as one line, and the commit message says only that the table was
+    re-exported, not what changed in it; the fourth byte is what turns that
+    into the answer.
+  evaluation_points:
+  - Whether the expected BIC set is reported exactly.
+  - Whether a commit that touches only a binary file is considered a candidate at all.
+  - Whether the accessor the fixed line calls is followed into the file it reads.
+  failure_mode: >-
+    A tool fails here when it stops at the line the fix deletes, which blame attributes to `c3`, or when
+    it skips commits whose diff adds and deletes no line; the other required commit, `c1`, changes only
+    `zone-rates.bin`, whose diff is `Bin 20 -> 20 bytes` and whose subject names no unit, so reaching it
+    means blaming a file git treats as a single line and then reading the header byte for itself.
+notes:
+- >-
+  The table is twenty bytes, a four-byte header followed by four big-endian ints. The header's fourth
+  byte is the unit, D for dollars and C for cents, and both versions of the file have the same length,
+  so git reports the change as Bin 20 -> 20 bytes with no insertions or deletions. Measured: git blame
+  on the file answers c1 and treats all twenty bytes as line 1.
+- >-
+  Measured (PR #87 review): no commit message names the unit. An earlier revision subjected c1
+  "Re-export the zone tariff table in cents", which told a reader what the header byte says as soon as
+  the file's history was reached.
+- >-
+  Supported domain, zones 0 to 3, the rows the table holds. rateCents multiplies by 100 only while
+  the table is in dollars, where the largest row is 20; tests/test_reference_arithmetic.py holds the
+  probe at the fix.

@@ -1,6 +1,6 @@
 schema_version: graph-index-0.1-draft
 description: Index of draft advanced graph scenarios for SZZBench.
-scenario_count: 142
+scenario_count: 146
 scenarios:
 - id: SZZG-0001
   title: BFC performs rename and fix in the same commit
@@ -1735,6 +1735,66 @@ scenarios:
   - addition-only-fix
   - missing-branch
   - off-by-one
+  - blame-unreachable-bic
+- id: SZZG-0150
+  title: The merge resolves the conflict by inlining, and owns the boundary the branch moved
+  category_code: G1
+  category: Refactoring, move, rename, and semantic rewrite
+  path: advanced-scenarios/SZZG-0150/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0150/README.md
+  status: active
+  factors:
+  - multi-bic
+  - single-bfc
+  - merge
+  - semantic-preserving-rewrite
+  - refactoring-after-bic
+  - value-flow
+  - off-by-one
+  - blame-unreachable-bic
+- id: SZZG-0151
+  title: A merge takes the branch's side and puts the reverted unit back without saying so
+  category_code: G6
+  category: Revert-specific reintroduction
+  path: advanced-scenarios/SZZG-0151/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0151/README.md
+  status: active
+  factors:
+  - multi-bic
+  - single-bfc
+  - revert
+  - reintroduction
+  - merge
+  - value-flow
+  - blame-unreachable-bic
+- id: SZZG-0152
+  title: The fix message names a release, and only the changelog of that release says what changed
+  category_code: G7
+  category: Issue, message, context, and non-local evidence
+  path: advanced-scenarios/SZZG-0152/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0152/README.md
+  status: active
+  factors:
+  - multi-bic
+  - single-bfc
+  - release-tag
+  - non-source-evidence
+  - refactoring-after-bic
+  - value-flow
+  - blame-unreachable-bic
+- id: SZZG-0153
+  title: The unit lives in a binary table, and the commit that changed it has no line to blame
+  category_code: G8
+  category: Non-source, binary, generated, and scalability edge cases
+  path: advanced-scenarios/SZZG-0153/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0153/README.md
+  status: active
+  factors:
+  - multi-bic
+  - single-bfc
+  - binary-file
+  - non-source-bic
+  - value-flow
   - blame-unreachable-bic
 notes:
 - Scenario IDs are ordered by the SZZBench scenario taxonomy.
