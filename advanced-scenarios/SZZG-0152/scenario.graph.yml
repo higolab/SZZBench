@@ -1,0 +1,236 @@
+schema_version: graph-1.0
+meta:
+  id: SZZG-0152
+  title: The fix message names a release, and only the changelog of that release says what changed
+  slug: the-changelog-of-the-named-release
+  description: >
+    A metering price moves from cents to tenths of a cent, with its only reader
+    converted in the same commit and the change written into the changelog of
+    the release that carries it. A rename two commits later takes ownership of
+    the constant's line, so following the value stops at a commit that renamed
+    it and nothing more. A later commit prints the constant as cents. The fix
+    repairs the label and its message names the release, which is the one
+    thread left back to the unit change: the tag says which commits the release
+    contains and the changelog says what the release did.
+  category: "Issue, message, context, and non-local evidence"
+  category_code: "G7"
+  factors:
+  - multi-bic
+  - single-bfc
+  - release-tag
+  - non-source-evidence
+  - refactoring-after-bic
+  - value-flow
+  - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  tier: discriminating
+  defeats: [blame, shape, position]
+repository:
+  name: SZZG-0152-the-changelog-of-the-named-release
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+  ref_lifecycle:
+    tags:
+    - name: v2.3.0
+      commit: c0
+    - name: v2.4.0
+      commit: c3
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'Add metering and its changelog'
+  author: 'Elena Rossi <elena.rossi@example.com>'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Metering.java
+    content: |
+      package example;
+
+      public class Metering {
+          static final int UNIT_PRICE = 12;
+
+          public int costCents(int units) {
+              return units * UNIT_PRICE;
+          }
+      }
+  - type: write_file
+    path: CHANGELOG.md
+    content: |
+      # Changelog
+
+      ## 2.3.0
+
+      - Metered usage is priced per unit.
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'Hold the metering price in tenths of a cent'
+  author: 'Luca Moretti <luca.moretti@example.com>'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Metering.java
+    old: |
+      static final int UNIT_PRICE = 12;
+
+          public int costCents(int units) {
+              return units * UNIT_PRICE;
+          }
+    new: |
+      static final int UNIT_PRICE = 120;
+
+          public int costCents(int units) {
+              return units * UNIT_PRICE / 10;
+          }
+  - type: replace
+    path: CHANGELOG.md
+    old: |
+      # Changelog
+    new: |
+      # Changelog
+
+      ## 2.4.0
+
+      - The metering unit price is held in tenths of a cent. Callers that read
+        the constant must divide by ten.
+- id: c2
+  branch: main
+  parents:
+  - c1
+  message: 'Name the metering price after what it prices'
+  author: 'Hana Sato <hana.sato@example.com>'
+  role: intermediate
+  operations:
+  - type: replace
+    path: src/main/java/example/Metering.java
+    old: |
+      static final int UNIT_PRICE = 120;
+
+          public int costCents(int units) {
+              return units * UNIT_PRICE / 10;
+          }
+    new: |
+      static final int METERED_UNIT_PRICE = 120;
+
+          public int costCents(int units) {
+              return units * METERED_UNIT_PRICE / 10;
+          }
+- id: c3
+  branch: main
+  parents:
+  - c2
+  message: 'Release 2.4.0'
+  author: 'Aiko Tanaka <aiko.tanaka@example.com>'
+  role: intermediate
+  operations:
+  - type: write_file
+    path: VERSION
+    content: |
+      2.4.0
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: 'Show the metering price on the invoice'
+  author: 'Chen Wei <chen.wei@example.com>'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Metering.java
+    old: |
+      public int costCents(int units) {
+              return units * METERED_UNIT_PRICE / 10;
+          }
+    new: |
+      public int costCents(int units) {
+              return units * METERED_UNIT_PRICE / 10;
+          }
+
+          public String priceLabel() {
+              return METERED_UNIT_PRICE + " cents per unit";
+          }
+- id: c5
+  branch: main
+  parents:
+  - c4
+  message: 'Show the metering price in cents, as it has been held in tenths since v2.4.0'
+  author: 'Tom Becker <tom.becker@example.com>'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Metering.java
+    old: return METERED_UNIT_PRICE + " cents per unit";
+    new: return METERED_UNIT_PRICE / 10 + " cents per unit";
+bugs:
+- id: B001
+  title: The invoice prints the metering price ten times too high
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  - commit: c4
+    role: direct
+  bug_fixing_commits:
+  - commit: c5
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/Metering.java
+    statement: static final int UNIT_PRICE = 120;
+    change_type: line_modification
+  - id: F002
+    commit: c4
+    file: src/main/java/example/Metering.java
+    statement: return METERED_UNIT_PRICE + " cents per unit";
+    change_type: line_addition
+  fixes:
+  - id: X001
+    commit: c5
+    file: src/main/java/example/Metering.java
+    statement: return METERED_UNIT_PRICE / 10 + " cents per unit";
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+    - c4
+scenario_design:
+  purpose: >
+    Give G7 a second discriminating scenario whose non-local evidence is a
+    release tag and a changelog rather than an issue document, and whose
+    value-flow route is closed by a rename, so that the evidence is the only
+    way to the unreachable commit.
+  key_property: >
+    c1 converts the constant and its only reader together, so nothing
+    observable changes, and writes the change into the changelog section of the
+    release that carries it. c2 renames the constant, so the line that holds
+    the value is blamed to a commit that only renamed it. c4 prints the
+    constant as cents. Blame on the line the fix deletes returns c4; blame on
+    the constant returns c2; the route to c1 is the fix message's release name,
+    the tag v2.4.0, and the changelog section under it.
+  evaluation_points:
+  - Whether the expected BIC set is reported exactly.
+  - Whether a release name in the fix message is resolved to the commits the tag contains.
+  - Whether a changed unit recorded outside the source is used at all.
+  failure_mode: >-
+    A tool fails here when it stops at the line the fix deletes, which blame attributes to `c4`, or when
+    it follows the constant to `c2`, which only renamed it; the other required commit, `c1`, is named by
+    no line of the file and is reachable through the release the fix's message cites, the tag `v2.4.0`
+    and the changelog section under it.
+notes:
+- >-
+  The tags v2.3.0 and v2.4.0 are lightweight tags on c0 and c3; the range v2.3.0..v2.4.0 contains
+  c1, c2 and c3, and the changelog section 2.4.0 is the entry c1 wrote.
+- >-
+  Supported domain, 0 to 17895697 units. After c1 the product units * 120 leaves the int range one
+  unit before the quotient does, and the bound is the same at the fix;
+  tests/test_reference_arithmetic.py holds it.

@@ -1,0 +1,236 @@
+schema_version: graph-1.0
+meta:
+  id: SZZG-0150
+  title: The merge resolves the conflict by inlining, and owns the boundary the branch moved
+  slug: merge-resolution-inlines-the-boundary
+  description: >
+    A branch restates a weight threshold as a strict comparison one kilogram
+    lower, which no input can tell apart from the original. Main edits the same
+    method meanwhile, so the merge has to resolve a conflict, and it resolves it
+    by inlining the named local into a single expression. That expression is the
+    merge's own line. A commit written afterwards prints the constant as the
+    weight the surcharge starts at, which it no longer is. The fix repairs the
+    label, so the line it deletes belongs to the later commit, and the line that
+    carries the boundary belongs to the merge rather than to the branch commit
+    that moved it.
+  category: "Refactoring, move, rename, and semantic rewrite"
+  category_code: "G1"
+  factors:
+  - multi-bic
+  - single-bfc
+  - merge
+  - semantic-preserving-rewrite
+  - refactoring-after-bic
+  - value-flow
+  - off-by-one
+  - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  tier: discriminating
+  defeats: [blame, shape, position]
+repository:
+  name: SZZG-0150-merge-resolution-inlines-the-boundary
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'Add the heavy-parcel surcharge'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/Bands.java
+    content: |
+      package example;
+
+      public class Bands {
+          static final int HEAVY_KILOGRAMS = 20;
+
+          public boolean heavy(int kilograms) {
+              boolean atOrOver = kilograms >= HEAVY_KILOGRAMS;
+              return atOrOver;
+          }
+      }
+  - type: write_file
+    path: src/main/java/example/Quote.java
+    content: |
+      package example;
+
+      public class Quote {
+          private final Bands bands = new Bands();
+
+          public int surchargeCents(int kilograms) {
+              return bands.heavy(kilograms) ? 500 : 0;
+          }
+      }
+- id: c1
+  branch: band-rules
+  parents:
+  - c0
+  message: 'State the heavy band as a strict comparison'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Bands.java
+    old: |
+      static final int HEAVY_KILOGRAMS = 20;
+
+          public boolean heavy(int kilograms) {
+              boolean atOrOver = kilograms >= HEAVY_KILOGRAMS;
+              return atOrOver;
+          }
+    new: |
+      static final int HEAVY_KILOGRAMS = 19;
+
+          public boolean heavy(int kilograms) {
+              boolean over = kilograms > HEAVY_KILOGRAMS;
+              return over;
+          }
+- id: c2
+  branch: main
+  parents:
+  - c0
+  message: 'Name the heavy band after the weight it starts at'
+  role: intermediate
+  operations:
+  - type: replace
+    path: src/main/java/example/Bands.java
+    old: |
+      static final int HEAVY_KILOGRAMS = 20;
+
+          public boolean heavy(int kilograms) {
+              boolean atOrOver = kilograms >= HEAVY_KILOGRAMS;
+              return atOrOver;
+          }
+    new: |
+      static final int HEAVY_FROM_KILOGRAMS = 20;
+
+          /** Whether a parcel of this weight pays the heavy surcharge. */
+          public boolean heavy(int kilograms) {
+              boolean atOrOver = kilograms >= HEAVY_FROM_KILOGRAMS;
+              return atOrOver;
+          }
+- id: c3
+  branch: main
+  parents:
+  - c2
+  - c1
+  message: 'Merge the band rules, keeping one expression'
+  role: merge
+  operations: []
+  resolution:
+    src/main/java/example/Bands.java: |
+      package example;
+
+      public class Bands {
+          static final int HEAVY_FROM_KILOGRAMS = 19;
+
+          /** Whether a parcel of this weight pays the heavy surcharge. */
+          public boolean heavy(int kilograms) {
+              return kilograms > HEAVY_FROM_KILOGRAMS;
+          }
+      }
+- id: c4
+  branch: main
+  parents:
+  - c3
+  message: 'Show the weight the surcharge starts at'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/Quote.java
+    old: |
+      public int surchargeCents(int kilograms) {
+              return bands.heavy(kilograms) ? 500 : 0;
+          }
+    new: |
+      public int surchargeCents(int kilograms) {
+              return bands.heavy(kilograms) ? 500 : 0;
+          }
+
+          public String heavyFrom() {
+              return Bands.HEAVY_FROM_KILOGRAMS + " kg and over";
+          }
+- id: c5
+  branch: main
+  parents:
+  - c4
+  message: 'Name the first weight that pays the surcharge'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/Quote.java
+    old: return Bands.HEAVY_FROM_KILOGRAMS + " kg and over";
+    new: return (Bands.HEAVY_FROM_KILOGRAMS + 1) + " kg and over";
+bugs:
+- id: B001
+  title: The quote names a weight one kilogram below the one that pays the surcharge
+  bug_introducing_commits:
+  - commit: c1
+    role: direct
+  - commit: c4
+    role: direct
+  bug_fixing_commits:
+  - commit: c5
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c1
+    file: src/main/java/example/Bands.java
+    statement: static final int HEAVY_KILOGRAMS = 19;
+    change_type: line_modification
+  - id: F002
+    commit: c4
+    file: src/main/java/example/Quote.java
+    statement: return Bands.HEAVY_FROM_KILOGRAMS + " kg and over";
+    change_type: line_addition
+  fixes:
+  - id: X001
+    commit: c5
+    file: src/main/java/example/Quote.java
+    statement: return (Bands.HEAVY_FROM_KILOGRAMS + 1) + " kg and over";
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
+    - c4
+scenario_design:
+  purpose: >
+    Give G1 a second discriminating scenario whose rewrite is a merge's own
+    conflict resolution rather than an ordinary commit, so that the line
+    carrying the moved boundary belongs to the merge and the commit that moved
+    it is reachable only through the merge's second parent.
+  key_property: >
+    c1 lowers the constant by one and makes the comparison strict, which no
+    input distinguishes, so nothing observable changes on the branch. Main
+    renamed the same constant meanwhile, so the merge c3 has to combine a
+    rename with a value change, and both lines it writes differ from both
+    parents: the constant and the comparison are blamed to the merge, not to
+    c1. c4 prints the constant as the first weight that pays, which it stopped
+    being at c1. Blaming the line the fix deletes returns c4; following the
+    constant one step returns the merge; only walking the merge's second parent
+    reaches c1.
+  evaluation_points:
+  - Whether the expected BIC set is reported exactly.
+  - Whether a semantic change absorbed by a merge resolution is attributed to the branch commit that made it.
+  - Whether the constant the fixed line reads is followed past the line that now carries it.
+  failure_mode: >-
+    A tool fails here when it stops at the line the fix deletes, which blame attributes to `c4`, or when it
+    follows the constant one step and stops at the merge `c3`, whose resolution wrote the line the boundary
+    now lives on; the other required commit, `c1`, is on the merge's second parent and no blame variant
+    reaches it.
+notes:
+- >-
+  The merge c3 conflicts, because both parents rewrote the body of Bands.heavy, so the resolution
+  is a real one and its diff against the first parent is not empty.
+- >-
+  Supported domain, any int weight. surchargeCents only compares, and the fix's HEAVY_FROM_KILOGRAMS + 1
+  is 20, far from the end of the int range. tests/test_reference_arithmetic.py holds the probe at
+  Integer.MAX_VALUE.

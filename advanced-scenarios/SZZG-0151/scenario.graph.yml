@@ -1,0 +1,259 @@
+schema_version: graph-1.0
+meta:
+  id: SZZG-0151
+  title: A merge takes the branch's side and puts the reverted unit back without saying so
+  slug: merge-undoes-the-revert
+  description: >
+    A commit restates the daily rate in euros and converts its only reader at
+    the same time, and is reverted two days later. A reporting branch forked
+    before the revert still carries the euro form, and the merge that brings the
+    branch back resolves the conflict in its favour, so the reverted change is
+    in force again with no revert commit to show for it. A later commit adds a
+    surcharge that reads the constant as cents. The fix repairs the surcharge,
+    and blame on the line it deletes stops there; the constant's line still
+    belongs to the commit that first wrote it, which the revert has already
+    undone once.
+  category: "Revert-specific reintroduction"
+  category_code: "G6"
+  factors:
+  - multi-bic
+  - single-bfc
+  - revert
+  - reintroduction
+  - merge
+  - value-flow
+  - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  tier: discriminating
+  defeats: [blame, shape, position]
+repository:
+  name: SZZG-0151-merge-undoes-the-revert
+  default_branch: main
+  language: java
+  build_system: none
+  source_root: src/main/java
+graph:
+  model: commit_dag
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: 'Add the daily rate card'
+  author: 'Elena Rossi <elena.rossi@example.com>'
+  role: initial
+  operations:
+  - type: write_file
+    path: src/main/java/example/RateCard.java
+    content: |
+      package example;
+
+      public class RateCard {
+          static final int DAILY_CENTS = 500;
+
+          public int totalCents(int days) {
+              return days * DAILY_CENTS;
+          }
+      }
+- id: c1
+  branch: main
+  parents:
+  - c0
+  message: 'Express the daily rate in euros'
+  author: 'Luca Moretti <luca.moretti@example.com>'
+  role: intermediate
+  operations:
+  - type: replace
+    path: src/main/java/example/RateCard.java
+    old: |
+      static final int DAILY_CENTS = 500;
+
+          public int totalCents(int days) {
+              return days * DAILY_CENTS;
+          }
+    new: |
+      static final int DAILY = 5;
+
+          public int totalCents(int days) {
+              return days * DAILY * 100;
+          }
+- id: c2
+  branch: main
+  parents:
+  - c1
+  author: 'Hana Sato <hana.sato@example.com>'
+  role: intermediate
+  revert_of: c1
+- id: c3
+  branch: reporting
+  parents:
+  - c1
+  message: 'Show the daily rate on the quote'
+  author: 'Aiko Tanaka <aiko.tanaka@example.com>'
+  role: intermediate
+  operations:
+  - type: replace
+    path: src/main/java/example/RateCard.java
+    old: |
+      static final int DAILY = 5;
+
+          public int totalCents(int days) {
+    new: |
+      /** The daily rate, in euros. */
+          static final int DAILY = 5;
+
+          public String dailyLabel() {
+              return DAILY + " EUR";
+          }
+
+          public int totalCents(int days) {
+- id: c4
+  branch: main
+  parents:
+  - c2
+  - c3
+  message: 'Merge the reporting branch'
+  author: 'Farid Haddad <farid.haddad@example.com>'
+  role: bug_introducing
+  operations: []
+  resolution:
+    src/main/java/example/RateCard.java: |
+      package example;
+
+      public class RateCard {
+          /** The daily rate, in euros. */
+          static final int DAILY = 5;
+
+          public String dailyLabel() {
+              return DAILY + " EUR";
+          }
+
+          public int totalCents(int days) {
+              return days * DAILY * 100;
+          }
+      }
+- id: c5
+  branch: main
+  parents:
+  - c4
+  message: 'Add the express surcharge to the daily rate'
+  author: 'Chen Wei <chen.wei@example.com>'
+  role: bug_introducing
+  operations:
+  - type: replace
+    path: src/main/java/example/RateCard.java
+    old: |
+      public int totalCents(int days) {
+              return days * DAILY * 100;
+          }
+    new: |
+      public int totalCents(int days) {
+              return days * DAILY * 100;
+          }
+
+          public int expressCents() {
+              return DAILY + 50;
+          }
+- id: c6
+  branch: main
+  parents:
+  - c5
+  message: 'Charge the express surcharge on a rate in euros'
+  author: 'Tom Becker <tom.becker@example.com>'
+  role: bug_fixing
+  operations:
+  - type: replace
+    path: src/main/java/example/RateCard.java
+    old: return DAILY + 50;
+    new: return DAILY * 100 + 50;
+bugs:
+- id: B001
+  title: The express surcharge adds fifty cents to a rate held in euros
+  bug_introducing_commits:
+  - commit: c4
+    role: direct
+  - commit: c5
+    role: direct
+  - commit: c1
+    role: origin
+  bug_fixing_commits:
+  - commit: c6
+    role: complete_fix
+  faults:
+  - id: F001
+    commit: c4
+    file: src/main/java/example/RateCard.java
+    statement: static final int DAILY = 5;
+    change_type: line_modification
+  - id: F002
+    commit: c5
+    file: src/main/java/example/RateCard.java
+    statement: return DAILY + 50;
+    change_type: line_addition
+  fixes:
+  - id: X001
+    commit: c6
+    file: src/main/java/example/RateCard.java
+    statement: return DAILY * 100 + 50;
+    fix_type: line_modification
+expected_szz:
+  commit_level:
+    evaluation_policy: reintroduction_direct
+    required:
+    - c4
+    - c5
+    related_origins:
+    - c1
+    related_but_not_correct:
+    - c2
+    notes: >
+      c4 is the commit that put the euro form in force at the fix: it is the merge whose conflict
+      resolution took the reporting branch's file, and its diff against its first parent is the euro
+      change again. c1 is the origin and is not required (D-contract), c2 is the revert that undid it
+      and is related but not correct, and c5 is the reader that assumed cents. Blame on the line c6
+      deletes returns c5 alone, and blame on the constant returns c1, which the revert has already
+      undone once.
+  evaluation_variants:
+  - name: origin-aware
+    description: >
+      The same required set; reporting the origin c1 as well is tolerated (direct/origin contract D3),
+      reporting the revert c2 is not.
+    commit_level:
+      evaluation_policy: exact_set
+      required:
+      - c4
+      - c5
+      related_origins:
+      - c1
+      related_but_not_correct:
+      - c2
+scenario_design:
+  purpose: >
+    Give G6 a second discriminating scenario whose reintroduction is a merge
+    resolution rather than a revert, so that no commit in the history says the
+    change came back and the reintroducing commit is a merge.
+  key_property: >
+    c1 converts the constant and its only reader together, so nothing
+    observable changes, and c2 reverts it. The reporting branch forked before
+    the revert, so the merge c4 conflicts, and its resolution takes the
+    branch's file: the euro form is in force again under a commit message that
+    says only that a branch was merged. c5 reads the constant as cents. Blame
+    on the line the fix deletes returns c5; blame on the constant returns the
+    origin c1, which the D-contract does not accept, and the commit that
+    brought it back is the merge.
+  evaluation_points:
+  - Whether the expected BIC set is reported exactly.
+  - Whether a reintroduction with no revert commit is attributed to the merge that performed it.
+  - Whether the origin is distinguished from the commit that put the change back in force.
+  failure_mode: >-
+    A tool fails here when it stops at the line the fix deletes, which blame attributes to `c5`, or when
+    it follows the constant and reports `c1`, the origin the revert `c2` already undid; the commit that
+    put the euro form back is the merge `c4`, whose message says only that a branch was merged.
+notes:
+- >-
+  The merge c4 conflicts, because main reverted the euro form while the reporting branch still
+  carried it, so the resolution is a real one and its diff against the first parent is the euro
+  change again.
+- >-
+  Supported domain, 0 to 4294967 days. totalCents multiplies by 500 either way, so the bound is the
+  same before and after the euro conversion; tests/test_reference_arithmetic.py holds it.
