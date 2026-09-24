@@ -98,6 +98,13 @@ proposed with the first rewrite that needs it.
    - state the supported domain in the scenario's `notes` and probe its
      boundary.
 
+   **A new scenario with numeric arithmetic gets its row in
+   `tests/test_reference_arithmetic.py` in the same commit that adds it**, not
+   when a reviewer finds the overflow. SZZ-0221 and SZZ-0222 were written after
+   this rule existed and still shipped an `int` rounding formula and an `int`
+   batch total, because nothing checked a scenario that was not already in the
+   table (PR #85 review).
+
    Either way the boundary is measured: `tests/test_reference_arithmetic.py`
    holds one row per audited scenario — the domain and the exact answer at the
    top of it, evaluated against the bug-fixing snapshot. Pick a boundary value

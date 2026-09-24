@@ -76,6 +76,18 @@ CASES = {
                    ("example.booking.Surcharge", "weekend", [1952250000], 2147475000)]),
     "SZZG-0147": ("a million attempts at a 2000 ms backoff, the most that fits int",
                   [("example.RetryPolicy", "waitSeconds", [1000000], 2000000)]),
+    # added with the scenarios themselves (PR #85 review): a new scenario with numeric
+    # arithmetic gets a row here in the same commit, which is what rule 6 now asks for
+    "SZZ-0221": ("an order total up to 2 147 483 644 cents, the largest magnitude whose rounded "
+                 "value still fits int; the rounding takes its sum in 64 bits",
+                 [("example.Order", "roundedTotal", [2147483643, 0], 2147483640),
+                  ("example.Order", "roundedRefund", [2147483643, 0], -2147483640)]),
+    "SZZ-0222": ("any number of uploads whose sizes fit int individually; the batch total is "
+                 "accumulated in 64 bits, so a batch that wraps int is still refused",
+                 [("example.Uploads", "acceptBatch",
+                   ["java:java.util.stream.IntStream.range(0, 2048).mapToObj(i -> \"f\" + i).toArray(String[]::new)",
+                    "java:java.util.stream.IntStream.range(0, 2048).map(i -> 1048576).toArray()"],
+                   "false")]),
 }
 
 DRIVER = """
@@ -99,9 +111,15 @@ public class Drive {
 
 
 def _java_args(values) -> str:
+    """Literals, or raw Java after a ``java:`` marker for a probe a literal cannot express."""
     out = []
     for v in values:
-        out.append(json.dumps(v) if isinstance(v, str) else f"Integer.valueOf({v})")
+        if isinstance(v, str) and v.startswith("java:"):
+            out.append(v[len("java:"):])
+        elif isinstance(v, str):
+            out.append(json.dumps(v))
+        else:
+            out.append(f"Integer.valueOf({v})")
     return ", ".join(out)
 
 
@@ -145,4 +163,4 @@ def test_every_audited_scenario_is_still_in_the_suite():
     missing = [sid for sid in CASES
                if not (ROOT / ("advanced-scenarios" if sid.startswith("SZZG-") else "scenarios") / sid).is_dir()]
     assert missing == []
-    assert len(CASES) >= 12
+    assert len(CASES) >= 14

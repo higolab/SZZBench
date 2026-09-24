@@ -1,0 +1,180 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0221"
+  title: "A guard narrowed while nothing reached the narrowed case, and a caller written later that does"
+  slug: "guard-narrowed-then-reached"
+  description: >
+    A rounding helper stops sending small negative amounts down its negative
+    branch. No answer of the package's public surface changes: the only method
+    that reaches the helper refuses a negative order total outright. A later
+    commit adds a refund path that passes a negative, and amounts between one
+    and ten cents below zero round the wrong way. The fix widens the guard
+    again.
+    Blame on the line the fix deletes reaches the refund path only; the commit
+    that narrowed the guard changed no observable answer when it landed and is
+    not on any line the fix touches.
+  category: "Basic semantic line changes"
+  factors:
+    - "multi-bic"
+    - "single-bfc"
+    - "prerequisite-bic"
+    - "boundary-condition"
+    - "wrong-operator"
+    - "blame-unreachable-bic"
+  difficulty: "hard"
+  status: "active"
+  tier: "discriminating"
+  defeats: ["blame", "shape", "position"]
+  category_code: "S1"
+
+repository:
+  name: "SZZ-0221-guard-narrowed-then-reached"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Add the cent rounding helper and the order total"
+    author: "Mei Tanaka <mei.tanaka@example.com>"
+    date: "2025-08-04T09:10:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/example/Rounding.java"
+        content: |
+          package example;
+
+          /** Rounding to the nearest ten cents. Not part of the package's public surface:
+           *  every amount that reaches it comes from a method of this package. */
+          class Rounding {
+              /** Supported domain: |cents| <= 2147483644, the largest magnitude whose
+               *  rounded value still fits int. The sum is taken in 64 bits. */
+              int toNearestTen(int cents) {
+                  long value = cents;
+                  if (value < 0) {
+                      return (int) -((-value + 5) / 10 * 10);
+                  }
+                  return (int) ((value + 5) / 10 * 10);
+              }
+          }
+      - type: "write_file"
+        path: "src/main/java/example/Order.java"
+        content: |
+          package example;
+
+          public class Order {
+              private final Rounding rounding = new Rounding();
+
+              /** An order total is never negative; a caller that computes one has made a mistake. */
+              public int roundedTotal(int netCents, int taxCents) {
+                  int total = netCents + taxCents;
+                  if (total < 0) {
+                      throw new IllegalArgumentException("an order total is never negative");
+                  }
+                  return rounding.toNearestTen(total);
+              }
+          }
+
+  - id: "c1"
+    message: "Take the negative branch only below a ten-cent magnitude"
+    author: "Jonas Berg <jonas.berg@example.com>"
+    date: "2025-08-06T13:25:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/Rounding.java"
+        old: "if (value < 0) {"
+        new: "if (value < -10) {"
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Document what the order total includes"
+    author: "Hana Sato <hana.sato@example.com>"
+    date: "2025-08-08T10:40:00Z"
+    role: "distractor"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/Order.java"
+        old: |
+          public class Order {
+        new: |
+          /** An order total is the net amount plus tax, rounded to the nearest ten cents. */
+          public class Order {
+
+  - id: "c3"
+    message: "Quote a refund as a negative order total"
+    author: "Chen Wei <chen.wei@example.com>"
+    date: "2025-08-11T15:55:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/Order.java"
+        old: |
+          return rounding.toNearestTen(total);
+              }
+        new: |
+          return rounding.toNearestTen(total);
+              }
+
+              public int roundedRefund(int netCents, int taxCents) {
+                  return rounding.toNearestTen(-(netCents + taxCents));
+              }
+        labels: ["B001", "fault"]
+
+  - id: "c4"
+    message: "Round every negative amount through the negative branch again"
+    author: "Diego Alvarez <diego.alvarez@example.com>"
+    date: "2025-08-13T12:15:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/Rounding.java"
+        old: "if (value < -10) {"
+        new: "if (value < 0) {"
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "A refund of nothing is quoted as minus ten cents"
+    bug_fixing_commit: "c4"
+    bug_introducing_commits: ["c1", "c3"]
+    fault:
+      commit: "c1"
+      file: "src/main/java/example/Rounding.java"
+      entity:
+        type: "method"
+        name: "toNearestTen"
+        signature: "int toNearestTen(int cents)"
+      statement: "if (value < -10) {"
+      change_type: "line_modification"
+    fix:
+      commit: "c4"
+      file: "src/main/java/example/Rounding.java"
+      entity:
+        type: "method"
+        name: "toNearestTen"
+        signature: "int toNearestTen(int cents)"
+      statement: "if (value < 0) {"
+      fix_type: "line_modification"
+    expected_szz:
+      commit_level:
+        true_positives: ["c1", "c3"]
+        primary_observable_bic: "c1"
+        contributing_bics: ["c3"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "if (value < -10) {"
+        note: >
+          The fix deletes one line, written by c1, so blame returns c1 alone.
+          c3 is the commit that made c1's narrowing observable: until the refund
+          path existed, the only route to the helper rejected a negative total,
+          and c3 is in a file the fix never opens.
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3", "c4"]

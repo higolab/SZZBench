@@ -1822,3 +1822,52 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0220/scenario.yml
+- id: SZZ-0221
+  title: A guard narrowed while nothing reached the narrowed case, and a caller written later that does
+  slug: guard-narrowed-then-reached
+  category_code: S1
+  category: Basic semantic line changes
+  factors:
+  - multi-bic
+  - single-bfc
+  - prerequisite-bic
+  - boundary-condition
+  - wrong-operator
+  - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0221/scenario.yml
+- id: SZZ-0222
+  title: "Blame answers one commit and every one of them is wrong: an omission restored beside a duplicate guard removed"
+  slug: blame-answers-only-wrong-commits
+  category_code: S2
+  category: Omission and deletion bugs
+  factors:
+  - multi-bic
+  - single-bfc
+  - addition-only-fix
+  - tangled-bfc
+  - prerequisite-bic
+  - null-check-omission
+  - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0222/scenario.yml
+- id: SZZ-0223
+  title: A signature change moves the faulty constant out of the method and into its caller's argument
+  slug: signature-change-moves-the-constant
+  category_code: S5
+  category: Refactoring, move, and rename after BIC
+  factors:
+  - multi-bic
+  - single-bfc
+  - method-signature-extension
+  - refactoring-after-bic
+  - multi-file-bfc
+  - candidate-selection-distractor
+  - wrong-constant
+  - wrong-operator
+  - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0223/scenario.yml

@@ -157,9 +157,12 @@ third that is not an answer, and SZZG-0148, where blame is right about what it
 names and still short of a credit threshold. Three more on 2026-09-24 shrank the
 two largest cheaply-solved pockets (issue #80, proposal 3): SZZ-0219 and
 SZZ-0220 in S3, where thirty-nine of forty scenarios had a one-commit oracle,
-and SZZG-0149 in G4. So the suite declares **235 control and 37
-discriminating**, and every category has at least one; the list and the reasons
-are in [baselines.md](../baselines.md#the-two-tiers).
+and SZZG-0149 in G4. Three more the same day gave S1, S2 and S5 a second one
+each (SZZ-0221 to SZZ-0223), so that those categories' claim to discriminate
+does not rest on a single history; six still do (G1, G6, G7, G8, S7, S8). So the
+suite declares **235 control and 40 discriminating**, and every category has at
+least one; the list and the reasons are in
+[baselines.md](../baselines.md#the-two-tiers).
 
 A scenario can be `discriminating` **only if its oracle names at least two
 commits**, and that is a property of the declared baseline family rather than a

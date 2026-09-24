@@ -106,20 +106,20 @@ In short, `scenario.yml` is treated as a restricted subset of `scenario.graph.ym
 `szzbench baselines` scores a declared family of cheap predictors — metadata
 only, history position only, file-touch shape, and the classic blame baseline —
 with the ordinary evaluator, so every result on SZZBench can be read against a
-floor. Measured on the shipped suite of 272 scenarios: **"report the second
-commit of the history", which opens no file at all, solves 162/272 — five more
-than the classic `blame-deleted-lines` baseline at 157/272**, and the lead has
+floor. Measured on the shipped suite of 275 scenarios: **"report the second
+commit of the history", which opens no file at all, solves 162/275 — five more
+than the classic `blame-deleted-lines` baseline at 157/275**, and the lead has
 changed hands with every batch of new scenarios. Some cheap rule solves 235 of
-the 272 scenarios, an oracle-aware upper bound rather than an attacker's score;
-the thirty-seven it does not reach all have a multi-commit oracle, which is
+the 275 scenarios, an oracle-aware upper bound rather than an attacker's score;
+the forty it does not reach all have a multi-commit oracle, which is
 forced rather than chosen: a one-commit answer is always named by one of the
 positional rules, and an empty one by `abstain`. The metadata
 family is at chance, which is the leakage guarantee below holding.
 
 Every scenario declares `meta.tier`: **235 are `control`** — they check that a
 method handles a specific input condition, and a cheap rule may well solve them
-— and **37 are `discriminating`**, which no declared cheap baseline solves.
-Twenty-six of those were designed against one axis: the answer is two commits,
+— and **40 are `discriminating`**, which no declared cheap baseline solves.
+Twenty-nine of those were designed against one axis: the answer is two commits,
 and the fix's deleted lines do not blame to one of them. Four more fail the cheap
 rules differently — SZZ-0218's answer is entirely reachable by blame and the
 scenario fails on a commit blame *adds*, and SZZG-0148 names three commits under
@@ -795,9 +795,9 @@ szzbench new-graph-scenario
 
 ### このベンチマークが検証しないもの
 
-`szzbench baselines` は、宣言された安価な予測器の族（メタデータのみ、履歴上の位置のみ、ファイル接触の形、古典的な blame ベースライン）を通常の evaluator で採点します。そのため、SZZBench 上のあらゆる結果は床（floor）と比べて読めます。272 シナリオの出荷スイートでの計測結果：**ファイルを一つも開かない「履歴の 2 番目のコミットを報告する」規則が 162/272 を解き、古典的な `blame-deleted-lines` ベースラインの 157/272 を 5 件上回ります**。両者の優劣は、新しいシナリオのバッチごとに入れ替わっています。何らかの安価な規則が 272 シナリオのうち 235 を解きますが、これは oracle を知っている前提の上界であり、攻撃者のスコアではありません。届かない 37 件はすべて複数コミットの oracle を持ちます。これは選択ではなく強制された性質で、答えが 1 コミットなら必ずいずれかの位置規則が、空なら `abstain` がそれを名指します。メタデータ族は偶然の水準にあり、これは下記の漏洩保証が成り立っていることを意味します。
+`szzbench baselines` は、宣言された安価な予測器の族（メタデータのみ、履歴上の位置のみ、ファイル接触の形、古典的な blame ベースライン）を通常の evaluator で採点します。そのため、SZZBench 上のあらゆる結果は床（floor）と比べて読めます。275 シナリオの出荷スイートでの計測結果：**ファイルを一つも開かない「履歴の 2 番目のコミットを報告する」規則が 162/275 を解き、古典的な `blame-deleted-lines` ベースラインの 157/275 を 5 件上回ります**。両者の優劣は、新しいシナリオのバッチごとに入れ替わっています。何らかの安価な規則が 275 シナリオのうち 235 を解きますが、これは oracle を知っている前提の上界であり、攻撃者のスコアではありません。届かない 40 件はすべて複数コミットの oracle を持ちます。これは選択ではなく強制された性質で、答えが 1 コミットなら必ずいずれかの位置規則が、空なら `abstain` がそれを名指します。メタデータ族は偶然の水準にあり、これは下記の漏洩保証が成り立っていることを意味します。
 
-すべてのシナリオは `meta.tier` を宣言します。**235 件が `control`** で、手法が特定の入力条件を扱えることを確認するものであり、安価な規則が解けても構いません。**37 件が `discriminating`** で、宣言されたどの安価なベースラインも解けません。そのうち 26 件は一つの軸に対して設計されたもので、答えは 2 コミットであり、修正が削除した行を blame しても片方には到達しません。残る 4 件は別の形で安価な規則を破ります。SZZ-0218 は答えの両方に blame が到達する一方、blame が*付け加える*コミットによって失敗し、SZZG-0148 は 3 コミットを答えとし、2 件という閾値に届きません。control が安価に解けることは欠陥ではありません。tier が防ぐのは、control を「手法が識別力を持つ証拠」として読むことです。
+すべてのシナリオは `meta.tier` を宣言します。**235 件が `control`** で、手法が特定の入力条件を扱えることを確認するものであり、安価な規則が解けても構いません。**40 件が `discriminating`** で、宣言されたどの安価なベースラインも解けません。そのうち 29 件は一つの軸に対して設計されたもので、答えは 2 コミットであり、修正が削除した行を blame しても片方には到達しません。残る 4 件は別の形で安価な規則を破ります。SZZ-0218 は答えの両方に blame が到達する一方、blame が*付け加える*コミットによって失敗し、SZZG-0148 は 3 コミットを答えとし、2 件という閾値に届きません。control が安価に解けることは欠陥ではありません。tier が防ぐのは、control を「手法が識別力を持つ証拠」として読むことです。
 
 `szzbench coverage` は対になるコマンドです。各シナリオの oracle のサイズ、バグ混入コミットの深さ、fault ファイルに触れる distractor の数、履歴の大きさと分岐の多さ、そして素朴な blame が oracle をどう扱うか（`blame_class`）を計測し、形状の次元がすべて一致するシナリオをグループ化します。また、宣言された各 fault statement を共有するシナリオ数を、全体とカテゴリごとに報告します（issue #13）。
 

@@ -1,0 +1,176 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0223"
+  title: "A signature change moves the faulty constant out of the method and into its caller's argument"
+  slug: "signature-change-moves-the-constant"
+  description: >
+    A per-kilogram rate is mistyped in the shipping helper, then a refactoring
+    turns the constant into a parameter and writes the mistyped value at the one
+    call site, and a later commit gets the sign of the handling surcharge wrong.
+    One commit fixes both. Blame on what it deletes returns the refactoring and
+    the second fault: the constant the fix corrects is on a line the refactoring
+    wrote, in a different file from where it was mistyped.
+  category: "Refactoring, move, and rename after BIC"
+  factors:
+    - "multi-bic"
+    - "single-bfc"
+    - "method-signature-extension"
+    - "refactoring-after-bic"
+    - "multi-file-bfc"
+    - "candidate-selection-distractor"
+    - "wrong-constant"
+    - "wrong-operator"
+    - "blame-unreachable-bic"
+  difficulty: "hard"
+  status: "active"
+  tier: "discriminating"
+  defeats: ["blame", "shape", "position"]
+  category_code: "S5"
+
+repository:
+  name: "SZZ-0223-signature-change-moves-the-constant"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Add the shipping fee helper and the quote"
+    author: "Dana Okafor <dana.okafor@example.com>"
+    date: "2025-10-06T09:05:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/example/Shipping.java"
+        content: |
+          package example;
+
+          public class Shipping {
+              static final int RATE_PER_KG = 300;
+
+              public int feeCents(int grams) {
+                  return (int) ((long) grams * RATE_PER_KG / 1000);
+              }
+          }
+      - type: "write_file"
+        path: "src/main/java/example/Quote.java"
+        content: |
+          package example;
+
+          public class Quote {
+              private final Shipping shipping = new Shipping();
+
+              public int totalCents(int grams, int goodsCents) {
+                  return goodsCents + shipping.feeCents(grams);
+              }
+          }
+
+  - id: "c1"
+    message: "Correct the per-kilogram rate"
+    author: "Elena Rossi <elena.rossi@example.com>"
+    date: "2025-10-08T13:35:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/Shipping.java"
+        old: "static final int RATE_PER_KG = 300;"
+        new: "static final int RATE_PER_KG = 30;"
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Pass the per-kilogram rate to feeCents instead of reading a constant"
+    author: "Luca Moretti <luca.moretti@example.com>"
+    date: "2025-10-10T10:50:00Z"
+    role: "refactoring"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/example/Shipping.java"
+        content: |
+          package example;
+
+          public class Shipping {
+              public int feeCents(int grams, int ratePerKg) {
+                  return (int) ((long) grams * ratePerKg / 1000);
+              }
+          }
+      - type: "replace"
+        path: "src/main/java/example/Quote.java"
+        old: "return goodsCents + shipping.feeCents(grams);"
+        new: "return goodsCents + shipping.feeCents(grams, 30);"
+
+  - id: "c3"
+    message: "Take the handling surcharge off the quote"
+    author: "Aiko Tanaka <aiko.tanaka@example.com>"
+    date: "2025-10-13T16:10:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/Quote.java"
+        old: "return goodsCents + shipping.feeCents(grams, 30);"
+        new: "return goodsCents + shipping.feeCents(grams, 30) - HANDLING_CENTS;"
+        labels: ["B001", "fault"]
+      - type: "replace"
+        path: "src/main/java/example/Quote.java"
+        old: |
+          public class Quote {
+        new: |
+          public class Quote {
+              static final int HANDLING_CENTS = 150;
+
+  - id: "c4"
+    message: "Charge three hundred cents a kilogram and add the handling surcharge"
+    author: "Tom Becker <tom.becker@example.com>"
+    date: "2025-10-15T12:20:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/Quote.java"
+        old: "return goodsCents + shipping.feeCents(grams, 30) - HANDLING_CENTS;"
+        new: "return goodsCents + shipping.feeCents(grams, 300) + HANDLING_CENTS;"
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "The quote charges a tenth of the shipping rate and subtracts the handling surcharge"
+    bug_fixing_commit: "c4"
+    bug_introducing_commits: ["c1", "c3"]
+    fault:
+      commit: "c3"
+      file: "src/main/java/example/Quote.java"
+      entity:
+        type: "method"
+        name: "totalCents"
+        signature: "int totalCents(int grams, int goodsCents)"
+      statement: "return goodsCents + shipping.feeCents(grams, 30) - HANDLING_CENTS;"
+      change_type: "line_modification"
+    fix:
+      commit: "c4"
+      file: "src/main/java/example/Quote.java"
+      entity:
+        type: "method"
+        name: "totalCents"
+        signature: "int totalCents(int grams, int goodsCents)"
+      statement: "return goodsCents + shipping.feeCents(grams, 300) + HANDLING_CENTS;"
+      fix_type: "line_modification"
+    expected_szz:
+      commit_level:
+        true_positives: ["c1", "c3"]
+        primary_observable_bic: "c3"
+        contributing_bics: ["c1"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "return goodsCents + shipping.feeCents(grams, 30) - HANDLING_CENTS;"
+        note: >
+          The fix deletes one line, written by c3, and that line carries both
+          faults: the surcharge sign c3 got wrong and the rate 30 that c2's
+          refactoring copied from the constant c1 had mistyped. Blame therefore
+          returns c3 alone; c1 is in another file, on a constant the refactoring
+          deleted.
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3", "c4"]
