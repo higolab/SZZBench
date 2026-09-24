@@ -382,6 +382,17 @@ required commit. Everywhere else blame either reaches part of the answer or is
 silent; here it names the initial commit, confidently and wrongly, which is a
 harder answer to discard because nothing in it is right to anchor on.
 
+SZZ-0225's first cause is visible without being a wrong answer: its test is red
+from `c1` until `c3` changes the product to agree with it. Its evidence is
+therefore the **disjoint-effects** kind of the two described above — `c1` owns
+the expectation, `c3` owns the fee, and the fix restores exactly their union —
+and not the interaction kind, where the unreachable commit is harmless until a
+later one reaches it. The red window is itself a route back to `c1` for a tool
+that runs the suite, and the trap is concluding that the commit which turned it
+green is the whole answer. (The scenario first claimed the fault was latent
+until `c3`; running its test at each commit refuted that, in the review of
+PR #86.)
+
 S1 is now 13/15, S2 15/17, S5 7/9, S7 5/7 and S8 6/8. Four categories still
 rest on one: G1, G6, G7 and G8.
 

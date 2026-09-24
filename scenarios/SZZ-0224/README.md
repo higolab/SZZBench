@@ -25,7 +25,7 @@ fixed line calls and then asking who changed what that sentence says.
 ## Commit structure
 
 ```text
-c0  Add the retry limit and the import runner   attempts() = 3, "the first attempt included"; the import loops i < attempts()
+c0  Add the retry limit and the import runner   attempts() = 3 (package-private), "the first attempt included"; the import loops i < attempts()
 c1  Count retries after the first attempt rather than attempts in total   attempts() = 2, the Javadoc rewritten, the import loops i <= attempts()   <- BIC
 c2  Note where the import runner is used        a class Javadoc (distractor)
 c3  Retry the export the same way as the import  a new runner that loops i < attempts()   <- BIC
@@ -42,19 +42,27 @@ contract; without `c1` the value is 3 and `c3`'s loop is right.
 
 ## Measured behaviour
 
-`runsFor(0)` and `runsFor(5)` on the import runner and on the export runner at
-each commit (`tests/test_deepened_categories.py`; the export runner exists from
-`c3`):
+`runsFor` on the import runner and on the export runner, over −1, 0, 1, 2, 3, 5
+and `Integer.MAX_VALUE`, at each commit (`tests/test_deepened_categories.py`;
+the export runner exists from `c3`):
 
-| commit | import(0) | import(5) | export(0) | export(5) |
-|---|---|---|---|---|
-| `c0` | 1 | 3 | — | — |
-| `c1`, `c2` | 1 | 3 | — | — |
-| `c3` | 1 | 3 | 1 | **2** |
-| `c4` | 1 | 3 | 1 | 3 |
+| commit | `ImportRunner.runsFor` | `ExportRunner.runsFor` |
+|---|---|---|
+| `c0` | 1, 1, 2, 3, 3, 3, 3 | — |
+| `c1`, `c2` | 1, 1, 2, 3, 3, 3, 3 | — |
+| `c3` | 1, 1, 2, 3, 3, 3, 3 | 1, 1, 2, **2**, **2**, **2**, **2** |
+| `c4` | 1, 1, 2, 3, 3, 3, 3 | 1, 1, 2, 3, 3, 3, 3 |
 
-`c1` moves nothing: it halves what `attempts()` means and adjusts the one loop
-that reads it in the same commit, so the import still runs three times.
+Those two methods are the package's **entire public surface**: `RetryLimit` is
+package-private and so is `attempts()`, so no caller outside `example` can read
+the number `c1` changes. `c1` therefore moves nothing observable — it halves
+what `attempts()` means and adjusts the one loop that reads it in the same
+commit, so the import still runs three times for every input.
+
+(An earlier revision of this scenario left `RetryLimit` and `attempts()`
+public. Then `attempts()` itself answered 3 at `c0` and 2 at `c1`, and the
+latent-change premise was false for an external caller — found in the review of
+PR #86 and fixed by narrowing the helper to the package that uses it.)
 
 ## Measured blame outcome at BFC^
 
@@ -69,7 +77,7 @@ neither of which the fix opens.
 
 ## The evidence a tool can use
 
-The Javadoc above `attempts()` reads *"How many times an operation may be
+The Javadoc above the package-private `attempts()` reads *"How many times an operation may be
 retried, not counting the first attempt"*. At `c0` the same sentence read *"in
 total, the first attempt included"*. A tool that reads the callee the fixed line
 calls, and blames the sentence rather than the code, lands on `c1` — the commit

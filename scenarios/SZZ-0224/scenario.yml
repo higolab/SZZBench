@@ -7,10 +7,12 @@ meta:
   description: >
     A retry limit stops counting the first attempt. The commit that changes it
     rewrites the Javadoc that says so and adjusts the one loop that reads it, so
-    nothing observable moves. A loop written later follows the sentence the
-    Javadoc used to carry and runs one attempt too few. The fix repairs that
-    loop. Blame on the line it deletes reaches the later loop only; the sentence
-    that makes it wrong is in a comment, in a file the fix never opens.
+    nothing observable moves: the limit is package-private, and the runners are
+    the package's whole public surface. A loop written later follows the
+    sentence the Javadoc used to carry and runs one attempt too few. The fix
+    repairs that loop. Blame on the line it deletes reaches the later loop only;
+    the sentence that makes it wrong is in a comment, in a file the fix never
+    opens.
   category: "Context, message, and non-local evidence"
   factors:
     - "multi-bic"
@@ -45,9 +47,11 @@ commits:
         content: |
           package example;
 
-          public class RetryLimit {
+          /** The shared retry limit. Not part of the package's public surface:
+           *  the runners of this package are the only callers. */
+          class RetryLimit {
               /** How many times an operation may run in total, the first attempt included. */
-              public int attempts() {
+              int attempts() {
                   return 3;
               }
           }
@@ -81,12 +85,12 @@ commits:
         path: "src/main/java/example/RetryLimit.java"
         old: |
           /** How many times an operation may run in total, the first attempt included. */
-              public int attempts() {
+              int attempts() {
                   return 3;
               }
         new: |
           /** How many times an operation may be retried, not counting the first attempt. */
-              public int attempts() {
+              int attempts() {
                   return 2;
               }
         labels: ["B001", "fault"]

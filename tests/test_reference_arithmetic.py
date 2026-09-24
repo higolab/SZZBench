@@ -88,6 +88,11 @@ CASES = {
                    ["java:java.util.stream.IntStream.range(0, 2048).mapToObj(i -> \"f\" + i).toArray(String[]::new)",
                     "java:java.util.stream.IntStream.range(0, 2048).map(i -> 1048576).toArray()"],
                    "false")]),
+    # left in int: the fee is the scenario's subject, so the domain is written down instead
+    # (PR #86 review).  One day further wraps, in the faulty form as well as the correct one.
+    "SZZ-0225": ("0 to 42 949 672 overdue days, the largest fee that still fits int at 50 cents a day",
+                 [("example.LateFee", "cents", [42949672], 2147483600),
+                  ("example.LateFee", "cents", [3], 150)]),
 }
 
 DRIVER = """

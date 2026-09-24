@@ -61,21 +61,27 @@ public class Drive { public static void main(String[] a) {
     example.Quote q = new example.Quote();
     System.out.print("q2000=" + q.totalCents(2000, 5000) + " q500=" + q.totalCents(500, 1000)); } }
 """,
+    # the runners are the package's whole public surface once RetryLimit is package-private,
+    # so probing them over the int corners probes everything c1 could have moved (PR #86 review)
     "SZZ-0224": """
 import java.lang.reflect.Method;
 public class Drive { public static void main(String[] a) throws Exception {
+    int[] xs = {-1, 0, 1, 2, 3, 5, Integer.MAX_VALUE};
     example.ImportRunner ir = new example.ImportRunner(); StringBuilder b = new StringBuilder();
-    b.append("import0=").append(ir.runsFor(0)).append(" import5=").append(ir.runsFor(5));
+    b.append("import=");
+    for (int x : xs) b.append(ir.runsFor(x)).append(",");
     try { Object er = Class.forName("example.ExportRunner").getConstructor().newInstance();
           Method m = er.getClass().getMethod("runsFor", int.class);
-          b.append(" export0=").append(m.invoke(er, 0)).append(" export5=").append(m.invoke(er, 5)); }
+          b.append(" export=");
+          for (int x : xs) b.append(m.invoke(er, x)).append(","); }
     catch (ClassNotFoundException e) { b.append(" export=absent"); }
     System.out.print(b); } }
 """,
     "SZZ-0225": """
 public class Drive { public static void main(String[] a) {
     example.LateFee f = new example.LateFee();
-    System.out.print("d1=" + f.cents(1) + " d3=" + f.cents(3) + " d10=" + f.cents(10)); } }
+    System.out.print("d1=" + f.cents(1) + " d3=" + f.cents(3) + " d10=" + f.cents(10)
+        + " dmax=" + f.cents(42949672)); } }
 """,
 }
 
@@ -95,18 +101,18 @@ EXPECTED = {
         "c4": "small=T huge=F batchHugeItem=false batchOverTotal=false batch2048=false",
     },
     "SZZ-0224": {
-        "c0": "import0=1 import5=3 export=absent",
-        "c1": "import0=1 import5=3 export=absent",
-        "c2": "import0=1 import5=3 export=absent",
-        "c3": "import0=1 import5=3 export0=1 export5=2",
-        "c4": "import0=1 import5=3 export0=1 export5=3",
+        "c0": "import=1,1,2,3,3,3,3, export=absent",
+        "c1": "import=1,1,2,3,3,3,3, export=absent",
+        "c2": "import=1,1,2,3,3,3,3, export=absent",
+        "c3": "import=1,1,2,3,3,3,3, export=1,1,2,2,2,2,2,",
+        "c4": "import=1,1,2,3,3,3,3, export=1,1,2,3,3,3,3,",
     },
     "SZZ-0225": {
-        "c0": "d1=50 d3=150 d10=500",
-        "c1": "d1=50 d3=150 d10=500",
-        "c2": "d1=50 d3=150 d10=500",
-        "c3": "d1=0 d3=100 d10=450",
-        "c4": "d1=50 d3=150 d10=500",
+        "c0": "d1=50 d3=150 d10=500 dmax=2147483600",
+        "c1": "d1=50 d3=150 d10=500 dmax=2147483600",
+        "c2": "d1=50 d3=150 d10=500 dmax=2147483600",
+        "c3": "d1=0 d3=100 d10=450 dmax=2147483550",
+        "c4": "d1=50 d3=150 d10=500 dmax=2147483600",
     },
     "SZZ-0223": {
         "c0": "q2000=5600 q500=1150",
@@ -224,9 +230,49 @@ def test_the_unreachable_commit_moved_no_answer_when_it_landed(generated, tmp_pa
         assert "negTotal=refused" in EXPECTED[sid]["c1"], "the only route to the helper must refuse a negative"
     elif sid in ("SZZ-0224", "SZZ-0225"):
         # c1 halves what a Javadoc'd constant means (0224) or writes a wrong expectation
-        # into a test (0225); neither moves a product answer until c3 reaches it
+        # into a test (0225); neither moves a product answer until c3 reaches it.  For
+        # 0225 that is the whole claim: its test does turn red at c1, which
+        # test_the_test_suite_goes_red_where_the_readme_says pins (PR #86 review).
         assert EXPECTED[sid]["c1"] == EXPECTED[sid]["c0"], "c1 must move no probe answer"
         assert EXPECTED[sid]["c2"] == EXPECTED[sid]["c1"], "the distractor must move no probe answer"
-        assert EXPECTED[sid]["c3"] != EXPECTED[sid]["c2"], "c3 must be where the fault becomes observable"
+        assert EXPECTED[sid]["c3"] != EXPECTED[sid]["c2"], "c3 must be where the product answers move"
     else:
         assert EXPECTED[sid]["c2"] == EXPECTED[sid]["c1"], "the refactoring must move no probe answer"
+
+
+#: SZZ-0225's own test suite, run at each commit: the wrong expectation is visible as a red
+#: suite from c1, and c3 is the commit that hides it again (PR #86 review).
+TEST_VERDICTS = {"c0": True, "c1": False, "c2": False, "c3": True, "c4": True}
+
+
+@needs_jdk
+def test_the_test_suite_goes_red_where_the_readme_says(generated, tmp_path):
+    sid, hashes, repo = generated
+    if sid != "SZZ-0225":
+        pytest.skip("only SZZ-0225 ships a test the history turns red")
+    observed = {}
+    for cid in TEST_VERDICTS:
+        work = tmp_path / cid
+        _snapshot(repo, hashes[cid], work)
+        sources = [str(p) for p in work.rglob("*.java")]
+        subprocess.run(["javac", "-nowarn", "-d", str(work / "out"), *sources], check=True, capture_output=True)
+        run = subprocess.run(["java", "-cp", str(work / "out"), "example.LateFeeTest"],
+                             cwd=work, capture_output=True, text=True)
+        observed[cid] = run.returncode == 0
+        if not observed[cid]:
+            assert "AssertionError: 150 != 100" in run.stderr, run.stderr
+    assert observed == TEST_VERDICTS
+    assert observed["c1"] is False and EXPECTED[sid]["c1"] == EXPECTED[sid]["c0"], (
+        "c1 must move the verdict and no product answer")
+
+
+@needs_jdk
+def test_the_retry_limit_stays_inside_its_package(generated):
+    """SZZ-0224's premise: no caller outside ``example`` can read what c1 changes."""
+    sid, hashes, repo = generated
+    if sid != "SZZ-0224":
+        pytest.skip("only SZZ-0224 rests on a package-private helper")
+    for cid in EXPECTED[sid]:
+        source = _git(repo, "show", f"{hashes[cid]}:src/main/java/example/RetryLimit.java")
+        code = re.sub(r"/\*.*?\*/", "", source, flags=re.S)  # the Javadoc says "public surface"
+        assert "public" not in code, f"RetryLimit is externally readable at {cid}"

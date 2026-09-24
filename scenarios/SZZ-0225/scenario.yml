@@ -6,12 +6,12 @@ meta:
   slug: "wrong-expectation-written-into-a-test"
   description: >
     A late-fee test is edited to expect one day fewer than the fee charges.
-    Nothing in the product changes, so nothing observable moves. A rename of the
-    test's helper then takes ownership of that line, and only afterwards is the
-    product changed to satisfy the test. The fix repairs both. Blame on what it
-    deletes returns the product change and the rename: the commit that wrote
-    the wrong expectation is one step back in a test file's history, which is
-    where the fault began.
+    No product answer moves; what moves is the suite's verdict, which is red
+    from that commit until the product is changed to agree with it. A rename of
+    the test's helper takes ownership of the expectation's line in between. The
+    fix repairs both. Blame on what it deletes returns the product change and
+    the rename: the commit that wrote the wrong expectation is one step back in
+    a test file's history, which is where the fault began.
   category: "Non-source, configuration, test-only, and file-level edge cases"
   factors:
     - "multi-bic"
@@ -51,6 +51,8 @@ commits:
           public class LateFee {
               static final int CENTS_PER_DAY = 50;
 
+              /** Supported domain: 0 <= daysLate <= 42949672, the largest number of
+               *  overdue days whose fee still fits int. */
               public int cents(int daysLate) {
                   return daysLate * CENTS_PER_DAY;
               }
@@ -178,7 +180,12 @@ bugs:
           rewritten by c2's rename of the helper it calls, so blame returns c2,
           a commit that changed no expectation; c1 is one step back along the
           test line's history, and because the rename changed tokens no blame
-          variant crosses it.
+          variant crosses it. The generated example.LateFeeTest passes at c0,
+          fails at c1 and c2, and passes again from c3: c1's fault is visible as
+          a red suite rather than as a wrong answer, and c3 is the commit that
+          hid it. cents takes its product in int, so the supported domain is 0
+          to 42949672 overdue days; tests/test_reference_arithmetic.py holds the
+          boundary.
 
 checks:
   - type: "git_history_contains"
