@@ -93,6 +93,13 @@ scenario, which is what an attacker can actually do. The union of the rows is
 oracle. The union is reported below as an upper bound on how much of the suite
 a cheap rule could explain — headroom, not a result.
 
+A real implementation scored on the same suite is in
+[../examples/pydriller-run/](../examples/pydriller-run/README.md): PyDriller 2.12 passes 162 of the
+281 scenarios, which is below the union of the cheap rules and above any single one of them, and it
+passes 1 of the 46 `discriminating` scenarios. That run is the concrete form of what this document
+argues in the abstract, and it is checked in so that a reader can re-score it without installing
+anything.
+
 Read this table before reading any result reported on SZZBench:
 
 - **A rule that opens no file is level with the classic B-SZZ baseline.**
