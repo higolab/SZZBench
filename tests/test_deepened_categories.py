@@ -32,8 +32,12 @@ import java.lang.reflect.Method;
 public class Drive { public static void main(String[] a) throws Exception {
     example.Order o = new example.Order(); StringBuilder b = new StringBuilder();
     b.append("total=").append(o.roundedTotal(1234, 66));
+    b.append(" totalMax=").append(o.roundedTotal(2147483643, 0));
+    try { o.roundedTotal(-8, 0); b.append(" negTotal=accepted"); }
+    catch (IllegalArgumentException e) { b.append(" negTotal=refused"); }
     try { Method m = o.getClass().getMethod("roundedRefund", int.class, int.class);
-          b.append(" refund3=").append(m.invoke(o, 3, 3)).append(" refund8=").append(m.invoke(o, 8, 8)); }
+          b.append(" refund3=").append(m.invoke(o, 3, 3)).append(" refund8=").append(m.invoke(o, 8, 8));
+          b.append(" refundMax=").append(m.invoke(o, 2147483643, 0)); }
     catch (NoSuchMethodException e) { b.append(" refund=absent"); }
     System.out.print(b); } }
 """,
@@ -45,7 +49,10 @@ public class Drive { public static void main(String[] a) throws Exception {
     b.append(" huge=").append(u.accept("a.txt", 2000000) ? "T" : "F");
     try { Method m = u.getClass().getMethod("acceptBatch", String[].class, int[].class);
           b.append(" batchHugeItem=").append(m.invoke(u, new String[]{"a","b"}, new int[]{1000, 2000000}));
-          b.append(" batchOverTotal=").append(m.invoke(u, new String[]{"a","b","c"}, new int[]{1000000, 1000000, 1000000})); }
+          b.append(" batchOverTotal=").append(m.invoke(u, new String[]{"a","b","c"}, new int[]{1000000, 1000000, 1000000}));
+          String[] n = new String[2048]; int[] s = new int[2048];
+          for (int i = 0; i < 2048; i++) { n[i] = "f" + i; s[i] = 1048576; }
+          b.append(" batch2048=").append(m.invoke(u, n, s)); }
     catch (NoSuchMethodException e) { b.append(" batch=absent"); }
     System.out.print(b); } }
 """,
@@ -58,18 +65,18 @@ public class Drive { public static void main(String[] a) {
 
 EXPECTED = {
     "SZZ-0221": {
-        "c0": "total=1300 refund=absent",
-        "c1": "total=1300 refund=absent",
-        "c2": "total=1300 refund=absent",
-        "c3": "total=1300 refund3=0 refund8=-20",
-        "c4": "total=1300 refund3=-10 refund8=-20",
+        "c0": "total=1300 totalMax=2147483640 negTotal=refused refund=absent",
+        "c1": "total=1300 totalMax=2147483640 negTotal=refused refund=absent",
+        "c2": "total=1300 totalMax=2147483640 negTotal=refused refund=absent",
+        "c3": "total=1300 totalMax=2147483640 negTotal=refused refund3=0 refund8=-20 refundMax=-2147483640",
+        "c4": "total=1300 totalMax=2147483640 negTotal=refused refund3=-10 refund8=-20 refundMax=-2147483640",
     },
     "SZZ-0222": {
         "c0": "small=T huge=F batch=absent",
         "c1": "small=T huge=T batch=absent",
         "c2": "small=T huge=T batch=absent",
-        "c3": "small=T huge=T batchHugeItem=true batchOverTotal=true",
-        "c4": "small=T huge=F batchHugeItem=false batchOverTotal=false",
+        "c3": "small=T huge=T batchHugeItem=true batchOverTotal=true batch2048=true",
+        "c4": "small=T huge=F batchHugeItem=false batchOverTotal=false batch2048=false",
     },
     "SZZ-0223": {
         "c0": "q2000=5600 q500=1150",
@@ -81,7 +88,7 @@ EXPECTED = {
 }
 
 BLAME = {
-    "SZZ-0221": {"if (cents < -10) {": ("c1", "c1", "c1")},
+    "SZZ-0221": {"if (value < -10) {": ("c1", "c1", "c1")},
     "SZZ-0222": {"if (name == null) {": ("c0", "c0", "c0")},
     "SZZ-0223": {"return goodsCents + shipping.feeCents(grams, 30) - HANDLING_CENTS;": ("c3", "c3", "c3")},
 }
@@ -174,6 +181,9 @@ def test_the_unreachable_commit_moved_no_answer_when_it_landed(generated, tmp_pa
     if sid == "SZZ-0222":
         pytest.skip("both of this scenario's faults are visible as soon as they land")
     if sid == "SZZ-0221":
+        # every probe of the package's public surface, including a negative total and both
+        # ends of the supported domain, answers the same at c1 as at c0 (PR #85 review)
         assert EXPECTED[sid]["c1"] == EXPECTED[sid]["c0"], "c1 must move no probe answer"
+        assert "negTotal=refused" in EXPECTED[sid]["c1"], "the only route to the helper must refuse a negative"
     else:
         assert EXPECTED[sid]["c2"] == EXPECTED[sid]["c1"], "the refactoring must move no probe answer"

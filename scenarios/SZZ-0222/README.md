@@ -47,12 +47,17 @@ oversized item and with three items under the item limit but over the batch
 limit, at each commit (`tests/test_deepened_categories.py`; `acceptBatch` exists
 from `c3`):
 
-| commit | small | oversized | batch with an oversized item | batch over the total |
-|---|---|---|---|---|
-| `c0` | T | F | — | — |
-| `c1`, `c2` | T | **T** | — | — |
-| `c3` | T | **T** | **true** | **true** |
-| `c4` | T | F | false | false |
+| commit | small | oversized | batch with an oversized item | batch over the total | 2048 items of 1 MiB |
+|---|---|---|---|---|---|
+| `c0` | T | F | — | — | — |
+| `c1`, `c2` | T | **T** | — | — | — |
+| `c3` | T | **T** | **true** | **true** | **true** |
+| `c4` | T | F | false | false | false |
+
+The last probe is the batch whose sizes sum past the `int` range: 2048 files of
+one mebibyte each pass `accept` individually and total two gibibytes. The fix
+accumulates in 64 bits, so it refuses them; an `int` total would wrap negative
+and accept the batch (`tests/test_reference_arithmetic.py` holds that bound).
 
 ## Measured blame outcome at BFC^
 

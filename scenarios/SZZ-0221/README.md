@@ -25,7 +25,8 @@ that the fix never opens.
 ## Commit structure
 
 ```text
-c0  Add the cent rounding helper and the order total   toNearestTen: negative branch when cents < 0
+c0  Add the cent rounding helper and the order total   toNearestTen (package-private): negative branch when value < 0;
+                                                       roundedTotal refuses a negative order total
 c1  Take the negative branch only below a ten-cent magnitude   cents < -10          <- BIC
 c2  Document what the order total includes             a Javadoc line (distractor)
 c3  Quote a refund as a negative order total           roundedRefund passes a negative   <- BIC
@@ -37,22 +38,31 @@ c4  Round every negative amount through the negative branch again               
 - BICs: `c1` and `c3` (`true_positives`, `exact_set`, no allowed false positives)
 - BFC: `c4`
 
-Both are necessary. Without `c3` nothing passes a negative amount and the
-narrowed guard is unreachable; without `c1` the refund path rounds correctly.
+Both are necessary. Without `c3` no method of the package reaches the narrowed
+guard: `roundedTotal` is the only route to the helper and it throws on a
+negative total, and `Rounding` is not part of the package's public surface.
+Without `c1` the refund path rounds correctly.
 
 ## Measured behaviour
 
-`roundedTotal(1234, 66)`, `roundedRefund(3, 3)` and `roundedRefund(8, 8)` at each
-commit (`tests/test_deepened_categories.py`; `roundedRefund` exists from `c3`):
+`roundedTotal(1234, 66)`, `roundedTotal(2147483643, 0)`, `roundedTotal(-8, 0)`,
+`roundedRefund(3, 3)`, `roundedRefund(8, 8)` and `roundedRefund(2147483643, 0)`
+at each commit (`tests/test_deepened_categories.py`; the refund methods exist
+from `c3`):
 
-| commit | total | refund(3,3) | refund(8,8) |
-|---|---|---|---|
-| `c0` | 1300 | — | — |
-| `c1`, `c2` | 1300 | — | — |
-| `c3` | 1300 | **0** | -20 |
-| `c4` | 1300 | -10 | -20 |
+| commit | total | total at the domain's edge | negative total | refund(3,3) | refund(8,8) | refund at the edge |
+|---|---|---|---|---|---|---|
+| `c0` | 1300 | 2147483640 | refused | — | — | — |
+| `c1`, `c2` | 1300 | 2147483640 | refused | — | — | — |
+| `c3` | 1300 | 2147483640 | refused | **0** | -20 | -2147483640 |
+| `c4` | 1300 | 2147483640 | refused | -10 | -20 | -2147483640 |
 
-`c1` moves nothing: the only caller sums a net and a tax, never negative.
+`c1` moves nothing, and the row is identical to `c0`'s: the only route to the
+helper refuses a negative total outright, so nothing in the package can take the
+narrowed branch. The supported domain is an order total of at most 2 147 483 644
+cents, the largest magnitude whose rounded value still fits `int`; the rounding
+takes its sum in 64 bits and `tests/test_reference_arithmetic.py` holds the
+bound.
 `roundedRefund(8, 8)` rounds a −16-cent refund, which is below −10 and so takes
 the negative branch even while the guard is narrowed — the fault is confined to
 amounts between one and ten cents below zero, which is why it survived review.

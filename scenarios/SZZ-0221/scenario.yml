@@ -6,10 +6,11 @@ meta:
   slug: "guard-narrowed-then-reached"
   description: >
     A rounding helper stops sending small negative amounts down its negative
-    branch, which changes no answer because its only caller passes a total that
-    is never negative. A later commit adds a refund path that passes one, and
-    amounts between one and ten cents below zero round the wrong way. The fix
-    widens the guard again.
+    branch. No answer of the package's public surface changes: the only method
+    that reaches the helper refuses a negative order total outright. A later
+    commit adds a refund path that passes a negative, and amounts between one
+    and ten cents below zero round the wrong way. The fix widens the guard
+    again.
     Blame on the line the fix deletes reaches the refund path only; the commit
     that narrowed the guard changed no observable answer when it landed and is
     not on any line the fix touches.
@@ -46,12 +47,17 @@ commits:
         content: |
           package example;
 
-          public class Rounding {
-              public int toNearestTen(int cents) {
-                  if (cents < 0) {
-                      return -((-cents + 5) / 10 * 10);
+          /** Rounding to the nearest ten cents. Not part of the package's public surface:
+           *  every amount that reaches it comes from a method of this package. */
+          class Rounding {
+              /** Supported domain: |cents| <= 2147483644, the largest magnitude whose
+               *  rounded value still fits int. The sum is taken in 64 bits. */
+              int toNearestTen(int cents) {
+                  long value = cents;
+                  if (value < 0) {
+                      return (int) -((-value + 5) / 10 * 10);
                   }
-                  return (cents + 5) / 10 * 10;
+                  return (int) ((value + 5) / 10 * 10);
               }
           }
       - type: "write_file"
@@ -62,8 +68,13 @@ commits:
           public class Order {
               private final Rounding rounding = new Rounding();
 
+              /** An order total is never negative; a caller that computes one has made a mistake. */
               public int roundedTotal(int netCents, int taxCents) {
-                  return rounding.toNearestTen(netCents + taxCents);
+                  int total = netCents + taxCents;
+                  if (total < 0) {
+                      throw new IllegalArgumentException("an order total is never negative");
+                  }
+                  return rounding.toNearestTen(total);
               }
           }
 
@@ -75,8 +86,8 @@ commits:
     operations:
       - type: "replace"
         path: "src/main/java/example/Rounding.java"
-        old: "if (cents < 0) {"
-        new: "if (cents < -10) {"
+        old: "if (value < 0) {"
+        new: "if (value < -10) {"
         labels: ["B001", "fault"]
 
   - id: "c2"
@@ -102,12 +113,10 @@ commits:
       - type: "replace"
         path: "src/main/java/example/Order.java"
         old: |
-          public int roundedTotal(int netCents, int taxCents) {
-                  return rounding.toNearestTen(netCents + taxCents);
+          return rounding.toNearestTen(total);
               }
         new: |
-          public int roundedTotal(int netCents, int taxCents) {
-                  return rounding.toNearestTen(netCents + taxCents);
+          return rounding.toNearestTen(total);
               }
 
               public int roundedRefund(int netCents, int taxCents) {
@@ -123,8 +132,8 @@ commits:
     operations:
       - type: "replace"
         path: "src/main/java/example/Rounding.java"
-        old: "if (cents < -10) {"
-        new: "if (cents < 0) {"
+        old: "if (value < -10) {"
+        new: "if (value < 0) {"
         labels: ["B001", "fix"]
 
 bugs:
@@ -139,7 +148,7 @@ bugs:
         type: "method"
         name: "toNearestTen"
         signature: "int toNearestTen(int cents)"
-      statement: "if (cents < -10) {"
+      statement: "if (value < -10) {"
       change_type: "line_modification"
     fix:
       commit: "c4"
@@ -148,7 +157,7 @@ bugs:
         type: "method"
         name: "toNearestTen"
         signature: "int toNearestTen(int cents)"
-      statement: "if (cents < 0) {"
+      statement: "if (value < 0) {"
       fix_type: "line_modification"
     expected_szz:
       commit_level:
@@ -159,12 +168,12 @@ bugs:
       line_level:
         available: true
         faulty_statements:
-          - "if (cents < -10) {"
+          - "if (value < -10) {"
         note: >
           The fix deletes one line, written by c1, so blame returns c1 alone.
           c3 is the commit that made c1's narrowing observable: until the refund
-          path existed, nothing passed a negative amount at all, and c3 is in a
-          file the fix never opens.
+          path existed, the only route to the helper rejected a negative total,
+          and c3 is in a file the fix never opens.
 
 checks:
   - type: "git_history_contains"
