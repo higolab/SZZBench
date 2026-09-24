@@ -140,3 +140,32 @@ proposed with the first rewrite that needs it.
    so a 64-bit conversion there both breaks pinned probes and lets a negative
    setting past the cap the scenario is about. Such a scenario writes its domain
    down and keeps its arithmetic.
+
+7. **A latent-change premise is a claim about every entry point, and the test
+   suite is one of them** (decided 2026-09-24, PR #86 review). Much of the
+   `discriminating` tier rests on a commit that is *harmless on its own*: the
+   README says nothing observable moves when it lands, and the counterfactual
+   that shows the two commits interact is read against that. Two reviews in a
+   row refuted that premise in three scenarios, each time through an entry
+   point the scenario's own probe did not call.
+
+   - **Probe the whole public surface, not the method the story is about.**
+     SZZ-0221's helper answered differently at `c1` through a public accessor
+     the README never probed (PR #85 review), and SZZ-0224's `RetryLimit`
+     returned 3 before `c1` and 2 after it to any external caller, while the
+     runner the probe did call was unchanged (PR #86 review). Either narrow the
+     surface — make the helper package-private, as both now do, and pin that in
+     the test — or drop the premise and say the value changed.
+   - **Run the scenario's own tests at every commit.** A commit that turns the
+     suite red has moved something observable even when every product answer is
+     identical. SZZ-0225 writes a wrong expectation into a test at `c1` and
+     satisfies it in the product at `c3`; its test is red in between, so the
+     scenario claims disjoint effects — `c1` owns the expectation, `c3` owns the
+     fee, and the fix restores their union — rather than latency. Where a
+     scenario ships a runnable test, its verdict at each commit belongs in the
+     README table and in a test (`test_the_test_suite_goes_red_where_the_readme_says`).
+
+   The two evidence kinds in [../baselines.md](../baselines.md) are not
+   interchangeable: *interaction* needs the unreachable commit to be harmless,
+   *disjoint effects* does not. A scenario that cannot support the first can
+   still be sound under the second, and saying which one it is costs a sentence.

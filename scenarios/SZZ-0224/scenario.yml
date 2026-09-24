@@ -1,0 +1,196 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0224"
+  title: "The contract that changed is in a Javadoc, and the caller written afterwards follows the old one"
+  slug: "contract-changed-in-a-javadoc"
+  description: >
+    A retry limit stops counting the first attempt. The commit that changes it
+    rewrites the Javadoc that says so and adjusts the one loop that reads it, so
+    nothing observable moves: the limit is package-private, and the runners are
+    the package's whole public surface. A loop written later follows the
+    sentence the Javadoc used to carry and runs one attempt too few. The fix
+    repairs that loop. Blame on the line it deletes reaches the later loop only;
+    the sentence that makes it wrong is in a comment, in a file the fix never
+    opens.
+  category: "Context, message, and non-local evidence"
+  factors:
+    - "multi-bic"
+    - "single-bfc"
+    - "root-cause-not-in-diff"
+    - "caller-callee"
+    - "value-flow"
+    - "off-by-one"
+    - "blame-unreachable-bic"
+  difficulty: "hard"
+  status: "active"
+  tier: "discriminating"
+  defeats: ["blame", "shape", "position"]
+  category_code: "S7"
+
+repository:
+  name: "SZZ-0224-contract-changed-in-a-javadoc"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Add the retry limit and the import runner"
+    author: "Elena Rossi <elena.rossi@example.com>"
+    date: "2025-11-03T09:20:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/example/RetryLimit.java"
+        content: |
+          package example;
+
+          /** The shared retry limit. Not part of the package's public surface:
+           *  the runners of this package are the only callers. */
+          class RetryLimit {
+              /** How many times an operation may run in total, the first attempt included. */
+              int attempts() {
+                  return 3;
+              }
+          }
+      - type: "write_file"
+        path: "src/main/java/example/ImportRunner.java"
+        content: |
+          package example;
+
+          public class ImportRunner {
+              private final RetryLimit limit = new RetryLimit();
+
+              public int runsFor(int failuresBeforeSuccess) {
+                  int runs = 0;
+                  for (int i = 0; i < limit.attempts(); i++) {
+                      runs++;
+                      if (runs > failuresBeforeSuccess) {
+                          break;
+                      }
+                  }
+                  return runs;
+              }
+          }
+
+  - id: "c1"
+    message: "Count retries after the first attempt rather than attempts in total"
+    author: "Luca Moretti <luca.moretti@example.com>"
+    date: "2025-11-05T13:40:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/RetryLimit.java"
+        old: |
+          /** How many times an operation may run in total, the first attempt included. */
+              int attempts() {
+                  return 3;
+              }
+        new: |
+          /** How many times an operation may be retried, not counting the first attempt. */
+              int attempts() {
+                  return 2;
+              }
+        labels: ["B001", "fault"]
+      - type: "replace"
+        path: "src/main/java/example/ImportRunner.java"
+        old: "for (int i = 0; i < limit.attempts(); i++) {"
+        new: "for (int i = 0; i <= limit.attempts(); i++) {"
+
+  - id: "c2"
+    message: "Note where the import runner is used"
+    author: "Hana Sato <hana.sato@example.com>"
+    date: "2025-11-07T10:55:00Z"
+    role: "distractor"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/ImportRunner.java"
+        old: |
+          public class ImportRunner {
+        new: |
+          /** Runs one import, retrying it according to the shared retry limit. */
+          public class ImportRunner {
+
+  - id: "c3"
+    message: "Retry the export the same way as the import"
+    author: "Aiko Tanaka <aiko.tanaka@example.com>"
+    date: "2025-11-10T16:05:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/example/ExportRunner.java"
+        content: |
+          package example;
+
+          public class ExportRunner {
+              private final RetryLimit limit = new RetryLimit();
+
+              public int runsFor(int failuresBeforeSuccess) {
+                  int runs = 0;
+                  for (int i = 0; i < limit.attempts(); i++) {
+                      runs++;
+                      if (runs > failuresBeforeSuccess) {
+                          break;
+                      }
+                  }
+                  return runs;
+              }
+          }
+        labels: ["B001", "fault"]
+
+  - id: "c4"
+    message: "Give the export the same number of runs as the import"
+    author: "Tom Becker <tom.becker@example.com>"
+    date: "2025-11-12T12:35:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/ExportRunner.java"
+        old: "for (int i = 0; i < limit.attempts(); i++) {"
+        new: "for (int i = 0; i <= limit.attempts(); i++) {"
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "The export gives up one attempt before the import does"
+    bug_fixing_commit: "c4"
+    bug_introducing_commits: ["c1", "c3"]
+    fault:
+      commit: "c3"
+      file: "src/main/java/example/ExportRunner.java"
+      entity:
+        type: "method"
+        name: "runsFor"
+        signature: "int runsFor(int failuresBeforeSuccess)"
+      statement: "for (int i = 0; i < limit.attempts(); i++) {"
+      change_type: "line_modification"
+    fix:
+      commit: "c4"
+      file: "src/main/java/example/ExportRunner.java"
+      entity:
+        type: "method"
+        name: "runsFor"
+        signature: "int runsFor(int failuresBeforeSuccess)"
+      statement: "for (int i = 0; i <= limit.attempts(); i++) {"
+      fix_type: "line_modification"
+    expected_szz:
+      commit_level:
+        true_positives: ["c1", "c3"]
+        primary_observable_bic: "c3"
+        contributing_bics: ["c1"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "for (int i = 0; i < limit.attempts(); i++) {"
+        note: >
+          The fix deletes one line, written by c3, so blame returns c3 alone.
+          c1 changed what attempts() counts and said so in the Javadoc above it;
+          that sentence is the evidence that c3's loop is one short, and it is
+          in a file the fix never opens.
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3", "c4"]

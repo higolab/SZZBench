@@ -1871,3 +1871,37 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0223/scenario.yml
+- id: SZZ-0224
+  title: The contract that changed is in a Javadoc, and the caller written afterwards follows the old one
+  slug: contract-changed-in-a-javadoc
+  category_code: S7
+  category: Context, message, and non-local evidence
+  factors:
+  - multi-bic
+  - single-bfc
+  - root-cause-not-in-diff
+  - caller-callee
+  - value-flow
+  - off-by-one
+  - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0224/scenario.yml
+- id: SZZ-0225
+  title: The wrong expectation was written into a test first, and a rename inside the test took ownership of it
+  slug: wrong-expectation-written-into-a-test
+  category_code: S8
+  category: Non-source, configuration, test-only, and file-level edge cases
+  factors:
+  - multi-bic
+  - single-bfc
+  - test-only-bic
+  - test-line-noise
+  - multi-file-bfc
+  - refactoring-after-bic
+  - candidate-selection-distractor
+  - off-by-one
+  - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  path: scenarios/SZZ-0225/scenario.yml

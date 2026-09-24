@@ -1,0 +1,192 @@
+schema_version: "1.0"
+
+meta:
+  id: "SZZ-0225"
+  title: "The wrong expectation was written into a test first, and a rename inside the test took ownership of it"
+  slug: "wrong-expectation-written-into-a-test"
+  description: >
+    A late-fee test is edited to expect one day fewer than the fee charges.
+    No product answer moves; what moves is the suite's verdict, which is red
+    from that commit until the product is changed to agree with it. A rename of
+    the test's helper takes ownership of the expectation's line in between. The
+    fix repairs both. Blame on what it deletes returns the product change and
+    the rename: the commit that wrote the wrong expectation is one step back in
+    a test file's history, which is where the fault began.
+  category: "Non-source, configuration, test-only, and file-level edge cases"
+  factors:
+    - "multi-bic"
+    - "single-bfc"
+    - "test-only-bic"
+    - "test-line-noise"
+    - "multi-file-bfc"
+    - "refactoring-after-bic"
+    - "candidate-selection-distractor"
+    - "off-by-one"
+    - "blame-unreachable-bic"
+  difficulty: "hard"
+  status: "active"
+  tier: "discriminating"
+  defeats: ["blame", "shape", "position"]
+  category_code: "S8"
+
+repository:
+  name: "SZZ-0225-wrong-expectation-written-into-a-test"
+  default_branch: "main"
+  language: "java"
+  build_system: "none"
+  source_root: "src/main/java"
+
+commits:
+  - id: "c0"
+    message: "Add the late fee and its test"
+    author: "Dana Okafor <dana.okafor@example.com>"
+    date: "2025-12-01T09:15:00Z"
+    role: "initial"
+    operations:
+      - type: "write_file"
+        path: "src/main/java/example/LateFee.java"
+        content: |
+          package example;
+
+          public class LateFee {
+              static final int CENTS_PER_DAY = 50;
+
+              /** Supported domain: 0 <= daysLate <= 42949672, the largest number of
+               *  overdue days whose fee still fits int. */
+              public int cents(int daysLate) {
+                  return daysLate * CENTS_PER_DAY;
+              }
+          }
+      - type: "write_file"
+        path: "src/test/java/example/LateFeeTest.java"
+        content: |
+          package example;
+
+          public class LateFeeTest {
+              public static void main(String[] args) {
+                  LateFee fee = new LateFee();
+                  expect(fee.cents(3), 150);
+              }
+
+              static void expect(int actual, int wanted) {
+                  if (actual != wanted) {
+                      throw new AssertionError(actual + " != " + wanted);
+                  }
+              }
+          }
+
+  - id: "c1"
+    message: "Expect the fee to skip the first overdue day"
+    author: "Bruno Fischer <bruno.fischer@example.com>"
+    date: "2025-12-03T14:05:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/test/java/example/LateFeeTest.java"
+        old: "expect(fee.cents(3), 150);"
+        new: "expect(fee.cents(3), 100);"
+        labels: ["B001", "fault"]
+
+  - id: "c2"
+    message: "Rename the test helper to say what it compares"
+    author: "Farid Haddad <farid.haddad@example.com>"
+    date: "2025-12-05T11:20:00Z"
+    role: "distractor"
+    operations:
+      - type: "write_file"
+        path: "src/test/java/example/LateFeeTest.java"
+        content: |
+          package example;
+
+          public class LateFeeTest {
+              public static void main(String[] args) {
+                  LateFee fee = new LateFee();
+                  assertCents(fee.cents(3), 100);
+              }
+
+              static void assertCents(int actual, int wanted) {
+                  if (actual != wanted) {
+                      throw new AssertionError(actual + " != " + wanted);
+                  }
+              }
+          }
+
+  - id: "c3"
+    message: "Charge from the second overdue day, as the test expects"
+    author: "Chen Wei <chen.wei@example.com>"
+    date: "2025-12-08T15:45:00Z"
+    role: "bug_introducing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/LateFee.java"
+        old: "return daysLate * CENTS_PER_DAY;"
+        new: "return (daysLate - 1) * CENTS_PER_DAY;"
+        labels: ["B001", "fault"]
+
+  - id: "c4"
+    message: "Charge every overdue day again and expect the full fee"
+    author: "Tom Becker <tom.becker@example.com>"
+    date: "2025-12-10T12:30:00Z"
+    role: "bug_fixing"
+    operations:
+      - type: "replace"
+        path: "src/main/java/example/LateFee.java"
+        old: "return (daysLate - 1) * CENTS_PER_DAY;"
+        new: "return daysLate * CENTS_PER_DAY;"
+        labels: ["B001", "fix"]
+      - type: "replace"
+        path: "src/test/java/example/LateFeeTest.java"
+        old: "assertCents(fee.cents(3), 100);"
+        new: "assertCents(fee.cents(3), 150);"
+        labels: ["B001", "fix"]
+
+bugs:
+  - id: "B001"
+    title: "The late fee skips the first overdue day"
+    bug_fixing_commit: "c4"
+    bug_introducing_commits: ["c1", "c3"]
+    fault:
+      commit: "c3"
+      file: "src/main/java/example/LateFee.java"
+      entity:
+        type: "method"
+        name: "cents"
+        signature: "int cents(int daysLate)"
+      statement: "return (daysLate - 1) * CENTS_PER_DAY;"
+      change_type: "line_modification"
+    fix:
+      commit: "c4"
+      file: "src/main/java/example/LateFee.java"
+      entity:
+        type: "method"
+        name: "cents"
+        signature: "int cents(int daysLate)"
+      statement: "return daysLate * CENTS_PER_DAY;"
+      fix_type: "line_modification"
+    expected_szz:
+      commit_level:
+        true_positives: ["c1", "c3"]
+        primary_observable_bic: "c3"
+        contributing_bics: ["c1"]
+        false_positives_allowed: []
+      line_level:
+        available: true
+        faulty_statements:
+          - "return (daysLate - 1) * CENTS_PER_DAY;"
+          - "assertCents(fee.cents(3), 100);"
+        note: >
+          The fix deletes two lines, one in each file. The product line was
+          written by c3 and blames to it. The expectation was written by c1 and
+          rewritten by c2's rename of the helper it calls, so blame returns c2,
+          a commit that changed no expectation; c1 is one step back along the
+          test line's history, and because the rename changed tokens no blame
+          variant crosses it. The generated example.LateFeeTest passes at c0,
+          fails at c1 and c2, and passes again from c3: c1's fault is visible as
+          a red suite rather than as a wrong answer, and c3 is the commit that
+          hid it. cents takes its product in int, so the supported domain is 0
+          to 42949672 overdue days; tests/test_reference_arithmetic.py holds the
+          boundary.
+
+checks:
+  - type: "git_history_contains"
+    commits: ["c0", "c1", "c2", "c3", "c4"]
