@@ -2,8 +2,8 @@
 
 A category whose claim to discriminate rests on a single history gives a method
 one example to overfit to.  Nine categories were in that position after #84;
-these are the three for S1, S2 and S5, each using a reason the category's first
-one does not.
+these are the five for S1, S2, S5, S7 and S8, each using a reason the category's
+first one does not.
 
 Each test measures the scenario against its generated repository: the probe
 answers at every commit, the blame owner of every deleted line, and how blame's
@@ -61,6 +61,22 @@ public class Drive { public static void main(String[] a) {
     example.Quote q = new example.Quote();
     System.out.print("q2000=" + q.totalCents(2000, 5000) + " q500=" + q.totalCents(500, 1000)); } }
 """,
+    "SZZ-0224": """
+import java.lang.reflect.Method;
+public class Drive { public static void main(String[] a) throws Exception {
+    example.ImportRunner ir = new example.ImportRunner(); StringBuilder b = new StringBuilder();
+    b.append("import0=").append(ir.runsFor(0)).append(" import5=").append(ir.runsFor(5));
+    try { Object er = Class.forName("example.ExportRunner").getConstructor().newInstance();
+          Method m = er.getClass().getMethod("runsFor", int.class);
+          b.append(" export0=").append(m.invoke(er, 0)).append(" export5=").append(m.invoke(er, 5)); }
+    catch (ClassNotFoundException e) { b.append(" export=absent"); }
+    System.out.print(b); } }
+""",
+    "SZZ-0225": """
+public class Drive { public static void main(String[] a) {
+    example.LateFee f = new example.LateFee();
+    System.out.print("d1=" + f.cents(1) + " d3=" + f.cents(3) + " d10=" + f.cents(10)); } }
+""",
 }
 
 EXPECTED = {
@@ -78,6 +94,20 @@ EXPECTED = {
         "c3": "small=T huge=T batchHugeItem=true batchOverTotal=true batch2048=true",
         "c4": "small=T huge=F batchHugeItem=false batchOverTotal=false batch2048=false",
     },
+    "SZZ-0224": {
+        "c0": "import0=1 import5=3 export=absent",
+        "c1": "import0=1 import5=3 export=absent",
+        "c2": "import0=1 import5=3 export=absent",
+        "c3": "import0=1 import5=3 export0=1 export5=2",
+        "c4": "import0=1 import5=3 export0=1 export5=3",
+    },
+    "SZZ-0225": {
+        "c0": "d1=50 d3=150 d10=500",
+        "c1": "d1=50 d3=150 d10=500",
+        "c2": "d1=50 d3=150 d10=500",
+        "c3": "d1=0 d3=100 d10=450",
+        "c4": "d1=50 d3=150 d10=500",
+    },
     "SZZ-0223": {
         "c0": "q2000=5600 q500=1150",
         "c1": "q2000=5060 q500=1015",
@@ -91,6 +121,9 @@ BLAME = {
     "SZZ-0221": {"if (value < -10) {": ("c1", "c1", "c1")},
     "SZZ-0222": {"if (name == null) {": ("c0", "c0", "c0")},
     "SZZ-0223": {"return goodsCents + shipping.feeCents(grams, 30) - HANDLING_CENTS;": ("c3", "c3", "c3")},
+    "SZZ-0224": {"for (int i = 0; i < limit.attempts(); i++) {": ("c3", "c3", "c3")},
+    "SZZ-0225": {"return (daysLate - 1) * CENTS_PER_DAY;": ("c3", "c3", "c3"),
+                 "assertCents(fee.cents(3), 100);": ("c2", "c2", "c2")},
 }
 
 REQUIRED = {sid: {"c1", "c3"} for sid in EXPECTED}
@@ -145,9 +178,13 @@ def test_blame_relates_to_the_oracle_as_the_design_says(generated):
     if sid == "SZZ-0222":
         assert not (blamed & REQUIRED[sid]), "blame's answer must contain no required commit"
         assert blamed == {"c0"}
+    elif sid == "SZZ-0221":
+        assert blamed == {"c1"} and "c3" not in blamed
+    elif sid == "SZZ-0225":
+        # the product change, plus the rename that owns the expectation's line
+        assert blamed == {"c2", "c3"} and "c1" not in blamed
     else:
-        assert len(blamed & REQUIRED[sid]) == 1 and blamed < REQUIRED[sid] | blamed
-        assert "c1" not in blamed if sid == "SZZ-0223" else "c3" not in blamed
+        assert blamed == {"c3"} and "c1" not in blamed
 
 
 def _snapshot(repo: Path, commit: str, into: Path) -> None:
@@ -176,7 +213,7 @@ def test_the_probe_answers_move_exactly_where_the_readme_says(generated, tmp_pat
 
 @needs_jdk
 def test_the_unreachable_commit_moved_no_answer_when_it_landed(generated, tmp_path):
-    """SZZ-0221's and SZZ-0223's first fault is invisible until a later commit reaches it."""
+    """The first fault is invisible until a later commit reaches it, except in SZZ-0222."""
     sid, hashes, repo = generated
     if sid == "SZZ-0222":
         pytest.skip("both of this scenario's faults are visible as soon as they land")
@@ -185,5 +222,11 @@ def test_the_unreachable_commit_moved_no_answer_when_it_landed(generated, tmp_pa
         # ends of the supported domain, answers the same at c1 as at c0 (PR #85 review)
         assert EXPECTED[sid]["c1"] == EXPECTED[sid]["c0"], "c1 must move no probe answer"
         assert "negTotal=refused" in EXPECTED[sid]["c1"], "the only route to the helper must refuse a negative"
+    elif sid in ("SZZ-0224", "SZZ-0225"):
+        # c1 halves what a Javadoc'd constant means (0224) or writes a wrong expectation
+        # into a test (0225); neither moves a product answer until c3 reaches it
+        assert EXPECTED[sid]["c1"] == EXPECTED[sid]["c0"], "c1 must move no probe answer"
+        assert EXPECTED[sid]["c2"] == EXPECTED[sid]["c1"], "the distractor must move no probe answer"
+        assert EXPECTED[sid]["c3"] != EXPECTED[sid]["c2"], "c3 must be where the fault becomes observable"
     else:
         assert EXPECTED[sid]["c2"] == EXPECTED[sid]["c1"], "the refactoring must move no probe answer"
