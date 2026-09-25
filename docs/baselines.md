@@ -95,10 +95,13 @@ a cheap rule could explain — headroom, not a result.
 
 A real implementation scored on the same suite is in
 [../examples/pydriller-run/](../examples/pydriller-run/README.md): PyDriller 2.12 passes 162 of the
-281 scenarios, which is below the union of the cheap rules and above any single one of them, and it
-passes 1 of the 46 `discriminating` scenarios. That run is the concrete form of what this document
-argues in the abstract, and it is checked in so that a reader can re-score it without installing
-anything.
+281 scenarios and 1 of the 46 `discriminating` ones. That is **the same count as `position-1`**,
+the rule that opens no file — and a different 162: the two agree on only 98 scenarios and each
+solves 64 the other does not. Level on the scoreboard, unrelated in what they can do. Against
+`blame-deleted-lines` the picture is the opposite: 155 of PyDriller's 162 are the same scenarios,
+because `Git.get_commits_last_modified_lines` *is* that baseline with `git blame -w` instead of
+plain blame. That run is the concrete form of what this document argues in the abstract, and it is
+checked in so that a reader can re-score it without installing anything.
 
 Read this table before reading any result reported on SZZBench:
 

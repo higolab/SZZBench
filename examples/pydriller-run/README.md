@@ -49,11 +49,46 @@ Split by `meta.tier`, which is what the tier is for:
 | `control` | 161 / 235 | 68.5 % |
 | `discriminating` | **1 / 46** | **2.2 %** |
 
+## How that compares with the cheap rules
+
 A cheap-rule floor for the same suite is in [docs/baselines.md](../../docs/baselines.md): some
 declared cheap rule solves 235 of the 281 scenarios, none of them a `discriminating` one. PyDriller
-lands below that union and above any single cheap rule, which is the shape the benchmark is built
-to show — a real implementation is not a cheap rule, and it is not yet a method that handles the
-hard half.
+lands below that union — but not above the individual rules, and the detail is worth more than the
+headline:
+
+| | passes | shared with PyDriller | only PyDriller | only the rule |
+|---|---|---|---|---|
+| PyDriller 2.12 | 162 | — | — | — |
+| `position-1` (opens no file) | 162 | 98 | 64 | 64 |
+| `blame-deleted-lines` | 157 | 155 | 7 | 2 |
+| `shape-last-toucher` | 121 | 107 | 55 | 14 |
+
+**PyDriller ties `position-1` exactly on count and shares only 98 scenarios with it.** "Report the
+second commit of the history" and a real blame-based implementation are level on the scoreboard
+while solving different halves of the suite, which is the reason this document reports sets and not
+only totals.
+
+Against `blame-deleted-lines` the overlap is 155 of 162, because
+`Git.get_commits_last_modified_lines` **is** that baseline with two differences: it blames with
+`git blame -w`, and for a renamed or deleted file it blames the *old* path. Both show up in the
+seven scenarios it adds:
+
+- six are whitespace, formatting or line-ending noise, where `-w` carries the blame across a commit
+  that plain blame stops at — SZZ-0083 (whitespace-only rewrite), SZZ-0100 (a try block that
+  re-indents its body), SZZ-0108 (CRLF-like full-file rewrite), SZZ-0185 (comment and blank-line
+  deletion), SZZ-0212 (a whitespace-only reformat between two faults) and SZZG-0081 (formatting
+  rewrite after a rebase);
+- the seventh, **SZZG-0002**, is a *file move*: the fix renames the file and repairs it in the same
+  commit, so blaming the path the fix touched finds nothing at `BFC^`, while PyDriller blames
+  `old_path` and lands on the required commit.
+
+It also loses two that plain blame solves, for two unrelated reasons worth knowing:
+
+- **SZZ-0028**: it reaches the required `c1` and names `c0` as well, so `exact_set` fails it on the
+  false positive. Blaming every deleted line of a four-line deletion costs it here.
+- **SZZG-0046**: it predicts **nothing at all**. That scenario's bug-fixing commit is a *merge*, and
+  PyDriller reports no modified files for a merge commit, so there are no deleted lines to blame.
+  A tool that never answers on a merge BFC is a failure mode this suite is built to surface.
 
 ## The one discriminating scenario it passes
 
@@ -70,9 +105,22 @@ implementation does not do, and the README of each says what.
 ## Reading the report
 
 `evaluation-results.md` lists every scenario with its expected and actual BICs, its evaluation
-policy and its status, after a summary and the warnings the evaluator raised. The warnings are
-about scenario metadata the commit-level evaluation does not use (`bug_level`, `work_item_level`,
-`entity_level`), not about the predictions.
+policy and its status, after a summary and the eight warnings the evaluator raised. None of them is
+about the predictions, and they are not all the same kind:
+
+- **Four are about metadata this evaluation does not read.** SZZG-0034 declares `bug_level`,
+  SZZG-0097 `work_item_level`, SZZG-0116 `entity_level` and `line_level`, SZZG-0133 `line_level`.
+  Commit-level scoring ignores those sections; nothing about the scenario changes.
+- **Three say the required set was inferred, not read.** SZZG-0115, SZZG-0116 and SZZG-0140 have an
+  empty or missing `expected_szz.commit_level.required`, so the evaluator derived it from
+  `bugs[].bug_introducing_commits`, taking the commits whose role is `contributing`, `direct` or
+  `reintroducing` — `c1` in each of the three. Those scenarios were scored against a set the
+  evaluator computed, which is worth knowing before quoting their results.
+- **One is a variant fallback.** SZZG-0136 declares `default_variant: default`, but its only
+  declared variant is `boundary-commit`, so the name resolves to nothing and the evaluator falls
+  back to `expected_szz.commit_level` — which is `expect_no_bic: true`. The scenario is scored
+  correctly against its own oracle; the declaration names a variant that does not exist, which is a
+  metadata defect in the scenario rather than a property of this run.
 
 `--include-generated` is what makes the denominator 281: PyDriller produced predictions for 262
 scenarios, and the flag tells SZZBench to score the remaining 19 as empty predictions rather than
