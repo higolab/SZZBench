@@ -4,6 +4,41 @@ SZZBench is a tool for generating and verifying synthetic Git repositories for e
 
 In SZZ, a tool starts from a commit that fixes a bug, traces the history backward, and estimates the commit that likely introduced the bug. SZZBench provides a basis for checking, with small controlled Git repositories, what kinds of histories make this estimation work well and what kinds of histories make it fail.
 
+## Quickstart
+
+From a clean clone to an evaluation report. The last command re-scores a recorded run of a
+third-party SZZ implementation, so it also says whether this installation agrees with ours. The
+activation line is for macOS and Linux; see [Installation](#installation) for Windows.
+
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+python -m pip install -e .
+szzbench generate-all-repos
+szzbench evaluate \
+    --predictions examples/pydriller-run/predictions.jsonl \
+    --generated-root generated-input-repos \
+    --include-generated \
+    --out results/pydriller
+```
+
+`generate-all-repos` writes 281 repositories under `generated-input-repos/` and takes about three
+minutes; everything after it takes seconds. The evaluation prints `PASS: 162`, `FAIL: 119`,
+precision 0.779 and recall 0.688.
+[examples/pydriller-run/README.md](examples/pydriller-run/README.md) says what that run was, how it
+was produced, and what the numbers mean — including why the tool passes 68.5 % of the `control`
+scenarios and 2.2 % of the `discriminating` ones.
+
+Two more commands are worth knowing before the rest of this file:
+
+```bash
+szzbench baselines --out results/floor
+szzbench coverage --out results/coverage
+```
+
+The first scores rules that do no analysis at all, which is the floor any result on SZZBench should
+be read against; the second reports what each scenario contributes. To evaluate your own tool,
+produce the same JSONL and pass it to `szzbench evaluate`; the format is under [evaluate](#evaluate).
+
 ## Terminology
 
 | Term | Meaning |
@@ -205,8 +240,9 @@ SZZBench/
 │   └── ...
 │
 ├── examples/
-│   └── basic/
-│       └── simple-line-modification/
+│   ├── basic/
+│   │   └── simple-line-modification/
+│   └── pydriller-run/
 │
 ├── tools/
 │   ├── adapters/
@@ -701,6 +737,40 @@ SZZBench は、SZZ 手法を評価するための人工 Git リポジトリ生�
 
 SZZ では、バグを修正したコミットから過去の履歴をたどり、そのバグを混入した可能性が高いコミットを推定します。SZZBench は、この推定がどのような履歴ではうまく動き、どのような履歴では失敗しやすいのかを、制御された小さな Git リポジトリで確認するための基盤です。
 
+## クイックスタート
+
+クローン直後から評価レポートまでの最短経路です。最後のコマンドは、第三者の SZZ 実装を実際に走らせた
+結果を再採点するので、この環境が元の環境と一致しているかの確認にもなります。仮想環境を有効化する行は
+macOS / Linux 向けです。Windows については [インストール](#インストール) を参照してください。
+
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+python -m pip install -e .
+szzbench generate-all-repos
+szzbench evaluate \
+    --predictions examples/pydriller-run/predictions.jsonl \
+    --generated-root generated-input-repos \
+    --include-generated \
+    --out results/pydriller
+```
+
+`generate-all-repos` は `generated-input-repos/` に 281 個のリポジトリを生成し、3 分ほどかかります。
+それ以降は数秒です。評価は `PASS: 162`、`FAIL: 119`、precision 0.779、recall 0.688 を出力します。
+その実行が何であったか、どう作られたか、数値が何を意味するかは
+[examples/pydriller-run/README.md](examples/pydriller-run/README.md) にあります。`control` の 68.5 %、
+`discriminating` の 2.2 % に成功する理由もそこで説明しています。
+
+この先を読む前に、もう 2 つ知っておくとよいコマンドがあります。
+
+```bash
+szzbench baselines --out results/floor
+szzbench coverage --out results/coverage
+```
+
+前者は解析を一切行わない規則の得点、すなわち SZZBench 上のあらゆる結果を読む際の床を出します。後者は
+各シナリオが何に寄与しているかを報告します。自分のツールを評価するには、同じ形式の JSONL を作って
+`szzbench evaluate` に渡してください。形式は [evaluate](#evaluate) にあります。
+
 ## 用語
 
 | 用語 | 意味 |
@@ -860,8 +930,9 @@ SZZBench/
 │   └── ...
 │
 ├── examples/
-│   └── basic/
-│       └── simple-line-modification/
+│   ├── basic/
+│   │   └── simple-line-modification/
+│   └── pydriller-run/
 │
 ├── tools/
 │   ├── adapters/

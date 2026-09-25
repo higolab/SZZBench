@@ -93,6 +93,18 @@ scenario, which is what an attacker can actually do. The union of the rows is
 oracle. The union is reported below as an upper bound on how much of the suite
 a cheap rule could explain — headroom, not a result.
 
+A real implementation scored on the same suite is in
+[../examples/pydriller-run/](../examples/pydriller-run/README.md): PyDriller 2.12 passes 162 of the
+281 scenarios and 1 of the 46 `discriminating` ones. That is **the same count as `position-1`**,
+the rule that opens no file — and a different 162: the two agree on only 98 scenarios and each
+solves 64 the other does not. Level on the scoreboard, unrelated in what they can do. Against
+`blame-deleted-lines` the picture is the opposite: 155 of PyDriller's 162 are the same scenarios,
+because `Git.get_commits_last_modified_lines` is the same step as that baseline. It differs in
+three ways — it blames with `git blame -w`, it blames a renamed file's `old_path`, and it reports
+no modified files for a merge commit, where the baseline diffs against the first parent — and those
+three differences are exactly the seven scenarios it gains and the two it loses. That run is the concrete form of what this document argues in the abstract, and it is
+checked in so that a reader can re-score it without installing anything.
+
 Read this table before reading any result reported on SZZBench:
 
 - **A rule that opens no file is level with the classic B-SZZ baseline.**
