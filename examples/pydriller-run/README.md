@@ -69,9 +69,15 @@ while solving different halves of the suite, which is the reason this document r
 only totals.
 
 Against `blame-deleted-lines` the overlap is 155 of 162, because
-`Git.get_commits_last_modified_lines` **is** that baseline with two differences: it blames with
-`git blame -w`, and for a renamed or deleted file it blames the *old* path. Both show up in the
-seven scenarios it adds:
+`Git.get_commits_last_modified_lines` **is** the same step as that baseline. It differs in three
+ways, and each difference is visible in the scenarios where the two disagree:
+
+1. it blames with `git blame -w` rather than plain blame — six gains and one loss;
+2. for a renamed or deleted file it blames the *old* path — one gain;
+3. it reports no modified files for a merge commit, where the baseline diffs the merge against its
+   first parent — one loss.
+
+The seven it adds:
 
 - six are whitespace, formatting or line-ending noise, where `-w` carries the blame across a commit
   that plain blame stops at — SZZ-0083 (whitespace-only rewrite), SZZ-0100 (a try block that
@@ -82,13 +88,17 @@ seven scenarios it adds:
   commit, so blaming the path the fix touched finds nothing at `BFC^`, while PyDriller blames
   `old_path` and lands on the required commit.
 
-It also loses two that plain blame solves, for two unrelated reasons worth knowing:
+It loses two that plain blame solves — one to the first difference, one to the third:
 
-- **SZZ-0028**: it reaches the required `c1` and names `c0` as well, so `exact_set` fails it on the
-  false positive. Blaming every deleted line of a four-line deletion costs it here.
-- **SZZG-0046**: it predicts **nothing at all**. That scenario's bug-fixing commit is a *merge*, and
-  PyDriller reports no modified files for a merge commit, so there are no deleted lines to blame.
-  A tool that never answers on a merge BFC is a failure mode this suite is built to surface.
+- **SZZ-0028**: the same `-w` that wins the six above. The fix deletes lines 5–8 at `BFC^`, and
+  both tools blame all four. Plain blame assigns every one of them to `c1`; with `-w`, line 8
+  (`return value >= 0;`) goes to `c0`, because `c1` only re-indented it. PyDriller therefore answers
+  `{c0, c1}` and `exact_set` fails it on the false positive. Ignoring whitespace is not free.
+- **SZZG-0046**: it predicts **nothing at all**. That scenario's bug-fixing commit is a *merge*;
+  PyDriller reports no modified files for a merge (measured: `merge=True`, `modified_files=0`,
+  `get_commits_last_modified_lines` returns `{}`), so there are no deleted lines to blame, while the
+  baseline diffs the merge against its first parent and finds them. A tool that never answers on a
+  merge BFC is a failure mode this suite is built to surface.
 
 ## The one discriminating scenario it passes
 
