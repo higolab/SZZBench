@@ -3,13 +3,19 @@ meta:
   id: SZZ-0159
   title: Bug reason only in commit message
   slug: bug-reason-in-message
-  description: This scenario is intended for evaluating SZZ variants that use commit messages or broader patch context.
+  description: >-
+    The fix's message names "the previous change" as the cause, and that
+    reference is correct, because the fault is c1, the commit before it.
+    Nothing in the code says which earlier change made the boundary exclusive,
+    so a tool that reads only the diff has blame and nothing else, while a tool
+    that reads the message gets a second witness that agrees with it.
   category: "Context, message, and non-local evidence"
   factors:
   - single-bic
   - single-bfc
   - line-modification
   - context-aware
+  - message-evidence
   difficulty: medium
   status: active
   tier: control

@@ -7,8 +7,8 @@ installation can be checked against numbers someone else measured.
 
 - **Tool**: [PyDriller](https://github.com/ishepard/pydriller) 2.12, through
   `tools/adapters/pydriller_to_predictions.py`
-- **Suite**: 281 scenarios (135 classic, 146 graph)
-- **Measured**: 2026-09-25, Python 3.14, git 2.x, macOS
+- **Suite**: 279 scenarios (133 classic, 146 graph)
+- **Measured**: 2026-09-28, Python 3.14, git 2.x, macOS
 
 ## The commands
 
@@ -27,7 +27,8 @@ szzbench evaluate \
     --out results/pydriller
 ```
 
-The adapter took 14 seconds over the 281 repositories, `generate-all-repos` about three minutes.
+The adapter took about fifteen seconds over the 279 repositories, `generate-all-repos` about three
+minutes.
 `predictions.jsonl` here is that output with the per-scenario `raw_file` paths removed, and
 `evaluation-results.md` is the report the last command wrote.
 
@@ -35,40 +36,42 @@ The adapter took 14 seconds over the 281 repositories, `generate-all-repos` abou
 
 | | |
 |---|---|
-| scenarios | 281 |
-| PASS / FAIL | **162 / 119** |
-| true positives | 236 |
-| false positives | 67 (53 of them *hard*) |
-| false negatives | 107 |
-| precision / recall | **0.779 / 0.688** |
+| scenarios | 279 |
+| PASS / FAIL | **161 / 118** |
+| true positives | 235 |
+| false positives | 66 (52 of them *hard*) |
+| false negatives | 106 |
+| precision / recall | **0.781 / 0.689** |
 
 Split by `meta.tier`, which is what the tier is for:
 
 | tier | PASS | share |
 |---|---|---|
-| `control` | 161 / 235 | 68.5 % |
+| `control` | 160 / 233 | 68.7 % |
 | `discriminating` | **1 / 46** | **2.2 %** |
 
 ## How that compares with the cheap rules
 
 A cheap-rule floor for the same suite is in [docs/baselines.md](../../docs/baselines.md): some
-declared cheap rule solves 235 of the 281 scenarios, none of them a `discriminating` one. PyDriller
-lands below that union — but not above the individual rules, and the detail is worth more than the
-headline:
+declared cheap rule solves 233 of the 279 scenarios, none of them a `discriminating` one. PyDriller
+lands below that union, and one scenario above the best individual rule — a margin worth less than
+the detail under it:
 
 | | passes | shared with PyDriller | only PyDriller | only the rule |
 |---|---|---|---|---|
-| PyDriller 2.12 | 162 | — | — | — |
-| `position-1` (opens no file) | 162 | 98 | 64 | 64 |
-| `blame-deleted-lines` | 157 | 155 | 7 | 2 |
-| `shape-last-toucher` | 121 | 107 | 55 | 14 |
+| PyDriller 2.12 | 161 | — | — | — |
+| `position-1` (opens no file) | 160 | 97 | 64 | 63 |
+| `blame-deleted-lines` | 156 | 154 | 7 | 2 |
+| `shape-last-toucher` | 120 | 106 | 55 | 14 |
 
-**PyDriller ties `position-1` exactly on count and shares only 98 scenarios with it.** "Report the
-second commit of the history" and a real blame-based implementation are level on the scoreboard
-while solving different halves of the suite, which is the reason this document reports sets and not
-only totals.
+**PyDriller beats `position-1` by one scenario and shares only 97 with it.** "Report the second
+commit of the history" and a real blame-based implementation are within a point of each other on
+the scoreboard while solving different halves of the suite, which is the reason this document
+reports sets and not only totals. (Until 2026-09-28 the two were exactly level at 162 each; the
+retirement of SZZ-0082 and SZZ-0120 in issue #90 removed one scenario from each side of that tie
+and one more from `position-1`.)
 
-Against `blame-deleted-lines` the overlap is 155 of 162, because
+Against `blame-deleted-lines` the overlap is 154 of 161, because
 `Git.get_commits_last_modified_lines` **is** the same step as that baseline. It differs in three
 ways, and each difference is visible in the scenarios where the two disagree:
 
@@ -132,7 +135,7 @@ about the predictions, and they are not all the same kind:
   correctly against its own oracle; the declaration names a variant that does not exist, which is a
   metadata defect in the scenario rather than a property of this run.
 
-`--include-generated` is what makes the denominator 281: PyDriller produced predictions for 262
+`--include-generated` is what makes the denominator 279: PyDriller produced predictions for 260
 scenarios, and the flag tells SZZBench to score the remaining 19 as empty predictions rather than
 skip them. Without it a tool would silently be graded only on the scenarios it answered.
 

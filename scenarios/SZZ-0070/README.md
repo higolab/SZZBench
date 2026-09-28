@@ -14,14 +14,31 @@
 
 ## Purpose
 
-This scenario represents an omission bug: the method is introduced without a necessary state transition check, and the bug-fixing commit adds the missing statement.
+An omission bug whose missing check is a property of a **pair** of values.
+`canTransition(from, to)` is introduced accepting every transition between two
+different states; the fix adds the table the lifecycle actually defines. The
+category's other omissions guard one argument — a null check in
+[SZZ-0047](../SZZ-0047/README.md), a bounds check in
+[SZZ-0053](../SZZ-0053/README.md), a path check in
+[SZZ-0076](../SZZ-0076/README.md) — and all of them are the same
+`if (<cond>) { return false; }` shape. This one is not, which is what
+`decisions/consolidation-matrix.md` §2 asked for when it called the earlier
+version ("`canStart(ready)`, a minimal guard") a weak example to repair or
+delete.
 
 ## Commit structure
 
-- `c0`: initial class
-- `c1`: introduces the method without the state transition check
-- `c2`: adds the missing state transition check
+- `c0`: adds the lifecycle states.
+- `c1`: adds `canTransition`, which accepts any two different states. This is
+  the expected BIC.
+- `c2`: adds the four rules the lifecycle defines. This is the BFC.
 
 ## Expected behavior
 
-The expected BFC is `c2` and the expected BIC is `c1`. Line-level evaluation is unavailable because this is an omission bug.
+The expected BFC is `c2` and the expected BIC is `c1`. Line-level evaluation is
+unavailable because the fault is an omission: the fix deletes no line, so there
+is no faulty line to blame.
+
+`NEW -> RUNNING`, `READY -> DONE` and `RUNNING -> READY` are accepted at `c1`
+and refused at `c2`; `NEW -> READY`, `READY -> RUNNING` and `RUNNING -> DONE`
+are accepted by both, and `DONE -> anything` is refused only after the fix.

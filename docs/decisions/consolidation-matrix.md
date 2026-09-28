@@ -90,3 +90,49 @@ Same roles, operation sequence, oracle shape and fault text; they differ only in
 ## 6. Expected outcome
 
 Applying the defaults above yields roughly 25–30 merges and 4–6 deletions instead of 38/13, and turns a further 8–10 candidates into repairs. The suite size after consolidation is therefore ~155–160 before the additions of issues #20–#24, not 143. The exact number is a result of the per-item decisions, not a target.
+
+## 7. Status (2026-09-28)
+
+This matrix had no status column, so every reader re-derived which rows still applied. Measured on
+the 281-scenario suite before the retirements below, and recorded here once.
+
+**Nothing in §3 or §4 is a content duplicate any more.** Fingerprinting each generated repository
+by its per-commit tree hashes — file contents and paths, ignoring messages, authors and dates —
+finds **0 of 37 candidate pairs identical**. The rows that said "DAG/tree-equivalent" were true when
+written; the oracle, compile and generator repairs of issues #1–#10, #17 and #18 changed the content
+underneath them. A row is therefore a claim to re-check, not an instruction to execute.
+
+**Executed.**
+
+| row | done |
+|---|---|
+| SZZ-0082 → SZZ-0081 (§3) | 2026-09-28, issue #90. The two declared the same six factors and were identical under every predictor measured. `docs/retired-ids.md` carries the reason. |
+| SZZ-0120 → SZZ-0115 (§3) | 2026-09-28, issue #90. Same four factors, same shape, boilerplate description. |
+
+**Resolved by repair — the condition lapsed, both scenarios stay.** Each of these rows said "merge
+*unless* rebuilt as a real X"; the generator work they waited for landed, and the scenario was
+rebuilt:
+
+| row | the condition | evidence today |
+|---|---|---|
+| SZZG-0089 → SZZG-0086 | rebuild with `resolution` (#17) | the scenario uses `resolution` |
+| SZZG-0067 → SZZG-0058 | rebuild as a real conflict-resolving fix (#17) | the scenario uses `resolution` |
+| SZZG-0072 → SZZG-0047 | differentiate by deleting the `feature` ref (`ref_lifecycle`) | the scenario declares `ref_lifecycle` |
+| SZZG-0078 → SZZG-0064 | differentiate with a real `Rebased-from:` / cherry-pick trailer (#17) | the trailer is written into the commit message |
+| SZZG-0111 → SZZG-0110 | repair with recorded file modes (#18) | file-mode operations present; the `GW441` / `GW442` lints were retired on that basis |
+
+**Must not be executed.**
+
+| row | why |
+|---|---|
+| SZZG-0038 → SZZG-0040 (§4) | both are now `discriminating` — two of the 46 scenarios no cheap rule solves. Merging them would spend one of them. |
+| SZZG-0060 → SZZG-0043 (§4) | they now differ by seven declared factors, which is this matrix's own criterion (§1 step 3) pointing the other way. |
+| SZZG-0013 → SZZG-0008 (§4) | five factors apart, same reason. |
+
+**Still open, on the same evidence as the two executed rows.** SZZG-0036 → SZZG-0029: SZZG-0036 is
+SZZG-0029 plus one `test_added` commit between the BIC and the first fix — same category, same
+single factor `multi-bfc`, same oracle, same outcome under every predictor. Either declare what the
+extra commit tests, since nothing in the scenario says "a test-only commit sits between BIC and
+BFC", or merge it. Not decided here.
+
+Rows not listed above were not re-checked on 2026-09-28.

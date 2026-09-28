@@ -8,7 +8,7 @@
 | status | `active` |
 | difficulty | `easy` |
 | language | `java` |
-| factors | `message-evidence`, `misleading-commit-message` |
+| factors | `message-evidence`, `misleading-message` |
 | oracle | `exact_set`; required `c1`; related but not correct `c2` · BFC `c3` |
 | defeats | none (a control: every declared cheap rule may solve it) |
 | graph features | `developer_hints` |

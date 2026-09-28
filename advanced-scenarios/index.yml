@@ -1130,7 +1130,7 @@ scenarios:
   status: active
   factors:
   - message-evidence
-  - misleading-commit-message
+  - misleading-message
 - id: SZZG-0100
   title: Unrelated commits mixed in the same issue
   category_code: G7
@@ -1490,7 +1490,7 @@ scenarios:
   readme: advanced-scenarios/SZZG-0132/README.md
   status: active
   factors:
-  - misleading-fix-message
+  - misleading-message
   - rewrite-after-bic
   - basic-blame-distractor
   - semantics-required

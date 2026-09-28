@@ -8,7 +8,7 @@
 | status | `active` |
 | difficulty | `hard` |
 | language | `java` |
-| factors | `misleading-fix-message`, `rewrite-after-bic`, `basic-blame-distractor`, `semantics-required` |
+| factors | `misleading-message`, `rewrite-after-bic`, `basic-blame-distractor`, `semantics-required` |
 | oracle | `exact_set`; required `c1`; related but not correct `c2` · BFC `c3` |
 | defeats | `blame`, `shape` |
 | graph features | none: a linear history with one bug and an exact-set oracle, kept in the graph suite for its category |

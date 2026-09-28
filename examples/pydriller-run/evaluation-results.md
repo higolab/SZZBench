@@ -2,22 +2,22 @@
 
 ## Summary
 
-- Total scenarios: 281
-- PASS: 162
-- FAIL: 119
-- True positives: 236
-- False positives: 67
-- False negatives: 107
+- Total scenarios: 279
+- PASS: 161
+- FAIL: 118
+- True positives: 235
+- False positives: 66
+- False negatives: 106
 - Allowed false positives: 0
-- Hard false positives: 53
+- Hard false positives: 52
 - Related origin hits: 1
 - Related-but-not-correct hits: 13
-- Known distractor hits: 23
+- Known distractor hits: 22
 - Branch-level failures: 1 of 3 scenario(s) with a branch-level oracle
-- Fix shapes (per BFC): empty_first_parent 1, addition_only 16, modifies 276
-- Weighted credit: 236.000/343.000
-- Precision: 0.779
-- Recall: 0.688
+- Fix shapes (per BFC): empty_first_parent 1, addition_only 16, modifies 274
+- Weighted credit: 235.000/341.000
+- Precision: 0.781
+- Recall: 0.689
 
 ## Warnings
 
@@ -51,7 +51,6 @@
 | SZZ-0079 | FAIL | scenarios | exact_set | - | Omission and deletion bugs | c1 | - | - | - | c1 | - | 0 | - | - | c2:addition_only |
 | SZZ-0080 | FAIL | scenarios | exact_set | - | Omission and deletion bugs | c1 | - | - | - | c1 | - | 0 | - | - | c2:addition_only |
 | SZZ-0081 | FAIL | scenarios | exact_set | - | Intermediate noise and history noise | c1 | c2 | - | c2 | c1 | - | 1 | - | c2 | c3:modifies |
-| SZZ-0082 | FAIL | scenarios | exact_set | - | Intermediate noise and history noise | c1 | c2 | - | c2 | c1 | - | 1 | - | c2 | c3:modifies |
 | SZZ-0083 | PASS | scenarios | exact_set | - | Intermediate noise and history noise | c1 | c1 | c1 | - | - | - | 1 | - | - | c3:modifies |
 | SZZ-0084 | PASS | scenarios | exact_set | - | Intermediate noise and history noise | c1 | c1 | c1 | - | - | - | 1 | - | - | c3:modifies |
 | SZZ-0085 | PASS | scenarios | exact_set | - | Intermediate noise and history noise | c1 | c1 | c1 | - | - | - | 1 | - | - | c3:modifies |
@@ -87,7 +86,6 @@
 | SZZ-0117 | PASS | scenarios | exact_set | - | BFC-side noise and tangled commits | c1 | c1 | c1 | - | - | - | 1 | - | - | c2:modifies |
 | SZZ-0118 | PASS | scenarios | exact_set | - | BFC-side noise and tangled commits | c1 | c1 | c1 | - | - | - | 1 | - | - | c2:modifies |
 | SZZ-0119 | PASS | scenarios | exact_set | - | BFC-side noise and tangled commits | c1 | c1 | c1 | - | - | - | 1 | - | - | c2:modifies |
-| SZZ-0120 | PASS | scenarios | exact_set | - | BFC-side noise and tangled commits | c1 | c1 | c1 | - | - | - | 1 | - | - | c2:modifies |
 | SZZ-0121 | FAIL | scenarios | exact_set | - | BFC-side noise and tangled commits | c1 | c0, c1 | c1 | c0 | - | - | 2 | - | - | c2:modifies |
 | SZZ-0122 | PASS | scenarios | exact_set | - | BFC-side noise and tangled commits | c1 | c1 | c1 | - | - | - | 1 | - | - | c2:modifies |
 | SZZ-0123 | PASS | scenarios | exact_set | - | BFC-side noise and tangled commits | c1 | c1 | c1 | - | - | - | 1 | - | - | c2:modifies |

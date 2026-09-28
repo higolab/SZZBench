@@ -11,7 +11,7 @@ meta:
   category: "Issue, message, context, and non-local evidence"
   category_code: "G7"
   factors:
-  - misleading-fix-message
+  - misleading-message
   - rewrite-after-bic
   - basic-blame-distractor
   - semantics-required
