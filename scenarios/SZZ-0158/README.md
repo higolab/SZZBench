@@ -14,14 +14,18 @@
 
 ## Purpose
 
-S7's pair on what a commit message is worth. Here the message is **wrong**: the
-fix says it suspected "the first version of the comparison", which is `c0`, and
-the commit that made the check exclusive is `c1`. A tool that reads the message
-and follows it reports `c0`; blame on the line the fix deletes reports `c1` and
-is right. Its twin, [SZZ-0159](../SZZ-0159/README.md), is the same history with
-a message that tells the truth — the two differ in whether the non-local
-evidence should be believed, and that is now what their factors say
-(`misleading-message` here, `message-evidence` there).
+S7 asks what a commit message is worth. Here the message is **wrong**: the fix
+says it suspected "the first version of the comparison", which is `c0`, and the
+commit that made the check exclusive is `c1`. A tool that reads the message and
+follows it reports `c0`; blame on the line the fix deletes reports `c1` and is
+right.
+
+[SZZ-0159](../SZZ-0159/README.md) is the counterpart, and the two are not a
+controlled pair: they are separate three-commit boundary histories, with
+different faults (`value < max` here, `value > min` there), authors and dates.
+What they contrast is what the fix's message does with the evidence, which is
+what their factors now say — `misleading-message` here, `message-evidence`
+there.
 
 ## Commit structure
 

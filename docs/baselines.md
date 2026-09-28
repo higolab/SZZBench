@@ -516,13 +516,13 @@ ref_count              1:224, 2:49, 3:5, 4:1
 131 distinct signatures; 48 groups of two or more, covering 196 scenarios
 ```
 
-The largest groups are 30 S3, 13 S1, 10 S4, 8 S2 and 8 G1 scenarios that agree
+The largest groups are 29 S3, 13 S1, 9 S4, 8 S2 and 8 G1 scenarios that agree
 on every dimension; 83 scenarios have a signature of their own (`bic_depth`
 is `none` for the two empty oracles).
 
 `blame_class` is the `blame-deleted-lines` baseline read per scenario rather
-than as a pass count, and the two agree: the 156 `exact` scenarios are exactly
-the ones that baseline solves, except SZZG-0138, which it solves although its
+than as a pass count, and the two agree: the 155 `exact` scenarios are exactly
+the ones that baseline solves, and it solves one more, SZZG-0138, although its
 class is `miss` — blame reaches two of the three required commits, and the
 scenario's `partial_credit` policy with `minimum_required: 2` accepts that. Of the
 46 `discriminating` scenarios, 43 are `miss`, SZZ-0214 is `addition-only` (its fix

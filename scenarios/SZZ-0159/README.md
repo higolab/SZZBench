@@ -14,15 +14,18 @@
 
 ## Purpose
 
-S7's pair on what a commit message is worth. Here the message is **right**: the
-fix names "the previous change" as the cause, and that is `c1`. Nothing in the
-code says which earlier commit made the boundary exclusive, so a tool that reads
-only the diff has blame and nothing else, while a tool that reads the message
-gets a second witness that agrees with it. Its twin,
-[SZZ-0158](../SZZ-0158/README.md), is the same history with a message that
-points at the wrong commit — the two differ in whether the non-local evidence
-should be believed, and that is now what their factors say (`message-evidence`
-here, `misleading-message` there).
+S7 asks what a commit message is worth. Here the message is **right**: the fix
+names "the previous change" as the cause, and that is `c1`. Nothing in the code
+says which earlier commit made the boundary exclusive, so a tool that reads only
+the diff has blame and nothing else, while a tool that reads the message gets a
+second witness that agrees with it.
+
+[SZZ-0158](../SZZ-0158/README.md) is the counterpart, and the two are not a
+controlled pair: they are separate three-commit boundary histories, with
+different faults (`value > min` here, `value < max` there), authors and dates.
+What they contrast is what the fix's message does with the evidence, which is
+what their factors now say — `message-evidence` here, `misleading-message`
+there.
 
 ## Commit structure
 
