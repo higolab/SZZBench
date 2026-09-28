@@ -225,21 +225,6 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0081/scenario.yml
-- id: SZZ-0082
-  title: Formatting-only rewrite after bug introduction
-  slug: formatting-only-rewrite-after-bic
-  category_code: S3
-  category: Intermediate noise and history noise
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - formatting-after-bic
-  - line-number-shift
-  - basic-blame-distractor
-  difficulty: hard
-  status: active
-  path: scenarios/SZZ-0082/scenario.yml
 - id: SZZ-0083
   title: Whitespace-only rewrite after bug introduction
   slug: whitespace-only-rewrite-after-bic
@@ -729,19 +714,6 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0119/scenario.yml
-- id: SZZ-0120
-  title: BFC with unrelated helper addition
-  slug: bfc-with-unrelated-helper
-  category_code: S4
-  category: BFC-side noise and tangled commits
-  factors:
-  - single-bic
-  - single-bfc
-  - line-modification
-  - tangled-bfc
-  difficulty: medium
-  status: active
-  path: scenarios/SZZ-0120/scenario.yml
 - id: SZZ-0121
   title: BFC with cleanup of unrelated method
   slug: bfc-with-cleanup
@@ -1006,6 +978,7 @@ scenarios:
   - single-bfc
   - line-modification
   - context-aware
+  - misleading-message
   difficulty: medium
   status: active
   path: scenarios/SZZ-0158/scenario.yml
@@ -1019,6 +992,7 @@ scenarios:
   - single-bfc
   - line-modification
   - context-aware
+  - message-evidence
   difficulty: medium
   status: active
   path: scenarios/SZZ-0159/scenario.yml

@@ -37,3 +37,12 @@ the faulty line during formatting.
 `hard` by the floor rule of `decisions/vocabulary.md` §4 (decided 2026-09-22): plain
 first-parent blame on the lines the fix deletes is `miss` for this scenario, and a scenario may not
 declare less than that class sets. The author's grade was `medium`.
+
+## Absorbed variant
+
+SZZ-0082 ran the same four-commit shape on a `ScoreGate` class instead of
+`Range` and declared the same six factors; it was retired on 2026-09-28 and
+this scenario keeps the shape (`docs/retired-ids.md`,
+`decisions/consolidation-matrix.md` §3). The variant that a whitespace-
+insensitive blame recovers is a different scenario, SZZ-0083, and stays: the
+pair is what separates plain `git blame` from `git blame -w`.

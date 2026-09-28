@@ -26,3 +26,10 @@ and an unrelated helper-method addition.
 ## Expected behavior
 
 SZZ should use the actual fix hunk and report `c1` as the bug-introducing commit.
+
+## Absorbed variant
+
+SZZ-0120 ran the same three-commit shape with different names and declared the
+same four factors; it was retired on 2026-09-28 and this scenario keeps the
+tangled-BFC shape (`docs/retired-ids.md`,
+`decisions/consolidation-matrix.md` §3).

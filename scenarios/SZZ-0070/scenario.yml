@@ -3,7 +3,12 @@ meta:
   id: SZZ-0070
   title: State transition check omission
   slug: state-transition-check-omission
-  description: 'This scenario represents an omission bug: the method is introduced without a necessary state transition check, and the bug-fixing commit adds the missing statement.'
+  description: >-
+    An order lifecycle is introduced with a transition method that accepts every
+    pair of distinct states. The bug-fixing commit adds the transition table the
+    method never had. The omitted check is a property of the ordered pair
+    (from, to), not a guard on one argument, which is what separates this
+    scenario from the single-guard omissions SZZ-0047, SZZ-0053 and SZZ-0076.
   category: "Omission and deletion bugs"
   factors:
   - single-bic
@@ -22,80 +27,143 @@ repository:
   source_root: src/main/java
 commits:
 - id: c0
-  message: Initial class
+  message: Add the order lifecycle states
   author: Hana Sato <hana.sato@example.com>
   date: 2023-05-12T13:07:00Z
   role: initial
   operations:
   - type: write_file
-    path: src/main/java/example/Scenario0070.java
-    content: 'package example;
+    path: src/main/java/example/OrderLifecycle.java
+    content: |
+      package example;
 
-
-      public class Scenario0070 {
-
+      public class OrderLifecycle {
+          public enum Status { NEW, READY, RUNNING, DONE }
       }
 
-      '
 - id: c1
-  message: Add canStart without state transition check
+  message: Allow a transition between any two different states
   author: Diego Alvarez <diego.alvarez@example.com>
   date: 2023-05-15T09:22:00Z
   role: bug_introducing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0070.java
-    old: 'package example;
+    path: src/main/java/example/OrderLifecycle.java
+    old: |
+      package example;
 
-
-      public class Scenario0070 {
-
+      public class OrderLifecycle {
+          public enum Status { NEW, READY, RUNNING, DONE }
       }
 
-      '
-    new: "package example;\n\npublic class Scenario0070 {\n    public boolean canStart(boolean ready) {\n        return true;\n    }\n}\n"
+    new: |
+      package example;
+
+      public class OrderLifecycle {
+          public enum Status { NEW, READY, RUNNING, DONE }
+
+          public boolean canTransition(Status from, Status to) {
+              return from != to;
+          }
+      }
+
     labels:
     - B001
     - fault
 - id: c2
-  message: Add missing state transition check
+  message: Only allow the transitions the lifecycle defines
   author: Luca Moretti <luca.moretti@example.com>
   date: 2023-05-16T12:41:00Z
   role: bug_fixing
   operations:
   - type: replace
-    path: src/main/java/example/Scenario0070.java
-    old: "package example;\n\npublic class Scenario0070 {\n    public boolean canStart(boolean ready) {\n        return true;\n    }\n}\n"
-    new: "package example;\n\npublic class Scenario0070 {\n    public boolean canStart(boolean ready) {\n        if (!ready) {\n            return false;\n        }\n        return true;\n    }\n}\n"
+    path: src/main/java/example/OrderLifecycle.java
+    old: |
+      package example;
+
+      public class OrderLifecycle {
+          public enum Status { NEW, READY, RUNNING, DONE }
+
+          public boolean canTransition(Status from, Status to) {
+              return from != to;
+          }
+      }
+
+    new: |
+      package example;
+
+      public class OrderLifecycle {
+          public enum Status { NEW, READY, RUNNING, DONE }
+
+          public boolean canTransition(Status from, Status to) {
+              if (from == Status.DONE) {
+                  return false;
+              }
+              if (from == Status.NEW && to != Status.READY) {
+                  return false;
+              }
+              if (from == Status.READY && to != Status.RUNNING) {
+                  return false;
+              }
+              if (from == Status.RUNNING && to != Status.DONE) {
+                  return false;
+              }
+              return from != to;
+          }
+      }
+
     labels:
     - B001
     - fix
 bugs:
 - id: B001
-  title: State transition check omission
+  title: Every pair of distinct states is accepted as a legal transition
   bug_fixing_commit: c2
   bug_introducing_commits:
   - c1
   fault:
     commit: c1
-    file: src/main/java/example/Scenario0070.java
+    file: src/main/java/example/OrderLifecycle.java
     entity:
       type: method
-      name: canStart
-      signature: boolean canStart(boolean ready)
+      name: canTransition
+      signature: boolean canTransition(Status from, Status to)
     change_type: omission
-    missing_statement: "if (!ready) {\n            return false;\n        }\n"
-  fix:
-    commit: c2
-    file: src/main/java/example/Scenario0070.java
-    entity:
-      type: method
-      name: canStart
-      signature: boolean canStart(boolean ready)
-    added_statement: |
-      if (!ready) {
+    missing_statement: |
+      if (from == Status.DONE) {
                   return false;
               }
+              if (from == Status.NEW && to != Status.READY) {
+                  return false;
+              }
+              if (from == Status.READY && to != Status.RUNNING) {
+                  return false;
+              }
+              if (from == Status.RUNNING && to != Status.DONE) {
+                  return false;
+              }
+
+  fix:
+    commit: c2
+    file: src/main/java/example/OrderLifecycle.java
+    entity:
+      type: method
+      name: canTransition
+      signature: boolean canTransition(Status from, Status to)
+    added_statement: |
+      if (from == Status.DONE) {
+                  return false;
+              }
+              if (from == Status.NEW && to != Status.READY) {
+                  return false;
+              }
+              if (from == Status.READY && to != Status.RUNNING) {
+                  return false;
+              }
+              if (from == Status.RUNNING && to != Status.DONE) {
+                  return false;
+              }
+
     fix_type: line_addition
   expected_szz:
     commit_level:
@@ -104,7 +172,7 @@ bugs:
       false_positives_allowed: []
     line_level:
       available: false
-      reason: The fault is an omitted statement, so no faulty deleted line exists.
+      reason: The fault is an omitted transition table, so no faulty deleted line exists.
 checks:
 - type: git_history_contains
   commits:

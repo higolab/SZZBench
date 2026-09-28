@@ -3,13 +3,19 @@ meta:
   id: SZZ-0158
   title: BFC message has misleading reference
   slug: bfc-message-misleading-reference
-  description: This scenario is intended for evaluating SZZ variants that use commit messages or broader patch context.
+  description: >-
+    The fix's message blames "the first version of the comparison", which is
+    c0, the initial implementation. The commit that introduced the fault is c1.
+    A tool that reads the message and trusts it reports the wrong commit; the
+    lines the fix deletes blame to c1 and are right. Here the message is
+    evidence that has to be rejected.
   category: "Context, message, and non-local evidence"
   factors:
   - single-bic
   - single-bfc
   - line-modification
   - context-aware
+  - misleading-message
   difficulty: medium
   status: active
   tier: control

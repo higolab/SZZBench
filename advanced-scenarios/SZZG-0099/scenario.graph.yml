@@ -9,7 +9,7 @@ meta:
   category_code: "G7"
   factors:
   - message-evidence
-  - misleading-commit-message
+  - misleading-message
   difficulty: easy
   status: active
   tier: control
