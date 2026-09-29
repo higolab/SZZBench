@@ -37,17 +37,25 @@ def main(argv: list[str] | None = None) -> int:
         if scenario_id is None:
             errors.append(f"Cannot infer scenario id from {result_path}")
             continue
+        # A result that cannot be used is written as a failed record, so that
+        # SZZBench scores a tool error rather than a missing or empty answer (#95).
         try:
             pairs = json.loads(result_path.read_text(encoding="utf-8"))
         except OSError as exc:
             errors.append(f"Cannot read {result_path}: {exc}")
+            records.append(_failed_record(scenario_id, errors[-1]))
             continue
         except json.JSONDecodeError as exc:
             errors.append(f"Invalid JSON in {result_path}: {exc}")
+            records.append(_failed_record(scenario_id, errors[-1]))
             continue
         predictions, conversion_errors = _convert_pairs(pairs, scenario_id, result_path, generated_root, args.tool)
         errors.extend(conversion_errors)
-        records.append({"scenario_id": scenario_id, "predictions": predictions})
+        record: dict[str, Any] = {"scenario_id": scenario_id, "predictions": predictions}
+        if conversion_errors:
+            record["status"] = "error"
+            record["errors"] = conversion_errors
+        records.append(record)
 
     output = "".join(json.dumps(record, ensure_ascii=False) + "\n" for record in records)
     if args.out:
@@ -60,6 +68,10 @@ def main(argv: list[str] | None = None) -> int:
     for error in errors:
         print(f"[ERROR] {error}", file=sys.stderr)
     return 1 if errors else 0
+
+
+def _failed_record(scenario_id: str, error: str) -> dict[str, Any]:
+    return {"scenario_id": scenario_id, "status": "error", "errors": [error], "predictions": []}
 
 
 def _scenario_id_from_path(generated_root: Path, result_path: Path) -> str | None:

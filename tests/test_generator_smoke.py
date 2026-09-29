@@ -451,6 +451,7 @@ def test_evaluate_graph_top_k_reports_ranked_hits(tmp_path):
         "status_k": 3,
         "relevant": ["c2"],
         "ranked_actual_bics": ["c1", "c2"],
+        "unknown_ranks": [],
         "best_rank": 2,
         "hit_at": {"1": False, "3": True},
         "mrr": 0.5,

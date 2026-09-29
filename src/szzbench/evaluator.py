@@ -110,6 +110,10 @@ class ScenarioEvaluation:
     expect_no_bic: bool = False
     fix_shape: dict[str, str] | None = None
     branch_level: dict[str, Any] | None = None
+    #: what the tool's run on the scenario came to: ``ok`` (a record was given),
+    #: ``error`` (the record says the tool failed) or ``missing`` (no record at all)
+    run_status: str = "ok"
+    run_errors: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -117,6 +121,8 @@ class ScenarioEvaluation:
             "suite": self.suite,
             "category": self.category,
             "status": self.status,
+            "run_status": self.run_status,
+            "run_errors": self.run_errors,
             "expected_bics": self.expected_bics,
             "actual_bics": self.actual_bics,
             "true_positives": self.true_positives,
@@ -158,8 +164,11 @@ class EvaluationReport:
         total = len(self.scenarios)
         passed = sum(1 for item in self.scenarios if item.status == "PASS")
         failed = sum(1 for item in self.scenarios if item.status != "PASS")
+        tool_errors = sum(1 for item in self.scenarios if item.run_status == "error")
+        missing_records = sum(1 for item in self.scenarios if item.run_status == "missing")
         tp = sum(len(item.true_positives) for item in self.scenarios)
         fp = sum(len(item.false_positives) for item in self.scenarios)
+        unknown = sum(len(item.unknown_predictions) for item in self.scenarios)
         fn = sum(len(item.false_negatives) for item in self.scenarios)
         allowed_fp = sum(len(item.allowed_false_positives) for item in self.scenarios)
         hard_fp = sum(len(item.hard_false_positives) for item in self.scenarios)
@@ -175,7 +184,8 @@ class EvaluationReport:
                 fix_shape_counts[shape] = fix_shape_counts.get(shape, 0) + 1
         possible_credit = sum(item.possible_credit for item in self.scenarios if item.possible_credit is not None)
         weighted_credit = sum(item.weighted_credit for item in self.scenarios if item.weighted_credit is not None)
-        precision = _ratio(tp, tp + fp)
+        # an unknown reference is a false positive of its own kind (issue #95)
+        precision = _ratio(tp, tp + fp + unknown)
         recall = _ratio(tp, tp + fn)
         by_suite: dict[str, dict[str, int]] = {}
         for item in self.scenarios:
@@ -189,8 +199,11 @@ class EvaluationReport:
             "total_scenarios": total,
             "pass": passed,
             "fail": failed,
+            "tool_errors": tool_errors,
+            "missing_records": missing_records,
             "true_positives": tp,
             "false_positives": fp,
+            "unknown_predictions": unknown,
             "false_negatives": fn,
             "allowed_false_positives": allowed_fp,
             "hard_false_positives": hard_fp,
@@ -226,8 +239,11 @@ class EvaluationReport:
             f"- Total scenarios: {summary['total_scenarios']}",
             f"- PASS: {summary['pass']}",
             f"- FAIL: {summary['fail']}",
+            f"- Tool errors: {summary['tool_errors']}",
+            f"- Missing prediction records: {summary['missing_records']}",
             f"- True positives: {summary['true_positives']}",
             f"- False positives: {summary['false_positives']}",
+            f"- Unknown predictions (counted as false positives): {summary['unknown_predictions']}",
             f"- False negatives: {summary['false_negatives']}",
             f"- Allowed false positives: {summary['allowed_false_positives']}",
             f"- Hard false positives: {summary['hard_false_positives']}",
@@ -253,8 +269,8 @@ class EvaluationReport:
             [
                 "## Results",
                 "",
-                "| Scenario | Status | Suite | Policy | Variant | Category | Expected BICs | Actual BICs | TP | FP | FN | Allowed FP | Predictions | Top-k | Distractor hits | Fix shape |",
-                "|---|---:|---|---|---|---|---|---|---|---|---|---|---:|---|---|---|",
+                "| Scenario | Status | Run | Suite | Policy | Variant | Category | Expected BICs | Actual BICs | TP | FP | Unknown | FN | Allowed FP | Predictions | Top-k | Distractor hits | Fix shape |",
+                "|---|---:|---|---|---|---|---|---|---|---|---|---|---|---|---:|---|---|---|",
             ]
         )
         for item in self.scenarios:
@@ -264,6 +280,7 @@ class EvaluationReport:
                     [
                         item.scenario_id,
                         item.status,
+                        item.run_status,
                         item.suite,
                         item.evaluation_policy or "-",
                         item.evaluation_variant or "-",
@@ -272,6 +289,7 @@ class EvaluationReport:
                         _join_ids(item.actual_bics),
                         _join_ids(item.true_positives),
                         _join_ids(item.false_positives),
+                        _join_ids(item.unknown_predictions),
                         _join_ids(item.false_negatives),
                         _join_ids(item.allowed_false_positives),
                         str(item.prediction_count),
@@ -310,10 +328,11 @@ def evaluate_predictions(
     if predictions_path is None:
         predictions_by_scenario: dict[str, list[Prediction]] = {}
         explicit_scenarios: set[str] = set()
+        run_errors: dict[str, list[str]] = {}
         errors: list[str] = []
         warnings: list[str] = []
     else:
-        predictions_by_scenario, explicit_scenarios, errors, warnings = load_predictions(predictions_path)
+        predictions_by_scenario, explicit_scenarios, run_errors, errors, warnings = load_predictions(predictions_path)
     return evaluate_prediction_map(
         predictions_by_scenario,
         generated_root=generated_root,
@@ -324,6 +343,7 @@ def evaluate_predictions(
         evaluation_variant=evaluation_variant,
         reference_format=reference_format,
         explicit_scenarios=explicit_scenarios,
+        run_errors=run_errors,
         errors=errors,
         warnings=warnings,
     )
@@ -340,6 +360,7 @@ def evaluate_prediction_map(
     evaluation_variant: str | None = None,
     reference_format: str = "auto",
     explicit_scenarios: set[str] | None = None,
+    run_errors: dict[str, list[str]] | None = None,
     errors: list[str] | None = None,
     warnings: list[str] | None = None,
 ) -> EvaluationReport:
@@ -348,9 +369,16 @@ def evaluate_prediction_map(
     :func:`evaluate_predictions` is the file-based entry point; the baseline
     predictors of ``szzbench baselines`` call this one so that they are scored
     by exactly the same policies as a real tool run.
+
+    ``explicit_scenarios`` are the scenarios a record names, an empty one
+    included; ``run_errors`` maps a scenario to what its record says went wrong.
+    A scenario that only ``include_generated`` brings in has no record: it
+    FAILs with ``run_status: missing`` instead of being read as an abstention,
+    and a scenario with a run error FAILs with ``run_status: error`` (issue #95).
     """
     errors = list(errors or [])
     warnings = list(warnings or [])
+    run_errors = run_errors or {}
     requested = set(explicit_scenarios or predictions_by_scenario.keys())
     scenario_ids = set(requested)
     if include_generated:
@@ -375,6 +403,12 @@ def evaluate_prediction_map(
         errors.extend(commit_map_errors)
         if commit_map is None:
             continue
+        if scenario_id in run_errors:
+            run_status = "error"
+        elif scenario_id in requested:
+            run_status = "ok"
+        else:
+            run_status = "missing"
         evaluations.append(
             evaluate_scenario(
                 scenario_id,
@@ -386,6 +420,8 @@ def evaluate_prediction_map(
                 evaluation_variant=evaluation_variant,
                 repo_dir=generated_root / scenario_id / variant / "repo",
                 reference_format=reference_format,
+                run_status=run_status,
+                run_errors=run_errors.get(scenario_id, []),
             )
         )
     # Oracle-related notes (inferred required set, unread oracle sections,
@@ -418,6 +454,8 @@ def evaluate_scenario(
     evaluation_variant: str | None = None,
     repo_dir: Path | None = None,
     reference_format: str = "auto",
+    run_status: str = "ok",
+    run_errors: Sequence[str] = (),
 ) -> ScenarioEvaluation:
     """Score one scenario's predictions against its commit-level oracle.
 
@@ -425,13 +463,20 @@ def evaluate_scenario(
     When it is given, each bug-fixing commit's first-parent diff is classified
     into a fix shape; when it is missing or Git fails, the classification is
     skipped with a result note.
+
+    ``run_status`` is ``ok``, ``error`` (the record reports that the tool failed,
+    ``run_errors`` says how) or ``missing`` (there is no record); anything but
+    ``ok`` fails the scenario whatever the predictions are (issue #95).
     """
     policy = _commit_level_policy(scenario, suite, evaluation_variant)
     notes = list(policy.notes)
     hash_to_id = _hash_to_logical_id(commit_map)
-    ranked_actual_ids, unknown_predictions = _ranked_actual_ids(predictions, commit_map, hash_to_id, reference_format=reference_format)
+    ranking = _ranking(predictions, commit_map, hash_to_id, reference_format=reference_format)
+    ranked_actual_ids = [reference for reference, known in ranking if known]
+    unknown_predictions = [reference for reference, known in ranking if not known]
 
-    scored = classify_prediction(policy, ranked_actual_ids, unknown_predictions=unknown_predictions)
+    scored = classify_prediction(policy, ranked_actual_ids, unknown_predictions=unknown_predictions,
+                                 ranking=ranking)
     expected = set(policy.required)
     true_positives = scored.true_positives
     false_positives = scored.false_positives
@@ -454,7 +499,16 @@ def evaluate_scenario(
         failed = [name for name, entry in branch_level["branches"].items() if entry["status"] != "PASS"]
         notes.append(f"branch_level: the commit-level oracle passes but branch(es) {', '.join(failed)} fail, so the scenario fails.")
         status = "FAIL"
-    precision = _ratio(len(true_positives), len(true_positives) + len(false_positives))
+    if run_status == "missing":
+        notes.append("no prediction record: scored as a failure, not as an abstention "
+                     "(a record with an empty prediction list is an abstention).")
+        status = "FAIL"
+    elif run_status == "error":
+        notes.append(f"the tool reported an error ({'; '.join(run_errors)}), so the scenario fails "
+                     "whatever it predicted.")
+        status = "FAIL"
+    # an unknown reference is a false positive of its own kind (issue #95)
+    precision = _ratio(len(true_positives), len(true_positives) + len(false_positives) + len(unknown_predictions))
     recall = _ratio(len(true_positives), len(true_positives) + len(false_negatives))
     category = _scenario_category(scenario)
     fix_shape = _classify_fix_shapes(scenario, commit_map, repo_dir, notes) if repo_dir is not None else None
@@ -491,6 +545,8 @@ def evaluate_scenario(
         expect_no_bic=policy.expect_no_bic,
         fix_shape=fix_shape,
         branch_level=branch_level,
+        run_status=run_status,
+        run_errors=list(run_errors),
     )
 
 
@@ -572,16 +628,28 @@ def _branch_level_result(
     return {"status": overall, "branches": branches}
 
 
-def load_predictions(path: Path) -> tuple[dict[str, list[Prediction]], set[str], list[str], list[str]]:
+#: Values of a record's optional ``status``: what the tool's run on the scenario
+#: came to.  ``error`` makes the scenario FAIL with ``run_status: error`` whatever
+#: the record predicts (issue #95); matching is case-insensitive.
+RECORD_STATUSES = ("ok", "error")
+
+
+def load_predictions(
+    path: Path,
+) -> tuple[dict[str, list[Prediction]], set[str], dict[str, list[str]], list[str], list[str]]:
+    """Read a predictions file: the predictions per scenario, the scenarios a
+    record names, the run errors records report per scenario, and the loading
+    errors and warnings."""
     errors: list[str] = []
     warnings: list[str] = []
     try:
         text = path.read_text(encoding="utf-8")
     except OSError as exc:
-        return {}, set(), [f"Cannot read predictions file: {exc}"], []
+        return {}, set(), {}, [f"Cannot read predictions file: {exc}"], []
     records = _parse_prediction_records(text, str(path), errors)
     predictions: dict[str, list[Prediction]] = {}
     explicit_scenarios: set[str] = set()
+    run_errors: dict[str, list[str]] = {}
     for location, record in records:
         if not isinstance(record, dict):
             errors.append(f"{location}: prediction record must be a JSON object.")
@@ -590,6 +658,15 @@ def load_predictions(path: Path) -> tuple[dict[str, list[Prediction]], set[str],
         if not isinstance(scenario_id, str) or not scenario_id:
             errors.append(f"{location}: prediction record lacks string scenario_id.")
             continue
+        status = record.get("status")
+        if status is not None and (not isinstance(status, str) or status.lower() not in RECORD_STATUSES):
+            errors.append(f"{location}: status must be one of {', '.join(RECORD_STATUSES)} when present "
+                          f"(got {status!r}).")
+            continue
+        failed = status is not None and status.lower() == "error"
+        if failed:
+            reported = run_errors.setdefault(scenario_id, [])
+            reported.extend(message for message in _run_error_messages(record.get("errors")) if message not in reported)
         explicit_scenarios.add(scenario_id)
         nested = record.get("predictions")
         if nested is not None:
@@ -601,10 +678,23 @@ def load_predictions(path: Path) -> tuple[dict[str, list[Prediction]], set[str],
                 if prediction is not None:
                     predictions.setdefault(scenario_id, []).append(prediction)
             continue
+        if failed and _first_string(record, INDUCING_COMMIT_KEYS) is None:
+            continue    # a record that only reports the failure
         prediction = _prediction_from_record(scenario_id, record, location, errors)
         if prediction is not None:
             predictions.setdefault(scenario_id, []).append(prediction)
-    return predictions, explicit_scenarios, errors, warnings
+    return predictions, explicit_scenarios, run_errors, errors, warnings
+
+
+def _run_error_messages(value: Any) -> list[str]:
+    """The messages of a record's ``errors`` (a string or a list of them)."""
+    if isinstance(value, str) and value:
+        return [value]
+    if isinstance(value, list):
+        messages = [str(item) for item in value if item is not None and str(item)]
+        if messages:
+            return messages
+    return ["the tool reported an error"]
 
 
 def _parse_prediction_records(text: str, path_display: str, errors: list[str]) -> list[tuple[str, Any]]:
@@ -642,7 +732,7 @@ def _prediction_from_record(
     if not isinstance(record, dict):
         errors.append(f"{location}: prediction must be a JSON object.")
         return None
-    inducing_commit = _first_string(record, ["inducing_commit", "bug_introducing_commit", "bic", "inducing_commit_hash"])
+    inducing_commit = _first_string(record, INDUCING_COMMIT_KEYS)
     if inducing_commit is None:
         errors.append(f"{location}: prediction lacks inducing_commit.")
         return None
@@ -679,6 +769,8 @@ def _prediction_from_record(
 
 #: Record keys that name the bug-fixing commit a prediction was made from.
 FIX_COMMIT_KEYS = ["fix_commit", "bug_fixing_commit", "fix_commit_hash"]
+#: Record keys that name the predicted bug-inducing commit.
+INDUCING_COMMIT_KEYS = ["inducing_commit", "bug_introducing_commit", "bic", "inducing_commit_hash"]
 
 
 def _first_string(record: dict[str, Any], keys: list[str]) -> str | None:
@@ -952,13 +1044,19 @@ def _status_k_value(value: Any, notes: list[str]) -> int | None:
     return None
 
 
-def _ranked_actual_ids(
+def _ranking(
     predictions: list[Prediction],
     commit_map: dict[str, Any],
     hash_to_id: dict[str, str],
     *,
     reference_format: str = "auto",
-) -> tuple[list[str], list[str]]:
+) -> list[tuple[str, bool]]:
+    """The predicted commits in rank order, each once, as ``(reference, known)``.
+
+    A known reference is normalized to its logical id; an unknown one is kept
+    as written and holds its place, so under ``top_k`` it pushes a correct
+    commit ranked after it down just as a wrong known commit does (issue #95).
+    """
     indexed_predictions = list(enumerate(predictions))
     if any(prediction.rank is not None for prediction in predictions):
         indexed_predictions.sort(
@@ -968,18 +1066,27 @@ def _ranked_actual_ids(
                 item[0],
             )
         )
-    ranked_actual_ids: list[str] = []
-    seen: set[str] = set()
-    unknown_predictions: list[str] = []
+    ranking: list[tuple[str, bool]] = []
+    seen: set[tuple[str, bool]] = set()
     for _, prediction in indexed_predictions:
         normalized = _normalize_commit_ref(prediction.inducing_commit, commit_map, hash_to_id, reference_format=reference_format)
-        if normalized is None:
-            unknown_predictions.append(prediction.inducing_commit)
-            continue
-        if normalized not in seen:
-            ranked_actual_ids.append(normalized)
-            seen.add(normalized)
-    return ranked_actual_ids, unknown_predictions
+        entry = (prediction.inducing_commit, False) if normalized is None else (normalized, True)
+        if entry not in seen:
+            ranking.append(entry)
+            seen.add(entry)
+    return ranking
+
+
+def _ranked_actual_ids(
+    predictions: list[Prediction],
+    commit_map: dict[str, Any],
+    hash_to_id: dict[str, str],
+    *,
+    reference_format: str = "auto",
+) -> tuple[list[str], list[str]]:
+    """The known predicted commits in rank order, and the unknown references."""
+    ranking = _ranking(predictions, commit_map, hash_to_id, reference_format=reference_format)
+    return [ref for ref, known in ranking if known], [ref for ref, known in ranking if not known]
 
 
 def _weighted_credit(
@@ -1005,7 +1112,14 @@ def _minimum_required_met(policy: CommitLevelPolicy, true_positive_count: int) -
     return None
 
 
-def _top_k_metrics(policy: CommitLevelPolicy, ranked_actual_ids: list[str]) -> dict[str, Any] | None:
+def _top_k_metrics(policy: CommitLevelPolicy, ranking: list[tuple[str, bool]]) -> dict[str, Any] | None:
+    """hit@k and MRR over ``ranking``, the ``(reference, known)`` pairs in rank order.
+
+    An unknown reference holds its rank but is never a hit, even when it is
+    spelled like a relevant logical id: under ``--reference-format hash`` the
+    id ``c1`` is an unknown reference, and reading it as ``c1`` put a hit at
+    rank 1 that belonged to the hash at rank 2 (PR #99 review).
+    """
     if policy.evaluation_policy != "top_k" and not policy.k_values:
         return None
     relevant = set(policy.relevant or policy.required)
@@ -1015,15 +1129,16 @@ def _top_k_metrics(policy: CommitLevelPolicy, ranked_actual_ids: list[str]) -> d
     else:
         status_k = max(policy.k_values) if policy.k_values else 1
     best_rank = None
-    for index, commit in enumerate(ranked_actual_ids, start=1):
-        if commit in relevant:
+    for index, (commit, known) in enumerate(ranking, start=1):
+        if known and commit in relevant:
             best_rank = index
             break
     return {
         "k_values": k_values,
         "status_k": status_k,
         "relevant": sorted(relevant),
-        "ranked_actual_bics": ranked_actual_ids,
+        "ranked_actual_bics": [commit for commit, known in ranking if known],
+        "unknown_ranks": [index for index, (_, known) in enumerate(ranking, start=1) if not known],
         "best_rank": best_rank,
         "hit_at": {str(k): best_rank is not None and best_rank <= k for k in k_values},
         "mrr": (1.0 / best_rank) if best_rank is not None else 0.0,
@@ -1064,8 +1179,14 @@ def classify_prediction(
     ranked_actual_ids: Sequence[str],
     *,
     unknown_predictions: Sequence[str] = (),
+    ranking: Sequence[tuple[str, bool]] | None = None,
 ) -> ScoredPrediction:
-    """Score `ranked_actual_ids` against `policy`."""
+    """Score `ranked_actual_ids` against `policy`.
+
+    ``ranking`` is the full rank order as ``(reference, known)`` pairs, unknown
+    references included; ``top_k`` reads it when it is given and
+    ``ranked_actual_ids`` otherwise.
+    """
     expected = set(policy.required)
     allowed_map = {item.commit: item for item in policy.acceptable_related}
     allowed = set(allowed_map)
@@ -1078,7 +1199,8 @@ def classify_prediction(
     weighted_credit = _weighted_credit(true_positives, acceptable_related_hits, len(expected))
     possible_credit = float(len(expected)) if expected else None
     minimum_required_met = _minimum_required_met(policy, len(true_positives))
-    top_k = _top_k_metrics(policy, list(ranked_actual_ids))
+    top_k = _top_k_metrics(policy, list(ranking) if ranking is not None
+                           else [(commit, True) for commit in ranked_actual_ids])
     false_positives = sorted(actual - expected - allowed)
     false_negatives = sorted(expected - actual)
     hard_false_positives = sorted(actual - expected - allowed - related_origins - related_but_not_correct)

@@ -491,14 +491,15 @@ def run_baselines(
                 ]
         # Scenarios the rule says nothing about are scored only for the rule
         # that exists to say nothing; for every other rule they are simply not
-        # solved by it.
+        # solved by it.  The abstaining rule names every scenario explicitly:
+        # a scenario without a record is a failure, not an abstention (#95).
         report = evaluate_prediction_map(
             predictions,
             generated_root=generated_root,
             scenarios_root=scenarios_root,
             advanced_scenarios_root=advanced_scenarios_root,
             variant=variant,
-            include_generated=baseline.scores_on_abstention,
+            explicit_scenarios=set(by_id) if baseline.scores_on_abstention else None,
         )
         result = BaselineResult(name=baseline.name, family=baseline.family,
                                 description=baseline.description)

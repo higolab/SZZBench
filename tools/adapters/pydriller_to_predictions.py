@@ -27,7 +27,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--include-empty-records",
         action="store_true",
-        help="Emit scenario records even when PyDriller produced no predictions.",
+        help="Kept for compatibility: every scenario the adapter ran on now gets a record, an empty one when "
+             "PyDriller found nothing, because SZZBench fails a scenario without a record (issue #95).",
     )
     args = parser.parse_args(argv)
 
@@ -63,11 +64,16 @@ def main(argv: list[str] | None = None) -> int:
         )
         results.append(result)
 
+    # One record per scenario the adapter ran on: an empty one is PyDriller's answer
+    # "nothing", and a failure is written into the record so that SZZBench scores
+    # it as a tool error instead of an abstention (issue #95).
     records = []
     for result in results:
-        predictions = result.get("predictions") or []
-        if predictions or args.include_empty_records:
-            records.append({"scenario_id": result["scenario_id"], "predictions": predictions})
+        record: dict[str, Any] = {"scenario_id": result["scenario_id"], "predictions": result.get("predictions") or []}
+        if result.get("errors"):
+            record["status"] = "error"
+            record["errors"] = list(result["errors"])
+        records.append(record)
 
     output = "".join(json.dumps(record, ensure_ascii=False) + "\n" for record in records)
     if output_paths.predictions is None:
