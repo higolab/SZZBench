@@ -70,6 +70,13 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      # The container runs as root over a workspace the runner's user owns.  Git refuses such a
+      # repository as "dubious ownership" unless safe.directory says otherwise, and the
+      # safe.directory that checkout writes to the global configuration does not reach
+      # SZZBench's isolated Git (docs/generator-options.md §5).  Without this step,
+      # tests/test_template_rewrites.py skipped all 28 of its checks against main's history.
+      - name: Own the workspace
+        run: chown -R "$(id -u):$(id -g)" "$GITHUB_WORKSPACE"
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
