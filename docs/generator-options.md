@@ -3,7 +3,8 @@
 This document describes the scenario keys that control *how* the generators
 turn a scenario into a Git repository. It covers the options introduced for
 GitHub issues #9 (deterministic metadata), #18 (placeholder operations) and
-#17 (history-rewriting fidelity). Keys marked *graph* exist only in
+#17 (history-rewriting fidelity), and the Git environment every generation
+runs in (#96, section 5). Keys marked *graph* exist only in
 `scenario.graph.yml`; keys marked *both* work in `scenario.yml` and
 `scenario.graph.yml`.
 
@@ -497,3 +498,53 @@ New metadata fields: `commit-map.json` -> `author_date`, `committer_date`,
 `revert_of` and `generated_commits`, and pass-through of `squashes`,
 `interactive_rebase`, `rebase_conflict_resolution`, `reverts`,
 `revert_conflict_resolution` when a commit declares them.
+
+## 5. The Git environment (#96)
+
+Every Git command SZZBench runs -- generation and verification, and the
+measurements `evaluate`, `baselines` and `coverage` take on a generated
+repository -- goes through `gitutils.run_git`, which runs Git isolated from the
+caller's own Git setup:
+
+| Withheld | How |
+|---|---|
+| the system configuration (`/etc/gitconfig`; Git for Windows' `etc/gitconfig`) | `GIT_CONFIG_NOSYSTEM=1` |
+| the global configuration (`~/.gitconfig`, `$XDG_CONFIG_HOME/git/config`) and the files Git reads without being told to (`$XDG_CONFIG_HOME/git/ignore`, `$XDG_CONFIG_HOME/git/attributes`) | `HOME` and `XDG_CONFIG_HOME` name an empty temporary directory |
+| the system attributes file | `GIT_ATTR_NOSYSTEM=1` |
+| **every `GIT_*` variable of the caller except `GIT_EXEC_PATH`**: configuration injected through the environment (`GIT_CONFIG_COUNT` with `GIT_CONFIG_KEY_<n>` / `GIT_CONFIG_VALUE_<n>`, `GIT_CONFIG_PARAMETERS`, `GIT_CONFIG_GLOBAL`, `GIT_CONFIG_SYSTEM`), the repository Git works on (everything `git rev-parse --local-env-vars` lists, such as `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE`), the format of a new repository (`GIT_DEFAULT_HASH`, `GIT_DEFAULT_REF_FORMAT`), `GIT_TEMPLATE_DIR`, `GIT_NAMESPACE`, diff and pathspec behaviour (`GIT_EXTERNAL_DIFF`, `GIT_DIFF_OPTS`, `GIT_*_PATHSPECS`), and the caller's `GIT_AUTHOR_*` / `GIT_COMMITTER_*` | removed from the environment; the generators set the identity and dates of every commit themselves (section 1) |
+| the init template (`init.templateDir`, the templates the installation ships) | `git init --template=` copies no hooks |
+| a Git whose built-in default object or ref format differs | `git init --object-format=sha1` (Git 2.29 and later) and `--ref-format=files` (2.45 and later) |
+
+Signing (`commit.gpgSign`, `tag.gpgSign`), hooks, global ignores and
+attributes, clean/smudge filters, `rerere`, rename and diff settings, and
+output settings such as `color.ui` therefore cannot change what a scenario
+generates or what SZZBench measures on it. What a generated repository needs
+is written into its own `.git/config` (`user.name`, `user.email`,
+`core.autocrlf=false`, `core.filemode`, `i18n.*`).
+
+Before 2026-09-29 Git inherited all of this. Reproduced for issue #96 on
+SZZ-0006, SZZG-0107 and SZZG-0124: an unavailable signing program, an ignore
+file listing `*.java`, a global clean filter and an init template with a
+commit-msg hook each made the scenarios fail. Four settings changed the result
+without any finding -- verification reported 0 errors and 0 warnings: a working
+(SSH) signing key and a global commit-msg hook changed every hash; a default
+ignore file listing `build/` dropped the generated file SZZG-0107 is about; and
+with `GIT_DIR` set in the environment every commit was written into the
+repository `GIT_DIR` named. The review of PR #98 added one more: with
+`GIT_DEFAULT_HASH=sha256` generation verified with 64-character hashes (and
+`GIT_DEFAULT_REF_FORMAT=reftable` wrote a reftable repository), which is why
+the rule is now every `GIT_*` variable rather than a list of known ones.
+`tests/test_git_isolation.py` injects each of these through the test process's
+environment only.
+
+Where no such setting was present the isolation changes nothing: all 279
+scenarios generate the same 2,208 commit hashes as before, so existing
+generated repositories stay valid.
+
+What it gives up: no setting of your own reaches SZZBench's Git commands,
+`safe.directory` included. Git refuses a generated repository owned by another
+user as "dubious ownership" -- in a container running as root over a mounted
+directory, for example; run SZZBench as the owner of the output directory.
+
+SZZBench is developed and tested with Git 2.50.1. Older versions are not
+tested.

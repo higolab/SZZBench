@@ -269,6 +269,8 @@ The main roles are as follows.
 
 Python 3.10 or later is required.
 
+Git is required as well. SZZBench runs Git isolated from your own Git configuration, so signing, hooks and global ignore or attributes files do not affect what it generates (`docs/generator-options.md` §5); it is tested with Git 2.50.1. A JDK (`javac` and `java`) is needed only by the tests that compile or run scenario code, which are skipped without one, and Node.js only by the tools under `tools/`.
+
 Create and activate a virtual environment in the SZZBench root directory.
 
 On macOS / Linux:
@@ -958,6 +960,8 @@ SZZBench/
 ## インストール
 
 Python 3.10 以上が必要です。
+
+Git も必要です。SZZBench は Git を利用者自身の Git 設定から切り離して実行するため、署名、フック、global な ignore や attributes のファイルは生成結果に影響しません（`docs/generator-options.md` §5）。動作確認は Git 2.50.1 で行っています。JDK（`javac` と `java`）はシナリオのコードをコンパイル・実行するテストでだけ必要で、ない場合そのテストはスキップされます。Node.js は `tools/` 以下のツールでだけ必要です。
 
 SZZBench のルートディレクトリで、仮想環境を作成して有効化します。
 

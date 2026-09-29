@@ -4,25 +4,77 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
+import atexit
 import hashlib
 import os
 import re
+import shutil
 import subprocess
+import tempfile
 
 
 class GitError(RuntimeError):
     pass
 
 
+#: The one ``GIT_*`` variable a Git subprocess still receives: it locates Git's
+#: own programs.  Every other ``GIT_*`` variable of the caller is withheld
+#: (issue #96).  Naming the dangerous ones one by one missed some -- with
+#: ``GIT_DEFAULT_HASH=sha256`` a generation verified with 64-character hashes,
+#: with ``GIT_DEFAULT_REF_FORMAT=reftable`` it wrote a reftable repository, and
+#: with ``GIT_DIR`` set every commit went into the repository it named -- while
+#: SZZBench needs none of them: the identity and dates of a commit are passed
+#: as ``extra_env``.
+KEPT_GIT_ENV = frozenset({"GIT_EXEC_PATH"})
+
+
+def _withheld(key: str) -> bool:
+    return key.startswith("GIT_") and key not in KEPT_GIT_ENV
+
+
+_empty_home: Path | None = None
+
+
+def _isolated_home() -> str:
+    """An empty directory that stands in for ``HOME`` and ``XDG_CONFIG_HOME``.
+
+    With it neither the global configuration (``~/.gitconfig``,
+    ``$XDG_CONFIG_HOME/git/config``) nor the files Git reads without any
+    configuration (``$XDG_CONFIG_HOME/git/ignore`` and ``.../attributes``)
+    exist, on every Git version -- ``GIT_CONFIG_GLOBAL`` (Git 2.32) would
+    cover only the configuration file.
+    """
+    global _empty_home
+    if _empty_home is None or not _empty_home.is_dir():
+        _empty_home = Path(tempfile.mkdtemp(prefix="szzbench-git-home-"))
+        atexit.register(shutil.rmtree, _empty_home, True)
+    return str(_empty_home)
+
+
 def _git_env(extra_env: dict | None = None) -> dict:
     """Return an environment for Git subprocesses.
+
+    Git runs isolated from the caller's Git setup (issue #96): the system and
+    global configuration, the default ignore and attributes files, the init
+    template, and every ``GIT_*`` variable but ``GIT_EXEC_PATH`` (configuration
+    injected through the environment, the repository it points at, the object
+    and ref format of a new repository, diff and pathspec behaviour) are
+    withheld, so what SZZBench generates and measures depends on the scenario
+    and the Git version only -- not on a developer's signing setup, hooks,
+    global ignores or filters.  ``extra_env`` holds only what a caller sets on
+    purpose (commit identity and dates) and is applied last.
 
     On Windows, Python's default text encoding may be cp932. Git output can
     contain UTF-8 commit messages or paths, so run_git() decodes subprocess
     output explicitly as UTF-8. These environment values also encourage Git to
     produce UTF-8 output where supported.
     """
-    git_env = os.environ.copy()
+    git_env = {key: value for key, value in os.environ.items() if not _withheld(key)}
+    home = _isolated_home()
+    git_env["HOME"] = home
+    git_env["XDG_CONFIG_HOME"] = home
+    git_env["GIT_CONFIG_NOSYSTEM"] = "1"
+    git_env["GIT_ATTR_NOSYSTEM"] = "1"
     git_env.setdefault("LANG", "C.UTF-8")
     git_env.setdefault("LC_ALL", "C.UTF-8")
     if extra_env:
@@ -73,9 +125,43 @@ def run_git_with_input(repo_dir: Path, args: list[str], data: bytes, *, env: dic
         raise GitError(f"git {' '.join(args)} failed: {detail}") from exc
 
 
+_git_version: tuple[int, ...] | None = None
+
+
+def git_version() -> tuple[int, ...]:
+    """The installed Git's version as numbers, ``()`` when it cannot be read."""
+    global _git_version
+    if _git_version is None:
+        try:
+            out = subprocess.run(["git", "--version"], capture_output=True, text=True, env=_git_env()).stdout
+        except OSError:
+            out = ""
+        match = re.search(r"(\d+)\.(\d+)(?:\.(\d+))?", out)
+        _git_version = tuple(int(part) for part in match.groups() if part is not None) if match else ()
+    return _git_version
+
+
+def init_args() -> list[str]:
+    """``git init`` arguments that fix what a new repository looks like.
+
+    An empty ``--template`` copies no hooks, whatever the installation ships.
+    The object and ref formats are pinned to SHA-1 and files, the formats of
+    every published hash and of what SZZ tools read, where Git knows the options
+    (2.29 and 2.45): the caller's environment no longer reaches Git, but a Git
+    whose built-in default changes would otherwise change every hash.
+    """
+    args = ["init", "--template="]
+    version = git_version()
+    if version >= (2, 29):
+        args.append("--object-format=sha1")
+    if version >= (2, 45):
+        args.append("--ref-format=files")
+    return args
+
+
 def init_repo(repo_dir: Path, branch: str) -> None:
     repo_dir.mkdir(parents=True, exist_ok=True)
-    run_git(repo_dir, ["init"])
+    run_git(repo_dir, init_args())
     run_git(repo_dir, ["branch", "-M", branch])
     run_git(repo_dir, ["config", "user.name", "SZZ Benchmark"])
     run_git(repo_dir, ["config", "user.email", "szz-benchmark@example.com"])
@@ -365,15 +451,16 @@ class CommitMetadata:
         return parse_author(self.author)[1]
 
     def git_env(self) -> dict[str, str]:
+        """The identity and dates of this commit, as ``extra_env`` for :func:`run_git`."""
         name, email = parse_author(self.author)
-        env = os.environ.copy()
-        env["GIT_AUTHOR_NAME"] = name
-        env["GIT_AUTHOR_EMAIL"] = email
-        env["GIT_COMMITTER_NAME"] = name
-        env["GIT_COMMITTER_EMAIL"] = email
-        env["GIT_AUTHOR_DATE"] = self.author_date
-        env["GIT_COMMITTER_DATE"] = self.committer_date
-        return env
+        return {
+            "GIT_AUTHOR_NAME": name,
+            "GIT_AUTHOR_EMAIL": email,
+            "GIT_COMMITTER_NAME": name,
+            "GIT_COMMITTER_EMAIL": email,
+            "GIT_AUTHOR_DATE": self.author_date,
+            "GIT_COMMITTER_DATE": self.committer_date,
+        }
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -485,7 +572,7 @@ def commit_all(
     if not status:
         raise GitError("commit would be empty")
     name, email = parse_author(author)
-    env = os.environ.copy()
+    env: dict[str, str] = {}
     env["GIT_AUTHOR_NAME"] = name
     env["GIT_AUTHOR_EMAIL"] = email
     env["GIT_COMMITTER_NAME"] = name
