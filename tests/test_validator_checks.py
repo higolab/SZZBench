@@ -174,6 +174,7 @@ BOUNDARY_VARIANT = {"name": "boundary-commit", "commit_level": {"evaluation_poli
     ("boundary", [BOUNDARY_VARIANT]),
     ("boundary-commit", None),                  # no variants at all
     ("", [BOUNDARY_VARIANT]),
+    (None, [BOUNDARY_VARIANT]),                 # present but null: the evaluator falls back without a note
     (5, [BOUNDARY_VARIANT]),
 ])
 def test_a_default_variant_that_names_no_variant_is_an_error(default_variant, variants):
@@ -184,6 +185,29 @@ def test_a_default_variant_that_names_no_variant_is_an_error(default_variant, va
     data["expected_szz"]["default_variant"] = default_variant
     ge129 = [f for f in validate_graph_static(data).findings if f.code == "GE129"]
     assert [(f.severity, f.location) for f in ge129] == [("ERROR", "expected_szz.default_variant")]
+
+
+@pytest.mark.parametrize("blank", ["default_variant:", "default_variant: null", "default_variant: ~"])
+def test_a_blank_default_variant_in_a_scenario_file_is_an_error(tmp_path, blank):
+    # YAML reads all three as None, which the check first took for an absent key (PR #105 review)
+    data = graph_scenario()
+    data["expected_szz"]["evaluation_variants"] = [deepcopy(BOUNDARY_VARIANT)]
+    data["expected_szz"]["default_variant"] = "__BLANK__"
+    path = write_yaml(tmp_path / "SZZG-9900" / "scenario.graph.yml", data)
+    text = path.read_text(encoding="utf-8")
+    assert text.count("default_variant: __BLANK__") == 1
+    path.write_text(text.replace("default_variant: __BLANK__", blank), encoding="utf-8")
+    loaded, result = validate_graph_scenario_file(path)
+    assert "default_variant" in loaded["expected_szz"] and loaded["expected_szz"]["default_variant"] is None
+    ge129 = [f for f in result.findings if f.code == "GE129"]
+    assert [(f.severity, f.location) for f in ge129] == [("ERROR", "expected_szz.default_variant")]
+    assert "blank" in ge129[0].message
+
+
+def test_without_a_default_variant_commit_level_is_the_default_and_nothing_is_reported():
+    data = graph_scenario()
+    data["expected_szz"]["evaluation_variants"] = [deepcopy(BOUNDARY_VARIANT)]
+    assert "GE129" not in codes(validate_graph_static(data))
 
 
 @pytest.mark.parametrize("default_variant", ["boundary-commit", "boundary_commit", "Boundary-Commit"])
