@@ -695,6 +695,8 @@ To run a specific test, for example:
 pytest tests/test_generator_smoke.py
 ```
 
+[tests/README.md](tests/README.md) says what the suite needs (a JDK, Node.js for the Scenario Editor's tests) and where its shared helpers are.
+
 ## Files that should not be tracked by Git
 
 The following files and directories should not be tracked by Git.
@@ -1394,6 +1396,8 @@ pytest
 ```bash
 pytest tests/test_generator_smoke.py
 ```
+
+テストに必要なもの（JDK、Scenario Editor のテスト用の Node.js）と共通の補助関数の置き場所は [tests/README.md](tests/README.md) にあります。
 
 ## Git 管理しないもの
 
