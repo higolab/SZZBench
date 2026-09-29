@@ -57,15 +57,21 @@ needs PyYAML (the SZZBench virtual environment does). Two environment variables 
 | `SZZBENCH_PYTHON` | `python3` | the Python that runs the validator and the README renderer |
 | `SZZBENCH_REPO_ROOT` | two directories above this one | the checkout whose `scenarios/` is written |
 
-## Download-only fallback
+## Downloading instead of saving
 
-The editor also supports downloading:
+The three **Download** buttons fetch what **Save to scenarios/** would write, after the same checks, and write
+nothing into the repository:
 
-- `scenario.yml`
-- `README.md`
-- `index-entry.yml`
+- `scenario.yml`;
+- `README.md`, with the generated header already inserted;
+- `index-entry.yml`, the entry in `scenarios/index.yml`'s own style.
 
-These can be manually placed into `scenarios/SZZ-XXXX/`.
+A scenario the save would refuse (no tier, a `validate --lint` error) is not downloaded either; the page shows why.
+Files placed by hand in `scenarios/SZZ-XXXX/` then pass `szzbench validate --lint --strict` as saved ones do.
+
+Without the backend only `scenario.yml` can be downloaded, because the header comes from SZZBench itself. Write the
+README by hand and run `szzbench readme --write scenarios/SZZ-XXXX` before the scenario counts as ready: until then
+`validate --lint` reports W455 ("README has no generated header").
 
 ## Conventions the generated files follow
 

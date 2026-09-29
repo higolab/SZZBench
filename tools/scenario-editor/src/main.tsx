@@ -91,6 +91,43 @@ function App() {
     });
   }
 
+  // The Download buttons fetch what Save would write -- the README with its
+  // generated header, the index entry in index.yml's style -- after the same
+  // validate --lint, and write nothing (PR #101 review).  Without the backend only
+  // scenario.yml can be downloaded: the header comes from SZZBench itself.
+  async function download(kind: 'scenario' | 'readme' | 'index') {
+    setSaveMessage('');
+    setSaveError('');
+    setFindings([]);
+    let response: Response;
+    let data: any;
+    try {
+      response = await fetch('/api/scenarios/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: state.scenarioId, scenarioYaml, readme })
+      });
+      data = await response.json();
+    } catch {
+      if (kind === 'scenario') {
+        downloadFile('scenario.yml', scenarioYaml, 'text/yaml');
+        return;
+      }
+      setSaveError(`The backend is not reachable, and the README's generated header and the index entry come from it. `
+        + `Start the editor with npm run dev, or place the files under scenarios/${state.scenarioId}/ and run `
+        + `szzbench readme --write scenarios/${state.scenarioId} before the scenario counts as ready.`);
+      return;
+    }
+    setFindings(Array.isArray(data.findings) ? data.findings : []);
+    if (!response.ok) {
+      setSaveError(data.error || 'Preview failed');
+      return;
+    }
+    if (kind === 'scenario') downloadFile('scenario.yml', data.scenarioYaml, 'text/yaml');
+    else if (kind === 'readme') downloadFile('README.md', data.readme, 'text/markdown');
+    else downloadFile('index-entry.yml', data.indexEntry, 'text/yaml');
+  }
+
   async function saveToScenarios() {
     setSaveMessage('');
     setSaveError('');
@@ -128,9 +165,9 @@ function App() {
           <p>Create scenario.yml files from source-code versions and save them directly to the local scenarios directory.</p>
         </div>
         <div className="actions">
-          <button onClick={() => downloadFile('scenario.yml', scenarioYaml, 'text/yaml')}>Download scenario.yml</button>
-          <button onClick={() => downloadFile('README.md', readme, 'text/markdown')}>Download README.md</button>
-          <button onClick={() => downloadFile('index-entry.yml', indexEntry, 'text/yaml')}>Download index entry</button>
+          <button onClick={() => download('scenario')}>Download scenario.yml</button>
+          <button onClick={() => download('readme')}>Download README.md</button>
+          <button onClick={() => download('index')}>Download index entry</button>
           <button className="primary" onClick={saveToScenarios} disabled={!state.tier}
             title={state.tier ? '' : 'Choose a tier first'}>Save to scenarios/</button>
         </div>
@@ -296,9 +333,10 @@ function App() {
           <h2>scenario.yml preview</h2>
           <pre className="preview">{scenarioYaml}</pre>
           <h2>README.md preview</h2>
-          <p className="small">Saving inserts the generated header (category, tier, factors, oracle) with szzbench readme --write.</p>
+          <p className="small">Saving and downloading insert the generated header (category, tier, factors, oracle) with szzbench readme --write.</p>
           <pre className="preview">{readme}</pre>
           <h2>index.yml entry</h2>
+          <p className="small">Saved and downloaded entries are rendered by the backend in index.yml's own style.</p>
           <pre className="preview">{indexEntry}</pre>
         </aside>
       </div>

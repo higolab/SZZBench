@@ -6,8 +6,11 @@ its default scenario drew W460 (no tier) and W410 (``Introduce bug``) from
 ``validate --lint``, the README it saved drew W455 twice, and saving re-dumped
 ``scenarios/index.yml``, changing 3,764 of its 1,881 lines.  These tests run
 the editor's own TypeScript (``src/scenarioModel.ts``) with Node and check what
-it generates with the Python validator, and drive the save endpoint
-(``server/index.js``) against a scratch copy of the repository layout.
+it generates with the Python validator, and drive the save and download
+endpoints (``server/index.js``) against a scratch copy of the repository
+layout.  The review of PR #101 found the download path still handing out a
+README without its generated header, so the files it returns are checked where
+the documentation says to put them, with no ``readme --write`` step.
 """
 from __future__ import annotations
 
@@ -166,8 +169,8 @@ def server(tmp_path):
     process.wait()
 
 
-def _post(base: str, body: dict) -> tuple[int, dict]:
-    request = urllib.request.Request(f"{base}/api/scenarios/save", data=json.dumps(body).encode(),
+def _post(base: str, body: dict, endpoint: str = "save") -> tuple[int, dict]:
+    request = urllib.request.Request(f"{base}/api/scenarios/{endpoint}", data=json.dumps(body).encode(),
                                      headers={"Content-Type": "application/json"}, method="POST")
     try:
         with urllib.request.urlopen(request, timeout=60) as response:
@@ -213,3 +216,57 @@ def test_a_scenario_with_a_validation_error_is_not_saved(server, tmp_path):
     assert any(finding["severity"] == "ERROR" for finding in data["findings"])
     assert not (root / "scenarios/SZZ-0002").exists()
     assert (root / "scenarios/index.yml").read_bytes() == (ROOT / "scenarios/index.yml").read_bytes()
+
+
+INDEX_ENTRY = ["- id: SZZ-0002", "  title: New SZZ scenario", "  slug: new-szz-scenario", "  category_code: S1",
+               "  category: Basic semantic line changes", "  factors:", "  - single-bic", "  - single-bfc",
+               "  - line-modification", "  difficulty: medium", "  status: draft",
+               "  path: scenarios/SZZ-0002/scenario.yml"]
+
+
+def test_the_downloaded_files_pass_strict_lint_where_the_docs_put_them(server, tmp_path):
+    base, root = server
+    generated = _model(tmp_path, tier="control")
+    status, data = _post(base, {"id": "SZZ-0002", "scenarioYaml": generated["yaml"], "readme": generated["readme"]},
+                         endpoint="preview")
+    assert status == 200 and data["findings"] == [], data
+    # the download writes nothing into the repository
+    assert not (root / "scenarios/SZZ-0002").exists()
+    assert (root / "scenarios/index.yml").read_bytes() == (ROOT / "scenarios/index.yml").read_bytes()
+    # placed by hand, as tools/scenario-editor/README.md says, with no readme --write step
+    placed = tmp_path / "placed/scenarios/SZZ-0002"
+    placed.mkdir(parents=True)
+    (placed / "scenario.yml").write_text(data["scenarioYaml"], encoding="utf-8")
+    (placed / "README.md").write_text(data["readme"], encoding="utf-8")
+    completed = _cli("validate", "--lint", "--strict", str(placed / "scenario.yml"))
+    assert completed.returncode == 0, completed.stdout
+    assert data["indexEntry"].splitlines() == INDEX_ENTRY
+
+
+def test_the_download_refuses_what_the_save_refuses(server, tmp_path):
+    base, root = server
+    untiered = _model(tmp_path)
+    status, data = _post(base, {"id": "SZZ-0002", "scenarioYaml": untiered["yaml"], "readme": untiered["readme"]},
+                         endpoint="preview")
+    assert status == 400 and "meta.tier" in data["error"]
+    broken = _model(tmp_path, tier="control", bfc="c9")
+    status, data = _post(base, {"id": "SZZ-0002", "scenarioYaml": broken["yaml"], "readme": broken["readme"]},
+                         endpoint="preview")
+    assert status == 400 and "nothing was rendered" in data["error"]
+    assert any(finding["severity"] == "ERROR" for finding in data["findings"])
+    assert not (root / "scenarios/SZZ-0002").exists()
+
+
+def test_a_readme_without_its_header_is_ready_only_after_readme_write(tmp_path):
+    # the path without the backend: the documented step is required, and enough
+    generated = _model(tmp_path, tier="control")
+    directory = tmp_path / "scenarios/SZZ-0002"
+    directory.mkdir(parents=True)
+    (tmp_path / "advanced-scenarios").mkdir()
+    (directory / "scenario.yml").write_text(generated["yaml"], encoding="utf-8")
+    (directory / "README.md").write_text(generated["readme"], encoding="utf-8")
+    assert [finding["code"] for finding in _lint(directory / "scenario.yml")["findings"]] == ["W455"]
+    written = _cli("readme", "--write", "--scenarios-root", str(tmp_path / "scenarios"),
+                   "--advanced-scenarios-root", str(tmp_path / "advanced-scenarios"), str(directory))
+    assert written.returncode == 0
+    assert _cli("validate", "--lint", "--strict", str(directory / "scenario.yml")).returncode == 0

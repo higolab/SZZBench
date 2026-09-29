@@ -88,9 +88,12 @@ function buildIndexEntryFromScenario(scenario) {
  * re-quoted titles; now an existing entry's lines are replaced, a new entry is
  * inserted before the first larger id, and every other line stays byte for byte.
  */
+function renderIndexEntry(entry) {
+  return yaml.dump([entry], { noArrayIndent: true, quotingType: "'", lineWidth: -1, noRefs: true, sortKeys: false });
+}
+
 function spliceIndexEntry(text, entry) {
-  const block = yaml.dump([entry], { noArrayIndent: true, quotingType: "'", lineWidth: -1, noRefs: true, sortKeys: false });
-  const blockLines = block.replace(/\n$/, '').split('\n');
+  const blockLines = renderIndexEntry(entry).replace(/\n$/, '').split('\n');
   const lines = (text.endsWith('\n') ? text.slice(0, -1) : text).split('\n');
   if (!lines.some((line) => /^scenarios:\s*$/.test(line))) {
     if (lines.length === 1 && lines[0] === '') lines.pop();
@@ -200,40 +203,81 @@ app.get('/api/scenarios', async (_req, res, next) => {
   }
 });
 
+/** The checks every request that produces files passes: save and preview alike. */
+function parseScenarioRequest(body) {
+  const { id, scenarioYaml, readme } = body || {};
+  assertScenarioId(id);
+  if (typeof scenarioYaml !== 'string' || scenarioYaml.trim() === '') {
+    const err = new Error('scenarioYaml is required.');
+    err.status = 400;
+    throw err;
+  }
+  if (typeof readme !== 'string' || readme.trim() === '') {
+    const err = new Error('readme is required.');
+    err.status = 400;
+    throw err;
+  }
+
+  let scenario;
+  try {
+    scenario = yaml.load(scenarioYaml);
+  } catch (parseErr) {
+    const err = new Error(`scenarioYaml is not valid YAML: ${parseErr.message}`);
+    err.status = 400;
+    throw err;
+  }
+
+  if (!scenario || scenario?.meta?.id !== id) {
+    const err = new Error('scenarioYaml meta.id must match the requested id.');
+    err.status = 400;
+    throw err;
+  }
+  if (!TIERS.includes(scenario?.meta?.tier)) {
+    const err = new Error(`Choose meta.tier (${TIERS.join(' or ')}) before saving: it declares what the scenario is for.`);
+    err.status = 400;
+    throw err;
+  }
+  return { id, scenarioYaml, readme, scenario };
+}
+
+function refuseErrors(res, staged, what) {
+  const findings = Array.isArray(staged.report.findings) ? staged.report.findings : [];
+  if (staged.report.errors > 0) {
+    res.status(400).json({
+      ok: false,
+      error: `szzbench validate --lint found ${staged.report.errors} error(s); nothing was ${what}.`,
+      findings
+    });
+    return null;
+  }
+  return findings;
+}
+
+// What Save would write, without writing it: the Download buttons use this, so a
+// downloaded README carries the generated header too (PR #101 review).
+app.post('/api/scenarios/preview', async (req, res, next) => {
+  try {
+    const { id, scenarioYaml, readme, scenario } = parseScenarioRequest(req.body);
+    const staged = await stageAndValidate(id, scenarioYaml, readme);
+    const findings = refuseErrors(res, staged, 'rendered');
+    if (findings === null) return;
+    res.json({
+      ok: true,
+      id,
+      findings,
+      scenarioYaml: staged.scenarioYaml,
+      readme: staged.readme,
+      indexEntry: renderIndexEntry(buildIndexEntryFromScenario(scenario))
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 app.post('/api/scenarios/save', async (req, res, next) => {
   try {
-    const { id, scenarioYaml, readme, overwrite } = req.body || {};
-    assertScenarioId(id);
-    if (typeof scenarioYaml !== 'string' || scenarioYaml.trim() === '') {
-      const err = new Error('scenarioYaml is required.');
-      err.status = 400;
-      throw err;
-    }
-    if (typeof readme !== 'string' || readme.trim() === '') {
-      const err = new Error('readme is required.');
-      err.status = 400;
-      throw err;
-    }
-
-    let scenario;
-    try {
-      scenario = yaml.load(scenarioYaml);
-    } catch (parseErr) {
-      const err = new Error(`scenarioYaml is not valid YAML: ${parseErr.message}`);
-      err.status = 400;
-      throw err;
-    }
-
-    if (!scenario || scenario?.meta?.id !== id) {
-      const err = new Error('scenarioYaml meta.id must match the requested id.');
-      err.status = 400;
-      throw err;
-    }
-    if (!TIERS.includes(scenario?.meta?.tier)) {
-      const err = new Error(`Choose meta.tier (${TIERS.join(' or ')}) before saving: it declares what the scenario is for.`);
-      err.status = 400;
-      throw err;
-    }
+    const { id, scenarioYaml, readme, scenario } = parseScenarioRequest(req.body);
+    const { overwrite } = req.body || {};
 
     const scenarioDir = safeScenarioDir(id);
     if (await pathExists(scenarioDir)) {
@@ -246,15 +290,8 @@ app.post('/api/scenarios/save', async (req, res, next) => {
     }
 
     const staged = await stageAndValidate(id, scenarioYaml, readme);
-    const findings = Array.isArray(staged.report.findings) ? staged.report.findings : [];
-    if (staged.report.errors > 0) {
-      res.status(400).json({
-        ok: false,
-        error: `szzbench validate --lint found ${staged.report.errors} error(s); nothing was saved.`,
-        findings
-      });
-      return;
-    }
+    const findings = refuseErrors(res, staged, 'saved');
+    if (findings === null) return;
 
     await fs.mkdir(scenarioDir, { recursive: true });
     await fs.writeFile(path.join(scenarioDir, 'scenario.yml'), staged.scenarioYaml, 'utf8');
