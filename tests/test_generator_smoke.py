@@ -772,14 +772,7 @@ def test_graph_apply_patch_from_generates(tmp_path):
     subprocess.run([sys.executable, "-m", "szzbench.cli", "validate-graph", str(scenario), "--simulate"], check=True)
     subprocess.run([sys.executable, "-m", "szzbench.cli", "generate-graph", str(scenario), "--out", str(out), "--force"], check=True)
 
-    release_content = subprocess.run(
-        ["git", "show", "HEAD:src/main/java/example/Range.java"],
-        cwd=out / "repo",
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        check=True,
-    ).stdout
+    release_content = git_stdout(out / "repo", "show", "HEAD:src/main/java/example/Range.java")
     assert "return value > min && value < max;" in release_content
 
 def test_graph_map_records_rebase_of(tmp_path):

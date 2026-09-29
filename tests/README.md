@@ -19,6 +19,8 @@ These conventions come from the audit in issue #107.
   - blame attribution: `blame_owners` and `logical_id`;
   - the Java driver: `run_driver`;
   - the `needs_jdk` marker.
-- **Run Git through those helpers.** They run it in SZZBench's isolated environment (issue #96), so a developer's Git configuration cannot change what a test sees. Only `test_git_isolation.py` runs Git the way the caller would, and it does so on purpose.
+- **Run Git through those helpers.** They run it in SZZBench's isolated environment (issue #96), so a developer's Git configuration cannot change what a test sees.
+  - This holds for `test_git_isolation.py` too. It runs SZZBench under hostile Git environments, but sets up and reads its own repositories through the helpers.
+  - `test_suite_conventions.py` fails on any direct `git` call that does not pass `env=git_env()`.
 - **Parametrize a check about one scenario over that scenario only.** Do not parametrize it over the whole family and skip the others. A family-wide check takes the family through a parametrized fixture backed by one `GeneratedScenarios`, so each scenario is generated once per module.
 - **Parametrize suite-wide checks by scenario id.** This applies to README headers, template boilerplate and Java names. A failure then names the scenario, and `-k SZZ-0006` selects it. Each case takes well under half a second.

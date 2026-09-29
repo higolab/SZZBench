@@ -25,6 +25,7 @@ from pathlib import Path
 
 import pytest
 
+from support import git
 from szzbench import gitutils
 from szzbench.generator import generate_repository
 from szzbench.graph_generator import generate_graph_repository
@@ -113,13 +114,14 @@ def _init_template_with_a_hook(tmp_path, monkeypatch):
 
 
 def _repository_redirected(tmp_path, monkeypatch):
+    # the repository is set up and read in the isolated environment: only the generation
+    # below may see the redirection, not this test's own scaffolding (PR #108 review)
     other = tmp_path / "other"
-    subprocess.run(["git", "init", "-q", str(other)], check=True, capture_output=True)
+    git(tmp_path, "init", "-q", str(other))
     monkeypatch.setenv("GIT_DIR", str(other / ".git"))
 
     def untouched():
-        found = subprocess.run(["git", "--git-dir", str(other / ".git"), "rev-list", "--all"],
-                               capture_output=True, text=True, check=True).stdout
+        found = git(tmp_path, "--git-dir", str(other / ".git"), "rev-list", "--all")
         assert found == "", "commits were written into the repository GIT_DIR pointed at"
     return untouched
 
@@ -203,8 +205,7 @@ def test_git_env_withholds_what_redirects_or_reconfigures_git(monkeypatch):
 
 
 def test_every_repository_variable_git_lists_is_withheld(monkeypatch):
-    listed = subprocess.run(["git", "rev-parse", "--local-env-vars"], capture_output=True, text=True,
-                            check=True).stdout.split()
+    listed = git(ROOT, "rev-parse", "--local-env-vars").split()
     assert listed, "git rev-parse --local-env-vars printed nothing"
     for key in listed:
         monkeypatch.setenv(key, "ambient")

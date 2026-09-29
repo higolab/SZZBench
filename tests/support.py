@@ -5,7 +5,7 @@ that generate a family of shipped scenarios, and the helpers that export a
 commit's tree, attribute blamed lines and run a Java driver.  Every copy ran
 Git with the developer's own configuration; the helpers here run it the way
 SZZBench does, isolated from it (``szzbench.gitutils``, issue #96).
-``tests/test_git_isolation.py`` alone runs Git as the caller would, on purpose.
+``tests/test_suite_conventions.py`` checks that no test runs Git otherwise.
 """
 from __future__ import annotations
 
