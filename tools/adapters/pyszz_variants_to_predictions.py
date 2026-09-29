@@ -273,6 +273,7 @@ class ScenarioInput:
     repo_path: Path
     fix_commits: list[dict[str, str | None]]
     commit_map: dict[str, Any]
+    repository_id: str | None = None
 
 
 def collect_scenarios(generated_root: Path, variant: str) -> list[ScenarioInput]:
@@ -292,9 +293,19 @@ def collect_scenarios(generated_root: Path, variant: str) -> list[ScenarioInput]
                 repo_path=repo_path,
                 fix_commits=fix_commits,
                 commit_map=commit_map,
+                repository_id=_repository_id(metadata_dir),
             )
         )
     return scenarios
+
+
+def _repository_id(metadata_dir: Path) -> str | None:
+    """The repository id the generation recorded (issue #93), None for an output without a manifest."""
+    try:
+        value = json.loads((metadata_dir / "manifest.json").read_text(encoding="utf-8")).get("repository_id")
+    except (OSError, ValueError, AttributeError):
+        return None
+    return value if isinstance(value, str) and value else None
 
 
 def _fix_commits_from_metadata(metadata_dir: Path, commit_map: dict[str, Any]) -> list[dict[str, str | None]]:
@@ -451,6 +462,9 @@ def run_tool(
             encoding="utf-8",
         )
         record: dict[str, Any] = {"scenario_id": scenario.scenario_id, "predictions": unique_predictions}
+        if scenario.repository_id:
+            # the generation the predictions were made on, checked by szzbench evaluate (issue #93)
+            record["repository_id"] = scenario.repository_id
         if scenario_errors:
             # scored as a tool error, not as the tool's answer (issue #95)
             record["status"] = "error"

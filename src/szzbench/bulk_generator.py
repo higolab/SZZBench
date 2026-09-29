@@ -6,6 +6,7 @@ from typing import Literal
 
 from .generator import GenerationError, generate_repository
 from .graph_generator import GraphGenerationError, generate_graph_repository
+from .manifest import staleness
 
 DEFAULT_GENERATED_INPUT_REPOS_ROOT = Path("generated-input-repos")
 DEFAULT_SCENARIOS_ROOT = Path("scenarios")
@@ -29,6 +30,8 @@ class GeneratedRepositoryItem:
     commit_count: int = 0
     overwritten: bool = False
     error: str | None = None
+    #: why an existing output was regenerated without --overwrite (issue #93)
+    stale_reason: str | None = None
 
 
 @dataclass(frozen=True)
@@ -60,6 +63,10 @@ class GenerateAllRepositoriesResult:
     def overwritten_count(self) -> int:
         return sum(1 for item in self.items if item.status == "generated" and item.overwritten)
 
+    @property
+    def regenerated_count(self) -> int:
+        return sum(1 for item in self.items if item.status == "generated" and item.stale_reason is not None)
+
 
 def generate_all_repositories(
     *,
@@ -81,39 +88,32 @@ def generate_all_repositories(
     for scenario_path, kind in scenario_specs:
         scenario_id = scenario_path.parent.name
         output_dir = output_root / scenario_id / "default"
-        repo_exists = (output_dir / "repo" / ".git").is_dir()
         output_exists = output_dir.exists()
 
-        if repo_exists and not overwrite:
-            items.append(
-                GeneratedRepositoryItem(
-                    kind=kind,
-                    scenario_id=scenario_id,
-                    scenario_path=scenario_path,
-                    output_dir=output_dir,
-                    status="skipped",
-                )
-            )
-            continue
-
+        # An existing output is kept only when its manifest says it is complete and
+        # was made from this scenario by this generator; anything else -- an
+        # interrupted generation, an edited scenario, changed generator code, an
+        # output from before the manifest -- is regenerated (issue #93).
+        stale_reason = None
         if output_exists and not overwrite:
-            items.append(
-                GeneratedRepositoryItem(
-                    kind=kind,
-                    scenario_id=scenario_id,
-                    scenario_path=scenario_path,
-                    output_dir=output_dir,
-                    status="failed",
-                    error="Output directory already exists but repo/.git is missing. Use --overwrite to replace it.",
+            stale_reason = staleness(output_dir, scenario_path, require_verified=verify)
+            if stale_reason is None:
+                items.append(
+                    GeneratedRepositoryItem(
+                        kind=kind,
+                        scenario_id=scenario_id,
+                        scenario_path=scenario_path,
+                        output_dir=output_dir,
+                        status="skipped",
+                    )
                 )
-            )
-            continue
+                continue
 
         try:
             if kind == "classic":
-                commit_map, _ = generate_repository(scenario_path, output_dir, force=overwrite, verify=verify)
+                commit_map, _ = generate_repository(scenario_path, output_dir, force=output_exists, verify=verify)
             else:
-                commit_map, _ = generate_graph_repository(scenario_path, output_dir, force=overwrite, verify=verify)
+                commit_map, _ = generate_graph_repository(scenario_path, output_dir, force=output_exists, verify=verify)
         except (GenerationError, GraphGenerationError) as exc:
             items.append(
                 GeneratedRepositoryItem(
@@ -124,6 +124,7 @@ def generate_all_repositories(
                     status="failed",
                     overwritten=overwrite and output_exists,
                     error=str(exc),
+                    stale_reason=stale_reason,
                 )
             )
             continue
@@ -137,6 +138,7 @@ def generate_all_repositories(
                 status="generated",
                 commit_count=len(commit_map),
                 overwritten=overwrite and output_exists,
+                stale_reason=stale_reason,
             )
         )
 

@@ -8,6 +8,7 @@ import json
 
 from .gitutils import GitError, git_parent, run_git
 from .graph_scenario import DIRECT_BIC_ROLES, graph_bfc_entries, graph_bic_entries, load_graph_scenario
+from .manifest import read_manifest, stale_message, staleness
 from .scenario import load_yaml
 
 
@@ -166,6 +167,7 @@ class EvaluationReport:
         failed = sum(1 for item in self.scenarios if item.status != "PASS")
         tool_errors = sum(1 for item in self.scenarios if item.run_status == "error")
         missing_records = sum(1 for item in self.scenarios if item.run_status == "missing")
+        stale_predictions = sum(1 for item in self.scenarios if item.run_status == "stale")
         tp = sum(len(item.true_positives) for item in self.scenarios)
         fp = sum(len(item.false_positives) for item in self.scenarios)
         unknown = sum(len(item.unknown_predictions) for item in self.scenarios)
@@ -201,6 +203,7 @@ class EvaluationReport:
             "fail": failed,
             "tool_errors": tool_errors,
             "missing_records": missing_records,
+            "stale_predictions": stale_predictions,
             "true_positives": tp,
             "false_positives": fp,
             "unknown_predictions": unknown,
@@ -241,6 +244,7 @@ class EvaluationReport:
             f"- FAIL: {summary['fail']}",
             f"- Tool errors: {summary['tool_errors']}",
             f"- Missing prediction records: {summary['missing_records']}",
+            f"- Predictions made on another repository: {summary['stale_predictions']}",
             f"- True positives: {summary['true_positives']}",
             f"- False positives: {summary['false_positives']}",
             f"- Unknown predictions (counted as false positives): {summary['unknown_predictions']}",
@@ -329,10 +333,18 @@ def evaluate_predictions(
         predictions_by_scenario: dict[str, list[Prediction]] = {}
         explicit_scenarios: set[str] = set()
         run_errors: dict[str, list[str]] = {}
+        repository_ids: dict[str, str] = {}
         errors: list[str] = []
         warnings: list[str] = []
     else:
-        predictions_by_scenario, explicit_scenarios, run_errors, errors, warnings = load_predictions(predictions_path)
+        (predictions_by_scenario, explicit_scenarios, run_errors, repository_ids,
+         errors, warnings) = load_predictions(predictions_path)
+        unmatched = sorted(explicit_scenarios - set(repository_ids))
+        if unmatched:
+            warnings.append(
+                f"{len(unmatched)} scenario(s) have prediction records without repository_id, so SZZBench cannot "
+                "tell whether they were made on these generated repositories; the adapters in tools/adapters "
+                "write it (issue #93).")
     return evaluate_prediction_map(
         predictions_by_scenario,
         generated_root=generated_root,
@@ -344,6 +356,7 @@ def evaluate_predictions(
         reference_format=reference_format,
         explicit_scenarios=explicit_scenarios,
         run_errors=run_errors,
+        repository_ids=repository_ids,
         errors=errors,
         warnings=warnings,
     )
@@ -361,6 +374,7 @@ def evaluate_prediction_map(
     reference_format: str = "auto",
     explicit_scenarios: set[str] | None = None,
     run_errors: dict[str, list[str]] | None = None,
+    repository_ids: dict[str, str] | None = None,
     errors: list[str] | None = None,
     warnings: list[str] | None = None,
 ) -> EvaluationReport:
@@ -375,10 +389,17 @@ def evaluate_prediction_map(
     A scenario that only ``include_generated`` brings in has no record: it
     FAILs with ``run_status: missing`` instead of being read as an abstention,
     and a scenario with a run error FAILs with ``run_status: error`` (issue #95).
+
+    A generated output that is stale -- no manifest, or one that no longer
+    matches its scenario file or the generator's code -- is not scored; the
+    report gets an error instead.  ``repository_ids`` maps a scenario to the
+    repository id its prediction records name; one that differs from the
+    generated repository's FAILs with ``run_status: stale`` (issue #93).
     """
     errors = list(errors or [])
     warnings = list(warnings or [])
     run_errors = run_errors or {}
+    repository_ids = repository_ids or {}
     requested = set(explicit_scenarios or predictions_by_scenario.keys())
     scenario_ids = set(requested)
     if include_generated:
@@ -398,13 +419,24 @@ def evaluate_prediction_map(
         errors.extend(scenario_errors)
         if scenario is None:
             continue
-        commit_map_path = generated_root / scenario_id / variant / "metadata" / "commit-map.json"
+        output_dir = generated_root / scenario_id / variant
+        stale_reason = staleness(output_dir, scenario_path)
+        if stale_reason is not None:
+            errors.append(stale_message(scenario_id, stale_reason))
+            continue
+        commit_map_path = output_dir / "metadata" / "commit-map.json"
         commit_map, commit_map_errors = _load_commit_map(commit_map_path)
         errors.extend(commit_map_errors)
         if commit_map is None:
             continue
+        generated_id = (read_manifest(output_dir) or {}).get("repository_id")
+        scenario_run_errors = run_errors.get(scenario_id, [])
         if scenario_id in run_errors:
             run_status = "error"
+        elif scenario_id in repository_ids and repository_ids[scenario_id] != generated_id:
+            run_status = "stale"
+            scenario_run_errors = [f"the predictions were made on repository {repository_ids[scenario_id]}, "
+                                   f"and the generated repository is {generated_id}; run the tool on it again"]
         elif scenario_id in requested:
             run_status = "ok"
         else:
@@ -421,7 +453,7 @@ def evaluate_prediction_map(
                 repo_dir=generated_root / scenario_id / variant / "repo",
                 reference_format=reference_format,
                 run_status=run_status,
-                run_errors=run_errors.get(scenario_id, []),
+                run_errors=scenario_run_errors,
             )
         )
     # Oracle-related notes (inferred required set, unread oracle sections,
@@ -506,6 +538,9 @@ def evaluate_scenario(
     elif run_status == "error":
         notes.append(f"the tool reported an error ({'; '.join(run_errors)}), so the scenario fails "
                      "whatever it predicted.")
+        status = "FAIL"
+    elif run_status == "stale":
+        notes.append(f"stale predictions: {'; '.join(run_errors)}; the scenario fails whatever they predict.")
         status = "FAIL"
     # an unknown reference is a false positive of its own kind (issue #95)
     precision = _ratio(len(true_positives), len(true_positives) + len(false_positives) + len(unknown_predictions))
@@ -636,20 +671,21 @@ RECORD_STATUSES = ("ok", "error")
 
 def load_predictions(
     path: Path,
-) -> tuple[dict[str, list[Prediction]], set[str], dict[str, list[str]], list[str], list[str]]:
+) -> tuple[dict[str, list[Prediction]], set[str], dict[str, list[str]], dict[str, str], list[str], list[str]]:
     """Read a predictions file: the predictions per scenario, the scenarios a
-    record names, the run errors records report per scenario, and the loading
-    errors and warnings."""
+    record names, the run errors records report per scenario, the repository id
+    the records of each scenario name, and the loading errors and warnings."""
     errors: list[str] = []
     warnings: list[str] = []
     try:
         text = path.read_text(encoding="utf-8")
     except OSError as exc:
-        return {}, set(), {}, [f"Cannot read predictions file: {exc}"], []
+        return {}, set(), {}, {}, [f"Cannot read predictions file: {exc}"], []
     records = _parse_prediction_records(text, str(path), errors)
     predictions: dict[str, list[Prediction]] = {}
     explicit_scenarios: set[str] = set()
     run_errors: dict[str, list[str]] = {}
+    repository_ids: dict[str, str] = {}
     for location, record in records:
         if not isinstance(record, dict):
             errors.append(f"{location}: prediction record must be a JSON object.")
@@ -664,6 +700,15 @@ def load_predictions(
                           f"(got {status!r}).")
             continue
         failed = status is not None and status.lower() == "error"
+        named_repository = record.get("repository_id")
+        if named_repository is not None:
+            if not isinstance(named_repository, str) or not named_repository:
+                errors.append(f"{location}: repository_id must be a non-empty string when present.")
+                continue
+            if repository_ids.setdefault(scenario_id, named_repository) != named_repository:
+                errors.append(f"{location}: repository_id {named_repository} differs from the "
+                              f"{repository_ids[scenario_id]} an earlier record of {scenario_id} names.")
+                continue
         if failed:
             reported = run_errors.setdefault(scenario_id, [])
             reported.extend(message for message in _run_error_messages(record.get("errors")) if message not in reported)
@@ -683,7 +728,7 @@ def load_predictions(
         prediction = _prediction_from_record(scenario_id, record, location, errors)
         if prediction is not None:
             predictions.setdefault(scenario_id, []).append(prediction)
-    return predictions, explicit_scenarios, run_errors, errors, warnings
+    return predictions, explicit_scenarios, run_errors, repository_ids, errors, warnings
 
 
 def _run_error_messages(value: Any) -> list[str]:

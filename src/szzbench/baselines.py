@@ -34,6 +34,7 @@ from typing import Any, Callable, Iterable
 
 from .evaluator import Prediction, evaluate_prediction_map
 from .gitutils import GitError, run_git
+from .manifest import stale_message, staleness
 
 #: Ordered families, cheapest first.
 FAMILIES = ("metadata", "position", "shape", "blame")
@@ -393,6 +394,10 @@ def _load_scenarios(generated_root: Path, scenarios_root: Path, advanced_scenari
         data, load_errors = _load_scenario_for_evaluation(path, suite)
         errors.extend(load_errors)
         if data is None:
+            continue
+        stale_reason = staleness(repo_dir.parent, path)
+        if stale_reason is not None:        # not scored: its oracle may not be this repository's (#93)
+            errors.append(stale_message(scenario_id, stale_reason))
             continue
         commit_map, map_errors = _load_commit_map(repo_dir.parent / "metadata" / "commit-map.json")
         errors.extend(map_errors)

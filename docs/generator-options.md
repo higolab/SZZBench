@@ -3,8 +3,9 @@
 This document describes the scenario keys that control *how* the generators
 turn a scenario into a Git repository. It covers the options introduced for
 GitHub issues #9 (deterministic metadata), #18 (placeholder operations) and
-#17 (history-rewriting fidelity), and the Git environment every generation
-runs in (#96, section 5). Keys marked *graph* exist only in
+#17 (history-rewriting fidelity), the Git environment every generation
+runs in (#96, section 5), and the manifest that says what an output was made
+from (#93, section 6). Keys marked *graph* exist only in
 `scenario.graph.yml`; keys marked *both* work in `scenario.yml` and
 `scenario.graph.yml`.
 
@@ -548,3 +549,47 @@ directory, for example; run SZZBench as the owner of the output directory.
 
 SZZBench is developed and tested with Git 2.50.1. Older versions are not
 tested.
+
+## 6. The generation manifest (#93)
+
+A generation writes `metadata/manifest.json` **last**: after the commits, the
+metadata files and, unless `--no-verify` was given, a verification with no
+error. Its presence says the output is complete, and its fields say what the
+output was made from:
+
+| field | value |
+|---|---|
+| `scenario_sha256` | SHA-256 of the scenario file (CRLF read as LF) |
+| `generator` | SHA-256 over the source of the modules that decide what a repository contains: `generator`, `graph_generator`, `gitutils`, `operations`, `graph_operations`, `scenario`, `graph_scenario`, `paths` |
+| `repository_id` | the first 16 hex digits of a digest over every logical commit and its hash -- equal exactly when two histories are |
+| `verified` | whether verification ran and passed |
+| `scenario_id`, `format`, `git_version` | for the record |
+
+An output is **stale** when it has no manifest -- an interrupted generation,
+or one made before 2026-09-29 -- or when its scenario file or the generator's
+code has changed since it was generated; for a run with verification, an
+unverified output is stale too. Any edit to the scenario file counts, metadata
+included, because the output carries a copy of the scenario and the adapters
+read the bug-fixing commits from it. The validation, verification and
+reporting modules the generators also import are left out of the fingerprint:
+they decide whether a generation is accepted, not what it writes.
+`tests/test_generation_manifest.py` checks that every module the generators
+import is on one side or the other.
+
+- `generate-all-repos` regenerates a stale output instead of skipping it and
+  prints why ("Regenerated ... the old output was stale: ..."). An up-to-date
+  output is still skipped. Until 2026-09-29 an output counted as done as soon
+  as `repo/.git` existed: an edited scenario kept its old repository, and a
+  generation that failed half way -- a `repo/.git` with no commits -- was
+  reported as Skipped.
+- `evaluate`, `baselines` and `coverage` refuse to score a stale output. The
+  report gets an error naming the scenario and the reason, and the scenario is
+  left out. Scoring the current oracle against an old repository is what went
+  wrong: in one checkout, 190 outputs from an older suite were all stale, 11
+  of them with a changed oracle, and the stale repository's own correct answer
+  FAILed without a warning.
+- Prediction records carry the `repository_id` of the output the tool ran on.
+  The adapters in `tools/adapters/` write it, and `evaluate` compares it with
+  the generated repository's (`docs/evaluation-policies.md` §1.6). Regenerating
+  an unchanged scenario gives the same history and therefore the same id, so a
+  regeneration alone does not invalidate earlier predictions.

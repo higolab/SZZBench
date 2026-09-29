@@ -334,6 +334,8 @@ def test_a_filtered_run_does_not_claim_promotion_candidates(tmp_path):
     data = yaml.safe_load(scenario_file.read_text())
     data["meta"]["tier"] = "discriminating"
     scenario_file.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+    # the edit makes the output stale (issue #93): it carries a copy of the scenario
+    generate_graph_repository(scenario_file, tmp_path / "repos" / "SZZG-9004" / "default", force=True)
     position_only = run_baselines(generated_root=tmp_path / "repos", scenarios_root=tmp_path,
                                   advanced_scenarios_root=tmp_path / "advanced-scenarios",
                                   families=["position"])
@@ -539,6 +541,8 @@ def _with_defeats(tmp_path, sid, defeats, tier="control"):
     data["meta"]["defeats"] = defeats
     data["meta"]["tier"] = tier
     path.write_text(yaml.safe_dump(data, sort_keys=False))
+    # an edited scenario makes its output stale (issue #93), so generate it again
+    generate_graph_repository(path, tmp_path / "repos" / sid / "default", force=True)
 
 
 def test_a_declared_defeat_that_a_rule_solves_is_reported(tmp_path):

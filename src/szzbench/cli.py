@@ -108,7 +108,10 @@ def cmd_generate_all_repos(args) -> int:
     for item in result.items:
         output = _display_path(item.output_dir)
         if item.status == "skipped":
-            print(f"Skipped [{item.kind}] {item.scenario_id}: {output} already exists.")
+            print(f"Skipped [{item.kind}] {item.scenario_id}: {output} is up to date.")
+        elif item.status == "generated" and item.stale_reason is not None:
+            print(f"Regenerated [{item.kind}] {item.scenario_id}: {output} ({item.commit_count} commit(s)); "
+                  f"the old output was stale: {item.stale_reason}.")
         elif item.status == "generated":
             verb = "Overwrote" if item.overwritten else "Generated"
             print(f"{verb} [{item.kind}] {item.scenario_id}: {output} ({item.commit_count} commit(s)).")
@@ -120,6 +123,7 @@ def cmd_generate_all_repos(args) -> int:
     print(f"  Generated:   {result.generated_count}")
     print(f"  Skipped:     {result.skipped_count}")
     print(f"  Overwritten: {result.overwritten_count}")
+    print(f"  Regenerated: {result.regenerated_count} (stale outputs, without --overwrite)")
     print(f"  Failed:      {result.failed_count}")
     if result.orphans:
         print(f"  Orphaned:    {len(result.orphans)}")

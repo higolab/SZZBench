@@ -507,6 +507,8 @@ A record can also say that the tool failed on the scenario; the scenario then fa
 {"scenario_id":"SZZ-0006","status":"error","errors":["<what went wrong>"],"predictions":[]}
 ```
 
+The adapters also write `repository_id`, the id of the generated repository the tool ran on; a record made on another generation of the scenario fails as stale.
+
 Use `--include-generated` to evaluate every generated repository under `--generated-root`. A scenario that no record names then fails as a missing record (`run_status: missing`) rather than being read as an abstention, so write an empty record, like `SZZ-0047` above, for a scenario on which the tool ran and found nothing. The adapters under `tools/adapters/` write such records.
 
 For Graph scenarios, `--evaluation-variant` selects a named `expected_szz.evaluation_variants` entry such as `direct-only`, `origin-aware`, or `relaxed-with-credit`. If it is omitted, SZZBench uses the scenario's `default_variant` when one is defined, otherwise it uses `expected_szz.commit_level`. Hyphen and underscore differences are normalized for matching. This option is independent of `--variant`, which selects the generated repository directory under each scenario.
@@ -569,7 +571,7 @@ The command scans the following files.
 
 Each generated repository is written under `generated-input-repos/<SCENARIO_ID>/default/`.
 
-By default, if that output directory already contains `repo/.git`, the scenario is skipped. This makes the command safe to run repeatedly when you only want to generate missing repositories.
+Every generation writes `metadata/manifest.json` last. It records the scenario file's hash, a fingerprint of the generator's code, and the repository id that prediction records carry. An existing output is skipped only when that manifest still matches. An output without one (an interrupted generation, or one made before 2026-09-29), or whose scenario file or generator code has changed since, is stale and is regenerated, with the reason printed (`docs/generator-options.md` §6). The command is therefore safe to run repeatedly: it brings every output up to date and leaves current ones alone. `evaluate`, `baselines` and `coverage` refuse to score a stale output.
 
 To remove existing generated repositories and create them again, use `--overwrite`.
 
@@ -1205,6 +1207,8 @@ szzbench evaluate \
 {"scenario_id":"SZZ-0006","status":"error","errors":["<what went wrong>"],"predictions":[]}
 ```
 
+アダプタは、ツールを実行した生成済みリポジトリの識別子 `repository_id` も書きます。同じシナリオの別の生成物に対して作られたレコードは stale として FAIL になります。
+
 `--generated-root` 以下の生成済みリポジトリをすべて評価するには `--include-generated` を使います。このとき、どのレコードにも現れないシナリオは、棄権ではなく記録の欠落（`run_status: missing`）として FAIL になります。ツールが実行されて何も見つけなかったシナリオには、上の `SZZ-0047` のような空のレコードを書いてください。`tools/adapters/` のアダプタはそのようなレコードを書きます。
 
 Graph scenario では、`--evaluation-variant` で `expected_szz.evaluation_variants` に定義された `direct-only`、`origin-aware`、`relaxed-with-credit` などの評価 variant を選べます。省略した場合は、シナリオに `default_variant` があればそれを使い、なければ `expected_szz.commit_level` を使います。variant 名の照合ではハイフンとアンダースコアの違いを吸収します。このオプションは、生成リポジトリのディレクトリを選ぶ `--variant` とは別物です。
@@ -1267,7 +1271,7 @@ szzbench generate-all-repos
 
 各リポジトリは `generated-input-repos/<SCENARIO_ID>/default/` 以下に生成されます。
 
-デフォルトでは、出力先に `repo/.git` が存在する場合、そのシナリオはスキップされます。そのため、不足しているリポジトリだけを生成したい場合にも繰り返し実行できます。
+生成は最後に `metadata/manifest.json` を書き出します。ここには、シナリオファイルのハッシュ、生成器のコードの指紋、予測の記録が持つリポジトリの識別子が記録されます。既存の出力は、この manifest が今も一致する場合にだけスキップされます。manifest がない出力（中断した生成や、2026-09-29 より前に作られたもの）や、その後シナリオファイルや生成器のコードが変わった出力は「古い」とみなされ、理由を表示して作り直されます（`docs/generator-options.md` §6）。そのため繰り返し実行しても安全で、すべての出力を最新にし、最新のものには手を付けません。`evaluate`、`baselines`、`coverage` は古い出力を採点しません。
 
 既存の生成済みリポジトリを削除して作り直す場合は、`--overwrite` を使います。
 
