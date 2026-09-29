@@ -4,25 +4,80 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
+import atexit
 import hashlib
 import os
 import re
+import shutil
 import subprocess
+import tempfile
 
 
 class GitError(RuntimeError):
     pass
 
 
+#: Variables withheld from every Git subprocess (issue #96).  The first group is
+#: what ``git rev-parse --local-env-vars`` lists: with ``GIT_DIR`` set, for
+#: example, every commit of a generation went into the repository it named.
+#: Then the configuration sources a caller can point elsewhere, the init
+#: template and the attribute source, and the identity and dates the
+#: generators always pass themselves.
+ISOLATED_GIT_ENV = frozenset({
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_CONFIG", "GIT_CONFIG_PARAMETERS", "GIT_CONFIG_COUNT",
+    "GIT_OBJECT_DIRECTORY", "GIT_DIR", "GIT_WORK_TREE", "GIT_IMPLICIT_WORK_TREE", "GIT_GRAFT_FILE",
+    "GIT_INDEX_FILE", "GIT_NO_REPLACE_OBJECTS", "GIT_REPLACE_REF_BASE", "GIT_PREFIX", "GIT_SHALLOW_FILE",
+    "GIT_COMMON_DIR",
+    "GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM", "GIT_TEMPLATE_DIR", "GIT_ATTR_SOURCE",
+    "GIT_AUTHOR_NAME", "GIT_AUTHOR_EMAIL", "GIT_AUTHOR_DATE",
+    "GIT_COMMITTER_NAME", "GIT_COMMITTER_EMAIL", "GIT_COMMITTER_DATE",
+})
+#: ``GIT_CONFIG_KEY_<n>`` / ``GIT_CONFIG_VALUE_<n>``, the pairs ``GIT_CONFIG_COUNT`` counts.
+ISOLATED_GIT_ENV_PREFIXES = ("GIT_CONFIG_KEY_", "GIT_CONFIG_VALUE_")
+
+_empty_home: Path | None = None
+
+
+def _isolated_home() -> str:
+    """An empty directory that stands in for ``HOME`` and ``XDG_CONFIG_HOME``.
+
+    With it neither the global configuration (``~/.gitconfig``,
+    ``$XDG_CONFIG_HOME/git/config``) nor the files Git reads without any
+    configuration (``$XDG_CONFIG_HOME/git/ignore`` and ``.../attributes``)
+    exist, on every Git version -- ``GIT_CONFIG_GLOBAL`` (Git 2.32) would
+    cover only the configuration file.
+    """
+    global _empty_home
+    if _empty_home is None or not _empty_home.is_dir():
+        _empty_home = Path(tempfile.mkdtemp(prefix="szzbench-git-home-"))
+        atexit.register(shutil.rmtree, _empty_home, True)
+    return str(_empty_home)
+
+
 def _git_env(extra_env: dict | None = None) -> dict:
     """Return an environment for Git subprocesses.
+
+    Git runs isolated from the caller's Git setup (issue #96): the system and
+    global configuration, configuration injected through the environment, the
+    default ignore and attributes files, the init template, and the variables
+    that point Git at another repository are all withheld, so what SZZBench
+    generates and measures depends on the scenario and the Git version only --
+    not on a developer's signing setup, hooks, global ignores or filters.
+    ``extra_env`` holds only what a caller sets on purpose (commit identity and
+    dates) and is applied last.
 
     On Windows, Python's default text encoding may be cp932. Git output can
     contain UTF-8 commit messages or paths, so run_git() decodes subprocess
     output explicitly as UTF-8. These environment values also encourage Git to
     produce UTF-8 output where supported.
     """
-    git_env = os.environ.copy()
+    git_env = {key: value for key, value in os.environ.items()
+               if key not in ISOLATED_GIT_ENV and not key.startswith(ISOLATED_GIT_ENV_PREFIXES)}
+    home = _isolated_home()
+    git_env["HOME"] = home
+    git_env["XDG_CONFIG_HOME"] = home
+    git_env["GIT_CONFIG_NOSYSTEM"] = "1"
+    git_env["GIT_ATTR_NOSYSTEM"] = "1"
     git_env.setdefault("LANG", "C.UTF-8")
     git_env.setdefault("LC_ALL", "C.UTF-8")
     if extra_env:
@@ -75,7 +130,8 @@ def run_git_with_input(repo_dir: Path, args: list[str], data: bytes, *, env: dic
 
 def init_repo(repo_dir: Path, branch: str) -> None:
     repo_dir.mkdir(parents=True, exist_ok=True)
-    run_git(repo_dir, ["init"])
+    # an empty --template copies no hooks, whatever the installation ships
+    run_git(repo_dir, ["init", "--template="])
     run_git(repo_dir, ["branch", "-M", branch])
     run_git(repo_dir, ["config", "user.name", "SZZ Benchmark"])
     run_git(repo_dir, ["config", "user.email", "szz-benchmark@example.com"])
@@ -365,15 +421,16 @@ class CommitMetadata:
         return parse_author(self.author)[1]
 
     def git_env(self) -> dict[str, str]:
+        """The identity and dates of this commit, as ``extra_env`` for :func:`run_git`."""
         name, email = parse_author(self.author)
-        env = os.environ.copy()
-        env["GIT_AUTHOR_NAME"] = name
-        env["GIT_AUTHOR_EMAIL"] = email
-        env["GIT_COMMITTER_NAME"] = name
-        env["GIT_COMMITTER_EMAIL"] = email
-        env["GIT_AUTHOR_DATE"] = self.author_date
-        env["GIT_COMMITTER_DATE"] = self.committer_date
-        return env
+        return {
+            "GIT_AUTHOR_NAME": name,
+            "GIT_AUTHOR_EMAIL": email,
+            "GIT_COMMITTER_NAME": name,
+            "GIT_COMMITTER_EMAIL": email,
+            "GIT_AUTHOR_DATE": self.author_date,
+            "GIT_COMMITTER_DATE": self.committer_date,
+        }
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -485,7 +542,7 @@ def commit_all(
     if not status:
         raise GitError("commit would be empty")
     name, email = parse_author(author)
-    env = os.environ.copy()
+    env: dict[str, str] = {}
     env["GIT_AUTHOR_NAME"] = name
     env["GIT_AUTHOR_EMAIL"] = email
     env["GIT_COMMITTER_NAME"] = name
