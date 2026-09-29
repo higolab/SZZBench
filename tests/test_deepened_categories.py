@@ -12,19 +12,14 @@ answer relates to the oracle — which is the point of each design.
 from __future__ import annotations
 
 import re
-import shutil
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 
+from support import GeneratedScenarios, blame_owners, export_tree, git_stdout, needs_jdk, run_driver
+
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "src"))
-
-from szzbench.generator import generate_repository  # noqa: E402
-
-needs_jdk = pytest.mark.skipif(shutil.which("javac") is None or shutil.which("java") is None, reason="needs a JDK")
 
 DRIVERS = {
     "SZZ-0221": """
@@ -135,52 +130,25 @@ BLAME = {
 REQUIRED = {sid: {"c1", "c3"} for sid in EXPECTED}
 
 
-def _git(repo: Path, *args: str) -> str:
-    return subprocess.run(["git", *args], cwd=repo, text=True, capture_output=True, check=True).stdout
+@pytest.fixture(scope="module")
+def scenarios(tmp_path_factory):
+    return GeneratedScenarios(tmp_path_factory)
 
 
 @pytest.fixture(scope="module", params=sorted(EXPECTED), ids=sorted(EXPECTED))
-def generated(request, tmp_path_factory):
-    sid = request.param
-    out = tmp_path_factory.mktemp(sid.lower()) / sid
-    commit_map, verify = generate_repository(ROOT / "scenarios" / sid / "scenario.yml", out, force=True)
-    assert verify is not None and not verify.has_errors(), verify.to_dict()
-    entries = commit_map.get("commits", commit_map) if isinstance(commit_map, dict) else commit_map
-    return sid, {c: (e["hash"] if isinstance(e, dict) else e) for c, e in entries.items()}, out / "repo"
-
-
-def _owner(repo: Path, hashes: dict[str, str], full: str) -> str:
-    bare = full.lstrip("^")
-    return next(cid for cid, h in hashes.items() if h.startswith(bare[:40]) or bare.startswith(h[:40]))
-
-
-def _blame_owners(repo: Path, hashes: dict[str, str]) -> dict[str, tuple[str, str, str]]:
-    bfc = hashes[max(hashes, key=lambda cid: int(cid[1:]))]
-    seen: dict[str, tuple[str, str, str]] = {}
-    for path in _git(repo, "diff", "--name-only", f"{bfc}^", bfc).split():
-        line_no = None
-        for line in _git(repo, "diff", "-U0", f"{bfc}^", bfc, "--", path).splitlines():
-            if line.startswith("@@"):
-                line_no = int(re.match(r"@@ -(\d+)", line).group(1))
-            elif line.startswith("-") and not line.startswith("---") and line_no is not None:
-                seen[line[1:].strip()] = tuple(
-                    _owner(repo, hashes, _git(repo, "blame", "-l", *f, "-L", f"{line_no},{line_no}", f"{bfc}^", "--", path).split()[0])
-                    for f in ((), ("-w",), ("-w", "-C", "-C")))
-                line_no += 1
-            elif line.startswith(" ") and line_no is not None:
-                line_no += 1
-    return seen
+def generated(request, scenarios):
+    return scenarios(request.param)
 
 
 def test_every_deleted_line_blames_as_the_readme_says(generated):
     sid, hashes, repo = generated
-    assert _blame_owners(repo, hashes) == BLAME[sid]
+    assert blame_owners(repo, hashes) == BLAME[sid]
 
 
 def test_blame_relates_to_the_oracle_as_the_design_says(generated):
     """SZZ-0221 and SZZ-0223 each reach one required commit; SZZ-0222 reaches none."""
     sid, hashes, repo = generated
-    blamed = {owners[0] for owners in _blame_owners(repo, hashes).values()}
+    blamed = {owners[0] for owners in blame_owners(repo, hashes).values()}
     if sid == "SZZ-0222":
         assert not (blamed & REQUIRED[sid]), "blame's answer must contain no required commit"
         assert blamed == {"c0"}
@@ -193,36 +161,22 @@ def test_blame_relates_to_the_oracle_as_the_design_says(generated):
         assert blamed == {"c3"} and "c1" not in blamed
 
 
-def _snapshot(repo: Path, commit: str, into: Path) -> None:
-    into.mkdir(parents=True, exist_ok=True)
-    tar = subprocess.run(["git", "archive", commit], cwd=repo, capture_output=True, check=True).stdout
-    subprocess.run(["tar", "-x", "-C", str(into)], input=tar, check=True)
-
-
-def _run_driver(work: Path, sid: str) -> str:
-    (work / "Drive.java").write_text(DRIVERS[sid])
-    sources = [str(p) for p in work.rglob("*.java")]
-    subprocess.run(["javac", "-nowarn", "-d", str(work / "out"), *sources], check=True, capture_output=True)
-    return subprocess.run(["java", "-cp", str(work / "out"), "Drive"], cwd=work, capture_output=True, text=True, check=True).stdout.strip()
-
-
 @needs_jdk
 def test_the_probe_answers_move_exactly_where_the_readme_says(generated, tmp_path):
     sid, hashes, repo = generated
     observed = {}
     for cid in EXPECTED[sid]:
         work = tmp_path / cid
-        _snapshot(repo, hashes[cid], work)
-        observed[cid] = _run_driver(work, sid)
+        export_tree(repo, hashes[cid], work)
+        observed[cid] = run_driver(work, DRIVERS[sid])
     assert observed == EXPECTED[sid], sid
 
 
 @needs_jdk
-def test_the_unreachable_commit_moved_no_answer_when_it_landed(generated, tmp_path):
+@pytest.mark.parametrize("sid", [sid for sid in sorted(EXPECTED) if sid != "SZZ-0222"])
+def test_the_unreachable_commit_moved_no_answer_when_it_landed(scenarios, sid, tmp_path):
     """The first fault is invisible until a later commit reaches it, except in SZZ-0222."""
-    sid, hashes, repo = generated
-    if sid == "SZZ-0222":
-        pytest.skip("both of this scenario's faults are visible as soon as they land")
+    _, hashes, repo = scenarios(sid)
     if sid == "SZZ-0221":
         # every probe of the package's public surface, including a negative total and both
         # ends of the supported domain, answers the same at c1 as at c0 (PR #85 review)
@@ -246,14 +200,13 @@ TEST_VERDICTS = {"c0": True, "c1": False, "c2": False, "c3": True, "c4": True}
 
 
 @needs_jdk
-def test_the_test_suite_goes_red_where_the_readme_says(generated, tmp_path):
-    sid, hashes, repo = generated
-    if sid != "SZZ-0225":
-        pytest.skip("only SZZ-0225 ships a test the history turns red")
+@pytest.mark.parametrize("sid", ['SZZ-0225'])
+def test_the_test_suite_goes_red_where_the_readme_says(scenarios, sid, tmp_path):
+    _, hashes, repo = scenarios(sid)
     observed = {}
     for cid in TEST_VERDICTS:
         work = tmp_path / cid
-        _snapshot(repo, hashes[cid], work)
+        export_tree(repo, hashes[cid], work)
         sources = [str(p) for p in work.rglob("*.java")]
         subprocess.run(["javac", "-nowarn", "-d", str(work / "out"), *sources], check=True, capture_output=True)
         run = subprocess.run(["java", "-cp", str(work / "out"), "example.LateFeeTest"],
@@ -267,12 +220,11 @@ def test_the_test_suite_goes_red_where_the_readme_says(generated, tmp_path):
 
 
 @needs_jdk
-def test_the_retry_limit_stays_inside_its_package(generated):
+@pytest.mark.parametrize("sid", ['SZZ-0224'])
+def test_the_retry_limit_stays_inside_its_package(scenarios, sid):
     """SZZ-0224's premise: no caller outside ``example`` can read what c1 changes."""
-    sid, hashes, repo = generated
-    if sid != "SZZ-0224":
-        pytest.skip("only SZZ-0224 rests on a package-private helper")
+    _, hashes, repo = scenarios(sid)
     for cid in EXPECTED[sid]:
-        source = _git(repo, "show", f"{hashes[cid]}:src/main/java/example/RetryLimit.java")
+        source = git_stdout(repo, "show", f"{hashes[cid]}:src/main/java/example/RetryLimit.java")
         code = re.sub(r"/\*.*?\*/", "", source, flags=re.S)  # the Javadoc says "public surface"
         assert "public" not in code, f"RetryLimit is externally readable at {cid}"

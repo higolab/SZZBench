@@ -6,29 +6,24 @@ from __future__ import annotations
 
 from pathlib import Path
 import json
-import subprocess
 
 import pytest
 import yaml
 
+from support import git_bytes, git_stdout
 from szzbench.generator import generate_repository
 from szzbench.gitutils import DEFAULT_AUTHOR_POOL, deterministic_author, deterministic_date, resolve_commit_metadata
 from szzbench.graph_generator import MAX_GENERATED_COMMITS, GraphGenerationError, generate_graph_repository
 from szzbench.graph_operations import apply_graph_operation_to_filesystem, commit_generator_directory
 from szzbench.operations import OperationError, apply_operation_to_filesystem, apply_operation_to_memory
 
-
 # ---------------------------------------------------------------------------
 # helpers
 # ---------------------------------------------------------------------------
 
 
-def _git(repo: Path, *args: str) -> str:
-    return subprocess.run(["git", *args], cwd=repo, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True).stdout
-
-
 def _log_line(repo: Path, revision: str, fmt: str) -> str:
-    return _git(repo, "log", "-1", f"--format={fmt}", revision).rstrip("\n")
+    return git_stdout(repo, "log", "-1", f"--format={fmt}", revision).rstrip("\n")
 
 
 def _write_graph_scenario(path: Path, commits: list[dict], *, scenario_id: str = "SZZG-9900", bugs: list[dict] | None = None, extra: dict | None = None, repository: dict | None = None) -> Path:
@@ -236,13 +231,13 @@ def test_chmod_scenario_enables_filemode_and_records_mode(tmp_path):
     commit_map, verify = generate_graph_repository(scenario, out, force=True)
     assert not verify.has_errors()
     repo = out / "repo"
-    assert _git(repo, "config", "core.filemode").strip() == "true"
-    assert _git(repo, "ls-tree", commit_map["c0"]["hash"], "scripts/run.sh").startswith("100644")
-    assert _git(repo, "ls-tree", commit_map["c1"]["hash"], "scripts/run.sh").startswith("100755")
+    assert git_stdout(repo, "config", "core.filemode").strip() == "true"
+    assert git_stdout(repo, "ls-tree", commit_map["c0"]["hash"], "scripts/run.sh").startswith("100644")
+    assert git_stdout(repo, "ls-tree", commit_map["c1"]["hash"], "scripts/run.sh").startswith("100755")
     # No chmod -> filemode stays off (Windows compatibility).
     plain = _write_graph_scenario(tmp_path / "plain.graph.yml", commits[:1] + [commits[2] | {"parents": ["c0"]}], scenario_id="SZZG-9901")
     generate_graph_repository(plain, tmp_path / "plain", force=True)
-    assert _git(tmp_path / "plain" / "repo", "config", "core.filemode").strip() == "false"
+    assert git_stdout(tmp_path / "plain" / "repo", "config", "core.filemode").strip() == "false"
 
 
 def test_line_ending_option_in_graph_operations(tmp_path):
@@ -286,7 +281,7 @@ def test_classic_scenario_with_crlf_generates_and_verifies(tmp_path):
     out = tmp_path / "out"
     commit_map, verify = generate_repository(scenario, out, force=True)
     assert not verify.has_errors()
-    blob = subprocess.run(["git", "show", f"{commit_map['c1']['hash']}:src/example.txt"], cwd=out / "repo", stdout=subprocess.PIPE, check=True).stdout
+    blob = git_bytes(out / "repo", "show", f"{commit_map['c1']['hash']}:src/example.txt")
     assert blob == b"state=fixed\r\nother=1\r\n"
 
 
@@ -346,7 +341,7 @@ def test_commit_generator_expands_into_real_commits_and_verifies(tmp_path):
     commit_map, verify = generate_graph_repository(scenario, out, force=True)
     assert not verify.has_errors(), verify.to_dict()
     repo = out / "repo"
-    assert _git(repo, "rev-list", "--count", "HEAD").strip() == "9"  # 4 logical + 5 generated
+    assert git_stdout(repo, "rev-list", "--count", "HEAD").strip() == "9"  # 4 logical + 5 generated
 
     generated = commit_map["c2"]["generated_commits"]
     assert generated == [f"c2.g{i}" for i in range(1, 6)]
@@ -360,12 +355,12 @@ def test_commit_generator_expands_into_real_commits_and_verifies(tmp_path):
     assert _log_line(repo, commit_map["c2"]["hash"], "%P") == commit_map["c2.g5"]["hash"]
     assert _log_line(repo, commit_map["c3"]["hash"], "%P") == commit_map["c2"]["hash"]
     assert _log_line(repo, commit_map["c2"]["hash"], "%s") == "c2: unrelated batch"
-    assert _git(repo, "show", "--stat", "--format=", commit_map["c2"]["hash"]).strip() == ""  # owner is empty
+    assert git_stdout(repo, "show", "--stat", "--format=", commit_map["c2"]["hash"]).strip() == ""  # owner is empty
     # Each generated commit touches exactly one file under the directory of the legacy path.
     for gid in generated:
-        changed = _git(repo, "show", "--name-only", "--format=", commit_map[gid]["hash"]).split()
+        changed = git_stdout(repo, "show", "--name-only", "--format=", commit_map[gid]["hash"]).split()
         assert len(changed) == 1 and changed[0].startswith("generated/unrelated_changes-")
-    assert sorted(_git(repo, "ls-tree", "--name-only", commit_map["c2"]["hash"], "generated/").split()) == [
+    assert sorted(git_stdout(repo, "ls-tree", "--name-only", commit_map["c2"]["hash"], "generated/").split()) == [
         "generated/unrelated_changes-01.txt",
         "generated/unrelated_changes-02.txt",
     ]
@@ -382,14 +377,14 @@ def test_commit_generator_is_deterministic_and_capped(tmp_path):
     first, _ = generate_graph_repository(scenario, tmp_path / "a", force=True)
     second, _ = generate_graph_repository(scenario, tmp_path / "b", force=True)
     assert first["c3"]["hash"] == second["c3"]["hash"]
-    assert _git(tmp_path / "a" / "repo", "ls-tree", "--name-only", first["c2"]["hash"], "history/").split() == ["history/unrelated_changes-01.txt"]
+    assert git_stdout(tmp_path / "a" / "repo", "ls-tree", "--name-only", first["c2"]["hash"], "history/").split() == ["history/unrelated_changes-01.txt"]
 
     big = _write_graph_scenario(tmp_path / "big.graph.yml", _commit_generator_commits(MAX_GENERATED_COMMITS + 7, files=10), bugs=_commit_generator_bugs(), scenario_id="SZZG-9903")
     out = tmp_path / "big"
     commit_map, verify = generate_graph_repository(big, out, force=True)
     assert not verify.has_errors()
     assert len(commit_map["c2"]["generated_commits"]) == MAX_GENERATED_COMMITS
-    assert _git(out / "repo", "rev-list", "--count", "HEAD").strip() == str(4 + MAX_GENERATED_COMMITS)
+    assert git_stdout(out / "repo", "rev-list", "--count", "HEAD").strip() == str(4 + MAX_GENERATED_COMMITS)
 
 
 # ---------------------------------------------------------------------------
@@ -458,7 +453,7 @@ def test_ref_lifecycle_deletes_branch_and_creates_tag(tmp_path):
     commit_map, verify = generate_graph_repository(scenario, out, force=True)
     assert not verify.has_errors(), verify.to_dict()
     repo = out / "repo"
-    refs = _git(repo, "for-each-ref", "--format=%(refname) %(objectname)").split("\n")
+    refs = git_stdout(repo, "for-each-ref", "--format=%(refname) %(objectname)").split("\n")
     refs = dict(line.split() for line in refs if line)
     assert refs == {
         "refs/heads/main": commit_map["c2"]["hash"],
@@ -494,8 +489,8 @@ def test_ref_lifecycle_can_delete_the_checked_out_branch(tmp_path):
     out = tmp_path / "out"
     commit_map, verify = generate_graph_repository(scenario, out, force=True)
     assert not verify.has_errors()
-    assert _git(out / "repo", "for-each-ref", "--format=%(refname)").split() == ["refs/heads/main"]
-    assert _git(out / "repo", "rev-parse", "HEAD").strip() == commit_map["c0"]["hash"]
+    assert git_stdout(out / "repo", "for-each-ref", "--format=%(refname)").split() == ["refs/heads/main"]
+    assert git_stdout(out / "repo", "rev-parse", "HEAD").strip() == commit_map["c0"]["hash"]
 
 
 def test_ref_lifecycle_rejects_unknown_targets(tmp_path):
@@ -541,9 +536,9 @@ def test_cherry_pick_trailer_is_appended_to_body_only(tmp_path):
     r1_hash, c1_hash = commit_map["r1"]["hash"], commit_map["c1"]["hash"]
     assert _log_line(repo, r1_hash, "%s") == "r1: backport boundary bug"
     assert _log_line(repo, r1_hash, "%b").strip() == f"(cherry picked from commit {c1_hash})"
-    assert _git(repo, "log", "-1", "--format=%B", r1_hash) == f"r1: backport boundary bug\n\n(cherry picked from commit {c1_hash})\n\n"
+    assert git_stdout(repo, "log", "-1", "--format=%B", r1_hash) == f"r1: backport boundary bug\n\n(cherry picked from commit {c1_hash})\n\n"
     assert commit_map["r1"]["body"] == f"(cherry picked from commit {c1_hash})"
-    assert BUGGY in _git(repo, "show", f"{r1_hash}:{RANGE}")
+    assert BUGGY in git_stdout(repo, "show", f"{r1_hash}:{RANGE}")
 
     # With explicit operations (hand-written replay) the trailer still names the source.
     scenario2 = _write_graph_scenario(tmp_path / "t.graph.yml", _cherry_pick_commits(trailer=True, with_operations=True), bugs=_cherry_pick_bugs(), scenario_id="SZZG-9904")
@@ -593,8 +588,8 @@ def test_revert_of_restores_tree_and_writes_standard_message(tmp_path):
     assert not verify.has_errors(), verify.to_dict()
     repo = out / "repo"
     c1_hash, c2_hash = commit_map["c1"]["hash"], commit_map["c2"]["hash"]
-    assert _git(repo, "show", f"{c2_hash}:{RANGE}") == _range_java(False)
-    assert _git(repo, "rev-parse", f"{c2_hash}^{{tree}}") == _git(repo, "rev-parse", f"{commit_map['c0']['hash']}^{{tree}}")
+    assert git_stdout(repo, "show", f"{c2_hash}:{RANGE}") == _range_java(False)
+    assert git_stdout(repo, "rev-parse", f"{c2_hash}^{{tree}}") == git_stdout(repo, "rev-parse", f"{commit_map['c0']['hash']}^{{tree}}")
     assert _log_line(repo, c2_hash, "%s") == 'Revert "c1: introduce boundary bug"'
     assert _log_line(repo, c2_hash, "%b").strip() == f"This reverts commit {c1_hash}."
     assert commit_map["c2"]["message"] == 'Revert "c1: introduce boundary bug"'
@@ -612,8 +607,8 @@ def test_revert_of_with_explicit_message_and_extra_operations(tmp_path):
     c2_hash = commit_map["c2"]["hash"]
     assert _log_line(repo, c2_hash, "%s") == "c2: back out boundary change"
     assert _log_line(repo, c2_hash, "%b").strip() == f"This reverts commit {commit_map['c1']['hash']}."
-    assert _git(repo, "show", f"{c2_hash}:{RANGE}") == _range_java(False)
-    assert _git(repo, "show", f"{c2_hash}:README.md") == "# demo (reverted)\n"
+    assert git_stdout(repo, "show", f"{c2_hash}:{RANGE}") == _range_java(False)
+    assert git_stdout(repo, "show", f"{c2_hash}:README.md") == "# demo (reverted)\n"
 
 
 def test_revert_of_with_operations_is_hand_written_and_keeps_footer(tmp_path):
@@ -634,7 +629,7 @@ def test_revert_of_with_operations_is_hand_written_and_keeps_footer(tmp_path):
     assert not verify.has_errors(), verify.to_dict()
     repo = out / "repo"
     c2_hash = commit_map["c2"]["hash"]
-    assert "return value >= min && value < max;" in _git(repo, "show", f"{c2_hash}:{RANGE}")
+    assert "return value >= min && value < max;" in git_stdout(repo, "show", f"{c2_hash}:{RANGE}")
     assert _log_line(repo, c2_hash, "%s") == "c2: partially revert c1"
     assert _log_line(repo, c2_hash, "%b").strip() == f"This reverts commit {commit_map['c1']['hash']}."
 
@@ -660,7 +655,7 @@ def test_revert_of_merge_with_mainline(tmp_path):
     commit_map, verify = generate_graph_repository(scenario, out, force=True)
     assert not verify.has_errors(), verify.to_dict()
     repo = out / "repo"
-    assert _git(repo, "show", f"{commit_map['c1']['hash']}:{RANGE}") == _range_java(False)
+    assert git_stdout(repo, "show", f"{commit_map['c1']['hash']}:{RANGE}") == _range_java(False)
     assert _log_line(repo, commit_map["c1"]["hash"], "%s") == 'Revert "m1: merge feature"'
     assert _log_line(repo, commit_map["c1"]["hash"], "%b").strip() == f"This reverts commit {commit_map['m1']['hash']}."
 
@@ -698,10 +693,10 @@ def test_conflicting_merge_is_resolved_with_resolution(tmp_path):
     repo = out / "repo"
     m1 = commit_map["m1"]["hash"]
     assert _log_line(repo, m1, "%P").split() == [commit_map["c1"]["hash"], commit_map["f1"]["hash"]]
-    assert _git(repo, "show", f"{m1}:{RANGE}") == resolved
-    assert "<<<<<<<" not in _git(repo, "show", f"{m1}:{RANGE}")
+    assert git_stdout(repo, "show", f"{m1}:{RANGE}") == resolved
+    assert "<<<<<<<" not in git_stdout(repo, "show", f"{m1}:{RANGE}")
     assert commit_map["m1"]["resolved_conflicts"] == [RANGE]
-    assert _git(repo, "status", "--porcelain").strip() == ""
+    assert git_stdout(repo, "status", "--porcelain").strip() == ""
 
 
 def test_conflicting_merge_without_resolution_raises(tmp_path):
@@ -734,7 +729,7 @@ def test_conflicting_cherry_pick_is_resolved_with_resolution(tmp_path):
     assert not verify.has_errors(), verify.to_dict()
     repo = out / "repo"
     r1 = commit_map["r1"]["hash"]
-    assert _git(repo, "show", f"{r1}:{RANGE}") == resolved
+    assert git_stdout(repo, "show", f"{r1}:{RANGE}") == resolved
     assert _log_line(repo, r1, "%P") == commit_map["r0"]["hash"]
     assert _log_line(repo, r1, "%b").strip() == f"(cherry picked from commit {commit_map['c1']['hash']})"
     assert not (repo / ".git" / "CHERRY_PICK_HEAD").exists()
@@ -804,9 +799,9 @@ def test_commit_generator_legacy_root_level_path_generates_and_verifies(tmp_path
     assert not verify.has_errors(), verify.to_dict()
     repo = out / "repo"
     for gid in commit_map["c2"]["generated_commits"]:
-        assert _git(repo, "show", "--name-only", "--format=", commit_map[gid]["hash"]).split() == ["unrelated_changes-01.txt"]
+        assert git_stdout(repo, "show", "--name-only", "--format=", commit_map[gid]["hash"]).split() == ["unrelated_changes-01.txt"]
         assert commit_map[gid]["path"] == "unrelated_changes-01.txt"
-    assert "unrelated_changes-01.txt" in _git(repo, "ls-tree", "--name-only", commit_map["c2"]["hash"]).split()
+    assert "unrelated_changes-01.txt" in git_stdout(repo, "ls-tree", "--name-only", commit_map["c2"]["hash"]).split()
 
 
 def test_commit_generator_dates_stay_inside_the_parent_owner_interval(tmp_path):
@@ -862,8 +857,8 @@ def test_conflicting_merge_with_non_ascii_path_is_resolved(tmp_path):
     repo = out / "repo"
     m1 = commit_map["m1"]["hash"]
     assert commit_map["m1"]["resolved_conflicts"] == [path]
-    assert _git(repo, "show", f"{m1}:{path}") == resolved
-    assert _git(repo, "status", "--porcelain").strip() == ""
+    assert git_stdout(repo, "show", f"{m1}:{path}") == resolved
+    assert git_stdout(repo, "status", "--porcelain").strip() == ""
 
 
 def _stamps(repo: Path, commit_map: dict, ids: list[str], fmt: str) -> list[int]:
@@ -1139,11 +1134,11 @@ def test_octopus_merge_has_all_declared_parents(tmp_path):
     out = tmp_path / "out"
     commit_map, verify = generate_graph_repository(scenario, out, force=True)
     assert not verify.has_errors(), verify.to_dict()
-    parents = _git(out / "repo", "rev-list", "--parents", "-n", "1", commit_map["m1"]["hash"]).split()[1:]
+    parents = git_stdout(out / "repo", "rev-list", "--parents", "-n", "1", commit_map["m1"]["hash"]).split()[1:]
     assert parents == [commit_map[p]["hash"] for p in ("c0", "a1", "b1", "c1")]
     # every branch's change is in the merged tree
     for path in (A, B, C):
-        assert "return 2;" in _git(out / "repo", "show", f"{commit_map['m1']['hash']}:{path}")
+        assert "return 2;" in git_stdout(out / "repo", "show", f"{commit_map['m1']['hash']}:{path}")
 
 
 def test_encoding_option_in_classic_operations(tmp_path):
@@ -1251,7 +1246,7 @@ def test_bom_added_by_replace_and_removed_by_write_file_generates(tmp_path):
     commit_map, verify = generate_repository(variant, tmp_path / "out", force=True)
     assert verify is not None and not verify.has_errors(), verify.to_dict() if verify else None
     repo = tmp_path / "out" / "repo"
-    blob = lambda cid: subprocess.run(["git", "show", f"{commit_map[cid]['hash']}:src/limits/upload.py"], cwd=repo, capture_output=True, check=True).stdout
+    blob = lambda cid: git_bytes(repo, "show", f"{commit_map[cid]['hash']}:src/limits/upload.py")
     assert not blob("c0").startswith(b"\xef\xbb\xbf")
     assert blob("c1").startswith(b"\xef\xbb\xbfMAX_UPLOAD_KB = 6144\n")
     assert blob("c2") == blob("c1")[3:]

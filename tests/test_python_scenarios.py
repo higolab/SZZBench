@@ -17,9 +17,8 @@ from pathlib import Path
 import pytest
 import yaml
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
-
-from szzbench.generator import generate_repository  # noqa: E402
+from support import export_tree, git, git_bytes
+from szzbench.generator import generate_repository
 
 ROOT = Path(__file__).resolve().parent.parent
 CLASSIC = ROOT / "scenarios"
@@ -72,22 +71,11 @@ BEHAVIOUR: dict[str, tuple[str, list[str]]] = {
 }
 
 
-def _git(repo: Path, *args: str) -> str:
-    return subprocess.run(["git", *args], cwd=repo, text=True, capture_output=True, check=True).stdout.strip()
-
-
 def _generate(tmp_path: Path, sid: str) -> tuple[dict, Path]:
     out = tmp_path / sid
     commit_map, verify = generate_repository(CLASSIC / sid / "scenario.yml", out, force=True)
     assert verify is not None and not verify.has_errors(), verify.to_dict() if verify else None
     return commit_map, out / "repo"
-
-
-def _snapshot(repo: Path, commit_hash: str, work: Path) -> Path:
-    work.mkdir()
-    tar = subprocess.run(["git", "archive", commit_hash], cwd=repo, capture_output=True, check=True).stdout
-    subprocess.run(["tar", "-x", "-C", str(work)], input=tar, check=True)
-    return work
 
 
 def _ordered(commit_map: dict) -> list[tuple[str, str]]:
@@ -104,7 +92,7 @@ def test_every_python_snapshot_byte_compiles(tmp_path, sid):
     commit_map, repo = _generate(tmp_path, sid)
     compiled = 0
     for cid, commit_hash in _ordered(commit_map):
-        work = _snapshot(repo, commit_hash, tmp_path / f"snap-{cid}")
+        work = export_tree(repo, commit_hash, tmp_path / f"snap-{cid}")
         sources = sorted(work.rglob("*.py"))
         assert sources, f"{sid} {cid}: snapshot carries no Python"
         for source in sources:
@@ -120,7 +108,7 @@ def test_fault_is_visible_exactly_between_bic_and_bfc(tmp_path, sid):
     ordered = _ordered(commit_map)
     assert len(ordered) == len(expected)
     for (cid, commit_hash), want in zip(ordered, expected):
-        work = _snapshot(repo, commit_hash, tmp_path / f"run-{cid}")
+        work = export_tree(repo, commit_hash, tmp_path / f"run-{cid}")
         run = subprocess.run([sys.executable, "-c", driver], cwd=work / "src", text=True, capture_output=True)
         assert run.returncode == 0, (sid, cid, run.stderr)
         assert run.stdout.strip() == want, (sid, cid, run.stdout)
@@ -140,7 +128,7 @@ def test_wrong_threshold_twin_differs_from_szz_0021_in_language_only(tmp_path):
 
 def _blamed_ids(repo: Path, commit_map: dict, bfc: str, path: str, line: int, *options: str) -> set[str]:
     by_hash = {entry["hash"]: cid for cid, entry in commit_map.items()}
-    out = _git(repo, "blame", "-l", "-s", *options, "-L", f"{line},{line}", f"{commit_map[bfc]['hash']}^", "--", path)
+    out = git(repo, "blame", "-l", "-s", *options, "-L", f"{line},{line}", f"{commit_map[bfc]['hash']}^", "--", path)
     return {by_hash[token.lstrip("^")] for token in (line_.split()[0] for line_ in out.splitlines())}
 
 
@@ -152,7 +140,7 @@ def _blamed_ids(repo: Path, commit_map: dict, bfc: str, path: str, line: int, *o
 def test_noise_commit_owns_the_deleted_line_even_under_blame_w(tmp_path, sid, path, line):
     """The S3 Python scenarios claim plain blame and `blame -w` both return c2, not the BIC c1."""
     commit_map, repo = _generate(tmp_path, sid)
-    deleted = _git(repo, "diff", "-U0", f"{commit_map['c3']['hash']}^", commit_map["c3"]["hash"])
+    deleted = git(repo, "diff", "-U0", f"{commit_map['c3']['hash']}^", commit_map["c3"]["hash"])
     assert f"@@ -{line}" in deleted, deleted
     assert _blamed_ids(repo, commit_map, "c3", path, line) == {"c2"}
     assert _blamed_ids(repo, commit_map, "c3", path, line, "-w") == {"c2"}
@@ -161,10 +149,9 @@ def test_noise_commit_owns_the_deleted_line_even_under_blame_w(tmp_path, sid, pa
 def test_bom_scenario_changes_only_the_three_bom_bytes(tmp_path):
     """SZZ-0206: c2 prepends EF BB BF and nothing else; c3 keeps the BOM and changes the constant."""
     commit_map, repo = _generate(tmp_path, "SZZ-0206")
-    blobs = {cid: subprocess.run(["git", "show", f"{commit_map[cid]['hash']}:src/limits/upload.py"], cwd=repo,
-                                 capture_output=True, check=True).stdout for cid in commit_map}
+    blobs = {cid: git_bytes(repo, "show", f"{commit_map[cid]['hash']}:src/limits/upload.py") for cid in commit_map}
     assert not blobs["c1"].startswith(b"\xef\xbb\xbf")
     assert blobs["c2"] == b"\xef\xbb\xbf" + blobs["c1"]
     assert blobs["c3"].startswith(b"\xef\xbb\xbfMAX_UPLOAD_KB = 61440\n")
     assert blobs["c3"][3:].splitlines()[1:] == blobs["c1"].splitlines()[1:]
-    assert _git(repo, "diff", "--numstat", commit_map["c1"]["hash"], commit_map["c2"]["hash"]).split("\t")[:2] == ["1", "1"]
+    assert git(repo, "diff", "--numstat", commit_map["c1"]["hash"], commit_map["c2"]["hash"]).split("\t")[:2] == ["1", "1"]

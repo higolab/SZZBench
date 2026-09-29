@@ -10,19 +10,14 @@ exactly where the README says it does.
 """
 from __future__ import annotations
 
-import shutil
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 
+from support import GeneratedScenarios, export_tree, git_stdout, needs_jdk
+
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "src"))
-
-from szzbench.generator import generate_repository  # noqa: E402
-
-needs_jdk = pytest.mark.skipif(shutil.which("javac") is None or shutil.which("java") is None, reason="needs a JDK")
 
 CASES = {
     # id: (driver, expected output per commit, markers that together single out the faulty line, expected hop chain from BFC^, blame -w at BFC^)
@@ -46,19 +41,14 @@ CASES = {
 }
 
 
-def _git(repo: Path, *args: str) -> str:
-    return subprocess.run(["git", *args], cwd=repo, text=True, capture_output=True, check=True).stdout
+@pytest.fixture(scope="module")
+def scenarios(tmp_path_factory):
+    return GeneratedScenarios(tmp_path_factory)
 
 
 @pytest.fixture(scope="module", params=sorted(CASES), ids=sorted(CASES))
-def generated(request, tmp_path_factory):
-    sid = request.param
-    out = tmp_path_factory.mktemp(sid.lower()) / sid
-    commit_map, verify = generate_repository(ROOT / "scenarios" / sid / "scenario.yml", out, force=True)
-    assert verify is not None and not verify.has_errors(), verify.to_dict()
-    entries = commit_map.get("commits", commit_map) if isinstance(commit_map, dict) else commit_map
-    hashes = {cid: (entry["hash"] if isinstance(entry, dict) else entry) for cid, entry in entries.items()}
-    return sid, hashes, out / "repo"
+def generated(request, scenarios):
+    return scenarios(request.param)
 
 
 def _carries(line: str, markers: tuple[str, ...]) -> bool:
@@ -66,14 +56,14 @@ def _carries(line: str, markers: tuple[str, ...]) -> bool:
 
 
 def _deleted_lines(repo: Path, commit: str, path: str) -> list[str]:
-    diff = _git(repo, "diff", "-U0", f"{commit}^", commit, "--", path)
+    diff = git_stdout(repo, "diff", "-U0", f"{commit}^", commit, "--", path)
     return [line[1:] for line in diff.split("\n") if line.startswith("-") and not line.startswith("---")]
 
 
 def _blame_owner(repo: Path, commit: str, path: str, line_text: str, hashes: dict[str, str], *flags: str) -> str:
-    lines = _git(repo, "show", f"{commit}:{path}").split("\n")
+    lines = git_stdout(repo, "show", f"{commit}:{path}").split("\n")
     number = lines.index(line_text) + 1
-    blamed = _git(repo, "blame", "-l", *flags, "-L", f"{number},{number}", commit, "--", path).split()[0].lstrip("^")
+    blamed = git_stdout(repo, "blame", "-l", *flags, "-L", f"{number},{number}", commit, "--", path).split()[0].lstrip("^")
     return next(cid for cid, full in hashes.items() if full.startswith(blamed))
 
 
@@ -81,7 +71,7 @@ def test_the_faulty_line_is_rewritten_by_every_intermediate_commit(generated):
     """Each commit between the BIC and the BFC deletes exactly one line carrying the faulty expression."""
     sid, hashes, repo = generated
     _, _, markers, chain, _ = CASES[sid]
-    path = _git(repo, "diff", "--name-only", f"{hashes['c1']}^", hashes["c1"]).strip()
+    path = git_stdout(repo, "diff", "--name-only", f"{hashes['c1']}^", hashes["c1"]).strip()
     for cid in chain[:-1]:                                 # the rewrites, not the BIC
         carrying = [line for line in _deleted_lines(repo, hashes[cid], path) if _carries(line, markers)]
         assert len(carrying) == 1, (sid, cid, carrying)
@@ -91,7 +81,7 @@ def test_plain_blame_stops_at_the_last_rewrite_and_the_line_history_reaches_the_
     sid, hashes, repo = generated
     _, _, markers, expected_chain, w_owner = CASES[sid]
     bfc = max(hashes, key=lambda cid: int(cid[1:]))
-    path = _git(repo, "diff", "--name-only", f"{hashes[bfc]}^", hashes[bfc]).strip()
+    path = git_stdout(repo, "diff", "--name-only", f"{hashes[bfc]}^", hashes[bfc]).strip()
     current = next(line for line in _deleted_lines(repo, hashes[bfc], path) if _carries(line, markers))
     parent = f"{hashes[bfc]}^"
     chain = []
@@ -108,16 +98,15 @@ def test_plain_blame_stops_at_the_last_rewrite_and_the_line_history_reaches_the_
     assert _blame_owner(repo, f"{hashes[bfc]}^", path, first_deleted, hashes, "-w") == w_owner
 
 
-def test_szz_0211_whitespace_hop_is_the_only_one_that_w_skips(generated):
-    sid, hashes, repo = generated
-    if sid != "SZZ-0211":
-        pytest.skip("only SZZ-0211 has a whitespace-only hop")
+@pytest.mark.parametrize("sid", ['SZZ-0211'])
+def test_szz_0211_whitespace_hop_is_the_only_one_that_w_skips(scenarios, sid):
+    _, hashes, repo = scenarios(sid)
     path = "src/main/java/example/ReportAccess.java"
     # c2 re-indented the file: at c3^ (= c2) the guard line blames to c2 plainly and to c1 with -w
     guard_at_c2 = "        if (user == null) {"
     assert _blame_owner(repo, hashes["c2"], path, guard_at_c2, hashes) == "c2"
     assert _blame_owner(repo, hashes["c2"], path, guard_at_c2, hashes, "-w") == "c1"
-    assert _git(repo, "diff", "-w", f"{hashes['c2']}^", hashes["c2"]).strip() == "", "c2 is whitespace-only"
+    assert git_stdout(repo, "diff", "-w", f"{hashes['c2']}^", hashes["c2"]).strip() == "", "c2 is whitespace-only"
 
 
 @needs_jdk
@@ -126,10 +115,7 @@ def test_the_fault_is_visible_from_the_bic_through_every_rewrite_and_gone_at_the
     driver, expected, _, _, _ = CASES[sid]
     observed = {}
     for cid in expected:
-        work = tmp_path / cid
-        work.mkdir()
-        tar = subprocess.run(["git", "archive", hashes[cid]], cwd=repo, capture_output=True, check=True).stdout
-        subprocess.run(["tar", "-x", "-C", str(work)], input=tar, check=True)
+        work = export_tree(repo, hashes[cid], tmp_path / cid)
         (work / "Drive.java").write_text(driver)
         sources = [str(p) for p in work.rglob("*.java")]
         subprocess.run(["javac", "-d", str(work / "out"), *sources], check=True, capture_output=True)

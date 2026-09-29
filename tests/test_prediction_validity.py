@@ -29,12 +29,11 @@ from pathlib import Path
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "src"))
+from szzbench.evaluator import evaluate_predictions
+from szzbench.generator import generate_repository
+from szzbench.graph_generator import generate_graph_repository
 
-from szzbench.evaluator import evaluate_predictions  # noqa: E402
-from szzbench.generator import generate_repository  # noqa: E402
-from szzbench.graph_generator import generate_graph_repository  # noqa: E402
+ROOT = Path(__file__).resolve().parents[1]
 
 UNKNOWN = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
 OTHER_UNKNOWN = "feedfacefeedfacefeedfacefeedfacefeedface"

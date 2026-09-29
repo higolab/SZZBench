@@ -8,21 +8,17 @@ fault kind is present in `meta.factors`.
 """
 from __future__ import annotations
 
-import shutil
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 import yaml
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
-
-from szzbench.graph_generator import generate_graph_repository  # noqa: E402
+from support import GeneratedScenarios, export_tree, git, git_stdout, needs_jdk
+from szzbench.gitutils import GitError
 
 ROOT = Path(__file__).resolve().parent.parent
 GRAPH = ROOT / "advanced-scenarios"
-NEEDS_JDK = pytest.mark.skipif(shutil.which("javac") is None or shutil.which("java") is None, reason="needs a JDK")
 
 # scenario -> (fault kind factor, driver body, {commit: expected stdout})
 REWRITES: dict[str, tuple[str, str, dict[str, str]]] = {
@@ -138,15 +134,16 @@ PLAIN_BLAME = {"SZZG-0016": {"c1", "c0"}, "SZZG-0021": {"c1"}, "SZZG-0024": {"r2
                "SZZG-0005": {"c2"}, "SZZG-0006": {"c2"}, "SZZG-0007": {"c2"}, "SZZG-0035": {"c0"}}
 
 
-def _git(repo: Path, *args: str) -> str:
-    return subprocess.run(["git", *args], cwd=repo, text=True, capture_output=True, check=True).stdout.strip()
+@pytest.fixture(scope="module")
+def scenarios(tmp_path_factory):
+    # both README checks below read the same 28 repositories: generate each once (issue #107)
+    return GeneratedScenarios(tmp_path_factory)
 
 
-def _generate(tmp_path: Path, sid: str) -> tuple[dict, dict, Path]:
-    path = GRAPH / sid / "scenario.graph.yml"
-    commit_map, verify = generate_graph_repository(path, tmp_path / sid, force=True)
-    assert not verify.has_errors(), verify.to_dict()
-    return yaml.safe_load(path.read_text(encoding="utf-8")), commit_map, tmp_path / sid / "repo"
+def _generate(scenarios: GeneratedScenarios, sid: str) -> tuple[dict, dict, Path]:
+    _, _, repo = scenarios(sid)
+    scenario = yaml.safe_load((GRAPH / sid / "scenario.graph.yml").read_text(encoding="utf-8"))
+    return scenario, scenarios.commit_map(sid), repo
 
 
 @pytest.mark.parametrize("sid", sorted(REWRITES))
@@ -165,7 +162,7 @@ def _deleted_lines(repo: Path, bfc: str) -> list[tuple[str, int]]:
     """(path, line number at BFC^) of every line the fix's first-parent diff deletes."""
     deleted: list[tuple[str, int]] = []
     path = None
-    for line in _git(repo, "diff", "-U0", f"{bfc}^", bfc).splitlines():
+    for line in git(repo, "diff", "-U0", f"{bfc}^", bfc).splitlines():
         if line.startswith("--- a/"):
             path = line[6:]
         elif line.startswith("--- /dev/null"):
@@ -178,8 +175,8 @@ def _deleted_lines(repo: Path, bfc: str) -> list[tuple[str, int]]:
 
 
 @pytest.mark.parametrize("sid", sorted(REWRITES))
-def test_fix_deletes_lines_that_blame_as_the_readme_says(tmp_path, sid):
-    scenario, cmap, repo = _generate(tmp_path, sid)
+def test_fix_deletes_lines_that_blame_as_the_readme_says(scenarios, sid):
+    scenario, cmap, repo = _generate(scenarios, sid)
     by_hash = {e["hash"]: c for c, e in cmap.items()}
     required = set(scenario["expected_szz"]["commit_level"]["required"])
     for fix in scenario["bugs"][0]["bug_fixing_commits"]:
@@ -191,7 +188,7 @@ def test_fix_deletes_lines_that_blame_as_the_readme_says(tmp_path, sid):
             return next(c for h, c in by_hash.items() if h.startswith(token.lstrip("^")))
 
         def blame(*options: str) -> set[str]:
-            return {owner(_git(repo, "blame", "-l", "-s", *options, "-L", f"{n},{n}", f"{bfc}^", "--", path).split()[0])
+            return {owner(git(repo, "blame", "-l", "-s", *options, "-L", f"{n},{n}", f"{bfc}^", "--", path).split()[0])
                     for path, n in deleted}
         plain = blame()
         if sid in PLAIN_BLAME:
@@ -202,18 +199,17 @@ def test_fix_deletes_lines_that_blame_as_the_readme_says(tmp_path, sid):
             assert len(deleted) == 1 and plain <= required, (sid, fix["commit"], deleted, plain, required)
 
 
-@NEEDS_JDK
+@needs_jdk
 @pytest.mark.parametrize("sid", sorted(REWRITES))
-def test_fault_is_observed_exactly_where_the_readme_says(tmp_path, sid):
+def test_fault_is_observed_exactly_where_the_readme_says(scenarios, tmp_path, sid):
     _, driver_body, expected = REWRITES[sid]
-    _, cmap, repo = _generate(tmp_path, sid)
+    _, cmap, repo = _generate(scenarios, sid)
     assert set(expected) == set(cmap), (sid, sorted(cmap))
     driver = f"public class Driver {{ public static void main(String[] a) throws Exception {{ {driver_body} }} }}"
     for cid, want in expected.items():
         work = tmp_path / f"run-{sid}-{cid}"
         work.mkdir()
-        tar = subprocess.run(["git", "archive", cmap[cid]["hash"]], cwd=repo, capture_output=True, check=True).stdout
-        subprocess.run(["tar", "-x", "-C", str(work)], input=tar, check=True)
+        export_tree(repo, cmap[cid]["hash"], work)
         (work / "Driver.java").write_text(driver)
         subprocess.run(["javac", "-d", str(work / "out"), *[str(p) for p in work.rglob("*.java")]], check=True, capture_output=True)
         out = subprocess.run(["java", "-cp", str(work / "out"), "Driver"], capture_output=True, text=True, check=True).stdout
@@ -252,9 +248,11 @@ def _scoring_view(scenario: dict) -> dict:
 
 
 def _pre_rewrite(sid: str) -> dict | None:
-    result = subprocess.run(["git", "show", f"{PRE_REWRITE_COMMIT}:advanced-scenarios/{sid}/scenario.graph.yml"],
-                            cwd=ROOT, text=True, capture_output=True)
-    return yaml.safe_load(result.stdout) if result.returncode == 0 else None
+    try:
+        shown = git_stdout(ROOT, "show", f"{PRE_REWRITE_COMMIT}:advanced-scenarios/{sid}/scenario.graph.yml")
+    except GitError:
+        return None
+    return yaml.safe_load(shown)
 
 
 @pytest.mark.parametrize("sid", sorted(REWRITES))
@@ -268,11 +266,11 @@ def test_the_oracle_is_exactly_what_it_was_before_the_rewrite(sid):
     assert _scoring_view(after) == _scoring_view(before)
 
 
-def test_szzg_0091_origin_aware_variant_scores_as_before(tmp_path):
+def test_szzg_0091_origin_aware_variant_scores_as_before(scenarios):
     """The verdicts the review measured: {c4, c2} passes and {c4, c1} fails under origin-aware."""
     from szzbench.evaluator import Prediction, evaluate_scenario
 
-    scenario, cmap, _ = _generate(tmp_path, "SZZG-0091")
+    scenario, cmap, _ = _generate(scenarios, "SZZG-0091")
 
     def verdict(answer: list[str], variant: str | None) -> str:
         predictions = [Prediction(scenario_id="SZZG-0091", inducing_commit=c) for c in answer]

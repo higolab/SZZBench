@@ -10,18 +10,15 @@ not helping because it visits only scenario files.
 from __future__ import annotations
 
 import json
-import subprocess
-import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+import yaml
 
-import yaml  # noqa: E402
-
-from szzbench.baselines import run_baselines  # noqa: E402
-from szzbench.bulk_generator import generate_all_repositories  # noqa: E402
-from szzbench.evaluator import evaluate_prediction_map, evaluate_predictions  # noqa: E402
-from szzbench.generator import generate_repository  # noqa: E402
+from support import git
+from szzbench.baselines import run_baselines
+from szzbench.bulk_generator import generate_all_repositories
+from szzbench.evaluator import evaluate_prediction_map, evaluate_predictions
+from szzbench.generator import generate_repository
 
 JAVA = "src/main/java/example/Range.java"
 OK = "package example;\npublic class Range {\n  boolean a(int x, int lo) { return x >= lo; }\n}\n"
@@ -58,7 +55,7 @@ def _checkout(tmp_path: Path) -> tuple[Path, Path, Path]:
 
     orphan = repos / "SZZ-9999" / "default"
     (orphan / "metadata").mkdir(parents=True)
-    subprocess.run(["git", "init", "-q", str(orphan / "repo")], check=True)
+    git(orphan, "init", "-q", "repo")
     (orphan / "metadata" / "commit-map.json").write_text(json.dumps({"commits": {}}), encoding="utf-8")
     return scenarios, advanced, repos
 

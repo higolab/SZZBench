@@ -16,17 +16,15 @@ keeps the in-memory check and its operation-level locations.
 """
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 import pytest
 import yaml
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "src"))
+from szzbench.graph_simulator import git_performed_features
+from szzbench.graph_validator import validate_graph_scenario_file
 
-from szzbench.graph_simulator import git_performed_features  # noqa: E402
-from szzbench.graph_validator import validate_graph_scenario_file  # noqa: E402
+ROOT = Path(__file__).resolve().parents[1]
 
 GRAPH_SCENARIOS = sorted((ROOT / "advanced-scenarios").glob("SZZG-*/scenario.graph.yml"))
 FORMERLY_REJECTED = ["SZZG-0089", "SZZG-0123", "SZZG-0124", "SZZG-0125", "SZZG-0126", "SZZG-0127",

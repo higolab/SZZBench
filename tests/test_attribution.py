@@ -17,20 +17,18 @@ fix for none; a fix whose predictions do not match fails the scenario.
 from __future__ import annotations
 
 import json
-import sys
 from pathlib import Path
 
 import pytest
 import yaml
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "src"))
+from szzbench.baselines import run_baselines
+from szzbench.evaluator import _scenario_bfc_ids, evaluate_predictions
+from szzbench.generator import generate_repository
+from szzbench.graph_generator import generate_graph_repository
+from szzbench.graph_scenario import DIRECT_BIC_ROLES, graph_bfc_entries, graph_bic_entries
 
-from szzbench.baselines import run_baselines  # noqa: E402
-from szzbench.evaluator import _scenario_bfc_ids, evaluate_predictions  # noqa: E402
-from szzbench.generator import generate_repository  # noqa: E402
-from szzbench.graph_generator import generate_graph_repository  # noqa: E402
-from szzbench.graph_scenario import DIRECT_BIC_ROLES, graph_bfc_entries, graph_bic_entries  # noqa: E402
+ROOT = Path(__file__).resolve().parents[1]
 
 GRAPH = ROOT / "advanced-scenarios"
 

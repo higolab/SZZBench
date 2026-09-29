@@ -8,21 +8,13 @@ shows both commits are necessary.
 """
 from __future__ import annotations
 
-import json
-import shutil
-import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 
+from support import GeneratedScenarios, export_tree, git_stdout, logical_id, needs_jdk, run_driver
+
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "src"))
-
-from szzbench.generator import generate_repository  # noqa: E402
-from szzbench.graph_generator import generate_graph_repository  # noqa: E402
-
-needs_jdk = pytest.mark.skipif(shutil.which("javac") is None or shutil.which("java") is None, reason="needs a JDK")
 
 DRIVERS = {
     "SZZ-0212": """
@@ -232,56 +224,31 @@ REQUIRED = {"SZZ-0212": {"c1", "c3"}, "SZZ-0213": {"c1", "c3"}, "SZZ-0214": {"c1
             "SZZ-0216": {"c1", "c3"}, "SZZ-0217": {"c1", "c3"}}
 
 
-def _git(repo: Path, *args: str) -> str:
-    return subprocess.run(["git", *args], cwd=repo, text=True, capture_output=True, check=True).stdout
+@pytest.fixture(scope="module")
+def scenarios(tmp_path_factory):
+    return GeneratedScenarios(tmp_path_factory)
 
 
 @pytest.fixture(scope="module", params=sorted(EXPECTED), ids=sorted(EXPECTED))
-def generated(request, tmp_path_factory):
-    sid = request.param
-    out = tmp_path_factory.mktemp(sid.lower()) / sid
-    if sid.startswith("SZZG-"):
-        commit_map, verify = generate_graph_repository(ROOT / "advanced-scenarios" / sid / "scenario.graph.yml", out, force=True)
-    else:
-        commit_map, verify = generate_repository(ROOT / "scenarios" / sid / "scenario.yml", out, force=True)
-    assert verify is not None and not verify.has_errors(), verify.to_dict()
-    entries = commit_map.get("commits", commit_map) if isinstance(commit_map, dict) else commit_map
-    hashes = {cid: (entry["hash"] if isinstance(entry, dict) else entry) for cid, entry in entries.items()}
-    return sid, hashes, out / "repo"
+def generated(request, scenarios):
+    return scenarios(request.param)
 
 
 def _bfc(hashes: dict[str, str]) -> str:
     return max(hashes, key=lambda cid: int(cid[1:]))
 
 
-def _owner(repo: Path, hashes: dict[str, str], full: str) -> str:
-    return next(cid for cid, h in hashes.items() if h.startswith(full.lstrip("^")[:40]) or full.lstrip("^").startswith(h[:40]))
-
-
-def _snapshot(repo: Path, commit: str, into: Path) -> None:
-    into.mkdir(parents=True, exist_ok=True)
-    tar = subprocess.run(["git", "archive", commit], cwd=repo, capture_output=True, check=True).stdout
-    subprocess.run(["tar", "-x", "-C", str(into)], input=tar, check=True)
-
-
-def _run_driver(work: Path, sid: str) -> str:
-    (work / "Drive.java").write_text(DRIVERS[sid])
-    sources = [str(p) for p in work.rglob("*.java")]
-    subprocess.run(["javac", "-d", str(work / "out"), *sources], check=True, capture_output=True)
-    return subprocess.run(["java", "-cp", str(work / "out"), "Drive"], cwd=work, capture_output=True, text=True, check=True).stdout.strip()
-
-
 def test_every_deleted_line_of_the_fix_blames_as_the_readme_says(generated):
     sid, hashes, repo = generated
     bfc = hashes[_bfc(hashes)]
     seen: dict[str, tuple[str, str, str]] = {}
-    for path in _git(repo, "diff", "--name-only", f"{bfc}^", bfc).split():
+    for path in git_stdout(repo, "diff", "--name-only", f"{bfc}^", bfc).split():
         line_no = None
-        for line in _git(repo, "diff", "-U0", f"{bfc}^", bfc, "--", path).splitlines():
+        for line in git_stdout(repo, "diff", "-U0", f"{bfc}^", bfc, "--", path).splitlines():
             if line.startswith("@@"):
                 line_no = int(line.split()[1].lstrip("-").split(",")[0])
             elif line.startswith("-") and not line.startswith("---") and line_no is not None:
-                owners = tuple(_owner(repo, hashes, _git(repo, "blame", "-l", *flags, "-L", f"{line_no},{line_no}", f"{bfc}^", "--", path).split()[0])
+                owners = tuple(logical_id(hashes, git_stdout(repo, "blame", "-l", *flags, "-L", f"{line_no},{line_no}", f"{bfc}^", "--", path).split()[0])
                                for flags in ((), ("-w",), ("-w", "-C", "-C")))
                 seen[line[1:].strip()] = owners
                 line_no += 1
@@ -308,8 +275,8 @@ def test_the_probe_answers_move_exactly_where_the_readme_says(generated, tmp_pat
     observed = {}
     for cid in EXPECTED[sid]:
         work = tmp_path / cid
-        _snapshot(repo, hashes[cid], work)
-        observed[cid] = _run_driver(work, sid)
+        export_tree(repo, hashes[cid], work)
+        observed[cid] = run_driver(work, DRIVERS[sid])
     assert observed == EXPECTED[sid], sid
 
 
@@ -329,148 +296,143 @@ def test_both_commits_are_necessary(generated, tmp_path):
     sid, hashes, repo = generated
     if sid == "SZZG-0144":
         work = tmp_path / "undo-c2-on-c4"
-        _snapshot(repo, hashes["c4"], work)
+        export_tree(repo, hashes["c4"], work)
         _edit(work, "src/main/java/example/SessionPolicy.java",
               ("IDLE_TIMEOUT = 15;", "IDLE_TIMEOUT = 900;"), ("idleSeconds > IDLE_TIMEOUT * 60;", "idleSeconds > IDLE_TIMEOUT;"))
-        assert _run_driver(work, sid) == EXPECTED[sid]["c6"]
+        assert run_driver(work, DRIVERS[sid]) == EXPECTED[sid]["c6"]
     elif sid == "SZZ-0214":
         # the check put back on top of c3 is the fix itself; c1 alone moves no probe of the entry points that exist
         assert EXPECTED[sid]["c1"] == EXPECTED[sid]["c0"]
         work = tmp_path / "check-back-on-c3"
-        _snapshot(repo, hashes["c3"], work)
+        export_tree(repo, hashes["c3"], work)
         _edit(work, "src/main/java/example/Nickname.java",
               ("        return raw.trim().toLowerCase();", '        if (raw == null) {\n            return "";\n        }\n        return raw.trim().toLowerCase();'))
-        assert _run_driver(work, sid) == EXPECTED[sid]["c4"]
+        assert run_driver(work, DRIVERS[sid]) == EXPECTED[sid]["c4"]
     elif sid == "SZZ-0212":
         only_weight = tmp_path / "only-weight"
-        _snapshot(repo, hashes["c3"], only_weight)
+        export_tree(repo, hashes["c3"], only_weight)
         _edit(only_weight, "src/main/java/example/ShippingFee.java", ("weightGrams < FREE_UP_TO_GRAMS", "weightGrams <= FREE_UP_TO_GRAMS"))
-        assert _run_driver(only_weight, sid) == "1999S=0 1999X=-500 2000S=0 2000X=-500 2001S=300 2001X=-200"
+        assert run_driver(only_weight, DRIVERS[sid]) == "1999S=0 1999X=-500 2000S=0 2000X=-500 2001S=300 2001X=-200"
         only_surcharge = tmp_path / "only-surcharge"
-        _snapshot(repo, hashes["c3"], only_surcharge)
+        export_tree(repo, hashes["c3"], only_surcharge)
         _edit(only_surcharge, "src/main/java/example/ShippingFee.java", ("return base - surcharge;", "return base + surcharge;"))
-        assert _run_driver(only_surcharge, sid) == EXPECTED[sid]["c1"]
+        assert run_driver(only_surcharge, DRIVERS[sid]) == EXPECTED[sid]["c1"]
     elif sid == "SZZ-0215":
         only_bonus = tmp_path / "only-bonus"
-        _snapshot(repo, hashes["c3"], only_bonus)
+        export_tree(repo, hashes["c3"], only_bonus)
         _edit(only_bonus, "src/main/java/example/LoyaltyPoints.java", ("return visits > 8;", "return visits >= 8;"))
-        assert _run_driver(only_bonus, sid) == "b4=F b5=F b6=F b8=T b9=T p250=50 p199=99"
+        assert run_driver(only_bonus, DRIVERS[sid]) == "b4=F b5=F b6=F b8=T b9=T p250=50 p199=99"
         only_points = tmp_path / "only-points"
-        _snapshot(repo, hashes["c3"], only_points)
+        export_tree(repo, hashes["c3"], only_points)
         _edit(only_points, "src/main/java/example/LoyaltyPoints.java", ("return cents % 100;", "return cents / 100;"))
-        assert _run_driver(only_points, sid) == "b4=F b5=F b6=F b8=F b9=T p250=2 p199=1"
+        assert run_driver(only_points, DRIVERS[sid]) == "b4=F b5=F b6=F b8=F b9=T p250=2 p199=1"
     elif sid == "SZZG-0145":
         work = tmp_path / "undo-c1-on-c3"
-        _snapshot(repo, hashes["c3"], work)
+        export_tree(repo, hashes["c3"], work)
         _edit(work, "src/main/java/example/ZoneRates.java",
               ("return Integer.parseInt(rawRate(zone));", "return Integer.parseInt(rawRate(zone)) * 100;"))
         table = work / "src/main/resources/zone-rates.csv"
         table.write_text("zone,rate_dollars\n" + "".join(f"zone-{i},{i}\n" for i in range(1, 5001)))
-        assert _run_driver(work, sid) == EXPECTED[sid]["c4"]
+        assert run_driver(work, DRIVERS[sid]) == EXPECTED[sid]["c4"]
     elif sid == "SZZG-0146":
         work = tmp_path / "undo-c1-on-c3"
-        _snapshot(repo, hashes["c3"], work)
+        export_tree(repo, hashes["c3"], work)
         _edit(work, "src/main/java/example/Percent.java", ('.trim()) * 100;', '.trim());'))
         _edit(work, "src/main/java/example/Discount.java", ("/ 10000)", "/ 100)"))
-        assert _run_driver(work, sid) == EXPECTED[sid]["c4"]
+        assert run_driver(work, DRIVERS[sid]) == EXPECTED[sid]["c4"]
     elif sid == "SZZG-0147":
         work = tmp_path / "undo-c3-on-c4"
-        _snapshot(repo, hashes["c4"], work)
+        export_tree(repo, hashes["c4"], work)
         _edit(work, "src/main/java/example/RetryPolicy.java",
               ("BACKOFF = 2000;", "BACKOFF = 2;"), ("return BACKOFF * attempt / 1000;", "return BACKOFF * attempt;"))
-        assert _run_driver(work, sid) == EXPECTED[sid]["c5"]
+        assert run_driver(work, DRIVERS[sid]) == EXPECTED[sid]["c5"]
     elif sid == "SZZ-0216":
         only_fare = tmp_path / "only-fare"
-        _snapshot(repo, hashes["c3"], only_fare)
+        export_tree(repo, hashes["c3"], only_fare)
         _edit(only_fare, "src/main/java/example/FareTable.java", ("age <= 12", "age < 12"))
-        assert _run_driver(only_fare, sid) == "base11=500 base12=1200 base13=1200 group30x3=1203"
+        assert run_driver(only_fare, DRIVERS[sid]) == "base11=500 base12=1200 base13=1200 group30x3=1203"
         only_group = tmp_path / "only-group"
-        _snapshot(repo, hashes["c3"], only_group)
+        export_tree(repo, hashes["c3"], only_group)
         _edit(only_group, "src/main/java/example/TicketPricing.java", ("basePriceCents(age) + count;", "basePriceCents(age) * count;"))
-        assert _run_driver(only_group, sid) == EXPECTED[sid]["c1"]
+        assert run_driver(only_group, DRIVERS[sid]) == EXPECTED[sid]["c1"]
     elif sid == "SZZ-0217":
         work = tmp_path / "undo-c1-on-c3"
-        _snapshot(repo, hashes["c3"], work)
+        export_tree(repo, hashes["c3"], work)
         _edit(work, "src/main/java/example/DurationText.java",
               ('return (text.endsWith("m") ? value * 60 : value) * 1000;', 'return text.endsWith("m") ? value * 60 : value;'))
         _edit(work, "src/main/java/example/RequestTimeout.java", ("parse(configured) / 1000;", "parse(configured);"))
-        assert _run_driver(work, sid) == EXPECTED[sid]["c4"]
+        assert run_driver(work, DRIVERS[sid]) == EXPECTED[sid]["c4"]
     elif sid == "SZZ-0213":
         only_tax = tmp_path / "only-tax"
-        _snapshot(repo, hashes["c3"], only_tax)
+        export_tree(repo, hashes["c3"], only_tax)
         _edit(only_tax, "src/main/java/example/InvoiceTotal.java", ("(long) netCents / 100 * TAX_PERCENT", "(long) netCents * TAX_PERCENT / 100"))
-        assert _run_driver(only_tax, sid) == "tax1999=2198 tax2000=2200 gold=100 std=0 anon=NullPointerException"
+        assert run_driver(only_tax, DRIVERS[sid]) == "tax1999=2198 tax2000=2200 gold=100 std=0 anon=NullPointerException"
         only_check = tmp_path / "only-check"
-        _snapshot(repo, hashes["c3"], only_check)
+        export_tree(repo, hashes["c3"], only_check)
         _edit(only_check, "src/main/java/example/InvoiceTotal.java",
               ("        return customer.tier()", "        if (customer == null) {\n            return 0;\n        }\n        return customer.tier()"))
-        assert _run_driver(only_check, sid) == "tax1999=2189 tax2000=2200 gold=100 std=0 anon=0"
+        assert run_driver(only_check, DRIVERS[sid]) == "tax1999=2189 tax2000=2200 gold=100 std=0 anon=0"
 
 
-def test_szz_0214_fix_adds_only_and_c1_deletes_only(generated):
-    sid, hashes, repo = generated
-    if sid != "SZZ-0214":
-        pytest.skip("only SZZ-0214 is a ghost on both sides")
-    fix = _git(repo, "diff", "-U0", f"{hashes['c4']}^", hashes["c4"]).splitlines()
+@pytest.mark.parametrize("sid", ['SZZ-0214'])
+def test_szz_0214_fix_adds_only_and_c1_deletes_only(scenarios, sid):
+    _, hashes, repo = scenarios(sid)
+    fix = git_stdout(repo, "diff", "-U0", f"{hashes['c4']}^", hashes["c4"]).splitlines()
     assert [l for l in fix if l.startswith("-") and not l.startswith("---")] == []
     assert len([l for l in fix if l.startswith("+") and not l.startswith("+++")]) == 3
-    bic = _git(repo, "diff", "-U0", f"{hashes['c1']}^", hashes["c1"]).splitlines()
+    bic = git_stdout(repo, "diff", "-U0", f"{hashes['c1']}^", hashes["c1"]).splitlines()
     assert [l for l in bic if l.startswith("+") and not l.startswith("+++")] == []
     assert len([l for l in bic if l.startswith("-") and not l.startswith("---")]) == 3
 
 
-def test_szz_0212_reformat_is_whitespace_only(generated):
-    sid, hashes, repo = generated
-    if sid != "SZZ-0212":
-        pytest.skip("only SZZ-0212 has the reformat")
-    assert _git(repo, "diff", "-w", hashes["c1"], hashes["c2"]).strip() == ""
-    assert _git(repo, "diff", "--stat", hashes["c1"], hashes["c2"]).strip() != ""
+@pytest.mark.parametrize("sid", ['SZZ-0212'])
+def test_szz_0212_reformat_is_whitespace_only(scenarios, sid):
+    _, hashes, repo = scenarios(sid)
+    assert git_stdout(repo, "diff", "-w", hashes["c1"], hashes["c2"]).strip() == ""
+    assert git_stdout(repo, "diff", "--stat", hashes["c1"], hashes["c2"]).strip() != ""
 
 
-def test_szzg_0144_issue_documents_and_message_evidence(generated):
-    sid, hashes, repo = generated
-    if sid != "SZZG-0144":
-        pytest.skip("only SZZG-0144 has issue documents")
+@pytest.mark.parametrize("sid", ['SZZG-0144'])
+def test_szzg_0144_issue_documents_and_message_evidence(scenarios, sid):
+    _, hashes, repo = scenarios(sid)
     for issue in ("ISSUE-12", "ISSUE-19", "ISSUE-23"):
-        assert f"# {issue}:" in _git(repo, "show", f"{hashes['c6']}:docs/issues/{issue}.md")
-    fix_message = _git(repo, "log", "-1", "--format=%s", hashes["c6"])
+        assert f"# {issue}:" in git_stdout(repo, "show", f"{hashes['c6']}:docs/issues/{issue}.md")
+    fix_message = git_stdout(repo, "log", "-1", "--format=%s", hashes["c6"])
     assert "ISSUE-12" in fix_message and "ISSUE-23" in fix_message
-    mentioning = {cid for cid in hashes if "ISSUE-12" in _git(repo, "log", "-1", "--format=%s", hashes[cid])}
+    mentioning = {cid for cid in hashes if "ISSUE-12" in git_stdout(repo, "log", "-1", "--format=%s", hashes[cid])}
     assert mentioning == {"c1", "c2", "c6"}
-    touching = {cid for cid in mentioning if "src/main/java/example/SessionPolicy.java" in _git(repo, "show", "--name-only", "--format=", hashes[cid])}
+    touching = {cid for cid in mentioning if "src/main/java/example/SessionPolicy.java" in git_stdout(repo, "show", "--name-only", "--format=", hashes[cid])}
     assert touching == {"c2", "c6"}
 
 
 def _changed_lines(repo: Path, commit: str) -> tuple[set[str], set[str]]:
-    diff = _git(repo, "show", "--format=", "-U0", commit).splitlines()
+    diff = git_stdout(repo, "show", "--format=", "-U0", commit).splitlines()
     removed = {l[1:] for l in diff if l.startswith("-") and not l.startswith("---")}
     added = {l[1:] for l in diff if l.startswith("+") and not l.startswith("+++")}
     return removed, added
 
 
-def test_szzg_0147_reverts_are_real_and_the_second_restores_the_first_change(generated):
-    sid, hashes, repo = generated
-    if sid != "SZZG-0147":
-        pytest.skip("only SZZG-0147 has the revert pair")
+@pytest.mark.parametrize("sid", ['SZZG-0147'])
+def test_szzg_0147_reverts_are_real_and_the_second_restores_the_first_change(scenarios, sid):
+    _, hashes, repo = scenarios(sid)
     c1_removed, c1_added = _changed_lines(repo, hashes["c1"])
     c2_removed, c2_added = _changed_lines(repo, hashes["c2"])
     c3_removed, c3_added = _changed_lines(repo, hashes["c3"])
     assert (c2_removed, c2_added) == (c1_added, c1_removed)            # c2 is the inverse of c1
     assert (c3_removed, c3_added) == (c1_removed, c1_added)            # c3 is c1 again
-    subjects = {cid: _git(repo, "log", "-1", "--format=%s", hashes[cid]).strip() for cid in ("c1", "c2", "c3")}
+    subjects = {cid: git_stdout(repo, "log", "-1", "--format=%s", hashes[cid]).strip() for cid in ("c1", "c2", "c3")}
     assert subjects["c2"] == f'Revert "{subjects["c1"]}"' and subjects["c3"] == f'Revert "{subjects["c2"]}"'
-    assert _git(repo, "log", "--first-parent", "--format=%h").count("\n") + 1 == 6 or len(_git(repo, "log", "--first-parent", "--format=%h").split()) == 6
+    assert git_stdout(repo, "log", "--first-parent", "--format=%h").count("\n") + 1 == 6 or len(git_stdout(repo, "log", "--first-parent", "--format=%h").split()) == 6
 
 
-def test_szzg_0145_unit_change_rewrites_every_line_of_the_table(generated):
-    sid, hashes, repo = generated
-    if sid != "SZZG-0145":
-        pytest.skip("only SZZG-0145 has the generated table")
-    stat = _git(repo, "show", "--numstat", "--format=", hashes["c1"]).split("\n")
+@pytest.mark.parametrize("sid", ['SZZG-0145'])
+def test_szzg_0145_unit_change_rewrites_every_line_of_the_table(scenarios, sid):
+    _, hashes, repo = scenarios(sid)
+    stat = git_stdout(repo, "show", "--numstat", "--format=", hashes["c1"]).split("\n")
     rows = {line.split("\t")[2]: (int(line.split("\t")[0]), int(line.split("\t")[1])) for line in stat if line}
     assert rows["src/main/resources/zone-rates.csv"] == (5001, 5001)
     assert rows["src/main/java/example/ZoneRates.java"] == (1, 1)
-    fix_files = _git(repo, "diff", "--name-only", f"{hashes['c4']}^", hashes["c4"]).split()
+    fix_files = git_stdout(repo, "diff", "--name-only", f"{hashes['c4']}^", hashes["c4"]).split()
     assert fix_files == ["src/main/java/example/ZoneRates.java"]
 
 
@@ -485,29 +447,27 @@ def test_szzg_0146_default_variant_is_the_strict_one():
     assert set(lenient.related_origins) == {"c1"}
 
 
-def test_szz_0216_the_move_is_reached_only_by_a_lower_copy_score_or_by_following_the_file(generated):
-    sid, hashes, repo = generated
-    if sid != "SZZ-0216":
-        pytest.skip("only SZZ-0216 moves the method")
+@pytest.mark.parametrize("sid", ['SZZ-0216'])
+def test_szz_0216_the_move_is_reached_only_by_a_lower_copy_score_or_by_following_the_file(scenarios, sid):
+    _, hashes, repo = scenarios(sid)
     path = "src/main/java/example/FareTable.java"
     parent = f"{hashes['c4']}^"
-    lines = _git(repo, "show", f"{parent}:{path}").split("\n")
+    lines = git_stdout(repo, "show", f"{parent}:{path}").split("\n")
     number = next(i for i, l in enumerate(lines, 1) if "age <= 12" in l)
     def owner(*flags):
-        return _owner(repo, hashes, _git(repo, "blame", "-l", *flags, "-L", f"{number},{number}", parent, "--", path).split()[0])
+        return logical_id(hashes, git_stdout(repo, "blame", "-l", *flags, "-L", f"{number},{number}", parent, "--", path).split()[0])
     assert (owner(), owner("-w"), owner("-M"), owner("-C"), owner("-C", "-C")) == ("c2", "c2", "c2", "c2", "c2")
     assert owner("-C10") == "c1"
-    followed = _git(repo, "log", "--follow", "--format=%H", parent, "--", path).split()
-    assert [ _owner(repo, hashes, h) for h in followed ] == ["c2", "c1", "c0"]
-    assert _git(repo, "diff", "-w", hashes["c1"], hashes["c2"], "--", "src/main/java/example/TicketPricing.java").strip() != ""
+    followed = git_stdout(repo, "log", "--follow", "--format=%H", parent, "--", path).split()
+    assert [ logical_id(hashes, h) for h in followed ] == ["c2", "c1", "c0"]
+    assert git_stdout(repo, "diff", "-w", hashes["c1"], hashes["c2"], "--", "src/main/java/example/TicketPricing.java").strip() != ""
 
 
-def test_szz_0217_fix_message_quotes_the_callee_change(generated):
-    sid, hashes, repo = generated
-    if sid != "SZZ-0217":
-        pytest.skip("only SZZ-0217 quotes a subject")
-    subject_c1 = _git(repo, "log", "-1", "--format=%s", hashes["c1"]).strip()
-    fix_message = _git(repo, "log", "-1", "--format=%s", hashes["c4"])
+@pytest.mark.parametrize("sid", ['SZZ-0217'])
+def test_szz_0217_fix_message_quotes_the_callee_change(scenarios, sid):
+    _, hashes, repo = scenarios(sid)
+    subject_c1 = git_stdout(repo, "log", "-1", "--format=%s", hashes["c1"]).strip()
+    fix_message = git_stdout(repo, "log", "-1", "--format=%s", hashes["c4"])
     assert f'"{subject_c1}"' in fix_message
-    matching = _git(repo, "log", "--all", f"--grep={subject_c1}", "--fixed-strings", "--format=%H").split()
-    assert {_owner(repo, hashes, h) for h in matching} == {"c1", "c4"}
+    matching = git_stdout(repo, "log", "--all", f"--grep={subject_c1}", "--fixed-strings", "--format=%H").split()
+    assert {logical_id(hashes, h) for h in matching} == {"c1", "c4"}

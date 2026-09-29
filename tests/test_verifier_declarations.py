@@ -8,15 +8,12 @@ declares; it is information, and the declaration is what makes it so.
 """
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
-
-from szzbench.generator import generate_repository  # noqa: E402
-from szzbench.graph_generator import generate_graph_repository  # noqa: E402
-from szzbench.graph_verifier import verify_graph_generated_repo  # noqa: E402
-from szzbench.verifier import verify_generated_repo  # noqa: E402
+from szzbench.generator import generate_repository
+from szzbench.graph_generator import generate_graph_repository
+from szzbench.graph_verifier import verify_graph_generated_repo
+from szzbench.verifier import verify_generated_repo
 
 ROOT = Path(__file__).resolve().parent.parent
 

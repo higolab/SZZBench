@@ -40,18 +40,16 @@ from pathlib import Path
 import pytest
 import yaml
 
+from szzbench import manifest
+from szzbench.baselines import run_baselines
+from szzbench.bulk_generator import generate_all_repositories
+from szzbench.coverage import run_coverage
+from szzbench.evaluator import evaluate_predictions
+from szzbench.generator import generate_repository
+from szzbench.gitutils import run_git
+from szzbench.graph_generator import GraphGenerationError, generate_graph_repository
+
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "src"))
-
-from szzbench import manifest  # noqa: E402
-from szzbench.baselines import run_baselines  # noqa: E402
-from szzbench.bulk_generator import generate_all_repositories  # noqa: E402
-from szzbench.coverage import run_coverage  # noqa: E402
-from szzbench.evaluator import evaluate_predictions  # noqa: E402
-from szzbench.generator import generate_repository  # noqa: E402
-from szzbench.gitutils import run_git  # noqa: E402
-from szzbench.graph_generator import GraphGenerationError, generate_graph_repository  # noqa: E402
-
 
 def _layout(tmp_path: Path) -> tuple[Path, Path, Path]:
     """SZZ-0006 and SZZG-0030 copied into a scratch layout, not yet generated."""
