@@ -155,7 +155,10 @@ def cmd_baselines(args) -> int:
         families=args.family or BASELINE_FAMILIES,
     )
     if not report["scenario_count"]:
-        print("[ERROR] BASELINES_FAILED: no generated repository found; run generate-all-repos first.", file=sys.stderr)
+        for error in report["errors"]:          # why an output was not scored, e.g. it is stale (#93)
+            print(f"[ERROR] {error}", file=sys.stderr)
+        print("[ERROR] BASELINES_FAILED: no generated repository could be scored; run generate-all-repos first.",
+              file=sys.stderr)
         return 1
     text = format_baselines(report)
     if args.out:
@@ -175,7 +178,10 @@ def cmd_coverage(args) -> int:
         variant=args.variant,
     )
     if not report["scenario_count"]:
-        print("[ERROR] COVERAGE_FAILED: no generated repository found; run generate-all-repos first.", file=sys.stderr)
+        for error in report["errors"]:          # why an output was not scored, e.g. it is stale (#93)
+            print(f"[ERROR] {error}", file=sys.stderr)
+        print("[ERROR] COVERAGE_FAILED: no generated repository could be scored; run generate-all-repos first.",
+              file=sys.stderr)
         return 1
     text = format_coverage(report)
     if args.out:

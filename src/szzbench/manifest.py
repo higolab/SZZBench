@@ -147,9 +147,12 @@ def _missing_commits(git_dir: Path, commit_map: dict[str, Any]) -> str | None:
 
     hashes = {str(cid): str(entry.get("hash")) for cid, entry in commit_map.items() if isinstance(entry, dict)}
     # --git-dir, because Git would otherwise look for a repository in the
-    # directories above one whose .git is not a repository
+    # directories above one whose .git is not a repository; absolute, because
+    # Git runs inside the repository and would resolve a relative one from
+    # there (the CLI's roots are relative by default)
     try:
-        listed = run_git_with_input(git_dir.parent, [f"--git-dir={git_dir}", "cat-file", "--batch-check=%(objecttype)"],
+        listed = run_git_with_input(git_dir.parent, [f"--git-dir={git_dir.resolve()}", "cat-file",
+                                                     "--batch-check=%(objecttype)"],
                                     "".join(f"{value}\n" for value in hashes.values()).encode("utf-8"))
     except GitError as exc:
         return f"its repository cannot be read ({str(exc).splitlines()[0]})"

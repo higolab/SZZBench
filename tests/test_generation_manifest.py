@@ -21,7 +21,10 @@ PR #103, SZZ-0006's ``repo/`` was moved aside with its manifest kept:
 ``generate-all-repos`` reported it as skipped, and a prediction naming the
 original c1 hash and the matching repository id PASSed.  An output is stale
 as well when ``repo/.git``, a commit it was generated with, the commit map,
-the scenario copy or the graph map is missing or changed.
+the scenario copy or the graph map is missing or changed.  The first version of
+that check passed ``--git-dir`` as given while Git ran inside the repository,
+so under the CLI's roots, which are relative by default, every fresh output was
+reported stale.
 """
 from __future__ import annotations
 
@@ -303,6 +306,61 @@ def test_the_manifest_is_the_last_file_a_generation_writes(pristine):
         written = (output / "metadata/manifest.json").stat().st_mtime_ns
         others = [path for path in output.rglob("*") if path.is_file() and path.name != "manifest.json"]
         assert others and all(path.stat().st_mtime_ns <= written for path in others), output
+
+
+# ---------------------------------------------------------------------------
+# the CLI's roots are relative to the working directory by default
+# ---------------------------------------------------------------------------
+
+def _cli(cwd: Path, *args: str) -> subprocess.CompletedProcess:
+    return subprocess.run([sys.executable, "-m", "szzbench.cli", *args], cwd=cwd, capture_output=True, text=True,
+                          env={**os.environ, "PYTHONPATH": str(ROOT / "src")})
+
+
+@pytest.mark.parametrize("roots", ["default", "relative"])
+def test_the_cli_scores_fresh_outputs_under_relative_roots(pristine, tmp_path, roots):
+    # Git ran inside the repository with the relative --git-dir it was given, so
+    # every fresh output was stale: "its repository cannot be read"
+    _, _, generated = _copy(pristine, tmp_path)
+    cwd = generated.parent
+    if roots == "default":                              # scenarios, advanced-scenarios, generated-input-repos
+        generated.rename(cwd / "generated-input-repos")
+        args = []
+    else:
+        args = ["--generated-root", "generated", "--scenarios-root", "scenarios",
+                "--advanced-scenarios-root", "advanced-scenarios"]
+    (cwd / "predictions.jsonl").write_text(json.dumps({"scenario_id": "SZZ-0006", "inducing_commit": "c1"}) + "\n",
+                                           encoding="utf-8")
+    evaluated = _cli(cwd, "evaluate", "--predictions", "predictions.jsonl", "--json", *args)
+    assert evaluated.returncode == 0, evaluated.stderr
+    report = json.loads(evaluated.stdout)
+    assert report["errors"] == [] and report["summary"]["total_scenarios"] == 1
+    for command in ("baselines", "coverage"):
+        completed = _cli(cwd, command, "--json", *args)
+        assert completed.returncode == 0, completed.stderr
+        assert json.loads(completed.stdout)["scenario_count"] == 2
+
+
+def test_staleness_reads_a_relative_output_path(pristine, tmp_path, monkeypatch):
+    _, _, generated = _copy(pristine, tmp_path)
+    monkeypatch.chdir(generated.parent)
+    output, scenario = Path("generated/SZZ-0006/default"), Path("scenarios/SZZ-0006/scenario.yml")
+    assert manifest.staleness(output, scenario) is None
+    _last_commit_pruned(output, generated)                 # and the commit check still runs
+    assert (manifest.staleness(output, scenario) or "").startswith("its repository lacks 1 of the 3 commits")
+
+
+def test_the_cli_says_why_no_output_could_be_scored(pristine, tmp_path):
+    # with every output stale, baselines and coverage said only "no generated repository found"
+    classic, graph, generated = _copy(pristine, tmp_path)
+    for sid in ("SZZ-0006", "SZZG-0030"):
+        (generated / sid / "default/metadata/manifest.json").unlink()
+    roots = ["--generated-root", str(generated), "--scenarios-root", str(classic), "--advanced-scenarios-root", str(graph)]
+    for command in ("baselines", "coverage"):
+        completed = _cli(tmp_path, command, *roots)
+        assert completed.returncode == 1
+        assert "[ERROR] SZZ-0006: the generated repository is stale: it has no generation manifest" in completed.stderr
+        assert f"[ERROR] {command.upper()}_FAILED: no generated repository could be scored" in completed.stderr
 
 
 def test_predictions_are_matched_to_the_repository_they_were_made_on(tmp_path):
