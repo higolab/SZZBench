@@ -157,7 +157,6 @@ expected_szz:
       evaluation_policy: exact_set
       required:
       - c0
-  default_variant: default
 scenario_design:
   purpose: >
     The second of three contracts for "no ordinary BIC" (issue #24): the origin lies before the

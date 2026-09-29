@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 import re
 
-from .evaluator import _commit_level_policy, classify_prediction
+from .evaluator import _commit_level_policy, _selected_evaluation_variant, classify_prediction
 from .findings import ValidationResult
 from .graph_operations import PATH_FIELDS_BY_OPERATION, REQUIRED_FIELDS_BY_OPERATION, SUPPORTED_GRAPH_OPERATIONS
 from .graph_scenario import commit_id_of, graph_bfc_entries, graph_bic_entries, graph_faults, graph_fixes, load_graph_scenario
@@ -348,6 +348,19 @@ def _validate_expected_szz(expected: Any, commit_by_id: dict[str, dict[str, Any]
     for policy, loc in policies:
         if policy not in ALLOWED_EVALUATION_POLICIES:
             result.warning("GW123", f"Unknown evaluation_policy '{policy}'.", loc)
+    # A default_variant the evaluator cannot resolve makes it score commit_level
+    # instead, with at most a note at every evaluation (SZZG-0136).  What counts
+    # is that the key is there: a blank `default_variant:` loads as None, and the
+    # evaluator then falls back without any note (PR #105 review).
+    if "default_variant" in expected and _selected_evaluation_variant(expected, None, []) is None:
+        default_variant = expected["default_variant"]
+        what = ("is blank (a YAML null)" if default_variant is None
+                else f"{default_variant!r} names no evaluation variant")
+        names = [v.get("name") for v in variants if isinstance(v, dict)] if isinstance(variants, list) else []
+        result.error("GE129", f"default_variant {what} (declared: {', '.join(map(str, names)) or 'none'}); the "
+                     "evaluator would score commit_level instead. Name a declared variant, or remove "
+                     "default_variant to make commit_level the default.",
+                     "expected_szz.default_variant")
     branch_level = expected.get("branch_level")
     if branch_level is not None:
         # Scored per declared BFC since 2026-09-22 (docs/evaluation-policies.md section 1.5).
