@@ -203,10 +203,13 @@ a loading error. When a file's records name no `repository_id` for some
 scenarios, they are scored as before and the report warns once that they
 cannot be matched to the generated repositories.
 
-A generated output that is **stale** -- it has no manifest, or its scenario
-file or the generator's code has changed since it was generated -- is not
-scored at all: the report gets an error naming the scenario and the reason,
-and `szzbench generate-all-repos` regenerates it (issue #93).
+A generated output that is **stale** -- it has no manifest, its scenario file
+or the generator's code has changed since it was generated, or it has lost part
+of what the manifest describes, such as its repository or one of its commits
+(`docs/generator-options.md` §6) -- is not scored at all: the report gets an
+error naming the scenario and the reason, and `szzbench generate-all-repos`
+regenerates it (issue #93). With `--include-generated`, every output directory
+counts, so one that has lost its repository is reported rather than left out.
 
 Before 2026-09-29 (issue #95) there was no `status`, and a scenario without a
 record was scored as an empty prediction. The PySZZ adapter also wrote an

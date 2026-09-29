@@ -193,11 +193,11 @@ def generate_graph_repository(
             if verify_result.has_errors():
                 raise GraphGenerationError("Generated graph repository failed verification.")
 
+        log("Graph generation completed successfully.")
+        (metadata_dir / "generation.log").write_text("\n".join(generation_log) + "\n", encoding="utf-8")
         # written last: an output without it is incomplete (issue #93)
         write_manifest(metadata_dir, scenario_id=str(scenario.get("meta", {}).get("id") or out_dir.parent.name),
                        scenario_path=scenario_path, commit_map=commit_map, verified=verify)
-        log("Graph generation completed successfully.")
-        (metadata_dir / "generation.log").write_text("\n".join(generation_log) + "\n", encoding="utf-8")
         return commit_map, verify_result
     except (OperationError, PathValidationError, GitError, OSError, GraphGenerationError) as exc:
         log(f"ERROR: {exc}")

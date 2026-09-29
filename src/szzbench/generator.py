@@ -76,11 +76,11 @@ def generate_repository(scenario_path: Path, out_dir: Path, *, force: bool = Fal
             (metadata_dir / "verify-result.json").write_text(json.dumps(verify_result.to_dict(), indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
             if verify_result.has_errors():
                 raise GenerationError("Generated repository failed verification.")
+        log("Generation completed successfully.")
+        (metadata_dir / "generation.log").write_text("\n".join(generation_log) + "\n", encoding="utf-8")
         # written last: an output without it is incomplete (issue #93)
         write_manifest(metadata_dir, scenario_id=str(scenario.get("meta", {}).get("id") or out_dir.parent.name),
                        scenario_path=scenario_path, commit_map=commit_map, verified=verify)
-        log("Generation completed successfully.")
-        (metadata_dir / "generation.log").write_text("\n".join(generation_log) + "\n", encoding="utf-8")
         return commit_map, verify_result
     except (OperationError, GitError, OSError) as exc:
         log(f"ERROR: {exc}")

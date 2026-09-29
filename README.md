@@ -571,7 +571,7 @@ The command scans the following files.
 
 Each generated repository is written under `generated-input-repos/<SCENARIO_ID>/default/`.
 
-Every generation writes `metadata/manifest.json` last. It records the scenario file's hash, a fingerprint of the generator's code, and the repository id that prediction records carry. An existing output is skipped only when that manifest still matches. An output without one (an interrupted generation, or one made before 2026-09-29), or whose scenario file or generator code has changed since, is stale and is regenerated, with the reason printed (`docs/generator-options.md` §6). The command is therefore safe to run repeatedly: it brings every output up to date and leaves current ones alone. `evaluate`, `baselines` and `coverage` refuse to score a stale output.
+Every generation writes `metadata/manifest.json` last. It records the scenario file's hash, a fingerprint of the generator's code, and the repository id that prediction records carry. An existing output is skipped only when that manifest still matches and the output still has everything it describes. An output without one (an interrupted generation, or one made before 2026-09-29), whose scenario file or generator code has changed since, or that has lost part of what the manifest describes (such as its repository, one of its commits, its commit map or its copy of the scenario) is stale and is regenerated, with the reason printed (`docs/generator-options.md` §6). The command is therefore safe to run repeatedly: it brings every output up to date and leaves current ones alone. `evaluate`, `baselines` and `coverage` refuse to score a stale output.
 
 To remove existing generated repositories and create them again, use `--overwrite`.
 
@@ -1271,7 +1271,7 @@ szzbench generate-all-repos
 
 各リポジトリは `generated-input-repos/<SCENARIO_ID>/default/` 以下に生成されます。
 
-生成は最後に `metadata/manifest.json` を書き出します。ここには、シナリオファイルのハッシュ、生成器のコードの指紋、予測の記録が持つリポジトリの識別子が記録されます。既存の出力は、この manifest が今も一致する場合にだけスキップされます。manifest がない出力（中断した生成や、2026-09-29 より前に作られたもの）や、その後シナリオファイルや生成器のコードが変わった出力は「古い」とみなされ、理由を表示して作り直されます（`docs/generator-options.md` §6）。そのため繰り返し実行しても安全で、すべての出力を最新にし、最新のものには手を付けません。`evaluate`、`baselines`、`coverage` は古い出力を採点しません。
+生成は最後に `metadata/manifest.json` を書き出します。ここには、シナリオファイルのハッシュ、生成器のコードの指紋、予測の記録が持つリポジトリの識別子が記録されます。既存の出力は、この manifest が今も一致し、manifest が記述するものがすべて残っている場合にだけスキップされます。manifest がない出力（中断した生成や、2026-09-29 より前に作られたもの）、その後シナリオファイルや生成器のコードが変わった出力、manifest が記述するもの（リポジトリ、そのコミット、commit map、シナリオのコピーなど）の一部を失った出力は「古い」とみなされ、理由を表示して作り直されます（`docs/generator-options.md` §6）。そのため繰り返し実行しても安全で、すべての出力を最新にし、最新のものには手を付けません。`evaluate`、`baselines`、`coverage` は古い出力を採点しません。
 
 既存の生成済みリポジトリを削除して作り直す場合は、`--overwrite` を使います。
 

@@ -409,10 +409,13 @@ def _load_scenarios(generated_root: Path, scenarios_root: Path, advanced_scenari
 
     scenarios: list[Scenario] = []
     errors: list[str] = []
-    for repo_dir in sorted(generated_root.glob(f"*/{variant}/repo")):
-        if not (repo_dir / ".git").exists():
+    # every output directory, so that one which has lost its repository is
+    # reported as stale below instead of silently dropping out (issue #93)
+    for output_dir in sorted(generated_root.glob(f"*/{variant}")):
+        if not output_dir.is_dir():
             continue
-        scenario_id = repo_dir.parent.parent.name
+        repo_dir = output_dir / "repo"
+        scenario_id = output_dir.parent.name
         path, suite = _find_scenario_path(scenario_id, scenarios_root, advanced_scenarios_root)
         if path is None:
             # A generated output with no scenario is what a retired id leaves
@@ -425,11 +428,11 @@ def _load_scenarios(generated_root: Path, scenarios_root: Path, advanced_scenari
         errors.extend(load_errors)
         if data is None:
             continue
-        stale_reason = staleness(repo_dir.parent, path)
+        stale_reason = staleness(output_dir, path)
         if stale_reason is not None:        # not scored: its oracle may not be this repository's (#93)
             errors.append(stale_message(scenario_id, stale_reason))
             continue
-        commit_map, map_errors = _load_commit_map(repo_dir.parent / "metadata" / "commit-map.json")
+        commit_map, map_errors = _load_commit_map(output_dir / "metadata" / "commit-map.json")
         errors.extend(map_errors)
         if commit_map is None:
             continue

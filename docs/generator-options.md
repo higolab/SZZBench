@@ -576,6 +576,21 @@ they decide whether a generation is accepted, not what it writes.
 `tests/test_generation_manifest.py` checks that every module the generators
 import is on one side or the other.
 
+An output is also stale when it has lost part of what its manifest describes,
+since the manifest stays behind when the rest is moved, deleted or replaced:
+
+| checked | stale when |
+|---|---|
+| `repo/.git` | missing, or not a repository |
+| the commits | a commit of the commit map is not in the repository (one `git cat-file --batch-check`) |
+| `metadata/commit-map.json` | missing, unreadable, or its digest is not the recorded `repository_id` |
+| `metadata/scenario.yml` or `metadata/scenario.graph.yml` | missing, or not the scenario file the manifest records |
+| `metadata/graph-map.json` (graph scenarios) | missing |
+
+Extra commits, branches and tags do not make an output stale, and neither does
+a moved `HEAD`: an SZZ tool may check out, commit or branch in the repository
+it analyses, and every commit the output was generated with is still there.
+
 - `generate-all-repos` regenerates a stale output instead of skipping it and
   prints why ("Regenerated ... the old output was stale: ..."). An up-to-date
   output is still skipped. Until 2026-09-29 an output counted as done as soon
@@ -587,7 +602,9 @@ import is on one side or the other.
   left out. Scoring the current oracle against an old repository is what went
   wrong: in one checkout, 190 outputs from an older suite were all stale, 11
   of them with a changed oracle, and the stale repository's own correct answer
-  FAILed without a warning.
+  FAILed without a warning. `baselines`, `coverage` and
+  `evaluate --include-generated` go through every output directory, so an
+  output that has lost its repository is reported, not left out.
 - Prediction records carry the `repository_id` of the output the tool ran on.
   The adapters in `tools/adapters/` write it, and `evaluate` compares it with
   the generated repository's (`docs/evaluation-policies.md` §1.6). Regenerating

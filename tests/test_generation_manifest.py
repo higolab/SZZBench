@@ -15,12 +15,20 @@ or whose scenario file or generator code has changed since, is stale:
 ``baselines`` and ``coverage`` refuse to score it.  Prediction records carry
 the repository id of the output they were made on; a different one FAILs the
 scenario with ``run_status: stale``.
+
+A manifest also vouches only for what is still there.  In the review of
+PR #103, SZZ-0006's ``repo/`` was moved aside with its manifest kept:
+``generate-all-repos`` reported it as skipped, and a prediction naming the
+original c1 hash and the matching repository id PASSed.  An output is stale
+as well when ``repo/.git``, a commit it was generated with, the commit map,
+the scenario copy or the graph map is missing or changed.
 """
 from __future__ import annotations
 
 import ast
 import json
 import os
+import shutil
 import subprocess
 import sys
 import textwrap
@@ -38,6 +46,7 @@ from szzbench.bulk_generator import generate_all_repositories  # noqa: E402
 from szzbench.coverage import run_coverage  # noqa: E402
 from szzbench.evaluator import evaluate_predictions  # noqa: E402
 from szzbench.generator import generate_repository  # noqa: E402
+from szzbench.gitutils import run_git  # noqa: E402
 from szzbench.graph_generator import GraphGenerationError, generate_graph_repository  # noqa: E402
 
 
@@ -139,6 +148,161 @@ def test_an_output_from_before_the_manifest_is_not_scored_anywhere(tmp_path):
     roots = dict(generated_root=generated, scenarios_root=classic, advanced_scenarios_root=graph)
     assert any("SZZG-0030" in error and "stale" in error for error in run_baselines(**roots)["errors"])
     assert any("SZZG-0030" in error and "stale" in error for error in run_coverage(**roots)["errors"])
+
+
+# ---------------------------------------------------------------------------
+# a manifest vouches only for what is still there (the review of PR #103)
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope="module")
+def pristine(tmp_path_factory) -> Path:
+    """The scratch layout of ``_layout``, generated once; a test works on a ``_copy``."""
+    root = tmp_path_factory.mktemp("pristine")
+    _generate_all(*_layout(root))
+    return root
+
+
+def _copy(pristine: Path, tmp_path: Path) -> tuple[Path, Path, Path]:
+    root = tmp_path / "copy"
+    shutil.copytree(pristine, root, symlinks=True)
+    return root / "scenarios", root / "advanced-scenarios", root / "generated"
+
+
+MISSING_REPOSITORY = "SZZ-0006: the generated repository is stale: its repository is missing (no repo/.git)"
+
+
+def _without_repository(pristine, tmp_path):
+    """The reproduction in the review: SZZ-0006 generated, then its repo/ moved aside, its manifest kept."""
+    classic, graph, generated = _copy(pristine, tmp_path)
+    output = generated / "SZZ-0006/default"
+    record = {"scenario_id": "SZZ-0006", "repository_id": manifest.read_manifest(output)["repository_id"],
+              "inducing_commit": _commit_map(generated, "SZZ-0006")["c1"]["hash"]}
+    (output / "repo").rename(tmp_path / "repo-aside")
+    assert manifest.read_manifest(output) is not None
+    return classic, graph, generated, record
+
+
+def test_an_output_without_its_repository_is_not_scored(pristine, tmp_path):
+    classic, graph, generated, record = _without_repository(pristine, tmp_path)
+    report = _evaluate(classic, graph, generated, [record], tmp_path, reference_format="hash")
+    assert report.scenarios == []                                  # it used to be scored: PASS
+    assert any(error.startswith(MISSING_REPOSITORY) for error in report.errors)
+
+
+def test_an_output_without_its_repository_does_not_drop_out_of_a_run(pristine, tmp_path):
+    # the runs that go through the generated outputs looked for repo/.git and never saw it
+    classic, graph, generated, _ = _without_repository(pristine, tmp_path)
+    report = _evaluate(classic, graph, generated, [{"scenario_id": "SZZG-0030", "inducing_commit": "c1"}], tmp_path,
+                       include_generated=True)
+    assert [item.scenario_id for item in report.scenarios] == ["SZZG-0030"]
+    assert any(error.startswith(MISSING_REPOSITORY) for error in report.errors)
+    roots = dict(generated_root=generated, scenarios_root=classic, advanced_scenarios_root=graph)
+    assert any(error.startswith(MISSING_REPOSITORY) for error in run_baselines(**roots)["errors"])
+    assert any(error.startswith(MISSING_REPOSITORY) for error in run_coverage(**roots)["errors"])
+
+
+def test_an_output_without_its_repository_is_regenerated(pristine, tmp_path):
+    classic, graph, generated, record = _without_repository(pristine, tmp_path)
+    assert _generate_all(classic, graph, generated) == {                  # it used to be skipped
+        "SZZ-0006": ("generated", "its repository is missing (no repo/.git)"), "SZZG-0030": ("skipped", None)}
+    report = _evaluate(classic, graph, generated, [record], tmp_path, reference_format="hash")
+    assert report.errors == [] and report.scenarios[0].status == "PASS"   # the same history again
+
+
+def _replaced_by_another_scenarios_repository(output, generated):
+    shutil.rmtree(output / "repo")
+    shutil.copytree(generated / "SZZG-0030/default/repo", output / "repo", symlinks=True)
+
+
+def _reinitialized(output, generated):
+    shutil.rmtree(output / "repo")
+    (output / "repo").mkdir()
+    run_git(output / "repo", ["init", "-q"])
+
+
+def _last_commit_pruned(output, generated):
+    repo = output / "repo"
+    run_git(repo, ["reset", "-q", "--hard", "HEAD~1"])
+    run_git(repo, ["reflog", "expire", "--expire=now", "--all"])
+    run_git(repo, ["gc", "-q", "--prune=now"])
+
+
+def _git_directory_emptied_inside_a_repository_with_every_commit(output, generated):
+    # Git looks for a repository in the directories above a .git that is not
+    # one -- and the default generated root sits inside the SZZBench checkout
+    shutil.copytree(output / "repo/.git", generated.parent / ".git", symlinks=True)
+    shutil.rmtree(output / "repo/.git")
+    (output / "repo/.git").mkdir()
+
+
+def _hash_edited(output, generated):
+    path = output / "metadata/commit-map.json"
+    data = json.loads(path.read_text(encoding="utf-8"))
+    data["c1"]["hash"] = data["c0"]["hash"]
+    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+
+
+def _scenario_copy_edited(output, generated):
+    _edit_message(output / "metadata/scenario.yml", 1, "Edited in the output")
+
+
+@pytest.mark.parametrize("sid, damage, reason", [
+    ("SZZ-0006", _replaced_by_another_scenarios_repository,
+     "its repository lacks 3 of the 3 commits it was generated with (c0, c1, c2)"),
+    ("SZZ-0006", _reinitialized, "its repository lacks 3 of the 3 commits it was generated with (c0, c1, c2)"),
+    ("SZZ-0006", _last_commit_pruned, "its repository lacks 1 of the 3 commits it was generated with (c2)"),
+    ("SZZ-0006", _git_directory_emptied_inside_a_repository_with_every_commit, "its repository cannot be read"),
+    ("SZZ-0006", lambda output, _: (output / "metadata/commit-map.json").unlink(),
+     "its commit map (metadata/commit-map.json) is missing or unreadable"),
+    ("SZZ-0006", _hash_edited, "its commit map (metadata/commit-map.json) has changed since it was generated"),
+    ("SZZ-0006", lambda output, _: (output / "metadata/scenario.yml").unlink(),
+     "its copy of the scenario (metadata/scenario.yml) is missing or differs from the scenario file"),
+    ("SZZ-0006", _scenario_copy_edited,
+     "its copy of the scenario (metadata/scenario.yml) is missing or differs from the scenario file"),
+    ("SZZG-0030", lambda output, _: (output / "metadata/scenario.graph.yml").unlink(),
+     "its copy of the scenario (metadata/scenario.graph.yml) is missing or differs from the scenario file"),
+    ("SZZG-0030", lambda output, _: (output / "metadata/graph-map.json").unlink(),
+     "its graph map (metadata/graph-map.json) is missing"),
+], ids=["another-repository", "reinitialized", "commit-pruned", "git-dir-not-a-repository", "commit-map-removed",
+        "commit-map-edited", "scenario-copy-removed", "scenario-copy-edited", "graph-scenario-copy-removed",
+        "graph-map-removed"])
+def test_an_output_that_lost_part_of_what_its_manifest_describes_is_stale(pristine, tmp_path, sid, damage, reason):
+    classic, graph, generated = _copy(pristine, tmp_path)
+    output = generated / sid / "default"
+    scenario = (classic / sid / "scenario.yml") if sid.startswith("SZZ-") else (graph / sid / "scenario.graph.yml")
+    damage(output, generated)
+    assert (manifest.staleness(output, scenario) or "").startswith(reason)
+    assert _generate_all(classic, graph, generated)[sid][0] == "generated"
+    assert manifest.staleness(output, scenario) is None
+
+
+def test_what_an_szz_tool_may_do_in_the_repository_keeps_the_output_fresh(pristine, tmp_path):
+    # a checkout, a commit of its own, a branch and a tag: every generated commit is still there
+    classic, graph, generated = _copy(pristine, tmp_path)
+    repo = generated / "SZZ-0006/default/repo"
+    run_git(repo, ["checkout", "-q", "--detach", "HEAD~1"])
+    run_git(repo, ["-c", "user.name=A tool", "-c", "user.email=tool@example.com",
+                   "commit", "-q", "--allow-empty", "-m", "a commit of the tool's own"])
+    run_git(repo, ["branch", "tool-branch"])
+    run_git(repo, ["tag", "tool-tag"])
+    assert manifest.staleness(repo.parent, classic / "SZZ-0006/scenario.yml") is None
+    assert _generate_all(classic, graph, generated)["SZZ-0006"] == ("skipped", None)
+
+
+def test_a_scenario_that_was_never_generated_is_named_as_such(pristine, tmp_path):
+    classic, graph, generated = _copy(pristine, tmp_path)
+    shutil.rmtree(generated / "SZZG-0030")
+    report = _evaluate(classic, graph, generated, [{"scenario_id": "SZZG-0030", "inducing_commit": "c1"}], tmp_path)
+    assert report.scenarios == []
+    assert any(error.startswith("SZZG-0030: the generated repository is stale: nothing has been generated at")
+               for error in report.errors)
+
+
+def test_the_manifest_is_the_last_file_a_generation_writes(pristine):
+    for output in sorted((pristine / "generated").glob("*/default")):
+        written = (output / "metadata/manifest.json").stat().st_mtime_ns
+        others = [path for path in output.rglob("*") if path.is_file() and path.name != "manifest.json"]
+        assert others and all(path.stat().st_mtime_ns <= written for path in others), output
 
 
 def test_predictions_are_matched_to_the_repository_they_were_made_on(tmp_path):

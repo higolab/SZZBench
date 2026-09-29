@@ -477,11 +477,9 @@ def evaluate_prediction_map(
 
 
 def _generated_scenario_ids(generated_root: Path, variant: str) -> set[str]:
-    scenario_ids = set()
-    for repo_dir in generated_root.glob(f"*/{variant}/repo"):
-        if repo_dir.is_dir() and (repo_dir / ".git").exists():
-            scenario_ids.add(repo_dir.parent.parent.name)
-    return scenario_ids
+    # every output directory, complete or not: one that has lost its repository
+    # is reported as stale instead of dropping out of the report (issue #93)
+    return {output_dir.parent.name for output_dir in generated_root.glob(f"*/{variant}") if output_dir.is_dir()}
 
 
 def evaluate_scenario(
