@@ -75,6 +75,10 @@ suite.
 is an optional list of `{name, description, commit_level}` entries and
 `default_variant` names the one used when `--evaluation-variant` is omitted.
 Variant names are matched after lower-casing and treating `-` and `_` alike.
+A `default_variant` must name a declared variant; one that does not is a
+validation error (GE129), because the evaluator would ignore it and score
+`commit_level` instead. Leave `default_variant` out to make `commit_level` the
+default.
 A variant's `commit_level` **replaces** the base `commit_level`; only
 `evaluation_policy` is inherited when the variant omits it. A variant without a
 `commit_level` falls back to the inferred required set (section 1.4) with a
