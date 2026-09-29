@@ -49,7 +49,11 @@ def test_external_cause_passes_only_for_the_empty_answer(tmp_path):
 
 def test_import_boundary_is_empty_by_default_and_c0_under_the_boundary_variant(tmp_path):
     scenario, cmap, _ = _generate(tmp_path, "SZZG-0136")
-    assert _evaluate("SZZG-0136", scenario, cmap, [])["status"] == "PASS"
+    default = _evaluate("SZZG-0136", scenario, cmap, [])
+    assert default["status"] == "PASS"
+    # commit_level is the default without a note: the scenario no longer names a variant it lacks (GE129)
+    assert default["evaluation_variant"] is None
+    assert not any("evaluation variant" in note for note in default["result_notes"])
     assert _evaluate("SZZG-0136", scenario, cmap, ["c0"])["status"] == "FAIL"
     assert _evaluate("SZZG-0136", scenario, cmap, ["c0"], variant="boundary-commit")["status"] == "PASS"
     assert _evaluate("SZZG-0136", scenario, cmap, [], variant="boundary-commit")["status"] == "FAIL"

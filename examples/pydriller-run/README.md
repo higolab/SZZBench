@@ -121,7 +121,7 @@ implementation does not do, and the README of each says what.
 ## Reading the report
 
 `evaluation-results.md` lists every scenario with its expected and actual BICs, its evaluation
-policy and its status, after a summary and the eight warnings the evaluator raised. None of them is
+policy and its status, after a summary and the seven warnings the evaluator raised. None of them is
 about the predictions, and they are not all the same kind:
 
 - **Four are about metadata this evaluation does not read.** SZZG-0034 declares `bug_level`,
@@ -132,11 +132,11 @@ about the predictions, and they are not all the same kind:
   `bugs[].bug_introducing_commits`, taking the commits whose role is `contributing`, `direct` or
   `reintroducing` — `c1` in each of the three. Those scenarios were scored against a set the
   evaluator computed, which is worth knowing before quoting their results.
-- **One is a variant fallback.** SZZG-0136 declares `default_variant: default`, but its only
-  declared variant is `boundary-commit`, so the name resolves to nothing and the evaluator falls
-  back to `expected_szz.commit_level` — which is `expect_no_bic: true`. The scenario is scored
-  correctly against its own oracle; the declaration names a variant that does not exist, which is a
-  metadata defect in the scenario rather than a property of this run.
+
+Until 2026-09-29 there was an eighth warning. SZZG-0136 declared `default_variant: default`, a variant
+it does not have, so the evaluator fell back to `expected_szz.commit_level` — the scenario's intended
+default — and said so at every evaluation. The scenario no longer declares it, and the graph
+validator now rejects a `default_variant` that names no variant (GE129).
 
 PyDriller named at least one commit for 260 scenarios and none for the other 19. The adapter writes
 a record for all 279, the 19 with an empty prediction list: that is PyDriller's answer "no commit",

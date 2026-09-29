@@ -32,7 +32,6 @@
 - SZZG-0116: commit_level.required is missing or empty; required BICs inferred from bugs[].bug_introducing_commits (roles contributing/direct/reintroducing): c1.
 - SZZG-0116: expected_szz also declares entity_level, line_level; these sections are not used by commit-level evaluation.
 - SZZG-0133: expected_szz also declares line_level; these sections are not used by commit-level evaluation.
-- SZZG-0136: Requested evaluation variant 'default' is not defined; using commit_level.
 - SZZG-0140: commit_level.required is missing or empty; required BICs inferred from bugs[].bug_introducing_commits (roles contributing/direct/reintroducing): c1.
 
 ## Results
@@ -327,5 +326,4 @@
 - SZZG-0116: commit_level.required is missing or empty; required BICs inferred from bugs[].bug_introducing_commits (roles contributing/direct/reintroducing): c1.
 - SZZG-0116: expected_szz also declares entity_level, line_level; these sections are not used by commit-level evaluation.
 - SZZG-0133: expected_szz also declares line_level; these sections are not used by commit-level evaluation.
-- SZZG-0136: Requested evaluation variant 'default' is not defined; using commit_level.
 - SZZG-0140: commit_level.required is missing or empty; required BICs inferred from bugs[].bug_introducing_commits (roles contributing/direct/reintroducing): c1.
