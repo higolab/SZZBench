@@ -108,6 +108,8 @@ class BaselineResult:
 # ---------------------------------------------------------------------------
 
 Predictor = Callable[[Scenario], Iterable[str]]
+#: A predictor that says which fix each commit answers: ``(bfc hash, bic hash)`` pairs.
+Attributor = Callable[[Scenario], Iterable[tuple[str, str]]]
 
 
 @dataclass
@@ -120,6 +122,12 @@ class Baseline:
     merely by staying silent would give every rule the same free pass, and it
     is what made the ``position-k`` enumeration wrong three times. The one
     honest version of that strategy is a rule of its own.
+
+    ``attribute`` is set for a rule that works from each bug-fixing commit in
+    turn (blame, last toucher): its predictions then name the fix they answer,
+    as an SZZ tool's do, and a scenario with several fixes is scored per fix
+    (issue #92).  Every other rule names commits without a fix, which counts
+    for every fix.
     """
 
     name: str
@@ -127,6 +135,7 @@ class Baseline:
     description: str
     predict: Predictor
     scores_on_abstention: bool = False
+    attribute: Attributor | None = None
 
 
 #: The rule that never names a commit. It is the only one credited for silence,
@@ -253,17 +262,27 @@ def _bfc_hashes(scenario: Scenario) -> list[str]:
     return [h for h in scenario.hashes if h in scenario.bfc_hashes]
 
 
+def _last_touchers_of(git: GitProbe, scenario: Scenario, bfc_hash: str) -> list[str]:
+    """The newest commit before ``bfc_hash`` that touched each file it touches."""
+    found: list[str] = []
+    for path in git.paths_touched(scenario.repo_dir, bfc_hash):
+        out = git(scenario.repo_dir, "log", "-1", "--format=%H", f"{bfc_hash}^", "--", path)
+        if out.strip():
+            found.append(out.strip())
+    return sorted(set(found))
+
+
 def _last_toucher(git: GitProbe) -> Predictor:
     """The newest commit before the fix that touched any file the fix touches."""
     def predict(scenario: Scenario) -> list[str]:
-        found: list[str] = []
-        for bfc_hash in _bfc_hashes(scenario):
-            for path in git.paths_touched(scenario.repo_dir, bfc_hash):
-                out = git(scenario.repo_dir, "log", "-1", "--format=%H", f"{bfc_hash}^", "--", path)
-                if out.strip():
-                    found.append(out.strip())
-        return sorted(set(found))
+        return sorted({h for bfc_hash in _bfc_hashes(scenario) for h in _last_touchers_of(git, scenario, bfc_hash)})
     return predict
+
+
+def _last_toucher_per_fix(git: GitProbe) -> Attributor:
+    def attribute(scenario: Scenario) -> list[tuple[str, str]]:
+        return [(bfc_hash, h) for bfc_hash in _bfc_hashes(scenario) for h in _last_touchers_of(git, scenario, bfc_hash)]
+    return attribute
 
 
 _HUNK_RE = re.compile(r"@@ -(\d+)")
@@ -279,24 +298,28 @@ def blame_deleted_lines(git: GitProbe, scenario: Scenario) -> list[str]:
     quotes paths with special characters.  Shared by the ``blame-deleted-lines``
     baseline and by ``szzbench coverage``'s ``blame_class``.
     """
+    return sorted({h for bfc_hash in _bfc_hashes(scenario) for h in blame_deleted_lines_of(git, scenario, bfc_hash)})
+
+
+def blame_deleted_lines_of(git: GitProbe, scenario: Scenario, bfc_hash: str) -> list[str]:
+    """What naive B-SZZ names from one bug-fixing commit."""
     found: list[str] = []
-    for bfc_hash in _bfc_hashes(scenario):
-        parent = git.parent_of(scenario.repo_dir, bfc_hash)      # the empty tree for a root fix
-        for path in git.paths_touched(scenario.repo_dir, bfc_hash):
-            diff = git(scenario.repo_dir, "diff", "-U0", "--no-renames", parent, bfc_hash, "--", path)
-            line_no: int | None = None
-            for line in diff.splitlines():
-                if line.startswith("@@"):
-                    match = _HUNK_RE.match(line)
-                    line_no = int(match.group(1)) if match else None
-                elif line.startswith("-") and not line.startswith("---") and line_no is not None:
-                    porcelain = git(scenario.repo_dir, "blame", "--line-porcelain",
-                                    "-L", f"{line_no},{line_no}", parent, "--", path)
-                    if porcelain:
-                        found.append(porcelain.split("\n", 1)[0].split()[0])
-                    line_no += 1
-                elif line.startswith(" ") and line_no is not None:
-                    line_no += 1
+    parent = git.parent_of(scenario.repo_dir, bfc_hash)      # the empty tree for a root fix
+    for path in git.paths_touched(scenario.repo_dir, bfc_hash):
+        diff = git(scenario.repo_dir, "diff", "-U0", "--no-renames", parent, bfc_hash, "--", path)
+        line_no: int | None = None
+        for line in diff.splitlines():
+            if line.startswith("@@"):
+                match = _HUNK_RE.match(line)
+                line_no = int(match.group(1)) if match else None
+            elif line.startswith("-") and not line.startswith("---") and line_no is not None:
+                porcelain = git(scenario.repo_dir, "blame", "--line-porcelain",
+                                "-L", f"{line_no},{line_no}", parent, "--", path)
+                if porcelain:
+                    found.append(porcelain.split("\n", 1)[0].split()[0])
+                line_no += 1
+            elif line.startswith(" ") and line_no is not None:
+                line_no += 1
     return sorted(set(found))
 
 
@@ -305,6 +328,12 @@ def _blame_deleted_lines(git: GitProbe) -> Predictor:
     def predict(scenario: Scenario) -> list[str]:
         return blame_deleted_lines(git, scenario)
     return predict
+
+
+def _blame_deleted_lines_per_fix(git: GitProbe) -> Attributor:
+    def attribute(scenario: Scenario) -> list[tuple[str, str]]:
+        return [(bfc_hash, h) for bfc_hash in _bfc_hashes(scenario) for h in blame_deleted_lines_of(git, scenario, bfc_hash)]
+    return attribute
 
 
 def build_predictors(scenarios: list[Scenario], git: GitProbe,
@@ -334,9 +363,10 @@ def build_predictors(scenarios: list[Scenario], git: GitProbe,
                                _abstain, scores_on_abstention=True))
     predictors.append(Baseline("shape-last-toucher", "shape",
                                "report the newest commit before the fix that touched a file the fix touches",
-                               _last_toucher(git)))
+                               _last_toucher(git), attribute=_last_toucher_per_fix(git)))
     predictors.append(Baseline("blame-deleted-lines", "blame",
-                               "naive B-SZZ: blame every line the fix deletes", _blame_deleted_lines(git)))
+                               "naive B-SZZ: blame every line the fix deletes", _blame_deleted_lines(git),
+                               attribute=_blame_deleted_lines_per_fix(git)))
     return predictors
 
 
@@ -482,13 +512,15 @@ def run_baselines(
             continue
         predictions: dict[str, list[Prediction]] = {}
         for scenario in scenarios:
-            guessed = list(baseline.predict(scenario))
+            if baseline.attribute is not None:
+                pairs = sorted(set(baseline.attribute(scenario)))
+                guessed = [Prediction(scenario_id=scenario.scenario_id, fix_commit=fix, inducing_commit=c,
+                                      tool=f"baseline:{baseline.name}") for fix, c in pairs]
+            else:
+                guessed = [Prediction(scenario_id=scenario.scenario_id, inducing_commit=c,
+                                      tool=f"baseline:{baseline.name}") for c in baseline.predict(scenario)]
             if guessed:
-                predictions[scenario.scenario_id] = [
-                    Prediction(scenario_id=scenario.scenario_id, inducing_commit=c,
-                               tool=f"baseline:{baseline.name}")
-                    for c in guessed
-                ]
+                predictions[scenario.scenario_id] = guessed
         # Scenarios the rule says nothing about are scored only for the rule
         # that exists to say nothing; for every other rule they are simply not
         # solved by it.  The abstaining rule names every scenario explicitly:
