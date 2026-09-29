@@ -108,7 +108,10 @@ def cmd_generate_all_repos(args) -> int:
     for item in result.items:
         output = _display_path(item.output_dir)
         if item.status == "skipped":
-            print(f"Skipped [{item.kind}] {item.scenario_id}: {output} already exists.")
+            print(f"Skipped [{item.kind}] {item.scenario_id}: {output} is up to date.")
+        elif item.status == "generated" and item.stale_reason is not None:
+            print(f"Regenerated [{item.kind}] {item.scenario_id}: {output} ({item.commit_count} commit(s)); "
+                  f"the old output was stale: {item.stale_reason}.")
         elif item.status == "generated":
             verb = "Overwrote" if item.overwritten else "Generated"
             print(f"{verb} [{item.kind}] {item.scenario_id}: {output} ({item.commit_count} commit(s)).")
@@ -120,6 +123,7 @@ def cmd_generate_all_repos(args) -> int:
     print(f"  Generated:   {result.generated_count}")
     print(f"  Skipped:     {result.skipped_count}")
     print(f"  Overwritten: {result.overwritten_count}")
+    print(f"  Regenerated: {result.regenerated_count} (stale outputs, without --overwrite)")
     print(f"  Failed:      {result.failed_count}")
     if result.orphans:
         print(f"  Orphaned:    {len(result.orphans)}")
@@ -151,7 +155,10 @@ def cmd_baselines(args) -> int:
         families=args.family or BASELINE_FAMILIES,
     )
     if not report["scenario_count"]:
-        print("[ERROR] BASELINES_FAILED: no generated repository found; run generate-all-repos first.", file=sys.stderr)
+        for error in report["errors"]:          # why an output was not scored, e.g. it is stale (#93)
+            print(f"[ERROR] {error}", file=sys.stderr)
+        print("[ERROR] BASELINES_FAILED: no generated repository could be scored; run generate-all-repos first.",
+              file=sys.stderr)
         return 1
     text = format_baselines(report)
     if args.out:
@@ -171,7 +178,10 @@ def cmd_coverage(args) -> int:
         variant=args.variant,
     )
     if not report["scenario_count"]:
-        print("[ERROR] COVERAGE_FAILED: no generated repository found; run generate-all-repos first.", file=sys.stderr)
+        for error in report["errors"]:          # why an output was not scored, e.g. it is stale (#93)
+            print(f"[ERROR] {error}", file=sys.stderr)
+        print("[ERROR] COVERAGE_FAILED: no generated repository could be scored; run generate-all-repos first.",
+              file=sys.stderr)
         return 1
     text = format_coverage(report)
     if args.out:

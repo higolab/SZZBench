@@ -9,7 +9,8 @@ installation can be checked against numbers someone else measured.
   `tools/adapters/pydriller_to_predictions.py`
 - **Suite**: 279 scenarios (133 classic, 146 graph)
 - **Measured**: 2026-09-28, Python 3.14, git 2.x, macOS; re-run 2026-09-29 with the adapter that writes a
-  record for every scenario (issue #95) -- the same 311 predictions, and 19 more records, all empty
+  record for every scenario (issue #95) -- the same 311 predictions, and 19 more records, all empty --
+  and again with every record carrying the `repository_id` of the output it was made on (issue #93)
 
 ## The commands
 

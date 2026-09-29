@@ -52,6 +52,10 @@ def main(argv: list[str] | None = None) -> int:
         predictions, conversion_errors = _convert_pairs(pairs, scenario_id, result_path, generated_root, args.tool)
         errors.extend(conversion_errors)
         record: dict[str, Any] = {"scenario_id": scenario_id, "predictions": predictions}
+        repository = _repository_id(generated_root / scenario_id / "default" / "metadata")
+        if repository:
+            # the generation the predictions were made on, checked by szzbench evaluate (issue #93)
+            record["repository_id"] = repository
         if conversion_errors:
             record["status"] = "error"
             record["errors"] = conversion_errors
@@ -68,6 +72,15 @@ def main(argv: list[str] | None = None) -> int:
     for error in errors:
         print(f"[ERROR] {error}", file=sys.stderr)
     return 1 if errors else 0
+
+
+def _repository_id(metadata_dir: Path) -> str | None:
+    """The repository id the generation recorded (issue #93), None for an output without a manifest."""
+    try:
+        value = json.loads((metadata_dir / "manifest.json").read_text(encoding="utf-8")).get("repository_id")
+    except (OSError, ValueError, AttributeError):
+        return None
+    return value if isinstance(value, str) and value else None
 
 
 def _failed_record(scenario_id: str, error: str) -> dict[str, Any]:

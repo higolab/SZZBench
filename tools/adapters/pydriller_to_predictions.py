@@ -70,6 +70,9 @@ def main(argv: list[str] | None = None) -> int:
     records = []
     for result in results:
         record: dict[str, Any] = {"scenario_id": result["scenario_id"], "predictions": result.get("predictions") or []}
+        if result.get("repository_id"):
+            # the generation the predictions were made on, checked by szzbench evaluate (issue #93)
+            record["repository_id"] = result["repository_id"]
         if result.get("errors"):
             record["status"] = "error"
             record["errors"] = list(result["errors"])
@@ -187,6 +190,7 @@ def _run_scenario(
         "predictions": [],
         "errors": [],
         "elapsed_seconds": None,
+        "repository_id": _repository_id(generated_dir / "metadata"),
     }
     try:
         if scenario_path is None or suite is None:
@@ -235,6 +239,15 @@ def _run_scenario(
 
 class AdapterError(Exception):
     pass
+
+
+def _repository_id(metadata_dir: Path) -> str | None:
+    """The repository id the generation recorded (issue #93), None for an output without a manifest."""
+    try:
+        value = json.loads((metadata_dir / "manifest.json").read_text(encoding="utf-8")).get("repository_id")
+    except (OSError, ValueError, AttributeError):
+        return None
+    return value if isinstance(value, str) and value else None
 
 
 def _load_yaml(path: Path) -> dict[str, Any]:

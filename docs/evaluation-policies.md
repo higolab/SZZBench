@@ -189,11 +189,27 @@ Every scenario then has a `run_status`:
 | `ok` | a record names the scenario, one with an empty `predictions` list included | scored as the rest of this document describes; an explicit empty record is the tool's answer "no commit", which passes an `expect_no_bic` oracle |
 | `error` | a record for the scenario has `status: error` | **FAIL** whatever it predicted; the predictions it carries still count in the metrics, and `run_errors` holds the messages |
 | `missing` | no record names the scenario and `--include-generated` brought it in | **FAIL**; the metrics count it as an empty prediction |
+| `stale` | the records name a `repository_id` that is not the generated repository's (issue #93) | **FAIL** whatever they predict: they were made on another generation of the scenario; `run_errors` names both ids |
 
-Both failures add a `result_notes` entry, which the report also lists as a
+Every failure adds a `result_notes` entry, which the report also lists as a
 warning. An error record needs no inducing commit (`{"scenario_id": "SZZ-0006",
 "status": "error"}` is valid); a `status` other than `ok` or `error` is a
 loading error and the record is skipped.
+
+A record may also carry `repository_id`, the id the generation manifest gives
+the output the tool ran on (`docs/generator-options.md` §6); the adapters in
+`tools/adapters/` write it. Records of one scenario that name different ids are
+a loading error. When a file's records name no `repository_id` for some
+scenarios, they are scored as before and the report warns once that they
+cannot be matched to the generated repositories.
+
+A generated output that is **stale** -- it has no manifest, its scenario file
+or the generator's code has changed since it was generated, or it has lost part
+of what the manifest describes, such as its repository or one of its commits
+(`docs/generator-options.md` §6) -- is not scored at all: the report gets an
+error naming the scenario and the reason, and `szzbench generate-all-repos`
+regenerates it (issue #93). With `--include-generated`, every output directory
+counts, so one that has lost its repository is reported rather than left out.
 
 Before 2026-09-29 (issue #95) there was no `status`, and a scenario without a
 record was scored as an empty prediction. The PySZZ adapter also wrote an
@@ -619,7 +635,7 @@ missing`). `[c1]` → FAIL (`false_positives = [c1]`). `[not-a-commit]` → FAIL
 | location | field |
 |---|---|
 | per scenario (JSON) | `top_k.status_k`, `top_k.unknown_ranks`, `known_distractor_hits`, `expect_no_bic`, `fix_shape`, `branch_level`, `attribution`, `run_status`, `run_errors`, additional `result_notes` |
-| summary (JSON) | `known_distractor_hits`, `fix_shape_counts`, `branch_level_scenarios`, `branch_level_failures`, `attribution_scenarios`, `attribution_failures`, `tool_errors`, `missing_records`, `unknown_predictions` |
-| Markdown | `- Tool errors:`, `- Missing prediction records:`, `- Unknown predictions (counted as false positives):`, `- Known distractor hits:`, `- Branch-level failures:`, `- Attribution failures:`, `- Fix shapes (per BFC):`; table columns `Run`, `Unknown`, `Top-k`, `Distractor hits`, `Fix shape`; `## Scenario notes` section listing every scenario's `result_notes` |
+| summary (JSON) | `known_distractor_hits`, `fix_shape_counts`, `branch_level_scenarios`, `branch_level_failures`, `attribution_scenarios`, `attribution_failures`, `tool_errors`, `missing_records`, `stale_predictions`, `unknown_predictions` |
+| Markdown | `- Tool errors:`, `- Missing prediction records:`, `- Predictions made on another repository:`, `- Unknown predictions (counted as false positives):`, `- Known distractor hits:`, `- Branch-level failures:`, `- Attribution failures:`, `- Fix shapes (per BFC):`; table columns `Run`, `Unknown`, `Top-k`, `Distractor hits`, `Fix shape`; `## Scenario notes` section listing every scenario's `result_notes` |
 | report `warnings` (JSON, Markdown `## Warnings`, CLI stderr) | oracle-related `result_notes` promoted with a `<scenario id>: ` prefix |
 | validator | `GI086` (info) when `bug_introducing_commits` is empty and `expect_no_bic` is declared, instead of `GE084` |

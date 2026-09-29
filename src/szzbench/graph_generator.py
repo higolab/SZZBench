@@ -31,6 +31,7 @@ from .graph_scenario import load_graph_scenario
 from .graph_validator import validate_graph_scenario_file
 from .operations import OperationError, normalize_newlines
 from .graph_verifier import verify_graph_generated_repo
+from .manifest import write_manifest
 from .paths import PathValidationError, safe_join
 
 
@@ -194,6 +195,9 @@ def generate_graph_repository(
 
         log("Graph generation completed successfully.")
         (metadata_dir / "generation.log").write_text("\n".join(generation_log) + "\n", encoding="utf-8")
+        # written last: an output without it is incomplete (issue #93)
+        write_manifest(metadata_dir, scenario_id=str(scenario.get("meta", {}).get("id") or out_dir.parent.name),
+                       scenario_path=scenario_path, commit_map=commit_map, verified=verify)
         return commit_map, verify_result
     except (OperationError, PathValidationError, GitError, OSError, GraphGenerationError) as exc:
         log(f"ERROR: {exc}")

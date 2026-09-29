@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 
 from .findings import ValidationResult
 from .gitutils import GitError, commit_all, init_repo, json_safe_timestamp, resolve_commit_metadata
+from .manifest import write_manifest
 from .operations import OperationError, apply_operation_to_filesystem
 from .scenario import load_yaml
 from .validator import validate_scenario_file
@@ -77,6 +78,9 @@ def generate_repository(scenario_path: Path, out_dir: Path, *, force: bool = Fal
                 raise GenerationError("Generated repository failed verification.")
         log("Generation completed successfully.")
         (metadata_dir / "generation.log").write_text("\n".join(generation_log) + "\n", encoding="utf-8")
+        # written last: an output without it is incomplete (issue #93)
+        write_manifest(metadata_dir, scenario_id=str(scenario.get("meta", {}).get("id") or out_dir.parent.name),
+                       scenario_path=scenario_path, commit_map=commit_map, verified=verify)
         return commit_map, verify_result
     except (OperationError, GitError, OSError) as exc:
         log(f"ERROR: {exc}")

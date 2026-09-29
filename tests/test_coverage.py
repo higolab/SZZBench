@@ -287,6 +287,7 @@ def test_declared_difficulty_is_tabulated_against_the_measured_blame_class(tmp_p
     data = yaml.safe_load(scenario.read_text())
     data["meta"]["difficulty"] = "hard"
     scenario.write_text(yaml.safe_dump(data, sort_keys=False))
+    _regenerate(tmp_path, "SZZG-9131")
     report = _run(tmp_path)
     assert report["difficulty_by_blame_class"] == {"advanced-scenarios": {"exact": {"None": 1}, "miss": {"hard": 1}}}
     assert "declared difficulty by measured blame class" in format_report(report)
@@ -315,6 +316,13 @@ def _with_difficulty(tmp_path, sid, difficulty):
     else:
         data["meta"]["difficulty"] = difficulty
     scenario.write_text(yaml.safe_dump(data, sort_keys=False))
+    _regenerate(tmp_path, sid)
+
+
+def _regenerate(tmp_path, sid):
+    """An edited scenario makes its output stale (issue #93), so generate it again."""
+    generate_graph_repository(tmp_path / "advanced-scenarios" / sid / "scenario.graph.yml",
+                              tmp_path / "repos" / sid / "default", force=True)
 
 
 def test_difficulty_floor_follows_the_blame_class_and_declarations_are_checked_against_it(tmp_path):
