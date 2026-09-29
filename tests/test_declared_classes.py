@@ -5,6 +5,11 @@ bug-introducing commit while a template indentation artefact re-indented the
 surviving line, so the fix deleted it and plain blame reached the intended
 "ghost" commit after all. `--lint` already detects that (W420 / W421); this
 test keeps the shipped suite free of it.
+
+The same validation is the only one this suite runs over every classic
+scenario, so it also requires no error, as `test_simulate_with_git.py` does for
+the graph suite; until 2026-09-29 a classic scenario with a validation error
+passed the whole test suite (issue #107).
 """
 from __future__ import annotations
 
@@ -22,6 +27,8 @@ GHOST_CODES = {"W420", "W421"}
                          ids=lambda p: p.parent.name)
 def test_declared_ghost_class_holds(path):
     _, result, _ = validate_scenario_file(path, simulate=True, lint=True)
+    errors = [f"{f.code}: {f.message}" for f in result.findings if f.severity == "ERROR"]
+    assert errors == []
     offenders = [f"{f.code}: {f.message}" for f in result.findings if f.code in GHOST_CODES]
     assert offenders == []
 
