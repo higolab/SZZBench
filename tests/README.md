@@ -9,6 +9,15 @@ Run `pytest` from the repository root. `tests/conftest.py` puts this checkout's 
 
 Without these tools, the tests that need them are skipped. `pytest -rs` lists every skip with its reason.
 
+## CI
+
+`.github/workflows/tests.yml` runs on every pull request and on every push to `main`. It does two things:
+
+- **Runs the whole suite** on Linux with Python 3.10 and 3.14, using `pytest -rs`. It provides both tools above: JDK 21, and Node.js 22 with `npm ci` in `tools/scenario-editor`. No test should skip there for a missing tool; the log lists the skips that remain.
+- **Builds the two web tools** under `tools/`.
+
+Windows is not tested ([#109](https://github.com/YoshikiHigo/SZZBench/issues/109)).
+
 ## Conventions
 
 These conventions come from the audit in issue #107.

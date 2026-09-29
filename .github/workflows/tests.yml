@@ -1,0 +1,84 @@
+# The test suite on every pull request and on every push to main (issue #106).
+#
+# Linux only: Windows is not tested (see README, "Installation").  Git is the
+# runner's own; SZZBench needs 2.29 or later (docs/generator-options.md §5).
+name: tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pytest:
+    name: pytest (Python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        # the oldest version pyproject.toml declares, and the current one
+        python: ["3.10", "3.14"]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # tests/test_template_rewrites.py reads main as it stood before the rewrites
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+      # the tests marked needs_jdk compile and run the scenarios' Java code
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+      # tests/test_scenario_editor.py needs a Node.js that runs TypeScript (22.18+)
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: tools/scenario-editor/package-lock.json
+      - name: Install SZZBench and the Scenario Editor's dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+          npm ci --prefix tools/scenario-editor
+      - name: Versions
+        run: |
+          python --version
+          git --version
+          java -version
+          node --version
+      # -rs lists every skip with its reason: none should be for a tool this job installs
+      - name: pytest
+        run: python -m pytest -rs --durations=20
+
+  web-tools:
+    name: build ${{ matrix.tool }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        tool: [scenario-editor, generated-repo-viewer]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: tools/${{ matrix.tool }}/package-lock.json
+      - run: npm ci
+        working-directory: tools/${{ matrix.tool }}
+      - run: npm run build
+        working-directory: tools/${{ matrix.tool }}
