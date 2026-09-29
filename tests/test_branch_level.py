@@ -116,12 +116,19 @@ def test_fix_commit_may_be_a_hash_or_prefix_and_a_stray_one_counts_for_no_branch
     assert result.false_positives == ["c2"] and result.status == "FAIL"
 
 
-def test_a_scenario_without_branch_level_is_unchanged(tmp_path):
+def test_a_scenario_without_branch_level_is_scored_per_fix_by_attribution(tmp_path):
+    # Until issue #92 such a scenario was scored as one set, so an answer from c3 alone passed.
+    # Now every scenario with several bug-fixing commits is scored per fix even without a
+    # branch_level block: the fixes' oracles come from bugs[], and each needs its own answer.
     scenario = _scenario()
     del scenario["expected_szz"]["branch_level"]
-    result = _evaluate([{"inducing_commit": "c1", "fix_commit": "c3"}], tmp_path, scenario)
-    assert result.branch_level is None and result.status == "PASS"
-    assert not any("branch_level" in note for note in result.result_notes)
+    one = _evaluate([{"inducing_commit": "c1", "fix_commit": "c3"}], tmp_path, scenario)
+    assert one.branch_level is None and one.status == "FAIL"
+    assert one.attribution["fixes"]["r2"]["false_negatives"] == ["c1"]
+    assert not any(note.startswith("branch_level") for note in one.result_notes)
+    both = _evaluate([{"inducing_commit": "c1", "fix_commit": "c3"}, {"inducing_commit": "c1", "fix_commit": "r2"}],
+                     tmp_path, scenario)
+    assert both.status == "PASS" and both.attribution["status"] == "PASS"
 
 
 def test_branch_level_is_no_longer_reported_as_an_unread_section(tmp_path):

@@ -17,6 +17,7 @@
 - Related-but-not-correct hits: 13
 - Known distractor hits: 22
 - Branch-level failures: 1 of 3 scenario(s) with a branch-level oracle
+- Attribution failures: 3 of 9 scenario(s) with several bug-fixing commits
 - Fix shapes (per BFC): empty_first_parent 1, addition_only 16, modifies 274
 - Weighted credit: 235.000/341.000
 - Precision: 0.781

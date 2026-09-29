@@ -499,7 +499,7 @@ It can also be one record per predicted BIC:
 {"scenario_id":"SZZ-0006","fix_commit":"<actual hash>","inducing_commit":"<actual hash>"}
 ```
 
-`scenario_id` and `inducing_commit` are required for evaluation; `fix_commit` is optional. `inducing_commit` may be an actual Git hash, a unique hash prefix, or a logical commit id from `commit-map.json`. A reference that resolves to no commit fails the scenario, is listed in `unknown_predictions`, and counts as a false positive in precision.
+`scenario_id` and `inducing_commit` are required for evaluation; `fix_commit` is optional, but a scenario with several bug-fixing commits is also scored per fix: a prediction counts for the fix its `fix_commit` names, and one without `fix_commit` for every fix (`docs/evaluation-policies.md` §1.7). `inducing_commit` may be an actual Git hash, a unique hash prefix, or a logical commit id from `commit-map.json`. A reference that resolves to no commit fails the scenario, is listed in `unknown_predictions`, and counts as a false positive in precision.
 
 A record can also say that the tool failed on the scenario; the scenario then fails whatever the record predicts (`docs/evaluation-policies.md` §1.6):
 
@@ -1197,7 +1197,7 @@ szzbench evaluate \
 {"scenario_id":"SZZ-0006","fix_commit":"<actual hash>","inducing_commit":"<actual hash>"}
 ```
 
-評価に必須なのは `scenario_id` と `inducing_commit` です。`fix_commit` は任意です。`inducing_commit` には実 Git hash、ユニークな hash prefix、または `commit-map.json` の論理 commit id を指定できます。どのコミットにも解決できない参照はシナリオを FAIL にし、`unknown_predictions` に記録され、precision では false positive として数えられます。
+評価に必須なのは `scenario_id` と `inducing_commit` です。`fix_commit` は任意ですが、bug-fixing commit を複数持つシナリオは fix ごとにも採点されます。予測は `fix_commit` が指す fix の答えとして数えられ、`fix_commit` のない予測はすべての fix の答えとして数えられます（`docs/evaluation-policies.md` §1.7）。`inducing_commit` には実 Git hash、ユニークな hash prefix、または `commit-map.json` の論理 commit id を指定できます。どのコミットにも解決できない参照はシナリオを FAIL にし、`unknown_predictions` に記録され、precision では false positive として数えられます。
 
 レコードでは、ツールがそのシナリオで失敗したことも表せます。その場合、レコードの予測内容にかかわらずシナリオは FAIL になります（`docs/evaluation-policies.md` §1.6）。
 

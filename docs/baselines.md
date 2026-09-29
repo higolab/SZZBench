@@ -81,12 +81,20 @@ retirement of SZZ-0082 and SZZ-0120 as duplicates of SZZ-0081 and SZZ-0115):
 | `position-2` | position | 23/279 = 8.2% |
 | `position-3` | position | 22/279 = 7.9% |
 | `position-4` | position | 7/279 = 2.5% |
-| `position-all-non-fix` | position | 6/279 = 2.2% |
 | `position-0` | position | 6/279 = 2.2% |
+| `position-all-non-fix` | position | 5/279 = 1.8% |
 | `position-5` | position | 2/279 = 0.7% |
 | best `author:…` | metadata | 12/279 = 4.3% (chance) |
 | `abstain` | position | **2/279** (the two empty oracles) |
 | `message-admits-fault` | metadata | **0/279** |
+
+`position-all-non-fix` solved 6 until 2026-09-29, when a scenario with several
+bug-fixing commits began to be scored per fix (issue #92,
+[evaluation-policies.md](evaluation-policies.md) §1.7): it names every non-fix
+commit without saying which fix each answers, and the two fixes of SZZG-0018
+lead to different commits. `blame-deleted-lines` and `shape-last-toucher` work
+from each fix in turn, name the fix each commit answers, and kept all of theirs;
+no other number on this page moved.
 
 **A fixed rule versus the union.** Each row is one rule applied to every
 scenario, which is what an attacker can actually do. The union of the rows is
