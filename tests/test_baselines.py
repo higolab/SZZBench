@@ -484,8 +484,9 @@ def test_silence_is_credited_only_to_the_abstain_rule(tmp_path):
     roots = dict(generated_root=tmp_path / "repos", scenarios_root=tmp_path,
                  advanced_scenarios_root=tmp_path / "advanced-scenarios")
 
-    # what the evaluator actually does with an empty prediction
-    silent = evaluate_prediction_map({}, include_generated=True, **roots)
+    # what the evaluator actually does with an explicit empty prediction (a
+    # scenario with no record at all fails instead, issue #95)
+    silent = evaluate_prediction_map({}, explicit_scenarios={"SZZG-9300", "SZZG-9301", "SZZG-9302"}, **roots)
     assert {i.scenario_id for i in silent.scenarios if i.status == "PASS"} == {"SZZG-9302"}, \
         "the fixture must exercise an oracle that silence satisfies"
 

@@ -450,7 +450,12 @@ def run_tool(
             json.dumps(raw_payload, indent=2, ensure_ascii=False) + "\n",
             encoding="utf-8",
         )
-        records.append({"scenario_id": scenario.scenario_id, "predictions": unique_predictions})
+        record: dict[str, Any] = {"scenario_id": scenario.scenario_id, "predictions": unique_predictions}
+        if scenario_errors:
+            # scored as a tool error, not as the tool's answer (issue #95)
+            record["status"] = "error"
+            record["errors"] = list(scenario_errors)
+        records.append(record)
         manifest.append(
             {
                 "scenario_id": scenario.scenario_id,

@@ -33,13 +33,21 @@ Accepting logical ids is a deliberate interface choice: adapters and tests can
 write oracle-style ids without regenerating repositories, and a tool running on
 the generated repository naturally emits hashes. Both forms are equivalent for
 scoring. An unknown prediction makes the scenario **FAIL** under every policy
-and is listed in `unknown_predictions`.
+and is listed, as written, in `unknown_predictions`.
 
-Duplicates are collapsed (the first occurrence wins). When at least one
-prediction of a scenario carries a `rank`, the predictions are ordered by rank
-(unranked ones last, in input order); otherwise input order is the rank order.
-This ordered, de-duplicated list is `top_k.ranked_actual_bics`; its set is
-`actual_bics`.
+An unknown prediction is also a false positive of its own kind (since
+2026-09-29, issue #95): it is not in `false_positives`, which holds logical
+ids, but it is in the precision denominator (section 2), the summary counts it
+as `unknown_predictions`, and it holds its place in the rank order. Before, it
+was dropped before scoring, so `c1` plus an unknown hash reported precision
+1.0 and recall 1.0 on a FAIL, in the scenario and in the aggregate.
+
+Duplicates are collapsed (the first occurrence wins; unknown references are
+compared as written). When at least one prediction of a scenario carries a
+`rank`, the predictions are ordered by rank (unranked ones last, in input
+order); otherwise input order is the rank order. This ordered, de-duplicated
+list -- unknown references included, as written -- is `top_k.ranked_actual_bics`;
+the set of its known entries is `actual_bics`.
 
 ### 1.2 Oracle: classic scenarios (`scenarios/*/scenario.yml`)
 
@@ -157,6 +165,37 @@ returns `r1` and fails the `release` entry while the same tool passes `main`
 from `c3`. SZZG-0049 and SZZG-0050 declare the same block with `{c1}` on both
 branches.
 
+### 1.6 Records: tool errors and missing records
+
+A record may say what the tool's run on its scenario came to, with an optional
+`status` -- `ok` (the default) or `error`, matched case-insensitively -- and,
+for an error, `errors` (a string or a list of strings):
+
+```json
+{"scenario_id": "SZZ-0006", "status": "error", "errors": ["RuntimeError: ..."], "predictions": []}
+```
+
+Every scenario then has a `run_status`:
+
+| `run_status` | when | effect |
+|---|---|---|
+| `ok` | a record names the scenario, one with an empty `predictions` list included | scored as the rest of this document describes; an explicit empty record is the tool's answer "no commit", which passes an `expect_no_bic` oracle |
+| `error` | a record for the scenario has `status: error` | **FAIL** whatever it predicted; the predictions it carries still count in the metrics, and `run_errors` holds the messages |
+| `missing` | no record names the scenario and `--include-generated` brought it in | **FAIL**; the metrics count it as an empty prediction |
+
+Both failures add a `result_notes` entry, which the report also lists as a
+warning. An error record needs no inducing commit (`{"scenario_id": "SZZ-0006",
+"status": "error"}` is valid); a `status` other than `ok` or `error` is a
+loading error and the record is skipped.
+
+Before 2026-09-29 (issue #95) there was no `status`, and a scenario without a
+record was scored as an empty prediction. The PySZZ adapter also wrote an
+empty record for a scenario on which the tool raised. Both read as a deliberate
+abstention, so a tool that crashed on, or never reached, SZZG-0135 or
+SZZG-0136 -- whose oracles are empty -- passed them. The adapters under
+`tools/adapters/` now write `status: error` for a scenario on which the tool
+failed, and a record, empty if need be, for every scenario they ran on.
+
 ## 2. Derived sets
 
 With `E` = required, `A` = acceptable_related commits, `P` = predicted
@@ -175,7 +214,9 @@ With `E` = required, `A` = acceptable_related commits, `P` = predicted
 | `known_distractor_hits` | `P ∩ D` (diagnostic only) |
 | `weighted_credit` | `min(|E|, |TP| + Σ credit of acceptable_related hits)`; `null` when `E` is empty |
 | `possible_credit` | `|E|`; `null` when `E` is empty |
-| `precision`, `recall` | computed from TP/FP/FN (`null` when the denominator is 0) |
+| `unknown_predictions` | the predicted references that resolve to no commit, as written (`U`) |
+| `precision` | TP / (TP + FP + U), counting each set: an unknown reference is a false positive of its own kind (`null` when the denominator is 0) |
+| `recall` | TP / (TP + FN), counting each set (`null` when the denominator is 0) |
 
 Note that `false_positives` is the strict count: a `related_origins` or
 `related_but_not_correct` hit *is* a false positive; only `acceptable_related`
@@ -183,11 +224,12 @@ removes a prediction from `false_positives`.
 
 ## 3. Policies
 
-The status is decided in this order. Steps 1 and 2 apply to every policy.
+The status is decided in this order. Steps 1 to 3 apply to every policy.
 
-1. Any unknown prediction → **FAIL**.
-2. `expect_no_bic: true` → **PASS** iff `P` is empty (section 6).
-3. Policy-specific rule below.
+1. A `run_status` other than `ok` (a tool error or a missing record, section 1.6) → **FAIL**.
+2. Any unknown prediction → **FAIL**.
+3. `expect_no_bic: true` → **PASS** iff `P` is empty (section 6).
+4. Policy-specific rule below.
 
 ### 3.1 `exact_set`
 
@@ -232,7 +274,8 @@ hit).
 - `1` when `k_values` is absent.
 
 `status_k` is reported inside `top_k`. False positives never fail a `top_k`
-scenario; they are reported as usual. Use `status_k` when the scenario should
+scenario; they are reported as usual. An unknown reference holds its rank:
+`[not-a-commit, c1]` puts `c1` at rank 2 (the scenario fails anyway, step 2). Use `status_k` when the scenario should
 be strict about the top rank while still reporting `hit_at` for larger k.
 
 Exercised by SZZG-0096 (ranking inside a work item), SZZG-0115 (`k_values`
@@ -307,9 +350,10 @@ by default and the `boundary-commit` variant accepts `c0`; SZZG-0137 — the fir
 commit authored the fault and is the ordinary BIC. SZZG-0075's `main-line-only`
 variant is the fourth use: a fault that never reached the evaluated line.
 
-**PASS iff** the tool makes no prediction for the scenario. Every known
-prediction is a false positive and fails; unknown predictions fail as under any
-policy. If a scenario sets `expect_no_bic: true` *and* a non-empty `required`,
+**PASS iff** the scenario's record makes no prediction -- an explicit empty
+record (section 1.6). Every known prediction is a false positive and fails;
+unknown predictions fail as under any policy, and so do a tool error and a
+missing record. If a scenario sets `expect_no_bic: true` *and* a non-empty `required`,
 the flag is ignored with a note (the two are contradictory; `required` wins).
 
 Because every known prediction is a false positive, allowances make no sense
@@ -505,15 +549,16 @@ commit_level:
   expect_no_bic: true
 ```
 
-`[]` → PASS. `[c1]` → FAIL (`false_positives = [c1]`). `[not-a-commit]` →
-FAIL (`unknown_predictions`).
+`[]` in an explicit record → PASS; no record at all → FAIL (`run_status:
+missing`). `[c1]` → FAIL (`false_positives = [c1]`). `[not-a-commit]` → FAIL
+(`unknown_predictions`, precision 0.0).
 
 ## 10. Report fields added for these semantics
 
 | location | field |
 |---|---|
-| per scenario (JSON) | `top_k.status_k`, `known_distractor_hits`, `expect_no_bic`, `fix_shape`, `branch_level`, additional `result_notes` |
-| summary (JSON) | `known_distractor_hits`, `fix_shape_counts`, `branch_level_scenarios`, `branch_level_failures` |
-| Markdown | `- Known distractor hits:`, `- Branch-level failures:`, `- Fix shapes (per BFC):`; table columns `Top-k`, `Distractor hits`, `Fix shape`; `## Scenario notes` section listing every scenario's `result_notes` |
+| per scenario (JSON) | `top_k.status_k`, `known_distractor_hits`, `expect_no_bic`, `fix_shape`, `branch_level`, `run_status`, `run_errors`, additional `result_notes` |
+| summary (JSON) | `known_distractor_hits`, `fix_shape_counts`, `branch_level_scenarios`, `branch_level_failures`, `tool_errors`, `missing_records`, `unknown_predictions` |
+| Markdown | `- Tool errors:`, `- Missing prediction records:`, `- Unknown predictions (counted as false positives):`, `- Known distractor hits:`, `- Branch-level failures:`, `- Fix shapes (per BFC):`; table columns `Run`, `Unknown`, `Top-k`, `Distractor hits`, `Fix shape`; `## Scenario notes` section listing every scenario's `result_notes` |
 | report `warnings` (JSON, Markdown `## Warnings`, CLI stderr) | oracle-related `result_notes` promoted with a `<scenario id>: ` prefix |
 | validator | `GI086` (info) when `bug_introducing_commits` is empty and `expect_no_bic` is declared, instead of `GE084` |

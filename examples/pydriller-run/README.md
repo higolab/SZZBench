@@ -8,7 +8,8 @@ installation can be checked against numbers someone else measured.
 - **Tool**: [PyDriller](https://github.com/ishepard/pydriller) 2.12, through
   `tools/adapters/pydriller_to_predictions.py`
 - **Suite**: 279 scenarios (133 classic, 146 graph)
-- **Measured**: 2026-09-28, Python 3.14, git 2.x, macOS
+- **Measured**: 2026-09-28, Python 3.14, git 2.x, macOS; re-run 2026-09-29 with the adapter that writes a
+  record for every scenario (issue #95) -- the same 311 predictions, and 19 more records, all empty
 
 ## The commands
 
@@ -29,7 +30,8 @@ szzbench evaluate \
 
 The adapter took about fifteen seconds over the 279 repositories, `generate-all-repos` about three
 minutes.
-`predictions.jsonl` here is that output with the per-scenario `raw_file` paths removed, and
+`predictions.jsonl` here is that output with the `raw_file` path and the repeated `scenario_id` removed
+from every prediction, and
 `evaluation-results.md` is the report the last command wrote.
 
 ## What it scores
@@ -135,15 +137,19 @@ about the predictions, and they are not all the same kind:
   correctly against its own oracle; the declaration names a variant that does not exist, which is a
   metadata defect in the scenario rather than a property of this run.
 
-`--include-generated` is what makes the denominator 279: PyDriller produced predictions for 260
-scenarios, and the flag tells SZZBench to score the remaining 19 as empty predictions rather than
-skip them. Without it a tool would silently be graded only on the scenarios it answered.
+PyDriller named at least one commit for 260 scenarios and none for the other 19. The adapter writes
+a record for all 279, the 19 with an empty prediction list: that is PyDriller's answer "no commit",
+scored like any other answer. `--include-generated` keeps the denominator at 279 even when a record
+is missing: a scenario that no record names **fails** as a missing record (`run_status: missing`),
+so a tool can neither be graded only on the scenarios it answered nor pass an empty oracle by never
+reaching it. A scenario on which the tool raised is written as `status: error` and fails the same
+way (`run_status: error`); the summary counts both, and this run has neither.
 
-The same flag makes one mistake look like a result: if `--predictions` names a file that is not
-there, every scenario is scored with no predictions and the summary reads `PASS: 2` — the two
-scenarios whose oracle is empty — with recall 0.000. SZZBench does say so, on stderr
-(`[ERROR] Cannot read predictions file`) and with a non-zero exit status, but the summary is
-printed first. A recall of exactly zero is worth checking the path over.
+So a wrong `--predictions` path no longer looks like a result: every scenario fails as a missing
+record, the summary reads `PASS: 0` and `Missing records: 279`, and SZZBench reports
+`[ERROR] Cannot read predictions file` with a non-zero exit status. Until 2026-09-29 a missing record
+counted as an empty prediction, and the same mistake read `PASS: 2` -- the two scenarios whose
+oracle is empty.
 
 ## Reproducing it
 
