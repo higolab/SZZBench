@@ -642,7 +642,7 @@ Open the following URL in a browser.
 http://127.0.0.1:5173
 ```
 
-This editor can create `scenario.yml` and `README.md` by entering metadata, source-code versions, and BIC / BFC information. Through a local Node.js API, it can also save files directly under `scenarios/SZZ-XXXX/`.
+This editor can create `scenario.yml` and `README.md` by entering metadata, source-code versions, and BIC / BFC information. Through a local Node.js API, it can also save files directly under `scenarios/SZZ-XXXX/`. Saving requires a `meta.tier`, runs `szzbench validate --lint` on the files first (an error rejects the save), and inserts the generated README header; the backend needs a Python with SZZBench's dependencies (`tools/scenario-editor/README.md`).
 
 At present, it is mainly intended for normal scenarios. It does not support editing Graph scenarios.
 
@@ -1340,7 +1340,7 @@ npm run dev
 http://127.0.0.1:5173
 ```
 
-この editor は、メタデータ、ソースコードの各バージョン、BIC / BFC 情報を入力し、`scenario.yml` と `README.md` を作成できます。ローカル Node.js API を通じて、`scenarios/SZZ-XXXX/` 以下へ直接保存することもできます。
+この editor は、メタデータ、ソースコードの各バージョン、BIC / BFC 情報を入力し、`scenario.yml` と `README.md` を作成できます。ローカル Node.js API を通じて、`scenarios/SZZ-XXXX/` 以下へ直接保存することもできます。保存には `meta.tier` の指定が必要で、保存前に `szzbench validate --lint` で検査し（エラーがあれば保存しません）、README の生成ヘッダを挿入します。バックエンドには SZZBench の依存パッケージが入った Python が必要です（`tools/scenario-editor/README.md`）。
 
 現状では、主に通常シナリオ向けです。Graph シナリオの編集には対応していません。
 
