@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from collections.abc import Sequence
 from typing import Any
@@ -111,6 +111,8 @@ class ScenarioEvaluation:
     expect_no_bic: bool = False
     fix_shape: dict[str, str] | None = None
     branch_level: dict[str, Any] | None = None
+    #: the per-fix result of a scenario with several bug-fixing commits (issue #92)
+    attribution: dict[str, Any] | None = None
     #: what the tool's run on the scenario came to: ``ok`` (a record was given),
     #: ``error`` (the record says the tool failed) or ``missing`` (no record at all)
     run_status: str = "ok"
@@ -152,6 +154,7 @@ class ScenarioEvaluation:
             "expect_no_bic": self.expect_no_bic,
             "fix_shape": self.fix_shape,
             "branch_level": self.branch_level,
+            "attribution": self.attribution,
         }
 
 
@@ -178,6 +181,9 @@ class EvaluationReport:
         related_but_not_correct_hits = sum(len(item.related_but_not_correct_hits) for item in self.scenarios)
         known_distractor_hits = sum(len(item.known_distractor_hits) for item in self.scenarios)
         branch_level_scenarios = sum(1 for item in self.scenarios if item.branch_level is not None)
+        attribution_scenarios = sum(1 for item in self.scenarios if item.attribution is not None)
+        attribution_failures = sum(1 for item in self.scenarios
+                                   if item.attribution is not None and item.attribution["status"] != "PASS")
         branch_level_failures = sum(1 for item in self.scenarios
                                     if item.branch_level is not None and item.branch_level["status"] != "PASS")
         fix_shape_counts = {shape: 0 for shape in FIX_SHAPES}
@@ -215,6 +221,8 @@ class EvaluationReport:
             "known_distractor_hits": known_distractor_hits,
             "branch_level_scenarios": branch_level_scenarios,
             "branch_level_failures": branch_level_failures,
+            "attribution_scenarios": attribution_scenarios,
+            "attribution_failures": attribution_failures,
             "fix_shape_counts": fix_shape_counts,
             "weighted_credit": weighted_credit if possible_credit else None,
             "possible_credit": possible_credit if possible_credit else None,
@@ -255,6 +263,7 @@ class EvaluationReport:
             f"- Related-but-not-correct hits: {summary['related_but_not_correct_hits']}",
             f"- Known distractor hits: {summary['known_distractor_hits']}",
             f"- Branch-level failures: {summary['branch_level_failures']} of {summary['branch_level_scenarios']} scenario(s) with a branch-level oracle",
+            f"- Attribution failures: {summary['attribution_failures']} of {summary['attribution_scenarios']} scenario(s) with several bug-fixing commits",
             f"- Fix shapes (per BFC): {_format_fix_shape_counts(summary['fix_shape_counts'])}",
             f"- Weighted credit: {_format_credit(summary['weighted_credit'], summary['possible_credit'])}",
             f"- Precision: {_format_ratio(summary['precision'])}",
@@ -531,6 +540,14 @@ def evaluate_scenario(
         failed = [name for name, entry in branch_level["branches"].items() if entry["status"] != "PASS"]
         notes.append(f"branch_level: the commit-level oracle passes but branch(es) {', '.join(failed)} fail, so the scenario fails.")
         status = "FAIL"
+    attribution = None
+    if branch_level is None:        # a declared branch-level oracle already scores the fixes
+        attribution = _attribution_result(scenario, suite, policy, predictions, commit_map, hash_to_id, notes,
+                                          reference_format=reference_format)
+    if attribution is not None and attribution["status"] != "PASS" and status == "PASS":
+        failed = [bfc for bfc, entry in attribution["fixes"].items() if entry["status"] != "PASS"]
+        notes.append(f"attribution: the commit-level oracle passes but fix(es) {', '.join(failed)} fail, so the scenario fails.")
+        status = "FAIL"
     if run_status == "missing":
         notes.append("no prediction record: scored as a failure, not as an abstention "
                      "(a record with an empty prediction list is an abstention).")
@@ -580,6 +597,7 @@ def evaluate_scenario(
         expect_no_bic=policy.expect_no_bic,
         fix_shape=fix_shape,
         branch_level=branch_level,
+        attribution=attribution,
         run_status=run_status,
         run_errors=list(run_errors),
     )
@@ -667,6 +685,99 @@ def _branch_level_result(
 #: came to.  ``error`` makes the scenario FAIL with ``run_status: error`` whatever
 #: the record predicts (issue #95); matching is case-insensitive.
 RECORD_STATUSES = ("ok", "error")
+
+
+#: Policies whose status is a comparison of sets, so a per-fix oracle is scored the same way.
+SET_POLICIES = frozenset({"exact_set", "direct_only", "reintroduction_direct", "relaxed_with_related",
+                          "relaxed_with_credit"})
+
+
+def _fix_oracles(scenario: dict[str, Any], suite: str) -> dict[str, list[str]]:
+    """Each declared bug-fixing commit and the direct BICs of the bugs it fixes."""
+    oracles: dict[str, set[str]] = {}
+    for bug in scenario.get("bugs", []) or []:
+        if not isinstance(bug, dict):
+            continue
+        if suite == "advanced-scenarios":
+            causes = {entry["commit"] for entry in graph_bic_entries(bug, roles=DIRECT_BIC_ROLES)
+                      if isinstance(entry.get("commit"), str)}
+        else:
+            listed = ((bug.get("expected_szz") or {}).get("commit_level") or {}).get("true_positives")
+            if not isinstance(listed, list):
+                listed = bug.get("bug_introducing_commits") or []
+            causes = {commit for commit in listed if isinstance(commit, str)}
+        for entry in graph_bfc_entries(bug):
+            commit = entry.get("commit")
+            if isinstance(commit, str):
+                oracles.setdefault(commit, set()).update(causes)
+    return {bfc: sorted(causes) for bfc, causes in oracles.items()}
+
+
+def _attribution_result(
+    scenario: dict[str, Any],
+    suite: str,
+    policy: CommitLevelPolicy,
+    predictions: list[Prediction],
+    commit_map: dict[str, Any],
+    hash_to_id: dict[str, str],
+    notes: list[str],
+    *,
+    reference_format: str = "auto",
+) -> dict[str, Any] | None:
+    """Score a scenario's predictions per bug-fixing commit (issue #92).
+
+    Commit-level scoring compares sets and cannot tell which fix a predicted
+    BIC answers, so SZZG-0030's swapped answer (c2 -> c2, c3 -> c1) passed like
+    the right one.  For a scenario with several declared bug-fixing commits and
+    no ``branch_level`` block, each fix must lead to the direct BICs of the bugs
+    it fixes, under the scenario's own policy.  Attribution follows
+    ``branch_level``: a prediction counts for the fix its ``fix_commit``
+    resolves to, one without ``fix_commit`` for every fix, and one whose
+    ``fix_commit`` resolves to no declared fix for none (noted).  Returns None
+    -- with a note when the reason is not obvious -- when there is nothing to
+    attribute: one fix, a policy that is not a set comparison, or per-fix
+    oracles whose union is not the commit-level oracle.  Stray fix references
+    are noted in every scenario.
+    """
+    oracles = _fix_oracles(scenario, suite)
+    resolved = {index: _normalize_commit_ref(prediction.fix_commit, commit_map, hash_to_id,
+                                             reference_format=reference_format)
+                for index, prediction in enumerate(predictions) if prediction.fix_commit is not None}
+    stray = sorted({predictions[index].fix_commit for index, bfc in resolved.items() if bfc not in oracles})
+    if stray:
+        effect = "those predictions count for no fix" if len(oracles) > 1 else \
+            "with one bug-fixing commit the reference is not scored"
+        notes.append(f"attribution: {len(stray)} fix_commit value(s) resolve to no declared bug-fixing commit "
+                     f"({', '.join(stray)}); {effect}.")
+    if len(oracles) < 2:
+        return None
+    if policy.evaluation_policy not in SET_POLICIES or policy.expect_no_bic:
+        notes.append(f"attribution: not scored under {policy.evaluation_policy}, which is not a comparison of sets.")
+        return None
+    union = sorted(set().union(*oracles.values()))
+    if union != sorted(policy.required):
+        notes.append(f"attribution: not scored, because the direct BICs of the bug-fixing commits ({', '.join(union)}) "
+                     f"are not the commit-level oracle ({', '.join(sorted(policy.required))}).")
+        return None
+    fixes: dict[str, dict[str, Any]] = {}
+    for bfc, required in oracles.items():
+        attributed = [prediction for index, prediction in enumerate(predictions)
+                      if prediction.fix_commit is None or resolved.get(index) == bfc]
+        ranking = _ranking(attributed, commit_map, hash_to_id, reference_format=reference_format)
+        known = [reference for reference, is_known in ranking if is_known]
+        unknown = [reference for reference, is_known in ranking if not is_known]
+        scored = classify_prediction(replace(policy, required=list(required), minimum_required=None), known,
+                                     unknown_predictions=unknown, ranking=ranking)
+        fixes[bfc] = {
+            "required": list(required),
+            "predicted": sorted(set(known)),
+            "false_positives": scored.false_positives,
+            "false_negatives": scored.false_negatives,
+            "unknown_predictions": sorted(set(unknown)),
+            "status": scored.status,
+        }
+    overall = "PASS" if all(entry["status"] == "PASS" for entry in fixes.values()) else "FAIL"
+    return {"status": overall, "fixes": fixes}
 
 
 def load_predictions(

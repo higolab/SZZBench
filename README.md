@@ -499,7 +499,7 @@ It can also be one record per predicted BIC:
 {"scenario_id":"SZZ-0006","fix_commit":"<actual hash>","inducing_commit":"<actual hash>"}
 ```
 
-`scenario_id` and `inducing_commit` are required for evaluation; `fix_commit` is optional. `inducing_commit` may be an actual Git hash, a unique hash prefix, or a logical commit id from `commit-map.json`. A reference that resolves to no commit fails the scenario, is listed in `unknown_predictions`, and counts as a false positive in precision.
+`scenario_id` and `inducing_commit` are required for evaluation; `fix_commit` is optional, but a scenario with several bug-fixing commits is also scored per fix: a prediction counts for the fix its `fix_commit` names, and one without `fix_commit` for every fix (`docs/evaluation-policies.md` §1.7). `inducing_commit` may be an actual Git hash, a unique hash prefix, or a logical commit id from `commit-map.json`. A reference that resolves to no commit fails the scenario, is listed in `unknown_predictions`, and counts as a false positive in precision.
 
 A record can also say that the tool failed on the scenario; the scenario then fails whatever the record predicts (`docs/evaluation-policies.md` §1.6):
 
@@ -644,7 +644,7 @@ Open the following URL in a browser.
 http://127.0.0.1:5173
 ```
 
-This editor can create `scenario.yml` and `README.md` by entering metadata, source-code versions, and BIC / BFC information. Through a local Node.js API, it can also save files directly under `scenarios/SZZ-XXXX/`.
+This editor can create `scenario.yml` and `README.md` by entering metadata, source-code versions, and BIC / BFC information. Through a local Node.js API, it can also save files directly under `scenarios/SZZ-XXXX/`. Saving requires a `meta.tier`, runs `szzbench validate --lint` on the files first (an error rejects the save), and inserts the generated README header; the backend needs a Python with SZZBench's dependencies (`tools/scenario-editor/README.md`).
 
 At present, it is mainly intended for normal scenarios. It does not support editing Graph scenarios.
 
@@ -1199,7 +1199,7 @@ szzbench evaluate \
 {"scenario_id":"SZZ-0006","fix_commit":"<actual hash>","inducing_commit":"<actual hash>"}
 ```
 
-評価に必須なのは `scenario_id` と `inducing_commit` です。`fix_commit` は任意です。`inducing_commit` には実 Git hash、ユニークな hash prefix、または `commit-map.json` の論理 commit id を指定できます。どのコミットにも解決できない参照はシナリオを FAIL にし、`unknown_predictions` に記録され、precision では false positive として数えられます。
+評価に必須なのは `scenario_id` と `inducing_commit` です。`fix_commit` は任意ですが、bug-fixing commit を複数持つシナリオは fix ごとにも採点されます。予測は `fix_commit` が指す fix の答えとして数えられ、`fix_commit` のない予測はすべての fix の答えとして数えられます（`docs/evaluation-policies.md` §1.7）。`inducing_commit` には実 Git hash、ユニークな hash prefix、または `commit-map.json` の論理 commit id を指定できます。どのコミットにも解決できない参照はシナリオを FAIL にし、`unknown_predictions` に記録され、precision では false positive として数えられます。
 
 レコードでは、ツールがそのシナリオで失敗したことも表せます。その場合、レコードの予測内容にかかわらずシナリオは FAIL になります（`docs/evaluation-policies.md` §1.6）。
 
@@ -1344,7 +1344,7 @@ npm run dev
 http://127.0.0.1:5173
 ```
 
-この editor は、メタデータ、ソースコードの各バージョン、BIC / BFC 情報を入力し、`scenario.yml` と `README.md` を作成できます。ローカル Node.js API を通じて、`scenarios/SZZ-XXXX/` 以下へ直接保存することもできます。
+この editor は、メタデータ、ソースコードの各バージョン、BIC / BFC 情報を入力し、`scenario.yml` と `README.md` を作成できます。ローカル Node.js API を通じて、`scenarios/SZZ-XXXX/` 以下へ直接保存することもできます。保存には `meta.tier` の指定が必要で、保存前に `szzbench validate --lint` で検査し（エラーがあれば保存しません）、README の生成ヘッダを挿入します。バックエンドには SZZBench の依存パッケージが入った Python が必要です（`tools/scenario-editor/README.md`）。
 
 現状では、主に通常シナリオ向けです。Graph シナリオの編集には対応していません。
 

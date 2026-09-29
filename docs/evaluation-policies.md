@@ -7,12 +7,14 @@ the reference for scenario authors and for anyone reading the JSON or Markdown
 reports. Everything here describes the implemented behaviour; the automated
 tests in `tests/test_evaluator_semantics.py` pin the statements down.
 
-Evaluation is **commit-level**, plus a **branch-level** check when a graph
-scenario declares `expected_szz.branch_level` (section 1.5). Oracle sections
-such as `bug_level`, `entity_level`, `line_level`, `bug_instances`, and
-`work_item_level` are not scored; when a graph scenario declares them, the
-result carries a `result_notes` entry saying so. `Prediction.fix_commit` is
-matched only by the branch-level check; commit-level scoring ignores it.
+Evaluation is **commit-level**, plus a **per-fix** check for a scenario with
+several bug-fixing commits: the **branch-level** oracle when a graph scenario
+declares `expected_szz.branch_level` (section 1.5), **attribution** derived
+from `bugs[]` otherwise (section 1.7). Oracle sections such as `bug_level`,
+`entity_level`, `line_level`, `bug_instances`, and `work_item_level` are not
+scored; when a graph scenario declares them, the result carries a
+`result_notes` entry saying so. `Prediction.fix_commit` is matched by the
+per-fix checks; commit-level scoring ignores it.
 
 ## 1. Inputs
 
@@ -154,8 +156,9 @@ from that fix must report. Scoring (since 2026-09-22, issue #22):
   intentionally empty answer is written `required: []`; a blank value is `GE127`.
 - The block is PASS when every entry is. **A FAIL fails the scenario even when
   the commit-level oracle passes**, with a `result_notes` entry naming the
-  failed branches. The commit-level status is computed exactly as before, so a
-  scenario without `branch_level` is unaffected.
+  failed branches. The commit-level status is computed exactly as before; a
+  scenario without `branch_level` that has several bug-fixing commits is
+  scored per fix by attribution instead (section 1.7).
 
 The per-scenario JSON carries `branch_level: {status, branches: {<name>: {bfc,
 required, predicted, false_positives, false_negatives, unknown_predictions,
@@ -213,6 +216,56 @@ SZZG-0136 -- whose oracles are empty -- passed them. The adapters under
 `tools/adapters/` now write `status: error` for a scenario on which the tool
 failed, and a record, empty if need be, for every scenario they ran on.
 
+### 1.7 Attribution: scenarios with several bug-fixing commits (issue #92)
+
+Commit-level scoring compares the union of the predicted BICs with the union of
+the expected ones, so it cannot tell which fix a prediction answers. Until
+2026-09-29 the swapped answer to SZZG-0030 -- c1 writes a fault that c2 fixes
+while writing another one, which c3 fixes -- passed exactly like the right one:
+
+| predictions (fix -> BIC) | commit level | attribution | status |
+|---|---|---|---|
+| `c2 -> c1`, `c3 -> c2` | PASS | PASS | **PASS** |
+| `c2 -> c2`, `c3 -> c1` | PASS | FAIL (each fix names the other's BIC; `c2 -> c2` names a fix as its own cause) | **FAIL** |
+| `c1`, `c2` without `fix_commit` | PASS | FAIL (each fix is held to both) | **FAIL** |
+
+A scenario with **two or more declared bug-fixing commits and no
+`branch_level` block** is therefore also scored per fix, the way a declared
+branch-level oracle is:
+
+- Each fix must lead to the direct BICs (roles `direct`, `contributing`,
+  `reintroducing`) of the bugs it fixes -- in SZZG-0030, `c2 -> {c1}` and
+  `c3 -> {c2}`; in SZZG-0031, whose two partial fixes repair one bug,
+  `c2 -> {c1}` and `c3 -> {c1}`.
+- A prediction counts for the fix its `fix_commit` resolves to (a hash, a
+  unique prefix or a logical id, like `inducing_commit`). **A prediction
+  without `fix_commit` counts for every fix**: a tool that does not say which
+  fix it started from is held to all of them, so it still passes where every
+  fix leads to the same commits, and cannot pass where they differ. A
+  prediction whose `fix_commit` resolves to no declared bug-fixing commit (a
+  non-fix commit, an unknown hash) counts for none; the result notes it, in a
+  scenario with one fix too, where the reference is otherwise not scored.
+- Each fix is scored under the scenario's own policy, with the fix's BICs as
+  `required`. Attribution is scored for the set-comparison policies
+  (`exact_set`, its aliases, `relaxed_with_related`, `relaxed_with_credit`);
+  under another policy, or when the fixes' BICs are not together the
+  commit-level oracle, a note says why it is not scored.
+- A fix that fails **fails the scenario even when the commit-level oracle
+  passes**, with a `result_notes` entry naming the fixes.
+
+Nine shipped scenarios are scored this way: SZZG-0018, SZZG-0029 to SZZG-0032,
+SZZG-0035, SZZG-0036, SZZG-0056 and SZZG-0077. The baselines that work from each
+fix in turn, `blame-deleted-lines` and `shape-last-toucher`, name the fix each
+commit answers and keep every scenario they solved; `position-all-non-fix`,
+which names every non-fix commit, loses SZZG-0018, whose two fixes lead to
+different commits. PyDriller's run in `examples/pydriller-run` attributes every
+prediction, and all six of the nine it passes it also attributes correctly.
+
+The per-scenario JSON carries `attribution: {status, fixes: {<bfc>: {required,
+predicted, false_positives, false_negatives, unknown_predictions, status}}}`
+(or `null`), and the summary counts `attribution_scenarios` and
+`attribution_failures`.
+
 ## 2. Derived sets
 
 With `E` = required, `A` = acceptable_related commits, `P` = predicted
@@ -247,6 +300,9 @@ The status is decided in this order. Steps 1 to 3 apply to every policy.
 2. Any unknown prediction → **FAIL**.
 3. `expect_no_bic: true` → **PASS** iff `P` is empty (section 6).
 4. Policy-specific rule below.
+
+A failing per-fix check -- branch-level (section 1.5) or attribution (section
+1.7) -- then fails a scenario the rule passed.
 
 ### 3.1 `exact_set`
 
@@ -575,8 +631,8 @@ missing`). `[c1]` → FAIL (`false_positives = [c1]`). `[not-a-commit]` → FAIL
 
 | location | field |
 |---|---|
-| per scenario (JSON) | `top_k.status_k`, `top_k.unknown_ranks`, `known_distractor_hits`, `expect_no_bic`, `fix_shape`, `branch_level`, `run_status`, `run_errors`, additional `result_notes` |
-| summary (JSON) | `known_distractor_hits`, `fix_shape_counts`, `branch_level_scenarios`, `branch_level_failures`, `tool_errors`, `missing_records`, `stale_predictions`, `unknown_predictions` |
-| Markdown | `- Tool errors:`, `- Missing prediction records:`, `- Predictions made on another repository:`, `- Unknown predictions (counted as false positives):`, `- Known distractor hits:`, `- Branch-level failures:`, `- Fix shapes (per BFC):`; table columns `Run`, `Unknown`, `Top-k`, `Distractor hits`, `Fix shape`; `## Scenario notes` section listing every scenario's `result_notes` |
+| per scenario (JSON) | `top_k.status_k`, `top_k.unknown_ranks`, `known_distractor_hits`, `expect_no_bic`, `fix_shape`, `branch_level`, `attribution`, `run_status`, `run_errors`, additional `result_notes` |
+| summary (JSON) | `known_distractor_hits`, `fix_shape_counts`, `branch_level_scenarios`, `branch_level_failures`, `attribution_scenarios`, `attribution_failures`, `tool_errors`, `missing_records`, `stale_predictions`, `unknown_predictions` |
+| Markdown | `- Tool errors:`, `- Missing prediction records:`, `- Predictions made on another repository:`, `- Unknown predictions (counted as false positives):`, `- Known distractor hits:`, `- Branch-level failures:`, `- Attribution failures:`, `- Fix shapes (per BFC):`; table columns `Run`, `Unknown`, `Top-k`, `Distractor hits`, `Fix shape`; `## Scenario notes` section listing every scenario's `result_notes` |
 | report `warnings` (JSON, Markdown `## Warnings`, CLI stderr) | oracle-related `result_notes` promoted with a `<scenario id>: ` prefix |
 | validator | `GI086` (info) when `bug_introducing_commits` is empty and `expect_no_bic` is declared, instead of `GE084` |
