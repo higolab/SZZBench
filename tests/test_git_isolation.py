@@ -7,8 +7,9 @@ decided what a scenario generated.  Some settings made valid scenarios fail
 clean filter).  Others were worse because nothing failed: a default ignore of
 ``build/`` dropped the generated file that SZZG-0107 is about, a global
 commit-msg hook rewrote every message, a working signing key changed every
-hash, and ``GIT_DIR`` sent every commit into another repository -- each time
-with 0 errors and 0 warnings from verification.
+hash, ``GIT_DIR`` sent every commit into another repository, and (found in
+the review of PR #98) ``GIT_DEFAULT_HASH=sha256`` produced 64-character hashes
+-- each time with 0 errors and 0 warnings from verification.
 
 Each vector below is injected only through this test process's environment
 and files under ``tmp_path``, so no test reads or writes a developer's real
@@ -125,6 +126,14 @@ def _repository_redirected(tmp_path, monkeypatch):
     return untouched
 
 
+def _default_hash_sha256(tmp_path, monkeypatch):
+    monkeypatch.setenv("GIT_DEFAULT_HASH", "sha256")
+
+
+def _default_ref_format_reftable(tmp_path, monkeypatch):
+    monkeypatch.setenv("GIT_DEFAULT_REF_FORMAT", "reftable")
+
+
 def _identity_and_dates(tmp_path, monkeypatch):
     monkeypatch.setenv("GIT_COMMITTER_NAME", "Mallory")
     monkeypatch.setenv("GIT_COMMITTER_EMAIL", "mallory@example.com")
@@ -140,6 +149,8 @@ VECTORS = {
     "clean-filter-from-global-attributes": _clean_filter_from_global_attributes,
     "init-template-with-a-hook": _init_template_with_a_hook,
     "repository-redirected": _repository_redirected,
+    "default-hash-sha256": _default_hash_sha256,
+    "default-ref-format-reftable": _default_ref_format_reftable,
     "identity-and-dates": _identity_and_dates,
 }
 
@@ -193,8 +204,40 @@ def test_git_env_withholds_what_redirects_or_reconfigures_git(monkeypatch):
     assert gitutils._git_env({"GIT_COMMITTER_NAME": "SZZ Benchmark"})["GIT_COMMITTER_NAME"] == "SZZ Benchmark"
 
 
-def test_every_repository_variable_git_lists_is_withheld():
+def test_every_repository_variable_git_lists_is_withheld(monkeypatch):
     listed = subprocess.run(["git", "rev-parse", "--local-env-vars"], capture_output=True, text=True,
                             check=True).stdout.split()
     assert listed, "git rev-parse --local-env-vars printed nothing"
-    assert sorted(set(listed) - gitutils.ISOLATED_GIT_ENV) == []
+    for key in listed:
+        monkeypatch.setenv(key, "ambient")
+    env = gitutils._git_env()
+    assert [key for key in listed if key in env] == []
+
+
+def test_every_git_variable_but_the_exec_path_is_withheld(monkeypatch):
+    ambient = ["GIT_DEFAULT_HASH", "GIT_DEFAULT_REF_FORMAT", "GIT_NAMESPACE", "GIT_EXTERNAL_DIFF", "GIT_DIFF_OPTS",
+               "GIT_GLOB_PATHSPECS", "GIT_ICASE_PATHSPECS", "GIT_INDEX_VERSION", "GIT_REDIRECT_STDOUT",
+               "GIT_SOMETHING_NEW"]
+    for key in ambient:
+        monkeypatch.setenv(key, "ambient")
+    monkeypatch.setenv("GIT_EXEC_PATH", "/ambient/libexec/git-core")
+    env = gitutils._git_env()
+    assert [key for key in ambient if key in env] == []
+    assert env["GIT_EXEC_PATH"] == "/ambient/libexec/git-core"
+
+
+@pytest.mark.parametrize("variable, value", [("GIT_DEFAULT_HASH", "sha256"), ("GIT_DEFAULT_REF_FORMAT", "reftable")])
+def test_a_generated_repository_is_sha1_with_files_refs(variable, value, tmp_path, monkeypatch):
+    monkeypatch.setenv(variable, value)
+    _generate("SZZ-0006", tmp_path / "out")
+    repo = tmp_path / "out/repo"
+    assert gitutils.run_git(repo, ["rev-parse", "--show-object-format"]).stdout.strip() == "sha1"
+    if gitutils.git_version() >= (2, 45):
+        assert gitutils.run_git(repo, ["rev-parse", "--show-ref-format"]).stdout.strip() == "files"
+
+
+def test_init_pins_the_formats_the_installed_git_knows():
+    args = gitutils.init_args()
+    assert args[:2] == ["init", "--template="]
+    assert ("--object-format=sha1" in args) == (gitutils.git_version() >= (2, 29))
+    assert ("--ref-format=files" in args) == (gitutils.git_version() >= (2, 45))

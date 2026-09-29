@@ -508,10 +508,9 @@ caller's own Git setup:
 | the system configuration (`/etc/gitconfig`; Git for Windows' `etc/gitconfig`) | `GIT_CONFIG_NOSYSTEM=1` |
 | the global configuration (`~/.gitconfig`, `$XDG_CONFIG_HOME/git/config`) and the files Git reads without being told to (`$XDG_CONFIG_HOME/git/ignore`, `$XDG_CONFIG_HOME/git/attributes`) | `HOME` and `XDG_CONFIG_HOME` name an empty temporary directory |
 | the system attributes file | `GIT_ATTR_NOSYSTEM=1` |
-| configuration injected through the environment (`GIT_CONFIG_COUNT` with `GIT_CONFIG_KEY_<n>` / `GIT_CONFIG_VALUE_<n>`, `GIT_CONFIG_PARAMETERS`, `GIT_CONFIG_GLOBAL`, `GIT_CONFIG_SYSTEM`) | removed from the environment |
-| variables that point Git at another repository -- everything `git rev-parse --local-env-vars` lists, such as `GIT_DIR`, `GIT_WORK_TREE` and `GIT_INDEX_FILE` | removed |
-| the init template (`GIT_TEMPLATE_DIR`, `init.templateDir`, the templates the installation ships) | removed; `git init --template=` copies no hooks |
-| the caller's `GIT_AUTHOR_*` and `GIT_COMMITTER_*` | removed; the generators set the identity and dates of every commit themselves (section 1) |
+| **every `GIT_*` variable of the caller except `GIT_EXEC_PATH`**: configuration injected through the environment (`GIT_CONFIG_COUNT` with `GIT_CONFIG_KEY_<n>` / `GIT_CONFIG_VALUE_<n>`, `GIT_CONFIG_PARAMETERS`, `GIT_CONFIG_GLOBAL`, `GIT_CONFIG_SYSTEM`), the repository Git works on (everything `git rev-parse --local-env-vars` lists, such as `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE`), the format of a new repository (`GIT_DEFAULT_HASH`, `GIT_DEFAULT_REF_FORMAT`), `GIT_TEMPLATE_DIR`, `GIT_NAMESPACE`, diff and pathspec behaviour (`GIT_EXTERNAL_DIFF`, `GIT_DIFF_OPTS`, `GIT_*_PATHSPECS`), and the caller's `GIT_AUTHOR_*` / `GIT_COMMITTER_*` | removed from the environment; the generators set the identity and dates of every commit themselves (section 1) |
+| the init template (`init.templateDir`, the templates the installation ships) | `git init --template=` copies no hooks |
+| a Git whose built-in default object or ref format differs | `git init --object-format=sha1` (Git 2.29 and later) and `--ref-format=files` (2.45 and later) |
 
 Signing (`commit.gpgSign`, `tag.gpgSign`), hooks, global ignores and
 attributes, clean/smudge filters, `rerere`, rename and diff settings, and
@@ -524,12 +523,16 @@ Before 2026-09-29 Git inherited all of this. Reproduced for issue #96 on
 SZZ-0006, SZZG-0107 and SZZG-0124: an unavailable signing program, an ignore
 file listing `*.java`, a global clean filter and an init template with a
 commit-msg hook each made the scenarios fail. Four settings changed the result
-without any finding -- verification reported 0 errors and 0 warnings: a
-working (SSH) signing key and a global commit-msg hook changed every hash; a
-default ignore file listing `build/` dropped the generated file SZZG-0107 is
-about; and with `GIT_DIR` set in the environment every commit was written into
-the repository `GIT_DIR` named. `tests/test_git_isolation.py` injects each of
-these through the test process's environment only.
+without any finding -- verification reported 0 errors and 0 warnings: a working
+(SSH) signing key and a global commit-msg hook changed every hash; a default
+ignore file listing `build/` dropped the generated file SZZG-0107 is about; and
+with `GIT_DIR` set in the environment every commit was written into the
+repository `GIT_DIR` named. The review of PR #98 added one more: with
+`GIT_DEFAULT_HASH=sha256` generation verified with 64-character hashes (and
+`GIT_DEFAULT_REF_FORMAT=reftable` wrote a reftable repository), which is why
+the rule is now every `GIT_*` variable rather than a list of known ones.
+`tests/test_git_isolation.py` injects each of these through the test process's
+environment only.
 
 Where no such setting was present the isolation changes nothing: all 279
 scenarios generate the same 2,208 commit hashes as before, so existing
