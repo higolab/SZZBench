@@ -10,7 +10,7 @@ from .evaluator import _commit_level_policy, classify_prediction
 from .findings import ValidationResult
 from .graph_operations import PATH_FIELDS_BY_OPERATION, REQUIRED_FIELDS_BY_OPERATION, SUPPORTED_GRAPH_OPERATIONS
 from .graph_scenario import commit_id_of, graph_bfc_entries, graph_bic_entries, graph_faults, graph_fixes, load_graph_scenario
-from .graph_simulator import simulate_graph_scenario
+from .graph_simulator import git_performed_features, simulate_graph_scenario, simulate_graph_scenario_with_git
 from .gitutils import GitError, format_timestamp, parse_timestamp
 from .paths import PathValidationError, validate_repo_relative_path
 from .policies import SUPPORTED_EVALUATION_POLICIES
@@ -65,7 +65,12 @@ def validate_graph_scenario_file(
         return None, result
     result.extend(validate_graph_static(data, scenario_path=path, strict_paths=strict_paths))
     if simulate and not result.has_errors():
-        result.extend(simulate_graph_scenario(data))
+        # what generation lets Git compute is checked by generating with Git (#94)
+        features = git_performed_features(data)
+        if features:
+            result.extend(simulate_graph_scenario_with_git(path, data, features))
+        else:
+            result.extend(simulate_graph_scenario(data))
     if lint and not result.has_errors():
         result.extend(lint_graph_scenario(data, scenario_path=path))
     return data, result

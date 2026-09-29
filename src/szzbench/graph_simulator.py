@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 import base64
+import tempfile
 
 from .findings import ValidationResult
 from .operations import OperationError, insert_after_once, normalize_newlines, replace_once
@@ -66,6 +67,84 @@ def simulate_graph_scenario(data: dict[str, Any]) -> ValidationResult:
         states[cid] = snapshot
 
     return result
+
+
+def git_performed_features(data: dict[str, Any]) -> list[str]:
+    """The commits whose content generation lets Git compute, as ``"<commit>: <what>"``.
+
+    ``graph_generator`` builds these with ``git merge``, ``git revert`` or
+    ``git cherry-pick``: merges, ``revert_of`` without operations or with
+    ``apply_revert``, ``cherry_pick_of`` / ``backport_of`` without operations,
+    and the ``apply_patch_from`` / ``apply_squash`` operations; a conflict
+    ``resolution`` is applied only where Git reports a conflict.  The in-memory
+    model approximates merges and patches file by file and does not model the
+    rest, so a scenario with any of them is simulated with Git (issue #94).
+    The conditions are the generator's own.
+    """
+    features: list[str] = []
+    for commit in data.get("commits") or []:
+        if not isinstance(commit, dict) or not isinstance(commit.get("id"), str):
+            continue
+        cid = commit["id"]
+        found: list[str] = []
+        if len([parent for parent in commit.get("parents") or [] if isinstance(parent, str)]) >= 2:
+            found.append("merge")
+        if commit.get("revert_of") is not None and (not commit.get("operations") or commit.get("apply_revert")):
+            found.append("git revert")
+        if (commit.get("cherry_pick_of") or commit.get("backport_of")) and not commit.get("operations"):
+            found.append("git cherry-pick")
+        for op in commit.get("operations") or []:
+            if isinstance(op, dict) and op.get("type") in ("apply_patch_from", "apply_squash") and op["type"] not in found:
+                found.append(op["type"])
+        if commit.get("resolution"):
+            found.append("resolution")
+        features.extend(f"{cid}: {what}" for what in found)
+    return features
+
+
+def simulate_graph_scenario_with_git(scenario_path: Path, data: dict[str, Any], features: list[str]) -> ValidationResult:
+    """Simulate by generating the scenario with Git in a temporary directory.
+
+    For a scenario with Git-computed commits (:func:`git_performed_features`)
+    the generator itself is the only faithful model.  A generation failure is
+    GE203, located at the commit that failed; success is recorded as GI203.
+    Verification is not run: that is ``verify-graph``'s job.
+    """
+    # graph_generator imports the validator, which imports this module
+    from .graph_generator import GraphGenerationError, generate_graph_repository
+
+    result = ValidationResult()
+    with tempfile.TemporaryDirectory(prefix="szzbench-simulate-") as tmp:
+        out = Path(tmp) / "out"
+        try:
+            generate_graph_repository(scenario_path, out, force=True, verify=False)
+        except GraphGenerationError as exc:
+            failed = _failing_commit(out / "metadata" / "generation.log")
+            where, location = "", "commits"
+            if failed is not None:
+                where = f" at commit '{failed}'"
+                location = next((f"commits[{index}]" for index, commit in enumerate(data.get("commits") or [])
+                                 if isinstance(commit, dict) and commit.get("id") == failed), location)
+            result.error("GE203", f"Generating the scenario with Git failed{where}: {exc}", location)
+            return result
+    result.info("GI203", "Simulated by generating the scenario with Git, which computes "
+                + ", ".join(features) + ".", "commits")
+    return result
+
+
+def _failing_commit(log_path: Path) -> str | None:
+    """The commit a failed generation was preparing, read from its generation.log."""
+    try:
+        lines = log_path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return None
+    current: str | None = None
+    for line in lines:
+        if line.startswith("Preparing graph commit "):
+            current = line[len("Preparing graph commit "):].split(" ", 1)[0]
+        elif current is not None and line.startswith(f"Created graph commit {current}:"):
+            current = None
+    return current
 
 
 def _checkout_snapshot(parents: list[str], states: dict[str, Snapshot], parent_map: dict[str, list[str]]) -> Snapshot:

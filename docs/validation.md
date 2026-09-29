@@ -42,7 +42,7 @@ Checks come in two groups:
 
 | flag | effect |
 |---|---|
-| `--simulate` | replay the graph operations in memory (GE2xx) |
+| `--simulate` | replay the graph operations in memory (GE200-GE202); a scenario with commits that Git computes during generation is generated with Git in a temporary directory instead (GE203, GI203) |
 | `--strict-paths` | additionally require `entity` objects on `move_entity` / `copy_entity` (GE056) |
 | `--strict` | treat warnings as failures |
 | `--lint` | run the GW4xx lints (static; they run only when no error was found) |
@@ -248,6 +248,20 @@ With `--simulate`:
 | GE200 | error | the parent snapshot cannot be prepared (unsimulated parent, merge conflict) |
 | GE201 | error | an operation failed during in-memory replay |
 | GE202 | error | a non-merge commit without `allow_empty` would be empty |
+| GE203 | error | generating the scenario with Git in a temporary directory failed; the message and location name the commit that failed (an unresolved conflict, a revert or cherry-pick that changes nothing, an operation that no longer applies) |
+| GI203 | info | the scenario was simulated by generating it with Git; the message lists the commits Git computes |
+
+The in-memory replay models file operations. What the generator lets Git
+compute -- merge commits, `revert_of` performed by `git revert` (no operations,
+or `apply_revert: true`), `cherry_pick_of` / `backport_of` without operations,
+the `apply_patch_from` and `apply_squash` operations, and conflict
+`resolution` -- it approximated file by file or not at all. So a scenario with
+any of these is simulated by the generator itself, in a temporary directory,
+without verification (issue #94); every other scenario keeps the in-memory
+replay and its operation-level locations. Until 2026-09-29 the replay was used
+for all of them, and nine shipped scenarios that generate and verify failed
+`--simulate` with 17 errors. `graph_simulator.git_performed_features` holds the
+list, with the generator's own conditions.
 
 ### Lints (`--lint`)
 

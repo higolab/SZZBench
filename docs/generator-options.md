@@ -422,9 +422,11 @@ exactly `message`, so the verifier's subject check is unaffected. Default:
 * `graph-map.json` records `revert_of` (and passes `reverts` /
   `revert_conflict_resolution` through); `commit-map.json` records the
   effective `message` and `body`.
-* The graph simulator (`validate-graph --simulate`) does not model reverts, so
-  a `revert_of` commit without operations is reported as "would be empty"
-  there (plain `validate-graph` and generation work).
+* `validate-graph --simulate` checks a scenario with a real revert by
+  generating it with Git in a temporary directory (GE203 on failure, GI203
+  otherwise; `docs/validation.md`), because the in-memory model does not
+  compute reverts. Until 2026-09-29 it reported such a commit as "would be
+  empty" (issue #94).
 
 ### `resolution` (*graph*) - conflict resolution
 
@@ -467,9 +469,10 @@ generation (SZZG-0129 is the in-suite example of a clean one).
 
 Limitations: `resolution` is applied only when Git reports a conflict; if the
 merge is clean the entries are ignored. `apply_squash` and `apply_patch_from`
-do not use `resolution`. The graph simulator (`validate-graph --simulate`)
-does not understand `resolution` and reports the conflict as an error; plain
-`validate-graph` and generation work.
+do not use `resolution`. `validate-graph --simulate` checks a scenario with a
+`resolution` by generating it with Git in a temporary directory, like any
+scenario with a merge, a real cherry-pick or revert, or a patch operation;
+until 2026-09-29 it reported the resolved conflict as an error (issue #94).
 
 ## 4. Summary of new keys
 
