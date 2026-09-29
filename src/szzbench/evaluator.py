@@ -476,7 +476,7 @@ def evaluate_scenario(
     unknown_predictions = [reference for reference, known in ranking if not known]
 
     scored = classify_prediction(policy, ranked_actual_ids, unknown_predictions=unknown_predictions,
-                                 ranking=[reference for reference, _ in ranking])
+                                 ranking=ranking)
     expected = set(policy.required)
     true_positives = scored.true_positives
     false_positives = scored.false_positives
@@ -1112,7 +1112,14 @@ def _minimum_required_met(policy: CommitLevelPolicy, true_positive_count: int) -
     return None
 
 
-def _top_k_metrics(policy: CommitLevelPolicy, ranked_actual_ids: list[str]) -> dict[str, Any] | None:
+def _top_k_metrics(policy: CommitLevelPolicy, ranking: list[tuple[str, bool]]) -> dict[str, Any] | None:
+    """hit@k and MRR over ``ranking``, the ``(reference, known)`` pairs in rank order.
+
+    An unknown reference holds its rank but is never a hit, even when it is
+    spelled like a relevant logical id: under ``--reference-format hash`` the
+    id ``c1`` is an unknown reference, and reading it as ``c1`` put a hit at
+    rank 1 that belonged to the hash at rank 2 (PR #99 review).
+    """
     if policy.evaluation_policy != "top_k" and not policy.k_values:
         return None
     relevant = set(policy.relevant or policy.required)
@@ -1122,15 +1129,16 @@ def _top_k_metrics(policy: CommitLevelPolicy, ranked_actual_ids: list[str]) -> d
     else:
         status_k = max(policy.k_values) if policy.k_values else 1
     best_rank = None
-    for index, commit in enumerate(ranked_actual_ids, start=1):
-        if commit in relevant:
+    for index, (commit, known) in enumerate(ranking, start=1):
+        if known and commit in relevant:
             best_rank = index
             break
     return {
         "k_values": k_values,
         "status_k": status_k,
         "relevant": sorted(relevant),
-        "ranked_actual_bics": ranked_actual_ids,
+        "ranked_actual_bics": [commit for commit, known in ranking if known],
+        "unknown_ranks": [index for index, (_, known) in enumerate(ranking, start=1) if not known],
         "best_rank": best_rank,
         "hit_at": {str(k): best_rank is not None and best_rank <= k for k in k_values},
         "mrr": (1.0 / best_rank) if best_rank is not None else 0.0,
@@ -1171,12 +1179,13 @@ def classify_prediction(
     ranked_actual_ids: Sequence[str],
     *,
     unknown_predictions: Sequence[str] = (),
-    ranking: Sequence[str] | None = None,
+    ranking: Sequence[tuple[str, bool]] | None = None,
 ) -> ScoredPrediction:
     """Score `ranked_actual_ids` against `policy`.
 
-    ``ranking`` is the full rank order, unknown references included; ``top_k``
-    reads it when it is given and ``ranked_actual_ids`` otherwise.
+    ``ranking`` is the full rank order as ``(reference, known)`` pairs, unknown
+    references included; ``top_k`` reads it when it is given and
+    ``ranked_actual_ids`` otherwise.
     """
     expected = set(policy.required)
     allowed_map = {item.commit: item for item in policy.acceptable_related}
@@ -1190,7 +1199,8 @@ def classify_prediction(
     weighted_credit = _weighted_credit(true_positives, acceptable_related_hits, len(expected))
     possible_credit = float(len(expected)) if expected else None
     minimum_required_met = _minimum_required_met(policy, len(true_positives))
-    top_k = _top_k_metrics(policy, list(ranking if ranking is not None else ranked_actual_ids))
+    top_k = _top_k_metrics(policy, list(ranking) if ranking is not None
+                           else [(commit, True) for commit in ranked_actual_ids])
     false_positives = sorted(actual - expected - allowed)
     false_negatives = sorted(expected - actual)
     hard_false_positives = sorted(actual - expected - allowed - related_origins - related_but_not_correct)

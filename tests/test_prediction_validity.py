@@ -55,12 +55,13 @@ def _hash(generated: Path, sid: str, cid: str) -> str:
     return json.loads((generated / sid / "default/metadata/commit-map.json").read_text())[cid]["hash"]
 
 
-def _evaluate(generated: Path, tmp_path: Path, records: list[dict], *, include_generated: bool = False):
+def _evaluate(generated: Path, tmp_path: Path, records: list[dict], *, include_generated: bool = False,
+              reference_format: str = "auto"):
     path = tmp_path / "predictions.jsonl"
     path.write_text("".join(json.dumps(record) + "\n" for record in records), encoding="utf-8")
     report = evaluate_predictions(path, generated_root=generated, scenarios_root=ROOT / "scenarios",
                                   advanced_scenarios_root=ROOT / "advanced-scenarios",
-                                  include_generated=include_generated)
+                                  include_generated=include_generated, reference_format=reference_format)
     return report, {item.scenario_id: item for item in report.scenarios}
 
 
@@ -182,7 +183,21 @@ def test_an_unknown_reference_holds_its_place_in_a_ranking(generated, tmp_path):
     assert top_k["best_rank"] == 2
     assert top_k["hit_at"] == {"1": False, "3": True, "5": True}
     assert top_k["mrr"] == 0.5
-    assert top_k["ranked_actual_bics"] == [UNKNOWN, "c1"]
+    assert (top_k["ranked_actual_bics"], top_k["unknown_ranks"]) == (["c1"], [1])
+
+
+def test_an_unknown_reference_spelled_like_a_relevant_id_is_not_a_hit(generated, tmp_path):
+    # PR #99 review: with --reference-format hash the logical id "c1" is an unknown reference,
+    # and the full ranking once read it as the relevant commit c1 at rank 1.
+    _, by_id = _evaluate(generated, tmp_path, [{"scenario_id": "SZZG-0140", "predictions": [
+        {"inducing_commit": "c1", "rank": 1},
+        {"inducing_commit": _hash(generated, "SZZG-0140", "c1"), "rank": 2}]}], reference_format="hash")
+    item = by_id["SZZG-0140"]
+    assert (item.status, item.unknown_predictions, item.true_positives) == ("FAIL", ["c1"], ["c1"])
+    top_k = item.top_k
+    assert (top_k["best_rank"], top_k["mrr"]) == (2, 0.5)
+    assert top_k["hit_at"] == {"1": False, "3": True, "5": True}
+    assert (top_k["ranked_actual_bics"], top_k["unknown_ranks"]) == (["c1"], [1])
 
 
 def test_the_markdown_report_shows_unknown_references_and_the_run_status(generated, tmp_path):

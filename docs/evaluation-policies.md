@@ -45,9 +45,13 @@ was dropped before scoring, so `c1` plus an unknown hash reported precision
 Duplicates are collapsed (the first occurrence wins; unknown references are
 compared as written). When at least one prediction of a scenario carries a
 `rank`, the predictions are ordered by rank (unranked ones last, in input
-order); otherwise input order is the rank order. This ordered, de-duplicated
-list -- unknown references included, as written -- is `top_k.ranked_actual_bics`;
-the set of its known entries is `actual_bics`.
+order); otherwise input order is the rank order. The known commits of this
+ordered, de-duplicated list are `top_k.ranked_actual_bics`, in rank order, and
+their set is `actual_bics`. An unknown reference keeps its rank --
+`top_k.unknown_ranks` lists the ranks unknown references hold -- but is never a
+hit, even when it is spelled like a relevant logical id: under
+`--reference-format hash` the id `c1` is an unknown reference, and a hash of
+`c1` ranked after it is a hit at rank 2, not 1 (PR #99 review).
 
 ### 1.2 Oracle: classic scenarios (`scenarios/*/scenario.yml`)
 
@@ -274,8 +278,9 @@ hit).
 - `1` when `k_values` is absent.
 
 `status_k` is reported inside `top_k`. False positives never fail a `top_k`
-scenario; they are reported as usual. An unknown reference holds its rank:
-`[not-a-commit, c1]` puts `c1` at rank 2 (the scenario fails anyway, step 2). Use `status_k` when the scenario should
+scenario; they are reported as usual. An unknown reference holds its rank and
+is never a hit: `[not-a-commit, c1]` puts `c1` at rank 2, and so does an
+unknown reference spelled `c1` (the scenario fails anyway, step 2). Use `status_k` when the scenario should
 be strict about the top rank while still reporting `hit_at` for larger k.
 
 Exercised by SZZG-0096 (ranking inside a work item), SZZG-0115 (`k_values`
@@ -557,7 +562,7 @@ missing`). `[c1]` → FAIL (`false_positives = [c1]`). `[not-a-commit]` → FAIL
 
 | location | field |
 |---|---|
-| per scenario (JSON) | `top_k.status_k`, `known_distractor_hits`, `expect_no_bic`, `fix_shape`, `branch_level`, `run_status`, `run_errors`, additional `result_notes` |
+| per scenario (JSON) | `top_k.status_k`, `top_k.unknown_ranks`, `known_distractor_hits`, `expect_no_bic`, `fix_shape`, `branch_level`, `run_status`, `run_errors`, additional `result_notes` |
 | summary (JSON) | `known_distractor_hits`, `fix_shape_counts`, `branch_level_scenarios`, `branch_level_failures`, `tool_errors`, `missing_records`, `unknown_predictions` |
 | Markdown | `- Tool errors:`, `- Missing prediction records:`, `- Unknown predictions (counted as false positives):`, `- Known distractor hits:`, `- Branch-level failures:`, `- Fix shapes (per BFC):`; table columns `Run`, `Unknown`, `Top-k`, `Distractor hits`, `Fix shape`; `## Scenario notes` section listing every scenario's `result_notes` |
 | report `warnings` (JSON, Markdown `## Warnings`, CLI stderr) | oracle-related `result_notes` promoted with a `<scenario id>: ` prefix |
