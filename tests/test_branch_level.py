@@ -9,20 +9,18 @@ to, and a real evaluation with per-fix predictions.
 """
 from __future__ import annotations
 
-import shutil
 import subprocess
-import sys
 from copy import deepcopy
 from pathlib import Path
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "src"))
+from support import export_tree, git, needs_jdk
+from szzbench.evaluator import Prediction, evaluate_prediction_map, evaluate_scenario
+from szzbench.graph_generator import generate_graph_repository
+from szzbench.graph_validator import validate_graph_static
 
-from szzbench.evaluator import Prediction, evaluate_prediction_map, evaluate_scenario  # noqa: E402
-from szzbench.graph_generator import generate_graph_repository  # noqa: E402
-from szzbench.graph_validator import validate_graph_static  # noqa: E402
+ROOT = Path(__file__).resolve().parents[1]
 
 JAVA = "src/main/java/example/Range.java"
 COMMIT_MAP = {cid: {"hash": ch * 40} for cid, ch in (("c0", "0"), ("c1", "1"), ("r1", "a"), ("c2", "2"), ("c3", "3"), ("r2", "b"))}
@@ -207,10 +205,6 @@ TICKET = "src/main/java/example/Ticket.java"
 DRIVER = "public class Drive { public static void main(String[] a) { System.out.print(new example.Ticket().isValid(4000, 1000, 10)); } }"
 
 
-def _git(repo: Path, *args: str) -> str:
-    return subprocess.run(["git", *args], cwd=repo, text=True, capture_output=True, check=True).stdout.strip()
-
-
 @pytest.fixture(scope="module")
 def szzg_0143(tmp_path_factory):
     out = tmp_path_factory.mktemp("szzg0143") / "SZZG-0143" / "default"
@@ -224,22 +218,22 @@ def test_szzg_0143_blame_reaches_the_bic_from_main_and_the_reformat_from_release
     repo = out / "repo"
     # -w does not help from r2: r1 split the line, it did not change whitespace inside a line
     for bfc, owner, with_w in (("c3", "c1", "c1"), ("r2", "r1", "r1")):
-        parent = _git(repo, "show", f"{hashes[bfc]}^:{TICKET}").split("\n")
-        diff = _git(repo, "diff", "-U0", f"{hashes[bfc]}^", hashes[bfc], "--", TICKET)
+        parent = git(repo, "show", f"{hashes[bfc]}^:{TICKET}").split("\n")
+        diff = git(repo, "diff", "-U0", f"{hashes[bfc]}^", hashes[bfc], "--", TICKET)
         deleted = [line[1:] for line in diff.split("\n") if line.startswith("-") and not line.startswith("---")]
         assert deleted, diff
         for line in deleted:
             no = parent.index(line) + 1
-            plain = _git(repo, "blame", "-l", "-L", f"{no},{no}", f"{hashes[bfc]}^", "--", TICKET).split()[0].lstrip("^")
-            w = _git(repo, "blame", "-w", "-l", "-L", f"{no},{no}", f"{hashes[bfc]}^", "--", TICKET).split()[0].lstrip("^")
+            plain = git(repo, "blame", "-l", "-L", f"{no},{no}", f"{hashes[bfc]}^", "--", TICKET).split()[0].lstrip("^")
+            w = git(repo, "blame", "-w", "-l", "-L", f"{no},{no}", f"{hashes[bfc]}^", "--", TICKET).split()[0].lstrip("^")
             assert hashes[owner].startswith(plain), (bfc, line, plain[:7])
             assert hashes[with_w].startswith(w), (bfc, line, w[:7])
     # the release fix is not a cherry-pick of the main fix
-    assert _git(repo, "show", f"{hashes['r2']}:{TICKET}") != _git(repo, "show", f"{hashes['c3']}:{TICKET}")
-    assert "cherry picked" not in _git(repo, "log", "-1", "--format=%B", hashes["r2"])
+    assert git(repo, "show", f"{hashes['r2']}:{TICKET}") != git(repo, "show", f"{hashes['c3']}:{TICKET}")
+    assert "cherry picked" not in git(repo, "log", "-1", "--format=%B", hashes["r2"])
 
 
-@pytest.mark.skipif(shutil.which("javac") is None or shutil.which("java") is None, reason="needs a JDK")
+@needs_jdk
 def test_szzg_0143_fault_is_visible_on_both_branches_until_each_fix(szzg_0143, tmp_path):
     hashes, out = szzg_0143
     expected = {"c0": "false", "c1": "true", "r1": "true", "c2": "true", "c3": "false", "r2": "false"}
@@ -247,8 +241,7 @@ def test_szzg_0143_fault_is_visible_on_both_branches_until_each_fix(szzg_0143, t
     for cid in expected:
         work = tmp_path / cid
         work.mkdir()
-        tar = subprocess.run(["git", "archive", hashes[cid]], cwd=out / "repo", capture_output=True, check=True).stdout
-        subprocess.run(["tar", "-x", "-C", str(work)], input=tar, check=True)
+        export_tree(out / "repo", hashes[cid], work)
         (work / "Drive.java").write_text(DRIVER)
         subprocess.run(["javac", "-d", str(work / "out"), str(work / TICKET), str(work / "Drive.java")], check=True, capture_output=True)
         observed[cid] = subprocess.run(["java", "-cp", str(work / "out"), "Drive"], capture_output=True, text=True, check=True).stdout

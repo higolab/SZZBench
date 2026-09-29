@@ -12,20 +12,16 @@ it checks the blame claim the README makes about the line the fix deletes.
 from __future__ import annotations
 
 import json
-import shutil
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 
+from support import export_tree, git, git_bytes, needs_jdk
+from szzbench.generator import generate_repository
+from szzbench.graph_generator import generate_graph_repository
+
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "src"))
-
-from szzbench.generator import generate_repository  # noqa: E402
-from szzbench.graph_generator import generate_graph_repository  # noqa: E402
-
-needs_jdk = pytest.mark.skipif(shutil.which("javac") is None or shutil.which("java") is None, reason="needs a JDK")
 
 RETRY_DRIVER = ("public class Drive { public static void main(String[] a) { "
                 "System.out.print(new example.RetryPolicy().delayMillis()); } }")
@@ -57,14 +53,9 @@ def _generate(tmp_path: Path, sid: str) -> tuple[dict[str, str], Path]:
     return hashes, out / "repo"
 
 
-def _git(repo: Path, *args: str) -> str:
-    return subprocess.run(["git", *args], cwd=repo, text=True, capture_output=True, check=True).stdout.strip()
-
-
 def _run(repo: Path, commit: str, work: Path, driver: str) -> str:
     work.mkdir(parents=True)
-    tar = subprocess.run(["git", "archive", commit], cwd=repo, capture_output=True, check=True).stdout
-    subprocess.run(["tar", "-x", "-C", str(work)], input=tar, check=True)
+    export_tree(repo, commit, work)
     (work / "Drive.java").write_text(driver)
     sources = [str(p) for p in work.rglob("*.java")]
     subprocess.run(["javac", "-d", str(work / "out"), *sources], check=True, capture_output=True)
@@ -82,12 +73,12 @@ def test_the_configuration_reaches_the_code_and_the_fix_undoes_the_fault(tmp_pat
         return
     path, deleted, owner = blame
     bfc = hashes[max(expected)]                       # the last commit is the BFC in all three histories
-    diff = _git(repo, "diff", "-U0", f"{bfc}^", bfc, "--", path)
+    diff = git(repo, "diff", "-U0", f"{bfc}^", bfc, "--", path)
     assert f"-{deleted}" in diff, diff
-    parent_lines = _git(repo, "show", f"{bfc}^:{path}").split("\n")
+    parent_lines = git(repo, "show", f"{bfc}^:{path}").split("\n")
     line_no = parent_lines.index(deleted) + 1
     for flags in ((), ("-w",), ("-w", "-C", "-C")):
-        blamed = _git(repo, "blame", "-l", *flags, "-L", f"{line_no},{line_no}", f"{bfc}^", "--", path).split()[0].lstrip("^")
+        blamed = git(repo, "blame", "-l", *flags, "-L", f"{line_no},{line_no}", f"{bfc}^", "--", path).split()[0].lstrip("^")
         assert hashes[owner].startswith(blamed), f"{sid}: blame {flags} names {blamed[:7]}, README says {owner}"
 
 
@@ -105,17 +96,16 @@ def test_szz_0207_mirrors_szz_0172():
 
 def test_szz_0208_bic_changes_a_key_and_no_value(tmp_path):
     hashes, repo = _generate(tmp_path, "SZZ-0208")
-    before = dict(line.split("=", 1) for line in _git(repo, "show", f"{hashes['c1']}^:config/retry.properties").split("\n"))
-    after = dict(line.split("=", 1) for line in _git(repo, "show", f"{hashes['c1']}:config/retry.properties").split("\n"))
+    before = dict(line.split("=", 1) for line in git(repo, "show", f"{hashes['c1']}^:config/retry.properties").split("\n"))
+    after = dict(line.split("=", 1) for line in git(repo, "show", f"{hashes['c1']}:config/retry.properties").split("\n"))
     assert sorted(before.values()) == sorted(after.values()), "the BIC must change no value"
     assert set(before) ^ set(after) == {"retry.delay.unit", "retry.delayUnit"}
-    assert _git(repo, "diff", "--name-only", f"{hashes['c1']}^", hashes["c1"]) == "config/retry.properties"
+    assert git(repo, "diff", "--name-only", f"{hashes['c1']}^", hashes["c1"]) == "config/retry.properties"
 
 
 def test_szzg_0112_config_is_not_utf8(tmp_path):
     hashes, repo = _generate(tmp_path, "SZZG-0112")
-    raw = subprocess.run(["git", "show", f"{hashes['c2']}:config/range-limits.properties"], cwd=repo,
-                         capture_output=True, check=True).stdout
+    raw = git_bytes(repo, "show", f"{hashes['c2']}:config/range-limits.properties")
     assert b"\xe9" in raw
     with pytest.raises(UnicodeDecodeError):
         raw.decode("utf-8")
@@ -126,13 +116,13 @@ def test_szzg_0112_git_sees_text_lines_and_blame_reaches_the_bic(tmp_path):
     """The file is non-UTF-8, but Git diffs and blames it as text (PR #70 review)."""
     hashes, repo = _generate(tmp_path, "SZZG-0112")
     path = "config/range-limits.properties"
-    assert _git(repo, "diff", "--numstat", hashes["c1"], hashes["c2"]) == f"2\t2\t{path}"
-    hunk = [line for line in _git(repo, "diff", "-U0", hashes["c1"], hashes["c2"]).split("\n") if line[:1] in "+-" and line[:3] not in ("---", "+++")]
+    assert git(repo, "diff", "--numstat", hashes["c1"], hashes["c2"]) == f"2\t2\t{path}"
+    hunk = [line for line in git(repo, "diff", "-U0", hashes["c1"], hashes["c2"]).split("\n") if line[:1] in "+-" and line[:3] not in ("---", "+++")]
     assert hunk == ["-min=1", "-max=9", "+min=0", "+max=10"]
     # the file is CP1252 -- reading it through a UTF-8 text pipe is exactly the trap the README describes
-    raw = subprocess.run(["git", "show", f"{hashes['c2']}^:{path}"], cwd=repo, capture_output=True, check=True).stdout
+    raw = git_bytes(repo, "show", f"{hashes['c2']}^:{path}")
     parent = raw.decode("cp1252").split("\n")
     for deleted in ("min=1", "max=9"):
         no = parent.index(deleted) + 1
-        blamed = _git(repo, "blame", "-l", "-L", f"{no},{no}", f"{hashes['c2']}^", "--", path).split()[0].lstrip("^")
+        blamed = git(repo, "blame", "-l", "-L", f"{no},{no}", f"{hashes['c2']}^", "--", path).split()[0].lstrip("^")
         assert hashes["c1"].startswith(blamed), (deleted, blamed[:7])

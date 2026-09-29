@@ -14,6 +14,7 @@ import json
 import pytest
 import yaml
 
+from support import git_stdout
 from szzbench import evaluator
 from szzbench.cli import main
 from szzbench.graph_validator import lint_graph_scenario, validate_graph_scenario_file, validate_graph_static
@@ -1115,8 +1116,7 @@ def test_history_model_matches_the_generated_repository(tmp_path):
     path = write_yaml(tmp_path / "SZZG-9900" / "scenario.graph.yml", data)
     commit_map, verify = generate_graph_repository(path, tmp_path / "out", force=True)
     assert not verify.has_errors(), verify.to_dict()
-    log = subprocess.run(["git", "log", "--all", "--format=%H%x00%an <%ae>"], cwd=tmp_path / "out" / "repo",
-                         capture_output=True, text=True, check=True).stdout
+    log = git_stdout(tmp_path / "out" / "repo", "log", "--all", "--format=%H%x00%an <%ae>")
     by_hash = {line.split("\x00")[0]: line.split("\x00")[1] for line in log.splitlines() if line}
     from_git = {cid: by_hash[entry["hash"]] for cid, entry in commit_map.items()}
     assert dict(resolved_commit_authors(data)) == from_git
@@ -1174,8 +1174,7 @@ def test_history_model_matches_git_log_all_after_the_ref_lifecycle(tmp_path, var
     path = write_yaml(tmp_path / "SZZG-9900" / "scenario.graph.yml", data)
     commit_map, verify = generate_graph_repository(path, tmp_path / "out", force=True)
     assert not verify.has_errors(), verify.to_dict()
-    log = subprocess.run(["git", "log", "--all", "--format=%H%x00%an <%ae>"], cwd=tmp_path / "out" / "repo",
-                         capture_output=True, text=True, check=True).stdout
+    log = git_stdout(tmp_path / "out" / "repo", "log", "--all", "--format=%H%x00%an <%ae>")
     by_hash = {l.split("\x00")[0]: l.split("\x00")[1] for l in log.splitlines() if l}
     from_git = {cid: by_hash[e["hash"]] for cid, e in commit_map.items() if e["hash"] in by_hash}
     assert dict(resolved_commit_authors(data)) == from_git
@@ -1193,8 +1192,7 @@ def test_history_model_matches_the_shipped_scenarios_with_a_ref_lifecycle(tmp_pa
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
     commit_map, verify = generate_graph_repository(path, tmp_path / sid, force=True)
     assert not verify.has_errors(), verify.to_dict()
-    log = subprocess.run(["git", "log", "--all", "--format=%H%x00%an <%ae>"], cwd=tmp_path / sid / "repo",
-                         capture_output=True, text=True, check=True).stdout
+    log = git_stdout(tmp_path / sid / "repo", "log", "--all", "--format=%H%x00%an <%ae>")
     by_hash = {l.split("\x00")[0]: l.split("\x00")[1] for l in log.splitlines() if l}
     from_git = {cid: by_hash[e["hash"]] for cid, e in commit_map.items() if e["hash"] in by_hash}
     assert dict(resolved_commit_authors(data)) == from_git
@@ -1256,8 +1254,7 @@ def test_history_model_matches_git_log_all_with_a_tag_inside_a_generated_chain(t
     path = write_yaml(tmp_path / "SZZG-9900" / "scenario.graph.yml", data)
     commit_map, verify = generate_graph_repository(path, tmp_path / "out", force=True)
     assert not verify.has_errors(), verify.to_dict()
-    log = subprocess.run(["git", "log", "--all", "--format=%H%x00%an <%ae>"], cwd=tmp_path / "out" / "repo",
-                         capture_output=True, text=True, check=True).stdout
+    log = git_stdout(tmp_path / "out" / "repo", "log", "--all", "--format=%H%x00%an <%ae>")
     by_hash = {l.split("\x00")[0]: l.split("\x00")[1] for l in log.splitlines() if l}
     from_git = {cid: by_hash[e["hash"]] for cid, e in commit_map.items() if e["hash"] in by_hash}
     assert dict(resolved_commit_authors(data)) == from_git

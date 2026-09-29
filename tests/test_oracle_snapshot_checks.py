@@ -10,12 +10,8 @@ W430/W431 already did.
 """
 from __future__ import annotations
 
-import sys
-from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
-
-from szzbench.validator import simulate_commits, validate_oracle_against_snapshots  # noqa: E402
+from szzbench.validator import simulate_commits, validate_oracle_against_snapshots
 
 JAVA = "src/main/java/example/Range.java"
 

@@ -12,21 +12,13 @@ that both required commits are necessary.
 """
 from __future__ import annotations
 
-import re
-import shutil
-import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 
+from support import GeneratedScenarios, blame_owners, export_tree, git_stdout, logical_id, needs_jdk, run_driver
+
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "src"))
-
-from szzbench.generator import generate_repository  # noqa: E402
-from szzbench.graph_generator import generate_graph_repository  # noqa: E402
-
-needs_jdk = pytest.mark.skipif(shutil.which("javac") is None or shutil.which("java") is None, reason="needs a JDK")
 
 DRIVERS = {
     "SZZ-0219": """
@@ -110,56 +102,25 @@ BLAME = {
 REQUIRED = {"SZZ-0219": {"c1", "c4"}, "SZZ-0220": {"c1", "c3"}, "SZZG-0149": {"c1", "c3", "c5"}}
 
 
-def _git(repo: Path, *args: str) -> str:
-    return subprocess.run(["git", *args], cwd=repo, text=True, capture_output=True, check=True).stdout
+@pytest.fixture(scope="module")
+def scenarios(tmp_path_factory):
+    return GeneratedScenarios(tmp_path_factory)
 
 
 @pytest.fixture(scope="module", params=sorted(EXPECTED), ids=sorted(EXPECTED))
-def generated(request, tmp_path_factory):
-    sid = request.param
-    out = tmp_path_factory.mktemp(sid.lower()) / sid
-    if sid.startswith("SZZG-"):
-        commit_map, verify = generate_graph_repository(ROOT / "advanced-scenarios" / sid / "scenario.graph.yml", out, force=True)
-    else:
-        commit_map, verify = generate_repository(ROOT / "scenarios" / sid / "scenario.yml", out, force=True)
-    assert verify is not None and not verify.has_errors(), verify.to_dict()
-    entries = commit_map.get("commits", commit_map) if isinstance(commit_map, dict) else commit_map
-    hashes = {cid: (e["hash"] if isinstance(e, dict) else e) for cid, e in entries.items()}
-    return sid, hashes, out / "repo"
-
-
-def _owner(repo: Path, hashes: dict[str, str], full: str) -> str:
-    bare = full.lstrip("^")
-    return next(cid for cid, h in hashes.items() if h.startswith(bare[:40]) or bare.startswith(h[:40]))
-
-
-def _blame_owners(repo: Path, hashes: dict[str, str]) -> dict[str, tuple[str, str, str]]:
-    bfc = hashes[max(hashes, key=lambda cid: int(cid[1:]))]
-    seen: dict[str, tuple[str, str, str]] = {}
-    for path in _git(repo, "diff", "--name-only", f"{bfc}^", bfc).split():
-        line_no = None
-        for line in _git(repo, "diff", "-U0", f"{bfc}^", bfc, "--", path).splitlines():
-            if line.startswith("@@"):
-                line_no = int(re.match(r"@@ -(\d+)", line).group(1))
-            elif line.startswith("-") and not line.startswith("---") and line_no is not None:
-                seen[line[1:].strip()] = tuple(
-                    _owner(repo, hashes, _git(repo, "blame", "-l", *flags, "-L", f"{line_no},{line_no}", f"{bfc}^", "--", path).split()[0])
-                    for flags in ((), ("-w",), ("-w", "-C", "-C")))
-                line_no += 1
-            elif line.startswith(" ") and line_no is not None:
-                line_no += 1
-    return seen
+def generated(request, scenarios):
+    return scenarios(request.param)
 
 
 def test_every_deleted_line_blames_as_the_readme_says(generated):
     sid, hashes, repo = generated
-    assert _blame_owners(repo, hashes) == BLAME[sid]
+    assert blame_owners(repo, hashes) == BLAME[sid]
 
 
 def test_neither_scenario_is_reachable_by_blaming_what_the_fix_deletes(generated):
     """SZZ-0219 misses a required commit; SZZ-0220 names two that are not required."""
     sid, hashes, repo = generated
-    blamed = {owners[0] for owners in _blame_owners(repo, hashes).values()}
+    blamed = {owners[0] for owners in blame_owners(repo, hashes).values()}
     assert blamed != REQUIRED[sid]
     if sid == "SZZ-0219":
         assert "c1" not in blamed and "c3" in blamed        # the rename, two steps in front of the fault
@@ -170,33 +131,20 @@ def test_neither_scenario_is_reachable_by_blaming_what_the_fix_deletes(generated
         # and the shape rule is kept out by c6, which touches both files the fix touches
         import yaml
         bfc = hashes[max(hashes, key=lambda cid: int(cid[1:]))]
-        for path in _git(repo, "diff", "--name-only", f"{bfc}^", bfc).split():
-            newest = _git(repo, "log", "-1", "--format=%H", f"{bfc}^", "--", path).strip()
-            assert _owner(repo, hashes, newest) == "c6"
+        for path in git_stdout(repo, "diff", "--name-only", f"{bfc}^", bfc).split():
+            newest = git_stdout(repo, "log", "-1", "--format=%H", f"{bfc}^", "--", path).strip()
+            assert logical_id(hashes, newest) == "c6"
         level = yaml.safe_load((ROOT / "advanced-scenarios" / sid / "scenario.graph.yml").read_text())["expected_szz"]["commit_level"]
         assert blamed == {"c1"} and blamed < REQUIRED[sid]
         assert level["evaluation_policy"] == "partial_credit" and level["minimum_required"] == 2
         assert len(blamed) < level["minimum_required"]
 
 
-def _snapshot(repo: Path, commit: str, into: Path) -> None:
-    into.mkdir(parents=True, exist_ok=True)
-    tar = subprocess.run(["git", "archive", commit], cwd=repo, capture_output=True, check=True).stdout
-    subprocess.run(["tar", "-x", "-C", str(into)], input=tar, check=True)
-
-
-def _run_driver(work: Path, sid: str) -> str:
-    (work / "Drive.java").write_text(DRIVERS[sid])
-    sources = [str(p) for p in work.rglob("*.java")]
-    subprocess.run(["javac", "-nowarn", "-d", str(work / "out"), *sources], check=True, capture_output=True)
-    return subprocess.run(["java", "-cp", str(work / "out"), "Drive"], cwd=work, capture_output=True, text=True, check=True).stdout.strip()
-
-
 @needs_jdk
 def test_the_probe_answers_move_exactly_where_the_readme_says(generated, tmp_path):
     sid, hashes, repo = generated
-    observed = {cid: _run_driver(tmp_path / cid, sid) for cid in EXPECTED[sid]
-                if (_snapshot(repo, hashes[cid], tmp_path / cid) or True)}
+    observed = {cid: run_driver(tmp_path / cid, DRIVERS[sid]) for cid in EXPECTED[sid]
+                if (export_tree(repo, hashes[cid], tmp_path / cid) or True)}
     assert observed == EXPECTED[sid], sid
 
 
@@ -207,11 +155,12 @@ def _edit(work: Path, rel: str, old: str, new: str) -> None:
     p.write_text(text.replace(old, new))
 
 
+# SZZG-0149 is left out: it has three independent causes, and the per-commit table already
+# shows that each moves its own answers
 @needs_jdk
-def test_both_faults_are_necessary_and_the_noise_commit_is_not_one(generated, tmp_path):
-    sid, hashes, repo = generated
-    if sid == "SZZG-0149":
-        pytest.skip("three independent causes; the per-commit table already shows each moves its own answers")
+@pytest.mark.parametrize("sid", [sid for sid in sorted(EXPECTED) if sid != "SZZG-0149"])
+def test_both_faults_are_necessary_and_the_noise_commit_is_not_one(scenarios, sid, tmp_path):
+    _, hashes, repo = scenarios(sid)
     if sid == "SZZ-0219":
         last_faulty = "c4"
         first = (tmp_path / "only-quota", "src/main/java/example/RateLimit.java",
@@ -227,6 +176,6 @@ def test_both_faults_are_necessary_and_the_noise_commit_is_not_one(generated, tm
         second = (tmp_path / "only-score", "src/main/java/example/PasswordPolicy.java",
                   "return value.length() / 2;", "return value.length() * 2;", EXPECTED[sid]["c1"])
     for work, rel, old, new, expected in (first, second):
-        _snapshot(repo, hashes[last_faulty], work)
+        export_tree(repo, hashes[last_faulty], work)
         _edit(work, rel, old, new)
-        assert _run_driver(work, sid) == expected, (sid, work.name)
+        assert run_driver(work, DRIVERS[sid]) == expected, (sid, work.name)

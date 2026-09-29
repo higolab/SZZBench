@@ -15,21 +15,17 @@ way the boundary is measured rather than assumed.
 from __future__ import annotations
 
 import json
-import shutil
 import subprocess
-import sys
 import textwrap
 from pathlib import Path
 
 import pytest
 
+from support import export_tree, needs_jdk
+from szzbench.generator import generate_repository
+from szzbench.graph_generator import generate_graph_repository
+
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "src"))
-
-from szzbench.generator import generate_repository  # noqa: E402
-from szzbench.graph_generator import generate_graph_repository  # noqa: E402
-
-needs_jdk = pytest.mark.skipif(shutil.which("javac") is None or shutil.which("java") is None, reason="needs a JDK")
 
 #: scenario -> (why the domain stops there, [(class, method, arguments at the top of it, expected answer)])
 #:
@@ -164,8 +160,7 @@ def test_the_fixed_snapshot_is_exact_at_the_top_of_its_domain(fixed_snapshot, tm
     domain, probes = CASES[sid]
     work = tmp_path / sid
     work.mkdir(parents=True, exist_ok=True)
-    tar = subprocess.run(["git", "archive", "HEAD"], cwd=repo, capture_output=True, check=True).stdout
-    subprocess.run(["tar", "-x", "-C", str(work)], input=tar, check=True)
+    export_tree(repo, "HEAD", work)
     wrong = []
     for cls, method, args, expected in probes:
         (work / "Drive.java").write_text(DRIVER % {"cls": json.dumps(cls), "method": json.dumps(method),

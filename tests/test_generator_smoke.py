@@ -4,8 +4,10 @@ import os
 import subprocess
 import sys
 import textwrap
+
 import yaml
 
+from support import git_stdout
 from szzbench.evaluator import Prediction, evaluate_scenario
 
 def _write_classic_scenario(path: Path, scenario_id: str) -> None:
@@ -126,7 +128,7 @@ def test_validate_and_generate(tmp_path):
     subprocess.run([sys.executable, "-m", "szzbench.cli", "generate", str(scenario), "--out", str(out), "--force"], check=True)
     assert (out / "repo" / ".git").exists()
     assert (out / "metadata" / "commit-map.json").exists()
-    log = subprocess.run(["git", "log", "--oneline"], cwd=out / "repo", text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True).stdout
+    log = git_stdout(out / "repo", "log", "--oneline")
     assert "Initial correct implementation" in log
     assert "Introduce boundary bug" in log
     assert "Fix boundary bug" in log
@@ -770,14 +772,7 @@ def test_graph_apply_patch_from_generates(tmp_path):
     subprocess.run([sys.executable, "-m", "szzbench.cli", "validate-graph", str(scenario), "--simulate"], check=True)
     subprocess.run([sys.executable, "-m", "szzbench.cli", "generate-graph", str(scenario), "--out", str(out), "--force"], check=True)
 
-    release_content = subprocess.run(
-        ["git", "show", "HEAD:src/main/java/example/Range.java"],
-        cwd=out / "repo",
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        check=True,
-    ).stdout
+    release_content = git_stdout(out / "repo", "show", "HEAD:src/main/java/example/Range.java")
     assert "return value > min && value < max;" in release_content
 
 def test_graph_map_records_rebase_of(tmp_path):

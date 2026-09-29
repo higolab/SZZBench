@@ -10,25 +10,17 @@ and check the twin, blame and behaviour claims the READMEs make.
 """
 from __future__ import annotations
 
-import shutil
 import subprocess
-import sys
 from pathlib import Path
 
-import pytest
 import yaml
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
-
-from szzbench.evaluator import Prediction, evaluate_scenario  # noqa: E402
-from szzbench.graph_generator import generate_graph_repository  # noqa: E402
+from support import export_tree, git, needs_jdk
+from szzbench.evaluator import Prediction, evaluate_scenario
+from szzbench.graph_generator import generate_graph_repository
 
 ROOT = Path(__file__).resolve().parent.parent
 GRAPH = ROOT / "advanced-scenarios"
-
-
-def _git(repo: Path, *args: str) -> str:
-    return subprocess.run(["git", *args], cwd=repo, text=True, capture_output=True, check=True).stdout.strip()
 
 
 def _generate(tmp_path: Path, sid: str) -> tuple[dict, dict, Path]:
@@ -83,14 +75,14 @@ def test_boundary_twins_differ_only_in_c0_message_and_import_md(tmp_path):
         for key in ("author", "author_date", "committer_date"):
             assert a[cid][key] == b[cid][key], (cid, key)
         assert (a[cid]["message"] == b[cid]["message"]) == (cid != "c0"), cid
-    tree = lambda repo: {line.split("\t")[1]: line.split()[2] for line in _git(repo, "ls-tree", "-r", "HEAD").splitlines()}
+    tree = lambda repo: {line.split("\t")[1]: line.split()[2] for line in git(repo, "ls-tree", "-r", "HEAD").splitlines()}
     ta, tb = tree(repo_a), tree(repo_b)
     assert set(ta) - set(tb) == {"docs/IMPORT.md"} and set(tb) - set(ta) == set()
     assert all(ta[p] == tb[p] for p in tb), "a blob other than docs/IMPORT.md differs between the twins"
     for repo in (repo_a, repo_b):
-        deleted = _git(repo, "diff", "-U0", "HEAD^", "HEAD")
+        deleted = git(repo, "diff", "-U0", "HEAD^", "HEAD")
         assert "-        return daysLate * centsPerDay;" in deleted
-        blamed = _git(repo, "blame", "-l", "-s", "-L", "13,13", "HEAD^", "--", "src/main/java/example/billing/LateFee.java").split()[0]
+        blamed = git(repo, "blame", "-l", "-s", "-L", "13,13", "HEAD^", "--", "src/main/java/example/billing/LateFee.java").split()[0]
         # git marks the root commit with ^ (its own word for a boundary) in place of the hash's first character
         expected = (a if repo is repo_a else b)["c0"]["hash"]
         assert blamed.startswith("^") and expected.startswith(blamed[1:]) and len(blamed) == 40
@@ -107,12 +99,12 @@ def test_partial_credit_majority_threshold(tmp_path):
     assert _evaluate("SZZG-0138", scenario, cmap, ["c1", "c2", "c3"])["status"] == "PASS"
     assert _evaluate("SZZG-0138", scenario, cmap, ["c1", "c2", "c0"])["status"] == "FAIL"
     # plain blame finds exactly the two modified lines, so it is the passing partial answer
-    deleted = [l for l in _git(repo, "diff", "-U0", f"{cmap['c4']['hash']}^", cmap["c4"]["hash"]).splitlines() if l.startswith("-") and not l.startswith("---")]
+    deleted = [l for l in git(repo, "diff", "-U0", f"{cmap['c4']['hash']}^", cmap["c4"]["hash"]).splitlines() if l.startswith("-") and not l.startswith("---")]
     assert len(deleted) == 2
     by_hash = {e["hash"]: c for c, e in cmap.items()}
     blamed = set()
     for line in (9, 13):
-        blamed.add(by_hash[_git(repo, "blame", "-l", "-s", "-L", f"{line},{line}", f"{cmap['c4']['hash']}^", "--", "src/main/java/example/pricing/Discounts.java").split()[0].lstrip("^")])
+        blamed.add(by_hash[git(repo, "blame", "-l", "-s", "-L", f"{line},{line}", f"{cmap['c4']['hash']}^", "--", "src/main/java/example/pricing/Discounts.java").split()[0].lstrip("^")])
     assert blamed == {"c1", "c2"}
 
 
@@ -122,7 +114,7 @@ def test_partial_credit_across_a_merge(tmp_path):
         assert _evaluate("SZZG-0139", scenario, cmap, answer)["status"] == "PASS", answer
     for answer in (["c2"], ["m1", "c2"], []):
         assert _evaluate("SZZG-0139", scenario, cmap, answer)["status"] == "FAIL", answer
-    first_parent = {cmap_id for cmap_id, e in cmap.items() if e["hash"] in _git(repo, "rev-list", "--first-parent", cmap["c3"]["hash"]).split()}
+    first_parent = {cmap_id for cmap_id, e in cmap.items() if e["hash"] in git(repo, "rev-list", "--first-parent", cmap["c3"]["hash"]).split()}
     assert first_parent == {"c3", "c2", "m1", "c0"}, "a first-parent walk must not see the feature BIC"
 
 
@@ -142,7 +134,7 @@ def test_top_k_strict_status_differs_from_szzg_0115_only_in_status_k(tmp_path):
     distractor_first = [c for c in ("c2", "c3", "c1")]          # SZZG-0115's own noise commits ahead of its BIC
     assert _evaluate("SZZG-0115", lenient, cmap_l, distractor_first, ranks=[1, 2, 3])["status"] == "PASS"
     by_hash = {e["hash"]: c for c, e in cmap_s.items()}
-    blamed = _git(repo, "blame", "-l", "-s", "-L", "6,6", f"{cmap_s['c4']['hash']}^", "--", "src/main/java/example/alerts/Threshold.java").split()[0]
+    blamed = git(repo, "blame", "-l", "-s", "-L", "6,6", f"{cmap_s['c4']['hash']}^", "--", "src/main/java/example/alerts/Threshold.java").split()[0]
     assert by_hash[blamed] == "c2"
 
 
@@ -177,7 +169,7 @@ def test_relaxed_credit_full_origin_fills_the_metric_but_not_the_status(tmp_path
 
 # --- behaviour: the external cause really is the environment ---------------------
 
-@pytest.mark.skipif(shutil.which("javac") is None or shutil.which("java") is None, reason="needs a JDK")
+@needs_jdk
 def test_external_cause_depends_on_the_locale_not_on_a_commit(tmp_path):
     """SZZG-0135: before the fix the amount cell follows the default locale; after it, it does not."""
     _, cmap, repo = _generate(tmp_path, "SZZG-0135")
@@ -186,8 +178,7 @@ def test_external_cause_depends_on_the_locale_not_on_a_commit(tmp_path):
     def run(cid: str, *props: str) -> str:
         work = tmp_path / f"run-{cid}-{'-'.join(props) or 'default'}"
         work.mkdir()
-        tar = subprocess.run(["git", "archive", cmap[cid]["hash"]], cwd=repo, capture_output=True, check=True).stdout
-        subprocess.run(["tar", "-x", "-C", str(work)], input=tar, check=True)
+        export_tree(repo, cmap[cid]["hash"], work)
         (work / "Driver.java").write_text(driver)
         sources = [str(p) for p in work.rglob("*.java")]
         subprocess.run(["javac", "-d", str(work / "out"), *sources], check=True, capture_output=True)
