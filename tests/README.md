@@ -13,7 +13,11 @@ Without these tools, the tests that need them are skipped. `pytest -rs` lists ev
 
 `.github/workflows/tests.yml` runs on every pull request and on every push to `main`. It does two things:
 
-- **Runs the whole suite** on Linux with Python 3.10 and 3.14, using `pytest -rs`. It provides both tools above: JDK 21, and Node.js 22 with `npm ci` in `tools/scenario-editor`. No test should skip there for a missing tool; the log lists the skips that remain.
+- **Runs the whole suite** on Linux, using `pytest -rs`, in two jobs:
+  - Python 3.14 with the current Git of the `ubuntu-latest` runner;
+  - Python 3.10, the oldest version `pyproject.toml` declares, in a `python:3.10-bookworm` container with Debian 12's Git 2.39. Git before 2.45 has no `--ref-format`, so `init_args()` leaves it out, and this job takes that path.
+
+  Both jobs provide the tools above: JDK 21, and Node.js 22 with `npm ci` in `tools/scenario-editor`. No test should skip there for a missing tool; the log lists the skips that remain.
 - **Builds the two web tools** under `tools/`.
 
 Windows is not tested ([#109](https://github.com/YoshikiHigo/SZZBench/issues/109)).

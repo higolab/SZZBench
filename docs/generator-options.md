@@ -550,9 +550,11 @@ directory, for example; run SZZBench as the owner of the output directory.
 SZZBench needs Git 2.29 or later: it passes `--object-format=sha1` from 2.29,
 and `--ref-format=files` from 2.45, where Git has the option; an older Git
 knows no other ref format, so leaving it out changes nothing. CI runs the test
-suite with the current Git of GitHub's `ubuntu-latest` runner and prints its
-version (`.github/workflows/tests.yml`); SZZBench is developed with Git 2.50.1.
-Other versions from 2.29 on are expected to work but are not tested.
+suite on both sides of that branch and prints the Git version it used
+(`.github/workflows/tests.yml`): with the current Git of GitHub's
+`ubuntu-latest` runner, and with Debian 12's Git 2.39. SZZBench is developed
+with Git 2.50.1. Other versions from 2.29 on take one of the two tested paths
+but are not tested themselves.
 
 ## 6. The generation manifest (#93)
 

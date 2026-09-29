@@ -271,7 +271,7 @@ Python 3.10 or later is required.
 
 Git 2.29 or later is required as well. SZZBench runs Git isolated from your own Git configuration, so signing, hooks and global ignore or attributes files do not affect what it generates (`docs/generator-options.md` §5). A JDK (`javac` and `java`) is needed only by the tests that compile or run scenario code, which are skipped without one, and Node.js only by the tools under `tools/`.
 
-The test suite runs in CI on Linux with Python 3.10 and 3.14 and the current Git of GitHub's `ubuntu-latest` runner (`.github/workflows/tests.yml`). SZZBench is developed on macOS. Windows is not tested; the PowerShell commands below are given for convenience ([#109](https://github.com/YoshikiHigo/SZZBench/issues/109)).
+The test suite runs in CI on Linux twice (`.github/workflows/tests.yml`): with Python 3.14 and the current Git of GitHub's `ubuntu-latest` runner, and with Python 3.10 and Debian 12's Git 2.39. SZZBench is developed on macOS. Windows is not tested; the PowerShell commands below are given for convenience ([#109](https://github.com/YoshikiHigo/SZZBench/issues/109)).
 
 Create and activate a virtual environment in the SZZBench root directory.
 
@@ -975,7 +975,7 @@ Python 3.10 以上が必要です。
 
 Git 2.29 以上も必要です。SZZBench は Git を利用者自身の Git 設定から切り離して実行するため、署名、フック、global な ignore や attributes のファイルは生成結果に影響しません（`docs/generator-options.md` §5）。JDK（`javac` と `java`）はシナリオのコードをコンパイル・実行するテストでだけ必要で、ない場合そのテストはスキップされます。Node.js は `tools/` 以下のツールでだけ必要です。
 
-テストは CI で、Linux 上の Python 3.10 と 3.14、GitHub の `ubuntu-latest` ランナーの現行の Git を使って実行しています（`.github/workflows/tests.yml`）。開発は macOS で行っています。Windows ではテストしていません。以下の PowerShell のコマンドは参考として載せています（[#109](https://github.com/YoshikiHigo/SZZBench/issues/109)）。
+テストは CI で、Linux 上で 2 通りに実行しています（`.github/workflows/tests.yml`）。Python 3.14 と GitHub の `ubuntu-latest` ランナーの現行の Git の組み合わせと、Python 3.10 と Debian 12 の Git 2.39 の組み合わせです。開発は macOS で行っています。Windows ではテストしていません。以下の PowerShell のコマンドは参考として載せています（[#109](https://github.com/YoshikiHigo/SZZBench/issues/109)）。
 
 SZZBench のルートディレクトリで、仮想環境を作成して有効化します。
 

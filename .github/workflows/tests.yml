@@ -1,7 +1,10 @@
 # The test suite on every pull request and on every push to main (issue #106).
 #
-# Linux only: Windows is not tested (see README, "Installation").  Git is the
-# runner's own; SZZBench needs 2.29 or later (docs/generator-options.md §5).
+# Linux only: Windows is not tested (#109).  SZZBench needs Git 2.29 or later
+# (docs/generator-options.md §5), and gitutils.init_args() passes
+# --ref-format=files only from Git 2.45.  The two pytest jobs take both ways:
+# the current Python with the runner's current Git, and the oldest Python
+# pyproject.toml declares with Debian 12's Git 2.39.
 name: tests
 
 on:
@@ -17,15 +20,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  pytest:
-    name: pytest (Python ${{ matrix.python }})
+  pytest-current:
+    name: pytest (Python 3.14, the runner's Git)
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    strategy:
-      fail-fast: false
-      matrix:
-        # the oldest version pyproject.toml declares, and the current one
-        python: ["3.10", "3.14"]
     steps:
       - uses: actions/checkout@v7
         with:
@@ -34,7 +32,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-python@v7
         with:
-          python-version: ${{ matrix.python }}
+          python-version: "3.14"
       # the tests marked needs_jdk compile and run the scenarios' Java code
       - uses: actions/setup-java@v6
         with:
@@ -58,6 +56,40 @@ jobs:
           java -version
           node --version
       # -rs lists every skip with its reason: none should be for a tool this job installs
+      - name: pytest
+        run: python -m pytest -rs --durations=20
+
+  pytest-oldest:
+    name: pytest (Python 3.10, Git 2.39 of Debian 12)
+    runs-on: ubuntu-latest
+    # Python 3.10 and Git 2.39 (below 2.45, so init_args() leaves out --ref-format) come with the image
+    container: python:3.10-bookworm
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: tools/scenario-editor/package-lock.json
+      - name: Install SZZBench and the Scenario Editor's dependencies
+        run: |
+          python -m pip install --root-user-action=ignore --upgrade pip
+          python -m pip install --root-user-action=ignore -e ".[dev]"
+          npm ci --prefix tools/scenario-editor
+      - name: Versions
+        run: |
+          python --version
+          git --version
+          java -version
+          node --version
       - name: pytest
         run: python -m pytest -rs --durations=20
 
