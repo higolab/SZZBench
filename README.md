@@ -417,7 +417,7 @@ Validate the structure and references in `scenario.graph.yml`.
 szzbench validate-graph advanced-scenarios/SZZG-0001/scenario.graph.yml
 ```
 
-Use `--simulate` to simulate Graph operations in memory.
+Use `--simulate` to simulate Graph operations. They are replayed in memory, except in a scenario with commits that Git computes during generation (merges, real cherry-picks and reverts, patch operations, conflict resolutions): such a scenario is generated with Git in a temporary directory instead (`docs/validation.md`).
 
 ```bash
 szzbench validate-graph   --simulate   advanced-scenarios/SZZG-0001/scenario.graph.yml
@@ -1107,7 +1107,7 @@ scenarios/SZZ-XXXX/
 szzbench validate-graph advanced-scenarios/SZZG-0001/scenario.graph.yml
 ```
 
-Graph operation をメモリ上でシミュレーションして確認したい場合は、`--simulate` を使います。
+Graph operation をシミュレーションして確認したい場合は、`--simulate` を使います。operation は基本的にメモリ上で再生しますが、生成時に Git が内容を計算するコミット（merge、実際の cherry-pick や revert、patch 系の operation、衝突解決）を含むシナリオは、代わりに一時ディレクトリで Git を使って実際に生成して確認します（`docs/validation.md`）。
 
 ```bash
 szzbench validate-graph   --simulate   advanced-scenarios/SZZG-0001/scenario.graph.yml
