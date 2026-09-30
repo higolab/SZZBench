@@ -434,47 +434,53 @@ class ScenarioInput:
     setup_error: str | None = None
 
 
+class IncompleteOutput(Exception):
+    """A generated output's metadata file that is missing, unreadable, or not what it should hold."""
+
+
 def collect_scenarios(generated_root: Path, variant: str) -> list[ScenarioInput]:
     """Every generated repository under the root, including one PySZZ cannot run on.
 
-    An output whose commit map is missing or unreadable is incomplete. It is
-    kept, with a setup error, so that it gets a tool-error record instead of
-    vanishing from the run (issue #95).
+    An output whose commit map or scenario file is missing, unreadable, or does
+    not hold what it should, is incomplete. It is kept, with a setup error, so
+    that it gets a tool-error record instead of vanishing from the run or
+    stopping it (issue #95).
     """
     scenarios: list[ScenarioInput] = []
     for repo_path in sorted(generated_root.glob(f"*/{variant}/repo")):
         scenario_id = repo_path.parent.parent.name
         metadata_dir = repo_path.parent / "metadata"
-        commit_map_path = metadata_dir / "commit-map.json"
-        try:
-            commit_map = json.loads(commit_map_path.read_text(encoding="utf-8"))
-        except (OSError, ValueError) as exc:
-            problem = ("is missing" if not commit_map_path.exists()
-                       else f"cannot be read ({type(exc).__name__}: {exc})")
-            scenarios.append(
-                ScenarioInput(
-                    scenario_id=scenario_id,
-                    repo_name=f"{scenario_id}/{variant}/repo",
-                    repo_path=repo_path,
-                    fix_commits=[],
-                    commit_map={},
-                    repository_id=_repository_id(metadata_dir),
-                    setup_error=f"{commit_map_path} {problem}: the generated output is incomplete",
-                )
-            )
-            continue
-        fix_commits = _fix_commits_from_metadata(metadata_dir, commit_map)
-        scenarios.append(
-            ScenarioInput(
-                scenario_id=scenario_id,
-                repo_name=f"{scenario_id}/{variant}/repo",
-                repo_path=repo_path,
-                fix_commits=fix_commits,
-                commit_map=commit_map,
-                repository_id=_repository_id(metadata_dir),
-            )
+        scenario = ScenarioInput(
+            scenario_id=scenario_id,
+            repo_name=f"{scenario_id}/{variant}/repo",
+            repo_path=repo_path,
+            fix_commits=[],
+            commit_map={},
+            repository_id=_repository_id(metadata_dir),
         )
+        try:
+            commit_map = read_commit_map(metadata_dir / "commit-map.json")
+            scenario.fix_commits = _fix_commits_from_metadata(metadata_dir, commit_map)
+            scenario.commit_map = commit_map
+        except IncompleteOutput as exc:
+            scenario.setup_error = f"{exc}: the generated output is incomplete"
+        scenarios.append(scenario)
     return scenarios
+
+
+def read_commit_map(path: Path) -> dict[str, Any]:
+    """A generated output's commit map. IncompleteOutput says what is wrong with one that cannot be used."""
+    try:
+        commit_map = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        if not path.exists():
+            raise IncompleteOutput(f"{path} is missing") from exc
+        raise IncompleteOutput(f"{path} cannot be read ({type(exc).__name__}: {exc})") from exc
+    if not isinstance(commit_map, dict):
+        kind = {list: "an array", str: "a string", bool: "a boolean", int: "a number", float: "a number"}.get(
+            type(commit_map), "null")
+        raise IncompleteOutput(f"{path} holds {kind}, not a JSON object")
+    return commit_map
 
 
 def _repository_id(metadata_dir: Path) -> str | None:
@@ -487,13 +493,15 @@ def _repository_id(metadata_dir: Path) -> str | None:
 
 
 def _fix_commits_from_metadata(metadata_dir: Path, commit_map: dict[str, Any]) -> list[dict[str, str | None]]:
-    scenario_yml = metadata_dir / "scenario.yml"
-    graph_yml = metadata_dir / "scenario.graph.yml"
     scenario = None
-    if scenario_yml.exists():
-        scenario = yaml.safe_load(scenario_yml.read_text(encoding="utf-8"))
-    elif graph_yml.exists():
-        scenario = yaml.safe_load(graph_yml.read_text(encoding="utf-8"))
+    for scenario_file in (metadata_dir / "scenario.yml", metadata_dir / "scenario.graph.yml"):
+        if scenario_file.exists():
+            try:
+                scenario = yaml.safe_load(scenario_file.read_text(encoding="utf-8"))
+            except (OSError, ValueError, yaml.YAMLError) as exc:
+                problem = " ".join(str(exc).split())
+                raise IncompleteOutput(f"{scenario_file} cannot be read ({type(exc).__name__}: {problem})") from exc
+            break
 
     logical_ids: list[tuple[str, str | None]] = []
     if isinstance(scenario, dict):

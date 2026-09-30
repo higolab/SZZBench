@@ -335,18 +335,24 @@ def _run_fake_b_szz(tmp_path, monkeypatch, find_bic_lines, before_run=None):
 
 
 @pytest.mark.parametrize("damage, problem", [
-    (lambda metadata: (metadata / "commit-map.json").unlink(), "is missing"),
+    (lambda metadata: (metadata / "commit-map.json").unlink(), "commit-map.json is missing"),
     (lambda metadata: (metadata / "commit-map.json").write_text("{ not json", encoding="utf-8"),
-     "cannot be read (JSONDecodeError"),
+     "commit-map.json cannot be read (JSONDecodeError"),
+    # valid JSON, but no commit map
+    (lambda metadata: (metadata / "commit-map.json").write_text("[]", encoding="utf-8"),
+     "commit-map.json holds an array, not a JSON object"),
+    (lambda metadata: (metadata / "scenario.yml").write_text("bugs: [\n", encoding="utf-8"),
+     "scenario.yml cannot be read (ParserError"),
 ])
 def test_a_generated_output_pyszz_cannot_run_on_is_a_tool_error_not_left_out(tmp_path, monkeypatch, damage, problem):
-    """An incomplete generation must not vanish from the run (the gap the PR #114 review found)."""
+    """An incomplete generation must neither vanish from the run (the gap the PR #114 review found) nor
+    stop it (the #116 review)."""
     record, raw = _run_fake_b_szz(
         tmp_path, monkeypatch, ["raise AssertionError('B-SZZ ran on an incomplete output')"],
         before_run=lambda repos: damage(repos / "SZZ-0006/default/metadata"))
     assert (record["scenario_id"], record["status"], record["predictions"]) == ("SZZ-0006", "error", [])
     (error,) = record["errors"]
-    assert f"commit-map.json {problem}" in error and error.endswith("the generated output is incomplete")
+    assert problem in error and error.endswith("the generated output is incomplete")
     assert record["repository_id"]           # the manifest still says which generation it was
     assert raw["errors"] == record["errors"]
 
