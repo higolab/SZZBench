@@ -73,16 +73,7 @@ def main(argv: list[str] | None = None) -> int:
     home = tempfile.mkdtemp(prefix="token-bszz-home-")
     atexit.register(shutil.rmtree, home, True)
     environment = isolated_environment(dict(os.environ), home)
-    failures: dict[str, str] = {}
-    mappings: dict[str, dict[str, str]] = {}
-    for original in sorted(generated_root.glob(f"*/{args.variant}")):
-        if not (original / "metadata" / "commit-map.json").exists():
-            continue
-        scenario_id = original.parent.name
-        try:
-            mappings[scenario_id] = prepare_token_output(original, token_root / scenario_id / args.variant, environment)
-        except (OSError, ValueError, subprocess.CalledProcessError) as exc:
-            failures[scenario_id] = f"{type(exc).__name__}: {exc}"
+    mappings, failures = prepare_token_outputs(generated_root, token_root, args.variant, environment)
 
     work = args.out.resolve().parent / "pyszz"
     subprocess.run([args.pyszz_python, str(ADAPTERS / "pyszz_variants_to_predictions.py"),
@@ -106,6 +97,30 @@ def main(argv: list[str] | None = None) -> int:
         for error in record.get("errors", []):
             print(f"[ERROR] {record['scenario_id']}: {error}", file=sys.stderr)
     return 1 if summary["error_count"] else 0
+
+
+def prepare_token_outputs(generated_root: Path, token_root: Path, variant: str,
+                          environment: dict[str, str]) -> tuple[dict[str, dict[str, str]], dict[str, str]]:
+    """Prepare every generated output's token-level copy.
+
+    Returns each scenario's map from token-level to original commits, and the
+    error of each scenario that could not be prepared. Every generated
+    repository gets one or the other: an incomplete output is a tool error,
+    not a scenario to leave out (issue #95).
+    """
+    mappings: dict[str, dict[str, str]] = {}
+    failures: dict[str, str] = {}
+    for repo in sorted(generated_root.glob(f"*/{variant}/repo")):
+        original = repo.parent
+        scenario_id = original.parent.name
+        if not (original / "metadata" / "commit-map.json").exists():
+            failures[scenario_id] = f"{original / 'metadata' / 'commit-map.json'} is missing: the generated output is incomplete"
+            continue
+        try:
+            mappings[scenario_id] = prepare_token_output(original, token_root / scenario_id / variant, environment)
+        except (OSError, ValueError, subprocess.CalledProcessError) as exc:
+            failures[scenario_id] = f"{type(exc).__name__}: {exc}"
+    return mappings, failures
 
 
 def prepare_token_output(original: Path, token: Path, environment: dict[str, str]) -> dict[str, str]:

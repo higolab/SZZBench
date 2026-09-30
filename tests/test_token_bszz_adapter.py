@@ -125,6 +125,16 @@ def test_a_reachable_commit_without_a_token_level_counterpart_is_an_error(adapte
         adapter.prepare_token_output(original, token, environment)
 
 
+def test_a_generated_output_without_its_commit_map_is_a_tool_error_not_left_out(adapter, tmp_path):
+    """The gap the PR #114 review found in the SZZ Unleashed adapter, closed here as well."""
+    _generated_output(tmp_path)          # a repository, and a metadata directory without a commit map
+    environment = adapter.isolated_environment(dict(os.environ), str(tmp_path / "home"))
+    mappings, failures = adapter.prepare_token_outputs(tmp_path / "generated", tmp_path / "token", "default",
+                                                       environment)
+    assert mappings == {}
+    assert failures["SZZ-0006"].endswith("commit-map.json is missing: the generated output is incomplete")
+
+
 def test_a_failed_tokenization_gets_no_metadata(adapter, tmp_path):
     token = tmp_path / "token/SZZ-0006/default"
     (token / "repo").mkdir(parents=True)
