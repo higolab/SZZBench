@@ -12,6 +12,7 @@ import importlib.util
 import json
 import os
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -142,3 +143,79 @@ def test_a_failed_tokenization_gets_no_metadata(adapter, tmp_path):
     with pytest.raises(ValueError, match=r"tokenization failed \(status 1"):
         adapter.prepare_token_output(tmp_path / "generated/SZZ-0006/default", token, {})
     assert not (token / "metadata").exists()
+
+
+def test_a_scenario_that_could_not_be_prepared_gets_its_failure_not_b_szz_record(adapter, tmp_path):
+    """B-SZZ can still answer for such a scenario's copy, from an earlier run's metadata, or with the
+    error of a copy without a commit map. The failure the preparation met names the cause."""
+    predictions = tmp_path / "b-szz-predictions.jsonl"
+    predictions.write_text("\n".join(json.dumps(record) for record in [
+        {"scenario_id": "SZZ-0006", "predictions": [{"fix_commit": "1" * 40, "inducing_commit": "2" * 40}]},
+        {"scenario_id": "SZZ-0007", "status": "error", "predictions": [],
+         "errors": ["token/SZZ-0007/default/metadata/commit-map.json is missing: the generated output is incomplete"]},
+    ]) + "\n", encoding="utf-8")
+    failures = {"SZZ-0006": "tokenization failed (status 1; see token/SZZ-0006/default/tokenize.log)",
+                "SZZ-0007": f"ValueError: c0 ({'3' * 10}) has no token-level commit"}
+    assert adapter.map_back(predictions, {}, failures) == [
+        {"scenario_id": scenario_id, "status": "error", "errors": [failure], "predictions": []}
+        for scenario_id, failure in failures.items()]
+
+
+def _prepared_scenario(tmp_path: Path) -> None:
+    original, c0 = _generated_output(tmp_path)
+    (original / "metadata/commit-map.json").write_text(json.dumps({"c0": {"hash": c0}}), encoding="utf-8")
+    _token_output(tmp_path, original)
+
+
+def _write_b_szz_records(output_root: Path, records: list[dict]) -> None:
+    """Records where the PySZZ adapter writes B-SZZ's, under its --output-root."""
+    (output_root / "b-szz").mkdir(parents=True, exist_ok=True)
+    (output_root / "b-szz/b-szz-predictions.jsonl").write_text(
+        "".join(json.dumps(record) + "\n" for record in records), encoding="utf-8")
+
+
+def _run_main(adapter, tmp_path: Path, monkeypatch, b_szz) -> int:
+    """main() with the tokenization skipped, and `b_szz` in place of the PySZZ adapter: it gets the
+    adapter's --output-root, and returns the adapter's exit status."""
+    run = subprocess.run
+
+    def fake_run(command, *args, **kwargs):
+        if command[0] != "pyszz-python":
+            return run(command, *args, **kwargs)
+        completed = subprocess.CompletedProcess(command, b_szz(Path(command[command.index("--output-root") + 1])))
+        if kwargs.get("check"):
+            completed.check_returncode()
+        return completed
+
+    monkeypatch.setattr(adapter.subprocess, "run", fake_run)
+    return adapter.main(["--generated-root", str(tmp_path / "generated"), "--token-root", str(tmp_path / "token"),
+                         "--cregit-root", str(tmp_path / "cregit"), "--pyszz-root", str(tmp_path / "pyszz"),
+                         "--pyszz-python", "pyszz-python", "--docker", str(tmp_path / "no-docker"),
+                         "--skip-tokenize", "--out", str(tmp_path / "out/predictions.jsonl")])
+
+
+def test_records_with_tool_errors_are_mapped_back_although_the_pyszz_adapter_exits_1(adapter, tmp_path, monkeypatch):
+    """The PySZZ adapter exits 1 when a record carries a tool error, and still writes every record."""
+    _prepared_scenario(tmp_path)
+
+    def b_szz(output_root: Path) -> int:
+        _write_b_szz_records(output_root, [{"scenario_id": "SZZ-0006", "status": "error",
+                                            "errors": ["No bug fixing commits found."], "predictions": []}])
+        return 1
+
+    assert _run_main(adapter, tmp_path, monkeypatch, b_szz) == 1
+    lines = (tmp_path / "out/predictions.jsonl").read_text(encoding="utf-8").splitlines()
+    assert [json.loads(line) for line in lines] == [
+        {"scenario_id": "SZZ-0006", "predictions": [], "status": "error", "errors": ["No bug fixing commits found."]}]
+
+
+@pytest.mark.parametrize("status", [1, 2])
+def test_a_pyszz_run_that_writes_no_records_is_not_answered_by_an_earlier_runs(adapter, tmp_path, monkeypatch,
+                                                                               capsys, status):
+    """A crash exits 1 as well, but before B-SZZ starts it leaves the earlier run's records in place.
+    The PySZZ adapter exits 2 when PySZZ cannot run at all."""
+    _prepared_scenario(tmp_path)
+    _write_b_szz_records(tmp_path / "out/pyszz", [{"scenario_id": "SZZ-0006", "predictions": []}])
+    assert _run_main(adapter, tmp_path, monkeypatch, lambda output_root: status) == 2
+    assert not (tmp_path / "out/predictions.jsonl").exists()
+    assert f"exited with status {status} and wrote no records" in capsys.readouterr().err

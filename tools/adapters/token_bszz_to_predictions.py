@@ -76,12 +76,22 @@ def main(argv: list[str] | None = None) -> int:
     mappings, failures = prepare_token_outputs(generated_root, token_root, args.variant, environment)
 
     work = args.out.resolve().parent / "pyszz"
-    subprocess.run([args.pyszz_python, str(ADAPTERS / "pyszz_variants_to_predictions.py"),
-                    "--tool-root", str(args.pyszz_root.resolve()), "--generated-root", str(token_root),
-                    "--output-root", str(work), "--variant", args.variant, "--tools", "b-szz",
-                    "--log-file", str(work / "b-szz.log")], check=True)
+    b_szz_predictions = work / "b-szz" / "b-szz-predictions.jsonl"
+    # the adapter clears this directory only once B-SZZ starts, so a run that stops earlier would
+    # leave the previous run's records to be read as this run's
+    if b_szz_predictions.parent.exists():
+        shutil.rmtree(b_szz_predictions.parent)
+    completed = subprocess.run([args.pyszz_python, str(ADAPTERS / "pyszz_variants_to_predictions.py"),
+                                "--tool-root", str(args.pyszz_root.resolve()), "--generated-root", str(token_root),
+                                "--output-root", str(work), "--variant", args.variant, "--tools", "b-szz",
+                                "--log-file", str(work / "b-szz.log")])
+    # 1 says that some records carry tool errors, which they name; a crash exits 1 too, but writes no records
+    if completed.returncode not in (0, 1) or not b_szz_predictions.exists():
+        print(f"[ERROR] B-SZZ did not finish: pyszz_variants_to_predictions.py exited with status "
+              f"{completed.returncode}{'' if b_szz_predictions.exists() else ' and wrote no records'}", file=sys.stderr)
+        return 2
 
-    records = map_back(work / "b-szz" / "b-szz-predictions.jsonl", mappings, failures)
+    records = map_back(b_szz_predictions, mappings, failures)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text("".join(json.dumps(record, ensure_ascii=False) + "\n" for record in records), encoding="utf-8")
     summary = {
@@ -183,13 +193,17 @@ def former_commit_map(repo: Path, environment: dict[str, str]) -> dict[str, str]
 
 
 def map_back(predictions_path: Path, mappings: dict[str, dict[str, str]], failures: dict[str, str]) -> list[dict[str, Any]]:
-    """B-SZZ's records on the token-level repositories, named by the original repositories' hashes."""
+    """B-SZZ's records on the token-level repositories, named by the original repositories' hashes.
+
+    A scenario whose preparation failed gets its failure, which names the cause, whatever B-SZZ
+    wrote for its incomplete copy.
+    """
     records = []
-    seen = set()
     for line in predictions_path.read_text(encoding="utf-8").splitlines():
         record = json.loads(line)
         scenario_id = record["scenario_id"]
-        seen.add(scenario_id)
+        if scenario_id in failures:
+            continue
         mapping = mappings.get(scenario_id, {})
         errors = list(record.get("errors", []))
         predictions = []
@@ -212,8 +226,7 @@ def map_back(predictions_path: Path, mappings: dict[str, dict[str, str]], failur
             mapped["errors"] = errors
         records.append(mapped)
     for scenario_id, failure in failures.items():
-        if scenario_id not in seen:
-            records.append({"scenario_id": scenario_id, "status": "error", "errors": [failure], "predictions": []})
+        records.append({"scenario_id": scenario_id, "status": "error", "errors": [failure], "predictions": []})
     return sorted(records, key=lambda record: record["scenario_id"])
 
 
