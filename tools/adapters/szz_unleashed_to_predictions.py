@@ -149,8 +149,8 @@ def _add_repository_id(record: dict[str, Any], metadata_dir: Path) -> dict[str, 
 def _add_logical_ids(predictions: list[dict[str, Any]], commit_map_path: Path) -> None:
     """Name each commit's logical id next to its hash, as the other adapters do."""
     try:
-        commit_map = json.loads(commit_map_path.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
+        commit_map = read_commit_map(commit_map_path)
+    except IncompleteOutput:
         return
     logical = {entry["hash"]: logical_id for logical_id, entry in commit_map.items()
                if isinstance(entry, dict) and isinstance(entry.get("hash"), str)}
@@ -179,13 +179,13 @@ def run_szz_unleashed(generated_root: Path, variant: str, depth: int, jar: Path,
     for repo in sorted(generated_root.glob(f"*/{variant}/repo")):
         scenario_id = repo.parent.parent.name
         metadata = repo.parent / "metadata"
-        if not (metadata / "commit-map.json").exists():
-            # an incomplete generated output is a tool error, not a scenario to leave out (issue #95)
-            runs[scenario_id] = [f"{metadata / 'commit-map.json'} is missing: the generated output is incomplete"]
-            continue
         try:
             runs[scenario_id] = _run_one(repo, metadata, repo.parent / f"szz-unleashed/run-depth{depth}",
                                          scenario_id, depth, jar, java, home, environment)
+        except IncompleteOutput as exc:
+            # an incomplete generated output is a tool error, not a scenario to leave out, nor one that
+            # stops the run (issue #95)
+            runs[scenario_id] = [str(exc)]
         except (OSError, ValueError, subprocess.CalledProcessError) as exc:
             # a scenario the run could not be set up for is a tool error, not an answer (issue #95)
             runs[scenario_id] = [f"{type(exc).__name__}: {exc}"]
@@ -205,7 +205,7 @@ def run_szz_unleashed(generated_root: Path, variant: str, depth: int, jar: Path,
 
 def _run_one(repo: Path, metadata: Path, run_dir: Path, scenario_id: str, depth: int, jar: Path, java: str,
              home: str, environment: dict[str, str]) -> list[str]:
-    commit_map = json.loads((metadata / "commit-map.json").read_text(encoding="utf-8"))
+    commit_map = read_commit_map(metadata / "commit-map.json")
     fixes = fix_commits(metadata, commit_map)
     if not fixes:
         return ["No bug fixing commits found."]
@@ -235,12 +235,35 @@ def _run_one(repo: Path, metadata: Path, run_dir: Path, scenario_id: str, depth:
     return errors
 
 
+class IncompleteOutput(ValueError):
+    """A generated output's metadata file that is missing, unreadable, or not what it should hold."""
+
+
+def read_commit_map(path: Path) -> dict[str, Any]:
+    """A generated output's commit map. IncompleteOutput says what is wrong with one that cannot be used."""
+    try:
+        commit_map = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        problem = "is missing" if not path.exists() else f"cannot be read ({type(exc).__name__}: {exc})"
+        raise IncompleteOutput(f"{path} {problem}: the generated output is incomplete") from exc
+    if not isinstance(commit_map, dict):
+        kind = {list: "an array", str: "a string", bool: "a boolean", int: "a number", float: "a number"}.get(
+            type(commit_map), "null")
+        raise IncompleteOutput(f"{path} holds {kind}, not a JSON object: the generated output is incomplete")
+    return commit_map
+
+
 def fix_commits(metadata: Path, commit_map: dict[str, Any]) -> list[tuple[str, str]]:
     """The (logical id, hash) of every bug-fixing commit the scenario declares, in declaration order."""
     scenario = None
     for name in ("scenario.yml", "scenario.graph.yml"):
         if (metadata / name).exists():
-            scenario = yaml.safe_load((metadata / name).read_text(encoding="utf-8"))
+            try:
+                scenario = yaml.safe_load((metadata / name).read_text(encoding="utf-8"))
+            except (OSError, ValueError, yaml.YAMLError) as exc:
+                problem = " ".join(str(exc).split())
+                raise IncompleteOutput(f"{metadata / name} cannot be read ({type(exc).__name__}: {problem}): "
+                                       "the generated output is incomplete") from exc
             break
     logical_ids: list[str] = []
     if isinstance(scenario, dict):

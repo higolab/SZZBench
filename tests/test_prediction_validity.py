@@ -541,18 +541,46 @@ def test_a_failed_szz_unleashed_run_is_a_tool_error(tmp_path, mode, expected):
 
 
 @pytest.mark.skipif(os.name == "nt", reason="the stand-in for java is a script run through its shebang line")
-def test_a_generated_output_without_its_commit_map_is_a_tool_error_not_left_out(tmp_path):
-    """An incomplete generation must not read as a successful run with nothing to score (PR #114 review)."""
-    def remove_commit_map(repos):
-        (repos / "SZZ-0006/default/metadata/commit-map.json").unlink()
-
-    completed, record, _, java_log, _ = _run_fake_szz_unleashed(tmp_path, "ok", before_run=remove_commit_map)
-    assert completed.returncode == 1
+@pytest.mark.parametrize("damage, problem", [
+    (lambda metadata: (metadata / "commit-map.json").unlink(), "commit-map.json is missing"),
+    (lambda metadata: (metadata / "commit-map.json").write_text("{ not json", encoding="utf-8"),
+     "commit-map.json cannot be read (JSONDecodeError"),
+    # valid JSON, but no commit map
+    (lambda metadata: (metadata / "commit-map.json").write_text("[]", encoding="utf-8"),
+     "commit-map.json holds an array, not a JSON object"),
+    (lambda metadata: (metadata / "scenario.yml").write_text("bugs: [\n", encoding="utf-8"),
+     "scenario.yml cannot be read (ParserError"),
+])
+def test_a_generated_output_szz_unleashed_cannot_run_on_is_a_tool_error_not_left_out(tmp_path, damage, problem):
+    """An incomplete generation must neither read as a successful run with nothing to score (PR #114
+    review) nor stop the run (the gap the PR #116 review found in the PySZZ adapter)."""
+    completed, record, _, java_log, _ = _run_fake_szz_unleashed(
+        tmp_path, "ok", before_run=lambda repos: damage(repos / "SZZ-0006/default/metadata"))
+    assert completed.returncode == 1, completed.stderr
     assert (record["scenario_id"], record["status"], record["predictions"]) == ("SZZ-0006", "error", [])
-    assert record["errors"][0].endswith("commit-map.json is missing: the generated output is incomplete")
+    (error,) = record["errors"]
+    assert problem in error and error.endswith("the generated output is incomplete")
     assert java_log is None      # SZZ Unleashed never ran on it
     summary = json.loads((tmp_path / "szz-unleashed-run.json").read_text(encoding="utf-8"))
     assert (summary["scenario_count"], summary["error_count"]) == (1, 1)
+
+
+def test_converting_a_result_leaves_out_the_logical_ids_a_commit_map_that_is_no_json_object_cannot_give(tmp_path):
+    """Without --jar the logical ids are extras, left out as for a commit map that cannot be read."""
+    _, _, repos = _classic_fixture(tmp_path)
+    metadata = repos / "SZZ-0006/default/metadata"
+    hashes = json.loads((metadata / "commit-map.json").read_text(encoding="utf-8"))
+    result = repos / "SZZ-0006/default/szz-unleashed/run-depth3/results/fix_and_introducers_pairs.json"
+    result.parent.mkdir(parents=True)
+    result.write_text(json.dumps([[hashes["c2"]["hash"], hashes["c1"]["hash"]]]), encoding="utf-8")
+    (metadata / "commit-map.json").write_text("[]", encoding="utf-8")
+    out = tmp_path / "predictions.jsonl"
+    completed = subprocess.run([sys.executable, str(ROOT / "tools/adapters/szz_unleashed_to_predictions.py"),
+                                "--generated-root", str(repos), "--out", str(out)], capture_output=True, text=True)
+    assert completed.returncode == 0, completed.stderr
+    (prediction,) = json.loads(out.read_text(encoding="utf-8"))["predictions"]
+    assert (prediction["fix_commit"], prediction["inducing_commit"]) == (hashes["c2"]["hash"], hashes["c1"]["hash"])
+    assert "fix_commit_id" not in prediction and "inducing_commit_id" not in prediction
 
 
 def test_the_cli_summary_counts_tool_errors_missing_records_and_unknown_references(generated, tmp_path):
