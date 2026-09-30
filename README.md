@@ -517,10 +517,11 @@ For Graph scenarios, `--evaluation-variant` selects a named `expected_szz.evalua
 
 The JSON report keeps the strict fields (`true_positives`, `false_positives`, `false_negatives`), reports `unknown_predictions`, `run_status` and `run_errors` per scenario, and also includes Graph-specific details when available: `evaluation_policy`, `evaluation_variant`, `hard_false_positives`, `related_origin_hits`, `related_but_not_correct_hits`, `acceptable_related_hits`, `weighted_credit`, `minimum_required_met`, and `top_k`.
 
-For SZZ Unleashed output, convert the generated `fix_and_introducers_pairs.json` files first:
+For SZZ Unleashed, the adapter runs the tool too: build its jar ([examples/szz-unleashed-run/README.md](examples/szz-unleashed-run/README.md)) and pass it with `--jar`. `--depth` is SZZ Unleashed's `-d`, the depth of its line mapping graph (default 3, its own), and changes the results a great deal; that README records a run at depth 3 and at depth 1. Without `--jar`, the adapter only converts the `fix_and_introducers_pairs.json` files an earlier run left under `generated-input-repos/<SCENARIO_ID>/default/szz-unleashed/run-depth<depth>/`.
 
 ```bash
 tools/adapters/szz_unleashed_to_predictions.py \
+  --jar /path/to/szz_find_bug_introducers-0.1.jar \
   --generated-root generated-input-repos \
   --out generated-szz-results/szz-unleashed/predictions.jsonl
 ```
@@ -1223,10 +1224,11 @@ Graph scenario では、`--evaluation-variant` で `expected_szz.evaluation_vari
 
 JSON レポートには従来の `true_positives`、`false_positives`、`false_negatives` と、シナリオごとの `unknown_predictions`、`run_status`、`run_errors` に加えて、Graph scenario 用の `evaluation_policy`、`evaluation_variant`、`hard_false_positives`、`related_origin_hits`、`related_but_not_correct_hits`、`acceptable_related_hits`、`weighted_credit`、`minimum_required_met`、`top_k` も出力されます。
 
-SZZ Unleashed の出力は、先に `fix_and_introducers_pairs.json` を共通 prediction 形式へ変換します。
+SZZ Unleashed は、adapter がツールの実行まで行います。jar をビルドし（[examples/szz-unleashed-run/README.md](examples/szz-unleashed-run/README.md)）、`--jar` で渡してください。`--depth` は SZZ Unleashed の `-d`（行の対応グラフの深さ。既定値は SZZ Unleashed 自身と同じ 3）で、結果を大きく左右します。上の README には深さ 3 と深さ 1 の実行記録があります。`--jar` を付けない場合、adapter は以前の実行が `generated-input-repos/<SCENARIO_ID>/default/szz-unleashed/run-depth<depth>/` に残した `fix_and_introducers_pairs.json` を変換するだけです。
 
 ```bash
 tools/adapters/szz_unleashed_to_predictions.py \
+  --jar /path/to/szz_find_bug_introducers-0.1.jar \
   --generated-root generated-input-repos \
   --out generated-szz-results/szz-unleashed/predictions.jsonl
 ```
