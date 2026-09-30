@@ -542,6 +542,8 @@ szzbench evaluate \
 
 For PySZZ's B-, AG-, MA-, L- and R-SZZ, `tools/adapters/pyszz_variants_to_predictions.py` runs PySZZ itself and writes one predictions file per variant. [examples/pyszz-run/README.md](examples/pyszz-run/README.md) says what to install, including the library versions and srcML that PySZZ's results depend on, and records a run of all five over the shipped suite.
 
+For B-SZZ on token-level histories, `tools/adapters/token_bszz_to_predictions.py` rewrites each generated repository to one token per line with cregit, in a Docker image built from `tools/adapters/token-bszz/`, runs PySZZ's B-SZZ on the rewritten copies, and names each answer by the original repository's commit. [examples/token-bszz-run/README.md](examples/token-bszz-run/README.md) says what to install and records a run over the shipped suite.
+
 ### new-graph-scenario
 
 Create a skeleton for a new Graph scenario.
@@ -1247,6 +1249,8 @@ szzbench evaluate \
 ```
 
 PySZZ の B-, AG-, MA-, L-, R-SZZ は、`tools/adapters/pyszz_variants_to_predictions.py` が PySZZ 自体を実行し、変種ごとに予測ファイルを書きます。インストールするもの（PySZZ の結果を左右するライブラリのバージョンと srcML を含む）と、同梱スイートで5つを実行した記録は [examples/pyszz-run/README.md](examples/pyszz-run/README.md) にあります。
+
+トークン単位の履歴に対する B-SZZ は、`tools/adapters/token_bszz_to_predictions.py` が実行します。`tools/adapters/token-bszz/` から作る Docker イメージの中で、生成済みリポジトリを cregit で1行1トークンに書き換え、書き換えたコピーに PySZZ の B-SZZ を実行し、答えを元のリポジトリのコミットで表します。インストールするものと、同梱スイートでの実行記録は [examples/token-bszz-run/README.md](examples/token-bszz-run/README.md) にあります。
 
 ### new-graph-scenario
 
