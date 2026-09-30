@@ -1,13 +1,26 @@
 #!/usr/bin/env python3
+"""Run PySZZ's B-, AG-, MA-, L- and R-SZZ over SZZBench's generated repositories.
+
+PySZZ is not part of SZZBench: pass an unpacked copy with --tool-root.  Run
+this script with a Python that has the libraries PySZZ's requirements.txt pins
+for these variants (GitPython 3.1.7, PyDriller 1.15.2, dateparser 0.7.6), and
+with srcML on PATH for AG-, MA-, L- and R-SZZ.  examples/pyszz-run/README.md
+says where to get each and records a run over the shipped suite.
+"""
 from __future__ import annotations
 
 import argparse
+import atexit
 import datetime as dt
 import enum
 import json
 import logging as log
+import os
+import platform
 import shutil
+import subprocess
 import sys
+import tempfile
 import time
 import traceback
 import types
@@ -44,6 +57,132 @@ TOOL_SPECS = {
         "detect_move_from_other_files": 1,
     },
 }
+
+#: AG-SZZ and the variants built on it skip comment lines, and PySZZ finds the
+#: comments of Java, C, C++ and C# files with srcML.  Without srcML every such
+#: file logs an error and keeps its comments: the variant runs, but it is no
+#: longer the variant.
+TOOLS_NEEDING_SRCML = ("ag-szz", "ma-szz", "l-szz", "r-szz")
+
+#: MA-SZZ, L-SZZ and R-SZZ exclude meta-changes with `git blame
+#: --ignore-revs-file`, which GitPython releases after the 3.1.7 that PySZZ's
+#: requirements.txt pins refuse as an unsafe option.
+TOOLS_NEEDING_IGNORE_REVS_FILE = ("ma-szz", "l-szz", "r-szz")
+
+#: The ERROR records PySZZ logs as part of its normal behaviour: a file that
+#: its comment parsers do not handle keeps its comment lines, as it does in
+#: PySZZ's own environment.  Every other ERROR record is an exception PySZZ
+#: caught and carried on from, and fails the scenario as a tool error.
+BENIGN_PYSZZ_ERRORS = ("file not supported by srcML: ", "unable to parse comments for: ")
+
+
+class _ErrorCapture(log.Handler):
+    """Collects the ERROR records PySZZ logs while one scenario runs."""
+
+    def __init__(self) -> None:
+        super().__init__(level=log.ERROR)
+        self.messages: list[str] = []
+
+    def emit(self, record: log.LogRecord) -> None:
+        self.messages.append(record.getMessage())
+
+
+def split_pyszz_errors(messages: list[str]) -> tuple[list[str], list[str]]:
+    """Split what PySZZ logged at ERROR into failures and benign notes.
+
+    PySZZ catches its own exceptions and logs the traceback, so a blame that
+    raised looks like a blame that found nothing.  A failure is reported by
+    the traceback's last line, which names the exception.
+    """
+    failures: list[str] = []
+    benign: list[str] = []
+    for message in messages:
+        if message.startswith(BENIGN_PYSZZ_ERRORS):
+            benign.append(message)
+            continue
+        lines = [line for line in message.strip().splitlines() if line.strip()]
+        summary = lines[-1].strip() if message.startswith("Traceback") and lines else message.strip()
+        failures.append(f"PySZZ logged an error and carried on: {summary}")
+    return failures, benign
+
+
+def isolated_git_environment(environ: dict[str, str], home: str) -> dict[str, str]:
+    """The environment PySZZ's Git runs in: SZZBench's own isolation (issue #96).
+
+    PySZZ runs `git blame` through GitPython, so a setting in the caller's
+    ~/.gitconfig (`blame.ignoreRevsFile`, for example) or an inherited
+    `GIT_*` variable would change its answers.  The system and global
+    configuration, the default ignore and attributes files and every `GIT_*`
+    variable but `GIT_EXEC_PATH` are withheld.
+    """
+    isolated = {key: value for key, value in environ.items()
+                if not key.startswith("GIT_") or key == "GIT_EXEC_PATH"}
+    isolated.update({"HOME": home, "XDG_CONFIG_HOME": home,
+                     "GIT_CONFIG_NOSYSTEM": "1", "GIT_ATTR_NOSYSTEM": "1"})
+    return isolated
+
+
+def pydriller_1x_available() -> bool:
+    """True when the PyDriller 1.x that PySZZ imports is installed.
+
+    PySZZ is written against PyDriller 1.x (`GitRepository`,
+    `RepositoryMining`); PyDriller 2 renamed both.
+    """
+    try:
+        import pydriller
+    except ImportError:
+        return False
+    return all(hasattr(pydriller, name) for name in ("GitRepository", "RepositoryMining", "ModificationType"))
+
+
+def fixed_hash_seed_command(environ: dict[str, str], argv: list[str], executable: str
+                            ) -> tuple[list[str], dict[str, str]] | None:
+    """The command that runs this script again with a fixed hash seed, or None when a seed is set.
+
+    L-SZZ keeps the first of equally large candidates in the iteration order
+    of a set of GitPython commits, and that order follows Python's
+    per-process hash seed: 15 scenarios of the shipped suite give L-SZZ two
+    equally large candidates, which one it answers changes from run to run,
+    and in three of them that decides the verdict.  A fixed seed makes a run
+    repeatable; PYTHONHASHSEED=random asks for the old behaviour.
+    """
+    if "PYTHONHASHSEED" in environ:
+        return None
+    return [executable, *argv], {**environ, "PYTHONHASHSEED": "0"}
+
+
+def _first_output_line(command: list[str]) -> str | None:
+    try:
+        completed = subprocess.run(command, capture_output=True, text=True, check=False)
+    except OSError:
+        return None
+    lines = (completed.stdout or completed.stderr).strip().splitlines()
+    return lines[0] if lines else None
+
+
+def run_environment(uses_compat: dict[str, bool]) -> dict[str, Any]:
+    """What a run depended on, recorded next to its results."""
+    import git
+
+    def version_of(module: str, distribution: str) -> str:
+        if uses_compat.get(module):
+            return "adapter compatibility layer"
+        try:
+            from importlib.metadata import version
+            return version(distribution)
+        except Exception:
+            return "unknown"
+
+    return {
+        "python": platform.python_version(),
+        "PYTHONHASHSEED": os.environ.get("PYTHONHASHSEED", "random"),
+        "platform": platform.platform(),
+        "git": _first_output_line(["git", "--version"]),
+        "srcml": _first_output_line(["srcml", "--version"]),
+        "GitPython": getattr(git, "__version__", "unknown"),
+        "PyDriller": version_of("pydriller", "PyDriller"),
+        "dateparser": version_of("dateparser", "dateparser"),
+    }
 
 
 class ModificationType(enum.Enum):
@@ -127,6 +266,15 @@ class LinesCount:
 
 
 def _install_compat_modules() -> None:
+    """Stand in for the PyDriller 1.x and dateparser that PySZZ imports (`--compat-layer` only).
+
+    The stand-in is an approximation, not PyDriller.  Measured over the
+    shipped suite against PyDriller 1.15.2 with the same hash seed, its line
+    counts give a root commit no lines, which changes L-SZZ's choice of the
+    largest candidate in the 29 scenarios where PyDriller finds the root
+    commit largest, and it diffs a merge fix against its first parent, where
+    PyDriller 1.15.2 reports no modified files (SZZG-0046, every variant).
+    """
     pydriller = types.ModuleType("pydriller")
     pydriller.ModificationType = ModificationType
     pydriller.GitRepository = GitRepository
@@ -144,6 +292,14 @@ def _install_compat_modules() -> None:
     dateparser = types.ModuleType("dateparser")
     dateparser.parse = _parse_date
     sys.modules["dateparser"] = dateparser
+
+
+def _dateparser_available() -> bool:
+    try:
+        import dateparser  # noqa: F401
+    except ImportError:
+        return False
+    return True
 
 
 def _parse_date(value: str):
@@ -366,6 +522,7 @@ def run_tool(
     output_root: Path,
     tool_root: Path,
     limit: int | None = None,
+    environment: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     spec = TOOL_SPECS[tool_name]
     module = __import__(spec["module"], fromlist=[spec["class"]])
@@ -395,6 +552,8 @@ def run_tool(
         log.info("[%s] %d/%d %s", tool_name, index, len(selected), scenario.scenario_id)
         if not scenario.fix_commits:
             scenario_errors.append("No bug fixing commits found.")
+        capture = _ErrorCapture()
+        log.getLogger().addHandler(capture)
         try:
             if scenario.fix_commits:
                 szz = szz_class(repo_full_name=scenario.repo_name, repo_url="unused", repos_dir=str(generated_root))
@@ -447,6 +606,16 @@ def run_tool(
         except Exception as exc:
             scenario_errors.append(f"{type(exc).__name__}: {exc}")
             (raw_dir / f"{scenario.scenario_id}.traceback.txt").write_text(traceback.format_exc(), encoding="utf-8")
+        finally:
+            log.getLogger().removeHandler(capture)
+        pyszz_failures, pyszz_notes = split_pyszz_errors(capture.messages)
+        if pyszz_failures:
+            # an exception PySZZ caught is a tool error, not an empty answer (issue #95)
+            scenario_errors.extend(pyszz_failures)
+            (raw_dir / f"{scenario.scenario_id}.pyszz-errors.txt").write_text(
+                "\n\n".join(message for message in capture.messages if not message.startswith(BENIGN_PYSZZ_ERRORS)),
+                encoding="utf-8",
+            )
 
         unique_predictions = _dedupe_predictions(scenario_predictions)
         raw_payload = {
@@ -456,6 +625,7 @@ def run_tool(
             "predictions": unique_predictions,
             "raw_entries": raw_entries,
             "errors": scenario_errors,
+            "pyszz_logged": pyszz_notes,
         }
         (raw_dir / f"{scenario.scenario_id}.json").write_text(
             json.dumps(raw_payload, indent=2, ensure_ascii=False) + "\n",
@@ -498,6 +668,7 @@ def run_tool(
         "error_count": sum(1 for item in manifest if item["status"] == "error"),
         "prediction_count": sum(item["prediction_count"] for item in manifest),
         "predictions_path": str(predictions_path),
+        "environment": environment,
         "manifest": manifest,
     }
     (out_dir / f"{tool_name}-run-results.json").write_text(
@@ -552,16 +723,33 @@ def _bic_line_fields(bic: Any) -> dict[str, Any]:
     return fields
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--tool-root", required=True, type=Path)
     parser.add_argument("--generated-root", required=True, type=Path)
     parser.add_argument("--output-root", required=True, type=Path)
     parser.add_argument("--variant", default="default")
-    parser.add_argument("--tools", nargs="+", default=list(TOOL_SPECS))
+    parser.add_argument("--tools", nargs="+", default=list(TOOL_SPECS), choices=list(TOOL_SPECS))
     parser.add_argument("--limit", type=int)
     parser.add_argument("--log-file", type=Path)
-    args = parser.parse_args()
+    parser.add_argument("--compat-layer", action="store_true",
+                        help="Replace PyDriller 1.x and dateparser with the adapter's approximation. "
+                             "For smoke tests only: its results differ from PySZZ's (see _install_compat_modules).")
+    args = parser.parse_args(argv)
+
+    needs_srcml = [tool for tool in args.tools if tool in TOOLS_NEEDING_SRCML]
+    if needs_srcml and shutil.which("srcml") is None:
+        print(f"[ERROR] {', '.join(needs_srcml)} skip comment lines, and PySZZ finds the comments of Java, C, C++ "
+              "and C# files with srcML, which is not on PATH. Install srcML (PySZZ's Docker image uses 1.0.0), "
+              "or run only b-szz.", file=sys.stderr)
+        return 2
+    missing = [name for name, present in (("PyDriller 1.x", pydriller_1x_available()),
+                                          ("dateparser", _dateparser_available())) if not present]
+    if missing and not args.compat_layer:
+        print(f"[ERROR] PySZZ imports {' and '.join(missing)}, which {'is' if len(missing) == 1 else 'are'} not "
+              "installed. Install the versions PySZZ's requirements.txt pins: "
+              "pip install GitPython==3.1.7 PyDriller==1.15.2 dateparser==0.7.6", file=sys.stderr)
+        return 2
 
     handlers: list[log.Handler] = [log.StreamHandler()]
     if args.log_file:
@@ -569,7 +757,27 @@ def main() -> int:
         handlers.append(log.FileHandler(args.log_file, encoding="utf-8"))
     log.basicConfig(level=log.INFO, format="%(asctime)s %(levelname)s %(message)s", handlers=handlers)
 
-    _install_compat_modules()
+    import git
+
+    needs_ignore_revs_file = [tool for tool in args.tools if tool in TOOLS_NEEDING_IGNORE_REVS_FILE]
+    if needs_ignore_revs_file and "--ignore-revs-file" in getattr(Repo, "unsafe_git_blame_options", ()):
+        log.warning("GitPython %s refuses `git blame --ignore-revs-file`, which %s use to exclude meta-changes: "
+                    "a scenario where they need it fails as a tool error. PySZZ's requirements.txt pins "
+                    "GitPython 3.1.7.", git.__version__, ", ".join(needs_ignore_revs_file))
+
+    home = tempfile.mkdtemp(prefix="pyszz-git-home-")
+    atexit.register(shutil.rmtree, home, True)
+    isolated = isolated_git_environment(dict(os.environ), home)
+    os.environ.clear()
+    os.environ.update(isolated)
+
+    uses_compat = {"pydriller": args.compat_layer, "dateparser": args.compat_layer}
+    if args.compat_layer:
+        log.warning("--compat-layer: PyDriller 1.x and dateparser are replaced by the adapter's approximation, "
+                    "so these results are not PySZZ's")
+        _install_compat_modules()
+    environment = run_environment(uses_compat)
+    log.info("environment: %s", json.dumps(environment))
     sys.path.insert(0, str(args.tool_root))
     scenarios = collect_scenarios(args.generated_root, args.variant)
     args.output_root.mkdir(parents=True, exist_ok=True)
@@ -583,6 +791,7 @@ def main() -> int:
                 args.output_root,
                 args.tool_root,
                 args.limit,
+                environment,
             )
         )
     (args.output_root / "pyszz-variants-summary.json").write_text(
@@ -593,4 +802,8 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    rerun = fixed_hash_seed_command(dict(os.environ), sys.argv, sys.executable)
+    if rerun is not None:
+        command, environment = rerun
+        os.execve(command[0], command, environment)
     raise SystemExit(main())

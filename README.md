@@ -540,6 +540,8 @@ szzbench evaluate \
   --out generated-szz-results/pydriller
 ```
 
+For PySZZ's B-, AG-, MA-, L- and R-SZZ, `tools/adapters/pyszz_variants_to_predictions.py` runs PySZZ itself and writes one predictions file per variant. [examples/pyszz-run/README.md](examples/pyszz-run/README.md) says what to install, including the library versions and srcML that PySZZ's results depend on, and records a run of all five over the shipped suite.
+
 ### new-graph-scenario
 
 Create a skeleton for a new Graph scenario.
@@ -1243,6 +1245,8 @@ szzbench evaluate \
   --include-generated \
   --out generated-szz-results/pydriller
 ```
+
+PySZZ の B-, AG-, MA-, L-, R-SZZ は、`tools/adapters/pyszz_variants_to_predictions.py` が PySZZ 自体を実行し、変種ごとに予測ファイルを書きます。インストールするもの（PySZZ の結果を左右するライブラリのバージョンと srcML を含む）と、同梱スイートで5つを実行した記録は [examples/pyszz-run/README.md](examples/pyszz-run/README.md) にあります。
 
 ### new-graph-scenario
 

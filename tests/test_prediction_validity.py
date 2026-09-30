@@ -300,6 +300,114 @@ def test_the_pyszz_adapter_records_failures_and_empty_results(tmp_path, monkeypa
         assert any("RuntimeError: boom" in error for error in record["errors"])
 
 
+def _run_fake_b_szz(tmp_path, monkeypatch, find_bic_lines):
+    """Run the PySZZ adapter's B-SZZ on SZZ-0006 with ``find_bic`` replaced by the given lines."""
+    _, _, repos = _classic_fixture(tmp_path)
+    fake = tmp_path / "fake-pyszz/szz"
+    fake.mkdir(parents=True)
+    fake.joinpath("__init__.py").write_text("", encoding="utf-8")
+    body = "".join(f"        {line}\n" for line in find_bic_lines)
+    fake.joinpath("b_szz.py").write_text(
+        "import logging as log\n"
+        "import traceback\n"
+        "\n"
+        "class BaseSZZ:\n"
+        "    def __init__(self, repo_full_name, repo_url, repos_dir):\n"
+        "        pass\n"
+        "    def get_impacted_files(self, fix_commit_hash, file_ext_to_parse, only_deleted_lines):\n"
+        "        return []\n"
+        "    def find_bic(self, fix_commit_hash, impacted_files, **kwargs):\n" + body,
+        encoding="utf-8")
+    monkeypatch.syspath_prepend(str(fake.parent))
+    monkeypatch.delitem(sys.modules, "szz", raising=False)
+    monkeypatch.delitem(sys.modules, "szz.b_szz", raising=False)
+    adapter = _load_pyszz_adapter(monkeypatch)
+    adapter.run_tool("b-szz", adapter.collect_scenarios(repos, "default"), repos, tmp_path / "out", fake.parent)
+    record = json.loads((tmp_path / "out/b-szz/b-szz-predictions.jsonl").read_text(encoding="utf-8"))
+    raw = json.loads((tmp_path / "out/b-szz/raw/SZZ-0006.json").read_text(encoding="utf-8"))
+    return record, raw
+
+
+@pytest.mark.parametrize("logged, expected_error", [
+    # what GitPython 3.1.62 raised inside MA-SZZ's blame, which MA-SZZ caught and logged
+    (["try:",
+      "    raise RuntimeError('--ignore-revs-file is not allowed')",
+      "except Exception:",
+      "    log.error(traceback.format_exc())"],
+     "RuntimeError: --ignore-revs-file is not allowed"),
+    (["log.error('unable to analyze commit: repo abc123')"], "unable to analyze commit: repo abc123"),
+])
+def test_an_exception_pyszz_caught_and_logged_fails_the_scenario(tmp_path, monkeypatch, logged, expected_error):
+    """PySZZ catches its own exceptions, so a blame that raised looks like a blame that found nothing."""
+    record, raw = _run_fake_b_szz(tmp_path, monkeypatch, [*logged, "return []"])
+    assert record["status"] == "error" and record["predictions"] == []
+    assert record["errors"] == [f"PySZZ logged an error and carried on: {expected_error}"]
+    assert (tmp_path / "out/b-szz/raw/SZZ-0006.pyszz-errors.txt").exists()
+    assert raw["pyszz_logged"] == []
+
+
+@pytest.mark.parametrize("message", ["file not supported by srcML: retry.properties",
+                                     "unable to parse comments for: retry.py"])
+def test_a_file_whose_comments_pyszz_cannot_find_is_not_a_tool_error(tmp_path, monkeypatch, message):
+    """PySZZ keeps such a file's comment lines in its own environment too: that is the tool's behaviour."""
+    record, raw = _run_fake_b_szz(tmp_path, monkeypatch, [f"log.error({message!r})", "return []"])
+    assert "status" not in record and record["predictions"] == []
+    assert raw["pyszz_logged"] == [message]
+
+
+def test_the_comment_skipping_variants_refuse_to_run_without_srcml(tmp_path, monkeypatch, capsys):
+    adapter = _load_pyszz_adapter(monkeypatch)
+    monkeypatch.setattr(adapter.shutil, "which", lambda name: None)
+    code = adapter.main(["--tool-root", str(tmp_path), "--generated-root", str(tmp_path),
+                         "--output-root", str(tmp_path / "out"), "--tools", "b-szz", "ag-szz", "r-szz"])
+    assert code == 2
+    assert "ag-szz, r-szz skip comment lines" in capsys.readouterr().err
+    assert not (tmp_path / "out").exists()
+
+
+def test_the_adapter_refuses_to_run_without_the_libraries_pyszz_imports(tmp_path, monkeypatch, capsys):
+    """Its own stand-in for them changes PySZZ's answers, so it is used only when asked for (--compat-layer)."""
+    adapter = _load_pyszz_adapter(monkeypatch)
+    monkeypatch.setitem(sys.modules, "pydriller", None)
+    code = adapter.main(["--tool-root", str(tmp_path), "--generated-root", str(tmp_path),
+                         "--output-root", str(tmp_path / "out"), "--tools", "b-szz"])
+    assert code == 2
+    assert "PySZZ imports PyDriller 1.x" in capsys.readouterr().err
+    assert not (tmp_path / "out").exists()
+
+
+def test_a_run_fixes_the_hash_seed_l_szz_breaks_ties_with(monkeypatch):
+    """L-SZZ keeps the first of equally large candidates in set order, which follows the hash seed."""
+    adapter = _load_pyszz_adapter(monkeypatch)
+    command, environment = adapter.fixed_hash_seed_command({"PATH": "/bin"}, ["adapter.py", "--tools", "l-szz"],
+                                                           "/venv/bin/python")
+    assert command == ["/venv/bin/python", "adapter.py", "--tools", "l-szz"]
+    assert environment == {"PATH": "/bin", "PYTHONHASHSEED": "0"}
+    assert adapter.fixed_hash_seed_command({"PYTHONHASHSEED": "random"}, ["adapter.py"], "/venv/bin/python") is None
+    monkeypatch.setenv("PYTHONHASHSEED", "7")
+    assert adapter.run_environment({})["PYTHONHASHSEED"] == "7"
+
+
+def test_pyszz_runs_git_without_the_callers_configuration(monkeypatch):
+    adapter = _load_pyszz_adapter(monkeypatch)
+    caller = {"HOME": "/home/me", "PATH": "/bin", "LANG": "C.UTF-8", "GIT_DIR": "/elsewhere/.git",
+              "GIT_CONFIG_GLOBAL": "/home/me/.gitconfig", "GIT_EXEC_PATH": "/usr/libexec/git-core"}
+    assert adapter.isolated_git_environment(caller, "/empty") == {
+        "HOME": "/empty", "XDG_CONFIG_HOME": "/empty", "PATH": "/bin", "LANG": "C.UTF-8",
+        "GIT_EXEC_PATH": "/usr/libexec/git-core", "GIT_CONFIG_NOSYSTEM": "1", "GIT_ATTR_NOSYSTEM": "1"}
+
+
+@pytest.mark.parametrize("module, expected", [
+    (types.SimpleNamespace(GitRepository=object, RepositoryMining=object, ModificationType=object), True),
+    (types.SimpleNamespace(Repository=object, Git=object, ModificationType=object), False),    # PyDriller 2
+    (None, False),                                                                              # not installed
+])
+def test_the_adapter_uses_the_pydriller_1x_pyszz_imports_when_it_is_installed(monkeypatch, module, expected):
+    adapter = _load_pyszz_adapter(monkeypatch)
+    monkeypatch.setitem(sys.modules, "pydriller", module)
+    assert adapter.pydriller_1x_available() is expected
+
+
 def test_the_szz_unleashed_adapter_writes_an_error_record_for_an_unreadable_result(tmp_path):
     _, _, repos = _classic_fixture(tmp_path)
     result = repos / "SZZ-0006/default/szz-unleashed/run-depth1/results/fix_and_introducers_pairs.json"

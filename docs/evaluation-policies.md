@@ -221,7 +221,10 @@ empty record for a scenario on which the tool raised. Both read as a deliberate
 abstention, so a tool that crashed on, or never reached, SZZG-0135 or
 SZZG-0136 -- whose oracles are empty -- passed them. The adapters under
 `tools/adapters/` now write `status: error` for a scenario on which the tool
-failed, and a record, empty if need be, for every scenario they ran on.
+failed, and a record, empty if need be, for every scenario they ran on. PySZZ
+catches its own exceptions and logs them, so for the PySZZ adapter a failure
+also includes an exception PySZZ logged and carried on from
+(`examples/pyszz-run/README.md`).
 
 ### 1.7 Attribution: scenarios with several bug-fixing commits (issue #92)
 
