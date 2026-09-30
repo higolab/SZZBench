@@ -430,17 +430,39 @@ class ScenarioInput:
     fix_commits: list[dict[str, str | None]]
     commit_map: dict[str, Any]
     repository_id: str | None = None
+    #: why PySZZ cannot run on this output; the scenario is then recorded as a tool error
+    setup_error: str | None = None
 
 
 def collect_scenarios(generated_root: Path, variant: str) -> list[ScenarioInput]:
+    """Every generated repository under the root, including one PySZZ cannot run on.
+
+    An output whose commit map is missing or unreadable is incomplete. It is
+    kept, with a setup error, so that it gets a tool-error record instead of
+    vanishing from the run (issue #95).
+    """
     scenarios: list[ScenarioInput] = []
     for repo_path in sorted(generated_root.glob(f"*/{variant}/repo")):
         scenario_id = repo_path.parent.parent.name
         metadata_dir = repo_path.parent / "metadata"
         commit_map_path = metadata_dir / "commit-map.json"
-        if not commit_map_path.exists():
+        try:
+            commit_map = json.loads(commit_map_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            problem = ("is missing" if not commit_map_path.exists()
+                       else f"cannot be read ({type(exc).__name__}: {exc})")
+            scenarios.append(
+                ScenarioInput(
+                    scenario_id=scenario_id,
+                    repo_name=f"{scenario_id}/{variant}/repo",
+                    repo_path=repo_path,
+                    fix_commits=[],
+                    commit_map={},
+                    repository_id=_repository_id(metadata_dir),
+                    setup_error=f"{commit_map_path} {problem}: the generated output is incomplete",
+                )
+            )
             continue
-        commit_map = json.loads(commit_map_path.read_text(encoding="utf-8"))
         fix_commits = _fix_commits_from_metadata(metadata_dir, commit_map)
         scenarios.append(
             ScenarioInput(
@@ -550,7 +572,9 @@ def run_tool(
         scenario_errors: list[str] = []
         raw_entries: list[dict[str, Any]] = []
         log.info("[%s] %d/%d %s", tool_name, index, len(selected), scenario.scenario_id)
-        if not scenario.fix_commits:
+        if scenario.setup_error:
+            scenario_errors.append(scenario.setup_error)
+        elif not scenario.fix_commits:
             scenario_errors.append("No bug fixing commits found.")
         capture = _ErrorCapture()
         log.getLogger().addHandler(capture)
@@ -798,7 +822,17 @@ def main(argv: list[str] | None = None) -> int:
         json.dumps(summary, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
     )
-    return 0
+    for result in summary:
+        for item in result["manifest"]:
+            for error in item["errors"]:
+                print(f"[ERROR] {result['tool']} {item['scenario_id']}: {error}", file=sys.stderr)
+    return exit_status(summary)
+
+
+def exit_status(summary: list[dict[str, Any]]) -> int:
+    """1 when any variant recorded a tool error, as the other adapters exit: a run with errors
+    must not look like a clean one, although every record is still written."""
+    return 1 if any(result["error_count"] for result in summary) else 0
 
 
 if __name__ == "__main__":

@@ -301,9 +301,14 @@ def test_the_pyszz_adapter_records_failures_and_empty_results(tmp_path, monkeypa
         assert any("RuntimeError: boom" in error for error in record["errors"])
 
 
-def _run_fake_b_szz(tmp_path, monkeypatch, find_bic_lines):
-    """Run the PySZZ adapter's B-SZZ on SZZ-0006 with ``find_bic`` replaced by the given lines."""
+def _run_fake_b_szz(tmp_path, monkeypatch, find_bic_lines, before_run=None):
+    """Run the PySZZ adapter's B-SZZ on SZZ-0006 with ``find_bic`` replaced by the given lines.
+
+    ``before_run`` may damage the generated output first.
+    """
     _, _, repos = _classic_fixture(tmp_path)
+    if before_run is not None:
+        before_run(repos)
     fake = tmp_path / "fake-pyszz/szz"
     fake.mkdir(parents=True)
     fake.joinpath("__init__.py").write_text("", encoding="utf-8")
@@ -327,6 +332,30 @@ def _run_fake_b_szz(tmp_path, monkeypatch, find_bic_lines):
     record = json.loads((tmp_path / "out/b-szz/b-szz-predictions.jsonl").read_text(encoding="utf-8"))
     raw = json.loads((tmp_path / "out/b-szz/raw/SZZ-0006.json").read_text(encoding="utf-8"))
     return record, raw
+
+
+@pytest.mark.parametrize("damage, problem", [
+    (lambda metadata: (metadata / "commit-map.json").unlink(), "is missing"),
+    (lambda metadata: (metadata / "commit-map.json").write_text("{ not json", encoding="utf-8"),
+     "cannot be read (JSONDecodeError"),
+])
+def test_a_generated_output_pyszz_cannot_run_on_is_a_tool_error_not_left_out(tmp_path, monkeypatch, damage, problem):
+    """An incomplete generation must not vanish from the run (the gap the PR #114 review found)."""
+    record, raw = _run_fake_b_szz(
+        tmp_path, monkeypatch, ["raise AssertionError('B-SZZ ran on an incomplete output')"],
+        before_run=lambda repos: damage(repos / "SZZ-0006/default/metadata"))
+    assert (record["scenario_id"], record["status"], record["predictions"]) == ("SZZ-0006", "error", [])
+    (error,) = record["errors"]
+    assert f"commit-map.json {problem}" in error and error.endswith("the generated output is incomplete")
+    assert record["repository_id"]           # the manifest still says which generation it was
+    assert raw["errors"] == record["errors"]
+
+
+def test_a_pyszz_run_with_a_tool_error_exits_non_zero(monkeypatch):
+    """Every record is written either way, but a run with errors must not exit as a clean one."""
+    adapter = _load_pyszz_adapter(monkeypatch)
+    assert adapter.exit_status([{"tool": "b-szz", "error_count": 0}, {"tool": "ag-szz", "error_count": 0}]) == 0
+    assert adapter.exit_status([{"tool": "b-szz", "error_count": 0}, {"tool": "ag-szz", "error_count": 1}]) == 1
 
 
 @pytest.mark.parametrize("logged, expected_error", [
