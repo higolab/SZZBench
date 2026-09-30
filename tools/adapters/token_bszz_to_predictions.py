@@ -37,6 +37,16 @@ TOOL = "token-b-szz"
 #: fields of PySZZ's predictions left out: positions in the token-level files, the path of its raw
 #: output, and the scenario id the record already names
 DROPPED_FIELDS = {"line", "line_content", "input_line", "raw_file", "scenario_id"}
+#: the record, in --token-root, of how its repositories were tokenized, which --skip-tokenize checks
+TOKENIZATION = "tokenization.json"
+
+
+class CannotReuse(Exception):
+    """A token root whose repositories --skip-tokenize cannot reuse for the settings asked for."""
+
+
+class IncompleteOutput(ValueError):
+    """A generated output whose commit map is missing, unreadable, or not a JSON object."""
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -56,19 +66,33 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--docker", default="docker", help="The docker executable.")
     parser.add_argument("--window-size", type=int, default=1, help="Tokens per line (the replication package's N).")
     parser.add_argument("--skip-tokenize", action="store_true",
-                        help="Reuse the token-level repositories a previous run left in --token-root.")
+                        help=f"Reuse the token-level repositories a previous run left in --token-root. They must "
+                             f"have been tokenized with the same --variant and --window-size, as its {TOKENIZATION} "
+                             "records.")
     parser.add_argument("--out", required=True, type=Path, help="Output predictions JSONL path.")
     args = parser.parse_args(argv)
 
     generated_root = args.generated_root.resolve()
     token_root = args.token_root.resolve()
     token_root.mkdir(parents=True, exist_ok=True)
-    if not args.skip_tokenize:
+    tokenization_path = token_root / TOKENIZATION
+    requested = {"variant": args.variant, "window_size": args.window_size}
+    if args.skip_tokenize:
+        try:
+            tokenization = reused_tokenization(tokenization_path, requested)
+        except CannotReuse as exc:
+            print(f"[ERROR] --skip-tokenize: {exc}. Tokenize them again without --skip-tokenize.", file=sys.stderr)
+            return 2
+    else:
+        # a tokenization that stops part way leaves no record, so it cannot be reused as a finished one
+        tokenization_path.unlink(missing_ok=True)
         command = [args.docker, "run", "--rm", "--platform", "linux/amd64",
                    "-e", f"BFG_WINDOW_SIZE={args.window_size}", "-e", f"VARIANT={args.variant}",
                    "-v", f"{generated_root}:/in:ro", "-v", f"{token_root}:/out",
                    "-v", f"{args.cregit_root.resolve()}:/opt/cregit:ro", args.image, "tokenize-repos.sh"]
         subprocess.run(command, check=True)
+        tokenization = {**requested, "image": _image_id(args.docker, args.image)}
+        tokenization_path.write_text(json.dumps(tokenization, indent=2) + "\n", encoding="utf-8")
 
     home = tempfile.mkdtemp(prefix="token-bszz-home-")
     atexit.register(shutil.rmtree, home, True)
@@ -96,8 +120,9 @@ def main(argv: list[str] | None = None) -> int:
     args.out.write_text("".join(json.dumps(record, ensure_ascii=False) + "\n" for record in records), encoding="utf-8")
     summary = {
         "tool": TOOL,
-        "window_size": args.window_size,
-        "image": _image_id(args.docker, args.image),
+        # how the repositories B-SZZ ran on were tokenized, which a reuse takes from the record
+        "window_size": tokenization["window_size"],
+        "image": tokenization.get("image"),
         "scenario_count": len(records),
         "error_count": sum(1 for record in records if record.get("status") == "error"),
         "pyszz_environment": _pyszz_environment(work / "b-szz" / "b-szz-run-results.json"),
@@ -107,6 +132,28 @@ def main(argv: list[str] | None = None) -> int:
         for error in record.get("errors", []):
             print(f"[ERROR] {record['scenario_id']}: {error}", file=sys.stderr)
     return 1 if summary["error_count"] else 0
+
+
+def reused_tokenization(path: Path, requested: dict[str, Any]) -> dict[str, Any]:
+    """The recorded tokenization of a token root, when it matches the settings asked for.
+
+    Reusing the repositories under other settings would label one tokenization's
+    answers with another's settings, so CannotReuse says why the record is
+    missing or does not match.
+    """
+    try:
+        recorded = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        recorded = None
+    if not isinstance(recorded, dict):
+        raise CannotReuse(f"{path} does not record how the repositories under {path.parent} were tokenized")
+    differing = [key for key, value in requested.items() if recorded.get(key) != value]
+    if differing:
+        def as_options(settings: dict[str, Any]) -> str:
+            return " ".join(f"--{key.replace('_', '-')} {settings.get(key)}" for key in differing)
+        raise CannotReuse(f"the repositories under {path.parent} were tokenized with {as_options(recorded)}, "
+                          f"not {as_options(requested)}")
+    return recorded
 
 
 def prepare_token_outputs(generated_root: Path, token_root: Path, variant: str,
@@ -123,11 +170,10 @@ def prepare_token_outputs(generated_root: Path, token_root: Path, variant: str,
     for repo in sorted(generated_root.glob(f"*/{variant}/repo")):
         original = repo.parent
         scenario_id = original.parent.name
-        if not (original / "metadata" / "commit-map.json").exists():
-            failures[scenario_id] = f"{original / 'metadata' / 'commit-map.json'} is missing: the generated output is incomplete"
-            continue
         try:
             mappings[scenario_id] = prepare_token_output(original, token_root / scenario_id / variant, environment)
+        except IncompleteOutput as exc:
+            failures[scenario_id] = str(exc)
         except (OSError, ValueError, subprocess.CalledProcessError) as exc:
             failures[scenario_id] = f"{type(exc).__name__}: {exc}"
     return mappings, failures
@@ -137,15 +183,16 @@ def prepare_token_output(original: Path, token: Path, environment: dict[str, str
     """Give a token-level repository the original's metadata, re-keyed to its hashes.
 
     Returns the map from each token-level commit to the original commit it was
-    rewritten from.  Raises ValueError when tokenization failed or a commit of
-    the original's commit map has no rewritten counterpart.
+    rewritten from.  Raises IncompleteOutput when the original's commit map
+    cannot be used, and ValueError when tokenization failed or a commit of the
+    original's commit map has no rewritten counterpart.
     """
+    commit_map = read_commit_map(original / "metadata" / "commit-map.json")
     status = (token / "tokenize.status").read_text(encoding="utf-8").strip() if (token / "tokenize.status").exists() else None
     if status != "0" or not (token / "repo").is_dir():
         raise ValueError(f"tokenization failed (status {status}; see {token / 'tokenize.log'})")
     to_original = former_commit_map(token / "repo", environment)
     to_token = {original_hash: token_hash for token_hash, original_hash in to_original.items()}
-    commit_map = json.loads((original / "metadata" / "commit-map.json").read_text(encoding="utf-8"))
     # BFG rewrites the history the refs reach; a commit no ref reaches (a deleted branch's) has no
     # token-level counterpart, and no tool reading the repository can name it either
     reachable = set(subprocess.run(["git", "rev-list", "--all"], cwd=original / "repo", env=environment,
@@ -170,6 +217,20 @@ def prepare_token_output(original: Path, token: Path, environment: dict[str, str
     (metadata / "commit-map.json").write_text(json.dumps(rekeyed, indent=2) + "\n", encoding="utf-8")
     (metadata / "token-to-original.json").write_text(json.dumps(to_original, indent=2) + "\n", encoding="utf-8")
     return to_original
+
+
+def read_commit_map(path: Path) -> dict[str, Any]:
+    """A generated output's commit map. IncompleteOutput says what is wrong with one that cannot be used."""
+    try:
+        commit_map = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        problem = "is missing" if not path.exists() else f"cannot be read ({type(exc).__name__}: {exc})"
+        raise IncompleteOutput(f"{path} {problem}: the generated output is incomplete") from exc
+    if not isinstance(commit_map, dict):
+        kind = {list: "an array", str: "a string", bool: "a boolean", int: "a number", float: "a number"}.get(
+            type(commit_map), "null")
+        raise IncompleteOutput(f"{path} holds {kind}, not a JSON object: the generated output is incomplete")
+    return commit_map
 
 
 def former_commit_map(repo: Path, environment: dict[str, str]) -> dict[str, str]:

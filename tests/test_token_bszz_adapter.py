@@ -126,22 +126,35 @@ def test_a_reachable_commit_without_a_token_level_counterpart_is_an_error(adapte
         adapter.prepare_token_output(original, token, environment)
 
 
-def test_a_generated_output_without_its_commit_map_is_a_tool_error_not_left_out(adapter, tmp_path):
-    """The gap the PR #114 review found in the SZZ Unleashed adapter, closed here as well."""
-    _generated_output(tmp_path)          # a repository, and a metadata directory without a commit map
+@pytest.mark.parametrize("content, problem", [
+    (None, "is missing"),
+    ("{ not json", "cannot be read (JSONDecodeError"),
+    ("[]", "holds an array, not a JSON object"),
+])
+def test_a_generated_output_without_a_usable_commit_map_is_a_tool_error_not_left_out(adapter, tmp_path,
+                                                                                     content, problem):
+    """The gap the PR #114 review found in the SZZ Unleashed adapter, and the valid JSON that is no
+    commit map of the #116 review, closed here as well: the scenario neither vanishes nor stops the run."""
+    original, _ = _generated_output(tmp_path)    # a repository, and a metadata directory without a commit map
+    if content is not None:
+        (original / "metadata/commit-map.json").write_text(content, encoding="utf-8")
+    _token_output(tmp_path, original)            # tokenized, so the commit map is all that is wrong
     environment = adapter.isolated_environment(dict(os.environ), str(tmp_path / "home"))
     mappings, failures = adapter.prepare_token_outputs(tmp_path / "generated", tmp_path / "token", "default",
                                                        environment)
     assert mappings == {}
-    assert failures["SZZ-0006"].endswith("commit-map.json is missing: the generated output is incomplete")
+    assert f"commit-map.json {problem}" in failures["SZZ-0006"]
+    assert failures["SZZ-0006"].endswith("the generated output is incomplete")
 
 
 def test_a_failed_tokenization_gets_no_metadata(adapter, tmp_path):
+    original, c0 = _generated_output(tmp_path)
+    (original / "metadata/commit-map.json").write_text(json.dumps({"c0": {"hash": c0}}), encoding="utf-8")
     token = tmp_path / "token/SZZ-0006/default"
     (token / "repo").mkdir(parents=True)
     (token / "tokenize.status").write_text("1\n", encoding="utf-8")
     with pytest.raises(ValueError, match=r"tokenization failed \(status 1"):
-        adapter.prepare_token_output(tmp_path / "generated/SZZ-0006/default", token, {})
+        adapter.prepare_token_output(original, token, {})
     assert not (token / "metadata").exists()
 
 
@@ -161,10 +174,19 @@ def test_a_scenario_that_could_not_be_prepared_gets_its_failure_not_b_szz_record
         for scenario_id, failure in failures.items()]
 
 
-def _prepared_scenario(tmp_path: Path) -> None:
+def _record_tokenization(token_root: Path) -> None:
+    """The record a finished tokenization leaves in its token root."""
+    (token_root / "tokenization.json").write_text(
+        json.dumps({"variant": "default", "window_size": 1, "image": "sha256:tokenizer"}), encoding="utf-8")
+
+
+def _prepared_scenario(tmp_path: Path) -> tuple[Path, str]:
+    """A generated output of one commit, and the token-level copy a finished tokenization recorded."""
     original, c0 = _generated_output(tmp_path)
     (original / "metadata/commit-map.json").write_text(json.dumps({"c0": {"hash": c0}}), encoding="utf-8")
     _token_output(tmp_path, original)
+    _record_tokenization(tmp_path / "token")
+    return original, c0
 
 
 def _write_b_szz_records(output_root: Path, records: list[dict]) -> None:
@@ -174,15 +196,27 @@ def _write_b_szz_records(output_root: Path, records: list[dict]) -> None:
         "".join(json.dumps(record) + "\n" for record in records), encoding="utf-8")
 
 
-def _run_main(adapter, tmp_path: Path, monkeypatch, b_szz) -> int:
-    """main() with the tokenization skipped, and `b_szz` in place of the PySZZ adapter: it gets the
-    adapter's --output-root, and returns the adapter's exit status."""
-    run = subprocess.run
+def _b_szz_must_not_run(output_root: Path) -> int:
+    raise AssertionError("B-SZZ ran")
 
+
+_real_run = subprocess.run
+
+
+def _run_main(adapter, tmp_path: Path, monkeypatch, b_szz, *options: str, docker=None) -> int:
+    """main() with `b_szz` in place of the PySZZ adapter, and `docker`, if given, in place of Docker.
+
+    `b_szz` gets the adapter's --output-root and returns its exit status. `docker` gets each docker
+    command and returns its exit status and output; without it, there is no Docker.
+    """
     def fake_run(command, *args, **kwargs):
-        if command[0] != "pyszz-python":
-            return run(command, *args, **kwargs)
-        completed = subprocess.CompletedProcess(command, b_szz(Path(command[command.index("--output-root") + 1])))
+        if command[0] == "pyszz-python":
+            returncode, stdout = b_szz(Path(command[command.index("--output-root") + 1])), ""
+        elif command[0] == "docker" and docker is not None:
+            returncode, stdout = docker(command)
+        else:
+            return _real_run(command, *args, **kwargs)
+        completed = subprocess.CompletedProcess(command, returncode, stdout, "")
         if kwargs.get("check"):
             completed.check_returncode()
         return completed
@@ -190,8 +224,9 @@ def _run_main(adapter, tmp_path: Path, monkeypatch, b_szz) -> int:
     monkeypatch.setattr(adapter.subprocess, "run", fake_run)
     return adapter.main(["--generated-root", str(tmp_path / "generated"), "--token-root", str(tmp_path / "token"),
                          "--cregit-root", str(tmp_path / "cregit"), "--pyszz-root", str(tmp_path / "pyszz"),
-                         "--pyszz-python", "pyszz-python", "--docker", str(tmp_path / "no-docker"),
-                         "--skip-tokenize", "--out", str(tmp_path / "out/predictions.jsonl")])
+                         "--pyszz-python", "pyszz-python",
+                         "--docker", "docker" if docker is not None else str(tmp_path / "no-docker"),
+                         "--out", str(tmp_path / "out/predictions.jsonl"), *options])
 
 
 def test_records_with_tool_errors_are_mapped_back_although_the_pyszz_adapter_exits_1(adapter, tmp_path, monkeypatch):
@@ -203,7 +238,7 @@ def test_records_with_tool_errors_are_mapped_back_although_the_pyszz_adapter_exi
                                             "errors": ["No bug fixing commits found."], "predictions": []}])
         return 1
 
-    assert _run_main(adapter, tmp_path, monkeypatch, b_szz) == 1
+    assert _run_main(adapter, tmp_path, monkeypatch, b_szz, "--skip-tokenize") == 1
     lines = (tmp_path / "out/predictions.jsonl").read_text(encoding="utf-8").splitlines()
     assert [json.loads(line) for line in lines] == [
         {"scenario_id": "SZZ-0006", "predictions": [], "status": "error", "errors": ["No bug fixing commits found."]}]
@@ -216,6 +251,86 @@ def test_a_pyszz_run_that_writes_no_records_is_not_answered_by_an_earlier_runs(a
     The PySZZ adapter exits 2 when PySZZ cannot run at all."""
     _prepared_scenario(tmp_path)
     _write_b_szz_records(tmp_path / "out/pyszz", [{"scenario_id": "SZZ-0006", "predictions": []}])
-    assert _run_main(adapter, tmp_path, monkeypatch, lambda output_root: status) == 2
+    assert _run_main(adapter, tmp_path, monkeypatch, lambda output_root: status, "--skip-tokenize") == 2
     assert not (tmp_path / "out/predictions.jsonl").exists()
     assert f"exited with status {status} and wrote no records" in capsys.readouterr().err
+
+
+def test_a_failed_preparation_is_kept_when_b_szz_answers_from_an_earlier_runs_metadata(adapter, tmp_path,
+                                                                                       monkeypatch):
+    """The collision the review of this adapter reproduced. The original repository gained a commit
+    after a run, so its token-level copy has no counterpart for it, but the copy keeps that run's
+    metadata and B-SZZ answers from it: here with no commit, which must not read as an answer."""
+    original, c0 = _prepared_scenario(tmp_path)
+    environment = adapter.isolated_environment(dict(os.environ), str(tmp_path / "home"))
+    adapter.prepare_token_output(original, tmp_path / "token/SZZ-0006/default", environment)   # that run's metadata
+    (original / "repo/A.java").write_text("class A { int a; }\n", encoding="utf-8")
+    c1 = _commit(original / "repo", "Add a field")
+    (original / "metadata/commit-map.json").write_text(
+        json.dumps({"c0": {"hash": c0}, "c1": {"hash": c1, "role": "bug_fixing"}}), encoding="utf-8")
+
+    def b_szz(output_root: Path) -> int:
+        _write_b_szz_records(output_root, [{"scenario_id": "SZZ-0006", "predictions": []}])
+        return 0
+
+    assert _run_main(adapter, tmp_path, monkeypatch, b_szz, "--skip-tokenize") == 1
+    lines = (tmp_path / "out/predictions.jsonl").read_text(encoding="utf-8").splitlines()
+    assert [json.loads(line) for line in lines] == [{"scenario_id": "SZZ-0006", "status": "error", "predictions": [],
+                                                     "errors": [f"ValueError: c1 ({c1[:10]}) has no token-level commit"]}]
+
+
+@pytest.mark.parametrize("options, recorded, asked", [
+    (["--window-size", "2"], "--window-size 1", "--window-size 2"),
+    (["--variant", "other"], "--variant default", "--variant other"),
+])
+def test_a_token_root_tokenized_with_other_settings_is_not_reused(adapter, tmp_path, monkeypatch, capsys,
+                                                                  options, recorded, asked):
+    """One-token histories reused under --window-size 2 would be reported as two-token B-SZZ."""
+    _prepared_scenario(tmp_path)
+    assert _run_main(adapter, tmp_path, monkeypatch, _b_szz_must_not_run, "--skip-tokenize", *options) == 2
+    assert f"were tokenized with {recorded}, not {asked}" in capsys.readouterr().err
+    assert not (tmp_path / "out").exists()
+
+
+def test_a_token_root_without_the_record_of_its_tokenization_is_not_reused(adapter, tmp_path, monkeypatch,
+                                                                           capsys):
+    """Without the record nothing says how the repositories were tokenized, as after a tokenization that
+    stopped part way."""
+    _prepared_scenario(tmp_path)
+    (tmp_path / "token/tokenization.json").unlink()
+    assert _run_main(adapter, tmp_path, monkeypatch, _b_szz_must_not_run, "--skip-tokenize") == 2
+    assert "tokenization.json does not record how the repositories under" in capsys.readouterr().err
+    assert not (tmp_path / "out").exists()
+
+
+def test_a_tokenization_records_its_settings_and_a_reuse_reports_the_recorded_image(adapter, tmp_path, monkeypatch):
+    original, c0 = _generated_output(tmp_path)
+    (original / "metadata/commit-map.json").write_text(json.dumps({"c0": {"hash": c0}}), encoding="utf-8")
+    image = ["sha256:first"]
+
+    def docker(command: list[str]) -> tuple[int, str]:
+        if command[1:3] == ["image", "inspect"]:
+            return 0, image[0] + "\n"
+        assert "BFG_WINDOW_SIZE=1" in command and "VARIANT=default" in command
+        shutil.rmtree(tmp_path / "token/SZZ-0006", ignore_errors=True)
+        _token_output(tmp_path, original)
+        return 0, ""
+
+    def b_szz(output_root: Path) -> int:
+        _write_b_szz_records(output_root, [{"scenario_id": "SZZ-0006", "predictions": []}])
+        return 0
+
+    assert _run_main(adapter, tmp_path, monkeypatch, b_szz, docker=docker) == 0
+    record = json.loads((tmp_path / "token/tokenization.json").read_text(encoding="utf-8"))
+    assert record == {"variant": "default", "window_size": 1, "image": "sha256:first"}
+    image[0] = "sha256:second"          # the image is rebuilt, and the repositories are still the first one's
+    assert _run_main(adapter, tmp_path, monkeypatch, b_szz, "--skip-tokenize", docker=docker) == 0
+    summary = json.loads((tmp_path / "out/token-bszz-run.json").read_text(encoding="utf-8"))
+    assert (summary["window_size"], summary["image"]) == (1, "sha256:first")
+
+
+def test_a_tokenization_that_stops_part_way_leaves_no_record_to_reuse(adapter, tmp_path, monkeypatch):
+    _prepared_scenario(tmp_path)          # a finished tokenization, and its record
+    with pytest.raises(subprocess.CalledProcessError):
+        _run_main(adapter, tmp_path, monkeypatch, _b_szz_must_not_run, docker=lambda command: (137, ""))
+    assert not (tmp_path / "token/tokenization.json").exists()

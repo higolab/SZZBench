@@ -68,6 +68,12 @@ that, and B-SZZ under a minute. `predictions.jsonl` here is `--out` as the adapt
 `evaluation-results.md` is the report the evaluation wrote. Next to `--out`, `token-bszz-run.json`
 records the image id, the window size and B-SZZ's environment.
 
+In `--token-root`, `tokenization.json` records how the repositories there were tokenized: the
+variant, the window size and the image id. `--skip-tokenize` runs B-SZZ on them again without
+rewriting them. It refuses when `--variant` or `--window-size` differs from the record, or when
+there is no record, as after a rewrite that stopped part way. `token-bszz-run.json` then reports
+the recorded image.
+
 ## What the adapter does
 
 1. **It rewrites each repository.** `tokenize-repos.sh` copies the repository and runs the BFG
