@@ -443,10 +443,15 @@ json.dump(pairs + pairs, open("results/fix_and_introducers_pairs.json", "w"))
 """
 
 
-def _run_fake_szz_unleashed(tmp_path, mode):
-    """Run the SZZ Unleashed adapter with --jar on SZZ-0006, with a stand-in for java that answers c1."""
+def _run_fake_szz_unleashed(tmp_path, mode, before_run=None):
+    """Run the SZZ Unleashed adapter with --jar on SZZ-0006, with a stand-in for java that answers c1.
+
+    ``before_run`` may damage the generated output first. The java log is None when java never ran.
+    """
     _, _, repos = _classic_fixture(tmp_path)
     hashes = json.loads((repos / "SZZ-0006/default/metadata/commit-map.json").read_text(encoding="utf-8"))
+    if before_run is not None:
+        before_run(repos)
     java = tmp_path / "fake-java"
     java.write_text(f"#!{sys.executable}\n{FAKE_JAVA}", encoding="utf-8")
     java.chmod(0o755)
@@ -460,7 +465,8 @@ def _run_fake_szz_unleashed(tmp_path, mode):
                                 "--jar", str(jar), "--java", str(java), "--generated-root", str(repos),
                                 "--out", str(out)], capture_output=True, text=True, env=env)
     record = json.loads(out.read_text(encoding="utf-8"))
-    return completed, record, hashes, json.loads(log.read_text(encoding="utf-8")), repos
+    java_log = json.loads(log.read_text(encoding="utf-8")) if log.exists() else None
+    return completed, record, hashes, java_log, repos
 
 
 @pytest.mark.skipif(os.name == "nt", reason="the stand-in for java is a script run through its shebang line")
@@ -497,6 +503,21 @@ def test_a_failed_szz_unleashed_run_is_a_tool_error(tmp_path, mode, expected):
     assert completed.returncode == 1
     assert (record["status"], record["predictions"]) == ("error", [])
     assert expected in record["errors"]
+
+
+@pytest.mark.skipif(os.name == "nt", reason="the stand-in for java is a script run through its shebang line")
+def test_a_generated_output_without_its_commit_map_is_a_tool_error_not_left_out(tmp_path):
+    """An incomplete generation must not read as a successful run with nothing to score (PR #114 review)."""
+    def remove_commit_map(repos):
+        (repos / "SZZ-0006/default/metadata/commit-map.json").unlink()
+
+    completed, record, _, java_log, _ = _run_fake_szz_unleashed(tmp_path, "ok", before_run=remove_commit_map)
+    assert completed.returncode == 1
+    assert (record["scenario_id"], record["status"], record["predictions"]) == ("SZZ-0006", "error", [])
+    assert record["errors"][0].endswith("commit-map.json is missing: the generated output is incomplete")
+    assert java_log is None      # SZZ Unleashed never ran on it
+    summary = json.loads((tmp_path / "szz-unleashed-run.json").read_text(encoding="utf-8"))
+    assert (summary["scenario_count"], summary["error_count"]) == (1, 1)
 
 
 def test_the_cli_summary_counts_tool_errors_missing_records_and_unknown_references(generated, tmp_path):

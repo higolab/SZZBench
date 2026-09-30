@@ -180,6 +180,8 @@ def run_szz_unleashed(generated_root: Path, variant: str, depth: int, jar: Path,
         scenario_id = repo.parent.parent.name
         metadata = repo.parent / "metadata"
         if not (metadata / "commit-map.json").exists():
+            # an incomplete generated output is a tool error, not a scenario to leave out (issue #95)
+            runs[scenario_id] = [f"{metadata / 'commit-map.json'} is missing: the generated output is incomplete"]
             continue
         try:
             runs[scenario_id] = _run_one(repo, metadata, repo.parent / f"szz-unleashed/run-depth{depth}",
