@@ -579,7 +579,7 @@ def test_szz_unleashed_adapter_outputs_evaluable_predictions(tmp_path):
         check=True,
     )
     commit_map = json.loads((generated_root / scenario_id / "default" / "metadata" / "commit-map.json").read_text(encoding="utf-8"))
-    unleashed_result = generated_root / scenario_id / "default" / "szz-unleashed" / "run-depth1" / "results" / "fix_and_introducers_pairs.json"
+    unleashed_result = generated_root / scenario_id / "default" / "szz-unleashed" / "run-depth3" / "results" / "fix_and_introducers_pairs.json"
     unleashed_result.parent.mkdir(parents=True)
     unleashed_result.write_text(
         json.dumps([[commit_map["c1"]["hash"], commit_map["c0"]["hash"]]]) + "\n",

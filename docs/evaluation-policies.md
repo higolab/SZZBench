@@ -224,7 +224,10 @@ SZZG-0136 -- whose oracles are empty -- passed them. The adapters under
 failed, and a record, empty if need be, for every scenario they ran on. PySZZ
 catches its own exceptions and logs them, so for the PySZZ adapter a failure
 also includes an exception PySZZ logged and carried on from
-(`examples/pyszz-run/README.md`).
+(`examples/pyszz-run/README.md`). SZZ Unleashed prints an exception's stack
+trace and carries on, so for the SZZ Unleashed adapter, which runs the tool
+with `--jar`, a failure also includes a run that printed one
+(`examples/szz-unleashed-run/README.md`).
 
 ### 1.7 Attribution: scenarios with several bug-fixing commits (issue #92)
 

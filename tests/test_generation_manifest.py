@@ -444,7 +444,7 @@ def test_the_adapters_write_the_repository_id(tmp_path):
     records = {json.loads(line)["scenario_id"]: json.loads(line) for line in out.read_text().splitlines()}
     assert records["SZZ-0006"]["repository_id"] == current
     # SZZ-Unleashed, from a result file
-    result = generated / "SZZ-0006/default/szz-unleashed/run-depth1/results/fix_and_introducers_pairs.json"
+    result = generated / "SZZ-0006/default/szz-unleashed/run-depth3/results/fix_and_introducers_pairs.json"
     result.parent.mkdir(parents=True)
     hashes = _commit_map(generated, "SZZ-0006")
     result.write_text(json.dumps([[hashes["c2"]["hash"], hashes["c1"]["hash"]]]), encoding="utf-8")

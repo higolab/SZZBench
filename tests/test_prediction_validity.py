@@ -32,6 +32,7 @@ import pytest
 from szzbench.evaluator import evaluate_predictions
 from szzbench.generator import generate_repository
 from szzbench.graph_generator import generate_graph_repository
+from support import git
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -410,7 +411,7 @@ def test_the_adapter_uses_the_pydriller_1x_pyszz_imports_when_it_is_installed(mo
 
 def test_the_szz_unleashed_adapter_writes_an_error_record_for_an_unreadable_result(tmp_path):
     _, _, repos = _classic_fixture(tmp_path)
-    result = repos / "SZZ-0006/default/szz-unleashed/run-depth1/results/fix_and_introducers_pairs.json"
+    result = repos / "SZZ-0006/default/szz-unleashed/run-depth3/results/fix_and_introducers_pairs.json"
     result.parent.mkdir(parents=True)
     result.write_text("{ not json", encoding="utf-8")
     out = tmp_path / "predictions.jsonl"
@@ -420,6 +421,103 @@ def test_the_szz_unleashed_adapter_writes_an_error_record_for_an_unreadable_resu
     record = json.loads(out.read_text(encoding="utf-8"))
     assert (record["scenario_id"], record["status"], record["predictions"]) == ("SZZ-0006", "error", [])
     assert "Invalid JSON" in record["errors"][0]
+
+
+FAKE_JAVA = """\
+import json, os, sys
+args = sys.argv[1:]
+if args == ["-version"]:
+    print('java version "fake"', file=sys.stderr)
+    sys.exit(0)
+with open(os.environ["FAKE_JAVA_LOG"], "w") as log:
+    json.dump({"args": args, "HOME": os.environ.get("HOME"), "GIT_DIR": os.environ.get("GIT_DIR")}, log)
+issues = json.load(open(args[args.index("-i") + 1]))
+if os.environ["FAKE_JAVA_MODE"] == "exit":
+    sys.exit(3)
+if os.environ["FAKE_JAVA_MODE"] == "trace":
+    print("java.text.ParseException: Unparseable date: x")
+    print("\\tat heuristics.SimpleBugIntroducerFinder.isWithinTimeframe(SimpleBugIntroducerFinder.java:80)")
+os.makedirs("results", exist_ok=True)
+pairs = [[issue["hash"], os.environ["FAKE_JAVA_BIC"]] for issue in issues.values()]
+json.dump(pairs + pairs, open("results/fix_and_introducers_pairs.json", "w"))
+"""
+
+
+def _run_fake_szz_unleashed(tmp_path, mode, before_run=None):
+    """Run the SZZ Unleashed adapter with --jar on SZZ-0006, with a stand-in for java that answers c1.
+
+    ``before_run`` may damage the generated output first. The java log is None when java never ran.
+    """
+    _, _, repos = _classic_fixture(tmp_path)
+    hashes = json.loads((repos / "SZZ-0006/default/metadata/commit-map.json").read_text(encoding="utf-8"))
+    if before_run is not None:
+        before_run(repos)
+    java = tmp_path / "fake-java"
+    java.write_text(f"#!{sys.executable}\n{FAKE_JAVA}", encoding="utf-8")
+    java.chmod(0o755)
+    jar = tmp_path / "szz_find_bug_introducers.jar"
+    jar.write_bytes(b"not a jar")
+    log = tmp_path / "java-log.json"
+    env = {**os.environ, "FAKE_JAVA_MODE": mode, "FAKE_JAVA_LOG": str(log), "FAKE_JAVA_BIC": hashes["c1"]["hash"],
+           "GIT_DIR": str(tmp_path / "elsewhere.git")}
+    out = tmp_path / "predictions.jsonl"
+    completed = subprocess.run([sys.executable, str(ROOT / "tools/adapters/szz_unleashed_to_predictions.py"),
+                                "--jar", str(jar), "--java", str(java), "--generated-root", str(repos),
+                                "--out", str(out)], capture_output=True, text=True, env=env)
+    record = json.loads(out.read_text(encoding="utf-8"))
+    java_log = json.loads(log.read_text(encoding="utf-8")) if log.exists() else None
+    return completed, record, hashes, java_log, repos
+
+
+@pytest.mark.skipif(os.name == "nt", reason="the stand-in for java is a script run through its shebang line")
+def test_the_szz_unleashed_adapter_runs_the_jar_on_every_generated_repository(tmp_path):
+    completed, record, hashes, java_log, repos = _run_fake_szz_unleashed(tmp_path, "ok")
+    assert completed.returncode == 0, completed.stderr
+    # one prediction per pair, however often SZZ Unleashed repeats it, with the logical ids
+    assert record["predictions"] == [{
+        "fix_commit": hashes["c2"]["hash"], "inducing_commit": hashes["c1"]["hash"], "tool": "szz-unleashed",
+        "raw_file": "SZZ-0006/default/szz-unleashed/run-depth3/results/fix_and_introducers_pairs.json",
+        "fix_commit_id": "c2", "inducing_commit_id": "c1"}]
+    assert "status" not in record and record["repository_id"]
+    # SZZ Unleashed's own default depth; JGit and git kept away from the caller's configuration
+    args = java_log["args"]
+    assert args[args.index("-d") + 1] == "3"
+    assert args[0] == f"-Duser.home={java_log['HOME']}" and java_log["GIT_DIR"] is None
+    # the issue counts as reported when it was fixed, so the timeframe filter keeps every older candidate
+    issue_list = repos / "SZZ-0006/default/szz-unleashed/run-depth3/issue_list.json"
+    (issue,) = json.loads(issue_list.read_text(encoding="utf-8")).values()
+    assert issue["hash"] == hashes["c2"]["hash"]
+    assert issue["creationdate"] == issue["resolutiondate"] == issue["commitdate"]
+    assert issue["creationdate"] == git(repos / "SZZ-0006/default/repo", "log", "-1", "--format=%ci", issue["hash"])
+    assert json.loads((tmp_path / "szz-unleashed-run.json").read_text(encoding="utf-8"))["depth"] == 3
+
+
+@pytest.mark.skipif(os.name == "nt", reason="the stand-in for java is a script run through its shebang line")
+@pytest.mark.parametrize("mode, expected", [
+    ("exit", "SZZ Unleashed exited with status 3"),
+    # it prints an exception and carries on, so the run exits 0 with an answer the exception cut short
+    ("trace", "SZZ Unleashed printed a stack trace and carried on: java.text.ParseException"),
+])
+def test_a_failed_szz_unleashed_run_is_a_tool_error(tmp_path, mode, expected):
+    completed, record, _, _, _ = _run_fake_szz_unleashed(tmp_path, mode)
+    assert completed.returncode == 1
+    assert (record["status"], record["predictions"]) == ("error", [])
+    assert expected in record["errors"]
+
+
+@pytest.mark.skipif(os.name == "nt", reason="the stand-in for java is a script run through its shebang line")
+def test_a_generated_output_without_its_commit_map_is_a_tool_error_not_left_out(tmp_path):
+    """An incomplete generation must not read as a successful run with nothing to score (PR #114 review)."""
+    def remove_commit_map(repos):
+        (repos / "SZZ-0006/default/metadata/commit-map.json").unlink()
+
+    completed, record, _, java_log, _ = _run_fake_szz_unleashed(tmp_path, "ok", before_run=remove_commit_map)
+    assert completed.returncode == 1
+    assert (record["scenario_id"], record["status"], record["predictions"]) == ("SZZ-0006", "error", [])
+    assert record["errors"][0].endswith("commit-map.json is missing: the generated output is incomplete")
+    assert java_log is None      # SZZ Unleashed never ran on it
+    summary = json.loads((tmp_path / "szz-unleashed-run.json").read_text(encoding="utf-8"))
+    assert (summary["scenario_count"], summary["error_count"]) == (1, 1)
 
 
 def test_the_cli_summary_counts_tool_errors_missing_records_and_unknown_references(generated, tmp_path):
