@@ -1,0 +1,5 @@
+[repositories]
+  local
+  maven-central
+  sbt-plugin-releases: https://repo.scala-sbt.org/scalasbt/sbt-plugin-releases/, [organization]/[module]/(scala_[scalaVersion]/)(sbt_[sbtVersion]/)[revision]/[type]s/[artifact](-[classifier]).[ext]
+  scala-sbt-ivy-releases: https://repo.scala-sbt.org/scalasbt/ivy-releases/, [organization]/[module]/[revision]/[type]s/[artifact](-[classifier]).[ext]
