@@ -269,7 +269,9 @@ The main roles are as follows.
 
 Python 3.10 or later is required.
 
-Git is required as well. SZZBench runs Git isolated from your own Git configuration, so signing, hooks and global ignore or attributes files do not affect what it generates (`docs/generator-options.md` §5); it is tested with Git 2.50.1. A JDK (`javac` and `java`) is needed only by the tests that compile or run scenario code, which are skipped without one, and Node.js only by the tools under `tools/`.
+Git 2.29 or later is required as well. SZZBench runs Git isolated from your own Git configuration, so signing, hooks and global ignore or attributes files do not affect what it generates (`docs/generator-options.md` §5). A JDK (`javac` and `java`) is needed only by the tests that compile or run scenario code, which are skipped without one, and Node.js only by the tools under `tools/`.
+
+The test suite runs in CI on Linux twice (`.github/workflows/tests.yml`): with Python 3.14 and the current Git of GitHub's `ubuntu-latest` runner, and with Python 3.10 and Debian 12's Git 2.39. SZZBench is developed on macOS. Windows is not tested; the PowerShell commands below are given for convenience ([#109](https://github.com/YoshikiHigo/SZZBench/issues/109)).
 
 Create and activate a virtual environment in the SZZBench root directory.
 
@@ -695,7 +697,7 @@ To run a specific test, for example:
 pytest tests/test_generator_smoke.py
 ```
 
-[tests/README.md](tests/README.md) says what the suite needs (a JDK, Node.js for the Scenario Editor's tests) and where its shared helpers are.
+[tests/README.md](tests/README.md) says what the suite needs (a JDK, Node.js for the Scenario Editor's tests) and where its shared helpers are. The same suite runs in CI on every pull request and on every push to `main`, and CI also builds the two web tools under `tools/`.
 
 ## Files that should not be tracked by Git
 
@@ -971,7 +973,9 @@ SZZBench/
 
 Python 3.10 以上が必要です。
 
-Git も必要です。SZZBench は Git を利用者自身の Git 設定から切り離して実行するため、署名、フック、global な ignore や attributes のファイルは生成結果に影響しません（`docs/generator-options.md` §5）。動作確認は Git 2.50.1 で行っています。JDK（`javac` と `java`）はシナリオのコードをコンパイル・実行するテストでだけ必要で、ない場合そのテストはスキップされます。Node.js は `tools/` 以下のツールでだけ必要です。
+Git 2.29 以上も必要です。SZZBench は Git を利用者自身の Git 設定から切り離して実行するため、署名、フック、global な ignore や attributes のファイルは生成結果に影響しません（`docs/generator-options.md` §5）。JDK（`javac` と `java`）はシナリオのコードをコンパイル・実行するテストでだけ必要で、ない場合そのテストはスキップされます。Node.js は `tools/` 以下のツールでだけ必要です。
+
+テストは CI で、Linux 上で 2 通りに実行しています（`.github/workflows/tests.yml`）。Python 3.14 と GitHub の `ubuntu-latest` ランナーの現行の Git の組み合わせと、Python 3.10 と Debian 12 の Git 2.39 の組み合わせです。開発は macOS で行っています。Windows ではテストしていません。以下の PowerShell のコマンドは参考として載せています（[#109](https://github.com/YoshikiHigo/SZZBench/issues/109)）。
 
 SZZBench のルートディレクトリで、仮想環境を作成して有効化します。
 
@@ -1397,7 +1401,7 @@ pytest
 pytest tests/test_generator_smoke.py
 ```
 
-テストに必要なもの（JDK、Scenario Editor のテスト用の Node.js）と共通の補助関数の置き場所は [tests/README.md](tests/README.md) にあります。
+テストに必要なもの（JDK、Scenario Editor のテスト用の Node.js）と共通の補助関数の置き場所は [tests/README.md](tests/README.md) にあります。同じテストは、すべての pull request と `main` への push のたびに CI でも実行され、CI は `tools/` 以下の二つの web ツールのビルドも確かめます。
 
 ## Git 管理しないもの
 

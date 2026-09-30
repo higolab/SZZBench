@@ -547,8 +547,14 @@ What it gives up: no setting of your own reaches SZZBench's Git commands,
 user as "dubious ownership" -- in a container running as root over a mounted
 directory, for example; run SZZBench as the owner of the output directory.
 
-SZZBench is developed and tested with Git 2.50.1. Older versions are not
-tested.
+SZZBench needs Git 2.29 or later: it passes `--object-format=sha1` from 2.29,
+and `--ref-format=files` from 2.45, where Git has the option; an older Git
+knows no other ref format, so leaving it out changes nothing. CI runs the test
+suite on both sides of that branch and prints the Git version it used
+(`.github/workflows/tests.yml`): with the current Git of GitHub's
+`ubuntu-latest` runner, and with Debian 12's Git 2.39. SZZBench is developed
+with Git 2.50.1. Other versions from 2.29 on take one of the two tested paths
+but are not tested themselves.
 
 ## 6. The generation manifest (#93)
 

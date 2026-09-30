@@ -385,7 +385,7 @@ def run_tool(
     selected = scenarios[:limit] if limit is not None else scenarios
     records: list[dict[str, Any]] = []
     manifest: list[dict[str, Any]] = []
-    started_at = dt.datetime.now(dt.UTC).isoformat()
+    started_at = dt.datetime.now(dt.timezone.utc).isoformat()
     start_time = time.time()
 
     for index, scenario in enumerate(selected, start=1):
@@ -485,7 +485,7 @@ def run_tool(
         for record in records:
             handle.write(json.dumps(record, ensure_ascii=False) + "\n")
 
-    finished_at = dt.datetime.now(dt.UTC).isoformat()
+    finished_at = dt.datetime.now(dt.timezone.utc).isoformat()
     result = {
         "tool": tool_name,
         "tool_root": str(tool_root),

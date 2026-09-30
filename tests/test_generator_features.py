@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import json
+import re
 
 import pytest
 import yaml
@@ -23,7 +24,10 @@ from szzbench.operations import OperationError, apply_operation_to_filesystem, a
 
 
 def _log_line(repo: Path, revision: str, fmt: str) -> str:
-    return git_stdout(repo, "log", "-1", f"--format={fmt}", revision).rstrip("\n")
+    # Git before 2.45 writes a UTC time in %aI / %cI as "+00:00", Git 2.45 and later as "Z"
+    # (Git 2.45 release notes): compare the instant and its offset, not that spelling
+    line = git_stdout(repo, "log", "-1", f"--format={fmt}", revision).rstrip("\n")
+    return re.sub(r"(T\d{2}:\d{2}:\d{2})\+00:00\b", r"\1Z", line)
 
 
 def _write_graph_scenario(path: Path, commits: list[dict], *, scenario_id: str = "SZZG-9900", bugs: list[dict] | None = None, extra: dict | None = None, repository: dict | None = None) -> Path:
