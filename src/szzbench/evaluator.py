@@ -71,6 +71,9 @@ class CommitLevelPolicy:
     expect_no_bic: bool = False
     known_distractors: list[str] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
+    #: The oracle declares neither ``required`` nor ``expect_no_bic: true``, so
+    #: ``required`` was taken from bugs[] (graph suite; validate-graph's GW130).
+    required_inferred: bool = False
 
 
 #: Outcome classes of a bug-fixing commit's first-parent diff (see docs/evaluation-policies.md).
@@ -1027,7 +1030,8 @@ def _graph_commit_level_policy(
     if expect_no_bic and required:
         notes.append("expect_no_bic is true but required is non-empty; ignoring expect_no_bic.")
         expect_no_bic = False
-    if not required and not expect_no_bic:
+    required_inferred = not required and not expect_no_bic
+    if required_inferred:
         required = _graph_direct_bic_ids(scenario)
         if required:
             notes.append(
@@ -1082,6 +1086,7 @@ def _graph_commit_level_policy(
         expect_no_bic=expect_no_bic,
         known_distractors=_string_list(selected_commit_level.get("known_distractors")),
         notes=notes,
+        required_inferred=required_inferred,
     )
 
 
@@ -1138,10 +1143,15 @@ def _evaluation_variant_key(value: Any) -> str | None:
 
 
 def _graph_direct_bic_ids(scenario: dict[str, Any]) -> list[str]:
-    """Infer the required BICs from bug metadata (roles normalized via normalize_bic_role)."""
+    """Infer the required BICs from bug metadata (roles normalized via normalize_bic_role).
+
+    Malformed metadata is skipped rather than raised: validate-graph asks this
+    of a scenario it has not accepted yet (GW130, PR #124 review).
+    """
     expected: set[str] = set()
-    for bug in scenario.get("bugs", []) or []:
-        if not isinstance(bug, dict):
+    bugs = scenario.get("bugs")
+    for bug in bugs if isinstance(bugs, list) else []:
+        if not isinstance(bug, dict) or not isinstance(bug.get("bug_introducing_commits") or [], list):
             continue
         for entry in graph_bic_entries(bug, roles=DIRECT_BIC_ROLES):
             commit = entry.get("commit")
@@ -1152,7 +1162,9 @@ def _graph_direct_bic_ids(scenario: dict[str, Any]) -> list[str]:
 
 def _acceptable_related_entries(value: Any) -> list[AcceptableRelated]:
     entries: list[AcceptableRelated] = []
-    for item in value or []:
+    if not isinstance(value, list):                     # GE124 reports it; see _string_list
+        return entries
+    for item in value:
         if isinstance(item, str):
             entries.append(AcceptableRelated(commit=item))
         elif isinstance(item, dict) and isinstance(item.get("commit"), str):

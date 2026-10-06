@@ -199,7 +199,12 @@ def test_oracle_notes_are_rendered_in_markdown_and_promoted_to_warnings(tmp_path
     source = REPO_ROOT / "advanced-scenarios" / "SZZG-0116" / "scenario.graph.yml"
     target = advanced_root / "SZZG-0116" / "scenario.graph.yml"
     target.parent.mkdir(parents=True)
-    target.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+    # SZZG-0116 as it was until issue #118, with no commit_level: the evaluator
+    # infers the required set, so the scenario carries both kinds of note.
+    declared = "  commit_level:\n    evaluation_policy: exact_set\n    required:\n    - c1\n"
+    text = source.read_text(encoding="utf-8")
+    assert text.count(declared) == 1
+    target.write_text(text.replace(declared, ""), encoding="utf-8")
     generated = _run_cli("generate-graph", str(target), "--out", str(generated_root / "SZZG-0116" / "default"), "--force", "--no-verify")
     assert generated.returncode == 0, generated.stdout + generated.stderr
     scenarios_root = tmp_path / "scenarios"

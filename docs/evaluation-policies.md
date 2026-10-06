@@ -118,6 +118,10 @@ recommends `expect_no_bic: true`. An empty required set without
 prediction is then a false positive and no prediction passes, which is the
 same outcome but without the explicit intent.
 
+`validate-graph` warns about such an oracle (GW130), so that the note does
+not reach every evaluation of a shipped scenario: declare `required`, or
+`expect_no_bic: true` for an intentionally empty oracle.
+
 Notes like these are not hidden in the JSON: `evaluate` promotes every
 oracle-related result note (inferred required set, `expected_szz` sections the
 commit-level evaluator does not read, ignored allowances, unsupported policy

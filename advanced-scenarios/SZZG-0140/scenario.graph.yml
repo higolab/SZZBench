@@ -135,6 +135,8 @@ expected_szz:
     evaluation_policy: top_k
     relevant:
     - c1
+    required:
+    - c1
     k_values:
     - 1
     - 3

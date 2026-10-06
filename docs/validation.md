@@ -229,15 +229,16 @@ as one deleted and one added line, like `git blame` without `-w`.
 | GE105 | error | fault/fix `entity` is not an object |
 | GW120 | warning | `expected_szz` missing |
 | GE120 | error | `expected_szz` is not an object |
-| GE121 | error | `acceptable_related` refers to an unknown commit |
+| GE121 | error | `acceptable_related` refers to an unknown commit, in `expected_szz.commit_level` or in any `evaluation_variants[].commit_level` |
 | GE122 | error | an evaluation variant is not an object |
 | GW123 | warning | unknown `evaluation_policy` in `expected_szz.commit_level` **or in any `evaluation_variants[].commit_level`**. The vocabulary is `szzbench.policies.SUPPORTED_EVALUATION_POLICIES` = {`exact_set`, `direct_only`, `reintroduction_direct`, `partial_credit`, `top_k`, `relaxed_with_related`, `relaxed_with_credit`}, identical to the evaluator's set (a test enforces this). |
-| GE124 | error | a commit list (`required`, `relevant`, `related_origins`, `related_but_not_correct`) is not a list |
+| GE124 | error | a commit list (`required`, `relevant`, `related_origins`, `related_but_not_correct`, `acceptable_related`) of `expected_szz.commit_level` or of any `evaluation_variants[].commit_level` is not a list. Variants were checked for `required` only, and `acceptable_related` not at all, until the review of PR #124: GW130 hands both oracles to the evaluator, which reads every list |
 | GE125 | error | a commit list entry is not a commit id |
 | GE126 | error | a commit list entry refers to an unknown commit |
 | GE127 | error | `expected_szz.branch_level` is not a non-empty object, or an entry is not an object with `bfc` (a commit id) and `required` (a list; a blank `required:` is rejected, `[]` is an intentionally empty answer) ([evaluation-policies.md](evaluation-policies.md) §1.5) |
 | GE128 | error | a `branch_level` entry's `bfc` refers to an unknown commit |
 | GE129 | error | `expected_szz.default_variant` is present but names no declared evaluation variant, matched the way the evaluator matches names (case and `-`/`_` ignored). A blank `default_variant:` counts: YAML reads it as null. The evaluator would ignore it and score `commit_level`, with a note at every evaluation for an unknown name and none for a null; omit `default_variant` to make `commit_level` the default ([evaluation-policies.md](evaluation-policies.md) §1.3) |
+| GW130 | warning | a commit-level oracle the evaluator would have to infer: the oracle scored by default (`commit_level`, or the evaluation variant `default_variant` names), or any evaluation variant, declares neither a non-empty `required` nor `expect_no_bic: true`. The evaluator then takes `required` from `bugs[]` and notes it at every evaluation ([evaluation-policies.md](evaluation-policies.md) §1.4). Asked of the evaluator, as GE129 is ([issue #118](https://github.com/YoshikiHigo/SZZBench/issues/118)) |
 | GE140 | error | `work_items` / `issues` / `developer_hints` is not a list |
 | GE141 | error | a developer hint refers to an unknown commit |
 | GE142 | error | a developer hint references an unknown commit |
