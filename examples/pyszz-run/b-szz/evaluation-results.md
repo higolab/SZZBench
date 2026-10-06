@@ -28,11 +28,8 @@
 
 - SZZG-0034: expected_szz also declares bug_level; these sections are not used by commit-level evaluation.
 - SZZG-0097: expected_szz also declares work_item_level; these sections are not used by commit-level evaluation.
-- SZZG-0115: commit_level.required is missing or empty; required BICs inferred from bugs[].bug_introducing_commits (roles contributing/direct/reintroducing): c1.
-- SZZG-0116: commit_level.required is missing or empty; required BICs inferred from bugs[].bug_introducing_commits (roles contributing/direct/reintroducing): c1.
 - SZZG-0116: expected_szz also declares entity_level, line_level; these sections are not used by commit-level evaluation.
 - SZZG-0133: expected_szz also declares line_level; these sections are not used by commit-level evaluation.
-- SZZG-0140: commit_level.required is missing or empty; required BICs inferred from bugs[].bug_introducing_commits (roles contributing/direct/reintroducing): c1.
 
 ## Results
 
@@ -322,8 +319,5 @@
 
 - SZZG-0034: expected_szz also declares bug_level; these sections are not used by commit-level evaluation.
 - SZZG-0097: expected_szz also declares work_item_level; these sections are not used by commit-level evaluation.
-- SZZG-0115: commit_level.required is missing or empty; required BICs inferred from bugs[].bug_introducing_commits (roles contributing/direct/reintroducing): c1.
-- SZZG-0116: commit_level.required is missing or empty; required BICs inferred from bugs[].bug_introducing_commits (roles contributing/direct/reintroducing): c1.
 - SZZG-0116: expected_szz also declares entity_level, line_level; these sections are not used by commit-level evaluation.
 - SZZG-0133: expected_szz also declares line_level; these sections are not used by commit-level evaluation.
-- SZZG-0140: commit_level.required is missing or empty; required BICs inferred from bugs[].bug_introducing_commits (roles contributing/direct/reintroducing): c1.

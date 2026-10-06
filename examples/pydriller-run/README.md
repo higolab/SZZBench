@@ -121,22 +121,20 @@ implementation does not do, and the README of each says what.
 ## Reading the report
 
 `evaluation-results.md` lists every scenario with its expected and actual BICs, its evaluation
-policy and its status, after a summary and the seven warnings the evaluator raised. None of them is
-about the predictions, and they are not all the same kind:
+policy and its status, after a summary and the four warnings the evaluator raised. None of them is
+about the predictions: all four are about metadata this evaluation does not read. SZZG-0034 declares
+`bug_level`, SZZG-0097 `work_item_level`, SZZG-0116 `entity_level` and `line_level`, SZZG-0133
+`line_level`. Commit-level scoring ignores those sections; nothing about the scenario changes.
 
-- **Four are about metadata this evaluation does not read.** SZZG-0034 declares `bug_level`,
-  SZZG-0097 `work_item_level`, SZZG-0116 `entity_level` and `line_level`, SZZG-0133 `line_level`.
-  Commit-level scoring ignores those sections; nothing about the scenario changes.
-- **Three say the required set was inferred, not read.** SZZG-0115, SZZG-0116 and SZZG-0140 have an
-  empty or missing `expected_szz.commit_level.required`, so the evaluator derived it from
-  `bugs[].bug_introducing_commits`, taking the commits whose role is `contributing`, `direct` or
-  `reintroducing` — `c1` in each of the three. Those scenarios were scored against a set the
-  evaluator computed, which is worth knowing before quoting their results.
-
-Until 2026-09-29 there was an eighth warning. SZZG-0136 declared `default_variant: default`, a variant
-it does not have, so the evaluator fell back to `expected_szz.commit_level` — the scenario's intended
-default — and said so at every evaluation. The scenario no longer declares it, and the graph
-validator now rejects a `default_variant` that names no variant (GE129).
+Until 2026-10-06 there were three more. SZZG-0115, SZZG-0116 and SZZG-0140 left
+`expected_szz.commit_level.required` empty or missing, so the evaluator derived it from
+`bugs[].bug_introducing_commits` — `c1` in each of the three — and said so at every evaluation. They
+now declare `required: [c1]`, which changes no verdict, and `validate-graph` warns about an oracle
+the evaluator would have to infer (GW130). Until 2026-09-29 there was one more still. SZZG-0136
+declared `default_variant: default`, a variant it does not have, so the evaluator fell back to
+`expected_szz.commit_level` — the scenario's intended default — and said so at every evaluation. The
+scenario no longer declares it, and the graph validator now rejects a `default_variant` that names
+no variant (GE129).
 
 PyDriller named at least one commit for 260 scenarios and none for the other 19. The adapter writes
 a record for all 279, the 19 with an empty prediction list: that is PyDriller's answer "no commit",

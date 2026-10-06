@@ -70,6 +70,10 @@ bugs:
     statement: return value >= min && value <= max;
     fix_type: line_modification
 expected_szz:
+  commit_level:
+    evaluation_policy: exact_set
+    required:
+    - c1
   line_level:
     available: false
     reason: This scenario intentionally evaluates entity-level output only, even though the changed statement is recorded for

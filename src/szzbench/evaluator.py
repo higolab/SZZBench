@@ -71,6 +71,9 @@ class CommitLevelPolicy:
     expect_no_bic: bool = False
     known_distractors: list[str] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
+    #: The oracle declares neither ``required`` nor ``expect_no_bic: true``, so
+    #: ``required`` was taken from bugs[] (graph suite; validate-graph's GW130).
+    required_inferred: bool = False
 
 
 #: Outcome classes of a bug-fixing commit's first-parent diff (see docs/evaluation-policies.md).
@@ -1027,7 +1030,8 @@ def _graph_commit_level_policy(
     if expect_no_bic and required:
         notes.append("expect_no_bic is true but required is non-empty; ignoring expect_no_bic.")
         expect_no_bic = False
-    if not required and not expect_no_bic:
+    required_inferred = not required and not expect_no_bic
+    if required_inferred:
         required = _graph_direct_bic_ids(scenario)
         if required:
             notes.append(
@@ -1082,6 +1086,7 @@ def _graph_commit_level_policy(
         expect_no_bic=expect_no_bic,
         known_distractors=_string_list(selected_commit_level.get("known_distractors")),
         notes=notes,
+        required_inferred=required_inferred,
     )
 
 

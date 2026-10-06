@@ -222,6 +222,77 @@ def test_a_default_variant_the_evaluator_resolves_is_accepted(default_variant):
     assert notes == []
 
 
+# --- a commit-level oracle the evaluator would infer (GW130, issue #118) ------
+
+@pytest.mark.parametrize("commit_level", [
+    None,                                                                   # SZZG-0116: no commit_level
+    {"evaluation_policy": "top_k", "k_values": [1, 3, 5], "relevant": ["c1"]},  # SZZG-0115 and SZZG-0140
+    {"evaluation_policy": "exact_set", "required": []},
+])
+def test_an_oracle_the_evaluator_would_infer_is_a_warning(commit_level):
+    # The evaluator took the required set from bugs[] and said so at every evaluation.
+    data = graph_scenario()
+    if commit_level is None:
+        del data["expected_szz"]["commit_level"]
+    else:
+        data["expected_szz"]["commit_level"] = commit_level
+    gw130 = [f for f in validate_graph_static(data).findings if f.code == "GW130"]
+    assert [(f.severity, f.location) for f in gw130] == [("WARNING", "expected_szz.commit_level")]
+    assert "c1" in gw130[0].message                     # what the evaluator would infer
+
+
+@pytest.mark.parametrize("variant", [
+    {"name": "loose"},                                                      # no commit_level
+    {"name": "loose", "commit_level": {"evaluation_policy": "exact_set"}},  # no required
+])
+def test_an_evaluation_variant_whose_oracle_would_be_inferred_is_a_warning(variant):
+    data = graph_scenario()
+    data["expected_szz"]["evaluation_variants"] = [variant]
+    gw130 = [f for f in validate_graph_static(data).findings if f.code == "GW130"]
+    assert [f.location for f in gw130] == ["expected_szz.evaluation_variants[0].commit_level"]
+
+
+@pytest.mark.parametrize("commit_level", [
+    {"evaluation_policy": "exact_set", "required": ["c1"]},
+    {"evaluation_policy": "exact_set", "expect_no_bic": True},             # an intentionally empty oracle
+    {"evaluation_policy": "top_k", "relevant": ["c1"], "required": ["c1"]},  # SZZG-0096
+])
+def test_a_declared_oracle_is_not_reported(commit_level):
+    data = graph_scenario()
+    data["expected_szz"]["commit_level"] = commit_level
+    assert "GW130" not in codes(validate_graph_static(data))
+
+
+def test_an_oracle_kept_in_the_default_variant_is_not_reported():
+    # SZZG-0022, SZZG-0085 and SZZG-0146 have no commit_level: default_variant names the oracle
+    data = graph_scenario()
+    del data["expected_szz"]["commit_level"]
+    data["expected_szz"]["evaluation_variants"] = [deepcopy(BOUNDARY_VARIANT)]
+    data["expected_szz"]["default_variant"] = "boundary-commit"
+    assert "GW130" not in codes(validate_graph_static(data))
+
+
+def test_an_oracle_with_nothing_to_infer_says_the_required_set_would_be_empty():
+    data = graph_scenario()
+    data["expected_szz"]["commit_level"] = {"evaluation_policy": "exact_set"}
+    data["bugs"][0]["bug_introducing_commits"] = []
+    gw130 = [f for f in validate_graph_static(data).findings if f.code == "GW130"]
+    assert len(gw130) == 1 and "empty required set" in gw130[0].message
+
+
+def test_a_missing_expected_szz_is_reported_once():
+    data = graph_scenario()
+    del data["expected_szz"]
+    assert [code for code in codes(validate_graph_static(data)) if code in ("GW120", "GW130")] == ["GW120"]
+
+
+def test_no_shipped_graph_scenario_leaves_its_commit_level_oracle_to_inference():
+    root = Path(__file__).resolve().parents[1] / "advanced-scenarios"
+    reported = [path.parent.name for path in sorted(root.glob("*/scenario.graph.yml"))
+                if "GW130" in codes(validate_graph_scenario_file(path)[1])]
+    assert reported == []
+
+
 # --- dangling rewrite references ----------------------------------------------
 
 @pytest.mark.parametrize(

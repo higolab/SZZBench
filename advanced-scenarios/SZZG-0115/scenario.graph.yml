@@ -115,6 +115,8 @@ expected_szz:
     - 5
     relevant:
     - c1
+    required:
+    - c1
 scenario_design:
   purpose: >-
     Evaluate a top-k oracle: whether the bug-introducing commit is ranked above the distractors rather than returned
