@@ -411,6 +411,8 @@ scenarios/SZZ-XXXX/
 └── README.md
 ```
 
+The new entry goes at the end of the index's `scenarios:` list, in the format of the shipped entries, and no other line of the index changes. If the edited index would not load, the command writes nothing and exits with status 1.
+
 ## Using Graph scenarios
 
 ### validate-graph
@@ -562,6 +564,8 @@ advanced-scenarios/SZZG-XXXX/
 ├── scenario.graph.yml
 └── README.md
 ```
+
+As with `new-scenario`, the entry goes at the end of the `scenarios:` list, before the index's `notes:` block, and nothing is written if the edited index would not load. `scenario_count` is updated as well.
 
 ## generate-all-repos
 
@@ -1120,6 +1124,8 @@ scenarios/SZZ-XXXX/
 └── README.md
 ```
 
+新しいエントリは、index の `scenarios:` リストの末尾に、同梱のエントリと同じ書式で追加されます。index のほかの行は変わりません。編集後の index が読み込めない場合は、何も書き込まずに終了ステータス 1 で終了します。
+
 ## Graph シナリオの使い方
 
 ### validate-graph
@@ -1271,6 +1277,8 @@ advanced-scenarios/SZZG-XXXX/
 ├── scenario.graph.yml
 └── README.md
 ```
+
+`new-scenario` と同じく、エントリは `scenarios:` リストの末尾（index の `notes:` ブロックの前）に追加され、編集後の index が読み込めない場合は何も書き込みません。`scenario_count` も更新されます。
 
 ## generate-all-repos
 
