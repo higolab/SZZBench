@@ -341,7 +341,8 @@ MALFORMED_PATHS = [
 ]
 MALFORMED_VALUES = [5, "c1", {"commit": "c1"}, [5], [{"commit": 5}], True, None]
 #: Inputs that raised before GW130 existed, in checks it does not touch: the BIC
-#: loop of validate_graph_static and the origin-coverage lint.
+#: loop of validate_graph_static and the origin-coverage lint (issue #127, which
+#: removes this list).
 RAISED_BEFORE_GW130 = [
     (("bugs", 0, "bug_introducing_commits"), 5), (("bugs", 0, "bug_introducing_commits"), True),
     (("expected_szz", "evaluation_variants"), 5), (("expected_szz", "evaluation_variants"), True),
