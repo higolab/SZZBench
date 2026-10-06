@@ -6,6 +6,7 @@ from pathlib import Path
 import re
 import unicodedata
 
+from .retired_ids import read_retired_ids
 from .scenario import load_yaml
 from .validator import SCENARIO_DIFFICULTIES
 
@@ -120,6 +121,10 @@ def _next_graph_scenario_id(root: Path, index_data: dict) -> str:
         for child in root.iterdir():
             if child.is_dir():
                 _collect_graph_scenario_number(child.name, used_numbers)
+    # A retired id is never issued again, even when it was the highest
+    # (docs/retired-ids.md, issue #112).
+    for retired in read_retired_ids(root):
+        _collect_graph_scenario_number(retired, used_numbers)
     number = max(used_numbers, default=0) + 1
     return f"SZZG-{number:04d}"
 

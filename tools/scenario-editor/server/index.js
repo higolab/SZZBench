@@ -16,6 +16,7 @@ const editorDir = path.resolve(serverDir, '..');
 // SZZBENCH_REPO_ROOT points the editor at another checkout (the tests use a scratch copy).
 const repoRoot = path.resolve(process.env.SZZBENCH_REPO_ROOT || path.resolve(editorDir, '..', '..'));
 const scenariosDir = path.join(repoRoot, 'scenarios');
+const retiredIdsDoc = path.join(repoRoot, 'docs', 'retired-ids.md');
 const serveStatic = process.argv.includes('--serve-static');
 // The Python that runs SZZBench's own validator and README renderer on save (issue #97).
 const python = process.env.SZZBENCH_PYTHON || 'python3';
@@ -61,6 +62,27 @@ async function listScenarioIds() {
     .filter((entry) => entry.isDirectory() && /^SZZ-\d{4}$/.test(entry.name))
     .map((entry) => entry.name)
     .sort();
+}
+
+/**
+ * The ids in the first column of docs/retired-ids.md, as SZZBench reads them
+ * (src/szzbench/retired_ids.py). A withdrawn scenario's id is never issued or
+ * saved again (issue #112).
+ */
+async function retiredIds() {
+  if (!(await pathExists(retiredIdsDoc))) {
+    return new Set();
+  }
+  const text = await fs.readFile(retiredIdsDoc, 'utf8');
+  return new Set(text.split(/\r?\n/).map((line) => /^\|\s*(SZZG?-\d+)\s*\|/.exec(line)?.[1]).filter(Boolean));
+}
+
+async function assertNotRetired(id) {
+  if ((await retiredIds()).has(id)) {
+    const err = new Error(`${id} is a retired scenario id (docs/retired-ids.md); ids are never reused. Choose another id.`);
+    err.status = 409;
+    throw err;
+  }
 }
 
 function buildIndexEntryFromScenario(scenario) {
@@ -195,7 +217,9 @@ app.get('/api/health', (_req, res) => {
 app.get('/api/scenarios', async (_req, res, next) => {
   try {
     const ids = await listScenarioIds();
-    const last = ids.length === 0 ? 0 : Math.max(...ids.map((id) => Number(id.slice(4))));
+    // Number after every id ever issued: the directories and the retired ids.
+    const taken = [...ids, ...[...(await retiredIds())].filter((id) => /^SZZ-\d{4}$/.test(id))];
+    const last = taken.length === 0 ? 0 : Math.max(...taken.map((id) => Number(id.slice(4))));
     const nextId = `SZZ-${String(last + 1).padStart(4, '0')}`;
     res.json({ ids, nextId, scenariosDir });
   } catch (err) {
@@ -258,6 +282,7 @@ function refuseErrors(res, staged, what) {
 app.post('/api/scenarios/preview', async (req, res, next) => {
   try {
     const { id, scenarioYaml, readme, scenario } = parseScenarioRequest(req.body);
+    await assertNotRetired(id);
     const staged = await stageAndValidate(id, scenarioYaml, readme);
     const findings = refuseErrors(res, staged, 'rendered');
     if (findings === null) return;
@@ -277,6 +302,7 @@ app.post('/api/scenarios/preview', async (req, res, next) => {
 app.post('/api/scenarios/save', async (req, res, next) => {
   try {
     const { id, scenarioYaml, readme, scenario } = parseScenarioRequest(req.body);
+    await assertNotRetired(id);
     const { overwrite } = req.body || {};
 
     const scenarioDir = safeScenarioDir(id);

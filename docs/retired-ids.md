@@ -7,6 +7,20 @@ it carried, why it was withdrawn, and what covers its subject instead.
 A withdrawn scenario's directory and index entry are removed in the same commit that
 adds its row here.
 
+SZZBench reads the first column of the table below, so a retired id is never issued or
+accepted again (issue #112):
+
+- `szzbench new-scenario`, `szzbench new-graph-scenario` and the Scenario Editor number a
+  new scenario after every id in use **and** every id listed here, even when the retired id
+  was the highest of its suite.
+- The Scenario Editor refuses to save or download a scenario with a retired id.
+- `szzbench validate-index` reports an index entry or a scenario directory that uses one
+  as IE047.
+
+Keep each id alone in the first column (`| SZZ-0058 |`). The table is read from the
+`docs/` beside the suite roots, so a copy of `scenarios/` or `advanced-scenarios/`
+without this file has no retired ids.
+
 | id | former title | reason | replacement |
 |---|---|---|---|
 | SZZ-0058 | Resource close omission | The title was never true: the repository holds no resource and no `close()`, only `if (opened) { return false; }` added by the BFC — the same `if (<cond>) { return false; }` omission shape as SZZ-0053 and SZZ-0076, whose titles do match their conditions (SZZ-0070 carried it too until it was repaired into a transition table on 2026-09-28; SZZ-0047 omits a null check and returns a default rather than `false`). Neither remedy in `decisions/consolidation-matrix.md` §2 works now: rewriting it around a real `Closeable` would duplicate SZZ-0189, and retitling it would leave a fourth copy of a shape three scenarios already cover. | SZZ-0189 covers a real missing `close()` on a `BufferedWriter`; SZZ-0053 and SZZ-0076 cover the guard-omission shape, and SZZ-0047 the null-check omission. |
