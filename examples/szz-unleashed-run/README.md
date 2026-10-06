@@ -101,11 +101,13 @@ answer on all 279 scenarios.
     extra commits include the initial commit `c0`. The remaining 73 miss a required commit.
   - It passes five scenarios that depth 1 fails. Four are `discriminating`: SZZ-0136, SZZG-0028,
     SZZG-0069 and SZZG-0076. Each has a two-commit oracle; depth 1 answers one of the two commits
-    and depth 3 answers both. No other run under `examples/` passes those four, and no cheap rule
-    does. The fifth is SZZG-0140, a `top_k` oracle whose first-ranked answer must be `c1`.
+    and depth 3 answers both. Token-level B-SZZ ([../token-bszz-run/](../token-bszz-run/README.md))
+    passes all four too; no other run under `examples/` passes them, and no cheap rule does. The
+    fifth is SZZG-0140, a `top_k` oracle whose first-ranked answer must be `c1`.
 
-One parameter therefore moves SZZ Unleashed from a near-copy of the blame baseline to the only
-recorded tool that passes four `discriminating` scenarios. The cost is 132 `control` scenarios.
+One parameter therefore moves SZZ Unleashed from a near-copy of the blame baseline to four
+`discriminating` passes, more than any other recorded run except token-level B-SZZ (11). The cost
+is 132 `control` scenarios.
 This is the trade the tiers are built to show: a `control` checks an input condition one commit at a
 time, and a `discriminating` scenario needs more than one commit that plain blame does not reach.
 
