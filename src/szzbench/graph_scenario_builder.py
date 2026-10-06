@@ -6,6 +6,7 @@ from pathlib import Path
 import re
 import unicodedata
 
+from .index_splice import IndexSpliceError, read_index_text, splice_index_entry, write_index_text
 from .scenario import load_yaml
 from .validator import SCENARIO_DIFFICULTIES
 
@@ -59,6 +60,23 @@ def create_new_graph_scenario(
 
     if scenario_dir.exists():
         raise NewGraphScenarioError(f"Graph scenario directory already exists: {scenario_dir}")
+    # Edit the index before writing anything, so that an index the entry
+    # cannot be added to leaves the root as it was (issue #111).  The keys and
+    # their order are the graph index's own: it carries no slug or difficulty.
+    entry = {
+        "id": scenario_id,
+        "title": title,
+        "category": category,
+        "path": f"{root.name}/{scenario_id}/scenario.graph.yml",
+        "readme": f"{root.name}/{scenario_id}/README.md",
+        "status": status,
+        "factors": scenario_factors,
+    }
+    try:
+        index_text = splice_index_entry(
+            read_index_text(index_path, 'schema_version: "graph-index-0.1-draft"\nscenarios:\n'), index_data, entry)
+    except IndexSpliceError as exc:
+        raise NewGraphScenarioError(f"Cannot add {scenario_id} to {index_path}: {exc}. Nothing was written.") from exc
 
     root.mkdir(parents=True, exist_ok=True)
     scenario_dir.mkdir()
@@ -75,17 +93,7 @@ def create_new_graph_scenario(
         encoding="utf-8",
     )
     readme_path.write_text(_readme_template(scenario_path), encoding="utf-8")
-    _append_index_entry(
-        index_path,
-        scenario_id=scenario_id,
-        title=title,
-        slug=scenario_slug,
-        category=category,
-        factors=scenario_factors,
-        difficulty=difficulty,
-        status=status,
-        scenario_path=scenario_path,
-    )
+    write_index_text(index_path, index_text)
 
     return NewGraphScenarioResult(
         scenario_id=scenario_id,
@@ -287,44 +295,3 @@ c2: fix bug (replace TODO)
 
 TODO: The expected BICs and BFCs, the policy, and the evidence (behaviour at each commit, blame of the deleted lines) that the oracle is right.
 """
-
-
-def _append_index_entry(
-    index_path: Path,
-    *,
-    scenario_id: str,
-    title: str,
-    slug: str,
-    category: str,
-    factors: list[str],
-    difficulty: str,
-    status: str,
-    scenario_path: Path,
-) -> None:
-    if index_path.exists():
-        text = index_path.read_text(encoding="utf-8")
-        if not text.endswith("\n"):
-            text += "\n"
-    else:
-        text = 'schema_version: "graph-index-0.1-draft"\nscenarios:\n'
-    relative_path = _index_path(scenario_path)
-    readme_path = _index_path(scenario_path.with_name("README.md"))
-    entry = f'''
-  - id: {_quote(scenario_id)}
-    title: {_quote(title)}
-    slug: {_quote(slug)}
-    category: {_quote(category)}
-    factors: {_inline_list(factors)}
-    difficulty: {_quote(difficulty)}
-    status: {_quote(status)}
-    path: {_quote(relative_path)}
-    readme: {_quote(readme_path)}
-'''
-    index_path.write_text(text + entry, encoding="utf-8")
-
-
-def _index_path(path: Path) -> str:
-    try:
-        return path.relative_to(Path.cwd()).as_posix()
-    except ValueError:
-        return path.as_posix()
