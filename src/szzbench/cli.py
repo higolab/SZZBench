@@ -14,9 +14,10 @@ from .bulk_generator import (
 from .cleaner import CleanError, DEFAULT_CLEAN_ROOT, clean_generated_outputs
 from .generator import GenerationError, generate_repository
 from .graph_generator import GraphGenerationError, generate_graph_repository
+from .scenario import load_yaml
 from .scenario_builder import DEFAULT_SCENARIOS_ROOT, NewScenarioError, create_new_scenario
 from .graph_scenario_builder import DEFAULT_GRAPH_SCENARIOS_ROOT, NewGraphScenarioError, create_new_graph_scenario
-from .validator import SCENARIO_DIFFICULTIES, validate_scenario_file, validate_scenario_indexes
+from .validator import SCENARIO_DIFFICULTIES, graph_scenario_guard, validate_scenario_file, validate_scenario_indexes
 from .graph_validator import validate_graph_scenario_file
 from .verifier import verify_generated_repo
 from .graph_verifier import verify_graph_generated_repo
@@ -44,6 +45,15 @@ def cmd_validate(args) -> int:
     return 0
 
 def cmd_generate(args) -> int:
+    # Before generate_repository, whose validation would only say "run validate"
+    # for a graph scenario rather than name generate-graph (issue #119).
+    scenario, _ = load_yaml(Path(args.scenario))
+    if scenario is not None:
+        guard = graph_scenario_guard(scenario, Path(args.scenario), "generate")
+        if guard.has_errors():
+            for finding in guard.findings:
+                print(f"[ERROR] {finding.code}: {finding.message}", file=sys.stderr)
+            return 1
     try:
         commit_map, verify_result = generate_repository(Path(args.scenario), Path(args.out), force=args.force, verify=not args.no_verify)
     except GenerationError as exc:

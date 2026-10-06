@@ -7,7 +7,7 @@ from .findings import ValidationResult
 from .gitutils import GitError, git_blame_line, git_hash_exists, git_message, git_parent, git_show
 from .operations import find_all_occurrences
 from .scenario import load_yaml
-from .validator import DUPLICATE_STATEMENT_FACTOR_RE, FAULT_REWRITE_FACTOR_RE, factor_matches
+from .validator import DUPLICATE_STATEMENT_FACTOR_RE, FAULT_REWRITE_FACTOR_RE, factor_matches, graph_scenario_guard
 
 def _load_commit_map(path: Path) -> tuple[dict, ValidationResult]:
     result = ValidationResult()
@@ -26,6 +26,11 @@ def verify_generated_repo(repo_dir: Path, scenario_path: Path, commit_map_path: 
     scenario, load_result = load_yaml(scenario_path)
     result.extend(load_result)
     if scenario is None:
+        return result
+    # The classic checks find nothing to blame in a graph scenario and would
+    # report a clean repository (issue #119).
+    result.extend(graph_scenario_guard(scenario, scenario_path, "verify"))
+    if result.has_errors():
         return result
     # The same declarations the simulated checks honour, so a scenario that is
     # clean under `validate --lint` is clean under `verify --strict` as well.
