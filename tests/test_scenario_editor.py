@@ -147,6 +147,8 @@ def server(tmp_path):
     root = tmp_path / "repo"
     (root / "scenarios").mkdir(parents=True)
     shutil.copy(ROOT / "scenarios/index.yml", root / "scenarios/index.yml")
+    (root / "docs").mkdir()
+    shutil.copy(ROOT / "docs/retired-ids.md", root / "docs/retired-ids.md")
     (root / "src").symlink_to(ROOT / "src")
     port = _free_port()
     process = subprocess.Popen(["node", str(EDITOR / "server/index.js")], cwd=EDITOR,
@@ -254,6 +256,25 @@ def test_the_download_refuses_what_the_save_refuses(server, tmp_path):
     assert status == 400 and "nothing was rendered" in data["error"]
     assert any(finding["severity"] == "ERROR" for finding in data["findings"])
     assert not (root / "scenarios/SZZ-0002").exists()
+
+
+def test_the_proposed_id_comes_after_every_retired_id(server):
+    """docs/retired-ids.md retires SZZ-0167 at the highest, and the scratch copy
+    has no scenario directory: an id is never issued twice (issue #112)."""
+    base, _ = server
+    with urllib.request.urlopen(f"{base}/api/scenarios", timeout=10) as response:
+        assert json.loads(response.read())["nextId"] == "SZZ-0168"
+
+
+def test_a_retired_id_is_neither_saved_nor_downloaded(server, tmp_path):
+    base, root = server
+    retired = _model(tmp_path, tier="control", scenarioId="SZZ-0058", repositoryName="SZZ-0058-new-szz-scenario")
+    for endpoint in ("save", "preview"):
+        status, data = _post(base, {"id": "SZZ-0058", "scenarioYaml": retired["yaml"], "readme": retired["readme"],
+                                    "overwrite": True}, endpoint=endpoint)
+        assert status == 409 and "SZZ-0058" in data["error"] and "docs/retired-ids.md" in data["error"], data
+    assert not (root / "scenarios/SZZ-0058").exists()
+    assert (root / "scenarios/index.yml").read_bytes() == (ROOT / "scenarios/index.yml").read_bytes()
 
 
 def test_a_readme_without_its_header_is_ready_only_after_readme_write(tmp_path):

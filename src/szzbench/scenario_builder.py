@@ -7,6 +7,7 @@ import re
 import unicodedata
 
 from .index_splice import IndexSpliceError, read_index_text, splice_index_entry, write_index_text
+from .retired_ids import read_retired_ids
 from .scenario import load_yaml
 from .validator import SCENARIO_DIFFICULTIES
 
@@ -125,6 +126,10 @@ def _next_scenario_id(root: Path, index_data: dict) -> str:
         for child in root.iterdir():
             if child.is_dir():
                 _collect_scenario_number(child.name, used_numbers)
+    # A retired id is never issued again, even when it was the highest
+    # (docs/retired-ids.md, issue #112).
+    for retired in read_retired_ids(root):
+        _collect_scenario_number(retired, used_numbers)
     number = max(used_numbers, default=0) + 1
     return f"SZZ-{number:04d}"
 

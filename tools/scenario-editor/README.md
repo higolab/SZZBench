@@ -37,7 +37,9 @@ SZZBench/scenarios/SZZ-XXXX/README.md
 SZZBench/scenarios/index.yml
 ```
 
-If the scenario ID already exists, the save is rejected unless **Overwrite existing scenario** is checked.
+If the scenario ID already exists, the save is rejected unless **Overwrite existing scenario** is checked. A
+retired ID (`docs/retired-ids.md`) is rejected even then: a withdrawn scenario's ID is never reused, and the ID
+the page proposes comes after every retired one.
 
 Saving goes through SZZBench's own checks before anything reaches `scenarios/` (issue #97):
 
@@ -66,7 +68,8 @@ nothing into the repository:
 - `README.md`, with the generated header already inserted;
 - `index-entry.yml`, the entry in `scenarios/index.yml`'s own style.
 
-A scenario the save would refuse (no tier, a `validate --lint` error) is not downloaded either; the page shows why.
+A scenario the save would refuse (no tier, a retired ID, a `validate --lint` error) is not downloaded either; the
+page shows why.
 Files placed by hand in `scenarios/SZZ-XXXX/` then pass `szzbench validate --lint --strict` as saved ones do.
 
 Without the backend only `scenario.yml` can be downloaded, because the header comes from SZZBench itself. Write the

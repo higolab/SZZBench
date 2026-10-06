@@ -337,6 +337,7 @@ with the index path.
 | IE044 | error | an index entry's `factors`, or the scenario's `meta.factors`, is not a list; neither side is validated before IE043 compares them |
 | IE045 | error | an index entry's `status` differs from the scenario's `meta.status` |
 | IE046 | error | an index entry's `slug`, `category`, `category_code` or `difficulty` differs from the scenario's `meta` value. These four are copied into the index like `title`, `status` and `factors`, and were the last mirrored fields nothing checked |
+| IE047 | error | an index entry, or a directory under the scenario root, uses a retired id: one in the first column of the table in `docs/retired-ids.md`, read from the `docs/` beside the root. A withdrawn scenario's id is never reused ([issue #112](https://github.com/YoshikiHigo/SZZBench/issues/112)) |
 | IE042 | error | the scenario file of an entry cannot be loaded |
 
 ## Verifier findings that depend on a declaration

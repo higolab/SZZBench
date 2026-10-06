@@ -9,6 +9,7 @@ import re
 from .findings import ValidationResult
 from .operations import SUPPORTED_OPERATIONS, FUTURE_OPERATIONS, OperationError, apply_operation_to_memory, find_all_occurrences
 from .paths import PathValidationError, validate_repo_relative_path
+from .retired_ids import read_retired_ids
 from .scenario import load_yaml
 from .gitutils import resolved_commit_authors
 
@@ -808,6 +809,7 @@ def validate_index_file(index_path: Path, root: Path, scenario_filename: str) ->
 
     expected_rel = lambda sid: f"{root.name}/{sid}/{scenario_filename}"  # noqa: E731
     seen: set[str] = set()
+    retired = read_retired_ids(root)
     for i, entry in enumerate(entries):
         loc = f"{prefix}:scenarios[{i}]"
         if not isinstance(entry, dict) or not isinstance(entry.get("id"), str):
@@ -818,6 +820,9 @@ def validate_index_file(index_path: Path, root: Path, scenario_filename: str) ->
             result.error("IE021", f"Duplicate index entry '{sid}'.", f"{loc}.id")
             continue
         seen.add(sid)
+        if sid in retired:
+            # A withdrawn scenario leaves a gap that stays one (issue #112).
+            result.error("IE047", f"Index entry '{sid}' uses a retired id (docs/retired-ids.md); ids are never reused.", f"{loc}.id")
         scenario_file = root / sid / scenario_filename
         if not scenario_file.is_file():
             result.error("IE022", f"Index entry '{sid}' has no scenario file at '{expected_rel(sid)}'.", loc)
@@ -862,6 +867,8 @@ def validate_index_file(index_path: Path, root: Path, scenario_filename: str) ->
     for child in sorted(root.iterdir()):
         if child.is_dir() and (child / scenario_filename).is_file() and child.name not in seen:
             result.error("IE030", f"Scenario directory '{root.name}/{child.name}' has no index entry.", f"{prefix}:scenarios")
+        if child.is_dir() and child.name in retired and child.name not in seen:
+            result.error("IE047", f"Scenario directory '{root.name}/{child.name}' uses a retired id (docs/retired-ids.md); ids are never reused.", f"{prefix}:scenarios")
     return result
 
 
