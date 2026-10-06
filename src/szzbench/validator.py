@@ -99,6 +99,32 @@ DUPLICATE_STATEMENT_FACTOR_RE = re.compile(r"duplicate|ambiguous|overload|repeti
 NON_LOCAL_FIX_FACTOR_RE = re.compile(r"root-cause|config|caller-update|multi-line-statement|cross-file")
 
 
+#: The graph command that does what each classic command does (issue #119).
+GRAPH_COMMANDS = {"validate": "validate-graph", "generate": "generate-graph", "verify": "verify-graph"}
+
+
+def graph_scenario_guard(data: dict[str, Any], path: Path, command: str) -> ValidationResult:
+    """E003: a graph scenario handed to a classic command (issue #119).
+
+    The classic checks cannot read one: ``validate`` and ``generate`` crashed
+    on its BIC mappings, and ``verify`` skipped the blame check and reported
+    a clean summary.  A file is a graph scenario by the rule behind GE001 (a
+    string ``schema_version`` containing ``graph``, ``load_graph_scenario``)
+    or, when it has no ``schema_version``, by its name (GW014).
+    """
+    result = ValidationResult()
+    schema_version = data.get("schema_version")
+    if isinstance(schema_version, str) and "graph" in schema_version:
+        reason = f"its schema_version is '{schema_version}'"
+    elif schema_version is None and path.name == "scenario.graph.yml":
+        reason = "it is named scenario.graph.yml and has no schema_version"
+    else:
+        return result
+    result.error("E003", f"{path.as_posix()} is a graph scenario ({reason}), and `szzbench {command}` reads only classic "
+                 f"scenarios. Run `szzbench {GRAPH_COMMANDS[command]}` instead.", "schema_version")
+    return result
+
+
 def validate_scenario_file(
     path: Path,
     *,
@@ -108,11 +134,16 @@ def validate_scenario_file(
     """Validate a classic scenario.yml.
 
     ``lint`` enables the opt-in W4xx lints; the snapshot-based lints need the
-    in-memory simulation, so ``lint`` implies ``simulate``.
+    in-memory simulation, so ``lint`` implies ``simulate``.  A graph scenario
+    stops at E003, before any other check.
     """
     data, result = load_yaml(path)
     if data is None:
         return None, result, None
+    guard = graph_scenario_guard(data, path, "validate")
+    if guard.has_errors():
+        result.extend(guard)
+        return data, result, None
     result.extend(validate_static(data, scenario_path=path))
     snapshots = None
     if (simulate or lint) and not result.has_errors():
@@ -232,7 +263,9 @@ def validate_static(data: dict[str, Any], *, scenario_path: Path | None = None) 
             bics = []
         elif len(bics) == 0:
             result.error("E082", f"bug {bid} has an empty bug_introducing_commits list.", f"{loc}.bug_introducing_commits")
-        elif len(bics) != len(set(bics)):
+        elif len(named := [bic for bic in bics if isinstance(bic, str)]) != len(set(named)):
+            # Only strings can be compared here; the loop below reports any other
+            # entry as E010 (a graph scenario's mappings crashed set(), issue #119).
             result.error("E083", f"bug {bid} has duplicate BIC entries.", f"{loc}.bug_introducing_commits")
         for bic in bics:
             if not isinstance(bic, str):
