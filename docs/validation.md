@@ -228,10 +228,10 @@ as one deleted and one added line, like `git blame` without `-w`.
 | GE105 | error | fault/fix `entity` is not an object |
 | GW120 | warning | `expected_szz` missing |
 | GE120 | error | `expected_szz` is not an object |
-| GE121 | error | `acceptable_related` refers to an unknown commit |
+| GE121 | error | `acceptable_related` refers to an unknown commit, in `expected_szz.commit_level` or in any `evaluation_variants[].commit_level` |
 | GE122 | error | an evaluation variant is not an object |
 | GW123 | warning | unknown `evaluation_policy` in `expected_szz.commit_level` **or in any `evaluation_variants[].commit_level`**. The vocabulary is `szzbench.policies.SUPPORTED_EVALUATION_POLICIES` = {`exact_set`, `direct_only`, `reintroduction_direct`, `partial_credit`, `top_k`, `relaxed_with_related`, `relaxed_with_credit`}, identical to the evaluator's set (a test enforces this). |
-| GE124 | error | a commit list (`required`, `relevant`, `related_origins`, `related_but_not_correct`) is not a list |
+| GE124 | error | a commit list (`required`, `relevant`, `related_origins`, `related_but_not_correct`, `acceptable_related`) of `expected_szz.commit_level` or of any `evaluation_variants[].commit_level` is not a list. Variants were checked for `required` only, and `acceptable_related` not at all, until the review of PR #124: GW130 hands both oracles to the evaluator, which reads every list |
 | GE125 | error | a commit list entry is not a commit id |
 | GE126 | error | a commit list entry refers to an unknown commit |
 | GE127 | error | `expected_szz.branch_level` is not a non-empty object, or an entry is not an object with `bfc` (a commit id) and `required` (a list; a blank `required:` is rejected, `[]` is an intentionally empty answer) ([evaluation-policies.md](evaluation-policies.md) §1.5) |

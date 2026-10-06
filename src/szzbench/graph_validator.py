@@ -322,18 +322,7 @@ def _validate_expected_szz(expected: Any, commit_by_id: dict[str, dict[str, Any]
         policy = commit_level.get("evaluation_policy")
         if isinstance(policy, str):
             policies.append((policy, "expected_szz.commit_level.evaluation_policy"))
-        for key in ["required", "relevant", "related_origins", "related_but_not_correct"]:
-            _validate_commit_list(commit_level.get(key), commit_by_id, result, f"expected_szz.commit_level.{key}")
-        acceptable = commit_level.get("acceptable_related")
-        if isinstance(acceptable, list):
-            for i, item in enumerate(acceptable):
-                if isinstance(item, str):
-                    if item not in commit_by_id:
-                        result.error("GE121", f"expected_szz acceptable_related refers to unknown commit '{item}'.", f"expected_szz.commit_level.acceptable_related[{i}]")
-                elif isinstance(item, dict):
-                    cid = item.get("commit")
-                    if isinstance(cid, str) and cid not in commit_by_id:
-                        result.error("GE121", f"expected_szz acceptable_related refers to unknown commit '{cid}'.", f"expected_szz.commit_level.acceptable_related[{i}].commit")
+        _validate_oracle_lists(commit_level, commit_by_id, result, "expected_szz.commit_level")
     variants = expected.get("evaluation_variants")
     if isinstance(variants, list):
         for i, variant in enumerate(variants):
@@ -342,7 +331,7 @@ def _validate_expected_szz(expected: Any, commit_by_id: dict[str, dict[str, Any]
                 continue
             cl = variant.get("commit_level")
             if isinstance(cl, dict):
-                _validate_commit_list(cl.get("required"), commit_by_id, result, f"expected_szz.evaluation_variants[{i}].commit_level.required")
+                _validate_oracle_lists(cl, commit_by_id, result, f"expected_szz.evaluation_variants[{i}].commit_level")
                 variant_policy = cl.get("evaluation_policy")
                 if isinstance(variant_policy, str):
                     policies.append((variant_policy, f"expected_szz.evaluation_variants[{i}].commit_level.evaluation_policy"))
@@ -414,6 +403,26 @@ def _warn_inferred_commit_level(data: dict[str, Any], result: ValidationResult) 
             result.warning("GW130", f"{subject} declares no required commits and no expect_no_bic: true, so the "
                            f"evaluator would {inferred} and note it at every evaluation. Declare required (or "
                            "expect_no_bic: true for an intentionally empty oracle).", loc)
+
+
+def _validate_oracle_lists(commit_level: dict[str, Any], commit_by_id: dict[str, dict[str, Any]],
+                           result: ValidationResult, loc: str) -> None:
+    """The commit lists of one oracle, ``commit_level`` or a variant's: GW130
+    hands either to the evaluator, which reads every one of them (PR #124
+    review: ``acceptable_related: 5`` was neither checked nor survivable)."""
+    for key in ["required", "relevant", "related_origins", "related_but_not_correct"]:
+        _validate_commit_list(commit_level.get(key), commit_by_id, result, f"{loc}.{key}")
+    acceptable = commit_level.get("acceptable_related")
+    if acceptable is not None and not isinstance(acceptable, list):
+        result.error("GE124", f"{loc}.acceptable_related must be a list when present.", f"{loc}.acceptable_related")
+    for i, item in enumerate(acceptable if isinstance(acceptable, list) else []):
+        if isinstance(item, str):
+            if item not in commit_by_id:
+                result.error("GE121", f"expected_szz acceptable_related refers to unknown commit '{item}'.", f"{loc}.acceptable_related[{i}]")
+        elif isinstance(item, dict):
+            cid = item.get("commit")
+            if isinstance(cid, str) and cid not in commit_by_id:
+                result.error("GE121", f"expected_szz acceptable_related refers to unknown commit '{cid}'.", f"{loc}.acceptable_related[{i}].commit")
 
 
 def _validate_commit_list(value: Any, commit_by_id: dict[str, dict[str, Any]], result: ValidationResult, loc: str) -> None:

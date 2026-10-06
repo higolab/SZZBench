@@ -1143,10 +1143,15 @@ def _evaluation_variant_key(value: Any) -> str | None:
 
 
 def _graph_direct_bic_ids(scenario: dict[str, Any]) -> list[str]:
-    """Infer the required BICs from bug metadata (roles normalized via normalize_bic_role)."""
+    """Infer the required BICs from bug metadata (roles normalized via normalize_bic_role).
+
+    Malformed metadata is skipped rather than raised: validate-graph asks this
+    of a scenario it has not accepted yet (GW130, PR #124 review).
+    """
     expected: set[str] = set()
-    for bug in scenario.get("bugs", []) or []:
-        if not isinstance(bug, dict):
+    bugs = scenario.get("bugs")
+    for bug in bugs if isinstance(bugs, list) else []:
+        if not isinstance(bug, dict) or not isinstance(bug.get("bug_introducing_commits") or [], list):
             continue
         for entry in graph_bic_entries(bug, roles=DIRECT_BIC_ROLES):
             commit = entry.get("commit")
@@ -1157,7 +1162,9 @@ def _graph_direct_bic_ids(scenario: dict[str, Any]) -> list[str]:
 
 def _acceptable_related_entries(value: Any) -> list[AcceptableRelated]:
     entries: list[AcceptableRelated] = []
-    for item in value or []:
+    if not isinstance(value, list):                     # GE124 reports it; see _string_list
+        return entries
+    for item in value:
         if isinstance(item, str):
             entries.append(AcceptableRelated(commit=item))
         elif isinstance(item, dict) and isinstance(item.get("commit"), str):

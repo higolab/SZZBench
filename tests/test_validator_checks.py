@@ -293,6 +293,87 @@ def test_no_shipped_graph_scenario_leaves_its_commit_level_oracle_to_inference()
     assert reported == []
 
 
+# --- malformed oracle input stays in the report (PR #124 review) -------------
+#
+# GW130 asks the evaluator about data that validation has not accepted yet.
+# `bugs: 5` with no `required`, and `acceptable_related: 5`, made the evaluator
+# raise, so `validate-graph --json` printed a traceback instead of its report.
+
+def _validate_graph_json(tmp_path: Path, data: dict, capsys) -> tuple[int, list[tuple[str, str]]]:
+    path = write_yaml(tmp_path / "SZZG-9900" / "scenario.graph.yml", data)
+    status = main(["validate-graph", "--json", str(path)])
+    findings = json.loads(capsys.readouterr().out)["findings"]
+    return status, [(f["code"], f["location"]) for f in findings if f["severity"] == "ERROR"]
+
+
+def test_bugs_that_is_not_a_list_is_reported_when_required_would_be_inferred(tmp_path, capsys):
+    data = graph_scenario()
+    data["bugs"] = 5
+    del data["expected_szz"]["commit_level"]["required"]
+    status, errors = _validate_graph_json(tmp_path, data, capsys)
+    assert status == 1 and ("GE080", "bugs") in errors
+
+
+@pytest.mark.parametrize("variant", [False, True])
+def test_acceptable_related_that_is_not_a_list_is_an_error(tmp_path, capsys, variant):
+    data = graph_scenario()
+    loc = "expected_szz.commit_level"
+    if variant:
+        data["expected_szz"]["evaluation_variants"] = [deepcopy(BOUNDARY_VARIANT)]
+        loc = "expected_szz.evaluation_variants[0].commit_level"
+        data["expected_szz"]["evaluation_variants"][0]["commit_level"]["acceptable_related"] = 5
+    else:
+        data["expected_szz"]["commit_level"]["acceptable_related"] = 5
+    status, errors = _validate_graph_json(tmp_path, data, capsys)
+    assert (status, errors) == (1, [("GE124", f"{loc}.acceptable_related")])
+
+
+ORACLE_FIELDS = ["required", "relevant", "related_origins", "related_but_not_correct", "acceptable_related",
+                 "k_values", "status_k", "minimum_required", "evaluation_policy", "expect_no_bic", "known_distractors"]
+MALFORMED_PATHS = [
+    ("bugs",), ("bugs", 0), ("bugs", 0, "bug_introducing_commits"), ("bugs", 0, "bug_introducing_commits", 0),
+    ("bugs", 0, "bug_introducing_commits", 0, "role"), ("expected_szz",), ("expected_szz", "commit_level"),
+    ("expected_szz", "evaluation_variants"), ("expected_szz", "evaluation_variants", 0),
+    ("expected_szz", "evaluation_variants", 0, "name"), ("expected_szz", "evaluation_variants", 0, "commit_level"),
+    ("expected_szz", "default_variant"),
+    *[("expected_szz", "commit_level", field) for field in ORACLE_FIELDS],
+    *[("expected_szz", "evaluation_variants", 0, "commit_level", field) for field in ORACLE_FIELDS],
+]
+MALFORMED_VALUES = [5, "c1", {"commit": "c1"}, [5], [{"commit": 5}], True, None]
+#: Inputs that raised before GW130 existed, in checks it does not touch: the BIC
+#: loop of validate_graph_static and the origin-coverage lint.
+RAISED_BEFORE_GW130 = [
+    (("bugs", 0, "bug_introducing_commits"), 5), (("bugs", 0, "bug_introducing_commits"), True),
+    (("expected_szz", "evaluation_variants"), 5), (("expected_szz", "evaluation_variants"), True),
+    (("expected_szz", "evaluation_variants", 0, "name"), {"commit": "c1"}),
+    (("expected_szz", "evaluation_variants", 0, "name"), [5]),
+    (("expected_szz", "evaluation_variants", 0, "name"), [{"commit": 5}]),
+]
+
+
+@pytest.mark.parametrize("path", MALFORMED_PATHS, ids=lambda path: ".".join(map(str, path)))
+def test_no_malformed_oracle_input_escapes_validate_graph(tmp_path, path):
+    """Every field the evaluator's oracle parser reads, set to values of the wrong
+    type, with and without a declared required set: findings, never an exception."""
+    for declared in (True, False):
+        for value in MALFORMED_VALUES:
+            if (path, value) in RAISED_BEFORE_GW130:
+                continue
+            data = graph_scenario()
+            data["expected_szz"]["evaluation_variants"] = [deepcopy(BOUNDARY_VARIANT)]
+            if not declared:
+                del data["expected_szz"]["commit_level"]["required"]
+            target = data
+            for key in path[:-1]:
+                target = target[key]
+            target[path[-1]] = deepcopy(value)
+            scenario = write_yaml(tmp_path / f"{declared}-{MALFORMED_VALUES.index(value)}" / "scenario.graph.yml", data)
+            try:
+                validate_graph_scenario_file(scenario, lint=True)
+            except Exception as exc:                    # noqa: BLE001 - the point of the test
+                pytest.fail(f"{'.'.join(map(str, path))} = {value!r} (required declared: {declared}) raised {exc!r}")
+
+
 # --- dangling rewrite references ----------------------------------------------
 
 @pytest.mark.parametrize(
