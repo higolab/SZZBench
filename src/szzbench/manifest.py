@@ -36,7 +36,7 @@ MANIFEST_FORMAT = 1
 GENERATION_MODULES = ("generator", "graph_generator", "gitutils", "operations", "graph_operations",
                       "scenario", "graph_scenario", "paths")
 EXCLUDED_FROM_FINGERPRINT = ("validator", "graph_validator", "graph_simulator", "verifier", "graph_verifier",
-                             "evaluator", "findings", "policies", "readme")
+                             "evaluator", "findings", "policies", "readme", "retired_ids")
 
 _fingerprint: str | None = None
 
