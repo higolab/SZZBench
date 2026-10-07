@@ -195,9 +195,16 @@ def validate_graph_static(data: dict[str, Any], *, scenario_path: Path | None = 
         else:
             bug_ids.add(bid)
 
-        bic_entries = graph_bic_entries(bug)
+        # graph_bic_entries iterates the value as it comes: an int raised, and a
+        # string became one commit per character (issue #127).
+        raw_bics = bug.get("bug_introducing_commits")
+        malformed_bics = raw_bics is not None and not isinstance(raw_bics, list)
+        bic_entries = [] if malformed_bics else graph_bic_entries(bug)
         bfc_entries = graph_bfc_entries(bug)
-        if not bic_entries:
+        if malformed_bics:
+            result.error("GE084", f"bug {bid}: bug_introducing_commits must be a list, not {type(raw_bics).__name__}.",
+                         f"{loc}.bug_introducing_commits")
+        elif not bic_entries:
             if _declares_expect_no_bic(data.get("expected_szz")):
                 result.info(
                     "GI086",
@@ -324,11 +331,20 @@ def _validate_expected_szz(expected: Any, commit_by_id: dict[str, dict[str, Any]
             policies.append((policy, "expected_szz.commit_level.evaluation_policy"))
         _validate_oracle_lists(commit_level, commit_by_id, result, "expected_szz.commit_level")
     variants = expected.get("evaluation_variants")
+    if variants is not None and not isinstance(variants, list):
+        # read only as a list, so anything else passed unnoticed (issue #127)
+        result.error("GE122", "expected_szz.evaluation_variants must be a list of evaluation variants.",
+                     "expected_szz.evaluation_variants")
     if isinstance(variants, list):
         for i, variant in enumerate(variants):
             if not isinstance(variant, dict):
                 result.error("GE122", "Each evaluation variant must be an object.", f"expected_szz.evaluation_variants[{i}]")
                 continue
+            name = variant.get("name")
+            if not isinstance(name, str) or not name:
+                # the evaluator selects a variant by its name; without one it is never scored (issue #127)
+                result.error("GE122", "Each evaluation variant must have a non-empty string name.",
+                             f"expected_szz.evaluation_variants[{i}].name")
             cl = variant.get("commit_level")
             if isinstance(cl, dict):
                 _validate_oracle_lists(cl, commit_by_id, result, f"expected_szz.evaluation_variants[{i}].commit_level")
@@ -707,7 +723,8 @@ def _expected_szz_commit_ids(expected: Any) -> set[str]:
     if not isinstance(expected, dict):
         return ids
     levels = [expected.get("commit_level")]
-    for variant in expected.get("evaluation_variants") or []:
+    variants = expected.get("evaluation_variants")
+    for variant in variants if isinstance(variants, list) else []:
         if isinstance(variant, dict):
             levels.append(variant.get("commit_level"))
     for level in levels:
@@ -753,8 +770,9 @@ def _lint_origin_coverage(bugs: list[dict[str, Any]], data: dict[str, Any], resu
         return
     required = set(default.required)
     related_origins = set(default.related_origins)
-    variant_names = {v.get("name") for v in (expected.get("evaluation_variants") or [])
-                     if isinstance(v, dict)} if isinstance(expected, dict) else set()
+    variants = expected.get("evaluation_variants") if isinstance(expected, dict) else None
+    variant_names = {v.get("name") for v in (variants if isinstance(variants, list) else [])
+                     if isinstance(v, dict) and isinstance(v.get("name"), str)}
 
     origins: list[str] = []
     for i, bug in enumerate(bugs):

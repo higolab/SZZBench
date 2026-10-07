@@ -215,7 +215,7 @@ as one deleted and one added line, like `git blame` without `-w`.
 | GE081 | error | a bug is not an object |
 | GE082 | error | `bug.id` missing |
 | GE083 | error | duplicate bug id |
-| GE084 | error | bug without `bug_introducing_commits` |
+| GE084 | error | bug without `bug_introducing_commits` (missing or empty; GI086 instead when `expect_no_bic` is declared), or with one that is not a list, which is an error even under `expect_no_bic`. A non-list used to raise or, as a string, to count as one commit per character ([issue #127](https://github.com/YoshikiHigo/SZZBench/issues/127)) |
 | GE085 | error | bug without `bug_fixing_commits` / `bug_fixing_commit` |
 | GE090 | error | BIC/BFC entry `role` is not a string |
 | GE091 | error | BIC/BFC entry is neither a string nor an object |
@@ -230,7 +230,7 @@ as one deleted and one added line, like `git blame` without `-w`.
 | GW120 | warning | `expected_szz` missing |
 | GE120 | error | `expected_szz` is not an object |
 | GE121 | error | `acceptable_related` refers to an unknown commit, in `expected_szz.commit_level` or in any `evaluation_variants[].commit_level` |
-| GE122 | error | an evaluation variant is not an object |
+| GE122 | error | `expected_szz.evaluation_variants` is not a list, or one of its entries is not an object with a non-empty string `name`. The evaluator selects a variant by its name; until [issue #127](https://github.com/YoshikiHigo/SZZBench/issues/127) these passed without `--lint` and raised with it |
 | GW123 | warning | unknown `evaluation_policy` in `expected_szz.commit_level` **or in any `evaluation_variants[].commit_level`**. The vocabulary is `szzbench.policies.SUPPORTED_EVALUATION_POLICIES` = {`exact_set`, `direct_only`, `reintroduction_direct`, `partial_credit`, `top_k`, `relaxed_with_related`, `relaxed_with_credit`}, identical to the evaluator's set (a test enforces this). |
 | GE124 | error | a commit list (`required`, `relevant`, `related_origins`, `related_but_not_correct`, `acceptable_related`) of `expected_szz.commit_level` or of any `evaluation_variants[].commit_level` is not a list. Variants were checked for `required` only, and `acceptable_related` not at all, until the review of PR #124: GW130 hands both oracles to the evaluator, which reads every list |
 | GE125 | error | a commit list entry is not a commit id |
