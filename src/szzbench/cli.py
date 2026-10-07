@@ -262,6 +262,8 @@ def cmd_evaluate(args) -> int:
             print(f"[ERROR] {error}", file=sys.stderr)
         for warning in report.warnings:
             print(f"[WARNING] {warning}", file=sys.stderr)
+        for note in report.info:
+            print(f"[INFO] {note}", file=sys.stderr)
     if report.errors:
         return 1
     if args.fail_on_non_pass and report.summary()["fail"] > 0:

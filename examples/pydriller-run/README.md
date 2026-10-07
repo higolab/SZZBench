@@ -121,12 +121,14 @@ implementation does not do, and the README of each says what.
 ## Reading the report
 
 `evaluation-results.md` lists every scenario with its expected and actual BICs, its evaluation
-policy and its status, after a summary and the four warnings the evaluator raised. None of them is
-about the predictions: all four are about metadata this evaluation does not read. SZZG-0034 declares
+policy and its status, after a summary and four notes under `## Information`. The run raises no
+warning. The four notes are about metadata this evaluation does not read: SZZG-0034 declares
 `bug_level`, SZZG-0097 `work_item_level`, SZZG-0116 `entity_level` and `line_level`, SZZG-0133
-`line_level`. Commit-level scoring ignores those sections; nothing about the scenario changes.
+`line_level`. Commit-level scoring ignores those sections. Nothing in those scenarios is wrong, so
+the notes are information rather than warnings, but each scenario's result still carries its note.
 
-Until 2026-10-06 there were three more. SZZG-0115, SZZG-0116 and SZZG-0140 left
+Until 2026-10-07 the four were warnings (issue #126). Until 2026-10-06 there were three more
+warnings. SZZG-0115, SZZG-0116 and SZZG-0140 left
 `expected_szz.commit_level.required` empty or missing, so the evaluator derived it from
 `bugs[].bug_introducing_commits` — `c1` in each of the three — and said so at every evaluation. They
 now declare `required: [c1]`, which changes no verdict, and `validate-graph` warns about an oracle
