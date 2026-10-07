@@ -166,6 +166,8 @@ class EvaluationReport:
     scenarios: list[ScenarioEvaluation]
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+    #: Oracle notes that are information, not warnings (issue #126).
+    info: list[str] = field(default_factory=list)
 
     def summary(self) -> dict[str, Any]:
         total = len(self.scenarios)
@@ -241,6 +243,7 @@ class EvaluationReport:
             "scenarios": [item.to_dict() for item in self.scenarios],
             "errors": self.errors,
             "warnings": self.warnings,
+            "info": self.info,
         }
 
     def to_markdown(self) -> str:
@@ -280,6 +283,10 @@ class EvaluationReport:
         if self.warnings:
             lines.extend(["## Warnings", ""])
             lines.extend(f"- {warning}" for warning in self.warnings)
+            lines.append("")
+        if self.info:
+            lines.extend(["## Information", ""])
+            lines.extend(f"- {note}" for note in self.info)
             lines.append("")
         lines.extend(
             [
@@ -468,15 +475,19 @@ def evaluate_prediction_map(
                 run_errors=scenario_run_errors,
             )
         )
-    # Oracle-related notes (inferred required set, unread oracle sections,
-    # ignored allowances, unsupported policies) are promoted to report warnings
+    # Oracle-related notes (inferred required set, ignored allowances,
+    # unsupported policies, unknown variants) are promoted to report warnings
     # so that the plain CLI output and the markdown "Warnings" section show them.
+    # The note that an oracle section is not read is information instead: it
+    # still goes with every result (PR #27 review), but nothing in the scenario
+    # is wrong (issue #126).
+    info: list[str] = []
     for item in evaluations:
         for note in item.result_notes:
             if note.startswith("fix_shape not computed"):
                 continue
-            warnings.append(f"{item.scenario_id}: {note}")
-    return EvaluationReport(evaluations, errors=errors, warnings=warnings)
+            (info if _is_information_note(note) else warnings).append(f"{item.scenario_id}: {note}")
+    return EvaluationReport(evaluations, errors=errors, warnings=warnings, info=info)
 
 
 def _generated_scenario_ids(generated_root: Path, variant: str) -> set[str]:
@@ -1045,9 +1056,7 @@ def _graph_commit_level_policy(
             )
     unread_sections = sorted(key for key in expected_szz if key in _UNREAD_GRAPH_ORACLE_SECTIONS)
     if unread_sections:
-        notes.append(
-            f"expected_szz also declares {', '.join(unread_sections)}; these sections are not used by commit-level evaluation."
-        )
+        notes.append(_UNREAD_SECTIONS_NOTE.format(sections=", ".join(unread_sections)))
 
     acceptable_related = _acceptable_related_entries(selected_commit_level.get("acceptable_related"))
     related_origins = _string_list(selected_commit_level.get("related_origins"))
@@ -1088,6 +1097,18 @@ def _graph_commit_level_policy(
         notes=notes,
         required_inferred=required_inferred,
     )
+
+
+#: The note that names them.  Nothing in the scenario is wrong, so it is
+#: information rather than a warning (issue #126).
+_UNREAD_SECTIONS_NOTE = "expected_szz also declares {sections}; these sections are not used by commit-level evaluation."
+
+
+def _is_information_note(note: str) -> bool:
+    """True for the oracle note reported as information: the sections the
+    evaluator does not read.  Every other oracle note asks the author to change
+    the scenario, and is promoted to a report warning."""
+    return note.startswith(_UNREAD_SECTIONS_NOTE.split("{sections}")[0])
 
 
 #: Oracle sections the commit-level evaluator does not read (reported as a note).

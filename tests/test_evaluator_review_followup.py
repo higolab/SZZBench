@@ -6,7 +6,8 @@
 2. Allowances (``acceptable_related`` etc.) are ignored when ``expect_no_bic``
    is effective, so the false-positive accounting agrees with the FAIL status.
 3. Oracle-related result notes are visible in the Markdown report and are
-   promoted to report warnings (which the CLI prints).
+   promoted to report warnings (which the CLI prints), except the note that an
+   oracle section is not read: that one is information (issue #126).
 """
 
 from pathlib import Path
@@ -193,14 +194,14 @@ def test_expect_no_bic_ignores_allowances_and_counts_every_prediction_as_false_p
     assert any("acceptable_related, related_origins ignored" in note for note in result.result_notes)
 
 
-def test_oracle_notes_are_rendered_in_markdown_and_promoted_to_warnings(tmp_path):
+def _szzg_0116_before_issue_118(tmp_path: Path) -> dict[str, Path]:
+    """SZZG-0116 as it was until issue #118, with no commit_level, generated: the
+    evaluator infers its required set, so it carries both kinds of oracle note."""
     advanced_root = tmp_path / "advanced-scenarios"
     generated_root = tmp_path / "generated-input-repos"
     source = REPO_ROOT / "advanced-scenarios" / "SZZG-0116" / "scenario.graph.yml"
     target = advanced_root / "SZZG-0116" / "scenario.graph.yml"
     target.parent.mkdir(parents=True)
-    # SZZG-0116 as it was until issue #118, with no commit_level: the evaluator
-    # infers the required set, so the scenario carries both kinds of note.
     declared = "  commit_level:\n    evaluation_policy: exact_set\n    required:\n    - c1\n"
     text = source.read_text(encoding="utf-8")
     assert text.count(declared) == 1
@@ -209,23 +210,99 @@ def test_oracle_notes_are_rendered_in_markdown_and_promoted_to_warnings(tmp_path
     assert generated.returncode == 0, generated.stdout + generated.stderr
     scenarios_root = tmp_path / "scenarios"
     scenarios_root.mkdir()
-
     predictions = tmp_path / "predictions.jsonl"
     predictions.write_text(json.dumps({"scenario_id": "SZZG-0116", "predictions": [{"inducing_commit": "c1"}]}) + "\n", encoding="utf-8")
-    report = evaluate_predictions(predictions, generated_root=generated_root, scenarios_root=scenarios_root, advanced_scenarios_root=advanced_root)
+    return {"predictions": predictions, "generated_root": generated_root, "scenarios_root": scenarios_root,
+            "advanced_scenarios_root": advanced_root}
 
+
+INFERRED = "SZZG-0116: commit_level.required is missing or empty; required BICs inferred"
+UNREAD = ("SZZG-0116: expected_szz also declares entity_level, line_level; these sections are not used by "
+          "commit-level evaluation.")
+
+
+def _section(markdown: str, heading: str) -> str:
+    return markdown.split(f"## {heading}\n", 1)[1].split("\n## ", 1)[0]
+
+
+def test_oracle_notes_are_rendered_and_split_into_warnings_and_information(tmp_path):
+    layout = _szzg_0116_before_issue_118(tmp_path)
+    report = evaluate_predictions(layout["predictions"], generated_root=layout["generated_root"],
+                                  scenarios_root=layout["scenarios_root"],
+                                  advanced_scenarios_root=layout["advanced_scenarios_root"])
     [item] = report.scenarios
     assert item.status == "PASS"
+    # both notes stay with the scenario, in the JSON and in the Markdown
     assert any("required BICs inferred" in note for note in item.result_notes)
     assert any("not used by commit-level evaluation" in note for note in item.result_notes)
-    # promoted to report warnings (printed by the CLI)
-    assert any(w.startswith("SZZG-0116: ") and "required BICs inferred" in w for w in report.warnings)
-    assert any(w.startswith("SZZG-0116: ") and "not used by commit-level evaluation" in w for w in report.warnings)
-    # and rendered in the human-readable report
     markdown = report.to_markdown()
-    assert "## Scenario notes" in markdown
-    assert "- SZZG-0116: commit_level.required is missing or empty" in markdown
-    assert "## Warnings" in markdown
+    assert INFERRED in _section(markdown, "Scenario notes") and UNREAD in _section(markdown, "Scenario notes")
+    # an oracle the author can complete is a warning; a section the evaluator does not
+    # read is information: nothing is wrong, but a PASS still carries the caveat (#126)
+    scenario_warnings = [w for w in report.warnings if w.startswith("SZZG-0116: ")]
+    assert len(scenario_warnings) == 1 and scenario_warnings[0].startswith(INFERRED)
+    assert report.info == [UNREAD]
+    assert report.to_dict()["info"] == [UNREAD] and UNREAD not in report.to_dict()["warnings"]
+    assert INFERRED in _section(markdown, "Warnings") and UNREAD not in _section(markdown, "Warnings")
+    assert _section(markdown, "Information").strip() == f"- {UNREAD}"
+
+
+def test_evaluate_prints_an_unread_section_as_info_and_an_inferred_oracle_as_a_warning(tmp_path):
+    layout = _szzg_0116_before_issue_118(tmp_path)
+    completed = _run_cli("evaluate", "--predictions", str(layout["predictions"]),
+                         "--generated-root", str(layout["generated_root"]),
+                         "--scenarios-root", str(layout["scenarios_root"]),
+                         "--advanced-scenarios-root", str(layout["advanced_scenarios_root"]))
+    assert completed.returncode == 0, completed.stderr
+    lines = completed.stderr.splitlines()
+    assert f"[INFO] {UNREAD}" in lines
+    assert any(line.startswith(f"[WARNING] {INFERRED}") for line in lines)
+    assert not any(line.startswith("[WARNING]") and "not used by commit-level evaluation" in line for line in lines)
+
+
+def _graph(commit_level=None, **expected) -> dict:
+    data = {
+        "bugs": [{"id": "B001", "bug_introducing_commits": [{"commit": "c1", "role": "direct"}]}],
+        "expected_szz": {**({"commit_level": commit_level} if commit_level is not None else {}), **expected},
+    }
+    return data
+
+
+def test_only_the_unread_section_note_is_information():
+    from szzbench.evaluator import _commit_level_policy, _is_information_note
+
+    cases = {
+        # the actionable notes, which stay warnings
+        "inferred": (_graph({"evaluation_policy": "exact_set"}), None),
+        "nothing to infer": (dict(_graph({"evaluation_policy": "exact_set"}), bugs=[]), None),
+        "unknown variant": (_graph({"evaluation_policy": "exact_set", "required": ["c1"]}), "nope"),
+        "unsupported policy": (_graph({"evaluation_policy": "best_guess", "required": ["c1"]}), None),
+        "ignored allowances": (_graph({"evaluation_policy": "exact_set", "expect_no_bic": True,
+                                       "acceptable_related": ["c0"]}), None),
+        "bad status_k": (_graph({"evaluation_policy": "top_k", "required": ["c1"], "status_k": 0}), None),
+        # the one that is information
+        "unread": (_graph({"evaluation_policy": "exact_set", "required": ["c1"]}, line_level={"available": False}), None),
+    }
+    classified = {}
+    for name, (data, variant) in cases.items():
+        notes = _commit_level_policy(data, "advanced-scenarios", variant).notes
+        assert len(notes) == 1, (name, notes)
+        classified[name] = _is_information_note(notes[0])
+    assert [name for name, info in classified.items() if info] == ["unread"]
+
+
+def test_no_shipped_scenario_warns_at_evaluation_time():
+    """The reproduction of #126: a run over the shipped suite prints no oracle warning."""
+    from szzbench.evaluator import _commit_level_policy, _is_information_note
+    from szzbench.scenario import load_yaml
+
+    warned = []
+    for suite, name in (("scenarios", "scenario.yml"), ("advanced-scenarios", "scenario.graph.yml")):
+        for path in sorted((REPO_ROOT / suite).glob(f"*/{name}")):
+            data, _ = load_yaml(path)
+            warned += [(path.parent.name, note) for note in _commit_level_policy(data, suite, None).notes
+                       if not _is_information_note(note)]
+    assert warned == []
 
 
 # ---------------------------------------------------------------------------

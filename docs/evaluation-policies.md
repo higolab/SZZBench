@@ -122,14 +122,21 @@ same outcome but without the explicit intent.
 not reach every evaluation of a shipped scenario: declare `required`, or
 `expect_no_bic: true` for an intentionally empty oracle.
 
-Notes like these are not hidden in the JSON: `evaluate` promotes every
-oracle-related result note (inferred required set, `expected_szz` sections the
-commit-level evaluator does not read, ignored allowances, unsupported policy
-names) to a report warning prefixed with the scenario id, which the plain CLI
-prints and the Markdown report lists under `## Warnings`; in addition the
-Markdown report ends with a `## Scenario notes` section that lists all
-`result_notes` per scenario. A PASS for a scenario such as SZZG-0116 is
-therefore always accompanied by the caveat that its `entity_level` /
+Notes like these are not hidden in the JSON. `evaluate` promotes every
+oracle-related result note (inferred required set, ignored allowances,
+unsupported policy names, unknown evaluation variants) to a report warning
+prefixed with the scenario id. The plain CLI prints these warnings, and the
+Markdown report lists them under `## Warnings`.
+
+The note that `expected_szz` declares sections the commit-level evaluator does
+not read is information instead (issue #126). Nothing in such a scenario is
+wrong, and its author has nothing to fix. The CLI prints it as `[INFO]`, the
+JSON lists it under `info`, and the Markdown report lists it under
+`## Information`.
+
+In addition, the Markdown report ends with a `## Scenario notes` section that
+lists all `result_notes` per scenario. A PASS for a scenario such as SZZG-0116
+is therefore always accompanied by the caveat that its `entity_level` /
 `line_level` oracle was not evaluated.
 
 ### 1.5 Branch-level oracle (`expected_szz.branch_level`)
@@ -651,5 +658,6 @@ missing`). `[c1]` → FAIL (`false_positives = [c1]`). `[not-a-commit]` → FAIL
 | per scenario (JSON) | `top_k.status_k`, `top_k.unknown_ranks`, `known_distractor_hits`, `expect_no_bic`, `fix_shape`, `branch_level`, `attribution`, `run_status`, `run_errors`, additional `result_notes` |
 | summary (JSON) | `known_distractor_hits`, `fix_shape_counts`, `branch_level_scenarios`, `branch_level_failures`, `attribution_scenarios`, `attribution_failures`, `tool_errors`, `missing_records`, `stale_predictions`, `unknown_predictions` |
 | Markdown | `- Tool errors:`, `- Missing prediction records:`, `- Predictions made on another repository:`, `- Unknown predictions (counted as false positives):`, `- Known distractor hits:`, `- Branch-level failures:`, `- Attribution failures:`, `- Fix shapes (per BFC):`; table columns `Run`, `Unknown`, `Top-k`, `Distractor hits`, `Fix shape`; `## Scenario notes` section listing every scenario's `result_notes` |
-| report `warnings` (JSON, Markdown `## Warnings`, CLI stderr) | oracle-related `result_notes` promoted with a `<scenario id>: ` prefix |
+| report `warnings` (JSON, Markdown `## Warnings`, CLI stderr) | oracle-related `result_notes` promoted with a `<scenario id>: ` prefix, except the one below |
+| report `info` (JSON, Markdown `## Information`, CLI stderr as `[INFO]`) | the note that `expected_szz` declares sections commit-level evaluation does not read, with a `<scenario id>: ` prefix (issue #126) |
 | validator | `GI086` (info) when `bug_introducing_commits` is empty and `expect_no_bic` is declared, instead of `GE084` |

@@ -24,7 +24,7 @@
 - Precision: 0.815
 - Recall: 0.633
 
-## Warnings
+## Information
 
 - SZZG-0034: expected_szz also declares bug_level; these sections are not used by commit-level evaluation.
 - SZZG-0097: expected_szz also declares work_item_level; these sections are not used by commit-level evaluation.
