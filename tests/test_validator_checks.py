@@ -340,26 +340,12 @@ MALFORMED_PATHS = [
     *[("expected_szz", "evaluation_variants", 0, "commit_level", field) for field in ORACLE_FIELDS],
 ]
 MALFORMED_VALUES = [5, "c1", {"commit": "c1"}, [5], [{"commit": 5}], True, None]
-#: Inputs that raised before GW130 existed, in checks it does not touch: the BIC
-#: loop of validate_graph_static and the origin-coverage lint (issue #127, which
-#: removes this list).
-RAISED_BEFORE_GW130 = [
-    (("bugs", 0, "bug_introducing_commits"), 5), (("bugs", 0, "bug_introducing_commits"), True),
-    (("expected_szz", "evaluation_variants"), 5), (("expected_szz", "evaluation_variants"), True),
-    (("expected_szz", "evaluation_variants", 0, "name"), {"commit": "c1"}),
-    (("expected_szz", "evaluation_variants", 0, "name"), [5]),
-    (("expected_szz", "evaluation_variants", 0, "name"), [{"commit": 5}]),
-]
-
-
 @pytest.mark.parametrize("path", MALFORMED_PATHS, ids=lambda path: ".".join(map(str, path)))
 def test_no_malformed_oracle_input_escapes_validate_graph(tmp_path, path):
     """Every field the evaluator's oracle parser reads, set to values of the wrong
     type, with and without a declared required set: findings, never an exception."""
     for declared in (True, False):
         for value in MALFORMED_VALUES:
-            if (path, value) in RAISED_BEFORE_GW130:
-                continue
             data = graph_scenario()
             data["expected_szz"]["evaluation_variants"] = [deepcopy(BOUNDARY_VARIANT)]
             if not declared:
@@ -373,6 +359,71 @@ def test_no_malformed_oracle_input_escapes_validate_graph(tmp_path, path):
                 validate_graph_scenario_file(scenario, lint=True)
             except Exception as exc:                    # noqa: BLE001 - the point of the test
                 pytest.fail(f"{'.'.join(map(str, path))} = {value!r} (required declared: {declared}) raised {exc!r}")
+
+
+# --- malformed bug and variant input raised before GW130 (issue #127) -------
+#
+# Three inputs raised on main in checks GW130 does not touch: a non-list
+# bug_introducing_commits in validate_graph_static, and, with --lint, a non-list
+# evaluation_variants and a variant name that is not a string in the origin-
+# coverage lint.  Without --lint the last two passed with no error at all.
+
+def _bics(value):
+    def mutate(data):
+        data["bugs"][0]["bug_introducing_commits"] = value
+    return mutate
+
+
+def _variants(value):
+    def mutate(data):
+        data["expected_szz"]["evaluation_variants"] = value
+    return mutate
+
+
+def _variant_name(value):
+    def mutate(data):
+        data["expected_szz"]["evaluation_variants"] = [deepcopy(BOUNDARY_VARIANT)]
+        if value is _ABSENT:
+            del data["expected_szz"]["evaluation_variants"][0]["name"]
+        else:
+            data["expected_szz"]["evaluation_variants"][0]["name"] = value
+    return mutate
+
+
+_ABSENT = object()
+MALFORMED_BUG_AND_VARIANT_INPUT = [
+    pytest.param(_bics(5), "GE084", "bugs[0].bug_introducing_commits", id="bics=5"),
+    pytest.param(_bics(True), "GE084", "bugs[0].bug_introducing_commits", id="bics=true"),
+    pytest.param(_bics("c1"), "GE084", "bugs[0].bug_introducing_commits", id="bics='c1'"),  # was one commit per character
+    pytest.param(_variants(5), "GE122", "expected_szz.evaluation_variants", id="variants=5"),
+    pytest.param(_variants({"name": "loose"}), "GE122", "expected_szz.evaluation_variants", id="variants=mapping"),
+    pytest.param(_variant_name({"x": 1}), "GE122", "expected_szz.evaluation_variants[0].name", id="name=mapping"),
+    pytest.param(_variant_name([5]), "GE122", "expected_szz.evaluation_variants[0].name", id="name=list"),
+    pytest.param(_variant_name(""), "GE122", "expected_szz.evaluation_variants[0].name", id="name=empty"),
+    pytest.param(_variant_name(_ABSENT), "GE122", "expected_szz.evaluation_variants[0].name", id="name=absent"),
+]
+
+
+@pytest.mark.parametrize("lint", [False, True], ids=["static", "lint"])
+@pytest.mark.parametrize("mutate, code, location", MALFORMED_BUG_AND_VARIANT_INPUT)
+def test_malformed_bug_and_variant_input_is_an_error_in_the_json_report(tmp_path, capsys, mutate, code, location, lint):
+    data = graph_scenario()
+    mutate(data)
+    path = write_yaml(tmp_path / "SZZG-9900" / "scenario.graph.yml", data)
+    status = main(["validate-graph", "--json", *(["--lint"] if lint else []), str(path)])
+    findings = json.loads(capsys.readouterr().out)["findings"]
+    errors = [(f["code"], f["location"]) for f in findings if f["severity"] == "ERROR"]
+    assert status == 1 and errors == [(code, location)], errors
+
+
+def test_a_bic_list_of_the_wrong_type_is_an_error_even_under_expect_no_bic():
+    # an empty or missing list is accepted there (GI086); a value that is not a list is not
+    data = graph_scenario()
+    data["expected_szz"]["commit_level"] = {"evaluation_policy": "exact_set", "expect_no_bic": True}
+    data["bugs"][0]["bug_introducing_commits"] = 5
+    assert codes(validate_graph_static(data)) == ["GE084"]
+    data["bugs"][0]["bug_introducing_commits"] = []
+    assert codes(validate_graph_static(data)) == [] and info_codes(validate_graph_static(data)) == ["GI086"]
 
 
 # --- dangling rewrite references ----------------------------------------------
