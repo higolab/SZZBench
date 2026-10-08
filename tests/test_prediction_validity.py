@@ -175,6 +175,54 @@ def test_a_status_that_is_neither_ok_nor_error_is_a_loading_error(generated, tmp
     assert "SZZG-0135" not in by_id or by_id["SZZG-0135"].status == "FAIL"
 
 
+# --- the file's encoding (issue #137) -------------------------------------------
+
+def _evaluate_bytes(generated: Path, path: Path):
+    return evaluate_predictions(path, generated_root=generated, scenarios_root=ROOT / "scenarios",
+                                advanced_scenarios_root=ROOT / "advanced-scenarios")
+
+
+def test_a_bom_costs_no_record(generated, tmp_path):
+    """Windows editors and PowerShell write one; it used to make line 1 invalid JSON."""
+    records = [{"scenario_id": "SZZ-0006", "predictions": _predict("c1")}, {"scenario_id": "SZZG-0135", "predictions": []}]
+    path = tmp_path / "bom.jsonl"
+    path.write_bytes(b"\xef\xbb\xbf" + "".join(json.dumps(r) + "\n" for r in records).encode("utf-8"))
+    report = _evaluate_bytes(generated, path)
+    assert report.errors == []
+    assert {item.scenario_id: item.status for item in report.scenarios} == {"SZZ-0006": "PASS", "SZZG-0135": "PASS"}
+
+
+def test_a_bom_before_a_whole_json_document_is_accepted_too(generated, tmp_path):
+    path = tmp_path / "bom.json"
+    path.write_bytes(b"\xef\xbb\xbf" + json.dumps([{"scenario_id": "SZZ-0006", "predictions": _predict("c1")}]).encode())
+    report = _evaluate_bytes(generated, path)
+    assert report.errors == [] and [item.status for item in report.scenarios] == ["PASS"]
+
+
+@pytest.mark.parametrize("encoding, byte", [("latin-1", 0xE9), ("utf-16", 0xFF)])
+def test_a_file_that_is_not_utf8_is_a_loading_error_not_a_traceback(generated, tmp_path, encoding, byte):
+    record = {"scenario_id": "SZZ-0006", "predictions": [{"inducing_commit": "c1", "tool": "caf\u00e9"}]}
+    raw = (json.dumps(record, ensure_ascii=False) + "\n").encode(encoding)
+    path = tmp_path / "predictions.jsonl"
+    path.write_bytes(raw)
+    report = _evaluate_bytes(generated, path)
+    assert report.errors == [f"Cannot read predictions file: {path} is not UTF-8 "
+                             f"(byte 0x{byte:02x} at position {raw.index(bytes([byte]))}); save it as UTF-8."]
+    assert report.scenarios == []
+
+
+def test_the_cli_reports_it_writes_its_report_and_exits_1(generated, tmp_path):
+    path = tmp_path / "predictions.jsonl"
+    path.write_bytes('{"scenario_id": "SZZ-0006", "predictions": [{"inducing_commit": "c1", "tool": "caf\u00e9"}]}\n'
+                     .encode("latin-1"))
+    completed = subprocess.run([sys.executable, "-m", "szzbench.cli", "evaluate", "--predictions", str(path),
+                                "--generated-root", str(generated), "--out", str(tmp_path / "out")],
+                               capture_output=True, text=True, cwd=ROOT, env={**os.environ, "PYTHONPATH": str(ROOT / "src")})
+    assert completed.returncode == 1 and "Traceback" not in completed.stderr
+    assert "[ERROR] Cannot read predictions file: " in completed.stderr and "is not UTF-8 (byte 0xe9" in completed.stderr
+    assert (tmp_path / "out/evaluation-results.json").is_file() and (tmp_path / "out/evaluation-results.md").is_file()
+
+
 def test_an_unknown_reference_holds_its_place_in_a_ranking(generated, tmp_path):
     # SZZG-0140: top_k, relevant c1, status_k 1
     _, by_id = _evaluate(generated, tmp_path, [{"scenario_id": "SZZG-0140", "predictions": [

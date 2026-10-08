@@ -801,9 +801,16 @@ def load_predictions(
     errors: list[str] = []
     warnings: list[str] = []
     try:
-        text = path.read_text(encoding="utf-8")
+        raw = path.read_bytes()
     except OSError as exc:
         return {}, set(), {}, {}, [f"Cannot read predictions file: {exc}"], []
+    try:
+        # utf-8-sig: a BOM (as Windows editors and PowerShell write it) cost the first
+        # record; a file that is not UTF-8 at all raised UnicodeDecodeError (issue #137)
+        text = raw.decode("utf-8-sig")
+    except UnicodeDecodeError as exc:
+        return {}, set(), {}, {}, [f"Cannot read predictions file: {path} is not UTF-8 "
+                                   f"(byte 0x{raw[exc.start]:02x} at position {exc.start}); save it as UTF-8."], []
     records = _parse_prediction_records(text, str(path), errors)
     predictions: dict[str, list[Prediction]] = {}
     explicit_scenarios: set[str] = set()

@@ -20,7 +20,9 @@ per-fix checks; commit-level scoring ignores it.
 
 ### 1.1 Predictions
 
-A prediction record names a scenario and one or more inducing commits, each
+The file is UTF-8, with or without a byte-order mark; a file that is not UTF-8
+is a loading error that gives the first byte that is not, and its offset
+(issue #137). A prediction record names a scenario and one or more inducing commits, each
 optionally with a `rank` (integer, 1 = best) and a `confidence`. The value of
 `inducing_commit` is normalized against the scenario's `commit-map.json`:
 
