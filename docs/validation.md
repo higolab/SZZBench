@@ -109,7 +109,7 @@ became errors — the code keeps its number when its severity changes, so
 | E030 | error | unknown commit `role` (see `ALLOWED_ROLES`) |
 | E040 | error | unknown operation type |
 | E041 | error | `operation.type` missing, or a required operation field missing |
-| E050 | error | operation path is not a safe repository-relative path: it is absolute, contains `..`, or names the repository's own `.git` in any spelling a file system resolves to it — any letter case (`.GIT`), trailing dots or spaces (`.git.`), the 8.3 short name `git~1`, or code points HFS+ ignores. On a case-insensitive file system `.GIT/config` used to pass and overwrite the generated repository's configuration ([issue #135](https://github.com/higolab/SZZBench/issues/135)) |
+| E050 | error | operation path is not a safe repository-relative path: it is absolute, contains `..`, or names the repository's own `.git` in any spelling a file system resolves to it — any letter case (`.GIT`), the NTFS 8.3 short name `git~1`, either of them followed by dots or spaces (`.git.`, `git~1 `) or by an alternate data stream (`.git::$INDEX_ALLOCATION`), a backslash as a directory separator, or code points HFS+ ignores. These are the names Git refuses as tree entries with `core.protectNTFS` and `core.protectHFS`. On a case-insensitive file system `.GIT/config` used to pass and overwrite the generated repository's configuration ([issue #135](https://github.com/higolab/SZZBench/issues/135)) |
 | E060 | error | `bug_fixing_commit` refers to an unknown commit |
 | E061 | error | a `bug_introducing_commits` entry refers to an unknown commit |
 | E062 | error | `fault.commit` refers to an unknown commit |

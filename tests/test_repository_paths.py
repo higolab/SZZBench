@@ -10,18 +10,19 @@ verification reported nothing.
 """
 from __future__ import annotations
 
+import subprocess
 from copy import deepcopy
 from pathlib import Path
 
 import pytest
+import yaml
 
+from support import git_env
 from szzbench.generator import GenerationError, generate_repository
 from szzbench.graph_generator import GraphGenerationError, generate_graph_repository
 from szzbench.graph_validator import validate_graph_static
 from szzbench.paths import PathValidationError, safe_join, validate_repo_relative_path
 from szzbench.validator import validate_static
-
-import yaml
 
 JAVA = "src/main/java/example/Range.java"
 RANGE = ("package example;\n\npublic class Range {\n"
@@ -80,10 +81,18 @@ GIT_DIRECTORY_SPELLINGS = [
     ".git./config",            # Windows drops trailing dots ...
     ".git /config",            # ... and spaces
     ".git. . /config",
-    "git~1/config",            # the NTFS 8.3 short name of .git
+    "git~1/config",            # the NTFS 8.3 short name of .git ...
     "GIT~1/config",
-    ".g‌it/config",       # HFS+ ignores U+200C ...
-    "﻿.git/config",       # ... and U+FEFF
+    "git~1./config",           # ... which also answers with trailing dots or spaces
+    "git~1 /config",
+    "git~1. . /hooks/post-commit",
+    ".git::$INDEX_ALLOCATION/config",      # an NTFS alternate data stream of the directory
+    "git~1::$INDEX_ALLOCATION/config",
+    ".GIT. ::$INDEX_ALLOCATION/hooks/post-commit",
+    ".git:stream/config",      # Git refuses every stream, not only $INDEX_ALLOCATION
+    ".git\\config",            # a backslash separates directories on Windows
+    ".g\u200cit/config",       # HFS+ ignores U+200C ...
+    "\ufeff.git/config",       # ... and U+FEFF
 ]
 
 # Names that only look like .git, and that shipped scenarios or ordinary projects use.
@@ -96,6 +105,10 @@ ORDINARY_SPELLINGS = [
     "git/notes.txt",
     ".gitx/config",
     "git~2/config",
+    "git~10/config",
+    "git~1x/config",
+    "x.git/config",
+    ".git-x:y/z",
 ]
 
 
@@ -111,6 +124,30 @@ def test_every_spelling_of_the_git_directory_is_refused(path, tmp_path):
 def test_names_that_only_resemble_git_are_accepted(path, tmp_path):
     validate_repo_relative_path(path)
     assert safe_join(tmp_path, path) == (tmp_path / path).resolve()
+
+
+def test_szzbench_refuses_exactly_what_git_refuses(tmp_path):
+    """The rule is Git's (``verify_path`` with ``core.protectNTFS`` and ``core.protectHFS``).
+
+    ``update-index --cacheinfo`` asks Git about a path in the index only, so the
+    check creates nothing on disk and gives the same verdict on every platform
+    (PR #208 review: the NTFS short name with trailing dots or spaces, and the
+    ``::$INDEX_ALLOCATION`` stream, passed while Git refused them).
+    """
+    def run(*args: str) -> subprocess.CompletedProcess:
+        return subprocess.run(["git", *args], cwd=tmp_path, env=git_env(), capture_output=True, text=True)
+
+    assert run("init", "-q", "--template=").returncode == 0
+    blob = run("hash-object", "-w", "--stdin").stdout.strip()
+    for path in [*GIT_DIRECTORY_SPELLINGS, *ORDINARY_SPELLINGS]:
+        git_refuses = run("-c", "core.protectNTFS=true", "-c", "core.protectHFS=true",
+                          "update-index", "--add", "--cacheinfo", f"100644,{blob},{path}").returncode != 0
+        try:
+            validate_repo_relative_path(path)
+            szzbench_refuses = False
+        except PathValidationError:
+            szzbench_refuses = True
+        assert szzbench_refuses == git_refuses, (path, "git refuses" if git_refuses else "git accepts")
 
 
 def _classic_writing(path: str) -> dict:
@@ -161,6 +198,22 @@ def test_generate_graph_refuses_a_hook_written_through_another_spelling(tmp_path
     with pytest.raises(GraphGenerationError):
         generate_graph_repository(scenario, tmp_path / "out", force=True)
     assert not (tmp_path / "out" / "repo" / ".git" / "hooks" / "post-commit").exists()
+
+
+NTFS_ALIASES = ["git~1./config", "git~1 /config", ".git::$INDEX_ALLOCATION/config", "git~1::$INDEX_ALLOCATION/hooks/post-commit"]
+
+
+@pytest.mark.parametrize("path", NTFS_ALIASES)
+def test_both_generators_refuse_an_ntfs_alias_before_touching_the_file_system(tmp_path, path):
+    """Refused at validation, before the output directory exists (PR #208 review)."""
+    classic = write_yaml(tmp_path / "classic/SZZ-9900/scenario.yml", _classic_writing(path))
+    with pytest.raises(GenerationError, match="validation failed"):
+        generate_repository(classic, tmp_path / "classic-out", force=True)
+    assert not (tmp_path / "classic-out").exists()
+    graph = write_yaml(tmp_path / "graph/SZZG-9900/scenario.graph.yml", _graph_writing(path))
+    with pytest.raises(GraphGenerationError, match="validation failed"):
+        generate_graph_repository(graph, tmp_path / "graph-out", force=True)
+    assert not (tmp_path / "graph-out").exists()
 
 
 def test_no_shipped_scenario_names_such_a_path():
