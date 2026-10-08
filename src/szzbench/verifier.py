@@ -32,6 +32,10 @@ def verify_generated_repo(repo_dir: Path, scenario_path: Path, commit_map_path: 
     result.extend(graph_scenario_guard(scenario, scenario_path, "verify"))
     if result.has_errors():
         return result
+    if not (repo_dir / ".git").exists():
+        # one finding instead of a FileNotFoundError from the first Git call (issue #166)
+        result.error("E603", f"{repo_dir} is not a Git repository; generate it first, or check the path.", str(repo_dir))
+        return result
     # The same declarations the simulated checks honour, so a scenario that is
     # clean under `validate --lint` is clean under `verify --strict` as well.
     meta = scenario.get("meta") if isinstance(scenario.get("meta"), dict) else {}
