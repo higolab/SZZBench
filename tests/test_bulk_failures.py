@@ -96,6 +96,50 @@ def test_a_complete_output_is_not_marked_when_the_crash_comes_before_it_is_repla
     assert (out / "SZZ-0005/default/metadata/manifest.json").is_file()
 
 
+def test_a_staleness_check_that_raises_fails_that_scenario_only(tmp_path, monkeypatch):
+    """The staleness check reads the scenario file, and was outside the boundary (PR #213 review)."""
+    scenarios, advanced, out = _roots(tmp_path)
+    generate_all_repositories(scenarios_root=scenarios, advanced_scenarios_root=advanced, output_root=out)
+    shutil.rmtree(out / "SZZ-0012")
+    real_staleness = bulk.staleness
+
+    def unreadable_for_one(output_dir, scenario_path, **kwargs):
+        if scenario_path.parent.name == "SZZ-0006":
+            raise PermissionError(13, "Permission denied", str(scenario_path))
+        return real_staleness(output_dir, scenario_path, **kwargs)
+
+    monkeypatch.setattr(bulk, "staleness", unreadable_for_one)
+    result = generate_all_repositories(scenarios_root=scenarios, advanced_scenarios_root=advanced, output_root=out)
+    by_id = {item.scenario_id: item for item in result.items}
+    assert [by_id[sid].status for sid in ("SZZ-0005", "SZZ-0006", "SZZ-0012", "SZZG-0001")] == \
+        ["skipped", "failed", "generated", "skipped"]
+    assert by_id["SZZ-0006"].error.startswith("PermissionError: ")
+    assert "Traceback (most recent call last)" in by_id["SZZ-0006"].traceback
+    assert (out / "SZZ-0006/default/metadata/manifest.json").is_file()       # the complete output is left alone
+    assert not (out / "SZZ-0006/default/metadata/generation-error.json").exists()
+
+
+@pytest.mark.skipif(os.name == "nt" or os.geteuid() == 0, reason="needs file permissions that bind the user (root reads anyway)")
+def test_an_unreadable_scenario_file_with_an_existing_output_does_not_stop_the_cli(tmp_path):
+    """The review's reproduction: chmod 0 on a scenario whose output exists, and a later output removed."""
+    scenarios, advanced, out = _roots(tmp_path)
+    generate_all_repositories(scenarios_root=scenarios, advanced_scenarios_root=advanced, output_root=out)
+    shutil.rmtree(out / "SZZ-0012")
+    unreadable = scenarios / "SZZ-0006/scenario.yml"
+    unreadable.chmod(0)
+    try:
+        completed = subprocess.run(
+            [sys.executable, "-m", "szzbench.cli", "generate-all-repos", "--scenarios-root", str(scenarios),
+             "--advanced-scenarios-root", str(advanced), "--out-root", str(out)],
+            capture_output=True, text=True, env={**os.environ, "PYTHONPATH": str(ROOT / "src")})
+    finally:
+        unreadable.chmod(0o644)
+    assert completed.returncode == 1
+    assert "Generated [classic] SZZ-0012" in completed.stdout and "  Failed:      1" in completed.stdout
+    assert any(line.startswith("Failed [classic] SZZ-0006") and "PermissionError: " in line
+               for line in completed.stderr.splitlines())
+
+
 def test_keyboard_interrupt_still_stops_the_run(tmp_path, monkeypatch):
     scenarios, advanced, out = _roots(tmp_path)
 

@@ -93,28 +93,32 @@ def generate_all_repositories(
     for scenario_path, kind in scenario_specs:
         scenario_id = scenario_path.parent.name
         output_dir = output_root / scenario_id / "default"
-        output_exists = output_dir.exists()
-
-        # An existing output is kept only when its manifest says it is complete and
-        # was made from this scenario by this generator; anything else -- an
-        # interrupted generation, an edited scenario, changed generator code, an
-        # output from before the manifest -- is regenerated (issue #93).
+        output_exists = False
         stale_reason = None
-        if output_exists and not overwrite:
-            stale_reason = staleness(output_dir, scenario_path, require_verified=verify)
-            if stale_reason is None:
-                items.append(
-                    GeneratedRepositoryItem(
-                        kind=kind,
-                        scenario_id=scenario_id,
-                        scenario_path=scenario_path,
-                        output_dir=output_dir,
-                        status="skipped",
-                    )
-                )
-                continue
-
+        # Everything done for one scenario -- the staleness check included, which reads
+        # the scenario file -- is inside one boundary, so that whatever it raises is that
+        # scenario's failure and the run goes on (issue #162, PR #213 review).
         try:
+            output_exists = output_dir.exists()
+
+            # An existing output is kept only when its manifest says it is complete and
+            # was made from this scenario by this generator; anything else -- an
+            # interrupted generation, an edited scenario, changed generator code, an
+            # output from before the manifest -- is regenerated (issue #93).
+            if output_exists and not overwrite:
+                stale_reason = staleness(output_dir, scenario_path, require_verified=verify)
+                if stale_reason is None:
+                    items.append(
+                        GeneratedRepositoryItem(
+                            kind=kind,
+                            scenario_id=scenario_id,
+                            scenario_path=scenario_path,
+                            output_dir=output_dir,
+                            status="skipped",
+                        )
+                    )
+                    continue
+
             if kind == "classic":
                 commit_map, _ = generate_repository(scenario_path, output_dir, force=output_exists, verify=verify)
             else:
