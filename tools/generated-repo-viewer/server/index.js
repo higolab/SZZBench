@@ -417,8 +417,11 @@ app.get("/api/blame", async (req, res) => {
     const commit = requireCommit(req.query.commit);
     const file = requireFile(req.query.file);
 
-    // No "--" here: git blame reads a "--" that follows --end-of-options as a revision.
-    const raw = await runGit(repoDir, ["blame", "--line-porcelain", "--end-of-options", commit, file], {
+    // No --end-of-options for blame: Git 2.39 reads both arguments after it as revisions and still
+    // parses an option-like file name, and Git 2.50 reads a "--" after it as a revision.  The
+    // revision is a validated hash, so it cannot be an option, and "--" keeps the file a path on
+    // every supported Git (PR #211 review).
+    const raw = await runGit(repoDir, ["blame", "--line-porcelain", commit, "--", file], {
       maxBuffer: 30 * 1024 * 1024
     });
     const lines = [];

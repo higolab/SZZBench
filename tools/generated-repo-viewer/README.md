@@ -67,7 +67,7 @@ generated-input-repos/
 The backend runs Git on request values, so it checks them first (issue #132):
 
 - `target` must be a generated output under the project root. The check follows symbolic links, so a link that points out of the project is refused.
-- `commit` must be a commit hash (7 to 64 hexadecimal digits), as `/api/repository` lists them. A value such as `HEAD`, a branch name or anything starting with `-` is refused, and every Git call also places the revision after `--end-of-options`.
+- `commit` must be a commit hash (7 to 64 hexadecimal digits), as `/api/repository` lists them. A value such as `HEAD`, a branch name or anything starting with `-` is refused. `git show` and `git ls-tree` also get the revision after `--end-of-options`; `git blame` gets the hash and then the file after `--`, the one form that works on every supported Git (2.39 does not honour `--end-of-options` there).
 - `file` must be a path inside the commit's tree, as `/api/tree` lists it: relative, `/`-separated, with no `..` or empty component.
 - Only same-origin requests are served. The pages are same-origin in both modes (`npm run dev` proxies `/api` through Vite, `npm start` serves `dist/` from the backend), so the API sends no CORS header, and it refuses a request that the browser marks as coming from another site (`Sec-Fetch-Site`). Tools such as `curl` send no such header and are not affected.
 - An error that Git or the file system reports is logged by the server and answered with a generic message, so that responses do not reveal the machine's paths.
