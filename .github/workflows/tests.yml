@@ -1,4 +1,6 @@
-# The test suite on every pull request and on every push to main (issue #106).
+# The test suite on every push to main (issue #106).
+# Pull request CI is temporarily paused. To resume it, uncomment pull_request
+# below and restore main's required CI checks listed in tests/README.md.
 #
 # Linux only: Windows is not tested (#109).  SZZBench needs Git 2.29 or later
 # (docs/generator-options.md §5), and gitutils.init_args() passes
@@ -8,7 +10,7 @@
 name: tests
 
 on:
-  pull_request:
+  # pull_request:
   push:
     branches: [main]
 

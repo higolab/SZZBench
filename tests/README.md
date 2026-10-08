@@ -11,7 +11,7 @@ Without these tools, the tests that need them are skipped. `pytest -rs` lists ev
 
 ## CI
 
-`.github/workflows/tests.yml` runs on every pull request and on every push to `main`. It does two things:
+`.github/workflows/tests.yml` runs on every push to `main`. Pull request CI and its required status checks are temporarily paused. It does two things:
 
 - **Runs the whole suite** on Linux, using `pytest -rs`, in two jobs:
   - Python 3.14 with the current Git of the `ubuntu-latest` runner;
@@ -19,6 +19,13 @@ Without these tools, the tests that need them are skipped. `pytest -rs` lists ev
 
   Both jobs provide the tools above: JDK 21, and Node.js 22 with `npm ci` in `tools/scenario-editor`. No test should skip there for a missing tool; the log lists the skips that remain.
 - **Builds the two web tools** under `tools/`.
+
+To resume pull request CI, uncomment `pull_request:` in `.github/workflows/tests.yml` and restore these required status checks for `main` (with GitHub Actions as their source):
+
+- `pytest (Python 3.14, the runner's Git)`
+- `pytest (Python 3.10, Git 2.39 of Debian 12)`
+- `build scenario-editor`
+- `build generated-repo-viewer`
 
 Windows is not tested ([#109](https://github.com/higolab/SZZBench/issues/109)).
 

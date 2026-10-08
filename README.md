@@ -706,7 +706,7 @@ To run a specific test, for example:
 pytest tests/test_generator_smoke.py
 ```
 
-[tests/README.md](tests/README.md) says what the suite needs (a JDK, Node.js for the Scenario Editor's tests) and where its shared helpers are. The same suite runs in CI on every pull request and on every push to `main`, and CI also builds the two web tools under `tools/`.
+[tests/README.md](tests/README.md) says what the suite needs (a JDK, Node.js for the Scenario Editor's tests) and where its shared helpers are. The same suite runs in CI on every push to `main`, and CI also builds the two web tools under `tools/`. Pull request CI is temporarily paused; [tests/README.md](tests/README.md) explains how to resume it.
 
 ## Files that should not be tracked by Git
 
@@ -1419,7 +1419,7 @@ pytest
 pytest tests/test_generator_smoke.py
 ```
 
-テストに必要なもの（JDK、Scenario Editor のテスト用の Node.js）と共通の補助関数の置き場所は [tests/README.md](tests/README.md) にあります。同じテストは、すべての pull request と `main` への push のたびに CI でも実行され、CI は `tools/` 以下の二つの web ツールのビルドも確かめます。
+テストに必要なもの（JDK、Scenario Editor のテスト用の Node.js）と共通の補助関数の置き場所は [tests/README.md](tests/README.md) にあります。同じテストは、`main` への push のたびに CI でも実行され、CI は `tools/` 以下の二つの web ツールのビルドも確かめます。pull request 時の CI は一時停止しています。再開方法は [tests/README.md](tests/README.md) に記載しています。
 
 ## Git 管理しないもの
 
