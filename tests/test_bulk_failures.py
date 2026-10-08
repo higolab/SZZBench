@@ -140,6 +140,61 @@ def test_an_unreadable_scenario_file_with_an_existing_output_does_not_stop_the_c
                for line in completed.stderr.splitlines())
 
 
+@pytest.mark.parametrize("probe", ["is_dir", "exists"])
+def test_a_metadata_probe_that_raises_does_not_stop_the_run(tmp_path, monkeypatch, probe):
+    """Recording the failure must not raise a second exception (PR #213 review).
+
+    Before Python 3.14, ``Path.exists`` and ``Path.is_dir`` raise PermissionError for
+    a ``metadata/`` that cannot be searched (``chmod 0``); 3.14 returns False.  The
+    probe is made to raise here, so that the test runs on every Python and as root.
+    """
+    scenarios, advanced, out = _roots(tmp_path)
+    generate_all_repositories(scenarios_root=scenarios, advanced_scenarios_root=advanced, output_root=out)
+    shutil.rmtree(out / "SZZ-0012")
+    metadata = out / "SZZ-0006/default/metadata"
+    real_generate = bulk.generate_repository
+
+    def crash_for_one(scenario_path, output_dir, **kwargs):
+        if scenario_path.parent.name == "SZZ-0006":
+            raise PermissionError(13, "Permission denied", str(metadata / "manifest.json"))
+        return real_generate(scenario_path, output_dir, **kwargs)
+
+    target = metadata if probe == "is_dir" else metadata / "manifest.json"
+    real_probe = getattr(Path, probe)
+
+    def unsearchable(self, *args, **kwargs):
+        if self == target:
+            raise PermissionError(13, "Permission denied", str(self))
+        return real_probe(self, *args, **kwargs)
+
+    monkeypatch.setattr(bulk, "generate_repository", crash_for_one)
+    monkeypatch.setattr(Path, probe, unsearchable)
+    result = generate_all_repositories(scenarios_root=scenarios, advanced_scenarios_root=advanced, output_root=out,
+                                       overwrite=True)
+    by_id = {item.scenario_id: item for item in result.items}
+    assert [by_id[sid].status for sid in ("SZZ-0005", "SZZ-0006", "SZZ-0012", "SZZG-0001")] == \
+        ["generated", "failed", "generated", "generated"]
+    assert by_id["SZZ-0006"].error.startswith("PermissionError: ")
+
+
+def test_an_output_directory_that_cannot_be_inspected_does_not_stop_the_orphan_scan(tmp_path, monkeypatch):
+    scenarios, advanced, out = _roots(tmp_path)
+    (out / "SZZ-9999/default").mkdir(parents=True)          # a leftover of a scenario that no longer exists
+    (out / "SZZ-9998/default").mkdir(parents=True)
+    unsearchable = out / "SZZ-9999/default"
+    real_is_dir = Path.is_dir
+
+    def is_dir(self, *args, **kwargs):
+        if self == unsearchable:
+            raise PermissionError(13, "Permission denied", str(self))
+        return real_is_dir(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "is_dir", is_dir)
+    result = generate_all_repositories(scenarios_root=scenarios, advanced_scenarios_root=advanced, output_root=out)
+    assert result.failed_count == 0 and result.generated_count == 4
+    assert [orphan.name for orphan in result.orphans] == ["SZZ-9998"]
+
+
 def test_keyboard_interrupt_still_stops_the_run(tmp_path, monkeypatch):
     scenarios, advanced, out = _roots(tmp_path)
 

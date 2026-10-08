@@ -172,11 +172,18 @@ def generate_all_repositories(
         )
 
     known = {path.parent.name for path, _ in scenario_specs}
-    orphans = sorted(
-        child for child in output_root.iterdir()
-        if child.is_dir() and child.name not in known and (child / "default").is_dir()
-    )
+    orphans = sorted(child for child in output_root.iterdir() if _is_orphan(child, known))
     return GenerateAllRepositoriesResult(items=items, orphans=orphans)
+
+
+def _is_orphan(child: Path, known: set[str]) -> bool:
+    """An output directory whose scenario no longer exists.  A directory that cannot be
+    inspected is not reported: before Python 3.14 the probe raises PermissionError,
+    which would end the run after every scenario was handled, before its summary."""
+    try:
+        return child.is_dir() and child.name not in known and (child / "default").is_dir()
+    except OSError:
+        return False
 
 
 def _record_unexpected_failure(output_dir: Path, error: str) -> None:
@@ -186,12 +193,18 @@ def _record_unexpected_failure(output_dir: Path, error: str) -> None:
     had not begun (the exception came before the old output was removed) still
     has its complete manifest and is left alone; the staleness check already
     regenerates it on the next run.
+
+    It is best effort, and nothing in it may raise: it runs inside the handler
+    that keeps the run going.  The probes are inside the boundary too, since
+    before Python 3.14 ``Path.exists`` and ``Path.is_dir`` raise
+    ``PermissionError`` for a directory that cannot be searched, where 3.14
+    returns False (PR #213 review).
     """
     metadata_dir = output_dir / "metadata"
-    if not metadata_dir.is_dir() or (metadata_dir / "manifest.json").exists():
-        return
-    info = {"error": error, "timestamp": datetime.now(timezone.utc).isoformat()}
     try:
+        if not metadata_dir.is_dir() or (metadata_dir / "manifest.json").exists():
+            return
+        info = {"error": error, "timestamp": datetime.now(timezone.utc).isoformat()}
         (metadata_dir / "generation-error.json").write_text(json.dumps(info, indent=2, ensure_ascii=False) + "\n",
                                                              encoding="utf-8")
     except OSError:
