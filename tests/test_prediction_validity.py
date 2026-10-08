@@ -211,6 +211,21 @@ def test_a_file_that_is_not_utf8_is_a_loading_error_not_a_traceback(generated, t
     assert report.scenarios == []
 
 
+@pytest.mark.parametrize("raw, byte, position", [
+    (b"\xef\xbb\xbf\xe9", 0xE9, 3),
+    (b"\xef\xbb\xbf" + '{"scenario_id": "SZZ-0006", "predictions": [{"inducing_commit": "c1", "tool": "caf\u00e9"}]}\n'
+     .encode("latin-1"), 0xE9, 85),
+], ids=["minimal", "record"])
+def test_the_byte_and_offset_after_a_bom_are_the_files_own(generated, tmp_path, raw, byte, position):
+    """utf-8-sig counted from after the BOM and named the wrong byte (PR #217 review)."""
+    assert raw[position] == byte
+    path = tmp_path / "predictions.jsonl"
+    path.write_bytes(raw)
+    report = _evaluate_bytes(generated, path)
+    assert report.errors == [f"Cannot read predictions file: {path} is not UTF-8 "
+                             f"(byte 0x{byte:02x} at position {position}); save it as UTF-8."]
+
+
 def test_the_cli_reports_it_writes_its_report_and_exits_1(generated, tmp_path):
     path = tmp_path / "predictions.jsonl"
     path.write_bytes('{"scenario_id": "SZZ-0006", "predictions": [{"inducing_commit": "c1", "tool": "caf\u00e9"}]}\n'

@@ -805,12 +805,15 @@ def load_predictions(
     except OSError as exc:
         return {}, set(), {}, {}, [f"Cannot read predictions file: {exc}"], []
     try:
-        # utf-8-sig: a BOM (as Windows editors and PowerShell write it) cost the first
-        # record; a file that is not UTF-8 at all raised UnicodeDecodeError (issue #137)
-        text = raw.decode("utf-8-sig")
+        # A file that is not UTF-8 raised UnicodeDecodeError (issue #137).  Decoding the
+        # whole file, BOM included, keeps the reported byte and offset the file's own:
+        # utf-8-sig drops the BOM first and counts from after it (PR #217 review).
+        text = raw.decode("utf-8")
     except UnicodeDecodeError as exc:
         return {}, set(), {}, {}, [f"Cannot read predictions file: {path} is not UTF-8 "
                                    f"(byte 0x{raw[exc.start]:02x} at position {exc.start}); save it as UTF-8."], []
+    # A BOM, as Windows editors and PowerShell write it, cost the first record (issue #137).
+    text = text.removeprefix("\ufeff")
     records = _parse_prediction_records(text, str(path), errors)
     predictions: dict[str, list[Prediction]] = {}
     explicit_scenarios: set[str] = set()
