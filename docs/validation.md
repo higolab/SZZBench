@@ -99,7 +99,7 @@ became errors — the code keeps its number when its severity changes, so
 
 | code | severity | meaning |
 |---|---|---|
-| E000 | error | scenario file cannot be read |
+| E000 | error | scenario file cannot be read, or is not UTF-8 (the message gives the first byte that is not, and its offset; [issue #149](https://github.com/higolab/SZZBench/issues/149)) |
 | E001 | error | YAML parse error (duplicate keys are rejected) |
 | E002 | error | the YAML root is not a mapping |
 | E003 | error | the file is a graph scenario: its `schema_version` is a graph schema (the rule of GE001), or it has none and the file is named `scenario.graph.yml` (GW014). `validate` reports it before any other check, and `generate` and `verify` refuse the file too. The message names the graph command to run instead (`validate-graph`, `generate-graph`, `verify-graph`) ([issue #119](https://github.com/higolab/SZZBench/issues/119)) |
