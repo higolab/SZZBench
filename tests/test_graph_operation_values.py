@@ -72,14 +72,48 @@ def test_any_other_mode_is_ge057(mode):
         [("GE057", "commits[0].operations[2].mode")]
 
 
-@pytest.mark.parametrize("value", ["@@@not-base64@@@", "!!!", "/wD/A", 42])
+@pytest.mark.parametrize("value", ["@@@not-base64@@@", "!!!", "/wD/A", 42, "\u00e9", "\u00a0Zg==", "Zg"],
+                         ids=["at-signs", "bangs", "short", "int", "non-ascii", "no-break-space", "padding"])
 def test_base64_that_does_not_decode_is_ge058(value):
     assert _errors(_with_ops({**BINARY, "content_base64": value})) == [("GE058", "commits[0].operations[1].content_base64")]
 
 
-@pytest.mark.parametrize("value", ["/wD/AA==", "/wD/\n AA==\n", ""])
+@pytest.mark.parametrize("value", ["/wD/AA==", "/wD/\n AA==\n", "\t/wD/\r\nAA==", ""])
 def test_base64_that_decodes_is_accepted(value):
     assert _errors(_with_ops({**BINARY, "content_base64": value})) == []
+
+
+@pytest.mark.parametrize("value", ["/wD/AA==", "/wD/\n AA==\n", "", "\u00e9", "\u00a0Zg==", "!!!", "Zg"],
+                         ids=["plain", "wrapped", "empty", "non-ascii", "no-break-space", "bangs", "padding"])
+def test_validation_simulation_and_generation_read_base64_alike(tmp_path, monkeypatch, value):
+    """One reading for all three (PR #214 review): a no-break space passed validation, which
+    dropped Unicode whitespace, and then failed generation, which kept it."""
+    data = _with_ops({**BINARY, "content_base64": value})
+    statically_valid = ("GE058", "commits[0].operations[1].content_base64") not in _errors(data)
+    from szzbench.graph_simulator import simulate_graph_scenario
+    simulated = simulate_graph_scenario(data)
+    assert simulated.has_errors() is not statically_valid, [f.message for f in simulated.findings]
+    monkeypatch.setattr(graph_generator, "validate_graph_scenario_file", lambda path: (None, ValidationResult()))
+    scenario = _write(tmp_path, data)
+    if statically_valid:
+        generate_graph_repository(scenario, tmp_path / "out", force=True, verify=False)
+    else:
+        with pytest.raises(GraphGenerationError, match="content_base64 does not decode"):
+            generate_graph_repository(scenario, tmp_path / "out", force=True, verify=False)
+
+
+@pytest.mark.parametrize("command", ["validate-graph", "generate-graph"])
+def test_a_non_ascii_base64_value_is_ge058_without_a_traceback(tmp_path, command):
+    scenario = _write(tmp_path, _with_ops({**BINARY, "content_base64": "\u00e9"}))
+    args = [str(scenario)] + (["--out", str(tmp_path / "out")] if command == "generate-graph" else [])
+    completed = subprocess.run([sys.executable, "-m", "szzbench.cli", command, *args], capture_output=True, text=True,
+                               env={**os.environ, "PYTHONPATH": str(ROOT / "src")})
+    assert completed.returncode == 1 and "Traceback" not in completed.stderr
+    if command == "validate-graph":
+        assert "[ERROR] GE058: write_binary_file content_base64 is not base64 (content_base64 holds a character that is not ASCII)" \
+            in completed.stdout
+    else:
+        assert completed.stderr.startswith("[ERROR] GRAPH_GENERATION_FAILED: Graph scenario validation failed.")
 
 
 @pytest.mark.parametrize("lines", [-5, "many", 2.5, True, None])

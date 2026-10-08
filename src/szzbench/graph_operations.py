@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import os
+import re
 import shutil
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -72,6 +73,27 @@ REQUIRED_FIELDS_BY_OPERATION: dict[str, list[str]] = {
     "apply_patch": ["path", "patch"],
     "format_file": ["path"],
 }
+
+
+#: The whitespace a base64 value may carry (wrapped lines): ASCII only.
+_BASE64_WHITESPACE = re.compile(r"[ \t\r\n\f\v]")
+
+
+def decode_content_base64(value: Any) -> bytes:
+    """The bytes of a ``write_binary_file`` ``content_base64``: one reading for validation,
+    simulation and generation (issue #172, PR #214 review).
+
+    ASCII whitespace is ignored, as wrapped lines need.  Any other character
+    outside the base64 alphabet -- a non-ASCII one, or Unicode whitespace such as
+    a no-break space, included -- is an error instead of being dropped, and so
+    is wrong padding.  Raises ``ValueError`` (``binascii.Error`` is one).
+    """
+    if not isinstance(value, str):
+        raise ValueError(f"content_base64 must be a string, not {type(value).__name__}")
+    compact = _BASE64_WHITESPACE.sub("", value)
+    if not compact.isascii():
+        raise ValueError("content_base64 holds a character that is not ASCII")
+    return base64.b64decode(compact, validate=True)
 
 
 def apply_graph_operation_to_filesystem(repo_dir: Path, op: dict[str, Any]) -> None:
@@ -217,7 +239,7 @@ def _apply_graph_operation(repo_dir: Path, op: dict[str, Any]) -> None:
     if op_type == "write_binary_file":
         path = safe_join(repo_dir, op["path"])
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(base64.b64decode(str(op["content_base64"])))
+        path.write_bytes(decode_content_base64(op["content_base64"]))
         return
 
     if op_type == "write_generated_text_file":

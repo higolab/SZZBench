@@ -3,10 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-import base64
 import tempfile
 
 from .findings import ValidationResult
+from .graph_operations import decode_content_base64
 from .operations import OperationError, insert_after_once, normalize_newlines, replace_once
 from .paths import PathValidationError, validate_repo_relative_path
 
@@ -290,7 +290,7 @@ def _apply_simulated_operation(
 
     if op_type == "write_binary_file":
         path = _validated_path(op["path"])
-        _set_file(snapshot, path, SimFile(base64.b64decode(str(op["content_base64"]))))
+        _set_file(snapshot, path, SimFile(decode_content_base64(op["content_base64"])))
         return
 
     if op_type == "write_generated_text_file":

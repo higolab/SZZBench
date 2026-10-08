@@ -213,7 +213,7 @@ as one deleted and one added line, like `git blame` without `-w`.
 | GE055 | error | a path field is not a string |
 | GE056 | error | (`--strict-paths`) `move_entity` / `copy_entity` without an `entity` object |
 | GE057 | error | a `chmod` `mode` that is not a quoted string of 3 or 4 octal digits (`'755'`). YAML reads an unquoted `0755` as the integer 493, which used to reach generation and end in a traceback ([issue #172](https://github.com/higolab/SZZBench/issues/172)) |
-| GE058 | error | a `write_binary_file` `content_base64` that is not a string or does not decode as base64 (whitespace is ignored). Generation used to end in a traceback, or to drop the characters outside the alphabet and write a shorter file ([issue #172](https://github.com/higolab/SZZBench/issues/172)) |
+| GE058 | error | a `write_binary_file` `content_base64` that is not a string or does not decode as base64. ASCII whitespace is ignored; any other character outside the alphabet, a non-ASCII one or a no-break space included, and wrong padding are not. Validation, `--simulate` and generation read the value the same way. Generation used to end in a traceback, or to drop the characters outside the alphabet and write a shorter file ([issue #172](https://github.com/higolab/SZZBench/issues/172)) |
 | GE059 | error | a `write_generated_text_file` `lines` that is not a non-negative integer ([issue #172](https://github.com/higolab/SZZBench/issues/172)) |
 | GE080 | error | `bugs` is not a list |
 | GE081 | error | a bug is not an object |

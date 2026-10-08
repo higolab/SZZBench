@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import base64
-import binascii
 from datetime import datetime, timezone
 
 from pathlib import Path
@@ -10,7 +8,8 @@ import re
 
 from .evaluator import _commit_level_policy, _selected_evaluation_variant, classify_prediction
 from .findings import ValidationResult
-from .graph_operations import PATH_FIELDS_BY_OPERATION, REQUIRED_FIELDS_BY_OPERATION, SUPPORTED_GRAPH_OPERATIONS
+from .graph_operations import (PATH_FIELDS_BY_OPERATION, REQUIRED_FIELDS_BY_OPERATION, SUPPORTED_GRAPH_OPERATIONS,
+                               decode_content_base64)
 from .graph_scenario import commit_id_of, graph_bfc_entries, graph_bic_entries, graph_faults, graph_fixes, load_graph_scenario
 from .graph_simulator import git_performed_features, simulate_graph_scenario, simulate_graph_scenario_with_git
 from .gitutils import GitError, format_timestamp, parse_timestamp
@@ -286,14 +285,11 @@ def _validate_operation_values(op: dict[str, Any], op_type: str, result: Validat
             result.error("GE057", f"chmod mode must be a quoted string of octal digits such as '755', not {mode!r}{hint}.",
                          f"{loc}.mode")
     if op_type == "write_binary_file" and "content_base64" in op:
-        value = op["content_base64"]
         try:
-            if not isinstance(value, str):
-                raise TypeError
-            base64.b64decode(re.sub(r"\s", "", value), validate=True)
-        except (TypeError, binascii.Error):
-            result.error("GE058", "write_binary_file content_base64 must be a base64 string "
-                         "(whitespace is ignored; any other character outside the alphabet is not).", f"{loc}.content_base64")
+            decode_content_base64(op["content_base64"])   # the generator's own reading (PR #214 review)
+        except ValueError as exc:
+            result.error("GE058", f"write_binary_file content_base64 is not base64 ({exc}); ASCII whitespace is "
+                         "ignored, any other character outside the alphabet is not.", f"{loc}.content_base64")
     if op_type == "write_generated_text_file" and "lines" in op:
         lines = op["lines"]
         if not (isinstance(lines, int) and not isinstance(lines, bool) and lines >= 0):
