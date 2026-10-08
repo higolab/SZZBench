@@ -1,0 +1,107 @@
+"""generate-all-repos goes on after a scenario fails in any way (issue #162).
+
+The loop caught only GenerationError and GraphGenerationError.  Any other
+exception -- here the AttributeError the classic validator raises for a
+non-string ``write_file.content`` (#151) -- stopped the run with a traceback:
+the scenarios after it were never generated, the ones before it were not
+listed, and no summary was printed.
+"""
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+import yaml
+
+import szzbench.bulk_generator as bulk
+from szzbench.bulk_generator import generate_all_repositories
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def _roots(tmp_path: Path) -> tuple[Path, Path, Path]:
+    scenarios, advanced = tmp_path / "scenarios", tmp_path / "advanced-scenarios"
+    for sid in ("SZZ-0005", "SZZ-0006", "SZZ-0012"):
+        shutil.copytree(ROOT / "scenarios" / sid, scenarios / sid)
+    shutil.copytree(ROOT / "advanced-scenarios/SZZG-0001", advanced / "SZZG-0001")
+    return scenarios, advanced, tmp_path / "repos"
+
+
+def _break(scenarios: Path, sid: str = "SZZ-0006") -> None:
+    path = scenarios / sid / "scenario.yml"
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    data["commits"][0]["operations"][0]["content"] = 12345
+    path.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8")
+
+
+def test_a_crash_in_one_scenario_fails_that_scenario_only(tmp_path):
+    scenarios, advanced, out = _roots(tmp_path)
+    _break(scenarios)
+    result = generate_all_repositories(scenarios_root=scenarios, advanced_scenarios_root=advanced, output_root=out)
+    by_id = {item.scenario_id: item for item in result.items}
+    assert [by_id[sid].status for sid in ("SZZ-0005", "SZZ-0006", "SZZ-0012", "SZZG-0001")] == \
+        ["generated", "failed", "generated", "generated"]
+    failed = by_id["SZZ-0006"]
+    assert failed.error.startswith("AttributeError: ")
+    assert "Traceback (most recent call last)" in failed.traceback
+    assert result.failed_count == 1 and result.generated_count == 3
+
+
+def test_the_cli_lists_every_scenario_prints_the_summary_and_exits_1(tmp_path):
+    scenarios, advanced, out = _roots(tmp_path)
+    _break(scenarios)
+    completed = subprocess.run(
+        [sys.executable, "-m", "szzbench.cli", "generate-all-repos", "--scenarios-root", str(scenarios),
+         "--advanced-scenarios-root", str(advanced), "--out-root", str(out)],
+        capture_output=True, text=True, env={**os.environ, "PYTHONPATH": str(ROOT / "src")})
+    assert completed.returncode == 1
+    assert "Generated [classic] SZZ-0005" in completed.stdout and "Generated [classic] SZZ-0012" in completed.stdout
+    assert "Generated [graph] SZZG-0001" in completed.stdout
+    assert "Summary:" in completed.stdout and "  Failed:      1" in completed.stdout
+    failed_line = next(line for line in completed.stderr.splitlines() if line.startswith("Failed [classic] SZZ-0006"))
+    assert "AttributeError: " in failed_line
+    assert "  Traceback (most recent call last):" in completed.stderr       # where it came from, indented under it
+
+
+def test_a_crash_after_the_output_was_begun_marks_it_as_failed(tmp_path, monkeypatch):
+    """An exception the generator does not wrap leaves generation-error.json, as its own errors do."""
+    scenarios, advanced, out = _roots(tmp_path)
+
+    def crash_after_start(scenario_path, output_dir, *, force=False, verify=True):
+        (output_dir / "repo").mkdir(parents=True)
+        (output_dir / "metadata").mkdir()
+        raise TypeError("expected str, bytes or os.PathLike object, not NoneType")
+
+    monkeypatch.setattr(bulk, "generate_repository", crash_after_start)
+    result = generate_all_repositories(scenarios_root=scenarios, advanced_scenarios_root=advanced, output_root=out)
+    assert {item.status for item in result.items if item.kind == "classic"} == {"failed"}
+    error = json.loads((out / "SZZ-0005/default/metadata/generation-error.json").read_text(encoding="utf-8"))
+    assert error["error"] == "TypeError: expected str, bytes or os.PathLike object, not NoneType"
+    assert next(item for item in result.items if item.kind == "graph").status == "generated"
+
+
+def test_a_complete_output_is_not_marked_when_the_crash_comes_before_it_is_replaced(tmp_path, monkeypatch):
+    scenarios, advanced, out = _roots(tmp_path)
+    generate_all_repositories(scenarios_root=scenarios, advanced_scenarios_root=advanced, output_root=out)
+    monkeypatch.setattr(bulk, "generate_repository", lambda *args, **kwargs: (_ for _ in ()).throw(ValueError("early")))
+    result = generate_all_repositories(scenarios_root=scenarios, advanced_scenarios_root=advanced, output_root=out,
+                                       overwrite=True)
+    assert {item.error for item in result.items if item.kind == "classic"} == {"ValueError: early"}
+    assert not (out / "SZZ-0005/default/metadata/generation-error.json").exists()
+    assert (out / "SZZ-0005/default/metadata/manifest.json").is_file()
+
+
+def test_keyboard_interrupt_still_stops_the_run(tmp_path, monkeypatch):
+    scenarios, advanced, out = _roots(tmp_path)
+
+    def interrupted(*args, **kwargs):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(bulk, "generate_repository", interrupted)
+    with pytest.raises(KeyboardInterrupt):
+        generate_all_repositories(scenarios_root=scenarios, advanced_scenarios_root=advanced, output_root=out)

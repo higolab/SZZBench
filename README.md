@@ -592,6 +592,8 @@ szzbench generate-all-repos --overwrite
 
 `--overwrite` deletes the existing `generated-input-repos/<SCENARIO_ID>/default/` output for each scenario before generating it again.
 
+A scenario that fails does not stop the run: it is listed as `Failed`, with the error, and the command goes on with the next scenario, prints its summary and exits 1. An error that is not a generation error (a crash in SZZBench) is listed with its traceback.
+
 Add `--no-verify` to skip post-generation verification for all generated repositories.
 
 ```bash
@@ -1304,6 +1306,8 @@ szzbench generate-all-repos --overwrite
 ```
 
 `--overwrite` は、対象シナリオの既存出力 `generated-input-repos/<SCENARIO_ID>/default/` を削除してから再生成します。
+
+あるシナリオの生成に失敗しても実行は止まりません。そのシナリオはエラーとともに `Failed` として表示され、コマンドは次のシナリオに進み、最後に集計を表示して終了コード 1 で終わります。生成のエラーではない例外（SZZBench 内部のクラッシュ）は、トレースバックも表示します。
 
 生成後の検証をまとめてスキップする場合は、`--no-verify` を使います。
 

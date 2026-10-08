@@ -127,6 +127,8 @@ def cmd_generate_all_repos(args) -> int:
             print(f"{verb} [{item.kind}] {item.scenario_id}: {output} ({item.commit_count} commit(s)).")
         else:
             print(f"Failed [{item.kind}] {item.scenario_id}: {output}: {item.error}", file=sys.stderr)
+            if item.traceback:                  # not a generation error: say where it came from (#162)
+                print("  " + item.traceback.rstrip().replace("\n", "\n  "), file=sys.stderr)
 
     print("Summary:")
     print(f"  Total:       {result.total_count}")

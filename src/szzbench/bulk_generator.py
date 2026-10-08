@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
+import json
+import traceback
 
 from .generator import GenerationError, generate_repository
 from .graph_generator import GraphGenerationError, generate_graph_repository
@@ -32,6 +35,8 @@ class GeneratedRepositoryItem:
     error: str | None = None
     #: why an existing output was regenerated without --overwrite (issue #93)
     stale_reason: str | None = None
+    #: the traceback of an exception other than a generation error (issue #162)
+    traceback: str | None = None
 
 
 @dataclass(frozen=True)
@@ -128,6 +133,26 @@ def generate_all_repositories(
                 )
             )
             continue
+        except Exception as exc:
+            # Any other exception is this scenario's failure too, not the run's: the
+            # run used to stop here with a traceback, leaving the later scenarios
+            # unvisited and no summary (issue #162).  KeyboardInterrupt still stops it.
+            error = f"{type(exc).__name__}: {exc}"
+            _record_unexpected_failure(output_dir, error)
+            items.append(
+                GeneratedRepositoryItem(
+                    kind=kind,
+                    scenario_id=scenario_id,
+                    scenario_path=scenario_path,
+                    output_dir=output_dir,
+                    status="failed",
+                    overwritten=overwrite and output_exists,
+                    error=error,
+                    stale_reason=stale_reason,
+                    traceback=traceback.format_exc(),
+                )
+            )
+            continue
 
         items.append(
             GeneratedRepositoryItem(
@@ -148,6 +173,25 @@ def generate_all_repositories(
         if child.is_dir() and child.name not in known and (child / "default").is_dir()
     )
     return GenerateAllRepositoriesResult(items=items, orphans=orphans)
+
+
+def _record_unexpected_failure(output_dir: Path, error: str) -> None:
+    """Write ``metadata/generation-error.json`` into an output the generator had begun.
+
+    The generators write it for their own errors.  An output whose generation
+    had not begun (the exception came before the old output was removed) still
+    has its complete manifest and is left alone; the staleness check already
+    regenerates it on the next run.
+    """
+    metadata_dir = output_dir / "metadata"
+    if not metadata_dir.is_dir() or (metadata_dir / "manifest.json").exists():
+        return
+    info = {"error": error, "timestamp": datetime.now(timezone.utc).isoformat()}
+    try:
+        (metadata_dir / "generation-error.json").write_text(json.dumps(info, indent=2, ensure_ascii=False) + "\n",
+                                                             encoding="utf-8")
+    except OSError:
+        pass
 
 
 def _find_scenario_files(root: Path, filename: str) -> list[Path]:
