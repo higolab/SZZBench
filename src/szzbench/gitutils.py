@@ -100,6 +100,8 @@ def run_git(repo_dir: Path, args: list[str], *, env: dict | None = None, capture
         stdout = exc.stdout.strip() if exc.stdout else ""
         detail = stderr or stdout
         raise GitError(f"git {' '.join(args)} failed: {detail}") from exc
+    except OSError as exc:
+        raise _could_not_run(repo_dir, args, exc) from exc
 
 
 def run_git_with_input(repo_dir: Path, args: list[str], data: bytes, *, env: dict | None = None) -> subprocess.CompletedProcess:
@@ -123,6 +125,19 @@ def run_git_with_input(repo_dir: Path, args: list[str], data: bytes, *, env: dic
         stdout = exc.stdout.decode("utf-8", errors="replace").strip() if exc.stdout else ""
         detail = stderr or stdout
         raise GitError(f"git {' '.join(args)} failed: {detail}") from exc
+    except OSError as exc:
+        raise _could_not_run(repo_dir, args, exc) from exc
+
+
+def _could_not_run(repo_dir: Path, args: list[str], exc: OSError) -> GitError:
+    """Git could not be started at all: a missing working directory, no ``git`` on PATH,
+    no permission.  A GitError like any other, so every caller that handles one handles
+    this too, instead of a FileNotFoundError traceback (issue #166)."""
+    if not Path(repo_dir).is_dir():
+        reason = f"the directory {repo_dir} does not exist"
+    else:
+        reason = exc.strerror or str(exc)
+    return GitError(f"git {args[0] if args else ''} could not run: {reason}")
 
 
 _git_version: tuple[int, ...] | None = None

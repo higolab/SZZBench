@@ -38,6 +38,10 @@ def verify_graph_generated_repo(
     result.extend(load_result)
     if scenario is None:
         return result
+    if not (repo_dir / ".git").exists():
+        # one finding instead of a FileNotFoundError from the first Git call (issue #166)
+        result.error("GE603", f"{repo_dir} is not a Git repository; generate it first, or check the path.", str(repo_dir))
+        return result
 
     if commit_map_path is None:
         commit_map_path = repo_dir.parent / "metadata" / "commit-map.json"

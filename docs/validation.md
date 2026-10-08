@@ -311,6 +311,7 @@ actions such as `squash` or `reorder`) and `reverts` (free-form: commit ids,
 
 | code | level | condition |
 |---|---|---|
+| GE603 | error | the repository path is not a Git repository (missing, or without `.git`); the classic `verify` reports the same as E603. Verification used to end in a `FileNotFoundError` traceback when `--commit-map` named an existing map ([issue #166](https://github.com/higolab/SZZBench/issues/166)) |
 | GE627 | error | a commit's parents in the repository are not the declared ones, in order (for a commit that owns `commit_generator` operations, the first parent is the last generated commit). Since issue #134 this includes a commit declared without parents: it must have none |
 | GE630 | error | a commit is committed **before one of its parents**. A scenario that pins some timestamps and leaves the rest to the generator can otherwise invert its own history, which changes what date-based candidate filters and recency heuristics see (issue #9, PR #34 re-review) |
 | GW631 | warning | a commit's author date is **after** its committer date. An author date *before* the committer date is the normal signature of a rebase and is not flagged |
