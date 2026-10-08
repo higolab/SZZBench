@@ -324,11 +324,17 @@ DEFAULT_AUTHOR_POOL: tuple[str, ...] = (
 )
 
 
+#: A trailing ISO 8601 offset in its basic form (``+0900``), which ``datetime.fromisoformat``
+#: reads only from Python 3.11 on.
+_BASIC_OFFSET = re.compile(r"([+-]\d{2})(\d{2})$")
+
+
 def parse_timestamp(value: Any, *, field: str = "date") -> datetime:
     """Parse an ISO 8601 timestamp (``2024-01-01T10:00:00Z`` or with offset).
 
     YAML may already have turned an unquoted timestamp into a ``datetime``;
-    such values are accepted as-is (naive values are treated as UTC).
+    such values are accepted as-is.  A value without a zone, quoted or not, is
+    UTC (issue #133).
     """
     if isinstance(value, datetime):
         return value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
@@ -337,6 +343,8 @@ def parse_timestamp(value: Any, *, field: str = "date") -> datetime:
     text = value.strip()
     if text.endswith("Z") or text.endswith("z"):
         text = text[:-1] + "+00:00"
+    elif "T" in text or " " in text:
+        text = _BASIC_OFFSET.sub(r"\1:\2", text)
     try:
         parsed = datetime.fromisoformat(text)
     except ValueError as exc:
@@ -424,10 +432,18 @@ def json_safe_timestamp(value: Any) -> Any:
 
 
 def _as_timestamp_string(value: Any, *, field: str) -> str:
-    if isinstance(value, datetime):
-        return format_timestamp(parse_timestamp(value))
-    if isinstance(value, str) and value.strip():
-        return value
+    """A pinned timestamp in the form Git is given and ``commit-map.json`` records (issue #133).
+
+    The value is parsed and written back with its zone, so Git never reads a
+    zone-less value in the machine's local time: ``"2024-01-01T10:00:00"``
+    (quoted) and ``2024-01-01T10:00:00`` (a YAML timestamp) are both UTC, as
+    :func:`parse_timestamp` and the validators already read them.  A value
+    with ``Z`` or an offset is written back unchanged, so no shipped hash
+    moves.  A value that is not ISO 8601 is an error naming the field, not a
+    date Git happens to accept.
+    """
+    if isinstance(value, datetime) or (isinstance(value, str) and value.strip()):
+        return format_timestamp(parse_timestamp(value, field=field))
     raise GitError(f"{field} must be a non-empty ISO 8601 timestamp string, got {value!r}")
 
 
@@ -487,7 +503,8 @@ def _has_explicit_timestamp(scenario: dict[str, Any]) -> bool:
 def resolve_commit_metadata(scenario: dict[str, Any], commit_spec: dict[str, Any], commit_index: int) -> CommitMetadata:
     """Resolve the effective author/author_date/committer_date of a commit.
 
-    Explicit values are preserved exactly.  ``author_date`` and
+    Explicit values keep their instant and their offset; a value without a
+    zone is UTC (issue #133).  ``author_date`` and
     ``committer_date`` fall back to ``date``; ``date`` falls back to a
     deterministic default (``repository.base_date`` or
     ``2024-01-01T10:00:00Z`` plus the commit index in days).  A missing

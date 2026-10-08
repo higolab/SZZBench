@@ -91,7 +91,14 @@ expressible.
 ```
 
 Dates must be ISO 8601 (`2024-01-02T10:00:00Z` or with an offset such as
-`+09:00`). Quote them in YAML; unquoted timestamps are also accepted.
+`+09:00` or `+0900`). Quote them in YAML; unquoted timestamps are also accepted.
+A value without a zone (`2024-01-02T10:00:00`) is **UTC**, quoted or not: every
+pinned value is parsed and handed to Git with its zone, so the hashes do not
+depend on the time zone of the machine that generates them. Until issue #133 a
+quoted value without a zone reached Git verbatim and Git read it in local time,
+while the same value unquoted (a YAML timestamp) was already UTC. A value that
+is not ISO 8601 (`yesterday`) is an error that names the field, rather than
+whatever date Git makes of it.
 
 ### What is recorded
 
@@ -109,8 +116,9 @@ Dates must be ISO 8601 (`2024-01-02T10:00:00Z` or with an offset such as
 }
 ```
 
-`date` keeps the value written in the scenario (or `null`); `author` is the
-effective author (pool author when the scenario had none).
+`date` keeps the value written in the scenario (or `null`); `author_date` and
+`committer_date` are what Git was given, always with a zone (`Z` or an offset);
+`author` is the effective author (pool author when the scenario had none).
 
 ## 2. Operations and placeholders (#18)
 
