@@ -6,6 +6,7 @@ from typing import Any
 import json
 import shutil
 
+from .cleaner import replaceable_output_problem
 from .findings import ValidationResult
 from .gitutils import (
     MAX_GENERATED_COMMITS,
@@ -68,9 +69,15 @@ def generate_graph_repository(
         raise GraphGenerationError("Failed to load graph scenario.")
 
     if out_dir.exists():
-        if not force:
+        if not force and out_dir.is_dir():
             raise GraphGenerationError(f"Output directory already exists: {out_dir}. Use --force to overwrite.")
-        shutil.rmtree(out_dir)
+        problem = replaceable_output_problem(out_dir, scenario_path)
+        if problem is not None:
+            raise GraphGenerationError(f"{problem}.")
+        try:
+            shutil.rmtree(out_dir)
+        except OSError as exc:
+            raise GraphGenerationError(f"Cannot remove the previous output {out_dir}: {exc}") from exc
 
     repo_dir.mkdir(parents=True)
     metadata_dir.mkdir(parents=True)

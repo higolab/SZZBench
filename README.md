@@ -366,6 +366,8 @@ Add `--no-verify` to skip verification after generation.
 szzbench generate   scenarios/SZZ-0006/scenario.yml   --out generated-input-repos/SZZ-0006/default   --force   --no-verify
 ```
 
+`--force` replaces an existing `--out` only when it is a previous generated output, or a directory that holds nothing but `repo/` and `metadata/`. It refuses, and deletes nothing, when `--out` is a file, holds anything else, contains the scenario file, or is the current directory or one of its parents. The same rule applies to `generate-graph` and to `generate-all-repos`.
+
 The generated directory has the following structure.
 
 ```text
@@ -1078,6 +1080,8 @@ szzbench generate   scenarios/SZZ-0006/scenario.yml   --out generated-input-repo
 ```bash
 szzbench generate   scenarios/SZZ-0006/scenario.yml   --out generated-input-repos/SZZ-0006/default   --force   --no-verify
 ```
+
+`--force` が既存の `--out` を置き換えるのは、それが以前の生成物か、`repo/` と `metadata/` しか含まないディレクトリの場合だけです。`--out` がファイルである、それ以外のものを含む、シナリオファイルを含む、作業ディレクトリそのものかその親である、のいずれかに当たるときは、何も削除せずに拒否します。`generate-graph` と `generate-all-repos` にも同じ規則が適用されます。
 
 生成されるディレクトリは次のような構成です。
 

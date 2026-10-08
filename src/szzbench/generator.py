@@ -5,6 +5,7 @@ import json
 import shutil
 from datetime import datetime, timezone
 
+from .cleaner import replaceable_output_problem
 from .findings import ValidationResult
 from .gitutils import GitError, commit_all, init_repo, json_safe_timestamp, resolve_commit_metadata
 from .manifest import write_manifest
@@ -28,9 +29,15 @@ def generate_repository(scenario_path: Path, out_dir: Path, *, force: bool = Fal
     if scenario is None or load_result.has_errors():
         raise GenerationError("Failed to load scenario.")
     if out_dir.exists():
-        if not force:
+        if not force and out_dir.is_dir():
             raise GenerationError(f"Output directory already exists: {out_dir}. Use --force to overwrite.")
-        shutil.rmtree(out_dir)
+        problem = replaceable_output_problem(out_dir, scenario_path)
+        if problem is not None:
+            raise GenerationError(f"{problem}.")
+        try:
+            shutil.rmtree(out_dir)
+        except OSError as exc:
+            raise GenerationError(f"Cannot remove the previous output {out_dir}: {exc}") from exc
     repo_dir.mkdir(parents=True)
     metadata_dir.mkdir(parents=True)
     generation_log: list[str] = []
