@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
+import json
+import traceback
 
 from .generator import GenerationError, generate_repository
 from .graph_generator import GraphGenerationError, generate_graph_repository
@@ -32,6 +35,8 @@ class GeneratedRepositoryItem:
     error: str | None = None
     #: why an existing output was regenerated without --overwrite (issue #93)
     stale_reason: str | None = None
+    #: the traceback of an exception other than a generation error (issue #162)
+    traceback: str | None = None
 
 
 @dataclass(frozen=True)
@@ -88,28 +93,32 @@ def generate_all_repositories(
     for scenario_path, kind in scenario_specs:
         scenario_id = scenario_path.parent.name
         output_dir = output_root / scenario_id / "default"
-        output_exists = output_dir.exists()
-
-        # An existing output is kept only when its manifest says it is complete and
-        # was made from this scenario by this generator; anything else -- an
-        # interrupted generation, an edited scenario, changed generator code, an
-        # output from before the manifest -- is regenerated (issue #93).
+        output_exists = False
         stale_reason = None
-        if output_exists and not overwrite:
-            stale_reason = staleness(output_dir, scenario_path, require_verified=verify)
-            if stale_reason is None:
-                items.append(
-                    GeneratedRepositoryItem(
-                        kind=kind,
-                        scenario_id=scenario_id,
-                        scenario_path=scenario_path,
-                        output_dir=output_dir,
-                        status="skipped",
-                    )
-                )
-                continue
-
+        # Everything done for one scenario -- the staleness check included, which reads
+        # the scenario file -- is inside one boundary, so that whatever it raises is that
+        # scenario's failure and the run goes on (issue #162, PR #213 review).
         try:
+            output_exists = output_dir.exists()
+
+            # An existing output is kept only when its manifest says it is complete and
+            # was made from this scenario by this generator; anything else -- an
+            # interrupted generation, an edited scenario, changed generator code, an
+            # output from before the manifest -- is regenerated (issue #93).
+            if output_exists and not overwrite:
+                stale_reason = staleness(output_dir, scenario_path, require_verified=verify)
+                if stale_reason is None:
+                    items.append(
+                        GeneratedRepositoryItem(
+                            kind=kind,
+                            scenario_id=scenario_id,
+                            scenario_path=scenario_path,
+                            output_dir=output_dir,
+                            status="skipped",
+                        )
+                    )
+                    continue
+
             if kind == "classic":
                 commit_map, _ = generate_repository(scenario_path, output_dir, force=output_exists, verify=verify)
             else:
@@ -128,6 +137,26 @@ def generate_all_repositories(
                 )
             )
             continue
+        except Exception as exc:
+            # Any other exception is this scenario's failure too, not the run's: the
+            # run used to stop here with a traceback, leaving the later scenarios
+            # unvisited and no summary (issue #162).  KeyboardInterrupt still stops it.
+            error = f"{type(exc).__name__}: {exc}"
+            _record_unexpected_failure(output_dir, error)
+            items.append(
+                GeneratedRepositoryItem(
+                    kind=kind,
+                    scenario_id=scenario_id,
+                    scenario_path=scenario_path,
+                    output_dir=output_dir,
+                    status="failed",
+                    overwritten=overwrite and output_exists,
+                    error=error,
+                    stale_reason=stale_reason,
+                    traceback=traceback.format_exc(),
+                )
+            )
+            continue
 
         items.append(
             GeneratedRepositoryItem(
@@ -143,11 +172,43 @@ def generate_all_repositories(
         )
 
     known = {path.parent.name for path, _ in scenario_specs}
-    orphans = sorted(
-        child for child in output_root.iterdir()
-        if child.is_dir() and child.name not in known and (child / "default").is_dir()
-    )
+    orphans = sorted(child for child in output_root.iterdir() if _is_orphan(child, known))
     return GenerateAllRepositoriesResult(items=items, orphans=orphans)
+
+
+def _is_orphan(child: Path, known: set[str]) -> bool:
+    """An output directory whose scenario no longer exists.  A directory that cannot be
+    inspected is not reported: before Python 3.14 the probe raises PermissionError,
+    which would end the run after every scenario was handled, before its summary."""
+    try:
+        return child.is_dir() and child.name not in known and (child / "default").is_dir()
+    except OSError:
+        return False
+
+
+def _record_unexpected_failure(output_dir: Path, error: str) -> None:
+    """Write ``metadata/generation-error.json`` into an output the generator had begun.
+
+    The generators write it for their own errors.  An output whose generation
+    had not begun (the exception came before the old output was removed) still
+    has its complete manifest and is left alone; the staleness check already
+    regenerates it on the next run.
+
+    It is best effort, and nothing in it may raise: it runs inside the handler
+    that keeps the run going.  The probes are inside the boundary too, since
+    before Python 3.14 ``Path.exists`` and ``Path.is_dir`` raise
+    ``PermissionError`` for a directory that cannot be searched, where 3.14
+    returns False (PR #213 review).
+    """
+    metadata_dir = output_dir / "metadata"
+    try:
+        if not metadata_dir.is_dir() or (metadata_dir / "manifest.json").exists():
+            return
+        info = {"error": error, "timestamp": datetime.now(timezone.utc).isoformat()}
+        (metadata_dir / "generation-error.json").write_text(json.dumps(info, indent=2, ensure_ascii=False) + "\n",
+                                                             encoding="utf-8")
+    except OSError:
+        pass
 
 
 def _find_scenario_files(root: Path, filename: str) -> list[Path]:
