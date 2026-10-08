@@ -33,8 +33,17 @@ UniqueKeyLoader.add_constructor(
 def load_yaml(path: Path) -> tuple[dict[str, Any] | None, ValidationResult]:
     result = ValidationResult()
     try:
+        # A file that is not UTF-8 raised UnicodeDecodeError from inside PyYAML, which
+        # nothing caught: every command that reads scenarios or an index ended in a
+        # traceback (issue #149).  Decoding the bytes first also gives the offset in
+        # the file, not in PyYAML's read buffer.
+        path.read_bytes().decode("utf-8")
         with path.open("r", encoding="utf-8") as fh:
             data = yaml.load(fh, Loader=UniqueKeyLoader)
+    except UnicodeDecodeError as exc:
+        result.error("E000", f"Cannot read {path.name}: it is not UTF-8 (byte 0x{exc.object[exc.start]:02x} at "
+                     f"position {exc.start}); save it as UTF-8.", str(path))
+        return None, result
     except yaml.YAMLError as exc:
         result.error("E001", f"YAML parse error: {exc}", str(path))
         return None, result
