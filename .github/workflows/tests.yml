@@ -40,17 +40,21 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
-      # tests/test_scenario_editor.py needs a Node.js that runs TypeScript (22.18+)
+      # tests/test_scenario_editor.py needs a Node.js that runs TypeScript (22.18+), and
+      # tests/test_repo_viewer.py starts the Generated repository viewer's server (#132)
       - uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: tools/scenario-editor/package-lock.json
-      - name: Install SZZBench and the Scenario Editor's dependencies
+          cache-dependency-path: |
+            tools/scenario-editor/package-lock.json
+            tools/generated-repo-viewer/package-lock.json
+      - name: Install SZZBench and the two web tools' dependencies
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e ".[dev]"
           npm ci --prefix tools/scenario-editor
+          npm ci --prefix tools/generated-repo-viewer
       - name: Versions
         run: |
           python --version
@@ -87,12 +91,15 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: tools/scenario-editor/package-lock.json
-      - name: Install SZZBench and the Scenario Editor's dependencies
+          cache-dependency-path: |
+            tools/scenario-editor/package-lock.json
+            tools/generated-repo-viewer/package-lock.json
+      - name: Install SZZBench and the two web tools' dependencies
         run: |
           python -m pip install --root-user-action=ignore --upgrade pip
           python -m pip install --root-user-action=ignore -e ".[dev]"
           npm ci --prefix tools/scenario-editor
+          npm ci --prefix tools/generated-repo-viewer
       - name: Versions
         run: |
           python --version

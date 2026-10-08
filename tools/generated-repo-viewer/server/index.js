@@ -1,5 +1,4 @@
 import express from "express";
-import cors from "cors";
 import path from "node:path";
 import fs from "node:fs/promises";
 import fssync from "node:fs";
@@ -10,32 +9,96 @@ import yaml from "js-yaml";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const viewerRoot = path.resolve(__dirname, "..");
-const projectRoot = path.resolve(viewerRoot, "..", "..");
+// SZZBENCH_REPO_ROOT points the viewer at another copy of the layout (the tests use a scratch one).
+const projectRoot = path.resolve(process.env.SZZBENCH_REPO_ROOT || path.join(viewerRoot, "..", ".."));
 const generatedRoot = path.join(projectRoot, "generated-input-repos");
 
 const app = express();
 const port = Number(process.env.SZZBENCH_REPO_VIEWER_PORT || 4174);
 const serveDist = process.argv.includes("--serve-dist");
 
-app.use(cors());
+// Issue #132: the API used to answer every origin (cors() with no options), so any page open
+// in the same browser could make it run git.  The viewer's own pages are same-origin -- Vite
+// proxies /api in development and --serve-dist serves both -- so no CORS header is sent, and a
+// request a browser marks as coming from another site is refused.  Tools that send no
+// Sec-Fetch-Site header, such as curl, are not affected.
+app.use((req, res, next) => {
+  const site = req.get("Sec-Fetch-Site");
+  if (site && site !== "same-origin" && site !== "none") {
+    res.status(403).json({ error: "Requests from other sites are not accepted." });
+    return;
+  }
+  next();
+});
 app.use(express.json({ limit: "2mb" }));
+
+/** A problem with the request itself; its message is safe to show the client. */
+class RequestError extends Error {}
+
+/**
+ * The error a route sends.  A RequestError says what was wrong with the request; anything
+ * else -- git's own message, a file-system error -- may name absolute paths of this machine,
+ * so it is logged here and the client gets a generic message (issue #132).
+ */
+function sendError(res, error, status = 400) {
+  if (error instanceof RequestError) {
+    res.status(status).json({ error: error.message });
+    return;
+  }
+  console.error(`[generated-repo-viewer] ${error.message}`);
+  res.status(status).json({ error: "The request could not be served; the server log has the details." });
+}
+
+// A commit is named by its hash (abbreviated, SHA-1 or SHA-256), as /api/repository lists it.
+// Anything else -- in particular a value starting with "-" -- never reaches git (issue #132).
+const COMMIT_HASH = /^[0-9a-f]{7,64}$/i;
+
+function requireCommit(value) {
+  const commit = typeof value === "string" ? value : "";
+  if (!commit) throw new RequestError("Missing commit.");
+  if (!COMMIT_HASH.test(commit)) throw new RequestError("Invalid commit: expected a commit hash.");
+  return commit;
+}
+
+/** A path inside the commit's tree, as /api/tree lists it: relative, "/"-separated, no ".." or empty part. */
+function requireFile(value, { optional = false } = {}) {
+  const file = typeof value === "string" ? value : "";
+  if (!file) {
+    if (optional) return "";
+    throw new RequestError("Missing file.");
+  }
+  const parts = file.split("/");
+  if (file.startsWith("/") || /^[A-Za-z]:/.test(file) || file.includes("\\") || file.includes("\0")
+      || parts.includes("..") || parts.includes("")) {
+    throw new RequestError("Invalid file: expected a path inside the repository.");
+  }
+  return file;
+}
 
 function normalizeForClient(absPath) {
   return path.relative(projectRoot, absPath).replaceAll(path.sep, "/");
 }
 
+function isInside(root, candidate) {
+  const rel = path.relative(root, candidate);
+  return !(rel === ".." || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel));
+}
+
 function assertInsideProject(absPath) {
   const resolved = path.resolve(absPath);
-  const rel = path.relative(projectRoot, resolved);
-  if (rel.startsWith("..") || path.isAbsolute(rel)) {
-    throw new Error("Path escapes the SZZBench project root.");
+  if (!isInside(projectRoot, resolved)) {
+    throw new RequestError("Path escapes the SZZBench project root.");
+  }
+  // path.resolve does not follow symbolic links: check where an existing path really is too.
+  if (fssync.existsSync(resolved) && !isInside(fssync.realpathSync(projectRoot), fssync.realpathSync(resolved))) {
+    throw new RequestError("Path escapes the SZZBench project root.");
   }
   return resolved;
 }
 
 function resolveTarget(target) {
   if (!target || typeof target !== "string") {
-    throw new Error("Missing target.");
+    throw new RequestError("Missing target.");
   }
 
   const raw = target.replaceAll("\\", "/");
@@ -51,8 +114,9 @@ function repoDirFromTarget(target) {
   const repoDir = path.join(generatedDir, "repo");
   const gitDir = path.join(repoDir, ".git");
   if (!fssync.existsSync(gitDir)) {
-    throw new Error(`Not a generated repository directory: ${target}`);
+    throw new RequestError(`Not a generated repository directory: ${target}`);
   }
+  assertInsideProject(gitDir);
   return { generatedDir, repoDir };
 }
 
@@ -257,7 +321,7 @@ app.get("/api/repositories", async (req, res) => {
     const repositories = await findGeneratedRepositories();
     res.json({ repositories });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    sendError(res, error, 500);
   }
 });
 
@@ -305,63 +369,56 @@ app.get("/api/repository", async (req, res) => {
       generationLog
     });
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    sendError(res, error);
   }
 });
 
 app.get("/api/tree", async (req, res) => {
   try {
     const { repoDir } = repoDirFromTarget(req.query.target);
-    const commit = String(req.query.commit || "");
-    if (!commit) throw new Error("Missing commit.");
-    const raw = await runGit(repoDir, ["ls-tree", "-r", "--name-only", commit]);
+    const commit = requireCommit(req.query.commit);
+    const raw = await runGit(repoDir, ["ls-tree", "-r", "--name-only", "--end-of-options", commit]);
     const files = raw.trim().split("\n").filter(Boolean);
     res.json({ files });
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    sendError(res, error);
   }
 });
 
 app.get("/api/file", async (req, res) => {
   try {
     const { repoDir } = repoDirFromTarget(req.query.target);
-    const commit = String(req.query.commit || "");
-    const file = String(req.query.file || "");
-    if (!commit || !file) throw new Error("Missing commit or file.");
-    const content = await runGit(repoDir, ["show", `${commit}:${file}`]);
+    const commit = requireCommit(req.query.commit);
+    const file = requireFile(req.query.file);
+    const content = await runGit(repoDir, ["show", "--end-of-options", `${commit}:${file}`]);
     res.json({ content });
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    sendError(res, error);
   }
 });
 
 app.get("/api/diff", async (req, res) => {
   try {
     const { repoDir } = repoDirFromTarget(req.query.target);
-    const commit = String(req.query.commit || "");
-    const file = String(req.query.file || "");
-    if (!commit) throw new Error("Missing commit.");
-    let args;
-    if (file) {
-      args = ["show", "--format=", "--find-renames", "--find-copies", commit, "--", file];
-    } else {
-      args = ["show", "--format=", "--find-renames", "--find-copies", commit];
-    }
+    const commit = requireCommit(req.query.commit);
+    const file = requireFile(req.query.file, { optional: true });
+    const args = ["show", "--format=", "--find-renames", "--find-copies", "--end-of-options", commit];
+    if (file) args.push("--", file);
     const diff = await runGit(repoDir, args, { maxBuffer: 30 * 1024 * 1024 });
     res.json({ diff });
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    sendError(res, error);
   }
 });
 
 app.get("/api/blame", async (req, res) => {
   try {
     const { repoDir } = repoDirFromTarget(req.query.target);
-    const commit = String(req.query.commit || "");
-    const file = String(req.query.file || "");
-    if (!commit || !file) throw new Error("Missing commit or file.");
+    const commit = requireCommit(req.query.commit);
+    const file = requireFile(req.query.file);
 
-    const raw = await runGit(repoDir, ["blame", "--line-porcelain", commit, "--", file], {
+    // No "--" here: git blame reads a "--" that follows --end-of-options as a revision.
+    const raw = await runGit(repoDir, ["blame", "--line-porcelain", "--end-of-options", commit, file], {
       maxBuffer: 30 * 1024 * 1024
     });
     const lines = [];
@@ -389,7 +446,7 @@ app.get("/api/blame", async (req, res) => {
     }
     res.json({ lines });
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    sendError(res, error);
   }
 });
 
