@@ -147,6 +147,9 @@ def _verify_commits(repo_dir: Path, scenario: dict[str, Any], commit_map: dict[s
 def _verify_parents(repo_dir: Path, commit_spec: dict[str, Any], commit_map: dict[str, Any], actual_hash: str, result: ValidationResult, loc: str) -> None:
     expected_parent_ids = [p for p in commit_spec.get("parents", []) or [] if isinstance(p, str)]
     expected_parent_hashes = [commit_map[p]["hash"] for p in expected_parent_ids if p in commit_map and isinstance(commit_map[p], dict)]
+    # Compared whenever every declared parent resolves -- an empty list included:
+    # a commit declared without parents must have none in the repository (issue #134).
+    resolvable = len(expected_parent_hashes) == len(expected_parent_ids)
     # A commit that owns commit_generator operations sits on top of its
     # generated commits: its first parent is the last generated commit, not the
     # declared logical parent.  Later commits still point at the owner's own
@@ -165,7 +168,7 @@ def _verify_parents(repo_dir: Path, commit_spec: dict[str, Any], commit_map: dic
         result.error("GE626", f"Cannot inspect parent list: {exc}", loc)
         return
     actual_parent_hashes = raw.split()[1:]
-    if expected_parent_hashes and actual_parent_hashes != expected_parent_hashes:
+    if resolvable and actual_parent_hashes != expected_parent_hashes:
         result.error(
             "GE627",
             f"Parent mismatch. Expected {expected_parent_hashes}, got {actual_parent_hashes}.",

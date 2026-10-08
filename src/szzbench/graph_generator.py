@@ -97,6 +97,11 @@ def generate_graph_repository(
             cid = commit_spec["id"]
             branch = commit_spec.get("branch") or default_branch
             parents = [p for p in commit_spec.get("parents", []) if isinstance(p, str)]
+            if index > 0 and not parents:
+                # _checkout_for_commit would commit it on top of the current HEAD (issue #134).
+                raise GraphGenerationError(
+                    f"Commit '{cid}' declares no parents, but only the first commit may be a root (GE048)."
+                )
             log(f"Preparing graph commit {cid} on branch {branch}: {commit_spec.get('message', '')}")
 
             _checkout_for_commit(repo_dir, branch, parents, commit_map, branch_heads, default_branch)
@@ -228,10 +233,11 @@ def _checkout_for_commit(
     default_branch: str,
 ) -> None:
     if not parents:
-        # The initial default branch is an unborn branch immediately after
-        # git init; checking it out before the first commit fails on some Git
-        # versions.  For the default branch, the current worktree is already
-        # the correct target.
+        # Only the first commit gets here (a later one is refused, GE048).  The
+        # initial default branch is an unborn branch immediately after git init;
+        # checking it out before the first commit fails on some Git versions.
+        # For the default branch, the current worktree is already the correct
+        # target.
         if branch != default_branch:
             _checkout_or_create_branch(repo_dir, branch, None)
         return
