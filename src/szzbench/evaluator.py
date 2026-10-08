@@ -5,6 +5,7 @@ from pathlib import Path
 from collections.abc import Sequence
 from typing import Any
 import json
+import re
 
 from .gitutils import GitError, git_parent, run_git
 from .graph_scenario import DIRECT_BIC_ROLES, graph_bfc_entries, graph_bic_entries, load_graph_scenario
@@ -278,15 +279,15 @@ class EvaluationReport:
         ]
         if self.errors:
             lines.extend(["## Errors", ""])
-            lines.extend(f"- {error}" for error in self.errors)
+            lines.extend(f"- {_md_line(error)}" for error in self.errors)
             lines.append("")
         if self.warnings:
             lines.extend(["## Warnings", ""])
-            lines.extend(f"- {warning}" for warning in self.warnings)
+            lines.extend(f"- {_md_line(warning)}" for warning in self.warnings)
             lines.append("")
         if self.info:
             lines.extend(["## Information", ""])
-            lines.extend(f"- {note}" for note in self.info)
+            lines.extend(f"- {_md_line(note)}" for note in self.info)
             lines.append("")
         lines.extend(
             [
@@ -300,7 +301,7 @@ class EvaluationReport:
             lines.append(
                 "| "
                 + " | ".join(
-                    [
+                    _md_cell(cell) for cell in [
                         item.scenario_id,
                         item.status,
                         item.run_status,
@@ -332,7 +333,7 @@ class EvaluationReport:
             lines.extend(["## Scenario notes", ""])
             for item in noted:
                 for note in item.result_notes:
-                    lines.append(f"- {item.scenario_id}: {note}")
+                    lines.append(f"- {item.scenario_id}: {_md_line(note)}")
             lines.append("")
         return "\n".join(lines)
 
@@ -1613,6 +1614,21 @@ def _format_credit(weighted_credit: float | None, possible_credit: float | None)
     if weighted_credit is None or possible_credit is None:
         return "-"
     return f"{weighted_credit:.3f}/{possible_credit:.3f}"
+
+
+def _md_line(text: Any) -> str:
+    """Text that stays on one Markdown line: line breaks and tabs become one space.
+
+    Unknown references and run errors are the tool's own text, written as it
+    came; a newline in one used to split a table row or a list item (issue #139).
+    The JSON report keeps the text unchanged.
+    """
+    return re.sub(r"[ \t]*[\r\n\t]+[ \t]*", " ", str(text))
+
+
+def _md_cell(text: Any) -> str:
+    """A table cell: on one line, and with ``|`` escaped so that it cannot end the cell (issue #139)."""
+    return _md_line(text).replace("|", "\\|")
 
 
 def _join_ids(values: list[str]) -> str:
