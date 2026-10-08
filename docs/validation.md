@@ -204,6 +204,7 @@ as one deleted and one added line, like `git blame` without `-w`.
 | GW045 | warning | non-merge commit without operations and without `allow_empty`. Not reported for a commit that declares `revert_of`, `cherry_pick_of` or `backport_of`: with no operations, `git revert` / `git cherry-pick` supplies its content (generator-options §3), so it is not empty and marking it `allow_empty` would be false |
 | **GE046** | error | `rebase_of` (string or list of strings), `squashes` (list of strings) or `revert_of` (string) has the wrong type |
 | **GE047** | error | `rebase_of` / `squashes` / `revert_of` refers to an unknown, later, or the same commit (the GE043 rule for rewrite metadata; catches SZZG-0067's `rebase_of: f1`) |
+| GE048 | error | a commit other than the first declares no parents (`parents: []`, or no `parents` key, e.g. a misspelt `parent:`). Only the first commit is a root: a second one used to be generated as a child of whatever the generator had last checked out, while `commit-map.json` recorded no parents and `verify-graph` did not look. The message names a near-miss key when there is one ([issue #134](https://github.com/higolab/SZZBench/issues/134)) |
 | GE050 | error | an operation is not an object |
 | GE051 | error | `operation.type` missing |
 | GE052 | error | unknown graph operation type |
@@ -310,6 +311,7 @@ actions such as `squash` or `reorder`) and `reverts` (free-form: commit ids,
 
 | code | level | condition |
 |---|---|---|
+| GE627 | error | a commit's parents in the repository are not the declared ones, in order (for a commit that owns `commit_generator` operations, the first parent is the last generated commit). Since issue #134 this includes a commit declared without parents: it must have none |
 | GE630 | error | a commit is committed **before one of its parents**. A scenario that pins some timestamps and leaves the rest to the generator can otherwise invert its own history, which changes what date-based candidate filters and recency heuristics see (issue #9, PR #34 re-review) |
 | GW631 | warning | a commit's author date is **after** its committer date. An author date *before* the committer date is the normal signature of a rebase and is not flagged |
 | GW632 | warning | the commit-date check could not run (Git failed, or a timestamp was unreadable) |

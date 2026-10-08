@@ -139,6 +139,19 @@ def validate_graph_static(data: dict[str, Any], *, scenario_path: Path | None = 
         if not isinstance(parents, list):
             result.error("GE036", "commit.parents must be a list.", f"{loc}.parents")
             parents = []
+        elif i > 0 and not parents:
+            # Only the first commit is a root.  The generator used to commit a later
+            # parentless commit on top of whatever it had checked out, and record it
+            # as a root (issue #134); a misspelt key ended up the same way.
+            near_miss = next((key for key in commit if isinstance(key, str) and key != "parents"
+                              and key.lower().rstrip("s") == "parent"), None)
+            hint = f"; it has a '{near_miss}' key, and the key is 'parents'" if near_miss else ""
+            result.error(
+                "GE048",
+                f"Commit '{cid}' declares no parents, but only the first commit may be a root: "
+                f"a second root is not supported{hint}.",
+                f"{loc}.parents",
+            )
         for parent in parents:
             if not isinstance(parent, str):
                 result.error("GE037", "Each parent id must be a string.", f"{loc}.parents")
