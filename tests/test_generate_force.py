@@ -114,6 +114,36 @@ def test_an_empty_or_interrupted_output_may_be_replaced(tmp_path, entries):
     assert (out / "metadata/manifest.json").is_file()
 
 
+@pytest.mark.parametrize("generate, error, scenario", [
+    (generate_repository, GenerationError, CLASSIC),
+    (generate_graph_repository, GraphGenerationError, GRAPH),
+], ids=["classic", "graph"])
+@pytest.mark.parametrize("names", [["repo"], ["metadata"], ["repo", "metadata"]], ids=["repo", "metadata", "both"])
+def test_regular_files_named_like_the_output_directories_are_kept(tmp_path, generate, error, scenario, names):
+    """The reserved names alone do not authorize deletion (PR #212 review)."""
+    out = tmp_path / "out"
+    out.mkdir()
+    for name in names:
+        (out / name).write_text(f"user data in {name}\n")
+    assert replaceable_output_problem(out, scenario) is not None
+    with pytest.raises(error, match="is not a generated output"):
+        generate(scenario, out, force=True)
+    for name in names:
+        assert (out / name).read_text() == f"user data in {name}\n"
+
+
+def test_a_link_named_repo_is_not_an_output_directory(tmp_path):
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    (elsewhere / "keep.txt").write_text("keep\n")
+    out = tmp_path / "out"
+    out.mkdir()
+    (out / "repo").symlink_to(elsewhere, target_is_directory=True)
+    with pytest.raises(GenerationError, match=r"is not a generated output \(it holds repo\)"):
+        generate_repository(CLASSIC, out, force=True)
+    assert (out / "repo").is_symlink() and (elsewhere / "keep.txt").read_text() == "keep\n"
+
+
 def test_generate_all_repos_reports_a_refused_output_and_goes_on(tmp_path):
     scenarios, advanced, out_root = tmp_path / "scenarios", tmp_path / "advanced-scenarios", tmp_path / "out"
     for sid in ("SZZ-0005", "SZZ-0006"):

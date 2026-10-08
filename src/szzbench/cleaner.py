@@ -36,8 +36,8 @@ def replaceable_output_problem(out_dir: Path, scenario_path: Path) -> str | None
     ``--force`` used to delete whatever ``--out`` named: unrelated files, the
     directory holding the scenario being generated, the current directory.
     It may now replace a generated output, or a directory that holds nothing
-    but ``repo/`` and ``metadata/`` (an interrupted generation, or an empty
-    directory), and nothing else.
+    but the directories ``repo/`` and ``metadata/`` (an interrupted generation,
+    or an empty directory), and nothing else.
     """
     out_dir = out_dir.resolve()
     if not out_dir.is_dir():
@@ -52,7 +52,10 @@ def replaceable_output_problem(out_dir: Path, scenario_path: Path) -> str | None
         return f"--out {out_dir} contains the scenario file being generated"
     if is_generated_output_dir(out_dir):
         return None
-    others = sorted(entry.name for entry in out_dir.iterdir() if entry.name not in OUTPUT_ENTRIES)
+    # The reserved names count only as the directories a generation creates: a regular
+    # file, or a link, named repo or metadata is somebody's data (PR #212 review).
+    others = sorted(entry.name for entry in out_dir.iterdir()
+                    if not (entry.name in OUTPUT_ENTRIES and entry.is_dir() and not entry.is_symlink()))
     if others:
         shown = ", ".join(others[:5]) + (", ..." if len(others) > 5 else "")
         return (f"--out {out_dir} is not a generated output (it holds {shown}); "
