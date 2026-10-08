@@ -6,6 +6,7 @@ Run `pytest` from the repository root. `tests/conftest.py` puts this checkout's 
 
 - **A JDK** (`javac` and `java`). The tests marked `needs_jdk` compile and run the scenarios' Java code to check what their READMEs claim.
 - **Node.js 22.18 or later, and `npm ci` in `tools/scenario-editor`.** `test_scenario_editor.py` needs both.
+- **`npm ci` in `tools/generated-repo-viewer`.** `test_repo_viewer.py` starts the viewer's server on a scratch copy of the layout.
 
 Without these tools, the tests that need them are skipped. `pytest -rs` lists every skip with its reason.
 
@@ -17,7 +18,7 @@ Without these tools, the tests that need them are skipped. `pytest -rs` lists ev
   - Python 3.14 with the current Git of the `ubuntu-latest` runner;
   - Python 3.10, the oldest version `pyproject.toml` declares, in a `python:3.10-bookworm` container with Debian 12's Git 2.39. Git before 2.45 has no `--ref-format`, so `init_args()` leaves it out, and this job takes that path.
 
-  Both jobs provide the tools above: JDK 21, and Node.js 22 with `npm ci` in `tools/scenario-editor`. No test should skip there for a missing tool; the log lists the skips that remain.
+  Both jobs provide the tools above: JDK 21, and Node.js 22 with `npm ci` in `tools/scenario-editor` and `tools/generated-repo-viewer`. No test should skip there for a missing tool; the log lists the skips that remain.
 - **Builds the two web tools** under `tools/`.
 
 To resume pull request CI, uncomment `pull_request:` in `.github/workflows/tests.yml` and restore these required status checks for `main` (with GitHub Actions as their source):
