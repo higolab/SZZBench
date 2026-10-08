@@ -16,7 +16,7 @@ from .operations import (
     resolve_line_ending,
     write_text_raw,
 )
-from .paths import safe_join
+from .paths import PathValidationError, safe_join
 
 SUPPORTED_GRAPH_OPERATIONS = {
     "write_file",
@@ -80,7 +80,40 @@ def apply_graph_operation_to_filesystem(repo_dir: Path, op: dict[str, Any]) -> N
     This is intentionally pragmatic. Entity operations are represented with a
     conservative file-level approximation until a parser-backed entity mover is
     implemented.
+
+    A value the operation cannot use -- a ``mode`` that is not octal, a
+    ``content_base64`` that does not decode, a file that is not text in the
+    declared encoding, an unknown encoding -- used to escape as a ``ValueError``
+    or ``LookupError``, and ``generate-graph`` printed a traceback and wrote no
+    ``generation.log`` (issue #172).  It is now an ``OperationError`` that names
+    the operation and its path, which the generator reports like its own errors.
     """
+    try:
+        _apply_graph_operation(repo_dir, op)
+    except PathValidationError:
+        raise
+    except (ValueError, LookupError) as exc:     # incl. UnicodeDecodeError, binascii.Error
+        raise OperationError(f"{op.get('type')} {_operation_target(op)}: {_value_error_reason(op, exc)}") from exc
+
+
+def _operation_target(op: dict[str, Any]) -> str:
+    keys = [key for key in ("path", "from", "to", "from_file", "to_file") if isinstance(op.get(key), str)]
+    return " -> ".join(repr(op[key]) for key in keys) or "(no path)"
+
+
+def _value_error_reason(op: dict[str, Any], exc: Exception) -> str:
+    if isinstance(exc, UnicodeDecodeError):
+        return (f"the file is not text in {op.get('encoding') or 'utf-8'} "
+                f"(byte 0x{exc.object[exc.start]:02x} at position {exc.start})")
+    if op.get("type") == "chmod":
+        return (f"mode must be octal digits, got {op.get('mode')!r}; YAML reads an unquoted 0755 as the "
+                f"integer 493, so quote it ('755')")
+    if op.get("type") == "write_binary_file":
+        return f"content_base64 does not decode ({exc})"
+    return str(exc)
+
+
+def _apply_graph_operation(repo_dir: Path, op: dict[str, Any]) -> None:
     op_type = op.get("type")
 
     if op_type == "write_file":

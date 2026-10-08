@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import binascii
 from datetime import datetime, timezone
 
 from pathlib import Path
@@ -269,6 +271,34 @@ def _validate_operation(op: Any, result: ValidationResult, loc: str, *, strict_p
             result.error("GE055", f"Operation field '{key}' must be a string path.", f"{loc}.{key}")
     if strict_paths and op_type in {"move_entity", "copy_entity"} and not isinstance(op.get("entity"), dict):
         result.error("GE056", f"Operation '{op_type}' must define an entity object.", f"{loc}.entity")
+    _validate_operation_values(op, op_type, result, loc)
+
+
+#: The values generation reads from three operations, checked before it runs (issue #172).
+_OCTAL_MODE = re.compile(r"[0-7]{3,4}")
+
+
+def _validate_operation_values(op: dict[str, Any], op_type: str, result: ValidationResult, loc: str) -> None:
+    if op_type == "chmod" and "mode" in op:
+        mode = op["mode"]
+        if not (isinstance(mode, str) and _OCTAL_MODE.fullmatch(mode)):
+            hint = " (YAML reads an unquoted 0755 as the integer 493)" if isinstance(mode, int) else ""
+            result.error("GE057", f"chmod mode must be a quoted string of octal digits such as '755', not {mode!r}{hint}.",
+                         f"{loc}.mode")
+    if op_type == "write_binary_file" and "content_base64" in op:
+        value = op["content_base64"]
+        try:
+            if not isinstance(value, str):
+                raise TypeError
+            base64.b64decode(re.sub(r"\s", "", value), validate=True)
+        except (TypeError, binascii.Error):
+            result.error("GE058", "write_binary_file content_base64 must be a base64 string "
+                         "(whitespace is ignored; any other character outside the alphabet is not).", f"{loc}.content_base64")
+    if op_type == "write_generated_text_file" and "lines" in op:
+        lines = op["lines"]
+        if not (isinstance(lines, int) and not isinstance(lines, bool) and lines >= 0):
+            result.error("GE059", f"write_generated_text_file lines must be a non-negative integer, not {lines!r}.",
+                         f"{loc}.lines")
 
 
 def _validate_commit_ref_entry(entry: Any, commit_by_id: dict[str, dict[str, Any]], result: ValidationResult, loc: str, label: str) -> None:
