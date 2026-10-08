@@ -222,9 +222,9 @@ Read this table before reading any result reported on SZZBench:
   the answer.
 
 This is a property of how the scenarios are **shaped**, not of what they
-disclose, and it is tracked in [#13](https://github.com/YoshikiHigo/SZZBench/issues/13),
-[#14](https://github.com/YoshikiHigo/SZZBench/issues/14) and
-[#35](https://github.com/YoshikiHigo/SZZBench/issues/35). The design lever the
+disclose, and it is tracked in [#13](https://github.com/higolab/SZZBench/issues/13),
+[#14](https://github.com/higolab/SZZBench/issues/14) and
+[#35](https://github.com/higolab/SZZBench/issues/35). The design lever the
 data points at is **oracle size and the depth of the bug-introducing commit**,
 not more scenarios of the current shape.
 

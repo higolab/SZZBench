@@ -20,7 +20,7 @@ Without these tools, the tests that need them are skipped. `pytest -rs` lists ev
   Both jobs provide the tools above: JDK 21, and Node.js 22 with `npm ci` in `tools/scenario-editor`. No test should skip there for a missing tool; the log lists the skips that remain.
 - **Builds the two web tools** under `tools/`.
 
-Windows is not tested ([#109](https://github.com/YoshikiHigo/SZZBench/issues/109)).
+Windows is not tested ([#109](https://github.com/higolab/SZZBench/issues/109)).
 
 ## Conventions
 
