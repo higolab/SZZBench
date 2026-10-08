@@ -109,7 +109,7 @@ became errors — the code keeps its number when its severity changes, so
 | E030 | error | unknown commit `role` (see `ALLOWED_ROLES`) |
 | E040 | error | unknown operation type |
 | E041 | error | `operation.type` missing, or a required operation field missing |
-| E050 | error | operation path is not a safe repository-relative path |
+| E050 | error | operation path is not a safe repository-relative path: it is absolute, contains `..`, or names the repository's own `.git` in any spelling a file system resolves to it — any letter case (`.GIT`), trailing dots or spaces (`.git.`), the 8.3 short name `git~1`, or code points HFS+ ignores. On a case-insensitive file system `.GIT/config` used to pass and overwrite the generated repository's configuration ([issue #135](https://github.com/higolab/SZZBench/issues/135)) |
 | E060 | error | `bug_fixing_commit` refers to an unknown commit |
 | E061 | error | a `bug_introducing_commits` entry refers to an unknown commit |
 | E062 | error | `fault.commit` refers to an unknown commit |
@@ -208,7 +208,7 @@ as one deleted and one added line, like `git blame` without `-w`.
 | GE051 | error | `operation.type` missing |
 | GE052 | error | unknown graph operation type |
 | GE053 | error | required operation field missing |
-| GE054 | error | operation path is not a safe repository-relative path |
+| GE054 | error | operation path is not a safe repository-relative path (the rule of E050, `.git` in any spelling included) |
 | GE055 | error | a path field is not a string |
 | GE056 | error | (`--strict-paths`) `move_entity` / `copy_entity` without an `entity` object |
 | GE080 | error | `bugs` is not a list |
@@ -223,7 +223,7 @@ as one deleted and one added line, like `git blame` without `-w`.
 | GE093 | error | BIC/BFC entry refers to an unknown commit |
 | GE100 | error | fault/fix location without `commit` |
 | GE101 | error | fault/fix location refers to an unknown commit |
-| GE102 | error | fault/fix `file` is not a safe repository-relative path |
+| GE102 | error | fault/fix `file` is not a safe repository-relative path (the rule of E050) |
 | GE103 | error | fault/fix `file` is not a string |
 | GE104 | error | fault/fix location requires a statement |
 | GE105 | error | fault/fix `entity` is not an object |
