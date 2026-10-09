@@ -118,7 +118,8 @@ class ScenarioEvaluation:
     #: the per-fix result of a scenario with several bug-fixing commits (issue #92)
     attribution: dict[str, Any] | None = None
     #: what the tool's run on the scenario came to: ``ok`` (a record was given),
-    #: ``error`` (the record says the tool failed) or ``missing`` (no record at all)
+    #: ``error`` (the record says the tool failed), ``stale`` (made on another
+    #: repository), ``invalid`` (a record could not be read) or ``missing`` (no record at all)
     run_status: str = "ok"
     run_errors: list[str] = field(default_factory=list)
 
@@ -177,6 +178,7 @@ class EvaluationReport:
         tool_errors = sum(1 for item in self.scenarios if item.run_status == "error")
         missing_records = sum(1 for item in self.scenarios if item.run_status == "missing")
         stale_predictions = sum(1 for item in self.scenarios if item.run_status == "stale")
+        invalid_records = sum(1 for item in self.scenarios if item.run_status == "invalid")
         tp = sum(len(item.true_positives) for item in self.scenarios)
         fp = sum(len(item.false_positives) for item in self.scenarios)
         unknown = sum(len(item.unknown_predictions) for item in self.scenarios)
@@ -216,6 +218,7 @@ class EvaluationReport:
             "tool_errors": tool_errors,
             "missing_records": missing_records,
             "stale_predictions": stale_predictions,
+            "invalid_records": invalid_records,
             "true_positives": tp,
             "false_positives": fp,
             "unknown_predictions": unknown,
@@ -260,6 +263,7 @@ class EvaluationReport:
             f"- Tool errors: {summary['tool_errors']}",
             f"- Missing prediction records: {summary['missing_records']}",
             f"- Predictions made on another repository: {summary['stale_predictions']}",
+            f"- Invalid prediction records: {summary['invalid_records']}",
             f"- True positives: {summary['true_positives']}",
             f"- False positives: {summary['false_positives']}",
             f"- Unknown predictions (counted as false positives): {summary['unknown_predictions']}",
@@ -353,11 +357,12 @@ def evaluate_predictions(
         predictions_by_scenario: dict[str, list[Prediction]] = {}
         explicit_scenarios: set[str] = set()
         run_errors: dict[str, list[str]] = {}
+        invalid_records: dict[str, list[str]] = {}
         repository_ids: dict[str, str] = {}
         errors: list[str] = []
         warnings: list[str] = []
     else:
-        (predictions_by_scenario, explicit_scenarios, run_errors, repository_ids,
+        (predictions_by_scenario, explicit_scenarios, run_errors, invalid_records, repository_ids,
          errors, warnings) = load_predictions(predictions_path)
         unmatched = sorted(explicit_scenarios - set(repository_ids))
         if unmatched:
@@ -376,6 +381,7 @@ def evaluate_predictions(
         reference_format=reference_format,
         explicit_scenarios=explicit_scenarios,
         run_errors=run_errors,
+        invalid_records=invalid_records,
         repository_ids=repository_ids,
         errors=errors,
         warnings=warnings,
@@ -394,6 +400,7 @@ def evaluate_prediction_map(
     reference_format: str = "auto",
     explicit_scenarios: set[str] | None = None,
     run_errors: dict[str, list[str]] | None = None,
+    invalid_records: dict[str, list[str]] | None = None,
     repository_ids: dict[str, str] | None = None,
     errors: list[str] | None = None,
     warnings: list[str] | None = None,
@@ -415,12 +422,20 @@ def evaluate_prediction_map(
     report gets an error instead.  ``repository_ids`` maps a scenario to the
     repository id its prediction records name; one that differs from the
     generated repository's FAILs with ``run_status: stale`` (issue #93).
+
+    ``invalid_records`` maps a scenario to the loading errors of its records
+    that could not be read; it FAILs with ``run_status: invalid`` whatever its
+    other records predict, and stays in the report even when none of its
+    records could be read (issue #138).  Of the statuses that fail a scenario,
+    ``error`` and ``stale`` come first: they say that the tool's run itself is
+    no answer, which a file that could be read would not change.
     """
     errors = list(errors or [])
     warnings = list(warnings or [])
     run_errors = run_errors or {}
+    invalid_records = invalid_records or {}
     repository_ids = repository_ids or {}
-    requested = set(explicit_scenarios or predictions_by_scenario.keys())
+    requested = set(explicit_scenarios or predictions_by_scenario.keys()) | set(invalid_records)
     scenario_ids = set(requested)
     if include_generated:
         scenario_ids.update(_generated_scenario_ids(generated_root, variant))
@@ -457,6 +472,9 @@ def evaluate_prediction_map(
             run_status = "stale"
             scenario_run_errors = [f"the predictions were made on repository {repository_ids[scenario_id]}, "
                                    f"and the generated repository is {generated_id}; run the tool on it again"]
+        elif scenario_id in invalid_records:
+            run_status = "invalid"
+            scenario_run_errors = invalid_records[scenario_id]
         elif scenario_id in requested:
             run_status = "ok"
         else:
@@ -519,8 +537,11 @@ def evaluate_scenario(
     skipped with a result note.
 
     ``run_status`` is ``ok``, ``error`` (the record reports that the tool failed,
-    ``run_errors`` says how) or ``missing`` (there is no record); anything but
-    ``ok`` fails the scenario whatever the predictions are (issue #95).
+    ``run_errors`` says how), ``stale`` (the records were made on another
+    repository, issue #93), ``invalid`` (a record could not be read,
+    ``run_errors`` holds its loading errors, issue #138) or ``missing`` (there
+    is no record); anything but ``ok`` fails the scenario whatever the
+    predictions are (issue #95).
     """
     policy = _commit_level_policy(scenario, suite, evaluation_variant)
     notes = list(policy.notes)
@@ -571,6 +592,11 @@ def evaluate_scenario(
         status = "FAIL"
     elif run_status == "stale":
         notes.append(f"stale predictions: {'; '.join(run_errors)}; the scenario fails whatever they predict.")
+        status = "FAIL"
+    elif run_status == "invalid":
+        unread = "; ".join(message.rstrip(".") for message in run_errors)
+        notes.append(f"a prediction record could not be read ({unread}), so the scenario fails whatever "
+                     "its other records predict.")
         status = "FAIL"
     # an unknown reference is a false positive of its own kind (issue #95)
     precision = _ratio(len(true_positives), len(true_positives) + len(false_positives) + len(unknown_predictions))
@@ -795,30 +821,41 @@ def _attribution_result(
 
 def load_predictions(
     path: Path,
-) -> tuple[dict[str, list[Prediction]], set[str], dict[str, list[str]], dict[str, str], list[str], list[str]]:
+) -> tuple[dict[str, list[Prediction]], set[str], dict[str, list[str]], dict[str, list[str]], dict[str, str],
+           list[str], list[str]]:
     """Read a predictions file: the predictions per scenario, the scenarios a
-    record names, the run errors records report per scenario, the repository id
-    the records of each scenario name, and the loading errors and warnings."""
+    record that could be read names, the run errors records report per
+    scenario, the loading errors of the records that could not be read per
+    scenario, the repository id the records of each scenario name, and the
+    loading errors and warnings.
+
+    A record with a loading error is not read at all -- none of its predictions
+    count -- but when it names a scenario, the scenario is not dropped either:
+    it FAILs with ``run_status: invalid``, whatever its other records predict
+    (issue #138).  Before, a record whose predictions could not be read still
+    answered its scenario, as an empty prediction that passed an empty oracle.
+    """
     errors: list[str] = []
     warnings: list[str] = []
     try:
         raw = path.read_bytes()
     except OSError as exc:
-        return {}, set(), {}, {}, [f"Cannot read predictions file: {exc}"], []
+        return {}, set(), {}, {}, {}, [f"Cannot read predictions file: {exc}"], []
     try:
         # A file that is not UTF-8 raised UnicodeDecodeError (issue #137).  Decoding the
         # whole file, BOM included, keeps the reported byte and offset the file's own:
         # utf-8-sig drops the BOM first and counts from after it (PR #217 review).
         text = raw.decode("utf-8")
     except UnicodeDecodeError as exc:
-        return {}, set(), {}, {}, [f"Cannot read predictions file: {path} is not UTF-8 "
-                                   f"(byte 0x{raw[exc.start]:02x} at position {exc.start}); save it as UTF-8."], []
+        return {}, set(), {}, {}, {}, [f"Cannot read predictions file: {path} is not UTF-8 "
+                                       f"(byte 0x{raw[exc.start]:02x} at position {exc.start}); save it as UTF-8."], []
     # A BOM, as Windows editors and PowerShell write it, cost the first record (issue #137).
     text = text.removeprefix("\ufeff")
     records = _parse_prediction_records(text, str(path), errors)
     predictions: dict[str, list[Prediction]] = {}
     explicit_scenarios: set[str] = set()
     run_errors: dict[str, list[str]] = {}
+    invalid_records: dict[str, list[str]] = {}
     repository_ids: dict[str, str] = {}
     for location, record in records:
         if not isinstance(record, dict):
@@ -826,43 +863,59 @@ def load_predictions(
             continue
         scenario_id = record.get("scenario_id")
         if not isinstance(scenario_id, str) or not scenario_id:
+            # nothing to attribute it to: a loading error only
             errors.append(f"{location}: prediction record lacks string scenario_id.")
             continue
+        record_errors: list[str] = []
         status = record.get("status")
-        if status is not None and (not isinstance(status, str) or status.lower() not in RECORD_STATUSES):
-            errors.append(f"{location}: status must be one of {', '.join(RECORD_STATUSES)} when present "
-                          f"(got {status!r}).")
-            continue
-        failed = status is not None and status.lower() == "error"
+        unreadable_status = status is not None and (not isinstance(status, str)
+                                                    or status.lower() not in RECORD_STATUSES)
+        if unreadable_status:
+            record_errors.append(f"{location}: status must be one of {', '.join(RECORD_STATUSES)} when present "
+                                 f"(got {status!r}).")
+        failed = not unreadable_status and status is not None and status.lower() == "error"
         named_repository = record.get("repository_id")
         if named_repository is not None:
             if not isinstance(named_repository, str) or not named_repository:
-                errors.append(f"{location}: repository_id must be a non-empty string when present.")
-                continue
-            if repository_ids.setdefault(scenario_id, named_repository) != named_repository:
-                errors.append(f"{location}: repository_id {named_repository} differs from the "
-                              f"{repository_ids[scenario_id]} an earlier record of {scenario_id} names.")
-                continue
+                record_errors.append(f"{location}: repository_id must be a non-empty string when present.")
+            elif repository_ids.get(scenario_id, named_repository) != named_repository:
+                record_errors.append(f"{location}: repository_id {named_repository} differs from the "
+                                     f"{repository_ids[scenario_id]} an earlier record of {scenario_id} names.")
+        top_level = [key for key in INDUCING_COMMIT_KEYS if record.get(key) is not None]
+        read: list[Prediction] = []
+        if "predictions" in record:
+            nested = record["predictions"]
+            if not isinstance(nested, list):
+                # null included: it was read as "no list", and then as a record without inducing_commit
+                record_errors.append(f"{location}: predictions must be a list when present (got {nested!r}).")
+            else:
+                if top_level:       # it used to be ignored without a word
+                    record_errors.append(f"{location}: the record has both a predictions list and a top-level "
+                                         f"{top_level[0]}; put every prediction in the list.")
+                for index, item in enumerate(nested):
+                    prediction = _prediction_from_record(scenario_id, item, f"{location}.predictions[{index}]",
+                                                         record_errors)
+                    if prediction is not None:
+                        read.append(prediction)
+        elif top_level or not (failed or unreadable_status):
+            # one record per prediction; without an inducing commit, a failed record only reports
+            # the failure, and one whose status cannot be read has its error already
+            prediction = _prediction_from_record(scenario_id, record, location, record_errors)
+            if prediction is not None:
+                read.append(prediction)
+        if record_errors:
+            errors.extend(record_errors)
+            invalid_records.setdefault(scenario_id, []).extend(record_errors)
+            continue
+        explicit_scenarios.add(scenario_id)
+        if named_repository is not None:
+            repository_ids.setdefault(scenario_id, named_repository)
         if failed:
             reported = run_errors.setdefault(scenario_id, [])
             reported.extend(message for message in _run_error_messages(record.get("errors")) if message not in reported)
-        explicit_scenarios.add(scenario_id)
-        nested = record.get("predictions")
-        if nested is not None:
-            if not isinstance(nested, list):
-                errors.append(f"{location}: predictions must be a list when present.")
-                continue
-            for index, item in enumerate(nested):
-                prediction = _prediction_from_record(scenario_id, item, f"{location}.predictions[{index}]", errors)
-                if prediction is not None:
-                    predictions.setdefault(scenario_id, []).append(prediction)
-            continue
-        if failed and _first_string(record, INDUCING_COMMIT_KEYS) is None:
-            continue    # a record that only reports the failure
-        prediction = _prediction_from_record(scenario_id, record, location, errors)
-        if prediction is not None:
-            predictions.setdefault(scenario_id, []).append(prediction)
-    return predictions, explicit_scenarios, run_errors, repository_ids, errors, warnings
+        if read:
+            predictions.setdefault(scenario_id, []).extend(read)
+    return predictions, explicit_scenarios, run_errors, invalid_records, repository_ids, errors, warnings
 
 
 def _run_error_messages(value: Any) -> list[str]:
@@ -913,7 +966,12 @@ def _prediction_from_record(
         return None
     inducing_commit = _first_string(record, INDUCING_COMMIT_KEYS)
     if inducing_commit is None:
-        errors.append(f"{location}: prediction lacks inducing_commit.")
+        # a value of the wrong type is not a missing one (issue #138)
+        supplied = [key for key in INDUCING_COMMIT_KEYS if record.get(key) is not None]
+        if supplied:
+            errors.append(f"{location}: {supplied[0]} must be a non-empty string (got {record[supplied[0]]!r}).")
+        else:
+            errors.append(f"{location}: prediction lacks inducing_commit.")
         return None
     rank = record.get("rank")
     if rank is not None and not isinstance(rank, int):

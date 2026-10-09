@@ -77,11 +77,15 @@ def simulate_graph_scenario_with_git(scenario_path: Path, data: dict[str, Any], 
 
     For a scenario with Git-computed commits (:func:`git_performed_features`)
     the generator itself is the only faithful model.  A generation failure is
-    GE203, located at the commit that failed; success is recorded as GI203.
-    Verification is not run: that is ``verify-graph``'s job.
+    GE203, located at the commit that failed.  The generated repository is
+    then verified as ``generate-graph`` verifies it, and each verification
+    error is GE203 too, with the verifier's code, message and location
+    (issue #173): a scenario that passes generates.  Success is recorded as
+    GI203.
     """
     # graph_generator imports the validator, which imports this module
     from .graph_generator import GraphGenerationError, generate_graph_repository
+    from .graph_verifier import verify_graph_generated_repo
 
     result = ValidationResult()
     with tempfile.TemporaryDirectory(prefix="szzbench-simulate-") as tmp:
@@ -96,6 +100,14 @@ def simulate_graph_scenario_with_git(scenario_path: Path, data: dict[str, Any], 
                 location = next((f"commits[{index}]" for index, commit in enumerate(data.get("commits") or [])
                                  if isinstance(commit, dict) and commit.get("id") == failed), location)
             result.error("GE203", f"Generating the scenario with Git failed{where}: {exc}", location)
+            return result
+        verification = verify_graph_generated_repo(out / "repo", scenario_path, out / "metadata" / "commit-map.json",
+                                                   out / "metadata" / "graph-map.json")
+        for finding in verification.findings:
+            if finding.severity == "ERROR":
+                result.error("GE203", f"The scenario generated with Git fails verification: "
+                             f"{finding.code} {finding.message}", finding.location or "commits")
+        if result.has_errors():
             return result
     result.info("GI203", "Simulated by generating the scenario with Git, which computes "
                 + ", ".join(features) + ".", "commits")

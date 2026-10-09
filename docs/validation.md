@@ -42,7 +42,7 @@ Checks come in two groups:
 
 | flag | effect |
 |---|---|
-| `--simulate` | replay the graph operations in memory (GE200-GE202); a scenario with commits that Git computes during generation is generated with Git in a temporary directory instead (GE203, GI203) |
+| `--simulate` | replay the graph operations in memory (GE200-GE202); a scenario with commits that Git computes during generation is generated with Git in a temporary directory and verified instead (GE203, GI203) |
 | `--strict-paths` | additionally require `entity` objects on `move_entity` / `copy_entity` (GE056) |
 | `--strict` | treat warnings as failures |
 | `--lint` | run the GW4xx lints (static; they run only when no error was found) |
@@ -157,7 +157,7 @@ The W41x / GW41x lints implement the leakage policy in
 | W412 | warning | text written into the repository (`write_file.content`, `replace.new`, `insert_after.content`) matches the W410 role wording | – |
 | W413 | warning | some author's set of commits equals the resolved default oracle and the oracle has two or more commits: the cheap baseline "report every commit by this author" returns the oracle by coincidence of the generator's author rotation (issue #43). Give the required commits distinct explicit `author`s. The oracle is resolved as the evaluator resolves it; the history is the one the generated repository will have — every commit with its explicit or deterministic default author, compared as Git records it (`name <email>`, so two spellings of one identity are one author), plus the commits `commit_generator` expands (`<owner>.g<N>`, attributed by the generator's rotation), and restricted to what a ref still reaches once `graph.ref_lifecycle` has run (a deleted branch's commits drop out unless a kept branch, a tag or HEAD reaches them; a tag may point into a generated chain, and each generated commit counts on its own reachability, not its owner's) — the history the author baseline sees through `git log --all` |
 | I413 | info | the same coincidence for a one-commit oracle — reported, not repaired: a one-commit oracle is solved by many cheap rules anyway |
-| W455 | warning | the sibling README disagrees with the scenario: its generated header is missing, differs from what the scenario renders (the message quotes the first differing line), or a hand-written `## Factors` / `## Source` copy is present. `szzbench readme --write` regenerates it ([scenario-readme.md](scenario-readme.md)) | – |
+| W455 | warning | the sibling README disagrees with the scenario: its generated header is missing, malformed (the message says how: a blank line too many or too few, text before the title, a missing or misspelled marker, a blank line in the table), differs from what the scenario renders (the message quotes the first differing line), is followed by a second header in the body, or a hand-written `## Factors` / `## Source` copy is present. A BOM and CRLF line endings are not a difference. `szzbench readme --write` regenerates it ([scenario-readme.md](scenario-readme.md)) | – |
 | W460 | warning | `meta.tier` is missing or is not one of `control` / `discriminating` (see [decisions/vocabulary.md](decisions/vocabulary.md)) | – |
 | W461 | warning | `meta.difficulty` is missing or is not one of `easy` / `medium` / `hard`; the floor a scenario may not go below is measured by `szzbench coverage` ([decisions/vocabulary.md](decisions/vocabulary.md) §4) | – |
 | W462 | warning | `meta.defeats` (optional) is not a list of distinct family names from `blame` / `shape` / `position`, or a `discriminating` scenario does not list all three ([decisions/vocabulary.md](decisions/vocabulary.md) §8); `szzbench baselines` checks the declaration against the measurement | – |
@@ -169,6 +169,30 @@ The W41x / GW41x lints implement the leakage policy in
 W420/W421/W430/W431 compare the simulated snapshots before and after a commit
 with `difflib.SequenceMatcher` on whole lines, i.e. a re-indented line counts
 as one deleted and one added line, like `git blame` without `-w`.
+
+### Generated-repository checks (`verify`, also run by `generate`)
+
+`verify` answers whether a repository is still the one `generate` made from
+the scenario. Since issue #167 that includes the state the generator leaves
+behind, so an output an SZZ tool has checked out, committed or left files in
+fails `verify` while it is still fresh for `evaluate`, `baselines` and
+`coverage`, which ask only that every commit is there and reachable
+([generator-options.md](generator-options.md) §6). `verify` writes nothing into
+the repository: `git status` runs with `--no-optional-locks`, so not even the
+index's stat data is refreshed.
+
+| code | level | condition |
+|---|---|---|
+| E600 | error | `commit-map.json` cannot be read, or has no entry or no hash for a commit of the scenario |
+| E601 | error | a commit-map hash is not a commit of the repository, or Git cannot read it |
+| E602 | error | a commit's subject differs from its `message` |
+| E603 | error | the repository path is not a Git repository (missing, or without `.git`) ([issue #166](https://github.com/higolab/SZZBench/issues/166)) |
+| E604 | error | a commit of the scenario is in the repository but **no ref reaches it**: no branch, tag or `HEAD` (the reflog does not count), so `git log --all` does not show it -- after `git reset --hard` or `git commit --amend`, for example. Before [issue #167](https://github.com/higolab/SZZBench/issues/167) the existence of the object was enough |
+| E605 | error | `commit-map.json` records an `author`, `author_date` or `committer_date` the commit does not have. The dates are compared as instants (`Z`, `+00:00` and any other offset of the same instant are equal; Git keeps whole seconds); the author as Git records it, `name <email>` without the surrounding white space and punctuation Git drops (which differs between Git versions). `role` and `date` record the scenario's words and are not compared |
+| E606 | error | a commit's parents are not the previous commit of the scenario (the first commit has none): the classic generator writes a linear history |
+| E607 | error | the branch `repository.default_branch` does not exist, or does not point at the scenario's last commit |
+| E608 | error | `HEAD` is detached or on another branch; the generator leaves `repository.default_branch` checked out |
+| E609 | error | the index or the working tree has a change: a modified, staged or untracked file (`git status --porcelain` is not empty) |
 
 ## Graph suite (`validate-graph`)
 
@@ -205,6 +229,7 @@ as one deleted and one added line, like `git blame` without `-w`.
 | **GE046** | error | `rebase_of` (string or list of strings), `squashes` (list of strings) or `revert_of` (string) has the wrong type |
 | **GE047** | error | `rebase_of` / `squashes` / `revert_of` refers to an unknown, later, or the same commit (the GE043 rule for rewrite metadata; catches SZZG-0067's `rebase_of: f1`) |
 | GE048 | error | a commit other than the first declares no parents (`parents: []`, or no `parents` key, e.g. a misspelt `parent:`). Only the first commit is a root: a second one used to be generated as a child of whatever the generator had last checked out, while `commit-map.json` recorded no parents and `verify-graph` did not look. The message names a near-miss key when there is one ([issue #134](https://github.com/higolab/SZZBench/issues/134)) |
+| GE049 | error | a commit lists the same parent twice (`[c0, f1, f1]`, `[c0, c0]`), or an extra parent (second or later) that is already an ancestor of another of its parents (`[c1, c0]` where `c0` is an ancestor of `c1`; also of a later parent of an octopus). `git merge` records each head once and drops a head that is already merged, so Git would not record the merge as declared: generation used to fail at verification with a parent mismatch (GE627/GE628) or with "commit would be empty", after `--simulate` had passed. The first parent may be an ancestor of an extra parent: the generator merges with `--no-ff` ([issue #173](https://github.com/higolab/SZZBench/issues/173)) |
 | GE050 | error | an operation is not an object |
 | GE051 | error | `operation.type` missing |
 | GE052 | error | unknown graph operation type |
@@ -256,20 +281,26 @@ With `--simulate`:
 | GE200 | error | the parent snapshot cannot be prepared (unsimulated parent, merge conflict) |
 | GE201 | error | an operation failed during in-memory replay, generation's own refusals included: a file written where the tree has a directory or below a file, `move_entity` / `copy_entity` with `overwrite: false` onto an existing file ([issue #175](https://github.com/higolab/SZZBench/issues/175)) |
 | GE202 | error | a non-merge commit without `allow_empty` would be empty. A `chmod` that changes the mode Git records (`100644` / `100755`) is a change; an owner of `commit_generator` commits is not empty unless its `count` is 0 |
-| GE203 | error | generating the scenario with Git in a temporary directory failed; the message and location name the commit that failed (an unresolved conflict, a revert or cherry-pick that changes nothing, an operation that no longer applies) |
-| GI203 | info | the scenario was simulated by generating it with Git; the message lists the commits Git computes |
+| GE203 | error | generating the scenario with Git in a temporary directory failed; the message and location name the commit that failed (an unresolved conflict, a revert or cherry-pick that changes nothing, an operation that no longer applies). Also one GE203 per error of verifying the generated repository as `generate-graph` does: the message starts with the verifier's code (`GE623`, `GE663`, ...) and the location is the verifier's, e.g. `commits[5].message` or `bugs[0].faults[0]` ([issue #173](https://github.com/higolab/SZZBench/issues/173)) |
+| GI203 | info | the scenario was simulated by generating it with Git, and the result verified without errors; the message lists the commits Git computes |
 
 The in-memory replay models file operations. What the generator lets Git
 compute -- merge commits, `revert_of` performed by `git revert` (no operations,
 or `apply_revert: true`), `cherry_pick_of` / `backport_of` without operations,
 the `apply_patch_from` and `apply_squash` operations, and conflict
 `resolution` -- it approximated file by file or not at all. So a scenario with
-any of these is simulated by the generator itself, in a temporary directory,
-without verification (issue #94); every other scenario keeps the in-memory
-replay and its operation-level locations. Until 2026-09-29 the replay was used
-for all of them, and nine shipped scenarios that generate and verify failed
-`--simulate` with 17 errors. `graph_simulator.git_performed_features` holds the
-list, with the generator's own conditions.
+any of these is simulated by the generator itself, in a temporary directory
+(issue #94); every other scenario keeps the in-memory replay and its
+operation-level locations. Until 2026-09-29 the replay was used for all of
+them, and nine shipped scenarios that generate and verify failed `--simulate`
+with 17 errors. `graph_simulator.git_performed_features` holds the list, with
+the generator's own conditions.
+
+The temporary repository is then verified, as `generate-graph` verifies what
+it generates, so a scenario that passes this simulation also generates. Until
+issue #173 it was not, and a scenario could pass `--simulate` and fail
+`generate-graph` at verification. Verification warnings (GW664, GW701, ...)
+are not reported: they do not stop generation either.
 
 `tests/test_simulator_drift.py` keeps the replay and generation together: it
 generates every shipped graph scenario and compares the in-memory snapshot of
@@ -307,7 +338,7 @@ over a directory had drifted apart.
 | GW452 | warning | a scenario with an origin BIC and no `origin-aware` evaluation variant, so a tool that reports origins as context cannot be scored (D3) |
 | GW453 | warning | an `origin-aware` variant that does not accept the origin, so the variant's name promises what its policy does not deliver (D3) |
 | GW454 | warning | the sibling README's `## Expected history` block contradicts the scenario: a commit's operation list differs from `commits[].operations`, or the block names a commit the scenario does not define. Only the parenthesised operation list is compared, because only that part is mechanically derivable; READMEs that describe the history in prose have no such block and are not linted |
-| GW455 | warning | the sibling README's generated header is missing, stale, or duplicated by a hand-written `## Factors` / `## Source` copy (same rule as W455; [scenario-readme.md](scenario-readme.md)) |
+| GW455 | warning | the sibling README's generated header is missing, malformed, stale, or followed by a second header, or a hand-written `## Factors` / `## Source` copy is present (same rule as W455; [scenario-readme.md](scenario-readme.md)) |
 | GW470 | warning | an `issues[]` entry names a `document` that no commit writes with `write_file`, or has `reported_at` without a `document` — the report would not be visible to a tool ([decisions/tool-visible-context.md](decisions/tool-visible-context.md)) |
 | GW471 | warning | the issue document has no `Reported: <timestamp>` line, its value is not an ISO 8601 timestamp, or it names a different instant from `issues[].reported_at`. Both values are normalised through the same parser and compared as instants, so an unquoted YAML timestamp (a `datetime`) and a different UTC offset are handled; `reported_at` and the document are copies of each other and must agree |
 | GW472 | warning | `issues[].reported_at` is neither an ISO 8601 string nor the `datetime` PyYAML makes of an unquoted one — it is reported rather than silently skipped |
@@ -323,13 +354,36 @@ actions such as `squash` or `reorder`) and `reverts` (free-form: commit ids,
 
 ### Generated-repository checks (`verify-graph`, also run by `generate-graph`)
 
+`verify-graph` answers whether the repository is still the one generation
+left: its commits, and since [issue #176](https://github.com/higolab/SZZBench/issues/176)
+also its refs, HEAD, index and working tree. A repository in which an SZZ tool
+has checked out, committed or branched therefore fails it, while the manifest's
+staleness check, which `generate-all-repos` and `evaluate` use, stays tolerant
+of those changes (`docs/generator-options.md` §6). Verification writes nothing
+into the repository: `git status` runs with `--no-optional-locks`, so it does
+not refresh the index file.
+
 | code | level | condition |
 |---|---|---|
 | GE603 | error | the repository path is not a Git repository (missing, or without `.git`); the classic `verify` reports the same as E603. Verification used to end in a `FileNotFoundError` traceback when `--commit-map` named an existing map ([issue #166](https://github.com/higolab/SZZBench/issues/166)) |
+| GE625 | error | `graph-map.json` and `commit-map.json` record different hashes for a scenario commit. GE625 used to compare graph-map's `branch` with the scenario's, which the generator copies, so it could not fire (issue #176) |
 | GE627 | error | a commit's parents in the repository are not the declared ones, in order (for a commit that owns `commit_generator` operations, the first parent is the last generated commit). Since issue #134 this includes a commit declared without parents: it must have none |
-| GE630 | error | a commit is committed **before one of its parents**. A scenario that pins some timestamps and leaves the rest to the generator can otherwise invert its own history, which changes what date-based candidate filters and recency heuristics see (issue #9, PR #34 re-review) |
+| GE629 | error | a generated commit `<owner>.g<N>` that the owner's `commit_generator` operations plan is missing from `commit-map.json`. It used to be checked for the last generated commit only (issue #176) |
+| GE630 | error | a commit is committed **before one of its parents**. A scenario that pins some timestamps and leaves the rest to the generator can otherwise invert its own history, which changes what date-based candidate filters and recency heuristics see (issue #9, PR #34 re-review). The commits checked are those `git log --all` reaches and every commit of `commit-map.json` with its ancestors: the commits of a branch that `graph.ref_lifecycle.delete_branches` removed are in the commit map but no longer reachable from a ref, and escaped the check until issue #176 |
 | GW631 | warning | a commit's author date is **after** its committer date. An author date *before* the committer date is the normal signature of a rebase and is not flagged |
 | GW632 | warning | the commit-date check could not run (Git failed, or a timestamp was unreadable) |
+| GE633 | error | an owner's `generated_commits` in `commit-map.json` is not the list of `<owner>.g<N>` ids its `commit_generator` operations plan (count capped at 2000) (issue #176) |
+| GE634 | error | the hash `commit-map.json` records for a generated commit is not a commit of the repository (issue #176) |
+| GE635 | error | a generated commit's parents are not the previous generated commit -- for `<owner>.g1` the owner's declared first parent, or none when the owner is the root (issue #176) |
+| GE636 | error | a generated commit's author, author date, committer date or subject is not what `commit-map.json` records (dates compared in Git's raw `<epoch> <offset>` form, the one the generator writes) (issue #176) |
+| GE637 | error | the generated commits could not be inspected (Git failed) (issue #176) |
+| GE640 | error | `graph-map.json` has no readable `refs` (`branches` and `tags`, name to hash), so the refs cannot be compared (issue #176) |
+| GE641 | error | a branch or tag that `graph-map.json`'s `refs` records is missing from the repository (issue #176) |
+| GE642 | error | a branch or tag points at another object than `graph-map.json`'s `refs` records (issue #176) |
+| GE643 | error | the repository has a ref that generation did not leave: a branch or tag `refs` does not list, or any other name under `refs/` (remote-tracking refs, notes, replace refs, a stash). The generator creates none of these, and some change what `git log` shows (issue #176) |
+| GE644 | error | HEAD is not where generation left it: on the branch of the scenario's last commit; when `graph.ref_lifecycle.delete_branches` deletes that branch, on the default branch if it has commits and survives, otherwise detached at the last commit (the rule `gitutils.reachable_commit_ids` mirrors) (issue #176) |
+| GE645 | error | the index or the working tree is not clean: `git status --porcelain` lists a staged, unstaged or untracked change (issue #176) |
+| GE646 | error | the refs or the status could not be read (Git failed) (issue #176) |
 
 Both comparisons use Git's epoch seconds (`%ct` / `%at`), not the ISO strings: `%cI` / `%aI` keep each timestamp's UTC offset, so `2024-01-01T10:00:00+09:00` sorts after `2024-01-01T02:00:00Z` as text although it is an hour earlier. The ISO forms appear only in the finding message.
 

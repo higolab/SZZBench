@@ -286,9 +286,22 @@ Recorded metadata:
   the owner gets `generated_commits: [<owner>.g1, ...]`.
 * `graph-map.json`: `generated_commits: {<owner>: [ids]}` at the top level and
   in the owner's commit entry.
+* The owner's `parents` (in both files) and `parent_hashes` (graph-map) are
+  its **declared** parents, as for every other commit: for `c2` above,
+  `parents: [c1]` and `parent_hashes: [<hash of c1>]`. In Git, the owner's
+  first parent is its last generated commit, `c2.g500`. The chain is in
+  `generated_commits`, and each generated entry's `parents` in commit-map
+  names the previous one (`c2.g1`'s names `c1`). To follow Git's history,
+  insert the owner's `generated_commits` between the owner and its first
+  declared parent, as `gitutils.history_graph` does. Walking `parent_hashes`
+  alone gives the scenario's DAG, not Git's.
 
-The verifier expects the first parent of the owning commit to be its last
-generated commit; commits whose declared parent owns generated commits still
+`verify-graph` checks both ends of the chain. The owner's first parent must
+be its last generated commit (GE627). Every generated commit must be in the
+commit map and in the repository, and its only parent must be the previous
+one; for `g1`, that is the owner's declared first parent. Its author, dates
+and subject must also be what the commit map records (GE629, GE633-GE636;
+issue #176). Commits whose declared parent owns generated commits still
 point at that parent's own hash.
 
 Defaults and compatibility: `path` defaults to `generated`; a file-like
@@ -366,12 +379,17 @@ graph:
 ```
 
 * Deleting the currently checked-out branch switches to the default branch
-  first (or detaches HEAD when the default branch is deleted too).
+  first. If the default branch is deleted too, or has no commits, HEAD
+  detaches at the last commit instead. `verify-graph` expects HEAD there
+  (GE644).
 * Unknown branch names or commit ids are errors.
 * `graph-map.json` records the final refs for **every** graph scenario:
   `refs: {branches: {name: hash}, tags: {name: hash}}`, and
   `ref_lifecycle: {deleted_branches: [...], tags: {name: {commit, hash}}}` when
   the section was present. `branches` no longer lists deleted branches.
+  `verify-graph` compares the repository's refs with `refs`. A missing or
+  moved branch or tag is an error, and so is any ref that generation did not
+  leave (GE640-GE643, issue #176).
 * Default: no section, refs are unchanged from today (all branches remain).
 
 Commits that become unreachable are not garbage-collected; the hashes stay
@@ -489,6 +507,13 @@ octopus strategy does not resolve conflicts, so `resolution` applies to
 two-parent merges only; an octopus whose branches touch the same lines fails
 generation (SZZG-0129 is the in-suite example of a clean one).
 
+Git records each merge head once and drops a head that is already merged, so a
+commit that lists a parent twice, or an extra parent that is an ancestor of
+another of its parents, would get fewer parents than declared. Validation
+rejects such a parent list (GE049), and the generator, if it gets one, stops
+with a message that names the parent Git dropped, e.g. `merge of c1, c0 for
+commit 'm1' recorded no second parent: c0 is already merged` (issue #173).
+
 Limitations: `resolution` is applied only when Git reports a conflict; if the
 merge is clean the entries are ignored. `apply_squash` and `apply_patch_from`
 do not use `resolution`. `validate-graph --simulate` checks a scenario with a
@@ -518,7 +543,9 @@ New metadata fields: `commit-map.json` -> `author_date`, `committer_date`,
 `graph-map.json` -> `generated_commits`, `refs`, `ref_lifecycle`, per-commit
 `revert_of` and `generated_commits`, and pass-through of `squashes`,
 `interactive_rebase`, `rebase_conflict_resolution`, `reverts`,
-`revert_conflict_resolution` when a commit declares them.
+`revert_conflict_resolution` when a commit declares them. A commit's
+`parents` and `parent_hashes` are its declared parents, also for a
+`commit_generator` owner (see `commit_generator` above).
 
 ## 5. The Git environment (#96)
 
@@ -608,14 +635,40 @@ since the manifest stays behind when the rest is moved, deleted or replaced:
 | checked | stale when |
 |---|---|
 | `repo/.git` | missing, or not a repository |
-| the commits | a commit of the commit map is not in the repository (one `git cat-file --batch-check`) |
+| the commits | a commit of the commit map is not in the repository (one `git cat-file --batch-check`), or no ref reaches it any more (one `git rev-list --all`: every branch and tag, and `HEAD`; not the reflog). A graph scenario's `graph.ref_lifecycle` may leave commits unreachable on purpose (SZZG-0072, SZZG-0122); only the commits it leaves reachable are asked for |
 | `metadata/commit-map.json` | missing, unreadable, or its digest is not the recorded `repository_id` |
 | `metadata/scenario.yml` or `metadata/scenario.graph.yml` | missing, or not the scenario file the manifest records |
 | `metadata/graph-map.json` (graph scenarios) | missing |
 
 Extra commits, branches and tags do not make an output stale, and neither does
 a moved `HEAD`: an SZZ tool may check out, commit or branch in the repository
-it analyses, and every commit the output was generated with is still there.
+it analyses, and every commit the output was generated with is still there and
+still reachable from a ref. Moving a ref back past one of those commits is
+different. After `git reset --hard HEAD~2` the last two commits are dangling,
+and after `git commit --amend` the replaced one is: `git log --all` no longer
+shows them, so a tool cannot find them, and `git gc` prunes them once their
+reflog entries expire. Until issue #167 such an output stayed fresh, and was
+scored, until the pruning; now it is stale as soon as no ref reaches one of its
+commits ("its repository no longer reaches N of the M commits it was generated
+with").
+
+The commit map's other fields (`author`, the dates, `role`) are not part of the
+repository id, which digests the history alone, so editing them does not make
+an output stale. `szzbench verify` compares the author and the dates with the
+commits.
+
+`szzbench verify` asks a stricter question than staleness: whether the
+repository is still as the generator left it -- the default branch at the last
+commit and checked out, every commit reachable, the index and the working tree
+clean, and the commit map's author and dates those of the commits (E604-E609 in
+[validation.md](validation.md)). An output an SZZ tool has checked out or
+committed in fails `verify` and is still fresh.
+
+`verify-graph` likewise asks whether the repository is still the one generation
+left. It reports a missing, moved or extra branch or tag, a moved `HEAD`, and a
+dirty index or working tree as errors (issue #176). To verify an output again
+after a tool has worked in it, regenerate it (`generate-graph --force`, or
+`generate-all-repos --overwrite`).
 
 - `generate-all-repos` regenerates a stale output instead of skipping it and
   prints why ("Regenerated ... the old output was stale: ..."). An up-to-date

@@ -85,6 +85,16 @@ README by hand and run `szzbench readme --write scenarios/SZZ-XXXX` before the s
 - The category is one of the codes S1-S8 with its name (`docs/decisions/vocabulary.md` §3); difficulty is
   `easy`, `medium` or `hard`.
 - The README carries the hand-written sections only; the header is inserted on save.
+- Fault and fix statements are stored exactly as typed (issue #192). `validate` looks a statement up as a
+  substring of the file at the commit, so one copied from the source keeps its indentation and line breaks: a
+  single line is a double-quoted scalar, several lines a literal block with an indentation indicator (`|2`, or
+  `|2-` when the text has no final newline), as the shipped omission scenarios write them. The lightweight checks
+  look the statements up the same way, so they warn before the save is refused. A version's source is a plain `|`
+  block, or `|2` when its first line is indented, which a plain block would strip or fail to load.
+- Each fault type starts from its own worked example, which passes `validate --lint --strict` as it stands: the
+  bounds of the range check for `line_modification`, and a guard against reversed bounds that the BFC adds for
+  `omission`. An omission fix only adds lines (W420), so the two cannot share a history. Picking the other fault
+  type swaps in that example's versions, bug title, factors and category, except the ones you have edited.
 
 `src/scenarioModel.ts` holds the state and everything the editor generates, with no React in it, so
 `tests/test_scenario_editor.py` runs it with Node and checks the output with the Python validator; the same

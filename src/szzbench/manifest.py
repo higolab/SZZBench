@@ -10,13 +10,13 @@ An output is **stale** when it has no manifest (an interrupted generation, or
 one made before the manifest existed), when its scenario file or the generator's
 code has changed since, when it is unverified and verification is asked for, or
 when what the manifest describes is no longer all there: ``repo/.git`` with
-every commit of the commit map, the commit map the repository id was taken
-from, and the scenario copy (and, for a graph scenario, the graph map) in
-``metadata/``.  ``generate-all-repos`` regenerates a stale output instead of
-skipping it; ``evaluate``, ``baselines`` and ``coverage`` refuse to score it.
-Until 2026-09-29 an output counted as done as soon as ``repo/.git`` existed, so
-an edited scenario was scored against a repository generated from its old
-version.
+every commit of the commit map, each still reachable from a ref, the commit map
+the repository id was taken from, and the scenario copy (and, for a graph
+scenario, the graph map) in ``metadata/``.  ``generate-all-repos`` regenerates
+a stale output instead of skipping it; ``evaluate``, ``baselines`` and
+``coverage`` refuse to score it.  Until 2026-09-29 an output counted as done as
+soon as ``repo/.git`` existed, so an edited scenario was scored against a
+repository generated from its old version.
 """
 from __future__ import annotations
 
@@ -119,7 +119,7 @@ def _incompleteness(output_dir: Path, scenario_path: Path, manifest: dict[str, A
     deleted or replaced after the generation; such an output is as stale as an
     unfinished one.  Extra objects and refs do not count -- an SZZ tool may
     check out, commit or branch in the repository it analyses -- but every
-    commit the output was generated with must still be there.
+    commit the output was generated with must still be there, and reachable.
     """
     git_dir = output_dir / "repo" / ".git"
     metadata = output_dir / "metadata"
@@ -139,29 +139,64 @@ def _incompleteness(output_dir: Path, scenario_path: Path, manifest: dict[str, A
         return f"its copy of the scenario (metadata/{copy.name}) is missing or differs from the scenario file"
     if graph and not (metadata / "graph-map.json").is_file():
         return "its graph map (metadata/graph-map.json) is missing"
-    return _missing_commits(git_dir, commit_map)
+    return _missing_commits(git_dir, commit_map, scenario_path)
 
 
-def _missing_commits(git_dir: Path, commit_map: dict[str, Any]) -> str | None:
-    from .gitutils import GitError, run_git_with_input
+def _missing_commits(git_dir: Path, commit_map: dict[str, Any], scenario_path: Path) -> str | None:
+    """Why the repository lacks a commit of the commit map, or no longer reaches it; None when it has them all.
+
+    A commit that is there but that no branch, tag or HEAD reaches any more --
+    after ``git reset --hard HEAD~2`` or ``git commit --amend`` -- is not in
+    ``git log --all``, so a tool cannot see it, and ``git gc`` prunes it once
+    its reflog entry expires (issue #167).  The reflog does not count.  A graph
+    scenario's ``graph.ref_lifecycle`` may leave commits unreachable on purpose
+    (SZZG-0072, SZZG-0122); those are not asked for.
+    """
+    from .gitutils import GitError, run_git, run_git_with_input
 
     hashes = {str(cid): str(entry.get("hash")) for cid, entry in commit_map.items() if isinstance(entry, dict)}
     # --git-dir, because Git would otherwise look for a repository in the
     # directories above one whose .git is not a repository; absolute, because
     # Git runs inside the repository and would resolve a relative one from
     # there (the CLI's roots are relative by default)
+    git_dir_arg = f"--git-dir={git_dir.resolve()}"
     try:
-        listed = run_git_with_input(git_dir.parent, [f"--git-dir={git_dir.resolve()}", "cat-file",
-                                                     "--batch-check=%(objecttype)"],
+        listed = run_git_with_input(git_dir.parent,
+                                    [git_dir_arg, "cat-file", "--batch-check=%(objectname) %(objecttype)"],
                                     "".join(f"{value}\n" for value in hashes.values()).encode("utf-8"))
     except GitError as exc:
         return f"its repository cannot be read ({str(exc).splitlines()[0]})"
+    # "<full hash> commit" for a commit, "<what was asked> missing" for an absent object
     answers = dict(zip(hashes, listed.stdout.decode("utf-8", errors="replace").splitlines()))
-    missing = sorted(cid for cid in hashes if answers.get(cid) != "commit")
+    full = {cid: answer.split()[0] for cid, answer in answers.items() if answer.endswith(" commit")}
+    missing = sorted(cid for cid in hashes if cid not in full)
     if missing:
-        shown = ", ".join(missing[:5]) + (", ..." if len(missing) > 5 else "")
-        return f"its repository lacks {len(missing)} of the {len(hashes)} commits it was generated with ({shown})"
+        return (f"its repository lacks {len(missing)} of the {len(hashes)} commits it was generated with "
+                f"({_shown(missing)})")
+    try:
+        reachable = set(run_git(git_dir.parent, [git_dir_arg, "rev-list", "--all"]).stdout.split())
+    except GitError as exc:
+        return f"its repository cannot be read ({str(exc).splitlines()[0]})"
+    unreachable = {cid for cid, value in full.items() if value not in reachable}
+    if unreachable and scenario_path.name.endswith(".graph.yml"):
+        unreachable &= _reachable_when_generated(scenario_path, unreachable)
+    if unreachable:
+        return (f"its repository no longer reaches {len(unreachable)} of the {len(hashes)} commits it was generated "
+                f"with ({_shown(sorted(unreachable))})")
     return None
+
+
+def _reachable_when_generated(scenario_path: Path, default: set[str]) -> set[str]:
+    """The commits a ref reaches once the graph generator has run, ``default`` when the scenario cannot be read."""
+    from .gitutils import reachable_commit_ids
+    from .scenario import load_yaml
+
+    scenario, _ = load_yaml(scenario_path)
+    return reachable_commit_ids(scenario) if scenario is not None else default
+
+
+def _shown(ids: list[str]) -> str:
+    return ", ".join(ids[:5]) + (", ..." if len(ids) > 5 else "")
 
 
 def stale_message(scenario_id: str, reason: str) -> str:
