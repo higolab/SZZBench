@@ -419,7 +419,25 @@ graph:
   first. If the default branch is deleted too, or has no commits, HEAD
   detaches at the last commit instead. `verify-graph` expects HEAD there
   (GE644).
-* Unknown branch names or commit ids are errors.
+* `validate-graph` checks the section before anything is generated
+  (GE152-GE158, [validation.md](validation.md); issue #229): it is an object
+  with no other keys than `delete_branches` and `tags` (a misspelt key is
+  named with the key it stands for); `delete_branches` lists, once each,
+  branches some commit is on; `tags` lists `{name, commit}` objects whose
+  `commit` is a commit of the scenario or a `<owner>.g<N>` commit its
+  `commit_generator` operations plan, and whose `name` is one `git tag`
+  accepts, is listed once, and is no branch name of the scenario, deleted or
+  kept. A tag named like a branch would make the name ambiguous: Git reads a
+  bare `main` as the tag `main`, not the branch. Names are compared ignoring
+  letter case and Unicode normalization, as macOS compares the files Git
+  stores refs in (Windows ignores letter case), and a component that ends with
+  `.lock` in any spelling is refused, since its file would be another tag's
+  lock file there.
+  Until issue #229 only the generator read the section: a value that was not
+  an object, or a misspelt key, was ignored, and unknown branch names or
+  commit ids were errors at generation only.
+* The generator checks the same rules before it creates the first tag, so it
+  never stops halfway, with some refs changed and Git's own message.
 * `graph-map.json` records the final refs for **every** graph scenario:
   `refs: {branches: {name: hash}, tags: {name: hash}}`, and
   `ref_lifecycle: {deleted_branches: [...], tags: {name: {commit, hash}}}` when

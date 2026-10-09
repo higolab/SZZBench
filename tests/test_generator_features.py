@@ -16,6 +16,7 @@ from szzbench.generator import generate_repository
 from szzbench.gitutils import DEFAULT_AUTHOR_POOL, deterministic_author, deterministic_date, resolve_commit_metadata
 from szzbench.graph_generator import MAX_GENERATED_COMMITS, GraphGenerationError, generate_graph_repository
 from szzbench.graph_operations import apply_graph_operation_to_filesystem, commit_generator_directory
+from szzbench.graph_validator import validate_graph_scenario_file
 from szzbench.operations import OperationError, apply_operation_to_filesystem, apply_operation_to_memory
 
 # ---------------------------------------------------------------------------
@@ -498,13 +499,17 @@ def test_ref_lifecycle_can_delete_the_checked_out_branch(tmp_path):
 
 
 def test_ref_lifecycle_rejects_unknown_targets(tmp_path):
+    """validate-graph reports them since issue #229 (GE154, GE156), so generation stops there;
+    tests/test_ref_lifecycle.py checks that the generator refuses them too when validation is bypassed."""
     commits = _rebase_commits()
     scenario = _write_graph_scenario(tmp_path / "s.graph.yml", commits, bugs=_rebase_bugs(), extra={"graph": {"ref_lifecycle": {"delete_branches": ["nope"]}}})
-    with pytest.raises(GraphGenerationError, match="unknown branch 'nope'"):
+    with pytest.raises(GraphGenerationError, match="validation failed"):
         generate_graph_repository(scenario, tmp_path / "out", force=True)
+    assert [f.code for f in validate_graph_scenario_file(scenario)[1].findings if f.severity == "ERROR"] == ["GE154"]
     scenario = _write_graph_scenario(tmp_path / "t.graph.yml", commits, bugs=_rebase_bugs(), extra={"graph": {"ref_lifecycle": {"tags": [{"name": "v1", "commit": "zz"}]}}})
-    with pytest.raises(GraphGenerationError, match="unknown logical commit 'zz'"):
+    with pytest.raises(GraphGenerationError, match="validation failed"):
         generate_graph_repository(scenario, tmp_path / "out2", force=True)
+    assert [f.code for f in validate_graph_scenario_file(scenario)[1].findings if f.severity == "ERROR"] == ["GE156"]
 
 
 def _cherry_pick_commits(*, trailer: bool, with_operations: bool = False) -> list[dict]:
