@@ -477,6 +477,13 @@ octopus strategy does not resolve conflicts, so `resolution` applies to
 two-parent merges only; an octopus whose branches touch the same lines fails
 generation (SZZG-0129 is the in-suite example of a clean one).
 
+Git records each merge head once and drops a head that is already merged, so a
+commit that lists a parent twice, or an extra parent that is an ancestor of
+another of its parents, would get fewer parents than declared. Validation
+rejects such a parent list (GE049), and the generator, if it gets one, stops
+with a message that names the parent Git dropped, e.g. `merge of c1, c0 for
+commit 'm1' recorded no second parent: c0 is already merged` (issue #173).
+
 Limitations: `resolution` is applied only when Git reports a conflict; if the
 merge is clean the entries are ignored. `apply_squash` and `apply_patch_from`
 do not use `resolution`. `validate-graph --simulate` checks a scenario with a

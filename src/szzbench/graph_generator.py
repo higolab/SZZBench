@@ -345,7 +345,40 @@ def _prepare_merge(
     except GitError as exc:
         what = f"Merge of parent '{extra_parent_ids[0]}'" if len(extra_parent_ids) == 1 else f"Octopus merge of parents {extra_parent_ids}"
         conflicted.extend(_resolve_conflicts_or_fail(repo_dir, commit_spec, what, exc, log))
+    _require_merge_heads(repo_dir, extra_parent_ids, hashes, commit_spec)
     return conflicted
+
+
+def _require_merge_heads(repo_dir: Path, extra_parent_ids: list[str], hashes: list[str], commit_spec: dict[str, Any]) -> None:
+    """Stop when ``git merge`` would not record every declared extra parent (issue #173).
+
+    Git records each head once and drops a head already reachable from another
+    one; for a merge with nothing left to record it says "Already up to date"
+    and leaves no MERGE_HEAD.  The commit would then get fewer parents than
+    declared ("commit would be empty", or GE627/GE628 at verification), so the
+    parent that was dropped is named here instead.  Validation reports the same
+    parent lists as GE049.
+    """
+    try:
+        recorded = (repo_dir / ".git" / "MERGE_HEAD").read_text(encoding="utf-8").split()
+    except FileNotFoundError:
+        recorded = []
+    remaining = list(recorded)
+    reasons: list[str] = []
+    seen = [p for p in commit_spec.get("parents", []) if isinstance(p, str)][:1]   # the first parent
+    for parent_id, parent_hash in zip(extra_parent_ids, hashes):
+        if parent_hash in remaining:
+            remaining.remove(parent_hash)
+        else:
+            reasons.append(f"{parent_id} is listed twice" if parent_id in seen else f"{parent_id} is already merged")
+        seen.append(parent_id)
+    if not reasons:
+        return
+    declared = ", ".join(seen)
+    what = "no second parent" if not recorded else f"{len(recorded) + 1} parents, not {len(seen)}"
+    raise GraphGenerationError(
+        f"merge of {declared} for commit '{commit_spec.get('id')}' recorded {what}: {'; '.join(reasons)} (GE049)."
+    )
 
 
 def _resolve_conflicts_or_fail(repo_dir: Path, commit_spec: dict[str, Any], what: str, exc: GitError, log) -> list[str]:
