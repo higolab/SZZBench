@@ -10,7 +10,7 @@ import re
 from .findings import ValidationResult
 from .operations import (SUPPORTED_OPERATIONS, FUTURE_OPERATIONS, OperationError, apply_operation_to_memory,
                          find_all_occurrences, resolve_encoding, resolve_line_ending, type_label)
-from .paths import PathValidationError, file_path_conflict, validate_repo_relative_path
+from .paths import PathValidationError, file_path_conflict, file_system_key, validate_repo_relative_path
 from .retired_ids import read_retired_ids
 from .scenario import load_yaml
 from .gitutils import (_AUTHOR_RE, TIMESTAMP_KEYS, GitError, parse_timestamp, resolve_commit_metadata,
@@ -25,6 +25,8 @@ ALLOWED_ROLES = {
 #: number or a blank value (YAML null) in one ended `validate --simulate` and
 #: `generate` in an AttributeError traceback (issue #151).
 TEXT_FIELDS_BY_OPERATION = {"write_file": ("content",), "replace": ("old", "new")}
+#: The field that names the file an operation creates or rewrites (E051, issue #164).
+WRITTEN_PATH_FIELDS = {"write_file": ("path",), "replace": ("path",)}
 
 # --- the commit message rule (E012 / GE070, issue #163) ----------------------
 
@@ -261,6 +263,69 @@ def check_commit_metadata(commit: dict[str, Any], cid: Any, loc: str, result: Va
         problem = author_problem(commit["author"])
         if problem is not None:
             result.error(author_code, f"Commit '{cid}' author {problem}.", f"{loc}.author")
+
+
+# --- Git's own files in the worktree (E051 / GE063, issue #164) --------------
+
+#: The files of the worktree that Git reads, in any directory, and what reading one does
+#: to a generated repository.  Both simulators take a written file to be committed as
+#: written; the generators commit with ``git add -A``, which reads the scenario's own
+#: ``.gitignore`` and ``.gitattributes``.  A file a ``.gitignore`` matched was left out of
+#: every tree (a commit that wrote nothing else failed with "commit would be empty"), and
+#: ``* text=auto`` stored a ``line_ending: crlf`` file as LF, with no finding anywhere.
+GIT_CONTROL_FILES = {
+    ".gitignore": "its rules decide which files `git add -A` stages, so a file they match would be left out of "
+                  "the commit the scenario describes",
+    ".gitattributes": "its attributes (text, eol, ident, working-tree-encoding, ...) decide the bytes Git stores, "
+                      "so a blob would differ from what the scenario writes",
+    ".gitmodules": "it declares submodules, which `git submodule` and `git clone --recurse-submodules` act on and "
+                   "neither the generators nor the simulators model",
+}
+#: The factor by which a scenario declares that its subject is a ``.gitattributes`` rule (SZZG-0134).
+GITATTRIBUTES_FACTOR = "gitattributes-bic"
+_GIT_CONTROL_FILE_KEYS = {file_system_key(name): name for name in GIT_CONTROL_FILES}
+
+
+def git_control_file(path: str) -> str | None:
+    """The file of :data:`GIT_CONTROL_FILES` the last name of ``path`` is, or None.
+
+    Names are compared by ``paths.file_system_key``: Git on macOS reads
+    ``.GITIGNORE`` as ``.gitignore`` (and Git on Windows, for letter case),
+    Git on Linux does not.
+    """
+    return _GIT_CONTROL_FILE_KEYS.get(file_system_key(path.rsplit("/", 1)[-1]))
+
+
+def check_git_control_files(data: dict[str, Any], result: ValidationResult, *, code: str,
+                            written_fields: dict[str, tuple[str, ...]]) -> None:
+    """``code`` for an operation that writes a file Git reads (issue #164).
+
+    ``written_fields`` names, for each operation, the fields that hold the
+    file it creates or rewrites.  ``.gitignore`` and ``.gitmodules`` are
+    refused everywhere; ``.gitattributes`` unless ``meta.factors`` declares
+    :data:`GITATTRIBUTES_FACTOR`, the scenario's subject being what the rule
+    does to the blobs.
+    """
+    meta = data.get("meta") if isinstance(data.get("meta"), dict) else {}
+    factors = meta.get("factors")
+    attributes_declared = isinstance(factors, list) and GITATTRIBUTES_FACTOR in factors
+    commits = data.get("commits") if isinstance(data.get("commits"), list) else []
+    for i, commit in enumerate(commits):
+        operations = commit.get("operations") if isinstance(commit, dict) else None
+        for j, op in enumerate(operations if isinstance(operations, list) else []):
+            if not isinstance(op, dict) or not isinstance(op.get("type"), str):
+                continue
+            for key in written_fields.get(op["type"], ()):
+                path = op.get(key)
+                name = git_control_file(path) if isinstance(path, str) else None
+                if name is None or (name == ".gitattributes" and attributes_declared):
+                    continue
+                shown = f"'{path}'" if path.isascii() else ascii(path)      # invisible code points spelt out
+                what = "a file Git reads" if path.rsplit("/", 1)[-1] == name else f"which Git on macOS can read as {name}"
+                remedy = (f"Declare the factor '{GITATTRIBUTES_FACTOR}' in meta.factors to write one on purpose."
+                          if name == ".gitattributes" else f"A scenario cannot write {name}.")
+                result.error(code, f"Operation '{op['type']}' writes {shown}, {what}: {GIT_CONTROL_FILES[name]}. "
+                             f"{remedy}", f"commits[{i}].operations[{j}].{key}")
 
 # --- opt-in lint vocabulary (shared with graph_validator) -------------------
 
@@ -534,6 +599,7 @@ def validate_static(data: dict[str, Any], *, scenario_path: Path | None = None) 
                 except OperationError as exc:
                     result.error("E042", f"Operation '{op_type}' {exc}.", f"{op_loc}.{key}")
     check_scheduled_dates(data, result, code="E013")     # PR #236 review
+    check_git_control_files(data, result, code="E051", written_fields=WRITTEN_PATH_FIELDS)    # issue #164
     bug_ids: set[str] = set()
     index_by_commit = {cid: i for i, cid in enumerate(commit_ids)}
     for i, bug in enumerate(bugs):

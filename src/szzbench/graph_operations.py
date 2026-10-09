@@ -58,6 +58,25 @@ PATH_FIELDS_BY_OPERATION: dict[str, list[str]] = {
     "format_file": ["path"],
 }
 
+#: The fields that name the file an operation creates or rewrites, which ``git add -A``
+#: then stages from the worktree: validation refuses one that is a file Git reads
+#: (GE063), and the generator stops when Git does not stage one (issue #164).  The
+#: files of ``commit_generator`` are named ``<generator>-NN.txt`` and written with
+#: ``git fast-import``, past both.
+WRITTEN_PATH_FIELDS_BY_OPERATION: dict[str, tuple[str, ...]] = {
+    "write_file": ("path",),
+    "replace": ("path",),
+    "insert_after": ("path",),
+    "write_binary_file": ("path",),
+    "write_generated_text_file": ("path",),
+    "format_file": ("path",),
+    "rename_file": ("to",),
+    "move_file": ("to",),
+    "copy_file": ("to",),
+    "move_entity": ("to_file",),
+    "copy_entity": ("to_file",),
+}
+
 REQUIRED_FIELDS_BY_OPERATION: dict[str, list[str]] = {
     "write_file": ["path", "content"],
     "replace": ["path", "old", "new"],

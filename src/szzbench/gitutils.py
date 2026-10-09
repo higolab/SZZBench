@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 import atexit
 import hashlib
 import os
@@ -11,6 +11,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+import unicodedata
 
 
 class GitError(RuntimeError):
@@ -583,6 +584,58 @@ def resolve_commit_metadata(scenario: dict[str, Any], commit_spec: dict[str, Any
     )
 
 
+def ignored_written_paths(repo_dir: Path, written: Iterable[str]) -> list[tuple[str, str]]:
+    """``(path, rule)`` for each path of ``written`` that ``git add -A`` left out of the index (issue #164).
+
+    Both simulators take a file an operation writes to be in the next commit.
+    ``git add -A`` stages it only when no ignore rule of the repository matches
+    it: a ``.gitignore`` the scenario wrote, or ``.git/info/exclude`` (the
+    global ones are withheld, #96).  An ignored file stayed in the worktree
+    only, and a commit that wrote nothing else failed with "commit would be
+    empty".  ``rule`` is what ``git check-ignore -v`` names: the pattern, its
+    file and its line.  Paths are compared in NFC, the form Git lists them in
+    on macOS (``core.precomposeUnicode``).
+    """
+    wanted = {unicodedata.normalize("NFC", path) for path in written if isinstance(path, str)}
+    if not wanted:
+        return []
+    listed = run_git(repo_dir, ["ls-files", "-z", "--others", "--ignored", "--exclude-standard"]).stdout
+    ignored = sorted({path for path in listed.split("\0") if path and unicodedata.normalize("NFC", path) in wanted})
+    if not ignored:
+        return []
+    rules: dict[str, str] = {}
+    try:
+        # "./" keeps a path that starts with ":" from being read as pathspec magic
+        out = run_git_with_input(repo_dir, ["check-ignore", "--stdin", "-z", "-v"],
+                                 b"".join(f"./{path}".encode("utf-8") + b"\0" for path in ignored)).stdout
+        fields = out.decode("utf-8", errors="replace").split("\0")
+        for start in range(0, len(fields) - 3, 4):
+            source, line, pattern, path = fields[start:start + 4]
+            rules[path[2:] if path.startswith("./") else path] = f"'{pattern}' in {source}, line {line}"
+    except GitError:
+        pass                      # the paths are still named, without their rule
+    return [(path, rules.get(path, "an ignore rule")) for path in ignored]
+
+
+def refuse_ignored_written_paths(repo_dir: Path, written: Iterable[str], commit_id: str | None = None) -> None:
+    """Stop when ``git add -A`` left out a file the commit writes (issue #164); call it after staging.
+
+    The generated commit would not hold what the scenario, the simulators and
+    the oracle describe, and nothing said so.  Validation refuses a scenario
+    that writes ``.gitignore`` (E051 / GE063), so this guards generation when
+    that check is passed by.
+    """
+    found = ignored_written_paths(repo_dir, written)
+    if not found:
+        return
+    listing = ", ".join(f"{path} ({rule})" for path, rule in found)
+    who = f"Commit '{commit_id}'" if commit_id is not None else "The commit"
+    what, them = ("a file", "it") if len(found) == 1 else ("files", "them")
+    raise GitError(f"{who} writes {what} Git ignores: {listing}. `git add -A` leaves {them} out of the commit, so the "
+                   "generated tree would differ from the scenario's; validation refuses a scenario that writes "
+                   ".gitignore (E051 / GE063).")
+
+
 def commit_all(
     repo_dir: Path,
     *,
@@ -592,14 +645,20 @@ def commit_all(
     author_date: str | None = None,
     committer_date: str | None = None,
     body: str | None = None,
+    written: Iterable[str] = (),
+    commit_id: str | None = None,
 ) -> str:
     """Stage everything and commit.
 
     ``author_date``/``committer_date`` take precedence over ``date``; when none
     is given the commit gets the generation time (callers that want
     deterministic metadata pass values from :func:`resolve_commit_metadata`).
+    ``written`` holds the paths the commit's operations wrote: one that Git
+    does not stage stops the commit, before it could be reported as empty
+    (issue #164).  ``commit_id`` names the commit in that message.
     """
     run_git(repo_dir, ["add", "-A"])
+    refuse_ignored_written_paths(repo_dir, written, commit_id)
     status = run_git(repo_dir, ["status", "--porcelain"]).stdout.strip()
     if not status:
         raise GitError("commit would be empty")
