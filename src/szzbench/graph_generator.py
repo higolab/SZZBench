@@ -30,7 +30,7 @@ from .gitutils import (
 from .graph_operations import CommitGeneratorPlan, apply_graph_operation_to_filesystem, commit_generator_changes, commit_generator_plan
 from .graph_scenario import load_graph_scenario
 from .graph_validator import validate_graph_scenario_file
-from .operations import OperationError, normalize_newlines
+from .operations import OperationError, normalize_newlines, type_label
 from .graph_verifier import verify_graph_generated_repo
 from .manifest import write_manifest
 from .paths import PathValidationError, safe_join
@@ -551,13 +551,16 @@ def _build_commit_message(
         subject = f'Revert "{git_message(repo_dir, revert_source_hash)}"'
     if subject is None:
         subject = cid
+    if not isinstance(subject, str):
+        # validate-graph reports it (GE040); str() used to commit `message: 123` as '123' (issue #151)
+        raise GraphGenerationError(f"message of commit '{cid}' must be a string, not {type_label(subject)}.")
     body_lines: list[str] = []
     if commit_spec.get("cherry_pick_trailer"):
         for source_hash in _cherry_pick_trailer_sources(commit_spec, commit_map):
             body_lines.append(f"(cherry picked from commit {source_hash})")
     if revert_source_hash is not None:
         body_lines.append(f"This reverts commit {revert_source_hash}.")
-    return str(subject), "\n".join(body_lines)
+    return subject, "\n".join(body_lines)
 
 
 # ---------------------------------------------------------------------------

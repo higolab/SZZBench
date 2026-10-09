@@ -103,12 +103,12 @@ became errors — the code keeps its number when its severity changes, so
 | E001 | error | YAML parse error (duplicate keys are rejected) |
 | E002 | error | the YAML root is not a mapping |
 | E003 | error | the file is a graph scenario: its `schema_version` is a graph schema (the rule of GE001), or it has none and the file is named `scenario.graph.yml` (GW014). `validate` reports it before any other check, and `generate` and `verify` refuse the file too. The message names the graph command to run instead (`validate-graph`, `generate-graph`, `verify-graph`) ([issue #119](https://github.com/higolab/SZZBench/issues/119)) |
-| E010 | error | a required field is missing or has the wrong type (`schema_version`, `meta`, `repository`, `commits`, `bugs`, `meta.id/title/category/factors`, `repository.name/default_branch/language`, commit `id/message/operations`, bug `id/bug_fixing_commit/bug_introducing_commits`) |
+| E010 | error | a required field is missing or has the wrong type (`schema_version`, `meta`, `repository`, `commits`, `bugs`, `meta.id/title/category/factors`, `repository.name/default_branch/language`, commit `id/message/operations`, bug `id/bug_fixing_commit/bug_introducing_commits`). A commit `message` must be a string: a number, or a blank `message:` (YAML null), used to pass and end `generate` in a `TypeError` traceback from `git commit` ([issue #151](https://github.com/higolab/SZZBench/issues/151)) |
 | E011 | error | `commits` is empty |
 | E020 | error | duplicate commit id |
 | E030 | error | unknown commit `role` (see `ALLOWED_ROLES`) |
 | E040 | error | unknown operation type |
-| E041 | error | `operation.type` missing, or a required operation field missing |
+| E041 | error | `operation.type` missing, or a required operation field missing or not a string: the text an operation writes or matches, `write_file` `content` and `replace` `old` / `new`, must be a string. A number, or a blank value (YAML null), used to end `validate --simulate` and `generate` in an `AttributeError` traceback ([issue #151](https://github.com/higolab/SZZBench/issues/151)) |
 | E050 | error | operation path is not a repository-relative POSIX path, names separated by `/`. It is refused when it is absolute; starts with a drive prefix (`C:`); contains a control character (U+0000–U+001F or U+007F, a NUL byte included), a backslash, an empty component (`a//b`, a trailing `/`), a `.` or `..` component, or a component of only whitespace; or names the repository's own `.git` in any spelling a file system resolves to it — any letter case (`.GIT`), the NTFS 8.3 short name `git~1`, either of them followed by dots or spaces (`.git.`, `git~1 `), by an alternate data stream (`.git::$INDEX_ALLOCATION`) or by a backslash, or with code points HFS+ ignores. The `.git` spellings are the names Git refuses as tree entries with `core.protectNTFS` and `core.protectHFS`. The message names the rule the path breaks. The rule is read from the string, so the verdict is the same on every platform: it used to be `pathlib.Path`'s, which on Windows reads `..\escape.txt` as `..` and `C:\x.txt` as absolute and elsewhere reads each as one file name; a NUL byte passed and ended `generate` in a traceback, and `src/Dir/` was written as the file `src/Dir` ([issue #136](https://github.com/higolab/SZZBench/issues/136)). On a case-insensitive file system `.GIT/config` used to pass and overwrite the generated repository's configuration ([issue #135](https://github.com/higolab/SZZBench/issues/135)) |
 | E060 | error | `bug_fixing_commit` refers to an unknown commit |
 | E061 | error | a `bug_introducing_commits` entry refers to an unknown commit |
@@ -220,6 +220,7 @@ index's stat data is refreshed.
 | GE037 | error | a parent id is not a string |
 | GE038 | error | a parent appears later in the file (topological order required) |
 | GE039 | error | unknown parent commit |
+| GE040 | error | `commit.message` is present and not a string (a blank `message:`, which YAML reads as null, included). Generation made `message: 123` the subject `123`, which only verification rejected, and read a blank one as no message: the subject fell back to the inherited or reverted subject, or to the commit id. A commit without `message` is not affected ([issue #151](https://github.com/higolab/SZZBench/issues/151)) |
 | GW040 | warning | `role: merge` with fewer than two parents |
 | GW041 | warning | several parents but a role that is not merge-like |
 | GE042 | error | `cherry_pick_of` / `backport_of` is not a string |
@@ -233,7 +234,7 @@ index's stat data is refreshed.
 | GE050 | error | an operation is not an object |
 | GE051 | error | `operation.type` missing |
 | GE052 | error | unknown graph operation type |
-| GE053 | error | required operation field missing |
+| GE053 | error | required operation field missing, or a text field that is not a string: `write_file` `content`, `replace` `old` / `new`, `insert_after` `anchor` / `content`. Generation and `--simulate` read them through `str()`: a blank `content:` (YAML null) wrote the text `None` into the file, and the first error was `GE201: replace.old not found` on a later operation ([issue #151](https://github.com/higolab/SZZBench/issues/151)) |
 | GE054 | error | operation path is not a repository-relative POSIX path (the rule of E050: a drive prefix, a backslash, a control character, an empty, `.`, `..` or whitespace-only component, and `.git` in any spelling are refused) |
 | GE055 | error | a path field is not a string |
 | GE056 | error | (`--strict-paths`) `move_entity` / `copy_entity` without an `entity` object |

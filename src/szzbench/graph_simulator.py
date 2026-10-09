@@ -7,7 +7,7 @@ import tempfile
 
 from .findings import ValidationResult
 from .graph_operations import CommitGeneratorPlan, commit_generator_changes, commit_generator_plan, decode_content_base64
-from .operations import OperationError, insert_after_once, normalize_newlines, replace_once
+from .operations import OperationError, insert_after_once, normalize_newlines, replace_once, text_field
 from .paths import PathValidationError, validate_repo_relative_path
 
 #: The mode Git records for a file whose owner may execute it (``SimFile.mode``).
@@ -296,22 +296,22 @@ def _apply_simulated_operation(
 
     if op_type == "write_file":
         path = _validated_path(op["path"])
-        _set_file(snapshot, path, SimFile(normalize_newlines(str(op["content"])), _mode(snapshot, path)), op_type)
+        _set_file(snapshot, path, SimFile(normalize_newlines(text_field(op, "content")), _mode(snapshot, path)), op_type)
         return
 
     if op_type == "replace":
         path = _validated_path(op["path"])
         content = _require_text(snapshot, path, "replace")
-        old = normalize_newlines(str(op["old"]))
-        new = normalize_newlines(str(op["new"]))
+        old = normalize_newlines(text_field(op, "old"))
+        new = normalize_newlines(text_field(op, "new"))
         _set_file(snapshot, path, SimFile(replace_once(content, old, new, op.get("occurrence")), snapshot[path].mode), op_type)
         return
 
     if op_type == "insert_after":
         path = _validated_path(op["path"])
         content = _require_text(snapshot, path, "insert_after")
-        anchor = normalize_newlines(str(op["anchor"]))
-        inserted = normalize_newlines(str(op["content"]))
+        anchor = normalize_newlines(text_field(op, "anchor"))
+        inserted = normalize_newlines(text_field(op, "content"))
         _set_file(snapshot, path, SimFile(insert_after_once(content, anchor, inserted, op.get("occurrence")), snapshot[path].mode), op_type)
         return
 
