@@ -109,7 +109,7 @@ became errors — the code keeps its number when its severity changes, so
 | E030 | error | unknown commit `role` (see `ALLOWED_ROLES`) |
 | E040 | error | unknown operation type |
 | E041 | error | `operation.type` missing, or a required operation field missing |
-| E050 | error | operation path is not a safe repository-relative path: it is absolute, contains `..`, or names the repository's own `.git` in any spelling a file system resolves to it — any letter case (`.GIT`), the NTFS 8.3 short name `git~1`, either of them followed by dots or spaces (`.git.`, `git~1 `) or by an alternate data stream (`.git::$INDEX_ALLOCATION`), a backslash as a directory separator, or code points HFS+ ignores. These are the names Git refuses as tree entries with `core.protectNTFS` and `core.protectHFS`. On a case-insensitive file system `.GIT/config` used to pass and overwrite the generated repository's configuration ([issue #135](https://github.com/higolab/SZZBench/issues/135)) |
+| E050 | error | operation path is not a repository-relative POSIX path, names separated by `/`. It is refused when it is absolute; starts with a drive prefix (`C:`); contains a control character (U+0000–U+001F or U+007F, a NUL byte included), a backslash, an empty component (`a//b`, a trailing `/`), a `.` or `..` component, or a component of only whitespace; or names the repository's own `.git` in any spelling a file system resolves to it — any letter case (`.GIT`), the NTFS 8.3 short name `git~1`, either of them followed by dots or spaces (`.git.`, `git~1 `), by an alternate data stream (`.git::$INDEX_ALLOCATION`) or by a backslash, or with code points HFS+ ignores. The `.git` spellings are the names Git refuses as tree entries with `core.protectNTFS` and `core.protectHFS`. The message names the rule the path breaks. The rule is read from the string, so the verdict is the same on every platform: it used to be `pathlib.Path`'s, which on Windows reads `..\escape.txt` as `..` and `C:\x.txt` as absolute and elsewhere reads each as one file name; a NUL byte passed and ended `generate` in a traceback, and `src/Dir/` was written as the file `src/Dir` ([issue #136](https://github.com/higolab/SZZBench/issues/136)). On a case-insensitive file system `.GIT/config` used to pass and overwrite the generated repository's configuration ([issue #135](https://github.com/higolab/SZZBench/issues/135)) |
 | E060 | error | `bug_fixing_commit` refers to an unknown commit |
 | E061 | error | a `bug_introducing_commits` entry refers to an unknown commit |
 | E062 | error | `fault.commit` refers to an unknown commit |
@@ -234,7 +234,7 @@ index's stat data is refreshed.
 | GE051 | error | `operation.type` missing |
 | GE052 | error | unknown graph operation type |
 | GE053 | error | required operation field missing |
-| GE054 | error | operation path is not a safe repository-relative path (the rule of E050, `.git` in any spelling included) |
+| GE054 | error | operation path is not a repository-relative POSIX path (the rule of E050: a drive prefix, a backslash, a control character, an empty, `.`, `..` or whitespace-only component, and `.git` in any spelling are refused) |
 | GE055 | error | a path field is not a string |
 | GE056 | error | (`--strict-paths`) `move_entity` / `copy_entity` without an `entity` object |
 | GE057 | error | a `chmod` `mode` that is not a quoted string of 3 or 4 octal digits (`'755'`). YAML reads an unquoted `0755` as the integer 493, which used to reach generation and end in a traceback ([issue #172](https://github.com/higolab/SZZBench/issues/172)) |
@@ -253,7 +253,7 @@ index's stat data is refreshed.
 | GE093 | error | BIC/BFC entry refers to an unknown commit |
 | GE100 | error | fault/fix location without `commit` |
 | GE101 | error | fault/fix location refers to an unknown commit |
-| GE102 | error | fault/fix `file` is not a safe repository-relative path (the rule of E050) |
+| GE102 | error | fault/fix `file` is not a repository-relative POSIX path (the rule of E050) |
 | GE103 | error | fault/fix `file` is not a string |
 | GE104 | error | fault/fix location requires a statement |
 | GE105 | error | fault/fix `entity` is not an object |

@@ -1,26 +1,39 @@
-"""A scenario path may not reach the generated repository's own ``.git`` (issue #135).
+"""What a scenario path may name (issues #135 and #136).
 
-The check compared each path component with ``.git`` as a string.  On the
-case-insensitive file systems macOS and Windows use by default, ``.GIT/config``
-passed it, and generation wrote into the repository's own metadata:
-``.GIT/config`` replaced the configuration ``init_repo`` writes,
+A scenario path may not reach the generated repository's own ``.git`` (issue
+#135).  The check compared each path component with ``.git`` as a string.  On
+the case-insensitive file systems macOS and Windows use by default,
+``.GIT/config`` passed it, and generation wrote into the repository's own
+metadata: ``.GIT/config`` replaced the configuration ``init_repo`` writes,
 ``.GIT/info/exclude`` kept later files out of every commit, and a graph
 scenario could install an executable hook with ``chmod``.  Validation and
 verification reported nothing.
+
+A scenario path is a repository-relative POSIX path, whatever the host (issue
+#136).  The check read the path with ``pathlib.Path``, so ``..\\escape.txt``
+and ``C:\\x.txt`` were one file name each on macOS and Linux and ``..`` and an
+absolute path on Windows; a NUL byte, a name of one space and a trailing
+``/`` passed too.  ``validate --simulate`` reported nothing, ``generate``
+ended in a ``ValueError`` traceback on the NUL byte and committed the others
+under their literal names (``src/Dir/`` as the file ``src/Dir``).
 """
 from __future__ import annotations
 
+import json
+import re
 import subprocess
+import sys
 from copy import deepcopy
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 import pytest
 import yaml
 
 from support import git_env
+from szzbench import paths
 from szzbench.generator import GenerationError, generate_repository
 from szzbench.graph_generator import GraphGenerationError, generate_graph_repository
-from szzbench.graph_validator import validate_graph_static
+from szzbench.graph_validator import validate_graph_scenario_file, validate_graph_static
 from szzbench.paths import PathValidationError, safe_join, validate_repo_relative_path
 from szzbench.validator import validate_static
 
@@ -216,8 +229,217 @@ def test_both_generators_refuse_an_ntfs_alias_before_touching_the_file_system(tm
     assert not (tmp_path / "graph-out").exists()
 
 
+# --- the path grammar (issue #136) ----------------------------------------------------------
+
+# Paths main accepted, with the part of the message that names the rule they break.
+OUTSIDE_THE_GRAMMAR = [
+    ("a\x00b.txt", "U+0000"),                 # ended generate in a ValueError traceback
+    ("src/a\tb.java", "U+0009"),
+    ("src/a\x7fb.java", "U+007F"),
+    ("..\\escape.txt", "backslash"),          # '..' and 'escape.txt' on Windows, one name elsewhere
+    ("src\\Win.java", "backslash"),
+    ("C:\\x.txt", "drive prefix 'C:'"),       # absolute on Windows
+    ("c:x.txt", "drive prefix 'c:'"),         # relative to the current directory of drive C:
+    ("C:/x.txt", "drive prefix 'C:'"),
+    (" ", "only whitespace"),                 # committed as a file named one space
+    ("src/ /Win.java", "only whitespace"),
+    ("src/\u3000/Win.java", "only whitespace"),
+    ("src/Dir/", "trailing '/'"),             # written as the file src/Dir
+    ("a//b.txt", "empty component"),
+    ("./x.txt", "current directory '.'"),
+    ("src/./Win.java", "current directory '.'"),
+]
+
+# The rows of the issue's table, in its order.
+ISSUE_ROWS = ["a\x00b.txt", "..\\escape.txt", "src\\Win.java", "C:\\x.txt", " ", "src/Dir/"]
+
+# Paths the grammar accepts: what the shipped scenarios write, and names next to a rule
+# that break none (spaces inside a name, a colon that is not a drive prefix).
+INSIDE_THE_GRAMMAR = [
+    JAVA,
+    "README.md",
+    "docs/release notes.md",
+    "src/Foo Bar.java",
+    "docs/\u65e5\u672c\u8a9e.md",
+    "x y/z ",
+    "ab:c.txt",
+    "src/C:x",
+    *ORDINARY_SPELLINGS,
+]
+
+
+@pytest.mark.parametrize("path,rule", OUTSIDE_THE_GRAMMAR)
+def test_a_path_outside_the_grammar_is_refused_with_the_rule_it_breaks(path, rule, tmp_path):
+    with pytest.raises(PathValidationError, match=re.escape(rule)):
+        validate_repo_relative_path(path)
+    with pytest.raises(PathValidationError, match=re.escape(rule)):
+        safe_join(tmp_path, path)
+
+
+@pytest.mark.parametrize("path,rule", [("/etc/passwd", "absolute"), ("src/../../x.txt", "parent directory '..'"),
+                                       ("..", "parent directory '..'"), ("", "non-empty")])
+def test_the_earlier_rules_still_apply(path, rule):
+    with pytest.raises(PathValidationError, match=re.escape(rule)):
+        validate_repo_relative_path(path)
+
+
+@pytest.mark.parametrize("path", INSIDE_THE_GRAMMAR)
+def test_posix_and_windows_split_an_accepted_path_into_the_same_names(path, tmp_path):
+    """Neither reads a drive or a root in an accepted path, nor a separator other than ``/``."""
+    validate_repo_relative_path(path)
+    assert PurePosixPath(path).parts == PureWindowsPath(path).parts == tuple(path.split("/"))
+    assert not PureWindowsPath(path).anchor
+    assert safe_join(tmp_path, path) == (tmp_path / path).resolve()
+
+
+@pytest.mark.parametrize("host", [PurePosixPath, PureWindowsPath], ids=["posix", "windows"])
+def test_the_verdict_does_not_depend_on_how_the_host_reads_paths(monkeypatch, host):
+    """The check used ``pathlib.Path``: on Windows ``..\\escape.txt`` was ``..`` and ``C:\\x.txt``
+    absolute, on macOS and Linux both were one file name.  Reading paths as either host gives
+    the same verdicts now."""
+    monkeypatch.setattr(paths, "Path", host)
+    for path, rule in OUTSIDE_THE_GRAMMAR:
+        with pytest.raises(PathValidationError, match=re.escape(rule)):
+            validate_repo_relative_path(path)
+    for path in INSIDE_THE_GRAMMAR:
+        validate_repo_relative_path(path)
+
+
+@pytest.mark.parametrize("path,rule", OUTSIDE_THE_GRAMMAR)
+def test_validate_reports_e050_for_a_path_outside_the_grammar(path, rule):
+    findings = [(f.code, f.location, f.message) for f in validate_static(_classic_writing(path)).findings]
+    assert [(code, loc) for code, loc, message in findings if rule in message] == [("E050", "commits[0].operations[1].path")]
+
+
+@pytest.mark.parametrize("path,rule", OUTSIDE_THE_GRAMMAR)
+def test_validate_graph_reports_ge054_for_a_path_outside_the_grammar(path, rule):
+    findings = [(f.code, f.location) for f in validate_graph_static(_graph_writing(path)).findings]
+    assert ("GE054", "commits[0].operations[1].path") in findings
+    assert ("GE054", "commits[0].operations[2].path") in findings
+
+
+@pytest.mark.parametrize("path", ["src\\main\\java\\example\\Range.java", "src/main/java/example/Range.java/", "./" + JAVA])
+def test_validate_graph_reports_ge102_for_a_fault_file_outside_the_grammar(path):
+    data = deepcopy(graph_scenario())
+    data["bugs"][0]["faults"][0]["file"] = path
+    findings = [(f.code, f.location) for f in validate_graph_static(data).findings]
+    assert ("GE102", "bugs[0].faults[0].file") in findings
+
+
+def _szzbench(cwd: Path, *args: str) -> subprocess.CompletedProcess:
+    return subprocess.run([sys.executable, "-m", "szzbench.cli", *args], cwd=cwd, capture_output=True, text=True)
+
+
+def test_validate_simulate_reports_each_row_of_the_issue_as_e050(tmp_path):
+    """Run on a path relative to the working directory, as the issue's reproduction does."""
+    data = deepcopy(classic_scenario())
+    data["commits"][0]["operations"] += [{"type": "write_file", "path": path, "content": "x\n"} for path in ISSUE_ROWS]
+    write_yaml(tmp_path / "SZZ-9900" / "scenario.yml", data)
+    completed = _szzbench(tmp_path, "validate", "--simulate", "--json", "SZZ-9900/scenario.yml")
+    assert completed.returncode == 1 and "Traceback" not in completed.stderr, completed.stderr
+    errors = [(f["code"], f["location"]) for f in json.loads(completed.stdout)["findings"] if f["severity"] == "ERROR"]
+    assert errors == [("E050", f"commits[0].operations[{i}].path") for i in range(1, len(ISSUE_ROWS) + 1)]
+
+
+def test_validate_graph_simulate_strict_paths_reports_each_row_of_the_issue_as_ge054(tmp_path):
+    data = deepcopy(graph_scenario())
+    data["commits"][0]["operations"] += [{"type": "write_file", "path": path, "content": "x\n"} for path in ISSUE_ROWS]
+    write_yaml(tmp_path / "SZZG-9900" / "scenario.graph.yml", data)
+    completed = _szzbench(tmp_path, "validate-graph", "--simulate", "--strict-paths", "--json", "SZZG-9900/scenario.graph.yml")
+    assert completed.returncode == 1 and "Traceback" not in completed.stderr, completed.stderr
+    errors = [(f["code"], f["location"]) for f in json.loads(completed.stdout)["findings"] if f["severity"] == "ERROR"]
+    assert errors == [("GE054", f"commits[0].operations[{i}].path") for i in range(1, len(ISSUE_ROWS) + 1)]
+
+
+def _graph_generating_into(directory: str) -> dict:
+    data = deepcopy(graph_scenario())
+    data["commits"][1]["operations"].append(
+        {"type": "commit_generator", "generator": "unrelated_changes", "count": 2, "path": directory})
+    return data
+
+
+@pytest.mark.parametrize("command,scenario,data,reason", [
+    ("generate", "SZZ-9900/scenario.yml", _classic_writing("a\x00b.txt"), "validation failed"),
+    ("generate-graph", "SZZG-9900/scenario.graph.yml", _graph_writing("a\x00b.txt"), "validation failed"),
+    # commit_generator.path names a directory, which static validation does not read:
+    # the NUL byte reaches safe_join during generation
+    ("generate-graph", "SZZG-9900/scenario.graph.yml", _graph_generating_into("gen\x00dir"), "U+0000"),
+], ids=["classic", "graph", "graph-commit-generator"])
+def test_generation_refuses_a_nul_byte_without_a_traceback(tmp_path, command, scenario, data, reason):
+    write_yaml(tmp_path / scenario, data)
+    completed = _szzbench(tmp_path, command, scenario, "--out", "out")
+    assert completed.returncode == 1
+    assert "Traceback" not in completed.stderr, completed.stderr
+    assert "GENERATION_FAILED" in completed.stderr and reason in completed.stderr, completed.stderr
+
+
+# commit_generator.path in spellings generation reads as a directory (commit_generator_directory)
+COMMIT_GENERATOR_SPELLINGS = [
+    "generated/telemetry/",            # a directory written with its trailing slash
+    "generated\\telemetry",            # a backslash, read as '/'
+    "./generated/telemetry",
+    "generated//telemetry",
+    "generated/telemetry/batch-1.txt",  # the old placeholder file: its parent directory
+    "/",                               # the repository root
+]
+
+
+@pytest.mark.parametrize("directory", COMMIT_GENERATOR_SPELLINGS)
+def test_the_simulation_accepts_the_commit_generator_paths_generation_accepts(tmp_path, directory):
+    """The path rule refused ``generated/telemetry/`` in the simulator's placeholder, while
+    generation reads the field as a directory and generated the scenario (PR #219 review)."""
+    scenario = write_yaml(tmp_path / "SZZG-9900" / "scenario.graph.yml", _graph_generating_into(directory))
+    _, result = validate_graph_scenario_file(scenario, strict_paths=True, simulate=True)
+    assert [(f.code, f.message) for f in result.findings if f.severity == "ERROR"] == []
+    commit_map, verify_result = generate_graph_repository(scenario, tmp_path / "out", force=True)
+    assert not verify_result.has_errors()
+    assert len(commit_map) == len(graph_scenario()["commits"]) + 2
+
+
+@pytest.mark.parametrize("directory", ["generated/../../escape", "gen\x00dir/"])
+def test_the_simulation_and_generation_refuse_the_same_commit_generator_paths(tmp_path, directory):
+    scenario = write_yaml(tmp_path / "SZZG-9900" / "scenario.graph.yml", _graph_generating_into(directory))
+    _, result = validate_graph_scenario_file(scenario, strict_paths=True, simulate=True)
+    assert [f.code for f in result.findings if f.severity == "ERROR"] == ["GE201"]
+    with pytest.raises(GraphGenerationError, match="invalid path"):
+        generate_graph_repository(scenario, tmp_path / "out", force=True, verify=False)
+
+
+@pytest.mark.parametrize("path", ISSUE_ROWS[1:])
+def test_both_generators_refuse_the_other_rows_of_the_issue_before_writing(tmp_path, path):
+    classic = write_yaml(tmp_path / "classic/SZZ-9900/scenario.yml", _classic_writing(path))
+    with pytest.raises(GenerationError, match="validation failed"):
+        generate_repository(classic, tmp_path / "classic-out", force=True)
+    assert not (tmp_path / "classic-out").exists()
+    graph = write_yaml(tmp_path / "graph/SZZG-9900/scenario.graph.yml", _graph_writing(path))
+    with pytest.raises(GraphGenerationError, match="validation failed"):
+        generate_graph_repository(graph, tmp_path / "graph-out", force=True)
+    assert not (tmp_path / "graph-out").exists()
+
+
+def _refused_by_the_file_system(*args, **kwargs):
+    raise ValueError("lstat: embedded null character in path")
+
+
+@pytest.mark.parametrize("kind", ["classic", "graph"])
+def test_a_value_error_late_in_generation_is_a_generation_failure(tmp_path, monkeypatch, kind):
+    """What still reaches the file system after validation fails like any other generation error."""
+    if kind == "classic":
+        monkeypatch.setattr("szzbench.generator.apply_operation_to_filesystem", _refused_by_the_file_system)
+        scenario = write_yaml(tmp_path / "SZZ-9900" / "scenario.yml", classic_scenario())
+        with pytest.raises(GenerationError, match="embedded null character"):
+            generate_repository(scenario, tmp_path / "out")
+    else:
+        monkeypatch.setattr("szzbench.graph_generator.apply_graph_operation_to_filesystem", _refused_by_the_file_system)
+        scenario = write_yaml(tmp_path / "SZZG-9900" / "scenario.graph.yml", graph_scenario())
+        with pytest.raises(GraphGenerationError, match="embedded null character"):
+            generate_graph_repository(scenario, tmp_path / "out")
+    error = json.loads((tmp_path / "out" / "metadata" / "generation-error.json").read_text(encoding="utf-8"))
+    assert "embedded null character" in error["error"]
+
+
 def test_no_shipped_scenario_names_such_a_path():
-    """The rule changes no shipped scenario's outcome: none of them writes such a path."""
+    """The rules change no shipped scenario's outcome: none of them writes such a path."""
     root = Path(__file__).resolve().parents[1]
     for scenario in [*root.glob("scenarios/SZZ-*/scenario.yml"), *root.glob("advanced-scenarios/SZZG-*/scenario.graph.yml")]:
         data = yaml.safe_load(scenario.read_text(encoding="utf-8"))
