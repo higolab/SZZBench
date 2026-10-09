@@ -294,6 +294,21 @@ def _block_text(value: Any) -> str:
 DEFAULT_COMMIT_GENERATOR_DIRECTORY = "generated"
 
 
+def commit_generator_path(path: Any) -> str:
+    """A ``commit_generator``'s ``path`` in the spelling generation reads it.
+
+    Backslashes become ``/``; a trailing ``/`` and ``.`` or empty components
+    are dropped; a missing or blank value is the default directory, and ``""``
+    (``/`` written alone) the repository root.  The simulator of
+    ``validate-graph --simulate`` reads the field here too, so that it does not
+    refuse a spelling generation accepts (PR #219 review).
+    """
+    if path is None or str(path).strip() == "":
+        return DEFAULT_COMMIT_GENERATOR_DIRECTORY
+    text = str(path).strip().replace("\\", "/").rstrip("/")
+    return PurePosixPath(text).as_posix() if text else ""
+
+
 def commit_generator_directory(path: Any) -> str:
     """Return the directory generated files live in for a ``commit_generator``.
 
@@ -301,16 +316,12 @@ def commit_generator_directory(path: Any) -> str:
     as ``generated/unrelated-batch-1.txt`` (the old placeholder file) means its
     parent directory.  An empty string denotes the repository root.
     """
-    if path is None or str(path).strip() == "":
-        return DEFAULT_COMMIT_GENERATOR_DIRECTORY
-    text = str(path).strip().replace("\\", "/").rstrip("/")
-    if not text:
-        return ""
+    text = commit_generator_path(path)
     candidate = PurePosixPath(text)
-    if candidate.suffix:
+    if text and candidate.suffix:
         parent = candidate.parent.as_posix()
         return "" if parent == "." else parent
-    return candidate.as_posix()
+    return text
 
 
 def _entity_operation_header(op_type: str, op: dict[str, Any]) -> str:

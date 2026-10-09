@@ -33,7 +33,7 @@ from support import git_env
 from szzbench import paths
 from szzbench.generator import GenerationError, generate_repository
 from szzbench.graph_generator import GraphGenerationError, generate_graph_repository
-from szzbench.graph_validator import validate_graph_static
+from szzbench.graph_validator import validate_graph_scenario_file, validate_graph_static
 from szzbench.paths import PathValidationError, safe_join, validate_repo_relative_path
 from szzbench.validator import validate_static
 
@@ -371,6 +371,38 @@ def test_generation_refuses_a_nul_byte_without_a_traceback(tmp_path, command, sc
     assert completed.returncode == 1
     assert "Traceback" not in completed.stderr, completed.stderr
     assert "GENERATION_FAILED" in completed.stderr and reason in completed.stderr, completed.stderr
+
+
+# commit_generator.path in spellings generation reads as a directory (commit_generator_directory)
+COMMIT_GENERATOR_SPELLINGS = [
+    "generated/telemetry/",            # a directory written with its trailing slash
+    "generated\\telemetry",            # a backslash, read as '/'
+    "./generated/telemetry",
+    "generated//telemetry",
+    "generated/telemetry/batch-1.txt",  # the old placeholder file: its parent directory
+    "/",                               # the repository root
+]
+
+
+@pytest.mark.parametrize("directory", COMMIT_GENERATOR_SPELLINGS)
+def test_the_simulation_accepts_the_commit_generator_paths_generation_accepts(tmp_path, directory):
+    """The path rule refused ``generated/telemetry/`` in the simulator's placeholder, while
+    generation reads the field as a directory and generated the scenario (PR #219 review)."""
+    scenario = write_yaml(tmp_path / "SZZG-9900" / "scenario.graph.yml", _graph_generating_into(directory))
+    _, result = validate_graph_scenario_file(scenario, strict_paths=True, simulate=True)
+    assert [(f.code, f.message) for f in result.findings if f.severity == "ERROR"] == []
+    commit_map, verify_result = generate_graph_repository(scenario, tmp_path / "out", force=True)
+    assert not verify_result.has_errors()
+    assert len(commit_map) == len(graph_scenario()["commits"]) + 2
+
+
+@pytest.mark.parametrize("directory", ["generated/../../escape", "gen\x00dir/"])
+def test_the_simulation_and_generation_refuse_the_same_commit_generator_paths(tmp_path, directory):
+    scenario = write_yaml(tmp_path / "SZZG-9900" / "scenario.graph.yml", _graph_generating_into(directory))
+    _, result = validate_graph_scenario_file(scenario, strict_paths=True, simulate=True)
+    assert [f.code for f in result.findings if f.severity == "ERROR"] == ["GE201"]
+    with pytest.raises(GraphGenerationError, match="invalid path"):
+        generate_graph_repository(scenario, tmp_path / "out", force=True, verify=False)
 
 
 @pytest.mark.parametrize("path", ISSUE_ROWS[1:])

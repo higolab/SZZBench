@@ -6,7 +6,7 @@ from typing import Any
 import tempfile
 
 from .findings import ValidationResult
-from .graph_operations import decode_content_base64
+from .graph_operations import commit_generator_path, decode_content_base64
 from .operations import OperationError, insert_after_once, normalize_newlines, replace_once
 from .paths import PathValidationError, validate_repo_relative_path
 
@@ -302,7 +302,10 @@ def _apply_simulated_operation(
         return
 
     if op_type == "commit_generator":
-        path = _validated_path(op.get("path", "generated/unrelated-changes.txt"))
+        # the placeholder sits where the path names, in the spelling generation reads it
+        # (a trailing '/' or a backslash is accepted there; PR #219 review)
+        path = _validated_path(commit_generator_path(op.get("path", "generated/unrelated-changes.txt"))
+                               or "unrelated-changes.txt")
         content = f"generator={op.get('generator')}\ncount={op.get('count')}\nfiles={op.get('files', '')}\n"
         _set_file(snapshot, path, SimFile(content))
         return
