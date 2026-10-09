@@ -8,8 +8,7 @@ import tempfile
 from .findings import ValidationResult
 from .graph_operations import CommitGeneratorPlan, commit_generator_changes, commit_generator_plan, decode_content_base64
 from .operations import OperationError, insert_after_once, normalize_newlines, replace_once, text_field
-from .paths import PathValidationError, validate_repo_relative_path
-from .validator import file_path_conflict
+from .paths import PathValidationError, file_path_conflict, validate_repo_relative_path
 
 #: The mode Git records for a file whose owner may execute it (``SimFile.mode``).
 EXECUTABLE = "100755"
@@ -477,7 +476,7 @@ def _set_file(snapshot: Snapshot, path: str, value: SimFile, op_type: str) -> No
     A path that is a directory of the snapshot, or that lies below one of its
     files, cannot hold a file in the generated worktree either (issue #175);
     nor can one that differs from a path of the snapshot only in letter case or
-    Unicode normalization, on macOS (issue #153; ``validator.file_path_conflict``).
+    Unicode normalization, on macOS (issue #153; ``paths.file_path_conflict``).
     """
     conflict = file_path_conflict(path, snapshot)
     if conflict is not None:

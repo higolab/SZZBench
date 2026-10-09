@@ -12,7 +12,7 @@ file the scenario names), on Linux it wrote a second file.  The two spellings
 
 Both simulators now refuse a file below a file, a file at a directory, and a
 path that differs from one of the snapshot only in letter case or Unicode
-normalization, name by name (``validator.file_path_conflict``, with the key
+normalization, name by name (``paths.file_path_conflict``, with the key
 ``paths.file_system_key`` that ref names use since issue #229).  The graph
 generator, which ``generate-graph`` runs without the simulation and which
 ``--simulate`` itself runs for a scenario with commits Git computes, refuses
@@ -320,6 +320,36 @@ GRAPH_SHAPES = {
                                                "generated differs only in letter case")],
         "commit_generator of commit 'c1' cannot write 'generated/noise-01.txt': 'generated' differs only in letter "
         "case or Unicode normalization from 'Generated', which the worktree has"),
+    # two commit_generators of one import whose files differ only in spelling: macOS kept one file, fast-import
+    # wrote both entries, and verification passed (PR #234 review)
+    "commit_generator-directories-of-one-import": (
+        _graph_data(_graph_commit("c0", [], _write_file("a.txt", "a\n")),
+                    _graph_commit("c1", ["c0"], dict(GENERATOR, count=1),
+                                  dict(GENERATOR, count=1, path="Generated")),
+                    _graph_commit("c2", ["c1"], _write_file("b.txt", "b\n"))),
+        [("GE201", "commits[1].operations[1]", "commit_generator target Generated/noise-01.txt: its directory "
+                                               "Generated differs only in letter case")],
+        "commit_generator of commit 'c1' cannot write 'Generated/noise-01.txt' beside the files it generates: target "
+        "Generated/noise-01.txt: its directory Generated differs only in letter case"),
+    "commit_generator-names-of-one-import": (
+        _graph_data(_graph_commit("c0", [], _write_file("a.txt", "a\n")),
+                    _graph_commit("c1", ["c0"], dict(GENERATOR, count=1),
+                                  dict(GENERATOR, count=1, generator="Noise")),
+                    _graph_commit("c2", ["c1"], _write_file("b.txt", "b\n"))),
+        [("GE201", "commits[1].operations[1]", "commit_generator target generated/Noise-01.txt differs only in letter case")],
+        "commit_generator of commit 'c1' cannot write 'generated/Noise-01.txt' beside the files it generates: target "
+        "generated/Noise-01.txt differs only in letter case"),
+    # format_file reads and rewrites its file: on macOS it formatted src/Range.java (PR #234 review)
+    "format_file": (
+        _graph_data(_graph_commit("c0", [], _write_file("src/Range.java", "class Range {}   \n")),
+                    _graph_commit("c1", ["c0"], {"type": "format_file", "path": "src/range.java"})),
+        [("GE201", "commits[1].operations[0]", "format_file target does not exist: src/range.java")],
+        "format_file 'src/range.java': 'src/range.java' differs only in letter case"),
+    "format_file-directory": (
+        _graph_data(_graph_commit("c0", [], _write_file("src/Range.java", "class Range {}   \n")),
+                    _graph_commit("c1", ["c0"], {"type": "format_file", "path": "SRC/Range.java"})),
+        [("GE201", "commits[1].operations[0]", "format_file target does not exist: SRC/Range.java")],
+        "format_file 'SRC/Range.java': 'SRC' differs only in letter case"),
     # a path an operation reads: the simulation has no such file, and generation on macOS changed Range.java
     "replace": (
         _two_commits({"type": "replace", "path": "src/range.java", "old": "Range", "new": "Span"}),
@@ -334,6 +364,23 @@ GRAPH_SHAPES = {
         [("GE203", "commits[2]", "Generating the scenario with Git failed at commit 'c1': write_file 'src/range.java': "
                                  "'src/range.java' differs only in letter case")],
         "write_file 'src/range.java': 'src/range.java' differs only in letter case"),
+    # the review's merge variants: --simulate generates them, and generation refuses them now
+    "commit_generator-of-one-import-with-a-merge": (
+        _graph_data(_graph_commit("c0", [], RANGE),
+                    dict(_graph_commit("b1", ["c0"], OTHER), branch="side"),
+                    _graph_commit("c1", ["c0"], dict(GENERATOR, count=1), dict(GENERATOR, count=1, path="Generated")),
+                    _graph_commit("m1", ["c1", "b1"])),
+        [("GE203", "commits[2]", "Generating the scenario with Git failed at commit 'c1': commit_generator of commit "
+                                 "'c1' cannot write 'Generated/noise-01.txt' beside the files it generates")],
+        "commit_generator of commit 'c1' cannot write 'Generated/noise-01.txt' beside the files it generates"),
+    "format_file-with-a-merge": (
+        _graph_data(_graph_commit("c0", [], _write_file("src/Range.java", "class Range {}   \n")),
+                    dict(_graph_commit("b1", ["c0"], OTHER), branch="side"),
+                    _graph_commit("c1", ["c0"], {"type": "format_file", "path": "src/range.java"}),
+                    _graph_commit("m1", ["c1", "b1"])),
+        [("GE203", "commits[2]", "Generating the scenario with Git failed at commit 'c1': format_file 'src/range.java': "
+                                 "'src/range.java' differs only in letter case")],
+        "format_file 'src/range.java': 'src/range.java' differs only in letter case"),
 }
 
 
@@ -356,6 +403,13 @@ def test_validate_graph_simulate_and_generate_graph_give_one_verdict(tmp_path, n
     with pytest.raises(GraphGenerationError) as raised:
         generate_graph_repository(scenario, tmp_path / "out", force=True)
     assert generation_error in str(raised.value)
+
+
+def test_a_format_file_path_is_checked_like_the_other_paths():
+    """format_file was missing from PATH_FIELDS_BY_OPERATION: its path had no GE054 either (PR #234 review)."""
+    data = _graph_data(_graph_commit("c0", [], RANGE), _graph_commit("c1", ["c0"], {"type": "format_file", "path": "../Range.java"}))
+    assert [(code, location) for code, location, _ in _errors(validate_graph_static(data))] == \
+        [("GE054", "commits[1].operations[0].path")]
 
 
 def test_validate_graph_and_generate_graph_through_the_cli(tmp_path):

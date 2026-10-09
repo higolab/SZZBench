@@ -333,7 +333,11 @@ or directory of the snapshot in another spelling, compared name by name
 (`paths.file_system_key`, the comparison of tag names, GE158). The graph
 generator, which `generate-graph` runs without the simulation, refuses an
 operation whose path reaches an entry of the worktree spelt otherwise, before
-the operation changes anything.
+the operation changes anything (every operation with a path, `format_file`
+included), and a `commit_generator` file that meets another file of the same
+import in another spelling (`generated/` and `Generated/`, `noise-01.txt` and
+`Noise-01.txt`), which `git fast-import` would otherwise have written as one
+file on macOS.
 
 To rename a file in its letter case, delete it in one commit and write it in
 a later one. Within one commit the rename still depends on the platform, and

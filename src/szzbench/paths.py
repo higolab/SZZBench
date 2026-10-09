@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Collection
 import re
 import unicodedata
 from pathlib import Path, PurePosixPath
@@ -141,4 +142,45 @@ def another_spelling_on_disk(root: Path, relative: str) -> tuple[str, str] | Non
                 return None
             return "/".join(names[:depth + 1]), "/".join([*names[:depth], other])
         directory = directory / name
+    return None
+
+
+def file_path_conflict(path: str, files: Collection[str]) -> str | None:
+    """Why a worktree with the files ``files`` cannot take a file at ``path``, or None (issues #153, #175; the generator asks it too, PR #234 review).
+
+    Both simulators keep a snapshot as a flat dict of paths, which has no
+    directories and compares names as strings.  Generation writes to a file
+    system.  There ``path`` cannot lie below a file or be a directory:
+    generation stopped with ``File exists`` or ``Is a directory`` where the
+    classic simulator saw one more file (the graph simulator has refused both
+    since issue #175).  And macOS (Windows, for letter case) reads two names
+    with one ``file_system_key`` as one: ``src/a.java`` overwrote
+    ``src/A.java`` there and was a second file on Linux, where both simulators
+    saw a second file.  Names are compared one by one, so ``src/foo/B.java``
+    beside ``src/Foo/A.java`` is refused as well.  Writing a file of ``files``
+    again, spelt as it is there, is no conflict.  The message starts with
+    ``target``; the caller names the operation before it.
+    """
+    if path in files:
+        return None
+    names = path.split("/")
+    keys = [file_system_key(name) for name in names]
+    for other in files:
+        other_names = other.split("/")
+        depth = 0
+        while depth < min(len(names), len(other_names)) and file_system_key(other_names[depth]) == keys[depth]:
+            if other_names[depth] != names[depth]:
+                mine, theirs = "/".join(names[:depth + 1]), "/".join(other_names[:depth + 1])
+                kind = "file" if depth + 1 == len(other_names) else "directory"
+                # two normalizations of a name look alike: spell them out
+                spelt = "" if (mine + theirs).isascii() else f" (spelt {mine!a} and {theirs!a})"
+                target = path if mine == path else f"{path}: its directory {mine}"
+                return (f"target {target} differs only in letter case or Unicode normalization from the {kind} "
+                        f"{theirs}{spelt}: macOS (and Windows, for letter case) reads both as one name, so "
+                        "generation would depend on the platform")
+            depth += 1
+        if depth == len(other_names):
+            return f"target lies below the file {other}: {path}"
+        if depth == len(names):
+            return f"target is a directory: {path}"
     return None

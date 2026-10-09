@@ -54,6 +54,8 @@ PATH_FIELDS_BY_OPERATION: dict[str, list[str]] = {
     "chmod": ["path"],
     "write_binary_file": ["path"],
     "write_generated_text_file": ["path"],
+    # reads and rewrites the file: its path is checked like the others (PR #234 review)
+    "format_file": ["path"],
 }
 
 REQUIRED_FIELDS_BY_OPERATION: dict[str, list[str]] = {
@@ -132,7 +134,7 @@ def _refuse_another_spelling(repo_dir: Path, op: dict[str, Any]) -> None:
     a second file on Linux, and a ``replace`` in ``src/a.java`` changed
     ``src/A.java`` on macOS and failed on Linux: the generated repository
     depended on the platform.  ``validate-graph --simulate`` refuses the same
-    paths (``validator.file_path_conflict``), but ``generate-graph`` does not
+    paths (``paths.file_path_conflict``), but ``generate-graph`` does not
     run it, and a scenario with commits Git computes is simulated by
     generating it.  A path that is not valid is left to ``safe_join``.
     """

@@ -33,7 +33,7 @@ from .graph_validator import validate_graph_scenario_file
 from .operations import OperationError, normalize_newlines, type_label
 from .graph_verifier import verify_graph_generated_repo
 from .manifest import write_manifest
-from .paths import PathValidationError, another_spelling_on_disk, safe_join
+from .paths import PathValidationError, another_spelling_on_disk, file_path_conflict, safe_join
 
 
 class GraphGenerationError(RuntimeError):
@@ -797,6 +797,13 @@ def _refuse_a_collision_within_the_import(written: set[str], rel_path: str, owne
     if below is not None:
         raise GraphGenerationError(f"commit_generator of commit '{owner_id}' cannot write '{rel_path}': "
                                    f"it is a directory of {below}, a file it generates")
+    # Another spelling of a file or directory of the same import (generated/ and Generated/,
+    # noise-01.txt and Noise-01.txt): one name on macOS, where fast-import kept one file and
+    # verification passed, two on Linux (PR #234 review)
+    conflict = file_path_conflict(rel_path, written)
+    if conflict is not None:
+        raise GraphGenerationError(f"commit_generator of commit '{owner_id}' cannot write '{rel_path}' beside the files "
+                                   f"it generates: {conflict}")
 
 
 def _refuse_generated_path_below_a_file(repo_dir: Path, rel_path: str, owner_id: str) -> None:
