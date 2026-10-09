@@ -30,6 +30,9 @@ from szzbench.graph_validator import validate_graph_scenario_file, validate_grap
 
 ROOT = Path(__file__).resolve().parents[1]
 SZZG_0072 = yaml.safe_load(scenario_file("SZZG-0072").read_text(encoding="utf-8"))
+#: café with a precomposed é (NFC), and with e and a combining acute accent (NFD): two names to Git, one
+#: ref file to the file systems of macOS (PR #231 review).
+CAFE_NFC, CAFE_NFD = "caf\u00e9", "cafe\u0301"
 
 # The rows of the issue's table: a copy of SZZG-0072 (branches main and feature; commits c0, f1, f2, r2, c3;
 # `ref_lifecycle: {delete_branches: [feature]}`) with graph.ref_lifecycle replaced, and the one error it now gets.
@@ -173,6 +176,17 @@ MORE_CASES = {
                                                                [("GE158", "graph.ref_lifecycle.tags[0].name")]),
     "a tag named like the deleted branch": ({"delete_branches": ["feature"], "tags": [{"name": "feature", "commit": "f2"}]},
                                             [("GE158", "graph.ref_lifecycle.tags[0].name")]),
+    # PR #231 review: names macOS stores as one ref file, and a lock file in capitals
+    "two tags in two Unicode normalizations": ({"tags": [{"name": CAFE_NFC, "commit": "c0"}, {"name": CAFE_NFD, "commit": "c3"}]},
+                                               [("GE158", "graph.ref_lifecycle.tags[1].name")]),
+    "a tag below another in another normalization": ({"tags": [{"name": CAFE_NFC, "commit": "c0"},
+                                                               {"name": CAFE_NFD + "/rc", "commit": "c3"}]},
+                                                     [("GE158", "graph.ref_lifecycle.tags[1].name")]),
+    "two tags apart by a code point HFS+ ignores": ({"tags": [{"name": "v1", "commit": "c0"}, {"name": "v1\u200c", "commit": "c3"}]},
+                                                    [("GE158", "graph.ref_lifecycle.tags[1].name")]),
+    "a tag ending in .LOCK": ({"tags": [{"name": "v1.LOCK", "commit": "c0"}]}, [("GE157", "graph.ref_lifecycle.tags[0].name")]),
+    "a tag ending in .LOCK before the tag it would lock": ({"tags": [{"name": "v1.LOCK", "commit": "c0"}, {"name": "v1", "commit": "c3"}]},
+                                                           [("GE157", "graph.ref_lifecycle.tags[0].name")]),
 }
 
 
@@ -297,6 +311,17 @@ def test_tag_names_are_refused_exactly_where_git_check_ref_format_refuses_them(t
     assert sum(graph_scenario.tag_name_problem(name) is None for name in TAG_NAMES) >= 40     # both kinds are compared
 
 
+#: Names Git accepts as refs/tags/<name> that SZZBench refuses: on macOS and Windows their file is the lock
+#: file of another tag (v1.LOCK is refs/tags/v1.lock), so a tag created later fails with "File exists".
+PORTABLE_REFUSALS = ["v1.LOCK", "a/b.Lock", "x.LoCk", CAFE_NFC + ".LOCK", "rel/v2.lOcK"]
+
+
+def test_a_lock_suffix_in_any_letter_case_is_refused_although_git_accepts_it(tmp_path):
+    for name in PORTABLE_REFUSALS:
+        assert _git(tmp_path, "check-ref-format", f"refs/tags/{name}").returncode == 0, name
+        assert "ends with '.lock' in another spelling" in graph_scenario.tag_name_problem(name), name
+
+
 def test_git_tag_creates_every_name_szzbench_accepts(tmp_path):
     """The generator runs ``git tag <name> <hash>``, which adds two refusals to the ref format."""
     assert _git(tmp_path, "init", "-q", "--template=").returncode == 0
@@ -355,6 +380,48 @@ def test_the_generator_counts_the_other_problems(tmp_path, monkeypatch):
         generate_graph_repository(_write(tmp_path, _with_lifecycle(lifecycle)), tmp_path / "out")
     assert str(excinfo.value).endswith(" (GE153). No ref was changed. 3 more problem(s) in graph.ref_lifecycle; "
                                        "'szzbench validate-graph' lists them.")
+
+
+def _with_branch(branch: str, lifecycle) -> dict:
+    """SZZG-0072 with its feature branch renamed: the commits on it, and delete_branches if it names it."""
+    data = _with_lifecycle(lifecycle)
+    for commit in data["commits"]:
+        if commit.get("branch") == "feature":
+            commit["branch"] = branch
+    return data
+
+
+def test_a_tag_named_like_a_branch_in_another_normalization_is_an_error():
+    """The review's verified repository: branch café (NFC) at c3, tag café (NFD) at c0, and git rev-parse café
+    resolved to the tag.  A tag in the branch's own spelling is the same error."""
+    for tag in (CAFE_NFD, CAFE_NFC):
+        result = validate_graph_static(_with_branch(CAFE_NFC, {"tags": [{"name": tag, "commit": "c0"}]}))
+        assert _errors(result) == [("GE158", "graph.ref_lifecycle.tags[0].name")], tag
+    assert _errors(validate_graph_static(_with_branch(CAFE_NFC, {"tags": [{"name": "v1", "commit": "c0"}]}))) == []
+
+
+REVIEW_INPUTS = {
+    "duplicate in two normalizations": (_with_lifecycle({"tags": [{"name": CAFE_NFC, "commit": "c0"},
+                                                                  {"name": CAFE_NFD, "commit": "r2"}]}), "GE158"),
+    "prefix in two normalizations": (_with_lifecycle({"tags": [{"name": CAFE_NFC, "commit": "c0"},
+                                                               {"name": CAFE_NFD + "/rc", "commit": "r2"}]}), "GE158"),
+    "tag like a branch in another normalization": (_with_branch(CAFE_NFC, {"tags": [{"name": CAFE_NFD, "commit": "c0"}]}),
+                                                   "GE158"),
+    ".LOCK before the tag it would lock": (_with_lifecycle({"tags": [{"name": "v1.LOCK", "commit": "c0"},
+                                                                     {"name": "v1", "commit": "r2"}]}), "GE157"),
+}
+
+
+@pytest.mark.parametrize("case", list(REVIEW_INPUTS))
+def test_the_generator_refuses_the_review_inputs_before_it_changes_a_ref(tmp_path, monkeypatch, case):
+    """With validation bypassed, generation stops before the first tag, on every platform (PR #231 review)."""
+    data, code = REVIEW_INPUTS[case]
+    monkeypatch.setattr(graph_generator, "validate_graph_scenario_file", lambda path: (None, ValidationResult()))
+    with pytest.raises(GraphGenerationError) as excinfo:
+        generate_graph_repository(_write(tmp_path, data), tmp_path / "out")
+    assert f"({code}). No ref was changed." in str(excinfo.value)
+    refs = git(tmp_path / "out" / "repo", "for-each-ref", "--format=%(refname)").split()
+    assert not [ref for ref in refs if ref.startswith("refs/tags/")]
 
 
 # --- GW151 reads the section too ------------------------------------------------------------

@@ -429,7 +429,10 @@ graph:
   accepts, is listed once, and is no branch name of the scenario, deleted or
   kept. A tag named like a branch would make the name ambiguous: Git reads a
   bare `main` as the tag `main`, not the branch. Names are compared ignoring
-  letter case, as macOS and Windows compare the files Git stores refs in.
+  letter case and Unicode normalization, as macOS compares the files Git
+  stores refs in (Windows ignores letter case), and a component that ends with
+  `.lock` in any spelling is refused, since its file would be another tag's
+  lock file there.
   Until issue #229 only the generator read the section: a value that was not
   an object, or a misspelt key, was ignored, and unknown branch names or
   commit ids were errors at generation only.

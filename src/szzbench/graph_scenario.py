@@ -4,8 +4,10 @@ from collections.abc import Collection
 from pathlib import Path
 from typing import Any
 import difflib
+import unicodedata
 
 from .operations import type_label
+from .paths import _HFS_IGNORED
 from .scenario import load_yaml
 from .findings import ValidationResult
 
@@ -126,6 +128,20 @@ _REF_NAME_FORBIDDEN = {" ": "a space", "~": "'~'", "^": "'^'", ":": "':'", "?": 
                        "\\": "a backslash", "\x7f": "the control character DEL"}
 
 
+def ref_name_key(name: str) -> str:
+    """``name`` as the file systems of macOS compare the files Git stores refs in.
+
+    APFS and HFS+ ignore letter case and Unicode normalization (``café`` with a
+    precomposed ``é`` and ``café`` with ``e`` and a combining accent are one
+    file), and HFS+ ignores some invisible code points as well (#135).  The key
+    is Unicode's canonical caseless match, NFD(casefold(NFD(name))), of the name
+    without those code points; Windows, which ignores letter case only, is
+    covered by it too (PR #231 review).
+    """
+    visible = "".join(ch for ch in name if ch not in _HFS_IGNORED)
+    return unicodedata.normalize("NFD", unicodedata.normalize("NFD", visible).casefold())
+
+
 def tag_name_problem(name: str) -> str | None:
     """Why ``git tag <name>`` refuses ``name``, or None when it accepts it.
 
@@ -161,6 +177,11 @@ def tag_name_problem(name: str) -> str | None:
             return f"its component '{component}' starts with '.'"
         if component.endswith(".lock"):
             return f"its component '{component}' ends with '.lock'"
+        if ref_name_key(component).endswith(".lock"):
+            # Git accepts v1.LOCK, but on macOS and Windows its file is v1's lock file, so a
+            # later tag v1 fails with Git's "File exists" after the first one was created (PR #231 review)
+            return (f"its component '{component}' ends with '.lock' in another spelling, which a file system that "
+                    "ignores letter case or Unicode normalization (macOS; Windows ignores case) reads as Git's lock file")
     if name.endswith("."):
         return "it ends with '.'"
     return None
@@ -270,29 +291,31 @@ def _tag_name_collision(name: str, earlier: list[tuple[int, str]], loc: str, bra
                         deleted: Collection[str]) -> str | None:
     """Why ``name`` cannot sit beside the earlier tags and the branches, or None.
 
-    Names are compared ignoring letter case, as a case-insensitive file system
-    (macOS, Windows) compares the files Git stores refs in: there, ``V1`` is
-    the tag ``v1``, and a tag ``Main`` is what Git finds first for ``main``
-    (issue #175 made a case-only rename an error for the same reason).
+    Names are compared by ``ref_name_key``, as the file systems of macOS and
+    Windows compare the files Git stores refs in: there, ``V1`` is the tag
+    ``v1``, ``café`` is ``café`` spelt with a combining accent, and a tag
+    ``Main`` is what Git finds first for ``main`` (issue #175 made a case-only
+    rename an error for the same reason; PR #231 review added normalization).
     """
-    folded = name.casefold()
+    key = ref_name_key(name)
     for j, other in earlier:
         if other == name:
             return f"is the name of {loc}[{j}] as well; Git keeps one tag per name."
-        if other.casefold() == folded:
-            return (f"differs from {loc}[{j}].name '{other}' only in letter case: a case-insensitive file system "
-                    "(macOS, Windows) stores both as one ref, so generation would depend on the platform.")
-        if folded.startswith(other.casefold() + "/") or other.casefold().startswith(folded + "/"):
+        other_key = ref_name_key(other)
+        if other_key == key:
+            return (f"differs from {loc}[{j}].name '{other}' only in letter case or Unicode normalization: macOS "
+                    "(and Windows, for letter case) stores both as one ref, so generation would depend on the platform.")
+        if key.startswith(other_key + "/") or other_key.startswith(key + "/"):
             return (f"and {loc}[{j}].name '{other}' cannot both be tags: Git stores a ref as a file, and the one "
                     "would be a directory of the other.")
-    matches = sorted(branch for branch in set(branches) if branch.casefold() == folded)
+    matches = sorted(branch for branch in set(branches) if ref_name_key(branch) == key)
     if not matches:
         return None
     branch = name if name in matches else matches[0]
-    same = "is the name of" if branch == name else "differs only in letter case from"
+    same = "is the name of" if branch == name else "differs only in letter case or Unicode normalization from"
     if branch in deleted:
         return (f"{same} the branch '{branch}', which delete_branches deletes: commit-map.json records commits on "
                 f"the branch '{branch}', and the repository would have a tag of that name instead.")
-    where = "" if branch == name else " on a case-insensitive file system (macOS, Windows)"
+    where = "" if branch == name else " on macOS (and on Windows, for letter case)"
     return (f"{same} the branch '{branch}': the name would be ambiguous, and{where} Git reads a bare "
             f"'{branch}' as the tag (git log {branch} shows the tagged commit, not the branch tip).")
