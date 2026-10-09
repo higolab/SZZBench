@@ -22,6 +22,8 @@ a scenario that exercises every file operation and for every shipped one.
 from __future__ import annotations
 
 import hashlib
+import os
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
@@ -326,8 +328,40 @@ def test_every_file_operation_is_simulated_as_generated(tmp_path):
     assert {path for path, mode in modes.items() if mode == "100755"} == {"src/B.java", "src/D.java"}
 
 
+SHIPPED_TEST = "test_the_simulation_of_a_shipped_scenario_is_its_generated_history"
+
+
+@pytest.fixture(scope="module")
+def shipped_histories(request, tmp_path_factory):
+    """The selected shipped scenarios, generated in threads: ``(root, {path: commit map or exception})``.
+
+    Generating the 146 shipped scenarios one after another took about a minute,
+    nearly all of this module's time; threads cut that to a third (PR #226
+    review).  ``generate_graph_repository`` keeps its state in its own output
+    directory and runs Git in subprocesses, so the generations do not interfere.
+    Only the scenarios whose test was selected are generated, so that ``-k``
+    stays quick.  A generation that fails is re-raised by its own test.
+    """
+    selected = sorted({item.callspec.params["path"] for item in request.session.items
+                       if getattr(item, "originalname", None) == SHIPPED_TEST and hasattr(item, "callspec")})
+    root = tmp_path_factory.mktemp("shipped")
+
+    def generate(path: Path):
+        try:
+            commit_map, _ = generate_graph_repository(path, root / path.parent.name, force=True, verify=False)
+        except Exception as exc:
+            return exc
+        return commit_map
+
+    with ThreadPoolExecutor(max_workers=min(8, os.cpu_count() or 1)) as pool:
+        return root, dict(zip(selected, pool.map(generate, selected)))
+
+
 @pytest.mark.parametrize("path", GRAPH_SCENARIOS, ids=lambda p: p.parent.name)
-def test_the_simulation_of_a_shipped_scenario_is_its_generated_history(tmp_path, path):
+def test_the_simulation_of_a_shipped_scenario_is_its_generated_history(shipped_histories, path):
+    root, generated = shipped_histories
+    commit_map = generated[path]
+    if isinstance(commit_map, Exception):
+        raise commit_map
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
-    commit_map, _ = generate_graph_repository(path, tmp_path / "out", force=True, verify=False)
-    assert _drift(data, tmp_path / "out/repo", commit_map) == []
+    assert _drift(data, root / path.parent.name / "repo", commit_map) == []
