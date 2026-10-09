@@ -254,7 +254,8 @@ warns once that they cannot be matched to the generated repositories.
 
 A generated output that is **stale** -- it has no manifest, its scenario file
 or the generator's code has changed since it was generated, or it has lost part
-of what the manifest describes, such as its repository or one of its commits
+of what the manifest describes, such as its repository or one of its commits,
+or no ref reaches one of its commits any more (issue #167)
 (`docs/generator-options.md` §6) -- is not scored at all: the report gets an
 error naming the scenario and the reason, and `szzbench generate-all-repos`
 regenerates it (issue #93). With `--include-generated`, every output directory

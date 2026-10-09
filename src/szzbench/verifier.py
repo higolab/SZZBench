@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 import json
+import math
 
 from .findings import ValidationResult
-from .gitutils import GitError, git_blame_line, git_hash_exists, git_message, git_parent, git_show
+from .gitutils import (GitError, git_blame_line, git_hash_exists, git_message, git_parent, git_refs, git_show,
+                       parse_author, parse_timestamp, run_git)
 from .operations import find_all_occurrences
 from .scenario import load_yaml
 from .validator import DUPLICATE_STATEMENT_FACTOR_RE, FAULT_REWRITE_FACTOR_RE, factor_matches, graph_scenario_guard
@@ -20,6 +23,126 @@ def _load_commit_map(path: Path) -> tuple[dict, ValidationResult]:
         result.error("E600", f"Invalid commit-map.json: {exc}", str(path))
         return {}, result
     return data, result
+
+@dataclass
+class _Commit:
+    """What Git records for a commit, as the verifier compares it with the commit map (issue #167)."""
+    hash: str
+    parents: list[str]
+    author_name: str
+    author_email: str
+    author_epoch: int
+    author_iso: str
+    committer_epoch: int
+    committer_iso: str
+
+def _read_commit(repo_dir: Path, revision: str) -> _Commit:
+    # %an / %ae: the identity as recorded (a .mailmap changes only %aN / %aE)
+    out = run_git(repo_dir, ["log", "-1", "--format=%H%x00%P%x00%an%x00%ae%x00%at%x00%aI%x00%ct%x00%cI",
+                             revision]).stdout
+    fields = out.rstrip("\n").split("\0")
+    try:
+        full, parents, name, email, author_epoch, author_iso, committer_epoch, committer_iso = fields
+        return _Commit(full, parents.split(), name, email, int(author_epoch), author_iso, int(committer_epoch),
+                       committer_iso)
+    except ValueError as exc:
+        raise GitError(f"git log -1 {revision} printed {out!r}") from exc
+
+#: What Git drops from either end of an author's name and e-mail: control
+#: characters, white space and some punctuation, which differs between
+#: versions (Git 2.39 drops ``.``, ``,``, ``:`` and ``;`` as well, Git 2.50
+#: keeps them: ``Tolkien Jr.``).  The comparison drops all of them on both
+#: sides, and ``<``, ``>`` and newlines anywhere, as every version does.
+_IDENT_END_CRUD = "".join(chr(code) for code in range(33)) + ".,:;<>\"\\'"
+
+def _ident_part(text: str) -> str:
+    return "".join(ch for ch in text.strip(_IDENT_END_CRUD) if ch not in "\n<>")
+
+def _same_instant(recorded, epoch: int) -> bool:
+    """``recorded``, a timestamp of the commit map, is the second ``epoch`` Git recorded.
+
+    Compared as instants, so ``Z``, ``+00:00`` and any other offset of the
+    same instant are equal; Git keeps whole seconds and drops a fraction.
+    """
+    try:
+        return math.floor(parse_timestamp(recorded).timestamp()) == epoch
+    except (GitError, ArithmeticError, OSError, ValueError):
+        return False
+
+def _verify_recorded_metadata(cid: str, entry: dict, commit: _Commit, result: ValidationResult) -> None:
+    """commit-map.json records the commit's own author and dates (issue #167).
+
+    ``role`` and ``date`` record what the scenario says, not what Git
+    records, and are not compared.
+    """
+    recorded = entry.get("author")
+    if isinstance(recorded, str):
+        name, email = parse_author(recorded)
+        same = ((_ident_part(name), _ident_part(email))
+                == (_ident_part(commit.author_name), _ident_part(commit.author_email)))
+    else:
+        same = False
+    if not same:
+        result.error("E605", f"commit-map.json records author {recorded!r} for '{cid}', but the commit's author is "
+                     f"'{commit.author_name} <{commit.author_email}>'.", f"commits.{cid}")
+    for field, epoch, actual in (("author_date", commit.author_epoch, commit.author_iso),
+                                 ("committer_date", commit.committer_epoch, commit.committer_iso)):
+        if not _same_instant(entry.get(field), epoch):
+            result.error("E605", f"commit-map.json records {field} {entry.get(field)!r} for '{cid}', but the commit "
+                         f"has {actual}.", f"commits.{cid}")
+
+def _verify_as_generated(repo_dir: Path, scenario: dict, resolved: dict[str, str], result: ValidationResult) -> None:
+    """The repository is still as the generator left it (issue #167).
+
+    Every commit of the scenario is reachable from a ref, the default branch
+    points at the last commit and is checked out, and neither the index nor
+    the working tree has a change.  An SZZ tool that checks out, commits or
+    leaves files in the repository fails this; the output still counts as
+    fresh for ``evaluate``, which asks only that every commit is there and
+    reachable (``manifest.staleness``).
+    """
+    try:
+        reachable = set(run_git(repo_dir, ["rev-list", "--all"]).stdout.split())
+    except GitError as exc:
+        result.error("E604", f"Cannot list the commits reachable from the refs: {exc}", str(repo_dir))
+        reachable = set(resolved.values())
+    for cid, full in resolved.items():
+        if full not in reachable:
+            result.error("E604", f"Logical commit '{cid}' ({full}) is not reachable from any branch, tag or HEAD; "
+                         "`git log --all` does not show it.", f"commits.{cid}")
+    repository = scenario.get("repository") if isinstance(scenario.get("repository"), dict) else {}
+    branch = str(repository.get("default_branch") or "main")         # the branch init_repo creates
+    commits = scenario.get("commits") or []
+    last = commits[-1].get("id") if commits and isinstance(commits[-1], dict) else None
+    try:
+        tip = git_refs(repo_dir)["branches"].get(branch)
+    except GitError as exc:
+        result.error("E607", f"Cannot read the branches: {exc}", "repository.default_branch")
+    else:
+        if tip is None:
+            result.error("E607", f"The default branch '{branch}' does not exist.", "repository.default_branch")
+        elif last in resolved and tip != resolved[last]:
+            result.error("E607", f"The default branch '{branch}' points at {tip}, not at the last commit '{last}' "
+                         f"({resolved[last]}).", "repository.default_branch")
+    try:
+        head = run_git(repo_dir, ["symbolic-ref", "-q", "HEAD"]).stdout.strip()
+    except GitError:                                                   # exit 1: a detached HEAD
+        head = ""
+    if head != f"refs/heads/{branch}":
+        where = f"on {head}" if head else "detached"
+        result.error("E608", f"HEAD is {where}; the generator leaves the default branch '{branch}' checked out.",
+                     "repository.default_branch")
+    try:
+        # --no-optional-locks: a plain status refreshes the index on disk, and
+        # verify writes nothing into the repository
+        changes = run_git(repo_dir, ["--no-optional-locks", "status", "--porcelain"]).stdout.splitlines()
+    except GitError as exc:
+        result.error("E609", f"Cannot read the status of the working tree: {exc}", str(repo_dir))
+        return
+    if changes:
+        shown = "; ".join(line.strip() for line in changes[:3]) + ("; ..." if len(changes) > 3 else "")
+        result.error("E609", f"The index or the working tree has {len(changes)} change(s) ({shown}); the generator "
+                     "leaves both clean.", str(repo_dir))
 
 def verify_generated_repo(repo_dir: Path, scenario_path: Path, commit_map_path: Path | None = None) -> ValidationResult:
     result = ValidationResult()
@@ -47,8 +170,13 @@ def verify_generated_repo(repo_dir: Path, scenario_path: Path, commit_map_path: 
     result.extend(cm_result)
     if cm_result.has_errors():
         return result
+    # the full hash of every commit that exists, by logical id, for the checks of
+    # the repository as a whole (issue #167)
+    resolved: dict[str, str] = {}
+    previous: str | None = ""        # the parent the next commit must have: "" for none, None when unknown
     for commit_spec in scenario.get("commits", []):
         cid = commit_spec.get("id")
+        parent, previous = previous, None
         if cid not in commit_map:
             result.error("E600", f"commit-map.json does not contain logical commit id '{cid}'.", f"commits.{cid}")
             continue
@@ -63,8 +191,17 @@ def verify_generated_repo(repo_dir: Path, scenario_path: Path, commit_map_path: 
             actual_message = git_message(repo_dir, actual_hash)
             if actual_message != commit_spec.get("message"):
                 result.error("E602", f"Commit message mismatch for '{cid}'.", f"commits.{cid}.message")
+            commit = _read_commit(repo_dir, actual_hash)
         except GitError as exc:
             result.error("E601", f"Cannot inspect commit '{cid}': {exc}", f"commits.{cid}")
+            continue
+        resolved[cid] = previous = commit.hash
+        _verify_recorded_metadata(cid, commit_map[cid], commit, result)
+        if parent is not None and commit.parents != ([parent] if parent else []):
+            wanted = f"the previous commit ({parent})" if parent else "none, as the first commit"
+            result.error("E606", f"Commit '{cid}' has parent(s) {', '.join(commit.parents) or 'none'}; the generator "
+                         f"gives it {wanted}.", f"commits.{cid}")
+    _verify_as_generated(repo_dir, scenario, resolved, result)
     for i, bug in enumerate(scenario.get("bugs", [])):
         loc = f"bugs[{i}]"
         bid = bug.get("id", f"<bug[{i}]>")

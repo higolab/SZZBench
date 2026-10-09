@@ -616,19 +616,40 @@ since the manifest stays behind when the rest is moved, deleted or replaced:
 | checked | stale when |
 |---|---|
 | `repo/.git` | missing, or not a repository |
-| the commits | a commit of the commit map is not in the repository (one `git cat-file --batch-check`) |
+| the commits | a commit of the commit map is not in the repository (one `git cat-file --batch-check`), or no ref reaches it any more (one `git rev-list --all`: every branch and tag, and `HEAD`; not the reflog). A graph scenario's `graph.ref_lifecycle` may leave commits unreachable on purpose (SZZG-0072, SZZG-0122); only the commits it leaves reachable are asked for |
 | `metadata/commit-map.json` | missing, unreadable, or its digest is not the recorded `repository_id` |
 | `metadata/scenario.yml` or `metadata/scenario.graph.yml` | missing, or not the scenario file the manifest records |
 | `metadata/graph-map.json` (graph scenarios) | missing |
 
 Extra commits, branches and tags do not make an output stale, and neither does
 a moved `HEAD`: an SZZ tool may check out, commit or branch in the repository
-it analyses, and every commit the output was generated with is still there.
-`verify-graph` asks a different question: whether the repository is still the
-one generation left. It reports a missing, moved or extra branch or tag, a
-moved `HEAD`, and a dirty index or working tree as errors (issue #176). To
-verify an output again after a tool has worked in it, regenerate it
-(`generate-graph --force`, or `generate-all-repos --overwrite`).
+it analyses, and every commit the output was generated with is still there and
+still reachable from a ref. Moving a ref back past one of those commits is
+different. After `git reset --hard HEAD~2` the last two commits are dangling,
+and after `git commit --amend` the replaced one is: `git log --all` no longer
+shows them, so a tool cannot find them, and `git gc` prunes them once their
+reflog entries expire. Until issue #167 such an output stayed fresh, and was
+scored, until the pruning; now it is stale as soon as no ref reaches one of its
+commits ("its repository no longer reaches N of the M commits it was generated
+with").
+
+The commit map's other fields (`author`, the dates, `role`) are not part of the
+repository id, which digests the history alone, so editing them does not make
+an output stale. `szzbench verify` compares the author and the dates with the
+commits.
+
+`szzbench verify` asks a stricter question than staleness: whether the
+repository is still as the generator left it -- the default branch at the last
+commit and checked out, every commit reachable, the index and the working tree
+clean, and the commit map's author and dates those of the commits (E604-E609 in
+[validation.md](validation.md)). An output an SZZ tool has checked out or
+committed in fails `verify` and is still fresh.
+
+`verify-graph` likewise asks whether the repository is still the one generation
+left. It reports a missing, moved or extra branch or tag, a moved `HEAD`, and a
+dirty index or working tree as errors (issue #176). To verify an output again
+after a tool has worked in it, regenerate it (`generate-graph --force`, or
+`generate-all-repos --overwrite`).
 
 - `generate-all-repos` regenerates a stale output instead of skipping it and
   prints why ("Regenerated ... the old output was stale: ..."). An up-to-date

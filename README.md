@@ -385,7 +385,7 @@ generated-input-repos/SZZ-0006/default/
 
 ### verify
 
-Verify that a generated repository corresponds to `scenario.yml`.
+Verify that a generated repository corresponds to `scenario.yml` and is still as the generator left it: every commit of `commit-map.json` reachable from a ref, with the author and dates the map records, the default branch at the last commit and checked out, and a clean index and working tree (E600–E609 in [docs/validation.md](docs/validation.md)). A repository an SZZ tool has checked out or committed in fails `verify`, but `evaluate` still scores it as long as every commit is reachable.
 
 ```bash
 szzbench verify   generated-input-repos/SZZ-0006/default/repo   --scenario scenarios/SZZ-0006/scenario.yml
@@ -1104,7 +1104,7 @@ generated-input-repos/SZZ-0006/default/
 
 ### verify
 
-生成済みリポジトリが `scenario.yml` と対応しているかを検査します。
+生成済みリポジトリが `scenario.yml` と対応し、生成した直後の状態のままかを検査します。`commit-map.json` の全コミットが ref から辿れ、記録された author と日時を持つこと、既定ブランチが最後のコミットを指してチェックアウトされていること、index とワークツリーに変更が無いことを確かめます（[docs/validation.md](docs/validation.md) の E600–E609）。SZZ ツールが checkout やコミットをしたリポジトリは `verify` に通りませんが、全コミットが辿れる限り `evaluate` は採点します。
 
 ```bash
 szzbench verify   generated-input-repos/SZZ-0006/default/repo   --scenario scenarios/SZZ-0006/scenario.yml
