@@ -214,7 +214,12 @@ def validate_static(data: dict[str, Any], *, scenario_path: Path | None = None) 
             commit_by_id[cid] = commit
             commit_ids.append(cid)
         role = commit.get("role")
-        if role is not None and role not in ALLOWED_ROLES:
+        if role is not None and not isinstance(role, str):
+            # a list or a mapping raised TypeError on the set lookup below, out of
+            # validate --json (issue #150)
+            result.error("E030", f"Commit role must be a string, one of ALLOWED_ROLES, not {type_label(role)}.",
+                         f"{loc}.role")
+        elif role is not None and role not in ALLOWED_ROLES:
             result.error("E030", f"Unknown commit role '{role}'.", f"{loc}.role")
         operations = commit.get("operations")
         if not isinstance(operations, list):

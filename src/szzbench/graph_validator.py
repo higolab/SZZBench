@@ -179,9 +179,15 @@ def validate_graph_static(data: dict[str, Any], *, scenario_path: Path | None = 
                     result.error("GE038", f"Parent '{parent}' must appear before commit '{cid}' for graph generation.", f"{loc}.parents")
                 else:
                     result.error("GE039", f"Unknown parent commit '{parent}'.", f"{loc}.parents")
-        if commit.get("role") == "merge" and len(parents) < 2:
+        role = commit.get("role")
+        if role is not None and not isinstance(role, str):
+            # The graph suite has no role vocabulary, but a role is text: a list or a
+            # mapping raised TypeError in the merge-like test below, and passed
+            # without a finding on a commit with one parent (issue #150)
+            result.error("GE041", f"commit.role must be a string when present, not {type_label(role)}.", f"{loc}.role")
+        elif role == "merge" and len(parents) < 2:
             result.warning("GW040", f"Commit '{cid}' has role merge but fewer than two parents.", loc)
-        if len(parents) >= 2 and commit.get("role") not in {"merge", "bug_fixing", "bug_introducing", "squash_merge"}:
+        elif len(parents) >= 2 and role not in {"merge", "bug_fixing", "bug_introducing", "squash_merge"}:
             result.warning("GW041", f"Commit '{cid}' has multiple parents but role is not explicitly merge-like.", loc)
         for ref_key in ["cherry_pick_of", "backport_of"]:
             ref = commit.get(ref_key)
