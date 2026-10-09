@@ -26,6 +26,7 @@ import urllib.request
 from pathlib import Path
 
 import pytest
+import yaml
 
 from szzbench.generator import generate_repository
 
@@ -37,7 +38,9 @@ MODEL = EDITOR / "src/scenarioModel.ts"
 DRIVER = """
 import * as model from %(model)s;
 const overrides = JSON.parse(process.argv[2] || '{}');
-const state = { ...model.initialState(), ...overrides };
+// fault types picked from the page's menu in turn, after the overrides (issue #192)
+const picks = JSON.parse(process.argv[3] || '[]');
+const state = picks.reduce((s, type) => model.selectFaultType(s, type), { ...model.initialState(), ...overrides });
 process.stdout.write(JSON.stringify({
   yaml: model.generateScenarioYaml(state),
   readme: model.generateReadme(state),
@@ -58,10 +61,11 @@ def _node_runs_typescript() -> bool:
 pytestmark = pytest.mark.skipif(not _node_runs_typescript(), reason="needs a Node.js that runs TypeScript (22.18+)")
 
 
-def _model(tmp_path: Path, **overrides) -> dict:
+def _model(tmp_path: Path, picks: tuple[str, ...] = (), **overrides) -> dict:
     driver = tmp_path / "driver.mjs"
     driver.write_text(DRIVER % {"model": json.dumps(MODEL.as_uri())}, encoding="utf-8")
-    completed = subprocess.run(["node", str(driver), json.dumps(overrides)], capture_output=True, text=True, check=True)
+    completed = subprocess.run(["node", str(driver), json.dumps(overrides), json.dumps(list(picks))],
+                               capture_output=True, text=True, check=True)
     return json.loads(completed.stdout)
 
 
@@ -128,6 +132,102 @@ def test_the_category_is_a_code_from_the_vocabulary(tmp_path):
     generated = _model(tmp_path, tier="control", categoryCode="S3")
     assert '  category: "Intermediate noise and history noise"' in generated["yaml"]
     assert '  category_code: "S3"' in generated["yaml"]
+
+
+# ---------------------------------------------------------------------------
+# multi-line statements and the omission example (issue #192)
+# ---------------------------------------------------------------------------
+
+HEAD = "package example;\n\npublic class Range {\n    public boolean contains(int value, int min, int max) {\n"
+TAIL = "        return value >= min && value <= max;\n    }\n}\n"
+GUARD = "        if (value < 0) {\n            return false;\n        }\n"
+ENDINGS = pytest.mark.parametrize("ending", ["\n", ""], ids=["final-newline", "no-final-newline"])
+
+
+def _version(index: int, role: str, message: str, source: str) -> dict:
+    return {"id": f"c{index}", "role": role, "message": message, "author": "Alice <alice@example.com>", "date": "",
+            "source": source}
+
+
+def _strict_and_generate(tmp_path: Path, path: Path) -> None:
+    completed = _cli("validate", "--lint", "--strict", str(path))
+    assert completed.returncode == 0, completed.stdout
+    commit_map, verify = generate_repository(path, tmp_path / "out", force=True)
+    assert sorted(commit_map) == ["c0", "c1", "c2"] and not verify.has_errors(), verify.to_dict()
+
+
+@ENDINGS
+def test_a_multi_line_omission_statement_keeps_its_indentation(tmp_path, ending):
+    """The issue's reproduction.  The statement as the source indents it used to
+    go under ``|`` with eight spaces more, YAML stripped the method's indentation
+    on load, and E311 refused the save.  With or without a final newline, it is
+    stored as typed and found in the file."""
+    statement = GUARD.rstrip("\n") + ending
+    generated = _model(tmp_path, tier="control", faultType="omission", categoryCode="S2",
+                       factors=["single-bic", "single-bfc", "omission-bug"],
+                       missingStatement=statement, addedStatement=statement,
+                       versions=[_version(0, "initial", "Add the range check with the guard", HEAD + GUARD + TAIL),
+                                 _version(1, "bug_introducing", "Drop the negative guard", HEAD + TAIL),
+                                 _version(2, "bug_fixing", "Restore the negative guard", HEAD + GUARD + TAIL)])
+    path = _save_as_the_server_does(tmp_path, generated)
+    bug = yaml.safe_load(path.read_text(encoding="utf-8"))["bugs"][0]
+    assert bug["fault"]["missing_statement"] == statement and bug["fix"]["added_statement"] == statement
+    assert "OK: added statement appears in BFC version" in generated["checks"]
+    _strict_and_generate(tmp_path, path)
+
+
+@ENDINGS
+def test_a_multi_line_line_modification_statement_is_not_folded(tmp_path, ending):
+    """A double-quoted scalar over two lines folded the break to a space on load,
+    so neither statement was in the file (E301, E311).  The fault keeps the
+    first line's indentation, the fix starts at ``return`` as SZZ-0081's does."""
+    def wrapped(low: str, high: str) -> str:
+        return HEAD + f"        return value {low} min\n                && value {high} max;\n    }}\n}}\n"
+
+    fault = "        return value > min\n                && value < max;" + ending
+    fix = "return value >= min\n                && value <= max;" + ending
+    versions = [_version(0, "initial", "Add the range check", wrapped(">=", "<=")),
+                _version(1, "bug_introducing", "Exclude the bounds from the range check", wrapped(">", "<")),
+                _version(2, "bug_fixing", "Include the bounds in the range check", wrapped(">=", "<="))]
+    generated = _model(tmp_path, tier="control", faultStatement=fault, fixStatement=fix, versions=versions)
+    path = _save_as_the_server_does(tmp_path, generated)
+    bug = yaml.safe_load(path.read_text(encoding="utf-8"))["bugs"][0]
+    assert (bug["fault"]["statement"], bug["fix"]["statement"]) == (fault, fix)
+    assert bug["expected_szz"]["line_level"]["faulty_statements"] == [fault]
+    assert {"OK: fault statement appears in BIC version",
+            "OK: fix statement appears in BFC version"} <= set(generated["checks"])
+    _strict_and_generate(tmp_path, path)
+
+
+def test_picking_omission_starts_from_an_example_that_passes_strict_lint(tmp_path):
+    """The omission defaults named ``s == null``, which the Range source never
+    had, and the line-modification history cannot carry an omission oracle in
+    any case: its fix modifies a line, and an omission fix only adds (W420)."""
+    generated = _model(tmp_path, picks=("omission",), tier="control")
+    # as SZZ-0047 writes them: the missing statement on its own, the added one as the method indents it
+    assert '      missing_statement: |2\n        if (min > max) {' in generated["yaml"]
+    assert '      added_statement: |2\n                if (min > max) {' in generated["yaml"]
+    assert [check for check in generated["checks"] if check.startswith("WARN")] == [
+        "WARN: write a message describing the change for c3"]                           # the appended version only
+    _strict_and_generate(tmp_path, _save_as_the_server_does(tmp_path, generated))
+
+
+def test_picking_a_fault_type_swaps_only_the_example_fields_left_alone(tmp_path):
+    there_and_back = _model(tmp_path, picks=("omission", "line_modification"), tier="control")
+    assert there_and_back["yaml"] == _model(tmp_path, tier="control")["yaml"]
+    edited = _model(tmp_path, picks=("omission",), tier="control", bugTitle="Reversed bounds slip through")
+    assert '    title: "Reversed bounds slip through"' in edited["yaml"]                     # the author's, kept
+    assert '    message: "Add the range class"' in edited["yaml"]                            # the example's, swapped
+
+
+def test_the_checks_warn_where_validate_refuses_the_statement(tmp_path):
+    """The guard as SZZ-0047 writes a missing statement, on its own, is not in
+    the BFC's file: the page says so before the save is refused with E311."""
+    on_its_own = 'if (min > max) {\n    throw new IllegalArgumentException("min must not exceed max");\n}\n'
+    generated = _model(tmp_path, picks=("omission",), tier="control", addedStatement=on_its_own)
+    assert ("WARN: added statement does not appear in BFC version (it is matched exactly, indentation included)"
+            in generated["checks"])
+    assert [finding["code"] for finding in _lint(_save_as_the_server_does(tmp_path, generated))["findings"]] == ["E311"]
 
 
 # ---------------------------------------------------------------------------
@@ -199,6 +299,16 @@ def test_saving_validates_writes_the_header_and_inserts_one_index_entry(server, 
                      "  - line-modification", "  difficulty: medium"]
     assert after[:start] + after[start + 12:] == before      # every other line, byte for byte
     assert after[start + 12] == "- id: SZZ-0005"             # inserted in id order
+
+
+def test_saving_the_omission_example_writes_it(server, tmp_path):
+    """Picking omission left statements that no version contained, and the save
+    endpoint answered 400 (issue #192)."""
+    base, root = server
+    generated = _model(tmp_path, picks=("omission",), tier="control")
+    status, data = _post(base, {"id": "SZZ-0002", "scenarioYaml": generated["yaml"], "readme": generated["readme"]})
+    assert status == 200 and data["findings"] == [], data
+    assert (root / "scenarios/SZZ-0002/scenario.yml").read_text(encoding="utf-8") == generated["yaml"]
 
 
 def test_saving_without_a_tier_is_refused(server, tmp_path):

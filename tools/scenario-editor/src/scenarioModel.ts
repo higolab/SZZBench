@@ -93,6 +93,28 @@ public class Range {
 }
 `;
 
+// The omission example (issue #192): c1 adds the range check without rejecting
+// reversed bounds, and c2 adds the guard -- adds only, as an omission fix does
+// (W420), which is why it cannot share the line-modification example's history.
+// The added statement is looked up in c2's file, so it keeps the method's
+// indentation; the missing statement is absent at the BIC by definition and is
+// written on its own, as SZZ-0047 writes both.
+const MISSING_GUARD = `if (min > max) {
+    throw new IllegalArgumentException("min must not exceed max");
+}
+`;
+
+const ADDED_GUARD = `        if (min > max) {
+            throw new IllegalArgumentException("min must not exceed max");
+        }
+`;
+
+const EMPTY_RANGE = `package example;
+
+public class Range {
+}
+`;
+
 export function categoryName(code: string): string {
   return CATEGORIES.find(([c]) => c === code)?.[1] ?? '';
 }
@@ -152,10 +174,62 @@ export function initialState(): AppState {
     entitySignature: 'boolean contains(int value, int min, int max)',
     faultStatement: 'return value > min && value < max;',
     fixStatement: 'return value >= min && value <= max;',
-    missingStatement: 'if (s == null) {\n    return "";\n}',
-    addedStatement: 'if (s == null) {\n    return "";\n}',
+    missingStatement: MISSING_GUARD,
+    addedStatement: ADDED_GUARD,
     overwrite: false
   };
+}
+
+/** What a fault type's worked example sets; the rest of the state is the same for both. */
+const EXAMPLE_FIELDS = ['categoryCode', 'factors', 'versions', 'bugTitle'] as const;
+type Example = Pick<AppState, (typeof EXAMPLE_FIELDS)[number]>;
+
+function omissionExample(): Example {
+  return {
+    categoryCode: 'S2',
+    factors: ['single-bic', 'single-bfc', 'omission-bug', 'line-addition-fix'],
+    versions: [
+      {
+        id: 'c0',
+        role: 'initial',
+        message: 'Add the range class',
+        author: DEFAULT_AUTHOR,
+        date: '',
+        source: EMPTY_RANGE
+      },
+      {
+        id: 'c1',
+        role: 'bug_introducing',
+        message: 'Add the range check',
+        author: DEFAULT_AUTHOR,
+        date: '',
+        source: DEFAULT_SOURCE
+      },
+      {
+        id: 'c2',
+        role: 'bug_fixing',
+        message: 'Reject reversed bounds in the range check',
+        author: DEFAULT_AUTHOR,
+        date: '',
+        source: DEFAULT_SOURCE.replace('        return value', `${ADDED_GUARD}        return value`)
+      }
+    ],
+    bugTitle: 'Reversed bounds are not rejected'
+  };
+}
+
+/**
+ * The state once the author picks a fault type (issue #192).  Each fault type
+ * starts from its own worked example, which passes `validate --lint --strict`
+ * as it stands, so every example field the author has not edited follows the
+ * choice; an edited field stays as the author left it.
+ */
+export function selectFaultType(state: AppState, faultType: FaultType): AppState {
+  const example = (type: FaultType): Example => (type === 'omission' ? omissionExample() : initialState());
+  const from = example(state.faultType);
+  const to = example(faultType);
+  const untouched = EXAMPLE_FIELDS.filter((key) => JSON.stringify(state[key]) === JSON.stringify(from[key]));
+  return { ...state, faultType, ...Object.fromEntries(untouched.map((key) => [key, to[key]])) };
 }
 
 /** The version `addVersion` appends: an empty message, which the checks ask the author to write. */
@@ -174,16 +248,55 @@ export function nextVersion(state: AppState): SourceVersion {
 
 export function yamlScalar(value: string | undefined): string {
   const v = value ?? '';
-  return `"${v.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+  // An unescaped line break in a double-quoted scalar folds to a space on load (issue #192).
+  return `"${v.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r')}"`;
+}
+
+/** Text with LF line breaks, as the scenario stores sources and statements. */
+function lf(value: string): string {
+  return (value || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+}
+
+/**
+ * A version's file as validate and generation read it back from `content: |`
+ * or `new: |`: `block(...).trimEnd()` leaves no trailing blank line or space,
+ * and the block keeps one final newline.
+ */
+function fileAt(source: string): string {
+  const text = lf(source).trimEnd();
+  return text ? `${text}\n` : '';
 }
 
 function block(value: string, indent: number): string {
-  const normalized = (value || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/\n+$/, '');
+  const normalized = lf(value).replace(/\n+$/, '');
   const pad = ' '.repeat(indent);
   if (normalized.length === 0) {
     return `${pad}\n`;
   }
   return normalized.split('\n').map((line) => `${pad}${line}`).join('\n') + '\n';
+}
+
+/**
+ * `key: value` for a fault or fix statement, written so that YAML loads back
+ * exactly the text the author typed (issue #192).  validate looks a statement
+ * up as a substring of the file at the commit, so a multi-line statement keeps
+ * its indentation: it is a literal block with an indentation indicator, `|2` as
+ * the shipped omission scenarios write it (SZZ-0047), whose lines sit two
+ * columns past the key and keep every leading space of their own, or `|2-` when
+ * the text has no final newline.  A single line stays a double-quoted scalar,
+ * and so does text ending in a blank line, which a block could keep only with
+ * `|2+`, taking the blank line that follows it in the file as well.
+ */
+function statementLines(key: string, value: string, indent: number): string[] {
+  const pad = ' '.repeat(indent);
+  const text = lf(value);
+  const body = text.endsWith('\n') ? text.slice(0, -1) : text;
+  if (!text.includes('\n') || body.slice(body.lastIndexOf('\n') + 1) === '') {
+    return [`${pad}${key}: ${yamlScalar(text)}`];
+  }
+  const content = ' '.repeat(indent + 2);
+  const lines = body.split('\n').map((line) => (line ? content + line : ''));
+  return [`${pad}${key}: ${body === text ? '|2-' : '|2'}`, ...lines];
 }
 
 function listLines(items: string[], indent: number): string {
@@ -273,10 +386,9 @@ export function generateScenarioYaml(state: AppState): string {
   lines.push(`        signature: ${yamlScalar(state.entitySignature)}`);
   if (state.faultType === 'omission') {
     lines.push('      change_type: "omission"');
-    lines.push('      missing_statement: |');
-    lines.push(block(state.missingStatement, 8).trimEnd());
+    lines.push(...statementLines('missing_statement', state.missingStatement, 6));
   } else {
-    lines.push(`      statement: ${yamlScalar(state.faultStatement)}`);
+    lines.push(...statementLines('statement', state.faultStatement, 6));
     lines.push('      change_type: "line_modification"');
   }
   lines.push('');
@@ -288,11 +400,10 @@ export function generateScenarioYaml(state: AppState): string {
   lines.push(`        name: ${yamlScalar(state.entityName)}`);
   lines.push(`        signature: ${yamlScalar(state.entitySignature)}`);
   if (state.faultType === 'omission') {
-    lines.push('      added_statement: |');
-    lines.push(block(state.addedStatement, 8).trimEnd());
+    lines.push(...statementLines('added_statement', state.addedStatement, 6));
     lines.push('      fix_type: "line_addition"');
   } else {
-    lines.push(`      statement: ${yamlScalar(state.fixStatement)}`);
+    lines.push(...statementLines('statement', state.fixStatement, 6));
     lines.push('      fix_type: "line_modification"');
   }
   lines.push('');
@@ -308,7 +419,7 @@ export function generateScenarioYaml(state: AppState): string {
   } else {
     lines.push('        available: true');
     lines.push('        faulty_statements:');
-    lines.push(`          - ${yamlScalar(state.faultStatement)}`);
+    lines.push(`          - ${yamlScalar(lf(state.faultStatement))}`);
   }
   lines.push('');
   lines.push('checks:');
@@ -374,18 +485,21 @@ export function localValidate(state: AppState): string[] {
   else messages.push('WARN: BIC should precede BFC');
   if (state.sourceFilePath.trim()) messages.push('OK: source file path is set');
   else messages.push('WARN: source file path is empty');
-  const bicSource = state.versions[bicIndex]?.source || '';
-  const bfcSource = state.versions[bfcIndex]?.source || '';
+  // The statements as the scenario stores them, looked up the way validate does
+  // (E301, E311): in the file at the commit, line breaks and indentation included.
+  const bicFile = fileAt(state.versions[bicIndex]?.source || '');
+  const bfcFile = fileAt(state.versions[bfcIndex]?.source || '');
+  const exactly = ' (it is matched exactly, indentation included)';
   if (state.faultType === 'line_modification') {
-    if (state.faultStatement && bicSource.includes(state.faultStatement)) messages.push('OK: fault statement appears in BIC version');
-    else messages.push('WARN: fault statement does not appear in BIC version');
-    if (state.fixStatement && bfcSource.includes(state.fixStatement)) messages.push('OK: fix statement appears in BFC version');
-    else messages.push('WARN: fix statement does not appear in BFC version');
+    if (state.faultStatement && bicFile.includes(lf(state.faultStatement))) messages.push('OK: fault statement appears in BIC version');
+    else messages.push(`WARN: fault statement does not appear in BIC version${exactly}`);
+    if (state.fixStatement && bfcFile.includes(lf(state.fixStatement))) messages.push('OK: fix statement appears in BFC version');
+    else messages.push(`WARN: fix statement does not appear in BFC version${exactly}`);
   } else {
     if (state.missingStatement.trim()) messages.push('OK: missing statement is set');
     else messages.push('WARN: missing statement is empty');
-    if (state.addedStatement && bfcSource.includes(state.addedStatement)) messages.push('OK: added statement appears in BFC version');
-    else messages.push('WARN: added statement does not appear in BFC version');
+    if (state.addedStatement && bfcFile.includes(lf(state.addedStatement))) messages.push('OK: added statement appears in BFC version');
+    else messages.push(`WARN: added statement does not appear in BFC version${exactly}`);
   }
   return messages;
 }
