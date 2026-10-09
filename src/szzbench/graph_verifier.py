@@ -3,12 +3,28 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 import json
+import re
 
 from .findings import ValidationResult
-from .gitutils import GitError, git_blame_line, git_hash_exists, git_message, git_parent, git_show, run_git
+from .gitutils import (
+    GitError,
+    canonical_author,
+    git_blame_line,
+    git_hash_exists,
+    git_message,
+    git_parent,
+    git_show,
+    planned_generated_commits,
+    run_git,
+    run_git_with_input,
+    timestamp_to_git_raw,
+)
 from .graph_scenario import graph_bfc_entries, graph_bic_entries, graph_faults, graph_fixes, load_graph_scenario
 from .operations import find_all_occurrences
 from .validator import FAULT_REWRITE_FACTOR_RE, factor_matches
+
+#: A full object name (SHA-1 or SHA-256), the only form a commit-map hash is fed to Git in.
+_OBJECT_NAME_RE = re.compile(r"[0-9a-f]{40}(?:[0-9a-f]{24})?")
 
 
 def load_json_file(path: Path, *, code: str) -> tuple[dict[str, Any], ValidationResult]:
@@ -56,13 +72,21 @@ def verify_graph_generated_repo(
         return result
 
     _verify_commits(repo_dir, scenario, commit_map, graph_map, result)
-    _verify_commit_dates(repo_dir, result)
+    _verify_generated_commits(repo_dir, scenario, commit_map, result)
+    _verify_commit_dates(repo_dir, result, commit_map)
+    # verify-graph answers whether the repository is still the one generation
+    # left (issue #176): its refs, HEAD, index and working tree too.  The
+    # staleness check of the manifest stays tolerant of moved refs (#93).
+    if not gm_result.has_errors():
+        _verify_refs(repo_dir, graph_map, result)
+    _verify_head(repo_dir, scenario, commit_map, result)
+    _verify_worktree(repo_dir, result)
     _verify_bugs(repo_dir, scenario, commit_map, result)
     _verify_expected_szz(scenario, commit_map, result)
     return result
 
 
-def _verify_commit_dates(repo_dir: Path, result: ValidationResult) -> None:
+def _verify_commit_dates(repo_dir: Path, result: ValidationResult, commit_map: dict[str, Any] | None = None) -> None:
     """Every commit must be committed no earlier than its parents (issue #9).
 
     A scenario that pins some timestamps and leaves others to the generator can
@@ -76,9 +100,22 @@ def _verify_commit_dates(repo_dir: Path, result: ValidationResult) -> None:
     comparing those as text makes ``2024-01-01T10:00:00+09:00`` look later than
     ``2024-01-01T02:00:00Z`` although it is an hour earlier.  The ISO forms are
     kept for the message.
+
+    The commits checked are those ``git log --all`` reaches and every commit of
+    ``commit_map`` with its ancestors: the commits of a branch that
+    ``graph.ref_lifecycle.delete_branches`` removed are in the commit map but
+    no longer reachable from a ref (issue #176).  A commit-map hash that is not
+    a commit of the repository is skipped here (``--ignore-missing``); GE622
+    reports it.
     """
+    log_args = ["log", "--all", "--format=%H|%P|%ct|%cI|%at|%aI"]
+    hashes = _commit_map_hashes(commit_map) if commit_map else []
     try:
-        raw = run_git(repo_dir, ["log", "--all", "--format=%H|%P|%ct|%cI|%at|%aI"]).stdout
+        if hashes:
+            data = "".join(f"{commit_hash}^{{commit}}\n" for commit_hash in hashes).encode("ascii")
+            raw = run_git_with_input(repo_dir, [*log_args, "--ignore-missing", "--stdin"], data).stdout.decode("utf-8", errors="replace")
+        else:
+            raw = run_git(repo_dir, log_args).stdout
     except GitError as exc:
         result.warning("GW632", f"Commit date check skipped: {exc}", "commits")
         return
@@ -118,6 +155,14 @@ def _verify_commit_dates(repo_dir: Path, result: ValidationResult) -> None:
             )
 
 
+def _commit_map_hashes(commit_map: dict[str, Any]) -> list[str]:
+    """The distinct hashes of ``commit_map`` that are full object names, sorted."""
+    return sorted({
+        entry["hash"] for entry in commit_map.values()
+        if isinstance(entry, dict) and isinstance(entry.get("hash"), str) and _OBJECT_NAME_RE.fullmatch(entry["hash"])
+    })
+
+
 def _verify_commits(repo_dir: Path, scenario: dict[str, Any], commit_map: dict[str, Any], graph_map: dict[str, Any], result: ValidationResult) -> None:
     for i, commit_spec in enumerate(scenario.get("commits", []) or []):
         if not isinstance(commit_spec, dict):
@@ -141,11 +186,16 @@ def _verify_commits(repo_dir: Path, scenario: dict[str, Any], commit_map: dict[s
         except GitError as exc:
             result.error("GE624", f"Cannot inspect commit '{cid}': {exc}", loc)
         _verify_parents(repo_dir, commit_spec, commit_map, actual_hash, result, loc)
+        # graph-map and commit-map are written from the same commit; they must
+        # name the same hash.  (GE625 used to compare graph-map's branch with the
+        # scenario's, which the generator copies, so it could not fire; #176.)
         graph_entry = (graph_map.get("commits", {}) or {}).get(cid) if isinstance(graph_map, dict) else None
-        if isinstance(graph_entry, dict):
-            expected_branch = commit_spec.get("branch")
-            if expected_branch is not None and graph_entry.get("branch") != expected_branch:
-                result.error("GE625", f"graph-map branch mismatch for '{cid}'.", f"{loc}.branch")
+        if isinstance(graph_entry, dict) and graph_entry.get("hash") != actual_hash:
+            result.error(
+                "GE625",
+                f"graph-map.json records hash {graph_entry.get('hash')} for '{cid}', commit-map.json {actual_hash}.",
+                loc,
+            )
 
 
 def _verify_parents(repo_dir: Path, commit_spec: dict[str, Any], commit_map: dict[str, Any], actual_hash: str, result: ValidationResult, loc: str) -> None:
@@ -157,15 +207,17 @@ def _verify_parents(repo_dir: Path, commit_spec: dict[str, Any], commit_map: dic
     # A commit that owns commit_generator operations sits on top of its
     # generated commits: its first parent is the last generated commit, not the
     # declared logical parent.  Later commits still point at the owner's own
-    # hash, so only the owner's expectation changes.
-    own_entry = commit_map.get(commit_spec.get("id"))
-    generated_ids = own_entry.get("generated_commits") if isinstance(own_entry, dict) else None
-    if isinstance(generated_ids, list) and generated_ids:
+    # hash, so only the owner's expectation changes.  The generated commits
+    # the scenario plans are the expectation; one missing from the commit map
+    # is GE629, reported with the rest of the chain by
+    # _verify_generated_commits (issue #176).
+    generated_ids = planned_generated_commits(str(commit_spec.get("id")), commit_spec)
+    if generated_ids:
         last_generated = commit_map.get(generated_ids[-1])
         if isinstance(last_generated, dict) and isinstance(last_generated.get("hash"), str):
             expected_parent_hashes = [last_generated["hash"], *expected_parent_hashes[1:]]
         else:
-            result.error("GE629", f"Generated commit '{generated_ids[-1]}' is missing from commit-map.json.", loc)
+            resolvable = False
     try:
         raw = run_git(repo_dir, ["rev-list", "--parents", "-n", "1", actual_hash]).stdout.strip()
     except GitError as exc:
@@ -180,6 +232,275 @@ def _verify_parents(repo_dir: Path, commit_spec: dict[str, Any], commit_map: dic
         )
     if len(expected_parent_ids) >= 2 and len(actual_parent_hashes) < 2:
         result.error("GE628", "Expected a merge commit but generated commit has fewer than two parents.", f"{loc}.parents")
+
+
+def _verify_generated_commits(repo_dir: Path, scenario: dict[str, Any], commit_map: dict[str, Any], result: ValidationResult) -> None:
+    """The ``<owner>.g<N>`` commits of every ``commit_generator`` owner (issue #176).
+
+    ``_verify_commits`` walks the scenario's commits only.  The generator
+    writes an owner's generated commits as a linear chain between the owner's
+    declared first parent and the owner (``parent <- g1 <- ... <- gN <-
+    owner``, ``gitutils.history_graph``); the owner's end of it -- its first
+    parent is ``gN`` -- is GE627's.  Here the owner's ``generated_commits``
+    must list the commits the scenario's operations plan (GE633), and every
+    planned commit must be in the commit map (GE629) and in the repository
+    (GE634), have the previous one as its only parent -- ``g1`` the owner's
+    declared first parent, or none for a root owner -- (GE635), and carry the
+    author, dates and subject the commit map records (GE636).
+    """
+    owners: list[tuple[str, str, dict[str, Any], list[str]]] = []
+    for i, commit_spec in enumerate(scenario.get("commits", []) or []):
+        if not isinstance(commit_spec, dict) or not isinstance(commit_spec.get("id"), str):
+            continue
+        cid = commit_spec["id"]
+        planned = planned_generated_commits(cid, commit_spec)
+        own_entry = commit_map.get(cid)
+        recorded = own_entry.get("generated_commits") if isinstance(own_entry, dict) else None
+        if not planned and recorded is None:
+            continue
+        loc = f"commits[{i}]"
+        if isinstance(own_entry, dict) and recorded != planned:
+            result.error(
+                "GE633",
+                f"commit-map.json lists {_describe_ids(recorded)} as the generated commits of '{cid}'; "
+                f"its commit_generator operations plan {_describe_ids(planned)}.",
+                loc,
+            )
+        if planned:
+            owners.append((cid, loc, commit_spec, planned))
+    if not owners:
+        return
+
+    hashes = [
+        commit_map[gid]["hash"] for _, _, _, planned in owners for gid in planned
+        if isinstance(commit_map.get(gid), dict) and isinstance(commit_map[gid].get("hash"), str)
+    ]
+    try:
+        records = _commit_records(repo_dir, hashes)
+    except GitError as exc:
+        result.error("GE637", f"Cannot inspect the generated commits: {exc}", "commits")
+        return
+
+    for cid, loc, commit_spec, planned in owners:
+        declared = [p for p in commit_spec.get("parents", []) or [] if isinstance(p, str)]
+        if declared:
+            first = commit_map.get(declared[0])
+            # None: the declared parent is not resolvable, GE627 territory
+            previous: str | None = first.get("hash") if isinstance(first, dict) and isinstance(first.get("hash"), str) else None
+        else:
+            previous = ""
+        for gid in planned:
+            entry = commit_map.get(gid)
+            if not isinstance(entry, dict) or not isinstance(entry.get("hash"), str):
+                result.error("GE629", f"Generated commit '{gid}' is missing from commit-map.json.", loc)
+                previous = None
+                continue
+            generated_hash = entry["hash"]
+            record = records.get(generated_hash)
+            if record is None:
+                result.error("GE634", f"Git hash for generated commit '{gid}' does not exist: {generated_hash}", loc)
+            else:
+                expected_parents = [previous] if previous else []
+                if previous is not None and record["parents"] != expected_parents:
+                    result.error(
+                        "GE635",
+                        f"Generated commit '{gid}' has parents {record['parents']}, expected {expected_parents}.",
+                        loc,
+                    )
+                differing = [field for field, recorded_value in _recorded_identity(entry).items() if record[field] != recorded_value]
+                if differing:
+                    result.error(
+                        "GE636",
+                        f"Generated commit '{gid}' does not carry the {', '.join(differing)} commit-map.json records.",
+                        loc,
+                    )
+            previous = generated_hash
+
+
+def _describe_ids(ids: Any) -> str:
+    if not isinstance(ids, list):
+        return "nothing" if ids is None else repr(ids)
+    if not ids:
+        return "no commits"
+    if len(ids) <= 3:
+        return ", ".join(str(i) for i in ids)
+    return f"{len(ids)} commits ({ids[0]} .. {ids[-1]})"
+
+
+def _recorded_identity(entry: dict[str, Any]) -> dict[str, str | None]:
+    """What a generated commit's commit-map entry says Git recorded, in ``_commit_records``' form."""
+    def raw(value: Any) -> str | None:
+        try:
+            return timestamp_to_git_raw(value)
+        except (GitError, ValueError, OverflowError):
+            return None
+    return {
+        "author": canonical_author(entry.get("author")) if isinstance(entry.get("author"), str) else None,
+        "author date": raw(entry.get("author_date")),
+        "committer date": raw(entry.get("committer_date")),
+        "subject": entry.get("message") if isinstance(entry.get("message"), str) else None,
+    }
+
+
+def _commit_records(repo_dir: Path, hashes: list[str]) -> dict[str, dict[str, Any]]:
+    """Parents, author, raw dates and subject of each of ``hashes``, from one ``git log --no-walk``.
+
+    A hash that is not a commit of the repository is absent from the result
+    (``--ignore-missing`` with ``^{commit}``).  Dates are Git's raw
+    ``<epoch> <+hhmm>``, the form the generator writes them in.
+    """
+    names = sorted({h for h in hashes if _OBJECT_NAME_RE.fullmatch(h)})
+    if not names:
+        return {}
+    data = "".join(f"{name}^{{commit}}\n" for name in names).encode("ascii")
+    raw = run_git_with_input(
+        repo_dir,
+        ["log", "--no-walk", "--ignore-missing", "--stdin", "--date=raw", "--format=%H%x1f%P%x1f%an%x1f%ae%x1f%ad%x1f%cd%x1f%s"],
+        data,
+    ).stdout.decode("utf-8", errors="replace")
+    records: dict[str, dict[str, Any]] = {}
+    for line in raw.splitlines():
+        fields = line.split("\x1f")
+        if len(fields) != 7:
+            continue
+        commit_hash, parents, name, email, authored, committed, subject = fields
+        records[commit_hash] = {
+            "parents": parents.split(),
+            "author": f"{name} <{email}>",
+            "author date": authored,
+            "committer date": committed,
+            "subject": subject,
+        }
+    return records
+
+
+# ---------------------------------------------------------------------------
+# The repository as generation left it (issue #176)
+# ---------------------------------------------------------------------------
+
+
+def _verify_refs(repo_dir: Path, graph_map: dict[str, Any], result: ValidationResult) -> None:
+    """Every ref is the one generation left.
+
+    ``graph-map.json``'s ``refs`` records the branches and tags once
+    ``graph.ref_lifecycle`` has been applied.  A recorded ref that is missing
+    (GE641) or points at another object (GE642) is an error, and so is a ref
+    generation did not leave (GE643): a new branch or tag, and any other name
+    under ``refs/`` (remotes, notes, replace refs, a stash) -- the generator
+    creates none, and some of them change what ``git log`` shows.
+    """
+    recorded = graph_map.get("refs")
+    expected: dict[str, str] = {}
+    readable = isinstance(recorded, dict)
+    for kind, prefix in (("branches", "refs/heads/"), ("tags", "refs/tags/")):
+        names = recorded.get(kind) if readable else None
+        if not isinstance(names, dict) or not all(isinstance(h, str) for h in names.values()):
+            readable = False
+            break
+        expected.update({prefix + str(name): h for name, h in names.items()})
+    if not readable:
+        result.error(
+            "GE640",
+            "graph-map.json does not record the refs generation left (refs.branches and refs.tags, name -> hash); "
+            "regenerate the output.",
+            "refs",
+        )
+        return
+    try:
+        out = run_git(repo_dir, ["for-each-ref", "--format=%(refname) %(objectname)"]).stdout
+    except GitError as exc:
+        result.error("GE646", f"Cannot list the refs: {exc}", "refs")
+        return
+    actual: dict[str, str] = {}
+    for line in out.splitlines():
+        refname, _, object_name = line.partition(" ")
+        if refname:
+            actual[refname] = object_name.strip()
+    for refname in sorted(expected):
+        if refname not in actual:
+            result.error("GE641", f"{refname} is missing; generation left it at {expected[refname]}.", refname)
+        elif actual[refname] != expected[refname]:
+            result.error(
+                "GE642",
+                f"{refname} points at {actual[refname]}; generation left it at {expected[refname]}.",
+                refname,
+            )
+    for refname in sorted(set(actual) - set(expected)):
+        result.error("GE643", f"{refname} ({actual[refname]}) was not there when the repository was generated.", refname)
+
+
+def _expected_head(scenario: dict[str, Any], commit_map: dict[str, Any]) -> tuple[str, str] | None:
+    """Where generation leaves HEAD: ``("branch", name)`` or ``("detached", hash)``.
+
+    HEAD stays on the branch of the scenario's last commit.  When
+    ``graph.ref_lifecycle.delete_branches`` deletes that branch, the generator
+    checks out the default branch if it has commits and survives, and
+    otherwise detaches HEAD at the last commit (``_apply_ref_lifecycle``; the
+    rule ``gitutils.reachable_commit_ids`` mirrors).  ``None`` when the
+    scenario has no commits, or the detached commit is not in the commit map.
+    """
+    commits = [c for c in scenario.get("commits") or [] if isinstance(c, dict) and isinstance(c.get("id"), str)]
+    if not commits:
+        return None
+    repository = scenario.get("repository") if isinstance(scenario.get("repository"), dict) else {}
+    default_branch = str(repository.get("default_branch") or "main")
+
+    def branch_of(commit: dict[str, Any]) -> str:
+        return str(commit.get("branch") or default_branch)
+
+    graph = scenario.get("graph") if isinstance(scenario.get("graph"), dict) else {}
+    lifecycle = graph.get("ref_lifecycle") if isinstance(graph.get("ref_lifecycle"), dict) else {}
+    delete_branches = lifecycle.get("delete_branches")
+    deleted = {n for n in delete_branches if isinstance(n, str)} if isinstance(delete_branches, list) else set()
+    last = commits[-1]
+    if branch_of(last) not in deleted:
+        return "branch", branch_of(last)
+    if default_branch not in deleted and any(branch_of(c) == default_branch for c in commits):
+        return "branch", default_branch
+    entry = commit_map.get(last["id"])
+    if isinstance(entry, dict) and isinstance(entry.get("hash"), str):
+        return "detached", entry["hash"]
+    return None
+
+
+def _verify_head(repo_dir: Path, scenario: dict[str, Any], commit_map: dict[str, Any], result: ValidationResult) -> None:
+    """HEAD is where generation left it (GE644); the branch's own position is GE642's."""
+    expected = _expected_head(scenario, commit_map)
+    if expected is None:
+        return
+    kind, value = expected
+    wanted = f"on branch {value}" if kind == "branch" else f"detached at {value}"
+    try:
+        symbolic = run_git(repo_dir, ["symbolic-ref", "-q", "HEAD"]).stdout.strip()
+    except GitError:
+        symbolic = ""  # exit status 1: HEAD is detached
+    if symbolic:
+        actual = f"on branch {symbolic[len('refs/heads/'):]}" if symbolic.startswith("refs/heads/") else f"on {symbolic}"
+    else:
+        try:
+            head = run_git(repo_dir, ["rev-parse", "--verify", "-q", "HEAD"]).stdout.strip()
+        except GitError:
+            head = ""
+        actual = f"detached at {head}" if head else "unreadable"
+    if actual != wanted:
+        result.error("GE644", f"HEAD is {actual}; generation left it {wanted}.", "HEAD")
+
+
+def _verify_worktree(repo_dir: Path, result: ValidationResult) -> None:
+    """The index and the working tree are clean, as generation left them (GE645).
+
+    ``--no-optional-locks`` keeps ``git status`` from refreshing the index
+    file: verification writes nothing into the repository it checks.
+    """
+    try:
+        out = run_git(repo_dir, ["--no-optional-locks", "status", "--porcelain"]).stdout
+    except GitError as exc:
+        result.error("GE646", f"Cannot read the status of the index and the working tree: {exc}", "worktree")
+        return
+    entries = [line for line in out.splitlines() if line.strip()]
+    if entries:
+        shown = "; ".join(entries[:5]) + (f"; ... ({len(entries)} entries)" if len(entries) > 5 else "")
+        result.error("GE645", f"The index or the working tree is not clean (git status: {shown}).", "worktree")
 
 
 def _verify_bugs(repo_dir: Path, scenario: dict[str, Any], commit_map: dict[str, Any], result: ValidationResult) -> None:
