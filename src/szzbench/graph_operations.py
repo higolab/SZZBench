@@ -5,8 +5,9 @@ import os
 import re
 import shutil
 from pathlib import Path, PurePosixPath
-from typing import Any
+from typing import Any, Callable, Iterable, Iterator, NamedTuple
 
+from .gitutils import MAX_GENERATED_COMMITS
 from .operations import (
     OperationError,
     encode_line_endings,
@@ -109,6 +110,8 @@ def apply_graph_operation_to_filesystem(repo_dir: Path, op: dict[str, Any]) -> N
     or ``LookupError``, and ``generate-graph`` printed a traceback and wrote no
     ``generation.log`` (issue #172).  It is now an ``OperationError`` that names
     the operation and its path, which the generator reports like its own errors.
+    So is an ``OSError``: a write to a path that is a directory, or that lies
+    below a file, reached the user as the bare OS message (issue #175).
     """
     try:
         _apply_graph_operation(repo_dir, op)
@@ -116,6 +119,8 @@ def apply_graph_operation_to_filesystem(repo_dir: Path, op: dict[str, Any]) -> N
         raise
     except (ValueError, LookupError) as exc:     # incl. UnicodeDecodeError, binascii.Error
         raise OperationError(f"{op.get('type')} {_operation_target(op)}: {_value_error_reason(op, exc)}") from exc
+    except OSError as exc:                       # incl. IsADirectoryError, NotADirectoryError, shutil.SameFileError
+        raise OperationError(f"{op.get('type')} {_operation_target(op)}: {_os_error_reason(repo_dir, exc)}") from exc
 
 
 def _operation_target(op: dict[str, Any]) -> str:
@@ -133,6 +138,18 @@ def _value_error_reason(op: dict[str, Any], exc: Exception) -> str:
     if op.get("type") == "write_binary_file":
         return f"content_base64 does not decode ({exc})"
     return str(exc)
+
+
+def _os_error_reason(repo_dir: Path, exc: OSError) -> str:
+    """The OS's reason, with the file it names made relative to the repository."""
+    if not exc.strerror:
+        return str(exc)
+    if not isinstance(exc.filename, str):
+        return exc.strerror
+    try:
+        return f"{exc.strerror}: {Path(exc.filename).resolve().relative_to(repo_dir.resolve()).as_posix()}"
+    except ValueError:
+        return f"{exc.strerror}: {exc.filename}"
 
 
 def _apply_graph_operation(repo_dir: Path, op: dict[str, Any]) -> None:
@@ -203,6 +220,8 @@ def _apply_graph_operation(repo_dir: Path, op: dict[str, Any]) -> None:
             raise OperationError(f"copy source does not exist: {op['from']}")
         if dst.exists() and not op.get("overwrite", False):
             raise OperationError(f"copy target already exists: {op['to']}")
+        if dst.is_dir():     # shutil.copy2 would copy into it (issue #175)
+            raise OperationError(f"copy target is a directory: {op['to']}")
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(src, dst)
         return
@@ -292,6 +311,9 @@ def _block_text(value: Any) -> str:
 
 
 DEFAULT_COMMIT_GENERATOR_DIRECTORY = "generated"
+#: A file written by ``commit_generator`` keeps at most this many change lines, so
+#: that blobs stay small even for thousands of generated commits (issue #18).
+GENERATED_FILE_MAX_LINES = 50
 
 
 def commit_generator_path(path: Any) -> str:
@@ -322,6 +344,73 @@ def commit_generator_directory(path: Any) -> str:
         parent = candidate.parent.as_posix()
         return "" if parent == "." else parent
     return text
+
+
+class CommitGeneratorPlan(NamedTuple):
+    """One ``commit_generator`` operation as generation reads it."""
+    generator: str
+    directory: str      # "" is the repository root
+    count: int          # ``requested`` capped at MAX_GENERATED_COMMITS
+    files: int
+    requested: int
+
+
+def commit_generator_plan(op: dict[str, Any], owner_id: str) -> CommitGeneratorPlan:
+    """Read a ``commit_generator`` operation of commit ``owner_id``.
+
+    A ``count`` or ``files`` that generation cannot use is a ``ValueError`` that
+    names the field and the commit.  The generator and the simulator of
+    ``validate-graph --simulate`` both read the operation here (issue #175).
+    """
+    generator = str(op.get("generator") or "unrelated_changes")
+    try:
+        requested = int(op.get("count"))
+    except (TypeError, ValueError, OverflowError):
+        raise ValueError(f"commit_generator.count of commit '{owner_id}' must be an integer.") from None
+    if requested < 0:
+        raise ValueError(f"commit_generator.count of commit '{owner_id}' must not be negative.")
+    try:
+        files = int(op.get("files", 1) or 1)
+    except (TypeError, ValueError, OverflowError):
+        raise ValueError(f"commit_generator.files of commit '{owner_id}' must be an integer.") from None
+    return CommitGeneratorPlan(generator, commit_generator_directory(op.get("path")),
+                               min(requested, MAX_GENERATED_COMMITS), max(1, files), requested)
+
+
+def commit_generator_changes(plans: Iterable[CommitGeneratorPlan],
+                             read_file: Callable[[str], str]) -> Iterator[tuple[str, str, str]]:
+    """``(generator, path, content)`` for every commit the plans of one owner expand into, in order.
+
+    Generated commit *k* of a plan appends ``<generator> change <sequence>`` to
+    ``<directory>/<generator>-<NN>.txt``, ``NN = (k-1) mod files + 1``, where
+    ``sequence`` counts the owner's generated commits over all its plans;
+    ``content`` is the whole file after the commit, at most
+    ``GENERATED_FILE_MAX_LINES`` lines.  ``read_file(path)`` gives a file's
+    content before the first of them ("" when there is none): the generator
+    reads the worktree, the simulator its snapshot, so that the two write the
+    same files (issue #175).
+    """
+    contents: dict[str, str] = {}
+    sequence = 0
+    for plan in plans:
+        for k in range(1, plan.count + 1):
+            sequence += 1
+            file_name = f"{plan.generator}-{(k - 1) % plan.files + 1:02d}.txt"
+            path = f"{plan.directory}/{file_name}" if plan.directory else file_name
+            if path not in contents:
+                contents[path] = read_file(path)
+            # The written line must not carry the generated commit id: a logical-id
+            # prefix inside the repository is an answer cue (issue #8).
+            contents[path] = _append_generated_line(contents[path], f"{plan.generator} change {sequence}")
+            yield plan.generator, path, contents[path]
+
+
+def _append_generated_line(content: str, line: str) -> str:
+    lines = content.splitlines()
+    lines.append(line)
+    if len(lines) > GENERATED_FILE_MAX_LINES:
+        lines = lines[-GENERATED_FILE_MAX_LINES:]
+    return "\n".join(lines) + "\n"
 
 
 def _entity_operation_header(op_type: str, op: dict[str, Any]) -> str:

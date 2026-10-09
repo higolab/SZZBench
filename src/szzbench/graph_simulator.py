@@ -1,19 +1,25 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 import tempfile
 
 from .findings import ValidationResult
-from .graph_operations import commit_generator_path, decode_content_base64
+from .graph_operations import CommitGeneratorPlan, commit_generator_changes, commit_generator_plan, decode_content_base64
 from .operations import OperationError, insert_after_once, normalize_newlines, replace_once
 from .paths import PathValidationError, validate_repo_relative_path
+
+#: The mode Git records for a file whose owner may execute it (``SimFile.mode``).
+EXECUTABLE = "100755"
 
 
 @dataclass(frozen=True)
 class SimFile:
     content: str | bytes
+    #: ``EXECUTABLE`` or ``None`` (100644).  Only ``chmod`` sets it, and a scenario
+    #: with a ``chmod`` is generated with ``core.filemode`` enabled, so a mode change
+    #: is a change exactly when the generator records one (issue #175).
     mode: str | None = None
 
 
@@ -29,43 +35,7 @@ def simulate_graph_scenario(data: dict[str, Any]) -> ValidationResult:
     machinery.
     """
     result = ValidationResult()
-    commits = data.get("commits") if isinstance(data.get("commits"), list) else []
-    states: dict[str, Snapshot] = {}
-    parent_map: dict[str, list[str]] = {}
-
-    for i, commit in enumerate(commits):
-        if not isinstance(commit, dict):
-            continue
-        cid = commit.get("id")
-        if not isinstance(cid, str):
-            continue
-        loc = f"commits[{i}]"
-        parents = [p for p in commit.get("parents", []) or [] if isinstance(p, str)]
-        parent_map[cid] = parents
-        try:
-            snapshot = _checkout_snapshot(parents, states, parent_map)
-        except OperationError as exc:
-            result.error("GE200", f"Graph simulation cannot prepare commit '{cid}': {exc}", f"{loc}.parents")
-            states[cid] = {}
-            continue
-
-        before_operations = _clone_snapshot(snapshot)
-        had_operation_error = False
-        for j, op in enumerate(commit.get("operations", []) or []):
-            op_loc = f"{loc}.operations[{j}]"
-            if not isinstance(op, dict):
-                continue
-            try:
-                _apply_simulated_operation(snapshot, op, states, parent_map)
-            except (OperationError, ValueError, PathValidationError) as exc:
-                result.error("GE201", f"Graph simulation failed for commit '{cid}': {exc}", op_loc)
-                had_operation_error = True
-
-        if not had_operation_error and len(parents) < 2 and not commit.get("allow_empty"):
-            if snapshot == before_operations:
-                result.error("GE202", f"Commit '{cid}' would be empty during graph generation.", loc)
-        states[cid] = snapshot
-
+    simulated_snapshots(data, result)
     return result
 
 
@@ -107,11 +77,15 @@ def simulate_graph_scenario_with_git(scenario_path: Path, data: dict[str, Any], 
 
     For a scenario with Git-computed commits (:func:`git_performed_features`)
     the generator itself is the only faithful model.  A generation failure is
-    GE203, located at the commit that failed; success is recorded as GI203.
-    Verification is not run: that is ``verify-graph``'s job.
+    GE203, located at the commit that failed.  The generated repository is
+    then verified as ``generate-graph`` verifies it, and each verification
+    error is GE203 too, with the verifier's code, message and location
+    (issue #173): a scenario that passes generates.  Success is recorded as
+    GI203.
     """
     # graph_generator imports the validator, which imports this module
     from .graph_generator import GraphGenerationError, generate_graph_repository
+    from .graph_verifier import verify_graph_generated_repo
 
     result = ValidationResult()
     with tempfile.TemporaryDirectory(prefix="szzbench-simulate-") as tmp:
@@ -126,6 +100,14 @@ def simulate_graph_scenario_with_git(scenario_path: Path, data: dict[str, Any], 
                 location = next((f"commits[{index}]" for index, commit in enumerate(data.get("commits") or [])
                                  if isinstance(commit, dict) and commit.get("id") == failed), location)
             result.error("GE203", f"Generating the scenario with Git failed{where}: {exc}", location)
+            return result
+        verification = verify_graph_generated_repo(out / "repo", scenario_path, out / "metadata" / "commit-map.json",
+                                                   out / "metadata" / "graph-map.json")
+        for finding in verification.findings:
+            if finding.severity == "ERROR":
+                result.error("GE203", f"The scenario generated with Git fails verification: "
+                             f"{finding.code} {finding.message}", finding.location or "commits")
+        if result.has_errors():
             return result
     result.info("GI203", "Simulated by generating the scenario with Git, which computes "
                 + ", ".join(features) + ".", "commits")
@@ -145,6 +127,103 @@ def _failing_commit(log_path: Path) -> str | None:
         elif current is not None and line.startswith(f"Created graph commit {current}:"):
             current = None
     return current
+
+
+def simulated_snapshots(data: dict[str, Any], result: ValidationResult | None = None, *,
+                        given: dict[str, Snapshot] | None = None) -> dict[str, Snapshot]:
+    """The snapshot the simulation reaches at every commit; its findings go to ``result``.
+
+    A commit in ``given`` is not simulated: its snapshot is the one given.  The
+    drift test (tests/test_simulator_drift.py) gives the generated trees of the
+    commits Git computes and compares every other snapshot with the generated
+    tree (issue #175).
+    """
+    result = result if result is not None else ValidationResult()
+    given = given or {}
+    commits = data.get("commits") if isinstance(data.get("commits"), list) else []
+    states: dict[str, Snapshot] = {}
+    parent_map: dict[str, list[str]] = {}
+
+    for i, commit in enumerate(commits):
+        if not isinstance(commit, dict):
+            continue
+        cid = commit.get("id")
+        if not isinstance(cid, str):
+            continue
+        loc = f"commits[{i}]"
+        parents = [p for p in commit.get("parents", []) or [] if isinstance(p, str)]
+        parent_map[cid] = parents
+        if cid in given:
+            states[cid] = _clone_snapshot(given[cid])
+            continue
+        try:
+            snapshot = _checkout_snapshot(parents, states, parent_map)
+        except OperationError as exc:
+            result.error("GE200", f"Graph simulation cannot prepare commit '{cid}': {exc}", f"{loc}.parents")
+            states[cid] = {}
+            continue
+
+        # the generator commits commit_generator files first, as commits of their own
+        generated, had_operation_error = _expand_commit_generators(snapshot, commit, cid, loc, result)
+        before_operations = _clone_snapshot(snapshot)
+        for j, op in enumerate(commit.get("operations", []) or []):
+            op_loc = f"{loc}.operations[{j}]"
+            if not isinstance(op, dict) or op.get("type") == "commit_generator":
+                continue
+            try:
+                _apply_simulated_operation(snapshot, op, states, parent_map)
+            except (OperationError, ValueError, PathValidationError) as exc:
+                result.error("GE201", f"Graph simulation failed for commit '{cid}': {exc}", op_loc)
+                had_operation_error = True
+
+        # an owner of generated commits is committed with --allow-empty, as the generator does
+        if not had_operation_error and len(parents) < 2 and not commit.get("allow_empty") and not generated:
+            if snapshot == before_operations:
+                result.error("GE202", f"Commit '{cid}' would be empty during graph generation.", loc)
+        states[cid] = snapshot
+
+    return states
+
+
+def _expand_commit_generators(snapshot: Snapshot, commit: dict[str, Any], cid: str, loc: str,
+                              result: ValidationResult) -> tuple[int, bool]:
+    """Write the files of ``commit``'s ``commit_generator`` operations as generation writes them.
+
+    ``(generated commits, failed)``.  The names and contents come from
+    ``graph_operations.commit_generator_changes``, which the generator uses; a
+    ``count`` of 0 writes nothing (issue #175).
+    """
+    plans: list[tuple[str, CommitGeneratorPlan]] = []      # (location, plan)
+    for j, op in enumerate(commit.get("operations", []) or []):
+        if isinstance(op, dict) and op.get("type") == "commit_generator":
+            try:
+                plans.append((f"{loc}.operations[{j}]", commit_generator_plan(op, cid)))
+            except ValueError as exc:
+                result.error("GE201", f"Graph simulation failed for commit '{cid}': {exc}", f"{loc}.operations[{j}]")
+                return 0, True
+    owners = [op_loc for op_loc, plan in plans for _ in range(plan.count)]     # the operation of each generated commit
+
+    def read_file(path: str) -> str:
+        path = _validated_path(path)
+        existing = snapshot.get(path)
+        if existing is None:
+            return ""
+        if isinstance(existing.content, str):
+            return existing.content
+        try:
+            return normalize_newlines(existing.content.decode("utf-8"))
+        except UnicodeDecodeError:
+            raise OperationError(f"commit_generator cannot append to binary file: {path}") from None
+
+    done = 0
+    try:
+        for _, path, content in commit_generator_changes([plan for _, plan in plans], read_file):
+            _set_file(snapshot, path, SimFile(content), "commit_generator")     # fast-import writes 100644
+            done += 1
+    except (OperationError, PathValidationError) as exc:
+        result.error("GE201", f"Graph simulation failed for commit '{cid}': {exc}", owners[done])
+        return done, True
+    return done, False
 
 
 def _checkout_snapshot(parents: list[str], states: dict[str, Snapshot], parent_map: dict[str, list[str]]) -> Snapshot:
@@ -217,7 +296,7 @@ def _apply_simulated_operation(
 
     if op_type == "write_file":
         path = _validated_path(op["path"])
-        _set_file(snapshot, path, SimFile(normalize_newlines(str(op["content"]))))
+        _set_file(snapshot, path, SimFile(normalize_newlines(str(op["content"])), _mode(snapshot, path)), op_type)
         return
 
     if op_type == "replace":
@@ -225,7 +304,7 @@ def _apply_simulated_operation(
         content = _require_text(snapshot, path, "replace")
         old = normalize_newlines(str(op["old"]))
         new = normalize_newlines(str(op["new"]))
-        _set_file(snapshot, path, SimFile(replace_once(content, old, new, op.get("occurrence")), snapshot[path].mode))
+        _set_file(snapshot, path, SimFile(replace_once(content, old, new, op.get("occurrence")), snapshot[path].mode), op_type)
         return
 
     if op_type == "insert_after":
@@ -233,7 +312,7 @@ def _apply_simulated_operation(
         content = _require_text(snapshot, path, "insert_after")
         anchor = normalize_newlines(str(op["anchor"]))
         inserted = normalize_newlines(str(op["content"]))
-        _set_file(snapshot, path, SimFile(insert_after_once(content, anchor, inserted, op.get("occurrence")), snapshot[path].mode))
+        _set_file(snapshot, path, SimFile(insert_after_once(content, anchor, inserted, op.get("occurrence")), snapshot[path].mode), op_type)
         return
 
     if op_type == "delete_file":
@@ -250,7 +329,7 @@ def _apply_simulated_operation(
             raise OperationError(f"{op_type} source does not exist: {src}")
         if dst in snapshot and not op.get("overwrite", False):
             raise OperationError(f"{op_type} target already exists: {dst}")
-        snapshot[dst] = snapshot[src]
+        _set_file(snapshot, dst, snapshot[src], op_type)      # the file keeps its mode
         del snapshot[src]
         return
 
@@ -261,20 +340,22 @@ def _apply_simulated_operation(
             raise OperationError(f"copy source does not exist: {src}")
         if dst in snapshot and not op.get("overwrite", False):
             raise OperationError(f"copy target already exists: {dst}")
-        snapshot[dst] = snapshot[src]
+        _set_file(snapshot, dst, snapshot[src], op_type)      # shutil.copy2 copies the mode
         return
 
     if op_type in {"move_entity", "copy_entity"}:
         src = _validated_path(op["from_file"])
         dst = _validated_path(op["to_file"])
         content = _require_text(snapshot, src, op_type)
+        if dst in snapshot and not op.get("overwrite", True):     # the generator's default (issue #175)
+            raise OperationError(f"{op_type} target file already exists: {dst}")
         header = _entity_operation_header(op_type, op)
         if dst in snapshot and op.get("append", False):
             previous = _require_text(snapshot, dst, op_type)
             new_content = previous.rstrip() + "\n\n" + header + content
         else:
             new_content = header + content
-        _set_file(snapshot, dst, SimFile(new_content))
+        _set_file(snapshot, dst, SimFile(new_content, _mode(snapshot, dst)), op_type)
         if op_type == "move_entity" and op.get("remove_source_file", False):
             del snapshot[src]
         return
@@ -283,14 +364,14 @@ def _apply_simulated_operation(
         path = _validated_path(op["path"])
         if path not in snapshot:
             raise OperationError(f"chmod target does not exist: {path}")
-        int(str(op["mode"]), 8)
-        # gitutils.init_repo sets core.filemode=false, so chmod alone will not
-        # create a content change for the generated repository.
+        # Git records 100755 when the owner may execute the file, 100644 otherwise
+        executable = int(str(op["mode"]), 8) & 0o100
+        snapshot[path] = SimFile(snapshot[path].content, EXECUTABLE if executable else None)
         return
 
     if op_type == "write_binary_file":
         path = _validated_path(op["path"])
-        _set_file(snapshot, path, SimFile(decode_content_base64(op["content_base64"])))
+        _set_file(snapshot, path, SimFile(decode_content_base64(op["content_base64"]), _mode(snapshot, path)), op_type)
         return
 
     if op_type == "write_generated_text_file":
@@ -298,23 +379,14 @@ def _apply_simulated_operation(
         lines = int(op["lines"])
         template = str(op["template"])
         content = "\n".join(_render_template_line(template, line_no) for line_no in range(1, lines + 1)) + "\n"
-        _set_file(snapshot, path, SimFile(content))
-        return
-
-    if op_type == "commit_generator":
-        # the placeholder sits where the path names, in the spelling generation reads it
-        # (a trailing '/' or a backslash is accepted there; PR #219 review)
-        path = _validated_path(commit_generator_path(op.get("path", "generated/unrelated-changes.txt"))
-                               or "unrelated-changes.txt")
-        content = f"generator={op.get('generator')}\ncount={op.get('count')}\nfiles={op.get('files', '')}\n"
-        _set_file(snapshot, path, SimFile(content))
+        _set_file(snapshot, path, SimFile(content, _mode(snapshot, path)), op_type)
         return
 
     if op_type == "format_file":
         path = _validated_path(op["path"])
         content = _require_text(snapshot, path, "format_file")
         formatted = "\n".join(line.rstrip() for line in content.splitlines()) + "\n"
-        _set_file(snapshot, path, SimFile(formatted, snapshot[path].mode))
+        _set_file(snapshot, path, SimFile(formatted, snapshot[path].mode), op_type)
         return
 
     if op_type == "apply_patch_from":
@@ -398,8 +470,25 @@ def _require_text(snapshot: Snapshot, path: str, op_type: str) -> str:
     return content
 
 
-def _set_file(snapshot: Snapshot, path: str, value: SimFile) -> None:
+def _set_file(snapshot: Snapshot, path: str, value: SimFile, op_type: str) -> None:
+    """Store ``value`` at ``path``.
+
+    A path that is a directory of the snapshot, or that lies below one of its
+    files, cannot hold a file in the generated worktree either (issue #175).
+    """
+    if path not in snapshot:
+        if any(other.startswith(path + "/") for other in snapshot):
+            raise OperationError(f"{op_type} target is a directory: {path}")
+        for parent in PurePosixPath(path).parents:
+            if parent.as_posix() in snapshot:
+                raise OperationError(f"{op_type} target lies below the file {parent.as_posix()}: {path}")
     snapshot[path] = value
+
+
+def _mode(snapshot: Snapshot, path: str) -> str | None:
+    """The mode a file keeps when an operation rewrites it in place."""
+    existing = snapshot.get(path)
+    return existing.mode if existing is not None else None
 
 
 def _render_template_line(template: str, line_no: int) -> str:

@@ -190,6 +190,7 @@ def validate_graph_static(data: dict[str, Any], *, scenario_path: Path | None = 
             _validate_operation(op, result, f"{loc}.operations[{j}]", strict_paths=strict_paths)
 
     result.extend(_validate_graph_acyclic(commits))
+    result.extend(_validate_merge_parents(commits))
 
     if not isinstance(data.get("bugs"), list):
         result.error("GE080", "bugs must be a list.", "bugs")
@@ -275,6 +276,16 @@ def _validate_operation(op: Any, result: ValidationResult, loc: str, *, strict_p
 
 #: The values generation reads from three operations, checked before it runs (issue #172).
 _OCTAL_MODE = re.compile(r"[0-7]{3,4}")
+#: The operations that write the file at one path to another.  Two paths that differ only in
+#: letter case are one file on a case-insensitive file system: a case-only rename failed on
+#: macOS and succeeded on Linux (issue #175).
+_CASE_SENSITIVE_PAIRS = {
+    "rename_file": ("from", "to"),
+    "move_file": ("from", "to"),
+    "copy_file": ("from", "to"),
+    "move_entity": ("from_file", "to_file"),
+    "copy_entity": ("from_file", "to_file"),
+}
 
 
 def _validate_operation_values(op: dict[str, Any], op_type: str, result: ValidationResult, loc: str) -> None:
@@ -295,6 +306,13 @@ def _validate_operation_values(op: dict[str, Any], op_type: str, result: Validat
         if not (isinstance(lines, int) and not isinstance(lines, bool) and lines >= 0):
             result.error("GE059", f"write_generated_text_file lines must be a non-negative integer, not {lines!r}.",
                          f"{loc}.lines")
+    if op_type in _CASE_SENSITIVE_PAIRS:
+        source_key, target_key = _CASE_SENSITIVE_PAIRS[op_type]
+        source, target = op.get(source_key), op.get(target_key)
+        if isinstance(source, str) and isinstance(target, str) and source != target and source.casefold() == target.casefold():
+            result.error("GE060", f"{op_type} from '{source}' to '{target}' changes only the letter case; a "
+                         "case-insensitive file system (macOS, Windows) sees one file there, so what generation "
+                         "makes of it would depend on the platform.", f"{loc}.{target_key}")
 
 
 def _validate_commit_ref_entry(entry: Any, commit_by_id: dict[str, dict[str, Any]], result: ValidationResult, loc: str, label: str) -> None:
@@ -607,6 +625,58 @@ def _validate_graph_acyclic(commits: list[Any]) -> ValidationResult:
     return result
 
 
+def _validate_merge_parents(commits: list[Any]) -> ValidationResult:
+    """GE049: a merge parent that Git would not record (issue #173).
+
+    ``git merge`` records each head once, and drops a head that is already
+    reachable from another one -- from the first parent or from another head
+    of the same merge.  A parent listed twice, or an extra parent that is an
+    ancestor of another parent, therefore leaves the generated commit with
+    fewer parents than declared, and verification fails (GE627/GE628).  The
+    first parent is always recorded (the generator merges with ``--no-ff``).
+    """
+    result = ValidationResult()
+    parent_map: dict[str, list[str]] = {}
+    for commit in commits:
+        if isinstance(commit, dict) and isinstance(commit.get("id"), str) and isinstance(commit.get("parents"), list):
+            parent_map[commit["id"]] = [p for p in commit["parents"] if isinstance(p, str)]
+
+    def reaches(starts: list[str], target: str) -> bool:
+        stack, seen = list(starts), set()
+        while stack:
+            cid = stack.pop()
+            if cid == target:
+                return True
+            if cid not in seen:
+                seen.add(cid)
+                stack.extend(parent_map.get(cid, []))
+        return False
+
+    for i, commit in enumerate(commits):
+        if not isinstance(commit, dict) or not isinstance(commit.get("parents"), list):
+            continue
+        cid = commit.get("id")
+        parents = [p for p in commit["parents"] if isinstance(p, str)]
+        for k, parent in enumerate(parents[1:], start=1):
+            if parent in parents[:k]:
+                result.error(
+                    "GE049",
+                    f"Commit '{cid}' lists parent '{parent}' twice: Git records each parent once, "
+                    "so it would not record this merge as declared.",
+                    f"commits[{i}].parents",
+                )
+                continue
+            covering = next((other for other in parents if other != parent and reaches([other], parent)), None)
+            if covering is not None:
+                result.error(
+                    "GE049",
+                    f"Commit '{cid}' lists parent '{parent}', which is already an ancestor of its parent '{covering}': "
+                    "Git does not record an already merged parent, so it would not record this merge as declared.",
+                    f"commits[{i}].parents",
+                )
+    return result
+
+
 def _validate_rewrite_references(
     commit: dict[str, Any],
     cid: str,
@@ -638,8 +708,7 @@ def lint_graph_scenario(data: dict[str, Any], *, scenario_path: Path | None = No
     """Run the GW4xx lints on a statically valid graph scenario.
 
     Ghost invariants (add-only BFC / delete-only BIC) are not implemented for
-    the graph suite because graph_simulator does not expose per-commit
-    snapshots.
+    the graph suite.
 
     ``scenario_path`` enables the lints that compare the scenario against its
     sibling README; without it they are skipped.

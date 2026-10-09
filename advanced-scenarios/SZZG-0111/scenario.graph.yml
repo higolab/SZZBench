@@ -67,11 +67,10 @@ commits:
   message: 'Mark scripts/run.sh executable so CI can call it directly'
   role: intermediate
   # The generated commit is NOT empty: the generator enables core.filemode for
-  # scenarios that use chmod, so Git records 'mode change 100644 => 100755'.
-  # allow_empty is kept only for the two environments in which the mode change
-  # cannot be recorded: the in-memory simulator of validate-graph --simulate,
-  # which still models chmod as a no-op, and file systems without an
-  # executable bit (most Windows setups).
+  # scenarios that use chmod, so Git records 'mode change 100644 => 100755', and
+  # validate-graph --simulate models the mode too (issue #175).  allow_empty is
+  # kept only for file systems without an executable bit (most Windows setups),
+  # on which the mode change cannot be recorded.
   allow_empty: true
   operations:
   - type: chmod
@@ -132,5 +131,5 @@ notes:
 - This file is intended for graph-aware generation and verification.
 - "Measured on the generated repository: 'git show --stat --summary' of c2 prints 'mode change 100644 => 100755' for
   scripts/run.sh, and git ls-tree shows 100644 before and 100755 after, so the commit is a real, non-empty commit."
-- c2 keeps allow_empty because validate-graph --simulate still models chmod as a no-op and because file systems without an
-  executable bit cannot record the mode change.
+- c2 keeps allow_empty because file systems without an executable bit cannot record the mode change; validate-graph
+  --simulate models the mode (issue #175) and no longer needs it.

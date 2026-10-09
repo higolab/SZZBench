@@ -15,6 +15,10 @@ summary, and holding its place in a ranking -- a record with ``status: error``
 and a scenario without a record FAIL with a ``run_status`` that says why, and
 only an explicit record is an answer: an explicit empty one is still a valid
 abstention.
+
+A record that cannot be read is no answer either (issue #138): its scenario
+FAILs with ``run_status: invalid`` instead of being scored as an empty
+prediction -- which passed SZZG-0135 -- or dropped from the report.
 """
 from __future__ import annotations
 
@@ -172,7 +176,8 @@ def test_a_status_that_is_neither_ok_nor_error_is_a_loading_error(generated, tmp
         assert report.errors == [] and by_id["SZZG-0135"].status == "PASS"
         return
     assert any("status" in error for error in report.errors)
-    assert "SZZG-0135" not in by_id or by_id["SZZG-0135"].status == "FAIL"
+    # it used to drop the scenario from the report (issue #138)
+    assert (by_id["SZZG-0135"].status, by_id["SZZG-0135"].run_status) == ("FAIL", "invalid")
 
 
 # --- the file's encoding (issue #137) -------------------------------------------
@@ -279,6 +284,196 @@ def test_the_markdown_report_shows_unknown_references_and_the_run_status(generat
     assert rows["SZZ-0006"][columns.index("Unknown")] == UNKNOWN
     assert rows["SZZG-0135"][columns.index("Run")] == "error"
     assert rows["SZZG-0140"][columns.index("Run")] == "missing"
+
+
+# --- records that cannot be read (issue #138) ------------------------------------
+#
+# A record with a loading error used to answer its scenario all the same: the
+# scenario was marked as answered before its predictions were checked, so it
+# scored as an empty prediction with run_status ok and passed SZZG-0135's empty
+# oracle, while a bad status or repository_id dropped the scenario from the report.
+
+ISSUE_138_RECORDS = [
+    {"scenario_id": "SZZG-0135", "predictions": "none"},
+    {"scenario_id": "SZZ-0006", "predictions": None},
+    {"scenario_id": "SZZ-0005", "predictions": [{"inducing_commit": "c1", "rank": "1"}]},
+    {"scenario_id": "SZZ-0012", "inducing_commit": "c1", "fix_commit": 123},
+    {"scenario_id": "SZZ-0014", "predictions": [{"inducing_commit": ["c1", "c0"]}]},
+    {"scenario_id": "SZZ-0015", "predictions": [{"inducing_commit": "c0"}], "inducing_commit": "c1"},
+    {"scenario_id": "SZZ-0021", "status": "timeout", "predictions": [{"inducing_commit": "c1"}]},
+]
+ISSUE_138_ERRORS = {
+    "SZZG-0135": ":1: predictions must be a list when present (got 'none').",
+    "SZZ-0006": ":2: predictions must be a list when present (got None).",
+    "SZZ-0005": ":3.predictions[0]: rank must be an integer when present.",
+    "SZZ-0012": ":4: fix_commit must be a non-empty string when present (got 123).",
+    "SZZ-0014": ":5.predictions[0]: inducing_commit must be a non-empty string (got ['c1', 'c0']).",
+    "SZZ-0015": ":6: the record has both a predictions list and a top-level inducing_commit; "
+                "put every prediction in the list.",
+    "SZZ-0021": ":7: status must be one of ok, error when present (got 'timeout').",
+}
+
+
+@pytest.fixture(scope="module")
+def issue_138_generated(tmp_path_factory) -> Path:
+    """The seven scenarios the reproduction in issue #138 names."""
+    root = tmp_path_factory.mktemp("generated-138")
+    for sid in ("SZZ-0005", "SZZ-0006", "SZZ-0012", "SZZ-0014", "SZZ-0015", "SZZ-0021"):
+        generate_repository(ROOT / f"scenarios/{sid}/scenario.yml", root / sid / "default", force=True)
+    generate_graph_repository(ROOT / "advanced-scenarios/SZZG-0135/scenario.graph.yml", root / "SZZG-0135/default",
+                              force=True)
+    return root
+
+
+def test_every_record_in_issue_138_fails_its_scenario_as_invalid(issue_138_generated, tmp_path):
+    report, by_id = _evaluate(issue_138_generated, tmp_path, ISSUE_138_RECORDS)
+    path = tmp_path / "predictions.jsonl"
+    # status and repository_id no longer drop the scenario from the report: SZZ-0021 is in it
+    assert sorted(by_id) == sorted(ISSUE_138_ERRORS)
+    for sid, message in ISSUE_138_ERRORS.items():
+        item = by_id[sid]
+        assert (item.status, item.run_status, item.run_errors) == ("FAIL", "invalid", [f"{path}{message}"]), sid
+        assert any(note.startswith("a prediction record could not be read (") for note in item.result_notes)
+    assert report.errors == [f"{path}{message}" for message in ISSUE_138_ERRORS.values()]
+    # none of the records is read, so none of their predictions count: SZZ-0015's c0 included
+    assert all(item.prediction_count == 0 and item.actual_bics == [] for item in report.scenarios)
+    summary = report.summary()
+    assert (summary["pass"], summary["fail"], summary["invalid_records"]) == (0, 7, 7)
+    assert (summary["tool_errors"], summary["missing_records"], summary["stale_predictions"]) == (0, 0, 0)
+
+
+def test_the_out_report_of_issue_138_agrees_with_the_exit_code(issue_138_generated, tmp_path):
+    path = tmp_path / "predictions.jsonl"
+    path.write_text("".join(json.dumps(record) + "\n" for record in ISSUE_138_RECORDS), encoding="utf-8")
+    completed = subprocess.run([sys.executable, "-m", "szzbench.cli", "evaluate", "--predictions", str(path),
+                                "--generated-root", str(issue_138_generated), "--scenarios-root", str(ROOT / "scenarios"),
+                                "--advanced-scenarios-root", str(ROOT / "advanced-scenarios"),
+                                "--out", str(tmp_path / "out")],
+                               capture_output=True, text=True, env={**os.environ, "PYTHONPATH": str(ROOT / "src")})
+    assert completed.returncode == 1 and "Traceback" not in completed.stderr
+    lines = {line.split(":")[0].strip(): line.split(":", 1)[1].strip()
+             for line in completed.stdout.splitlines() if line.startswith("  ")}
+    assert (lines["PASS"], lines["Invalid records"]) == ("0", "7")
+    data = json.loads((tmp_path / "out/evaluation-results.json").read_text(encoding="utf-8"))
+    assert (data["summary"]["pass"], data["summary"]["invalid_records"]) == (0, 7)
+    assert {item["scenario_id"]: (item["status"], item["run_status"]) for item in data["scenarios"]} == \
+        {sid: ("FAIL", "invalid") for sid in ISSUE_138_ERRORS}
+    markdown = (tmp_path / "out/evaluation-results.md").read_text(encoding="utf-8")
+    assert "- Invalid prediction records: 7" in markdown
+    header = next(line for line in markdown.splitlines() if line.startswith("| Scenario |"))
+    columns = [cell.strip() for cell in header.strip("|").split("|")]
+    rows = {line.split("|")[1].strip(): [cell.strip() for cell in line.strip("|").split("|")]
+            for line in markdown.splitlines() if line.startswith("| SZZ")}
+    assert sorted(rows) == sorted(ISSUE_138_ERRORS)
+    for row in rows.values():
+        assert (row[columns.index("Status")], row[columns.index("Run")]) == ("FAIL", "invalid")
+
+
+@pytest.mark.parametrize("record, message", [
+    ({"predictions": None}, "predictions must be a list when present (got None)."),
+    ({"predictions": {"inducing_commit": "c1"}}, "predictions must be a list when present (got {'inducing_commit': 'c1'})."),
+    ({"inducing_commit": ["c1", "c0"]}, "inducing_commit must be a non-empty string (got ['c1', 'c0'])."),
+    ({"inducing_commit": ""}, "inducing_commit must be a non-empty string (got '')."),
+    ({"bic": 5}, "bic must be a non-empty string (got 5)."),
+    ({"inducing_commit": None}, "prediction lacks inducing_commit."),
+    ({}, "prediction lacks inducing_commit."),
+    ({"predictions": [], "bug_introducing_commit": "c1"},
+     "the record has both a predictions list and a top-level bug_introducing_commit; put every prediction in the list."),
+    ({"status": "error", "inducing_commit": ["c1"]}, "inducing_commit must be a non-empty string (got ['c1'])."),
+    ({"repository_id": 123, "predictions": []}, "repository_id must be a non-empty string when present."),
+], ids=["predictions-null", "predictions-object", "inducing-list", "inducing-empty", "bic-number", "inducing-null",
+        "no-inducing", "both-forms", "error-record-inducing-list", "repository-id-number"])
+def test_a_loading_error_names_the_field_and_marks_the_scenario_invalid(tmp_path, record, message):
+    from szzbench.evaluator import load_predictions
+    path = tmp_path / "predictions.jsonl"
+    path.write_text(json.dumps({"scenario_id": "SZZ-0006", **record}) + "\n", encoding="utf-8")
+    predictions, explicit, run_errors, invalid, repository_ids, errors, _ = load_predictions(path)
+    assert errors == [f"{path}: {message}"]      # one JSON document: the location is the file
+    assert invalid == {"SZZ-0006": errors}
+    assert (predictions, explicit, run_errors, repository_ids) == ({}, set(), {}, {})
+
+
+def test_a_record_without_a_scenario_id_is_only_a_loading_error(tmp_path):
+    from szzbench.evaluator import load_predictions
+    path = tmp_path / "predictions.jsonl"
+    path.write_text(json.dumps({"predictions": "none"}) + "\n" + json.dumps({"scenario_id": 6, "predictions": []}) + "\n",
+                    encoding="utf-8")
+    _, explicit, _, invalid, _, errors, _ = load_predictions(path)
+    assert errors == [f"{path}:{line}: prediction record lacks string scenario_id." for line in (1, 2)]
+    assert (explicit, invalid) == (set(), {})
+
+
+def test_an_unreadable_status_reports_only_itself(tmp_path):
+    """Without an inducing commit, a record whose status cannot be read may have meant a failure."""
+    from szzbench.evaluator import load_predictions
+    path = tmp_path / "predictions.jsonl"
+    path.write_text(json.dumps({"scenario_id": "SZZ-0006", "status": "timeout"}) + "\n", encoding="utf-8")
+    *_, invalid, _, errors, _ = load_predictions(path)
+    assert errors == [f"{path}: status must be one of ok, error when present (got 'timeout')."]
+    assert invalid == {"SZZ-0006": errors}
+
+
+def test_one_unreadable_record_makes_the_scenario_invalid_whatever_the_others_say(generated, tmp_path):
+    """The readable records still count in the metrics, as a failed run's predictions do."""
+    for records in ([{"scenario_id": "SZZ-0006", "predictions": _predict("c1")},
+                     {"scenario_id": "SZZ-0006", "inducing_commit": "c1", "rank": "1"}],
+                    [{"scenario_id": "SZZ-0006", "inducing_commit": "c1", "rank": "1"},
+                     {"scenario_id": "SZZ-0006", "predictions": _predict("c1")}]):
+        report, by_id = _evaluate(generated, tmp_path, records)
+        item = by_id["SZZ-0006"]
+        assert (item.status, item.run_status, item.true_positives) == ("FAIL", "invalid", ["c1"])
+        assert len(item.run_errors) == 1 and "rank must be an integer" in item.run_errors[0]
+        assert report.errors == item.run_errors
+
+
+def test_one_unreadable_prediction_drops_its_whole_record(generated, tmp_path):
+    _, by_id = _evaluate(generated, tmp_path, [
+        {"scenario_id": "SZZ-0006", "predictions": [{"inducing_commit": "c1"}, {"inducing_commit": "c0", "rank": "2"},
+                                                    {"inducing_commit": 7}]}])
+    item = by_id["SZZ-0006"]
+    assert (item.status, item.run_status, item.prediction_count, item.false_negatives) == ("FAIL", "invalid", 0, ["c1"])
+    assert [error.split(": ", 1)[1] for error in item.run_errors] == [
+        "rank must be an integer when present.", "inducing_commit must be a non-empty string (got 7)."]
+
+
+@pytest.mark.parametrize("record", [
+    {"repository_id": ""},
+    {"repository_id": ["r"]},
+    {"repository_id": "0123456789abcdef0123456789abcdef"},     # differs from the earlier record's
+], ids=["empty", "list", "another-id"])
+def test_a_bad_repository_id_is_invalid_too(generated, tmp_path, record):
+    first = {"scenario_id": "SZZG-0135", "predictions": [], "repository_id": _repository_id(generated, "SZZG-0135")}
+    report, by_id = _evaluate(generated, tmp_path, [first, {"scenario_id": "SZZG-0135", "predictions": [], **record}])
+    item = by_id["SZZG-0135"]
+    assert (item.status, item.run_status) == ("FAIL", "invalid")
+    assert item.run_errors == report.errors and "repository_id" in report.errors[0]
+
+
+def _repository_id(generated: Path, sid: str) -> str:
+    return json.loads((generated / sid / "default/metadata/manifest.json").read_text())["repository_id"]
+
+
+def test_a_tool_error_and_stale_predictions_come_before_an_unreadable_record(generated, tmp_path):
+    """Both say the run itself is no answer, which fixing the file would not change."""
+    unreadable = {"scenario_id": "SZZG-0135", "predictions": "none"}
+    _, by_id = _evaluate(generated, tmp_path, [
+        {"scenario_id": "SZZG-0135", "status": "error", "errors": ["boom"], "predictions": []}, unreadable])
+    assert (by_id["SZZG-0135"].run_status, by_id["SZZG-0135"].run_errors) == ("error", ["boom"])
+    _, by_id = _evaluate(generated, tmp_path, [
+        {"scenario_id": "SZZG-0135", "predictions": [], "repository_id": "0123456789abcdef0123456789abcdef"},
+        unreadable])
+    assert by_id["SZZG-0135"].run_status == "stale"
+
+
+def test_an_unreadable_record_is_not_a_missing_one_under_include_generated(generated, tmp_path):
+    report, by_id = _evaluate(generated, tmp_path, [{"scenario_id": "SZZG-0135", "predictions": "none"}],
+                              include_generated=True)
+    assert {sid: item.run_status for sid, item in by_id.items()} == \
+        {"SZZG-0135": "invalid", "SZZ-0006": "missing", "SZZG-0140": "missing"}
+    summary = report.summary()
+    assert (summary["pass"], summary["invalid_records"], summary["missing_records"]) == (0, 1, 2)
+    markdown = report.to_markdown()
+    assert "- Invalid prediction records: 1" in markdown and "- Missing prediction records: 2" in markdown
 
 
 # ---------------------------------------------------------------------------

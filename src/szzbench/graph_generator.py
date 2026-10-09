@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 import json
 import shutil
@@ -27,7 +27,7 @@ from .gitutils import (
     run_git_with_input,
     timestamp_to_git_raw,
 )
-from .graph_operations import apply_graph_operation_to_filesystem, commit_generator_directory
+from .graph_operations import CommitGeneratorPlan, apply_graph_operation_to_filesystem, commit_generator_changes, commit_generator_plan
 from .graph_scenario import load_graph_scenario
 from .graph_validator import validate_graph_scenario_file
 from .operations import OperationError, normalize_newlines
@@ -40,10 +40,6 @@ class GraphGenerationError(RuntimeError):
     pass
 
 
-# Upper bound for one ``commit_generator`` operation (issue #18).
-# Generated files keep at most this many change lines so that blobs stay small
-# even for thousands of generated commits.
-GENERATED_FILE_MAX_LINES = 50
 # Temporary ref used while importing generated commits with ``git fast-import``.
 _GENERATED_IMPORT_REF = "refs/szzbench/generated"
 
@@ -347,7 +343,40 @@ def _prepare_merge(
     except GitError as exc:
         what = f"Merge of parent '{extra_parent_ids[0]}'" if len(extra_parent_ids) == 1 else f"Octopus merge of parents {extra_parent_ids}"
         conflicted.extend(_resolve_conflicts_or_fail(repo_dir, commit_spec, what, exc, log))
+    _require_merge_heads(repo_dir, extra_parent_ids, hashes, commit_spec)
     return conflicted
+
+
+def _require_merge_heads(repo_dir: Path, extra_parent_ids: list[str], hashes: list[str], commit_spec: dict[str, Any]) -> None:
+    """Stop when ``git merge`` would not record every declared extra parent (issue #173).
+
+    Git records each head once and drops a head already reachable from another
+    one; for a merge with nothing left to record it says "Already up to date"
+    and leaves no MERGE_HEAD.  The commit would then get fewer parents than
+    declared ("commit would be empty", or GE627/GE628 at verification), so the
+    parent that was dropped is named here instead.  Validation reports the same
+    parent lists as GE049.
+    """
+    try:
+        recorded = (repo_dir / ".git" / "MERGE_HEAD").read_text(encoding="utf-8").split()
+    except FileNotFoundError:
+        recorded = []
+    remaining = list(recorded)
+    reasons: list[str] = []
+    seen = [p for p in commit_spec.get("parents", []) if isinstance(p, str)][:1]   # the first parent
+    for parent_id, parent_hash in zip(extra_parent_ids, hashes):
+        if parent_hash in remaining:
+            remaining.remove(parent_hash)
+        else:
+            reasons.append(f"{parent_id} is listed twice" if parent_id in seen else f"{parent_id} is already merged")
+        seen.append(parent_id)
+    if not reasons:
+        return
+    declared = ", ".join(seen)
+    what = "no second parent" if not recorded else f"{len(recorded) + 1} parents, not {len(seen)}"
+    raise GraphGenerationError(
+        f"merge of {declared} for commit '{commit_spec.get('id')}' recorded {what}: {'; '.join(reasons)} (GE049)."
+    )
 
 
 def _resolve_conflicts_or_fail(repo_dir: Path, commit_spec: dict[str, Any], what: str, exc: GitError, log) -> list[str]:
@@ -609,27 +638,17 @@ def _expand_commit_generators(
     meta = scenario.get("meta") if isinstance(scenario.get("meta"), dict) else {}
     scenario_id = str(meta.get("id") or owner_id)
 
-    plan: list[tuple[str, str, int, int]] = []  # (generator, directory, count, files)
+    plan: list[CommitGeneratorPlan] = []
     for op in ops:
-        generator = str(op.get("generator") or "unrelated_changes")
         try:
-            requested = int(op.get("count"))
-        except (TypeError, ValueError):
-            raise GraphGenerationError(f"commit_generator.count of commit '{owner_id}' must be an integer.")
-        if requested < 0:
-            raise GraphGenerationError(f"commit_generator.count of commit '{owner_id}' must not be negative.")
-        count = min(requested, MAX_GENERATED_COMMITS)
-        if count != requested:
-            log(f"commit_generator count {requested} of commit {owner_id} capped at {MAX_GENERATED_COMMITS}")
-        try:
-            files = int(op.get("files", 1) or 1)
-        except (TypeError, ValueError):
-            raise GraphGenerationError(f"commit_generator.files of commit '{owner_id}' must be an integer.")
-        files = max(1, files)
-        directory = commit_generator_directory(op.get("path"))
-        plan.append((generator, directory, count, files))
+            entry = commit_generator_plan(op, owner_id)
+        except ValueError as exc:
+            raise GraphGenerationError(str(exc)) from None
+        if entry.count != entry.requested:
+            log(f"commit_generator count {entry.requested} of commit {owner_id} capped at {MAX_GENERATED_COMMITS}")
+        plan.append(entry)
 
-    total = sum(count for _, _, count, _ in plan)
+    total = sum(entry.count for entry in plan)
     if total == 0:
         return []
 
@@ -667,51 +686,53 @@ def _expand_commit_generators(
     placement_detail = {"author": author_placement, "committer": committer_placement}
 
     parent_hash = run_git(repo_dir, ["rev-parse", "--verify", "-q", "HEAD"]).stdout.strip() if parents else ""
-    file_contents: dict[str, str] = {}
+
+    written: set[str] = set()      # the files of this import so far, none of them in the worktree yet
+
+    def read_existing(rel_path: str) -> str:
+        try:
+            existing = safe_join(repo_dir, rel_path)
+        except PathValidationError as exc:
+            raise GraphGenerationError(f"commit_generator of commit '{owner_id}' produced an invalid path '{rel_path}': {exc}") from exc
+        _refuse_generated_path_below_a_file(repo_dir, rel_path, owner_id)
+        _refuse_a_collision_within_the_import(written, rel_path, owner_id)
+        written.add(rel_path)
+        try:
+            return existing.read_text(encoding="utf-8") if existing.exists() else ""
+        except (OSError, ValueError) as exc:      # a directory, a file that is not UTF-8 (issue #175)
+            reason = exc.strerror if isinstance(exc, OSError) and exc.strerror else str(exc)
+            raise GraphGenerationError(f"commit_generator of commit '{owner_id}' cannot append to '{rel_path}': {reason}") from exc
+
     stream: list[bytes] = []
     generated: list[dict[str, Any]] = []
-    sequence = 0
     previous_id: str | None = parents[0] if parents else None
-    for generator, directory, count, files in plan:
-        for k in range(1, count + 1):
-            sequence += 1
-            gid = planned_ids[sequence - 1]
-            file_index = (k - 1) % files + 1
-            file_name = f"{generator}-{file_index:02d}.txt"
-            rel_path = f"{directory}/{file_name}" if directory else file_name
-            if rel_path not in file_contents:
-                try:
-                    existing = safe_join(repo_dir, rel_path)
-                except PathValidationError as exc:
-                    raise GraphGenerationError(f"commit_generator of commit '{owner_id}' produced an invalid path '{rel_path}': {exc}") from exc
-                file_contents[rel_path] = existing.read_text(encoding="utf-8") if existing.exists() else ""
-            # The written line must not carry the generated commit id: a logical-id
-            # prefix inside the repository is an answer cue (issue #8).
-            file_contents[rel_path] = _append_generated_line(file_contents[rel_path], f"{generator} change {sequence}")
-            author = deterministic_author(scenario_id, gid)
-            author_date = format_timestamp(author_dates[sequence - 1])
-            committer_date = format_timestamp(committer_dates[sequence - 1])
-            message = f"Update {rel_path} ({generator} {sequence}/{total})"
-            stream.append(
-                _fast_import_commit(sequence, message, author, author_date, committer_date, parent_hash if sequence == 1 else None, rel_path, file_contents[rel_path])
-            )
-            generated.append(
-                {
-                    "id": gid,
-                    "message": message,
-                    "author": author,
-                    "author_date": author_date,
-                    "committer_date": committer_date,
-                    "timestamp_placement": placement,
-                    "timestamp_placement_detail": dict(placement_detail),
-                    "role": "generated",
-                    "branch": branch,
-                    "parents": [previous_id] if previous_id else [],
-                    "generated_by": owner_id,
-                    "path": rel_path,
-                }
-            )
-            previous_id = gid
+    # file names and contents come from graph_operations, which the simulator shares (issue #175)
+    for sequence, (generator, rel_path, content) in enumerate(commit_generator_changes(plan, read_existing), start=1):
+        gid = planned_ids[sequence - 1]
+        author = deterministic_author(scenario_id, gid)
+        author_date = format_timestamp(author_dates[sequence - 1])
+        committer_date = format_timestamp(committer_dates[sequence - 1])
+        message = f"Update {rel_path} ({generator} {sequence}/{total})"
+        stream.append(
+            _fast_import_commit(sequence, message, author, author_date, committer_date, parent_hash if sequence == 1 else None, rel_path, content)
+        )
+        generated.append(
+            {
+                "id": gid,
+                "message": message,
+                "author": author,
+                "author_date": author_date,
+                "committer_date": committer_date,
+                "timestamp_placement": placement,
+                "timestamp_placement_detail": dict(placement_detail),
+                "role": "generated",
+                "branch": branch,
+                "parents": [previous_id] if previous_id else [],
+                "generated_by": owner_id,
+                "path": rel_path,
+            }
+        )
+        previous_id = gid
 
     marks_path = repo_dir / ".git" / "szzbench-fast-import-marks"
     args = ["fast-import", "--quiet", "--done", f"--export-marks={marks_path}"]
@@ -741,12 +762,30 @@ def _expand_commit_generators(
     return generated_ids
 
 
-def _append_generated_line(content: str, line: str) -> str:
-    lines = content.splitlines()
-    lines.append(line)
-    if len(lines) > GENERATED_FILE_MAX_LINES:
-        lines = lines[-GENERATED_FILE_MAX_LINES:]
-    return "\n".join(lines) + "\n"
+def _refuse_a_collision_within_the_import(written: set[str], rel_path: str, owner_id: str) -> None:
+    """A generated file below an earlier generated file of the same import, or at the path
+    of a directory that holds one.  The worktree has neither yet, so the check above cannot
+    see them, and ``git fast-import`` would silently replace the earlier file with a
+    directory, or the directory with the file (PR #226 review)."""
+    for parent in PurePosixPath(rel_path).parents:
+        if parent.as_posix() in written:
+            raise GraphGenerationError(f"commit_generator of commit '{owner_id}' cannot write '{rel_path}': "
+                                       f"{parent.as_posix()} is a file it generates")
+    below = next((path for path in sorted(written) if path.startswith(rel_path + "/")), None)
+    if below is not None:
+        raise GraphGenerationError(f"commit_generator of commit '{owner_id}' cannot write '{rel_path}': "
+                                   f"it is a directory of {below}, a file it generates")
+
+
+def _refuse_generated_path_below_a_file(repo_dir: Path, rel_path: str, owner_id: str) -> None:
+    """A generated file below an existing file: ``git fast-import`` would silently
+    replace that file with a directory (issue #175)."""
+    parent = Path(rel_path).parent
+    while parent != Path("."):
+        if (repo_dir / parent).is_file():
+            raise GraphGenerationError(f"commit_generator of commit '{owner_id}' cannot write '{rel_path}': "
+                                       f"{parent.as_posix()} is a file")
+        parent = parent.parent
 
 
 def _effective_parent_date(parent_entry: dict[str, Any] | None, kind: str) -> datetime | None:

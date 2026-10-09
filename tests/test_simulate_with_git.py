@@ -13,6 +13,12 @@ A scenario that uses any of those features is now generated with Git in a
 temporary directory: GE203 reports a failure there, at the commit that failed,
 and GI203 records that the check was made with Git.  Every other scenario
 keeps the in-memory check and its operation-level locations.
+
+The generated repository was not verified, so a scenario could pass
+``--simulate`` and fail ``generate-graph`` at verification -- a merge parent
+Git did not record, a fault statement that is not in the file (issue #173).
+It is now verified as ``generate-graph`` verifies it, and each verification
+error is GE203 too, with the verifier's code and location.
 """
 from __future__ import annotations
 
@@ -21,6 +27,7 @@ from pathlib import Path
 import pytest
 import yaml
 
+from szzbench.graph_generator import GraphGenerationError, generate_graph_repository
 from szzbench.graph_simulator import git_performed_features
 from szzbench.graph_validator import validate_graph_scenario_file
 
@@ -119,6 +126,31 @@ def test_a_revert_that_changes_nothing_is_still_an_error(tmp_path):
     [finding] = _findings(result, "GE203")
     assert finding["location"] == "commits[8]"
     assert "at commit 'c8'" in finding["message"] and "commit would be empty" in finding["message"]
+
+
+def _misquote_the_fault(data):
+    data["bugs"][0]["faults"][0]["statement"] = "return attempts <= budget;"
+
+
+def _pad_the_merge_message(data):   # git commit strips the trailing space
+    _commit(data, "c3")["message"] += " "
+
+
+@pytest.mark.parametrize("edit, code, location", [
+    (_misquote_the_fault, "GE663", "bugs[0].faults[0]"),
+    (_pad_the_merge_message, "GE623", "commits[5].message"),
+], ids=["fault-statement", "commit-message"])
+def test_a_verification_error_is_ge203_with_the_verifiers_code_and_location(tmp_path, edit, code, location):
+    path = _variant(tmp_path, "SZZG-0123", edit)
+    _, static = validate_graph_scenario_file(path, strict_paths=True, lint=True)
+    assert not static.has_errors(), static.to_dict()     # only verification finds it
+    _, result = validate_graph_scenario_file(path, simulate=True)
+    [finding] = _findings(result, "GE203")
+    assert finding["location"] == location
+    assert finding["message"].startswith(f"The scenario generated with Git fails verification: {code} ")
+    assert _findings(result, "GI203") == []
+    with pytest.raises(GraphGenerationError, match="failed verification"):   # what --simulate now predicts
+        generate_graph_repository(path, tmp_path / "out", force=True)
 
 
 def test_a_broken_operation_after_a_cherry_pick_is_still_an_error(tmp_path):
