@@ -461,3 +461,38 @@ def test_an_offset_in_whole_minutes_is_accepted():
     assert timestamp_problem("2024-01-02T10:00:00+05:30") is None
     assert timestamp_problem("2024-01-02T10:00:00-00:45") is None
     assert "whole minutes" in timestamp_problem("2024-01-02T10:00:00+05:30:15")
+
+
+def _inheriting(*, inherit: bool = True, committer_date: str | None = "2024-01-03T10:00:00Z") -> dict:
+    """The review's derivation of SZZG-0001: a base date at the end of the range, c0 and c1 dated, and c2 a rebase
+    of c1 that inherits its author date and names only its committer date."""
+    data = _set(_without_dates(GRAPH), ("repository", "base_date"), "2099-12-31T23:59:59Z")
+    data["commits"][0]["date"] = "2024-01-01T10:00:00Z"
+    data["commits"][1]["date"] = "2024-01-02T10:00:00Z"
+    c2 = data["commits"][2]
+    c2["rebase_of"] = "c1"
+    if inherit:
+        c2["inherit_author_date"] = True
+    if committer_date is not None:
+        c2["committer_date"] = committer_date
+    return data
+
+
+def test_an_inherited_author_date_is_not_checked_on_the_schedule(tmp_path):
+    """inherit_author_date replaces the scheduled author date by the rewrite source's (PR #236 review): the
+    scheduled one, 2100-01-02, is never used, and the scenario generates."""
+    scenario = _write(tmp_path, GRAPH_FILE, _inheriting())
+    assert _errors(_validate(scenario, True)) == []
+    commit_map, verify_result = generate_graph_repository(scenario, tmp_path / "out")
+    assert not verify_result.has_errors()
+    assert commit_map["c2"]["author_date"].startswith("2024-01-02T10:00:00")
+    assert commit_map["c2"]["committer_date"].startswith("2024-01-03T10:00:00")
+
+
+@pytest.mark.parametrize("variant", ["without inherit_author_date", "without a committer_date"])
+def test_the_dates_the_schedule_still_gives_are_checked(tmp_path, variant):
+    """Without the inheritance the author date comes from the schedule; without a committer_date, so does the
+    committer date, inheritance or not."""
+    data = _inheriting(inherit=False) if variant == "without inherit_author_date" else _inheriting(committer_date=None)
+    scenario = _write(tmp_path, GRAPH_FILE, data)
+    assert _errors(_validate(scenario, True)) == [("GE071", "repository.base_date")]

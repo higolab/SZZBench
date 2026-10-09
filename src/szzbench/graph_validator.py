@@ -247,7 +247,7 @@ def validate_graph_static(data: dict[str, Any], *, scenario_path: Path | None = 
         for j, op in enumerate(operations):
             _validate_operation(op, result, f"{loc}.operations[{j}]", strict_paths=strict_paths)
 
-    check_scheduled_dates(data, result, code="GE071")    # PR #236 review
+    check_scheduled_dates(data, result, code="GE071", graph=True)    # PR #236 review
     result.extend(_validate_graph_acyclic(commits))
     result.extend(_validate_merge_parents(commits))
     if not result.has_errors():          # the history model needs well-formed commits

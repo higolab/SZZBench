@@ -190,7 +190,7 @@ def author_problem(value: Any) -> str | None:
     return None
 
 
-def check_scheduled_dates(data: dict[str, Any], result: ValidationResult, *, code: str) -> None:
+def check_scheduled_dates(data: dict[str, Any], result: ValidationResult, *, code: str, graph: bool = False) -> None:
     """``code`` for a date the generators would give a commit that names none, outside what Git records.
 
     A commit without ``date`` / ``author_date`` / ``committer_date`` gets one
@@ -201,6 +201,10 @@ def check_scheduled_dates(data: dict[str, Any], result: ValidationResult, *, cod
     ``invalid date format`` (PR #236 review).  The first such commit is named;
     the dates are increasing, so the ones after it fail too.  Run after the
     explicit values have been checked, so that each problem is reported once.
+    In the graph suite a commit with ``inherit_author_date`` takes its author
+    date from its rewrite source (``graph_generator._apply_inherit_options``),
+    whose own date is checked where it is declared: only its committer date
+    comes from the schedule (PR #236 review).
     """
     if any(f.code == code for f in result.findings):
         return                           # a written date is wrong already
@@ -216,8 +220,11 @@ def check_scheduled_dates(data: dict[str, Any], result: ValidationResult, *, cod
             # a value other checks report, or a schedule past the dates Python can represent
             found.append((index, commit["id"], "date", "a date past the year 9999"))
             break
+        inherits_author_date = graph and bool(commit.get("inherit_author_date"))
         for key, value, is_default in (("author_date", metadata.author_date, metadata.author_date_is_default),
                                        ("committer_date", metadata.committer_date, metadata.committer_date_is_default)):
+            if key == "author_date" and inherits_author_date:
+                continue                 # replaced by the rewrite source's author date
             if is_default and timestamp_problem(value) is not None:
                 found.append((index, commit["id"], key, value))
                 break
