@@ -391,3 +391,73 @@ def test_the_issues_traceback_row_is_generation_failed_through_the_cli(tmp_path)
                                capture_output=True, text=True)
     assert completed.returncode == 1 and "Traceback" not in completed.stderr, completed.stderr
     assert completed.stderr.startswith("[ERROR] GENERATION_FAILED: Scenario validation failed."), completed.stderr
+
+
+# --- PR #236 review: values the first checks passed, and Git still could not record --------------
+
+def _without_dates(data: dict) -> dict:
+    data = deepcopy(data)
+    for commit in data["commits"]:
+        for key in ("date", "author_date", "committer_date"):
+            commit.pop(key, None)
+    return data
+
+
+#: name -> (classic scenario, graph scenario, classic code, graph code, location)
+REVIEW_CASES = {
+    # Git keeps an offset as +hhmm: the instant moved by 30 seconds (E605 in the classic suite, nothing in the graph one)
+    "an offset with seconds": (_set(CLASSIC, ("commits", 1, "date"), "2023-10-19T11:36:00+00:00:30"),
+                               _set(GRAPH, ("commits", 1, "date"), "2024-01-02T10:00:00+00:00:30"),
+                               "E013", "GE071", "commits[1].date"),
+    # the generators pass the author to Git in its environment
+    "a NUL in the name": (_set(CLASSIC, ("commits", 1, "author"), "Alice\0 Example <alice@example.com>"),
+                          _set(GRAPH, ("commits", 1, "author"), "Alice\0 Example <alice@example.com>"),
+                          "E014", "GE072", "commits[1].author"),
+    "a NUL in the e-mail": (_set(CLASSIC, ("commits", 1, "author"), "Alice <alice\0@example.com>"),
+                            _set(GRAPH, ("commits", 1, "author"), "Alice <alice\0@example.com>"),
+                            "E014", "GE072", "commits[1].author"),
+    "a lone surrogate in the name": (_set(CLASSIC, ("commits", 1, "author"), "Alice\ud800 <alice@example.com>"),
+                                     _set(GRAPH, ("commits", 1, "author"), "Alice\ud800 <alice@example.com>"),
+                                     "E014", "GE072", "commits[1].author"),
+    "a lone surrogate in the e-mail": (_set(CLASSIC, ("commits", 1, "author"), "Alice <alice\ud800@example.com>"),
+                                       _set(GRAPH, ("commits", 1, "author"), "Alice <alice\ud800@example.com>"),
+                                       "E014", "GE072", "commits[1].author"),
+    # the schedule from the base date gives the later commits dates past 2099
+    "a base date at the end of the range": (
+        _set(_without_dates(CLASSIC), ("repository", "base_date"), "2099-12-31T23:59:59Z"),
+        _set(_without_dates(GRAPH), ("repository", "base_date"), "2099-12-31T23:59:59Z"),
+        "E013", "GE071", "repository.base_date"),
+}
+
+
+@pytest.mark.parametrize("graph", [False, True], ids=["classic", "graph"])
+@pytest.mark.parametrize("case", list(REVIEW_CASES))
+def test_a_value_git_would_record_otherwise_or_refuse_is_an_error_before_generation(tmp_path, graph, case):
+    classic, graph_data, classic_code, graph_code, location = REVIEW_CASES[case]
+    data, code = (graph_data, graph_code) if graph else (classic, classic_code)
+    scenario = _write(tmp_path, GRAPH_FILE if graph else CLASSIC_FILE, data)
+    assert _errors(_validate(scenario, graph)) == [(code, location)]
+    generate, error = (generate_graph_repository, GraphGenerationError) if graph else (generate_repository, GenerationError)
+    with pytest.raises(error, match="validation failed"):
+        generate(scenario, tmp_path / "out")
+    assert not (tmp_path / "out" / "repo").exists()
+
+
+@pytest.mark.parametrize("graph", [False, True], ids=["classic", "graph"])
+def test_a_base_date_whose_schedule_stays_in_range_generates(tmp_path, graph):
+    """The schedule check refuses only dates past the range: early January 2099 leaves room for every commit."""
+    base = GRAPH if graph else CLASSIC
+    data = _set(_without_dates(base), ("repository", "base_date"), "2099-01-05T10:00:00Z")
+    scenario = _write(tmp_path, GRAPH_FILE if graph else CLASSIC_FILE, data)
+    assert _errors(_validate(scenario, graph)) == []
+    generate = generate_graph_repository if graph else generate_repository
+    commit_map, verify_result = generate(scenario, tmp_path / "out")
+    assert not verify_result.has_errors()
+    assert all(entry["author_date"].startswith("2099-") for entry in commit_map.values())
+
+
+def test_an_offset_in_whole_minutes_is_accepted():
+    from szzbench.validator import timestamp_problem
+    assert timestamp_problem("2024-01-02T10:00:00+05:30") is None
+    assert timestamp_problem("2024-01-02T10:00:00-00:45") is None
+    assert "whole minutes" in timestamp_problem("2024-01-02T10:00:00+05:30:15")

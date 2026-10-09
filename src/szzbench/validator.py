@@ -13,7 +13,8 @@ from .operations import (SUPPORTED_OPERATIONS, FUTURE_OPERATIONS, OperationError
 from .paths import PathValidationError, file_path_conflict, validate_repo_relative_path
 from .retired_ids import read_retired_ids
 from .scenario import load_yaml
-from .gitutils import _AUTHOR_RE, TIMESTAMP_KEYS, GitError, parse_timestamp, resolved_commit_authors
+from .gitutils import (_AUTHOR_RE, TIMESTAMP_KEYS, GitError, parse_timestamp, resolve_commit_metadata,
+                       resolved_commit_authors)
 
 ALLOWED_ROLES = {
     "initial", "bug_introducing", "bug_fixing", "distractor", "refactoring",
@@ -152,6 +153,12 @@ def timestamp_problem(value: Any) -> str | None:
     if not (1970 <= parsed.year <= 2099 and GIT_FIRST_INSTANT <= parsed < GIT_END_INSTANT):
         return (f"{shown} is not a date Git records: write an instant from 1970-01-01T00:00:00Z up to "
                 "2099-12-31T23:59:59Z, in a year from 1970 to 2099 where it is written")
+    offset = parsed.utcoffset()
+    if offset is not None and offset.total_seconds() % 60:
+        # Git keeps an offset as +hhmm: +00:00:30 became +0000, and the instant moved by 30 seconds
+        # (E605 in the classic suite, nothing at all in the graph suite; PR #236 review)
+        return (f"{shown} has the offset {offset} with seconds, and Git records an offset in whole minutes (+hhmm), "
+                "so it would record another instant; write the offset in hours and minutes")
     return None
 
 
@@ -166,6 +173,13 @@ def author_problem(value: Any) -> str | None:
     """
     if not isinstance(value, str):
         return f"must be a string 'Name <email>', not {type_label(value)}; without the key the generator picks an author"
+    # the generators pass it to Git in its environment, which takes neither (PR #236 review)
+    if "\0" in value:
+        return f"{value!r} contains a NUL character, which cannot be passed to Git"
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError as exc:
+        return f"{value!r} contains a lone surrogate (U+{ord(value[exc.start]):04X}), which is not UTF-8 text"
     match = _AUTHOR_RE.match(value)
     if match is None:
         return f"{value!r} is not 'Name <email>'"
@@ -174,6 +188,49 @@ def author_problem(value: Any) -> str | None:
     if not match.group("email").strip():
         return f"{value!r} has an empty e-mail address"
     return None
+
+
+def check_scheduled_dates(data: dict[str, Any], result: ValidationResult, *, code: str) -> None:
+    """``code`` for a date the generators would give a commit that names none, outside what Git records.
+
+    A commit without ``date`` / ``author_date`` / ``committer_date`` gets one
+    from a schedule that starts at ``repository.base_date``
+    (``gitutils.resolve_commit_metadata``, which both generators call).  The
+    base date alone was checked, so a base date near the end of the range Git
+    records passed, and generation failed at a later commit with Git's
+    ``invalid date format`` (PR #236 review).  The first such commit is named;
+    the dates are increasing, so the ones after it fail too.  Run after the
+    explicit values have been checked, so that each problem is reported once.
+    """
+    if any(f.code == code for f in result.findings):
+        return                           # a written date is wrong already
+    commits = data.get("commits") if isinstance(data.get("commits"), list) else []
+    repository = data.get("repository") if isinstance(data.get("repository"), dict) else {}
+    found: list[tuple[int, str, str, str]] = []          # (index, commit id, key, value)
+    for index, commit in enumerate(commits):
+        if not isinstance(commit, dict) or not isinstance(commit.get("id"), str):
+            continue
+        try:
+            metadata = resolve_commit_metadata(data, commit, index)
+        except (GitError, ValueError, TypeError, OverflowError):
+            # a value other checks report, or a schedule past the dates Python can represent
+            found.append((index, commit["id"], "date", "a date past the year 9999"))
+            break
+        for key, value, is_default in (("author_date", metadata.author_date, metadata.author_date_is_default),
+                                       ("committer_date", metadata.committer_date, metadata.committer_date_is_default)):
+            if is_default and timestamp_problem(value) is not None:
+                found.append((index, commit["id"], key, value))
+                break
+    if not found:
+        return
+    index, cid, key, value = found[0]
+    base = repository.get("base_date")
+    where = "repository.base_date" if base is not None else f"commits[{index}]"
+    since = f"repository.base_date {base!r}" if base is not None else "the default base date"
+    later = "; the commits after it get later dates" if index < len(commits) - 1 else ""
+    result.error(code, f"Commit '{cid}' names no date, and the schedule from {since} gives it the {key} {value}, "
+                 f"which Git does not record (it records an instant from 1970-01-01T00:00:00Z up to "
+                 f"2099-12-31T23:59:59Z){later}: choose an earlier base date, or write the commit's date.", where)
 
 
 #: The keys of a classic ``fix`` that hold the text validation looks up (E311).
@@ -469,6 +526,7 @@ def validate_static(data: dict[str, Any], *, scenario_path: Path | None = None) 
                     resolve(op)
                 except OperationError as exc:
                     result.error("E042", f"Operation '{op_type}' {exc}.", f"{op_loc}.{key}")
+    check_scheduled_dates(data, result, code="E013")     # PR #236 review
     bug_ids: set[str] = set()
     index_by_commit = {cid: i for i, cid in enumerate(commit_ids)}
     for i, bug in enumerate(bugs):

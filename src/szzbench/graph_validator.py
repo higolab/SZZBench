@@ -18,7 +18,7 @@ from .gitutils import (GitError, format_timestamp, history_graph, parse_timestam
 from .operations import OperationError, resolve_line_ending, type_label
 from .paths import PathValidationError, file_system_key, validate_repo_relative_path
 from .policies import SUPPORTED_EVALUATION_POLICIES
-from .validator import (COMMIT_MESSAGE_RULE, check_commit_metadata, commit_message_problem, lint_author_coincidence,
+from .validator import (COMMIT_MESSAGE_RULE, check_commit_metadata, check_scheduled_dates, commit_message_problem, lint_author_coincidence,
                         lint_defeats, lint_difficulty, lint_factors, lint_leakage, lint_readme_header, lint_tier,
                         timestamp_problem)
 
@@ -247,6 +247,7 @@ def validate_graph_static(data: dict[str, Any], *, scenario_path: Path | None = 
         for j, op in enumerate(operations):
             _validate_operation(op, result, f"{loc}.operations[{j}]", strict_paths=strict_paths)
 
+    check_scheduled_dates(data, result, code="GE071")    # PR #236 review
     result.extend(_validate_graph_acyclic(commits))
     result.extend(_validate_merge_parents(commits))
     if not result.has_errors():          # the history model needs well-formed commits
