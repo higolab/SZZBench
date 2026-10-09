@@ -17,7 +17,7 @@ def load_graph_scenario(path: Path) -> tuple[dict[str, Any] | None, ValidationRe
         return None, result
     schema_version = data.get("schema_version")
     if not isinstance(schema_version, str) or "graph" not in schema_version:
-        result.error("GE001", "scenario.graph.yml must use a graph schema_version such as 'graph-0.1-draft'.", "schema_version")
+        result.error("GE001", "scenario.graph.yml must use the graph schema_version 'graph-1.0'.", "schema_version")
     return data, result
 
 

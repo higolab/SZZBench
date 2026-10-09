@@ -92,7 +92,7 @@ def classic_scenario() -> dict:
 
 def graph_scenario() -> dict:
     return {
-        "schema_version": "graph-0.1-draft",
+        "schema_version": "graph-1.0",
         "meta": {"id": "SZZG-9900", "title": "Graph lint fixture", "category": "fixture", "tier": "control", "difficulty": "medium", "factors": ["rebase", "branch"]},
         "repository": {"name": "graph-lint-fixture", "default_branch": "main"},
         "commits": [

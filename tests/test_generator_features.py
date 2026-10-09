@@ -41,7 +41,7 @@ def _write_graph_scenario(path: Path, commits: list[dict], *, scenario_id: str =
             }
         ]
     data = {
-        "schema_version": "graph-0.1-draft",
+        "schema_version": "graph-1.0",
         "meta": {"id": scenario_id, "title": "feature test", "category": "test", "factors": []},
         "repository": {"name": f"{scenario_id.lower()}-feature-test", "default_branch": "main", **(repository or {})},
         "commits": commits,

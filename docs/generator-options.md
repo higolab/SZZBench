@@ -30,7 +30,7 @@ Commits with explicit `author` and `date` keep byte-identical hashes.
 
 | Situation | Effective value |
 |---|---|
-| commit has `author` | used verbatim |
+| commit has `author` | used verbatim; it must be `Name <email>` (E014 / GE072) |
 | commit has no `author` | one of six pool authors, chosen by a stable hash of `(meta.id, commit index)` |
 | commit has `date` | used verbatim for both author and committer date |
 | commit has no `date` | the scenario's base date plus irregular weekday gaps (see below) |
@@ -62,6 +62,13 @@ The hash only uses the scenario id and the commit index, never the role, so a
 predictor cannot infer "bug-introducing" from the author. Generation is fully
 reproducible: two runs of the same scenario yield identical commit hashes.
 The policy behind this is [docs/decisions/oracle-leakage.md](decisions/oracle-leakage.md).
+
+A default applies only where the key is absent. A key that is present must hold
+a value generation can record: an `author` that is a number, a list or a blank
+value used to be replaced by a pool author without a word, and an `author`
+without `<email>` became a name with the benchmark's own address; the
+validators now reject both (E014 / GE072), as they reject a blank or unreadable
+date (E013 / GE071) (issue #152).
 
 ### `repository.base_date` (*both*)
 
@@ -98,7 +105,11 @@ depend on the time zone of the machine that generates them. Until issue #133 a
 quoted value without a zone reached Git verbatim and Git read it in local time,
 while the same value unquoted (a YAML timestamp) was already UTC. A value that
 is not ISO 8601 (`yesterday`) is an error that names the field, rather than
-whatever date Git makes of it.
+whatever date Git makes of it; `validate` / `validate-graph` report it (E013 /
+GE071), and so they do a date Git does not record as written: Git 2.39 and 2.50
+record an instant from 1970-01-01T00:00:00Z up to 2099-12-31T23:59:59Z, in a
+year from 1970 to 2099 where it is written, and refuse the others or record
+another date (both read `0001-01-01` as `2001-01-01`) (issue #152).
 
 ### What is recorded
 
@@ -169,6 +180,11 @@ Defaults:
   convention: a file whose every newline is CRLF stays CRLF; anything else
   (LF or mixed) is written as LF, as before.
 
+Any other value is an error in `validate` / `validate-graph` (E042 / GE061),
+read as generation reads it (`operations.resolve_line_ending`); `--simulate`
+does not read the key, so `line_ending: cr` used to pass it and fail
+generation (issue #152).
+
 Limitations: the in-memory simulators (`validate --simulate`,
 `validate-graph --simulate`) always work on LF text, so `old`/`anchor`
 matching is line-ending agnostic. Statements in `bugs` are matched against the
@@ -203,7 +219,7 @@ equals `new` — is a *BOM-only re-save*, the commit shape of SZZ-0206.
 ```
 
 In the classic suite the key is closed like `line_ending`: `utf-8` or
-`utf-8-sig` in any spelling Python accepts, anything else an operation error.
+`utf-8-sig` in any spelling Python accepts, anything else an error (E042).
 The classic in-memory simulator applies the codec's read and write behaviour
 to the simulated text, which stores a BOM as a leading U+FEFF: `utf-8-sig`
 strips one on read and writes one, `utf-8` keeps it as text. A BOM added or
@@ -212,7 +228,9 @@ stay substrings of the decoded text, and the simulator accepts a history
 exactly when Git would record it as distinct commits. The graph operations
 pass any codec name to Python unchecked and the graph simulator does not model
 it; a graph commit that changes only the encoding needs another change or
-`allow_empty` to pass `GE202`.
+`allow_empty` to pass `GE202`. `validate-graph` checks that the name is a text
+encoding Python knows (GE061): `encoding: bogus` used to pass it and fail
+generation (issue #152).
 
 ### `write_generated_text_file.header` / `.footer` (*graph*)
 
@@ -309,7 +327,10 @@ value such as `generated/unrelated-batch-1.txt` (the old placeholder file)
 means its parent directory, and a root-level file such as `notes.txt` means
 the repository root (files are then named `<generator>-<NN>.txt` without a
 directory). `files` defaults to 1. `count` larger than 2000
-is capped (a note is written to `generation.log`).
+is capped (a note is written to `generation.log`). `count` must be a
+non-negative integer and `files` a positive one (GE062): generation read
+`count: 1.5` as 1 and `files: 0` as 1, and `count: many` was found by
+`--simulate` and generation only (issue #152).
 
 `validate-graph --simulate` writes the same files with the same content -- the
 generator and the simulator take the names and contents from one function,

@@ -5,7 +5,7 @@ from szzbench.graph_validator import validate_graph_static
 
 def test_insert_after_is_validated_and_simulated():
     scenario = {
-        "schema_version": "graph-0.1-draft",
+        "schema_version": "graph-1.0",
         "meta": {
             "id": "SZZG-9001",
             "title": "Insert after smoke",

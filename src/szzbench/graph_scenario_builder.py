@@ -173,7 +173,7 @@ def _graph_scenario_template(
     status: str,
 ) -> str:
     repository_name = f"{scenario_id}-{slug}"
-    return f'''schema_version: "graph-0.1-draft"
+    return f'''schema_version: "graph-1.0"
 
 meta:
   id: {_quote(scenario_id)}

@@ -66,7 +66,7 @@ def _write_graph_scenario(path: Path, scenario_id: str) -> None:
     path.write_text(
         textwrap.dedent(
             f"""\
-            schema_version: graph-0.1-draft
+            schema_version: graph-1.0
             meta:
               id: "{scenario_id}"
               title: "Bulk graph smoke"
@@ -688,7 +688,7 @@ def test_graph_apply_patch_from_generates(tmp_path):
     scenario.write_text(
         textwrap.dedent(
             """\
-            schema_version: graph-0.1-draft
+            schema_version: graph-1.0
             meta:
               id: SZZG-9998
               title: Apply patch from smoke
@@ -790,7 +790,7 @@ def test_validate_graph_simulate_reports_operation_state_errors(tmp_path):
     scenario.write_text(
         textwrap.dedent(
             """\
-            schema_version: graph-0.1-draft
+            schema_version: graph-1.0
             meta:
               id: SZZG-9999
               title: Broken graph smoke

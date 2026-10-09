@@ -149,6 +149,22 @@ def _version(index: int, role: str, message: str, source: str) -> dict:
             "source": source}
 
 
+def test_a_blank_author_field_writes_no_author(tmp_path):
+    """validate refuses `author: ""` (E014, issue #152): a blank author field leaves the author to the generator,
+    as a blank date field leaves the date."""
+    def source(op: str) -> str:
+        return HEAD + f"        return value {op} min && value {op.replace('>', '<')} max;\n    }}\n}}\n"
+
+    versions = [dict(_version(0, "initial", "Add the range check", source(">=")), author=""),
+                dict(_version(1, "bug_introducing", "Exclude the bounds from the range check", source(">")), author="  "),
+                _version(2, "bug_fixing", "Include the bounds in the range check", source(">="))]
+    generated = _model(tmp_path, tier="control", versions=versions)
+    commits = yaml.safe_load(generated["yaml"])["commits"]
+    assert [commit.get("author") for commit in commits] == [None, None, "Alice <alice@example.com>"]
+    path = _save_as_the_server_does(tmp_path, generated)
+    assert _cli("validate", "--lint", "--strict", str(path)).returncode == 0, _lint(path)
+
+
 def _strict_and_generate(tmp_path: Path, path: Path) -> None:
     completed = _cli("validate", "--lint", "--strict", str(path))
     assert completed.returncode == 0, completed.stdout
