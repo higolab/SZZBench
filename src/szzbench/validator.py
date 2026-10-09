@@ -8,7 +8,7 @@ import re
 
 from .findings import ValidationResult
 from .operations import SUPPORTED_OPERATIONS, FUTURE_OPERATIONS, OperationError, apply_operation_to_memory, find_all_occurrences, type_label
-from .paths import PathValidationError, validate_repo_relative_path
+from .paths import PathValidationError, file_path_conflict, validate_repo_relative_path
 from .retired_ids import read_retired_ids
 from .scenario import load_yaml
 from .gitutils import resolved_commit_authors
@@ -407,6 +407,7 @@ def validate_static(data: dict[str, Any], *, scenario_path: Path | None = None) 
                     result.warning("W091", f"bug {bid} BIC '{bic}' has role '{role}', not 'bug_introducing'.", loc)
     return result
 
+
 def simulate_commits(data: dict[str, Any]) -> tuple[dict[str, dict[str, str]] | None, ValidationResult]:
     result = ValidationResult()
     files: dict[str, str] = {}
@@ -416,6 +417,11 @@ def simulate_commits(data: dict[str, Any]) -> tuple[dict[str, dict[str, str]] | 
         before = deepcopy(files)
         for j, op in enumerate(commit.get("operations", [])):
             try:
+                path = op.get("path")
+                if op.get("type") == "write_file" and isinstance(path, str):
+                    conflict = file_path_conflict(path, files)      # issue #153
+                    if conflict is not None:
+                        raise OperationError(f"write_file {conflict}")
                 apply_operation_to_memory(files, op)
             except OperationError as exc:
                 result.error("E2XX", f"Operation failed in commit '{cid}': {exc}", f"commits[{i}].operations[{j}]")

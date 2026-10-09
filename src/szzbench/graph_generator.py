@@ -33,7 +33,7 @@ from .graph_validator import validate_graph_scenario_file
 from .operations import OperationError, normalize_newlines, type_label
 from .graph_verifier import verify_graph_generated_repo
 from .manifest import write_manifest
-from .paths import PathValidationError, safe_join
+from .paths import PathValidationError, another_spelling_on_disk, file_path_conflict, safe_join
 
 
 class GraphGenerationError(RuntimeError):
@@ -716,6 +716,7 @@ def _expand_commit_generators(
         except PathValidationError as exc:
             raise GraphGenerationError(f"commit_generator of commit '{owner_id}' produced an invalid path '{rel_path}': {exc}") from exc
         _refuse_generated_path_below_a_file(repo_dir, rel_path, owner_id)
+        _refuse_another_spelling_of_a_generated_path(repo_dir, rel_path, owner_id)
         _refuse_a_collision_within_the_import(written, rel_path, owner_id)
         written.add(rel_path)
         try:
@@ -796,6 +797,13 @@ def _refuse_a_collision_within_the_import(written: set[str], rel_path: str, owne
     if below is not None:
         raise GraphGenerationError(f"commit_generator of commit '{owner_id}' cannot write '{rel_path}': "
                                    f"it is a directory of {below}, a file it generates")
+    # Another spelling of a file or directory of the same import (generated/ and Generated/,
+    # noise-01.txt and Noise-01.txt): one name on macOS, where fast-import kept one file and
+    # verification passed, two on Linux (PR #234 review)
+    conflict = file_path_conflict(rel_path, written)
+    if conflict is not None:
+        raise GraphGenerationError(f"commit_generator of commit '{owner_id}' cannot write '{rel_path}' beside the files "
+                                   f"it generates: {conflict}")
 
 
 def _refuse_generated_path_below_a_file(repo_dir: Path, rel_path: str, owner_id: str) -> None:
@@ -807,6 +815,17 @@ def _refuse_generated_path_below_a_file(repo_dir: Path, rel_path: str, owner_id:
             raise GraphGenerationError(f"commit_generator of commit '{owner_id}' cannot write '{rel_path}': "
                                        f"{parent.as_posix()} is a file")
         parent = parent.parent
+
+
+def _refuse_another_spelling_of_a_generated_path(repo_dir: Path, rel_path: str, owner_id: str) -> None:
+    """A generated file whose path reaches an entry of the worktree spelt otherwise
+    (``generated/`` beside ``Generated/``): one directory on macOS, two on Linux
+    (issue #153; ``graph_operations._refuse_another_spelling``)."""
+    found = another_spelling_on_disk(repo_dir, rel_path)
+    if found is not None:
+        mine, theirs = found
+        raise GraphGenerationError(f"commit_generator of commit '{owner_id}' cannot write '{rel_path}': {mine!a} differs "
+                                   f"only in letter case or Unicode normalization from {theirs!a}, which the worktree has")
 
 
 def _effective_parent_date(parent_entry: dict[str, Any] | None, kind: str) -> datetime | None:
