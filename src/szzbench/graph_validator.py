@@ -13,6 +13,7 @@ from .graph_operations import (PATH_FIELDS_BY_OPERATION, REQUIRED_FIELDS_BY_OPER
 from .graph_scenario import commit_id_of, graph_bfc_entries, graph_bic_entries, graph_faults, graph_fixes, load_graph_scenario
 from .graph_simulator import git_performed_features, simulate_graph_scenario, simulate_graph_scenario_with_git
 from .gitutils import GitError, format_timestamp, parse_timestamp
+from .operations import type_label
 from .paths import PathValidationError, validate_repo_relative_path
 from .policies import SUPPORTED_EVALUATION_POLICIES
 from .validator import lint_author_coincidence, lint_defeats, lint_difficulty, lint_factors, lint_leakage, lint_readme_header, lint_tier
@@ -29,6 +30,11 @@ REWRITE_REFERENCE_KEYS: dict[str, tuple[type, ...]] = {
     "squashes": (list,),
     "revert_of": (str,),
 }
+
+#: The operation fields whose value is text generation writes or matches.  They
+#: were read through str(): a blank `content:` wrote the text `None` into the file,
+#: and the error came later, as "replace.old not found" on another operation (issue #151).
+TEXT_FIELDS_BY_OPERATION = {"write_file": ("content",), "replace": ("old", "new"), "insert_after": ("anchor", "content")}
 
 # Consumer-compatible role vocabulary (issue #19); see graph_verifier / evaluator.
 ALLOWED_BIC_ROLES = frozenset({"direct", "origin", "contributing", "reintroducing"})
@@ -136,6 +142,11 @@ def validate_graph_static(data: dict[str, Any], *, scenario_path: Path | None = 
         branch = commit.get("branch")
         if branch is not None and not isinstance(branch, str):
             result.error("GE035", "commit.branch must be a string when present.", f"{loc}.branch")
+        if "message" in commit and not isinstance(commit["message"], str):
+            # str() made `message: 123` the subject '123', and a blank one fell back to the
+            # commit id; verification was the first to object, or nothing did (issue #151)
+            result.error("GE040", f"commit.message must be a string when present, not {type_label(commit['message'])}.",
+                         f"{loc}.message")
         parents = commit.get("parents", [])
         if not isinstance(parents, list):
             result.error("GE036", "commit.parents must be a list.", f"{loc}.parents")
@@ -289,6 +300,10 @@ _CASE_SENSITIVE_PAIRS = {
 
 
 def _validate_operation_values(op: dict[str, Any], op_type: str, result: ValidationResult, loc: str) -> None:
+    for key in TEXT_FIELDS_BY_OPERATION.get(op_type, ()):
+        if key in op and not isinstance(op[key], str):
+            result.error("GE053", f"Operation '{op_type}' field '{key}' must be a string, not {type_label(op[key])}.",
+                         f"{loc}.{key}")
     if op_type == "chmod" and "mode" in op:
         mode = op["mode"]
         if not (isinstance(mode, str) and _OCTAL_MODE.fullmatch(mode)):

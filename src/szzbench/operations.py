@@ -13,8 +13,29 @@ LINE_ENDINGS = {"lf": "\n", "crlf": "\r\n"}
 class OperationError(RuntimeError):
     pass
 
+def type_label(value: object) -> str:
+    """The type of a YAML value as a message names it (``int``, ``null (a blank value)``)."""
+    return "null (a blank value)" if value is None else type(value).__name__
+
 def normalize_newlines(text: str) -> str:
+    # A number or a YAML null used to escape from here as an AttributeError
+    # traceback (issue #151).  The validators reject one first (E041 / GE053).
+    if not isinstance(text, str):
+        raise OperationError(f"expected text, not {type_label(text)}")
     return text.replace("\r\n", "\n").replace("\r", "\n")
+
+def text_field(op: dict, key: str) -> str:
+    """The text an operation writes or matches (``content``, ``old``, ``new``, ``anchor``).
+
+    Anything but a string is an OperationError: the graph suite read the value
+    through ``str()``, so a blank ``content:`` wrote the text ``None`` into the
+    file (issue #151).
+    """
+    value = op.get(key)
+    if not isinstance(value, str):
+        what = "is missing" if key not in op else f"must be a string, not {type_label(value)}"
+        raise OperationError(f"{op.get('type')}.{key} {what}")
+    return value
 
 def detect_crlf(content: str) -> bool:
     """Return True when every newline of ``content`` is CRLF (and there is one)."""
@@ -136,7 +157,7 @@ def apply_operation_to_memory(files: dict[str, str], op: dict) -> None:
     # BOM-only commit would be E250 "produces no changes" here and real in Git.
     op_type = op.get("type")
     if op_type == "write_file":
-        files[op["path"]] = encode_stored(normalize_newlines(op["content"]), resolve_encoding(op))
+        files[op["path"]] = encode_stored(normalize_newlines(text_field(op, "content")), resolve_encoding(op))
         return
     if op_type == "replace":
         path = op["path"]
@@ -144,8 +165,8 @@ def apply_operation_to_memory(files: dict[str, str], op: dict) -> None:
             raise OperationError(f"replace target does not exist: {path}")
         encoding = resolve_encoding(op)
         content = decode_stored(files[path], encoding)
-        old = normalize_newlines(op["old"])
-        new = normalize_newlines(op["new"])
+        old = normalize_newlines(text_field(op, "old"))
+        new = normalize_newlines(text_field(op, "new"))
         files[path] = encode_stored(replace_once(content, old, new, op.get("occurrence")), encoding)
         return
     raise OperationError(f"unsupported operation: {op_type}")
@@ -155,7 +176,7 @@ def apply_operation_to_filesystem(repo_dir: Path, op: dict) -> None:
     if op_type == "write_file":
         path = safe_join(repo_dir, op["path"])
         path.parent.mkdir(parents=True, exist_ok=True)
-        write_text_raw(path, encode_line_endings(op["content"], resolve_line_ending(op)), resolve_encoding(op))
+        write_text_raw(path, encode_line_endings(text_field(op, "content"), resolve_line_ending(op)), resolve_encoding(op))
         return
     if op_type == "replace":
         path = safe_join(repo_dir, op["path"])
@@ -165,8 +186,8 @@ def apply_operation_to_filesystem(repo_dir: Path, op: dict) -> None:
         raw = read_text_raw(path, encoding)
         line_ending = resolve_line_ending(op, raw)
         content = normalize_newlines(raw)
-        old = normalize_newlines(op["old"])
-        new = normalize_newlines(op["new"])
+        old = normalize_newlines(text_field(op, "old"))
+        new = normalize_newlines(text_field(op, "new"))
         new_content = replace_once(content, old, new, op.get("occurrence"))
         write_text_raw(path, encode_line_endings(new_content, line_ending), encoding)
         return

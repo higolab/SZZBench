@@ -16,6 +16,7 @@ from .operations import (
     read_text_raw,
     replace_once,
     resolve_line_ending,
+    text_field,
     write_text_raw,
 )
 from .paths import PathValidationError, safe_join
@@ -161,7 +162,7 @@ def _apply_graph_operation(repo_dir: Path, op: dict[str, Any]) -> None:
         encoding = op.get("encoding") or "utf-8"
         # line_ending: lf (default) | crlf.  Text is normalized to LF first and
         # re-encoded, so YAML content may use either convention.
-        write_text_raw(path, encode_line_endings(str(op["content"]), resolve_line_ending(op)), encoding)
+        write_text_raw(path, encode_line_endings(text_field(op, "content"), resolve_line_ending(op)), encoding)
         return
 
     if op_type == "replace":
@@ -173,8 +174,8 @@ def _apply_graph_operation(repo_dir: Path, op: dict[str, Any]) -> None:
         # Explicit line_ending wins; otherwise an existing CRLF file stays CRLF.
         line_ending = resolve_line_ending(op, raw)
         content = normalize_newlines(raw)
-        old = normalize_newlines(str(op["old"]))
-        new = normalize_newlines(str(op["new"]))
+        old = normalize_newlines(text_field(op, "old"))
+        new = normalize_newlines(text_field(op, "new"))
         write_text_raw(path, encode_line_endings(replace_once(content, old, new, op.get("occurrence")), line_ending), encoding)
         return
 
@@ -186,8 +187,8 @@ def _apply_graph_operation(repo_dir: Path, op: dict[str, Any]) -> None:
         raw = read_text_raw(path, encoding)
         line_ending = resolve_line_ending(op, raw)
         content = normalize_newlines(raw)
-        anchor = normalize_newlines(str(op["anchor"]))
-        inserted = normalize_newlines(str(op["content"]))
+        anchor = normalize_newlines(text_field(op, "anchor"))
+        inserted = normalize_newlines(text_field(op, "content"))
         write_text_raw(path, encode_line_endings(insert_after_once(content, anchor, inserted, op.get("occurrence")), line_ending), encoding)
         return
 

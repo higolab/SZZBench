@@ -7,7 +7,7 @@ import difflib
 import re
 
 from .findings import ValidationResult
-from .operations import SUPPORTED_OPERATIONS, FUTURE_OPERATIONS, OperationError, apply_operation_to_memory, find_all_occurrences
+from .operations import SUPPORTED_OPERATIONS, FUTURE_OPERATIONS, OperationError, apply_operation_to_memory, find_all_occurrences, type_label
 from .paths import PathValidationError, validate_repo_relative_path
 from .retired_ids import read_retired_ids
 from .scenario import load_yaml
@@ -17,6 +17,11 @@ ALLOWED_ROLES = {
     "initial", "bug_introducing", "bug_fixing", "distractor", "refactoring",
     "formatting", "test_change", "merge", "revert", "cleanup", "feature_addition",
 }
+
+#: The operation fields whose value is text the generator writes or matches.  A
+#: number or a blank value (YAML null) in one ended `validate --simulate` and
+#: `generate` in an AttributeError traceback (issue #151).
+TEXT_FIELDS_BY_OPERATION = {"write_file": ("content",), "replace": ("old", "new")}
 
 # --- opt-in lint vocabulary (shared with graph_validator) -------------------
 
@@ -199,6 +204,9 @@ def validate_static(data: dict[str, Any], *, scenario_path: Path | None = None) 
         for key in ["id", "message", "operations"]:
             if key not in commit:
                 result.error("E010", f"commit is missing required field '{key}'.", f"{loc}.{key}")
+        if "message" in commit and not isinstance(commit["message"], str):
+            # git commit -m got the value and raised TypeError in generate (issue #151)
+            result.error("E010", f"commit.message must be a string, not {type_label(commit['message'])}.", f"{loc}.message")
         cid = commit.get("id")
         if isinstance(cid, str):
             if cid in commit_by_id:
@@ -231,6 +239,10 @@ def validate_static(data: dict[str, Any], *, scenario_path: Path | None = None) 
             for key in required:
                 if key not in op:
                     result.error("E041", f"Operation '{op_type}' is missing required field '{key}'.", f"{op_loc}.{key}")
+            for key in TEXT_FIELDS_BY_OPERATION[op_type]:
+                if key in op and not isinstance(op[key], str):
+                    result.error("E041", f"Operation '{op_type}' field '{key}' must be a string, not {type_label(op[key])}.",
+                                 f"{op_loc}.{key}")
             path = op.get("path")
             if isinstance(path, str):
                 try:
