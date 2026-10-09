@@ -9,7 +9,7 @@ import re
 from .evaluator import _commit_level_policy, _selected_evaluation_variant, classify_prediction
 from .findings import ValidationResult
 from .graph_operations import (PATH_FIELDS_BY_OPERATION, REQUIRED_FIELDS_BY_OPERATION, SUPPORTED_GRAPH_OPERATIONS,
-                               decode_content_base64)
+                               WRITTEN_PATH_FIELDS_BY_OPERATION, decode_content_base64)
 from .graph_scenario import (commit_id_of, graph_bfc_entries, graph_bic_entries, graph_faults, graph_fixes, load_graph_scenario,
                              ref_lifecycle_problems)
 from .graph_simulator import git_performed_features, simulate_graph_scenario, simulate_graph_scenario_with_git
@@ -18,7 +18,8 @@ from .gitutils import (GitError, format_timestamp, history_graph, parse_timestam
 from .operations import OperationError, resolve_line_ending, type_label
 from .paths import PathValidationError, file_system_key, validate_repo_relative_path
 from .policies import SUPPORTED_EVALUATION_POLICIES
-from .validator import (COMMIT_MESSAGE_RULE, check_commit_metadata, check_scheduled_dates, commit_message_problem, lint_author_coincidence,
+from .validator import (COMMIT_MESSAGE_RULE, check_commit_metadata, check_git_control_files, check_scheduled_dates,
+                        commit_message_problem, lint_author_coincidence,
                         lint_defeats, lint_difficulty, lint_factors, lint_leakage, lint_readme_header, lint_tier,
                         timestamp_problem)
 
@@ -248,6 +249,7 @@ def validate_graph_static(data: dict[str, Any], *, scenario_path: Path | None = 
             _validate_operation(op, result, f"{loc}.operations[{j}]", strict_paths=strict_paths)
 
     check_scheduled_dates(data, result, code="GE071", graph=True)    # PR #236 review
+    check_git_control_files(data, result, code="GE063", written_fields=WRITTEN_PATH_FIELDS_BY_OPERATION)   # issue #164
     result.extend(_validate_graph_acyclic(commits))
     result.extend(_validate_merge_parents(commits))
     if not result.has_errors():          # the history model needs well-formed commits

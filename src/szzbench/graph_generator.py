@@ -22,12 +22,14 @@ from .gitutils import (
     json_safe_timestamp,
     parse_author,
     parse_timestamp,
+    refuse_ignored_written_paths,
     resolve_commit_metadata,
     run_git,
     run_git_with_input,
     timestamp_to_git_raw,
 )
-from .graph_operations import CommitGeneratorPlan, apply_graph_operation_to_filesystem, commit_generator_changes, commit_generator_plan
+from .graph_operations import (WRITTEN_PATH_FIELDS_BY_OPERATION, CommitGeneratorPlan, apply_graph_operation_to_filesystem,
+                               commit_generator_changes, commit_generator_plan)
 from .graph_scenario import load_graph_scenario, ref_lifecycle_problems
 from .graph_validator import validate_graph_scenario_file
 from .operations import OperationError, normalize_newlines, type_label
@@ -145,6 +147,8 @@ def generate_graph_repository(
                 body=body,
                 metadata=metadata,
                 allow_empty=bool(commit_spec.get("allow_empty")) or bool(generated_ids),
+                written=_written_paths(commit_spec),
+                commit_id=cid,
             )
             branch_heads[branch] = actual_hash
             commit_map[cid] = {
@@ -908,6 +912,16 @@ def _fast_import_commit(
 # ---------------------------------------------------------------------------
 
 
+def _written_paths(commit_spec: dict[str, Any]) -> list[str]:
+    """The files the commit's operations create or rewrite (``WRITTEN_PATH_FIELDS_BY_OPERATION``)."""
+    written: list[str] = []
+    for op in commit_spec.get("operations", []) or []:
+        if isinstance(op, dict) and isinstance(op.get("type"), str):
+            written.extend(op[key] for key in WRITTEN_PATH_FIELDS_BY_OPERATION.get(op["type"], ())
+                           if isinstance(op.get(key), str))
+    return written
+
+
 def _commit_current_state(
     repo_dir: Path,
     *,
@@ -915,8 +929,12 @@ def _commit_current_state(
     metadata: CommitMetadata,
     body: str = "",
     allow_empty: bool = False,
+    written: list[str] | None = None,
+    commit_id: str | None = None,
 ) -> str:
     run_git(repo_dir, ["add", "-A"])
+    # a file the operations wrote that Git does not stage, before "commit would be empty" (issue #164)
+    refuse_ignored_written_paths(repo_dir, written or [], commit_id)
     status = run_git(repo_dir, ["status", "--porcelain"]).stdout.strip()
     merge_in_progress = (repo_dir / ".git" / "MERGE_HEAD").exists()
     args = ["commit", "-m", message]

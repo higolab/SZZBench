@@ -191,6 +191,19 @@ matching is line-ending agnostic. Statements in `bugs` are matched against the
 file content as Git stores it; a statement that spans lines must therefore not
 be used for CRLF files. A BOM is not handled by this key; see `encoding`.
 
+`line_ending` describes the bytes written to the working tree. What Git stores
+-- the blob that `git show`, the verifier and SZZ tools read -- is decided when
+the file is staged, by the repository's attributes. Without a `.gitattributes`
+the blob holds the bytes written (`core.autocrlf` is `false`, section 5). A rule
+such as `* text=auto` or `*.txt text eol=crlf` marks the file as text, and Git
+converts its CRLF to LF on the way into the index; `eol=crlf` sets what a
+checkout writes, not what the blob holds. So with such a rule a
+`line_ending: crlf` file is an LF blob while the working tree keeps CRLF. A
+scenario may write `.gitattributes` only when it declares the factor
+`gitattributes-bic` (E051 / GE063, see *Files Git reads* below), as SZZG-0134
+does: its `c1` rewrites `modes.txt` with CRLF, and the blob stays LF,
+byte-identical to `c0`'s (issue #164).
+
 ### `encoding` (*both*)
 
 Available on `write_file` and `replace` in both suites (and on the graph
@@ -367,6 +380,33 @@ a `delete_file` of `src/Range.java` followed by a `write_file` of
 `src/range.java` commits `src/Range.java` there, and a `rename_file` through
 another name commits nothing (`commit would be empty`). A `rename_file` that
 changes only the letter case is GE060.
+
+### Files Git reads: `.gitignore`, `.gitattributes`, `.gitmodules` (*both*)
+
+Git reads some files of the working tree itself. Both simulators take a file
+an operation writes to be committed as written, but the generators stage with
+`git add -A`, which reads the `.gitignore` and `.gitattributes` the scenario
+wrote. A file a `.gitignore` matched was in no tree, while `validate
+--simulate` and the verification reported nothing; a commit whose only change
+was such a file failed with `commit would be empty`; and `* text=auto` stored a
+`line_ending: crlf` file as LF (see `line_ending` above). `validate` and
+`validate-graph` therefore refuse an operation that writes `.gitignore` or
+`.gitmodules`, in any directory, and `.gitattributes` unless `meta.factors`
+declares `gitattributes-bic` (E051 / GE063, issue #164). The last name of the
+path is compared as file names are above (`paths.file_system_key`), so
+`.GITIGNORE`, which Git on macOS reads as `.gitignore` and Git on Linux does
+not, is refused too. A graph operation writes the file at its `path`, or at
+the `to` / `to_file` of a move or a copy
+(`graph_operations.WRITTEN_PATH_FIELDS_BY_OPERATION`).
+
+Behind that check both generators stop a commit when `git add -A` leaves out a
+file its operations wrote, and name the file and the rule that ignores it
+(`logs/app.log ('*.log' in .gitignore, line 1)`), instead of committing without
+it or reporting the commit as empty. The global ignore files are withheld
+(section 5), so such a rule can only come from the repository. A file already
+in the repository stays in it whatever a later rule says, as in Git. The files
+of `commit_generator` are written with `git fast-import`, which reads no ignore
+rule, and their names (`<generator>-NN.txt`) are never one of these files.
 
 ### Unchanged limitations
 
@@ -669,7 +709,10 @@ caller's own Git setup:
 Signing (`commit.gpgSign`, `tag.gpgSign`), hooks, global ignores and
 attributes, clean/smudge filters, `rerere`, rename and diff settings, and
 output settings such as `color.ui` therefore cannot change what a scenario
-generates or what SZZBench measures on it. What a generated repository needs
+generates or what SZZBench measures on it. A `.gitignore` or `.gitattributes`
+inside the repository would; validation refuses a scenario that writes one,
+unless it declares its `.gitattributes` (section 2, *Files Git reads*; issue
+#164). What a generated repository needs
 is written into its own `.git/config` (`user.name`, `user.email`,
 `core.autocrlf=false`, `core.filemode`, `i18n.*`).
 

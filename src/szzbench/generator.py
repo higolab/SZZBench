@@ -66,6 +66,9 @@ def generate_repository(scenario_path: Path, out_dir: Path, *, force: bool = Fal
                 author=metadata.author,
                 author_date=metadata.author_date,
                 committer_date=metadata.committer_date,
+                # write_file and replace: a path Git does not stage stops the commit (issue #164)
+                written=[op["path"] for op in commit_spec.get("operations", [])],
+                commit_id=cid,
             )
             commit_map[cid] = {
                 "hash": actual_hash,
