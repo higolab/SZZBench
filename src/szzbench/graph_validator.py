@@ -10,9 +10,11 @@ from .evaluator import _commit_level_policy, _selected_evaluation_variant, class
 from .findings import ValidationResult
 from .graph_operations import (PATH_FIELDS_BY_OPERATION, REQUIRED_FIELDS_BY_OPERATION, SUPPORTED_GRAPH_OPERATIONS,
                                decode_content_base64)
-from .graph_scenario import commit_id_of, graph_bfc_entries, graph_bic_entries, graph_faults, graph_fixes, load_graph_scenario
+from .graph_scenario import (commit_id_of, graph_bfc_entries, graph_bic_entries, graph_faults, graph_fixes, load_graph_scenario,
+                             ref_lifecycle_problems)
 from .graph_simulator import git_performed_features, simulate_graph_scenario, simulate_graph_scenario_with_git
-from .gitutils import GitError, format_timestamp, history_graph, parse_timestamp, reachable_commit_ids
+from .gitutils import (GitError, format_timestamp, history_graph, parse_timestamp, planned_generated_commits,
+                       reachable_commit_ids)
 from .operations import type_label
 from .paths import PathValidationError, validate_repo_relative_path
 from .policies import SUPPORTED_EVALUATION_POLICIES
@@ -208,6 +210,7 @@ def validate_graph_static(data: dict[str, Any], *, scenario_path: Path | None = 
     result.extend(_validate_merge_parents(commits))
     if not result.has_errors():          # the history model needs well-formed commits
         result.extend(_validate_branch_rewinds(data))
+    _validate_ref_lifecycle(data, result)
 
     if not isinstance(data.get("bugs"), list):
         result.error("GE080", "bugs must be a list.", "bugs")
@@ -782,6 +785,36 @@ def _validate_branch_rewinds(data: dict[str, Any]) -> ValidationResult:
             f"commits[{i}].parents",
         )
     return result
+
+
+def _validate_ref_lifecycle(data: dict[str, Any], result: ValidationResult) -> None:
+    """GE152-GE158: ``graph.ref_lifecycle`` as the generator applies it (issue #229).
+
+    Only the generator read the section, after every commit existed.  The
+    rules are ``graph_scenario.ref_lifecycle_problems``, which the generator
+    asks too before it changes a ref; here the commits are the scenario's
+    and those its ``commit_generator`` operations plan, and the branches
+    those some commit is on.
+    """
+    graph = data.get("graph")
+    if not isinstance(graph, dict) or "ref_lifecycle" not in graph:
+        return
+    repository = data.get("repository") if isinstance(data.get("repository"), dict) else {}
+    default_branch = str(repository.get("default_branch") or "main")
+    commit_ids: set[str] = set()
+    branches: set[str] = set()
+    for commit in data.get("commits") if isinstance(data.get("commits"), list) else []:
+        if not isinstance(commit, dict) or not isinstance(commit.get("id"), str):
+            continue
+        commit_ids.add(commit["id"])
+        branches.add(str(commit.get("branch") or default_branch))
+        try:
+            commit_ids.update(planned_generated_commits(commit["id"], commit))
+        except (TypeError, ValueError, OverflowError):
+            pass                         # operations or a count the generator refuses (GE044, --simulate)
+    for code, location, message in ref_lifecycle_problems(graph["ref_lifecycle"], commit_ids=commit_ids,
+                                                          branches=branches, default_branch=default_branch):
+        result.error(code, message, location)
 
 
 def _validate_rewrite_references(

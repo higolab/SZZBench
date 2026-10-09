@@ -28,7 +28,7 @@ from .gitutils import (
     timestamp_to_git_raw,
 )
 from .graph_operations import CommitGeneratorPlan, apply_graph_operation_to_filesystem, commit_generator_changes, commit_generator_plan
-from .graph_scenario import load_graph_scenario
+from .graph_scenario import load_graph_scenario, ref_lifecycle_problems
 from .graph_validator import validate_graph_scenario_file
 from .operations import OperationError, normalize_newlines, type_label
 from .graph_verifier import verify_graph_generated_repo
@@ -183,9 +183,9 @@ def generate_graph_repository(
             log(f"Created graph commit {cid}: {actual_hash}")
 
         graph_section = scenario.get("graph") if isinstance(scenario.get("graph"), dict) else {}
-        ref_lifecycle = graph_section.get("ref_lifecycle") if isinstance(graph_section, dict) else None
-        if isinstance(ref_lifecycle, dict):
-            graph_map["ref_lifecycle"] = _apply_ref_lifecycle(repo_dir, ref_lifecycle, commit_map, branch_heads, default_branch, log)
+        if "ref_lifecycle" in graph_section:     # any other type than an object was ignored (issue #229)
+            graph_map["ref_lifecycle"] = _apply_ref_lifecycle(repo_dir, graph_section["ref_lifecycle"], commit_map,
+                                                              branch_heads, default_branch, log)
             graph_map["branches"] = {name: h for name, h in branch_heads.items() if name not in graph_map["ref_lifecycle"]["deleted_branches"]}
         graph_map["refs"] = git_refs(repo_dir)
 
@@ -580,35 +580,37 @@ def _build_commit_message(
 
 def _apply_ref_lifecycle(
     repo_dir: Path,
-    ref_lifecycle: dict[str, Any],
+    ref_lifecycle: Any,
     commit_map: dict[str, dict[str, Any]],
     branch_heads: dict[str, str],
     default_branch: str,
     log,
 ) -> dict[str, Any]:
-    """Delete branches / create lightweight tags after all commits exist."""
+    """Create lightweight tags, then delete branches, after all commits exist.
+
+    Every entry is checked before the first ref changes, with the rules
+    validate-graph applies (GE152-GE158, issue #229).  A tag name Git refuses,
+    or a tag or a deletion listed twice, used to stop generation with Git's
+    own message, after the entries before it had changed the refs.
+    """
+    problems = ref_lifecycle_problems(ref_lifecycle, commit_ids=commit_map, branches=branch_heads,
+                                      default_branch=default_branch)
+    if problems:
+        code, _, message = problems[0]
+        more = (f" {len(problems) - 1} more problem(s) in graph.ref_lifecycle; 'szzbench validate-graph' lists them."
+                if len(problems) > 1 else "")
+        raise GraphGenerationError(f"{message.rstrip('.')} ({code}). No ref was changed.{more}")
     record: dict[str, Any] = {"deleted_branches": [], "tags": {}}
 
-    tags = ref_lifecycle.get("tags") or []
-    if not isinstance(tags, list):
-        raise GraphGenerationError("graph.ref_lifecycle.tags must be a list of {name, commit} objects.")
-    for tag in tags:
-        if not isinstance(tag, dict) or not isinstance(tag.get("name"), str) or not isinstance(tag.get("commit"), str):
-            raise GraphGenerationError("graph.ref_lifecycle.tags entries must be objects with string 'name' and 'commit'.")
+    for tag in ref_lifecycle.get("tags") or []:
         target_id = tag["commit"]
-        if target_id not in commit_map:
-            raise GraphGenerationError(f"graph.ref_lifecycle.tags refers to unknown logical commit '{target_id}'.")
         target_hash = commit_map[target_id]["hash"]
         run_git(repo_dir, ["tag", tag["name"], target_hash])
         record["tags"][tag["name"]] = {"commit": target_id, "hash": target_hash}
         log(f"Created tag {tag['name']} at {target_id} ({target_hash})")
 
     delete_branches = ref_lifecycle.get("delete_branches") or []
-    if not isinstance(delete_branches, list) or not all(isinstance(name, str) for name in delete_branches):
-        raise GraphGenerationError("graph.ref_lifecycle.delete_branches must be a list of branch names.")
     for name in delete_branches:
-        if name not in branch_heads:
-            raise GraphGenerationError(f"graph.ref_lifecycle.delete_branches refers to unknown branch '{name}'.")
         current = run_git(repo_dir, ["rev-parse", "--abbrev-ref", "HEAD"]).stdout.strip()
         if current == name:
             if default_branch in branch_heads and default_branch not in delete_branches:
