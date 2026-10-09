@@ -10,11 +10,11 @@ from .evaluator import _commit_level_policy, _selected_evaluation_variant, class
 from .findings import ValidationResult
 from .graph_operations import (PATH_FIELDS_BY_OPERATION, REQUIRED_FIELDS_BY_OPERATION, SUPPORTED_GRAPH_OPERATIONS,
                                WRITTEN_PATH_FIELDS_BY_OPERATION, decode_content_base64)
-from .graph_scenario import (commit_id_of, graph_bfc_entries, graph_bic_entries, graph_faults, graph_fixes, load_graph_scenario,
-                             ref_lifecycle_problems)
+from .graph_scenario import (branch_name_problems, commit_id_of, graph_bfc_entries, graph_bic_entries, graph_faults,
+                             graph_fixes, load_graph_scenario, ref_lifecycle_problems)
 from .graph_simulator import git_performed_features, simulate_graph_scenario, simulate_graph_scenario_with_git
-from .gitutils import (GitError, format_timestamp, history_graph, parse_timestamp, planned_generated_commits,
-                       reachable_commit_ids)
+from .gitutils import (GitError, commit_branch, format_timestamp, history_graph, parse_timestamp,
+                       planned_generated_commits, reachable_commit_ids, scenario_default_branch)
 from .operations import OperationError, resolve_line_ending, type_label
 from .paths import PathValidationError, file_system_key, validate_repo_relative_path
 from .policies import SUPPORTED_EVALUATION_POLICIES
@@ -250,6 +250,8 @@ def validate_graph_static(data: dict[str, Any], *, scenario_path: Path | None = 
 
     check_scheduled_dates(data, result, code="GE071", graph=True)    # PR #236 review
     check_git_control_files(data, result, code="GE063", written_fields=WRITTEN_PATH_FIELDS_BY_OPERATION)   # issue #164
+    for code, location, message in branch_name_problems(data):                                            # issue #239
+        result.error(code, message, location)
     result.extend(_validate_graph_acyclic(commits))
     result.extend(_validate_merge_parents(commits))
     if not result.has_errors():          # the history model needs well-formed commits
@@ -803,8 +805,7 @@ def _validate_branch_rewinds(data: dict[str, Any]) -> ValidationResult:
     if any(lifecycle.get(key) is not None and not isinstance(lifecycle.get(key), list)
            for key in ("tags", "delete_branches")):
         return result                    # the generator refuses it before it moves a ref
-    repository = data.get("repository") if isinstance(data.get("repository"), dict) else {}
-    default_branch = str(repository.get("default_branch") or "main")
+    default_branch = str(scenario_default_branch(data))
     try:
         commits, parents_of = history_graph(data)
         reachable = reachable_commit_ids(data)
@@ -820,7 +821,7 @@ def _validate_branch_rewinds(data: dict[str, Any]) -> ValidationResult:
             rewritten.update(v for v in (value if isinstance(value, list) else [value]) if isinstance(v, str))
 
     def branch_of(commit: dict[str, Any]) -> str:
-        return str(commit.get("branch") or default_branch)
+        return str(commit_branch(commit, default_branch))
 
     def ancestors(cid: str) -> set[str]:
         seen: set[str] = set()
@@ -880,15 +881,14 @@ def _validate_ref_lifecycle(data: dict[str, Any], result: ValidationResult) -> N
     graph = data.get("graph")
     if not isinstance(graph, dict) or "ref_lifecycle" not in graph:
         return
-    repository = data.get("repository") if isinstance(data.get("repository"), dict) else {}
-    default_branch = str(repository.get("default_branch") or "main")
+    default_branch = str(scenario_default_branch(data))
     commit_ids: set[str] = set()
     branches: set[str] = set()
     for commit in data.get("commits") if isinstance(data.get("commits"), list) else []:
         if not isinstance(commit, dict) or not isinstance(commit.get("id"), str):
             continue
         commit_ids.add(commit["id"])
-        branches.add(str(commit.get("branch") or default_branch))
+        branches.add(str(commit_branch(commit, default_branch)))
         try:
             commit_ids.update(planned_generated_commits(commit["id"], commit))
         except (TypeError, ValueError, OverflowError):

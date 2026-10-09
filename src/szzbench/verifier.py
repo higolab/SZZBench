@@ -7,7 +7,7 @@ import math
 
 from .findings import ValidationResult
 from .gitutils import (GitError, git_blame_line, git_hash_exists, git_message, git_parent, git_refs, git_show,
-                       parse_author, parse_timestamp, run_git)
+                       parse_author, parse_timestamp, run_git, scenario_default_branch)
 from .operations import find_all_occurrences
 from .scenario import load_yaml
 from .validator import DUPLICATE_STATEMENT_FACTOR_RE, FAULT_REWRITE_FACTOR_RE, factor_matches, graph_scenario_guard
@@ -110,8 +110,7 @@ def _verify_as_generated(repo_dir: Path, scenario: dict, resolved: dict[str, str
         if full not in reachable:
             result.error("E604", f"Logical commit '{cid}' ({full}) is not reachable from any branch, tag or HEAD; "
                          "`git log --all` does not show it.", f"commits.{cid}")
-    repository = scenario.get("repository") if isinstance(scenario.get("repository"), dict) else {}
-    branch = str(repository.get("default_branch") or "main")         # the branch init_repo creates
+    branch = str(scenario_default_branch(scenario))                  # the branch init_repo creates
     commits = scenario.get("commits") or []
     last = commits[-1].get("id") if commits and isinstance(commits[-1], dict) else None
     try:

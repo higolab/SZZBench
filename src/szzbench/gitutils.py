@@ -187,6 +187,37 @@ def init_repo(repo_dir: Path, branch: str) -> None:
     run_git(repo_dir, ["config", "i18n.logOutputEncoding", "utf-8"])
 
 
+#: The default branch of a scenario without ``repository.default_branch`` (the
+#: graph suite warns, GW021; the classic suite requires the key, E010).
+DEFAULT_BRANCH = "main"
+
+
+def scenario_default_branch(scenario: dict[str, Any]) -> Any:
+    """``repository.default_branch`` as the generators, the validators and the verifiers read it (issue #239).
+
+    ``main`` when the key is absent or null, and otherwise the value as
+    written, which validation requires to be a valid branch name (E010 and
+    E015, GE022 and GE023).  The readings used to differ: the generators
+    handed an empty name to Git, which refused it, while the validators and
+    the verifiers read it as ``main``.
+    """
+    repository = scenario.get("repository") if isinstance(scenario.get("repository"), dict) else {}
+    value = repository.get("default_branch")
+    return DEFAULT_BRANCH if value is None else value
+
+
+def commit_branch(commit: dict[str, Any], default_branch: Any) -> Any:
+    """The branch of a graph commit as the generator, the validator and the verifier read it (issue #239).
+
+    The default branch when ``branch`` is absent or null, and otherwise the
+    value as written, which validation requires to be a valid branch name
+    (GE035, GE023).  ``branch: ""`` used to be the default branch to all of
+    them, without a word, while ``default_branch: ""`` reached Git.
+    """
+    value = commit.get("branch")
+    return default_branch if value is None else value
+
+
 _AUTHOR_RE = re.compile(r"^\s*(?P<name>.*?)\s*<(?P<email>[^<>]+)>\s*$")
 
 
@@ -270,11 +301,10 @@ def reachable_commit_ids(scenario: dict[str, Any]) -> set[str]:
     commits, parents_of = history_graph(scenario)
     if not commits or not any("parents" in c for c in commits):
         return set(parents_of)
-    repository = scenario.get("repository") if isinstance(scenario.get("repository"), dict) else {}
-    default_branch = str(repository.get("default_branch") or "main")
+    default_branch = str(scenario_default_branch(scenario))
     tips: dict[str, str] = {}
     for c in commits:
-        tips[str(c.get("branch") or default_branch)] = c["id"]       # the latest commit on a branch is its tip
+        tips[str(commit_branch(c, default_branch))] = c["id"]        # the latest commit on a branch is its tip
     graph = scenario.get("graph") if isinstance(scenario.get("graph"), dict) else {}
     lifecycle = graph.get("ref_lifecycle") if isinstance(graph.get("ref_lifecycle"), dict) else {}
     deleted = {n for n in (lifecycle.get("delete_branches") or []) if isinstance(n, str)}
@@ -283,7 +313,7 @@ def reachable_commit_ids(scenario: dict[str, Any]) -> set[str]:
         if isinstance(tag, dict) and isinstance(tag.get("commit"), str):
             roots.add(tag["commit"])
     last = commits[-1]
-    if str(last.get("branch") or default_branch) in deleted and (default_branch in deleted or default_branch not in tips):
+    if str(commit_branch(last, default_branch)) in deleted and (default_branch in deleted or default_branch not in tips):
         roots.add(last["id"])                                          # HEAD detaches at the commit it was on
     reachable: set[str] = set()
     stack = [r for r in roots if r in parents_of]

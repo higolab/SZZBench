@@ -134,6 +134,19 @@ def test_the_category_is_a_code_from_the_vocabulary(tmp_path):
     assert '  category_code: "S3"' in generated["yaml"]
 
 
+@pytest.mark.parametrize("typed, errors", [("main", []), ("release/2024.1", []), ("a b", ["E015"]), ("-x", ["E015"]),
+                                           ("", ["E015"]), ("Main.lock", ["E015"])])
+def test_the_default_branch_field_is_checked_as_validate_checks_a_branch_name(tmp_path, typed, errors):
+    """The free-text "Default branch" field is written as typed.  A name Git refuses, or an empty field, used
+    to be saved and fail ``generate`` with Git's message; validate refuses it now (E015, issue #239), so the
+    server does not save it."""
+    generated = _model(tmp_path, tier="control", defaultBranch=typed)
+    assert yaml.safe_load(generated["yaml"])["repository"]["default_branch"] == typed
+    report = _lint(_save_as_the_server_does(tmp_path, generated))
+    assert [(f["code"], f["location"]) for f in report["findings"] if f["severity"] == "ERROR"] == \
+        [(code, "repository.default_branch") for code in errors]
+
+
 # ---------------------------------------------------------------------------
 # multi-line statements and the omission example (issue #192)
 # ---------------------------------------------------------------------------

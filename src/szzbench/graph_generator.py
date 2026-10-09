@@ -12,6 +12,7 @@ from .gitutils import (
     MAX_GENERATED_COMMITS,
     CommitMetadata,
     GitError,
+    commit_branch,
     deterministic_author,
     format_timestamp,
     git_author_date,
@@ -26,11 +27,12 @@ from .gitutils import (
     resolve_commit_metadata,
     run_git,
     run_git_with_input,
+    scenario_default_branch,
     timestamp_to_git_raw,
 )
 from .graph_operations import (WRITTEN_PATH_FIELDS_BY_OPERATION, CommitGeneratorPlan, apply_graph_operation_to_filesystem,
                                commit_generator_changes, commit_generator_plan)
-from .graph_scenario import load_graph_scenario, ref_lifecycle_problems
+from .graph_scenario import branch_name_problems, load_graph_scenario, ref_lifecycle_problems
 from .graph_validator import validate_graph_scenario_file
 from .operations import OperationError, normalize_newlines, type_label
 from .graph_verifier import verify_graph_generated_repo
@@ -91,7 +93,16 @@ def generate_graph_repository(
         generation_log.append(message)
 
     try:
-        default_branch = scenario.get("repository", {}).get("default_branch", "main")
+        # every branch name, before git init, with the rules validate-graph applies (GE023, GE024): a name
+        # Git refuses stopped generation with Git's message, and on macOS two spellings of one name
+        # became one branch (issue #239)
+        problems = branch_name_problems(scenario)
+        if problems:
+            code, _, message = problems[0]
+            more = (f" {len(problems) - 1} more problem(s) with branch names; 'szzbench validate-graph' lists them."
+                    if len(problems) > 1 else "")
+            raise GraphGenerationError(f"{message.rstrip('.')} ({code}). Generation stopped before git init.{more}")
+        default_branch = scenario_default_branch(scenario)
         init_repo(repo_dir, default_branch)
         if _scenario_uses_operation(scenario, "chmod"):
             # core.filemode is false by default for Windows compatibility; a
@@ -103,7 +114,7 @@ def generate_graph_repository(
 
         for index, commit_spec in enumerate(scenario.get("commits", [])):
             cid = commit_spec["id"]
-            branch = commit_spec.get("branch") or default_branch
+            branch = commit_branch(commit_spec, default_branch)
             parents = [p for p in commit_spec.get("parents", []) if isinstance(p, str)]
             if index > 0 and not parents:
                 # _checkout_for_commit would commit it on top of the current HEAD (issue #134).
