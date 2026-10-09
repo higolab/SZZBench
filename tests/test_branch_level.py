@@ -189,8 +189,10 @@ def test_an_invalid_fix_reference_in_a_predictions_file_is_an_error_not_an_unspe
         {"scenario_id": "SZZG-9910", "inducing_commit": "c1", "fix_commit": "r2"},      # valid
     ]
     path.write_text("\n".join(json.dumps(record) for record in records) + "\n")
-    predictions, explicit, _, _, errors, _ = load_predictions(path)
+    predictions, explicit, _, invalid, _, errors, _ = load_predictions(path)
     assert len(errors) == 3 and all("must be a non-empty string when present" in error for error in errors)
+    # the records are not read, and their scenario fails as invalid (issue #138)
+    assert invalid == {"SZZG-9910": errors}
     assert "fix_commit" in errors[0] and "123" in errors[0] and "bug_fixing_commit" in errors[2]
     loaded = predictions["SZZG-9910"]
     assert [p.fix_commit for p in loaded] == [None, None, "r2"]

@@ -246,6 +246,7 @@ def cmd_evaluate(args) -> int:
         print(f"  FAIL:               {summary['fail']}")
         print(f"  Tool errors:        {summary['tool_errors']}")
         print(f"  Missing records:    {summary['missing_records']}")
+        print(f"  Invalid records:    {summary['invalid_records']}")
         print(f"  True positives:     {summary['true_positives']}")
         print(f"  False positives:    {summary['false_positives']}")
         print(f"  Unknown (as FP):    {summary['unknown_predictions']}")

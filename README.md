@@ -515,6 +515,8 @@ A record can also say that the tool failed on the scenario; the scenario then fa
 
 The adapters also write `repository_id`, the id of the generated repository the tool ran on; a record made on another generation of the scenario fails as stale.
 
+A record that cannot be read is a loading error: `predictions` that is not a list (`null` included), a prediction without an `inducing_commit` or with one that is not a non-empty string, a `rank`, `fix_commit`, `status` or `repository_id` of the wrong kind, or both a `predictions` list and a top-level `inducing_commit`. `evaluate` then exits 1, and the scenario the record names fails as `run_status: invalid`, whatever its other records predict (`docs/evaluation-policies.md` §1.6). Until issue #138 a record whose predictions could not be read was scored as an empty answer, which passes an `expect_no_bic` scenario.
+
 Use `--include-generated` to evaluate every generated repository under `--generated-root`. A scenario that no record names then fails as a missing record (`run_status: missing`) rather than being read as an abstention, so write an empty record, like `SZZ-0047` above, for a scenario on which the tool ran and found nothing. The adapters under `tools/adapters/` write such records.
 
 For Graph scenarios, `--evaluation-variant` selects a named `expected_szz.evaluation_variants` entry such as `direct-only`, `origin-aware`, or `relaxed-with-credit`. If it is omitted, SZZBench uses the scenario's `default_variant` when one is defined, otherwise it uses `expected_szz.commit_level`. Hyphen and underscore differences are normalized for matching. This option is independent of `--variant`, which selects the generated repository directory under each scenario.
@@ -1231,6 +1233,8 @@ szzbench evaluate \
 ```
 
 アダプタは、ツールを実行した生成済みリポジトリの識別子 `repository_id` も書きます。同じシナリオの別の生成物に対して作られたレコードは stale として FAIL になります。
+
+読めないレコードは読み込みエラーです。リストでない `predictions`（`null` を含む）、`inducing_commit` がない予測、または `inducing_commit` が空でない文字列ではない予測、型の誤った `rank`・`fix_commit`・`status`・`repository_id`、`predictions` のリストとトップレベルの `inducing_commit` の両方を持つレコードがこれに当たります。このとき `evaluate` は終了コード 1 で終わり、レコードが指すシナリオは、ほかのレコードの予測内容にかかわらず `run_status: invalid` として FAIL になります（`docs/evaluation-policies.md` §1.6）。Issue #138 までは、予測を読めなかったレコードも空の答えとして採点され、`expect_no_bic` のシナリオで PASS していました。
 
 `--generated-root` 以下の生成済みリポジトリをすべて評価するには `--include-generated` を使います。このとき、どのレコードにも現れないシナリオは、棄権ではなく記録の欠落（`run_status: missing`）として FAIL になります。ツールが実行されて何も見つけなかったシナリオには、上の `SZZ-0047` のような空のレコードを書いてください。`tools/adapters/` のアダプタはそのようなレコードを書きます。
 
