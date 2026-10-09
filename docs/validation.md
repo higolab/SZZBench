@@ -42,7 +42,7 @@ Checks come in two groups:
 
 | flag | effect |
 |---|---|
-| `--simulate` | replay the graph operations in memory (GE200-GE202); a scenario with commits that Git computes during generation is generated with Git in a temporary directory instead (GE203, GI203) |
+| `--simulate` | replay the graph operations in memory (GE200-GE202); a scenario with commits that Git computes during generation is generated with Git in a temporary directory and verified instead (GE203, GI203) |
 | `--strict-paths` | additionally require `entity` objects on `move_entity` / `copy_entity` (GE056) |
 | `--strict` | treat warnings as failures |
 | `--lint` | run the GW4xx lints (static; they run only when no error was found) |
@@ -229,6 +229,7 @@ index's stat data is refreshed.
 | **GE046** | error | `rebase_of` (string or list of strings), `squashes` (list of strings) or `revert_of` (string) has the wrong type |
 | **GE047** | error | `rebase_of` / `squashes` / `revert_of` refers to an unknown, later, or the same commit (the GE043 rule for rewrite metadata; catches SZZG-0067's `rebase_of: f1`) |
 | GE048 | error | a commit other than the first declares no parents (`parents: []`, or no `parents` key, e.g. a misspelt `parent:`). Only the first commit is a root: a second one used to be generated as a child of whatever the generator had last checked out, while `commit-map.json` recorded no parents and `verify-graph` did not look. The message names a near-miss key when there is one ([issue #134](https://github.com/higolab/SZZBench/issues/134)) |
+| GE049 | error | a commit lists the same parent twice (`[c0, f1, f1]`, `[c0, c0]`), or an extra parent (second or later) that is already an ancestor of another of its parents (`[c1, c0]` where `c0` is an ancestor of `c1`; also of a later parent of an octopus). `git merge` records each head once and drops a head that is already merged, so Git would not record the merge as declared: generation used to fail at verification with a parent mismatch (GE627/GE628) or with "commit would be empty", after `--simulate` had passed. The first parent may be an ancestor of an extra parent: the generator merges with `--no-ff` ([issue #173](https://github.com/higolab/SZZBench/issues/173)) |
 | GE050 | error | an operation is not an object |
 | GE051 | error | `operation.type` missing |
 | GE052 | error | unknown graph operation type |
@@ -279,20 +280,26 @@ With `--simulate`:
 | GE200 | error | the parent snapshot cannot be prepared (unsimulated parent, merge conflict) |
 | GE201 | error | an operation failed during in-memory replay |
 | GE202 | error | a non-merge commit without `allow_empty` would be empty |
-| GE203 | error | generating the scenario with Git in a temporary directory failed; the message and location name the commit that failed (an unresolved conflict, a revert or cherry-pick that changes nothing, an operation that no longer applies) |
-| GI203 | info | the scenario was simulated by generating it with Git; the message lists the commits Git computes |
+| GE203 | error | generating the scenario with Git in a temporary directory failed; the message and location name the commit that failed (an unresolved conflict, a revert or cherry-pick that changes nothing, an operation that no longer applies). Also one GE203 per error of verifying the generated repository as `generate-graph` does: the message starts with the verifier's code (`GE623`, `GE663`, ...) and the location is the verifier's, e.g. `commits[5].message` or `bugs[0].faults[0]` ([issue #173](https://github.com/higolab/SZZBench/issues/173)) |
+| GI203 | info | the scenario was simulated by generating it with Git, and the result verified without errors; the message lists the commits Git computes |
 
 The in-memory replay models file operations. What the generator lets Git
 compute -- merge commits, `revert_of` performed by `git revert` (no operations,
 or `apply_revert: true`), `cherry_pick_of` / `backport_of` without operations,
 the `apply_patch_from` and `apply_squash` operations, and conflict
 `resolution` -- it approximated file by file or not at all. So a scenario with
-any of these is simulated by the generator itself, in a temporary directory,
-without verification (issue #94); every other scenario keeps the in-memory
-replay and its operation-level locations. Until 2026-09-29 the replay was used
-for all of them, and nine shipped scenarios that generate and verify failed
-`--simulate` with 17 errors. `graph_simulator.git_performed_features` holds the
-list, with the generator's own conditions.
+any of these is simulated by the generator itself, in a temporary directory
+(issue #94); every other scenario keeps the in-memory replay and its
+operation-level locations. Until 2026-09-29 the replay was used for all of
+them, and nine shipped scenarios that generate and verify failed `--simulate`
+with 17 errors. `graph_simulator.git_performed_features` holds the list, with
+the generator's own conditions.
+
+The temporary repository is then verified, as `generate-graph` verifies what
+it generates, so a scenario that passes this simulation also generates. Until
+issue #173 it was not, and a scenario could pass `--simulate` and fail
+`generate-graph` at verification. Verification warnings (GW664, GW701, ...)
+are not reported: they do not stop generation either.
 
 ### Lints (`--lint`)
 

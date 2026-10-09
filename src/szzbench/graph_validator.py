@@ -190,6 +190,7 @@ def validate_graph_static(data: dict[str, Any], *, scenario_path: Path | None = 
             _validate_operation(op, result, f"{loc}.operations[{j}]", strict_paths=strict_paths)
 
     result.extend(_validate_graph_acyclic(commits))
+    result.extend(_validate_merge_parents(commits))
 
     if not isinstance(data.get("bugs"), list):
         result.error("GE080", "bugs must be a list.", "bugs")
@@ -604,6 +605,58 @@ def _validate_graph_acyclic(commits: list[Any]) -> ValidationResult:
 
     for cid in parent_map:
         visit(cid)
+    return result
+
+
+def _validate_merge_parents(commits: list[Any]) -> ValidationResult:
+    """GE049: a merge parent that Git would not record (issue #173).
+
+    ``git merge`` records each head once, and drops a head that is already
+    reachable from another one -- from the first parent or from another head
+    of the same merge.  A parent listed twice, or an extra parent that is an
+    ancestor of another parent, therefore leaves the generated commit with
+    fewer parents than declared, and verification fails (GE627/GE628).  The
+    first parent is always recorded (the generator merges with ``--no-ff``).
+    """
+    result = ValidationResult()
+    parent_map: dict[str, list[str]] = {}
+    for commit in commits:
+        if isinstance(commit, dict) and isinstance(commit.get("id"), str) and isinstance(commit.get("parents"), list):
+            parent_map[commit["id"]] = [p for p in commit["parents"] if isinstance(p, str)]
+
+    def reaches(starts: list[str], target: str) -> bool:
+        stack, seen = list(starts), set()
+        while stack:
+            cid = stack.pop()
+            if cid == target:
+                return True
+            if cid not in seen:
+                seen.add(cid)
+                stack.extend(parent_map.get(cid, []))
+        return False
+
+    for i, commit in enumerate(commits):
+        if not isinstance(commit, dict) or not isinstance(commit.get("parents"), list):
+            continue
+        cid = commit.get("id")
+        parents = [p for p in commit["parents"] if isinstance(p, str)]
+        for k, parent in enumerate(parents[1:], start=1):
+            if parent in parents[:k]:
+                result.error(
+                    "GE049",
+                    f"Commit '{cid}' lists parent '{parent}' twice: Git records each parent once, "
+                    "so it would not record this merge as declared.",
+                    f"commits[{i}].parents",
+                )
+                continue
+            covering = next((other for other in parents if other != parent and reaches([other], parent)), None)
+            if covering is not None:
+                result.error(
+                    "GE049",
+                    f"Commit '{cid}' lists parent '{parent}', which is already an ancestor of its parent '{covering}': "
+                    "Git does not record an already merged parent, so it would not record this merge as declared.",
+                    f"commits[{i}].parents",
+                )
     return result
 
 
