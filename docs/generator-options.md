@@ -281,9 +281,22 @@ Recorded metadata:
   the owner gets `generated_commits: [<owner>.g1, ...]`.
 * `graph-map.json`: `generated_commits: {<owner>: [ids]}` at the top level and
   in the owner's commit entry.
+* The owner's `parents` (in both files) and `parent_hashes` (graph-map) are
+  its **declared** parents, as for every other commit: for `c2` above,
+  `parents: [c1]` and `parent_hashes: [<hash of c1>]`. In Git, the owner's
+  first parent is its last generated commit, `c2.g500`. The chain is in
+  `generated_commits`, and each generated entry's `parents` in commit-map
+  names the previous one (`c2.g1`'s names `c1`). To follow Git's history,
+  insert the owner's `generated_commits` between the owner and its first
+  declared parent, as `gitutils.history_graph` does. Walking `parent_hashes`
+  alone gives the scenario's DAG, not Git's.
 
-The verifier expects the first parent of the owning commit to be its last
-generated commit; commits whose declared parent owns generated commits still
+`verify-graph` checks both ends of the chain. The owner's first parent must
+be its last generated commit (GE627). Every generated commit must be in the
+commit map and in the repository, and its only parent must be the previous
+one; for `g1`, that is the owner's declared first parent. Its author, dates
+and subject must also be what the commit map records (GE629, GE633-GE636;
+issue #176). Commits whose declared parent owns generated commits still
 point at that parent's own hash.
 
 Defaults and compatibility: `path` defaults to `generated`; a file-like
@@ -354,12 +367,17 @@ graph:
 ```
 
 * Deleting the currently checked-out branch switches to the default branch
-  first (or detaches HEAD when the default branch is deleted too).
+  first. If the default branch is deleted too, or has no commits, HEAD
+  detaches at the last commit instead. `verify-graph` expects HEAD there
+  (GE644).
 * Unknown branch names or commit ids are errors.
 * `graph-map.json` records the final refs for **every** graph scenario:
   `refs: {branches: {name: hash}, tags: {name: hash}}`, and
   `ref_lifecycle: {deleted_branches: [...], tags: {name: {commit, hash}}}` when
   the section was present. `branches` no longer lists deleted branches.
+  `verify-graph` compares the repository's refs with `refs`. A missing or
+  moved branch or tag is an error, and so is any ref that generation did not
+  leave (GE640-GE643, issue #176).
 * Default: no section, refs are unchanged from today (all branches remain).
 
 Commits that become unreachable are not garbage-collected; the hashes stay
@@ -506,7 +524,9 @@ New metadata fields: `commit-map.json` -> `author_date`, `committer_date`,
 `graph-map.json` -> `generated_commits`, `refs`, `ref_lifecycle`, per-commit
 `revert_of` and `generated_commits`, and pass-through of `squashes`,
 `interactive_rebase`, `rebase_conflict_resolution`, `reverts`,
-`revert_conflict_resolution` when a commit declares them.
+`revert_conflict_resolution` when a commit declares them. A commit's
+`parents` and `parent_hashes` are its declared parents, also for a
+`commit_generator` owner (see `commit_generator` above).
 
 ## 5. The Git environment (#96)
 
@@ -604,6 +624,11 @@ since the manifest stays behind when the rest is moved, deleted or replaced:
 Extra commits, branches and tags do not make an output stale, and neither does
 a moved `HEAD`: an SZZ tool may check out, commit or branch in the repository
 it analyses, and every commit the output was generated with is still there.
+`verify-graph` asks a different question: whether the repository is still the
+one generation left. It reports a missing, moved or extra branch or tag, a
+moved `HEAD`, and a dirty index or working tree as errors (issue #176). To
+verify an output again after a tool has worked in it, regenerate it
+(`generate-graph --force`, or `generate-all-repos --overwrite`).
 
 - `generate-all-repos` regenerates a stale output instead of skipping it and
   prints why ("Regenerated ... the old output was stale: ..."). An up-to-date

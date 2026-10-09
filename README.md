@@ -463,11 +463,11 @@ generated-input-repos/SZZG-0001/default/
 
 `commit-map.json` records the mapping between logical commit IDs and actual Git hashes.
 
-`graph-map.json` records additional information for Graph scenarios. It includes information such as branches, parents, and roles.
+`graph-map.json` records additional information for Graph scenarios. It includes information such as branches, parents, and roles. A commit's `parents` and `parent_hashes` are its declared parents. For a commit that owns `commit_generator` operations, Git's first parent is its last generated commit, listed in `generated_commits` (`docs/generator-options.md` §2).
 
 ### verify-graph
 
-Verify that a generated repository corresponds to `scenario.graph.yml`.
+Verify that a generated repository corresponds to `scenario.graph.yml`. Besides the commits and the bug locations, it checks that the repository is still as generation left it: the branches and tags that `graph-map.json` records, HEAD, and a clean index and working tree. A repository in which an SZZ tool has checked out, committed or branched therefore fails verification, although the staleness check of `generate-all-repos` and `evaluate` accepts it (`docs/generator-options.md` §6).
 
 ```bash
 szzbench verify-graph   generated-input-repos/SZZG-0001/default/repo   --scenario advanced-scenarios/SZZG-0001/scenario.graph.yml
@@ -1180,11 +1180,11 @@ generated-input-repos/SZZG-0001/default/
 
 `commit-map.json` は、論理コミット ID と実際の Git hash の対応を記録します。
 
-`graph-map.json` は、Graph シナリオ向けの追加情報を記録します。branch、parent、role などの情報を含みます。
+`graph-map.json` は、Graph シナリオ向けの追加情報を記録します。branch、parent、role などの情報を含みます。コミットの `parents` と `parent_hashes` は、シナリオで宣言された親です。`commit_generator` 操作を持つコミットでは、Git 上の第一親は最後の生成コミットで、それは `generated_commits` に並んでいます（`docs/generator-options.md` §2）。
 
 ### verify-graph
 
-生成済みリポジトリが `scenario.graph.yml` と対応しているかを検査します。
+生成済みリポジトリが `scenario.graph.yml` と対応しているかを検査します。コミットとバグの位置に加えて、リポジトリが生成直後の状態のままか（`graph-map.json` が記録するブランチとタグ、HEAD、index とワークツリーに変更がないか）も検査します。そのため、SZZ ツールがチェックアウト・コミット・ブランチ作成をしたリポジトリは検証に失敗します。一方、`generate-all-repos` と `evaluate` の古さの判定は、こうした変更を許します（`docs/generator-options.md` §6）。
 
 ```bash
 szzbench verify-graph   generated-input-repos/SZZG-0001/default/repo   --scenario advanced-scenarios/SZZG-0001/scenario.graph.yml
