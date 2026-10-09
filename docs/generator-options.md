@@ -362,6 +362,43 @@ For commits that declare `rebase_of` (or `cherry_pick_of` / `backport_of`).
 `rebase_of` still does not replay the source commit: the `operations` (or an
 `apply_patch_from`) describe the rebased content, exactly as before.
 
+### A commit's `branch` and its first parent (*graph*)
+
+The generator keeps one branch per `branch` name, and **a branch's tip is the
+last commit declared on it**. A commit whose branch does not exist yet creates
+the branch at its first parent. A commit whose branch exists and whose first
+parent is not the branch's tip **moves the branch**: the generator checks it
+out, resets it to the first parent (`git reset --hard`) and commits on top.
+
+```yaml
+- id: c4
+  branch: main
+  parents: [a3]     # main's tip is c0, an ancestor of a3: main fast-forwards to a3
+```
+
+* When the old tip is an ancestor of the first parent, the move is a
+  fast-forward and nothing is lost. SZZG-0052 and SZZG-0128 integrate a
+  feature branch into `main` this way (`c4`), which keeps `main` a straight
+  line.
+* Otherwise the branch no longer contains its old tip. A commit that no other
+  branch, no tag and not `HEAD` reaches once generation has finished (after
+  `graph.ref_lifecycle`) is not in `git log --all`, and no tool that walks refs
+  sees it, although `commit-map.json` lists it and `verify-graph` finds it by
+  its hash. `validate-graph` warns (GW151) and names those commits, unless the
+  scenario gives them up on purpose: a commit on a branch that
+  `graph.ref_lifecycle.delete_branches` deletes, or one that a commit's
+  `rebase_of` or `squashes` names.
+* `generation.log` records every reset, with the old and the new tip and
+  whether it is a fast-forward:
+  `Reset branch main from c1 (<hash>) to f1 (<hash>), the first parent of c2 (fast-forward: no; the branch no longer contains 1 commit(s))`.
+
+To keep the old history, tag it (`graph.ref_lifecycle.tags`) or put the new
+commits on a branch of their own: the shipped rebase scenarios write the
+rewritten commits on another branch than the originals, and SZZG-0072 and
+SZZG-0122 then delete the original branch. Until issue #174 the rule was not
+written down, and a reset that left commits unreachable passed validation,
+generation and verification without a word.
+
 ### `graph.ref_lifecycle` (*graph*, top level)
 
 Applied after all commits exist.

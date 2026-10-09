@@ -12,7 +12,7 @@ from .graph_operations import (PATH_FIELDS_BY_OPERATION, REQUIRED_FIELDS_BY_OPER
                                decode_content_base64)
 from .graph_scenario import commit_id_of, graph_bfc_entries, graph_bic_entries, graph_faults, graph_fixes, load_graph_scenario
 from .graph_simulator import git_performed_features, simulate_graph_scenario, simulate_graph_scenario_with_git
-from .gitutils import GitError, format_timestamp, parse_timestamp
+from .gitutils import GitError, format_timestamp, history_graph, parse_timestamp, reachable_commit_ids
 from .operations import type_label
 from .paths import PathValidationError, validate_repo_relative_path
 from .policies import SUPPORTED_EVALUATION_POLICIES
@@ -30,6 +30,10 @@ REWRITE_REFERENCE_KEYS: dict[str, tuple[type, ...]] = {
     "squashes": (list,),
     "revert_of": (str,),
 }
+
+#: The keys by which a commit declares that it rewrites earlier commits, which a
+#: branch may then leave behind (GW151); ``revert_of`` keeps its target.
+REWRITE_DECLARATION_KEYS = ("rebase_of", "squashes")
 
 #: The operation fields whose value is text generation writes or matches.  They
 #: were read through str(): a blank `content:` wrote the text `None` into the file,
@@ -202,6 +206,8 @@ def validate_graph_static(data: dict[str, Any], *, scenario_path: Path | None = 
 
     result.extend(_validate_graph_acyclic(commits))
     result.extend(_validate_merge_parents(commits))
+    if not result.has_errors():          # the history model needs well-formed commits
+        result.extend(_validate_branch_rewinds(data))
 
     if not isinstance(data.get("bugs"), list):
         result.error("GE080", "bugs must be a list.", "bugs")
@@ -689,6 +695,92 @@ def _validate_merge_parents(commits: list[Any]) -> ValidationResult:
                     "Git does not record an already merged parent, so it would not record this merge as declared.",
                     f"commits[{i}].parents",
                 )
+    return result
+
+
+def _validate_branch_rewinds(data: dict[str, Any]) -> ValidationResult:
+    """GW151: a first parent off the branch that leaves commits unreachable (issue #174).
+
+    A branch's tip is the last commit declared on it.  When a commit's branch
+    already exists and its first parent is not the branch's tip, the generator
+    checks the branch out and resets it to that parent (``_checkout_for_commit``).
+    If the tip is an ancestor of the parent, that is a fast-forward (SZZG-0052
+    and SZZG-0128 ``c4``) and nothing is reported.  Otherwise the branch no
+    longer contains the commits only its old tip reached, and those that no
+    ref reaches once generation has finished (``gitutils.reachable_commit_ids``:
+    no branch, tag or HEAD) are not in ``git log --all``.  Not reported: a
+    commit on a branch ``graph.ref_lifecycle.delete_branches`` deletes, and one
+    that a commit's ``rebase_of`` or ``squashes`` names -- they are left behind
+    on purpose.  A commit two resets leave behind is named at the later one.
+    """
+    result = ValidationResult()
+    graph = data.get("graph") if isinstance(data.get("graph"), dict) else {}
+    lifecycle = graph.get("ref_lifecycle") if isinstance(graph.get("ref_lifecycle"), dict) else {}
+    if any(lifecycle.get(key) is not None and not isinstance(lifecycle.get(key), list)
+           for key in ("tags", "delete_branches")):
+        return result                    # the generator refuses it before it moves a ref
+    repository = data.get("repository") if isinstance(data.get("repository"), dict) else {}
+    default_branch = str(repository.get("default_branch") or "main")
+    try:
+        commits, parents_of = history_graph(data)
+        reachable = reachable_commit_ids(data)
+    except (TypeError, ValueError, OverflowError):
+        # a value the generator refuses, such as a commit_generator count of .inf
+        # (OverflowError); --simulate and generation report it
+        return result
+    deleted = {name for name in lifecycle.get("delete_branches") or [] if isinstance(name, str)}
+    rewritten: set[str] = set()
+    for commit in commits:
+        for key in REWRITE_DECLARATION_KEYS:
+            value = commit.get(key)
+            rewritten.update(v for v in (value if isinstance(value, list) else [value]) if isinstance(v, str))
+
+    def branch_of(commit: dict[str, Any]) -> str:
+        return str(commit.get("branch") or default_branch)
+
+    def ancestors(cid: str) -> set[str]:
+        seen: set[str] = set()
+        stack = [cid]
+        while stack:
+            current = stack.pop()
+            if current not in seen:
+                seen.add(current)
+                stack.extend(parents_of.get(current, []))
+        return seen
+
+    tips: dict[str, str] = {}
+    resets: list[tuple[int, str, str, str, str]] = []   # (index, commit, branch, old tip, first parent)
+    left_behind_by: dict[str, int] = {}                 # commit -> the last reset that left it behind
+    for i, commit in enumerate(data.get("commits") or []):
+        if not isinstance(commit, dict) or not isinstance(commit.get("id"), str):
+            continue
+        cid, branch = commit["id"], branch_of(commit)
+        parents = [p for p in commit.get("parents") or [] if isinstance(p, str)]
+        if parents and branch in tips and tips[branch] != parents[0]:
+            behind = ancestors(tips[branch]) - ancestors(parents[0])
+            for c in commits:
+                if c["id"] in behind:
+                    left_behind_by[c["id"]] = len(resets)
+            resets.append((i, cid, branch, tips[branch], parents[0]))
+        tips[branch] = cid
+
+    lost = [c["id"] for c in commits
+            if c["id"] in left_behind_by and c["id"] not in reachable
+            and branch_of(c) not in deleted and c["id"] not in rewritten]
+    for k, (i, cid, branch, old_tip, first_parent) in enumerate(resets):
+        named = [c for c in lost if left_behind_by[c] == k]
+        if not named:
+            continue                     # a fast-forward, or nothing is lost
+        them = "it" if len(named) == 1 else "them"
+        result.warning(
+            "GW151",
+            f"Commit '{cid}' resets branch '{branch}' from its tip '{old_tip}' to its first parent "
+            f"'{first_parent}', which is not a fast-forward: after generation no ref reaches "
+            f"{', '.join(repr(c) for c in named)}, so git log --all does not show {them}. If the rewrite "
+            f"is intended, name {them} in a later commit's rebase_of or squashes; otherwise keep {them} "
+            f"with a graph.ref_lifecycle tag, or put '{cid}' on another branch.",
+            f"commits[{i}].parents",
+        )
     return result
 
 
