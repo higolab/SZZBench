@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 import json
 import shutil
@@ -652,12 +652,16 @@ def _expand_commit_generators(
 
     parent_hash = run_git(repo_dir, ["rev-parse", "--verify", "-q", "HEAD"]).stdout.strip() if parents else ""
 
+    written: set[str] = set()      # the files of this import so far, none of them in the worktree yet
+
     def read_existing(rel_path: str) -> str:
         try:
             existing = safe_join(repo_dir, rel_path)
         except PathValidationError as exc:
             raise GraphGenerationError(f"commit_generator of commit '{owner_id}' produced an invalid path '{rel_path}': {exc}") from exc
         _refuse_generated_path_below_a_file(repo_dir, rel_path, owner_id)
+        _refuse_a_collision_within_the_import(written, rel_path, owner_id)
+        written.add(rel_path)
         try:
             return existing.read_text(encoding="utf-8") if existing.exists() else ""
         except (OSError, ValueError) as exc:      # a directory, a file that is not UTF-8 (issue #175)
@@ -721,6 +725,21 @@ def _expand_commit_generators(
         generated_ids.append(gid)
     log(f"Created generated commits {generated_ids[0]} .. {generated_ids[-1]} (last {last_hash})")
     return generated_ids
+
+
+def _refuse_a_collision_within_the_import(written: set[str], rel_path: str, owner_id: str) -> None:
+    """A generated file below an earlier generated file of the same import, or at the path
+    of a directory that holds one.  The worktree has neither yet, so the check above cannot
+    see them, and ``git fast-import`` would silently replace the earlier file with a
+    directory, or the directory with the file (PR #226 review)."""
+    for parent in PurePosixPath(rel_path).parents:
+        if parent.as_posix() in written:
+            raise GraphGenerationError(f"commit_generator of commit '{owner_id}' cannot write '{rel_path}': "
+                                       f"{parent.as_posix()} is a file it generates")
+    below = next((path for path in sorted(written) if path.startswith(rel_path + "/")), None)
+    if below is not None:
+        raise GraphGenerationError(f"commit_generator of commit '{owner_id}' cannot write '{rel_path}': "
+                                   f"it is a directory of {below}, a file it generates")
 
 
 def _refuse_generated_path_below_a_file(repo_dir: Path, rel_path: str, owner_id: str) -> None:

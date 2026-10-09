@@ -125,6 +125,24 @@ SHAPES = {
                   _commit("c2", ["c1"], _write_file("a.txt", "a\n"))),
         [("GE201", "commits[1].operations[0]", "commit_generator target lies below the file generated")],
         "commit_generator of commit 'c1' cannot write 'generated/noise-01.txt': generated is a file"),
+    # two commit_generators of one commit whose files collide: fast-import replaced the first
+    # file with a directory, or the directory with the file (PR #226 review)
+    "generator-below-a-generated-file": (
+        _scenario(_commit("c0", [], _write_file("a.txt", "a\n")),
+                  _commit("c1", ["c0"], dict(GENERATOR, count=1),
+                          {"type": "commit_generator", "generator": "other", "count": 1, "path": "generated/noise-01.txt/sub"}),
+                  _commit("c2", ["c1"], _write_file("b.txt", "b\n"))),
+        [("GE201", "commits[1].operations[1]", "commit_generator target lies below the file generated/noise-01.txt")],
+        "commit_generator of commit 'c1' cannot write 'generated/noise-01.txt/sub/other-01.txt': "
+        "generated/noise-01.txt is a file it generates"),
+    "generator-over-a-generated-directory": (
+        _scenario(_commit("c0", [], _write_file("a.txt", "a\n")),
+                  _commit("c1", ["c0"], {"type": "commit_generator", "generator": "other", "count": 1, "path": "generated/noise-01.txt/sub"},
+                          dict(GENERATOR, count=1)),
+                  _commit("c2", ["c1"], _write_file("b.txt", "b\n"))),
+        [("GE201", "commits[1].operations[1]", "commit_generator target is a directory: generated/noise-01.txt")],
+        "commit_generator of commit 'c1' cannot write 'generated/noise-01.txt': "
+        "it is a directory of generated/noise-01.txt/sub/other-01.txt, a file it generates"),
     "copy-onto-a-directory": (
         _scenario(_commit("c0", [], _write_file("a.txt", "a\n"), _write_file("lib/b.txt", "b\n")),
                   _commit("c1", ["c0"], {"type": "copy_file", "from": "a.txt", "to": "lib", "overwrite": True})),
