@@ -8,6 +8,7 @@
 - Tool errors: 0
 - Missing prediction records: 0
 - Predictions made on another repository: 0
+- Invalid prediction records: 0
 - True positives: 217
 - False positives: 41
 - Unknown predictions (counted as false positives): 0

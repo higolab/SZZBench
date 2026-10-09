@@ -163,8 +163,9 @@ from that fix must report. Scoring (since 2026-09-22, issue #22):
 - A prediction **without** `fix_commit` (the key omitted or `null`) counts for
   **every** entry — a tool that does not say which fix it started from is held
   to all of them. A supplied `fix_commit` (or `bug_fixing_commit` /
-  `fix_commit_hash`) that is not a non-empty string is a loading error and the
-  record is skipped, so an invalid reference can never be read as "unspecified".
+  `fix_commit_hash`) that is not a non-empty string is a loading error: the
+  record is not read and its scenario fails as `invalid` (section 1.6), so an
+  invalid reference can never be read as "unspecified".
 - A prediction whose `fix_commit` resolves to no declared `bfc` counts for no
   entry; the result notes it.
 - Each entry is scored as an **exact set** (no policy, no allowances): PASS when
@@ -189,7 +190,7 @@ returns `r1` and fails the `release` entry while the same tool passes `main`
 from `c3`. SZZG-0049 and SZZG-0050 declare the same block with `{c1}` on both
 branches.
 
-### 1.6 Records: tool errors and missing records
+### 1.6 Records: tool errors, unreadable records and missing records
 
 A record may say what the tool's run on its scenario came to, with an optional
 `status` -- `ok` (the default) or `error`, matched case-insensitively -- and,
@@ -207,18 +208,49 @@ Every scenario then has a `run_status`:
 | `error` | a record for the scenario has `status: error` | **FAIL** whatever it predicted; the predictions it carries still count in the metrics, and `run_errors` holds the messages |
 | `missing` | no record names the scenario and `--include-generated` brought it in | **FAIL**; the metrics count it as an empty prediction |
 | `stale` | the records name a `repository_id` that is not the generated repository's (issue #93) | **FAIL** whatever they predict: they were made on another generation of the scenario; `run_errors` names both ids |
+| `invalid` | a record for the scenario has a loading error (below; issue #138) | **FAIL** whatever the scenario's other records predict; that record's predictions do not count, the other records' do, and `run_errors` holds the loading errors |
+
+When more than one applies, `error` comes first, then `stale`, then `invalid`.
+A tool error and stale predictions say that the tool's run itself is no
+answer, which a file that could be read would not change, and running the tool
+again writes a new file anyway; an unreadable record says only that part of
+the file is lost.
 
 Every failure adds a `result_notes` entry, which the report also lists as a
 warning. An error record needs no inducing commit (`{"scenario_id": "SZZ-0006",
-"status": "error"}` is valid); a `status` other than `ok` or `error` is a
-loading error and the record is skipped.
+"status": "error"}` is valid).
+
+A record that names a scenario has a **loading error** when it has
+
+- a `status` other than `ok` or `error`, or a `repository_id` that is not a
+  non-empty string or differs from the one an earlier record of the scenario
+  names;
+- a `predictions` key whose value is not a list, `null` included;
+- both a `predictions` list and a top-level inducing commit, which used to be
+  ignored: a record is either a list of predictions or one prediction
+  (`README.md`, under `evaluate`), so put every prediction in the list;
+- a prediction that is not a JSON object; that has no inducing commit, or one
+  that is not a non-empty string; that has a `rank` that is not an integer or a
+  `confidence` that is not a number; or that supplies a fix reference that is
+  not a non-empty string (section 1.5).
+
+Such a record is not read at all, and its scenario is `invalid` even when its
+other records could be read: part of what the tool wrote is lost. `evaluate`
+prints every loading error and exits 1, the `--out` reports carry the same
+FAIL, and the summary counts the scenario under `invalid_records`. A record
+without a string `scenario_id`, or one that is not a JSON object, cannot be
+attributed to a scenario; it is only a loading error. Until issue #138 a record
+whose predictions could not be read still answered its scenario, as an empty
+prediction with `run_status: ok` that passed SZZG-0135 and SZZG-0136, and a
+record with an invalid `status` or `repository_id` dropped its scenario from
+the report.
 
 A record may also carry `repository_id`, the id the generation manifest gives
 the output the tool ran on (`docs/generator-options.md` §6); the adapters in
 `tools/adapters/` write it. Records of one scenario that name different ids are
-a loading error. When a file's records name no `repository_id` for some
-scenarios, they are scored as before and the report warns once that they
-cannot be matched to the generated repositories.
+a loading error, which makes the scenario `invalid`. When a file's records name
+no `repository_id` for some scenarios, they are scored as before and the report
+warns once that they cannot be matched to the generated repositories.
 
 A generated output that is **stale** -- it has no manifest, its scenario file
 or the generator's code has changed since it was generated, or it has lost part
@@ -323,7 +355,7 @@ removes a prediction from `false_positives`.
 
 The status is decided in this order. Steps 1 to 3 apply to every policy.
 
-1. A `run_status` other than `ok` (a tool error or a missing record, section 1.6) → **FAIL**.
+1. A `run_status` other than `ok` (a tool error, stale predictions, an unreadable record or a missing record, section 1.6) → **FAIL**.
 2. Any unknown prediction → **FAIL**.
 3. `expect_no_bic: true` → **PASS** iff `P` is empty (section 6).
 4. Policy-specific rule below.
@@ -659,8 +691,8 @@ missing`). `[c1]` → FAIL (`false_positives = [c1]`). `[not-a-commit]` → FAIL
 | location | field |
 |---|---|
 | per scenario (JSON) | `top_k.status_k`, `top_k.unknown_ranks`, `known_distractor_hits`, `expect_no_bic`, `fix_shape`, `branch_level`, `attribution`, `run_status`, `run_errors`, additional `result_notes` |
-| summary (JSON) | `known_distractor_hits`, `fix_shape_counts`, `branch_level_scenarios`, `branch_level_failures`, `attribution_scenarios`, `attribution_failures`, `tool_errors`, `missing_records`, `stale_predictions`, `unknown_predictions` |
-| Markdown | `- Tool errors:`, `- Missing prediction records:`, `- Predictions made on another repository:`, `- Unknown predictions (counted as false positives):`, `- Known distractor hits:`, `- Branch-level failures:`, `- Attribution failures:`, `- Fix shapes (per BFC):`; table columns `Run`, `Unknown`, `Top-k`, `Distractor hits`, `Fix shape`; `## Scenario notes` section listing every scenario's `result_notes` |
+| summary (JSON) | `known_distractor_hits`, `fix_shape_counts`, `branch_level_scenarios`, `branch_level_failures`, `attribution_scenarios`, `attribution_failures`, `tool_errors`, `missing_records`, `stale_predictions`, `invalid_records`, `unknown_predictions` |
+| Markdown | `- Tool errors:`, `- Missing prediction records:`, `- Predictions made on another repository:`, `- Invalid prediction records:`, `- Unknown predictions (counted as false positives):`, `- Known distractor hits:`, `- Branch-level failures:`, `- Attribution failures:`, `- Fix shapes (per BFC):`; table columns `Run`, `Unknown`, `Top-k`, `Distractor hits`, `Fix shape`; `## Scenario notes` section listing every scenario's `result_notes` |
 | report `warnings` (JSON, Markdown `## Warnings`, CLI stderr) | oracle-related `result_notes` promoted with a `<scenario id>: ` prefix, except the one below |
 | report `info` (JSON, Markdown `## Information`, CLI stderr as `[INFO]`) | the note that `expected_szz` declares sections commit-level evaluation does not read, with a `<scenario id>: ` prefix (issue #126) |
 | validator | `GI086` (info) when `bug_introducing_commits` is empty and `expect_no_bic` is declared, instead of `GE084` |

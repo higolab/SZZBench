@@ -463,11 +463,11 @@ generated-input-repos/SZZG-0001/default/
 
 `commit-map.json` records the mapping between logical commit IDs and actual Git hashes.
 
-`graph-map.json` records additional information for Graph scenarios. It includes information such as branches, parents, and roles.
+`graph-map.json` records additional information for Graph scenarios. It includes information such as branches, parents, and roles. A commit's `parents` and `parent_hashes` are its declared parents. For a commit that owns `commit_generator` operations, Git's first parent is its last generated commit, listed in `generated_commits` (`docs/generator-options.md` §2).
 
 ### verify-graph
 
-Verify that a generated repository corresponds to `scenario.graph.yml`.
+Verify that a generated repository corresponds to `scenario.graph.yml`. Besides the commits and the bug locations, it checks that the repository is still as generation left it: the branches and tags that `graph-map.json` records, HEAD, and a clean index and working tree. A repository in which an SZZ tool has checked out, committed or branched therefore fails verification, although the staleness check of `generate-all-repos` and `evaluate` accepts it (`docs/generator-options.md` §6).
 
 ```bash
 szzbench verify-graph   generated-input-repos/SZZG-0001/default/repo   --scenario advanced-scenarios/SZZG-0001/scenario.graph.yml
@@ -514,6 +514,8 @@ A record can also say that the tool failed on the scenario; the scenario then fa
 ```
 
 The adapters also write `repository_id`, the id of the generated repository the tool ran on; a record made on another generation of the scenario fails as stale.
+
+A record that cannot be read is a loading error: `predictions` that is not a list (`null` included), a prediction without an `inducing_commit` or with one that is not a non-empty string, a `rank`, `fix_commit`, `status` or `repository_id` of the wrong kind, or both a `predictions` list and a top-level `inducing_commit`. `evaluate` then exits 1, and the scenario the record names fails as `run_status: invalid`, whatever its other records predict (`docs/evaluation-policies.md` §1.6). Until issue #138 a record whose predictions could not be read was scored as an empty answer, which passes an `expect_no_bic` scenario.
 
 Use `--include-generated` to evaluate every generated repository under `--generated-root`. A scenario that no record names then fails as a missing record (`run_status: missing`) rather than being read as an abstention, so write an empty record, like `SZZ-0047` above, for a scenario on which the tool ran and found nothing. The adapters under `tools/adapters/` write such records.
 
@@ -1180,11 +1182,11 @@ generated-input-repos/SZZG-0001/default/
 
 `commit-map.json` は、論理コミット ID と実際の Git hash の対応を記録します。
 
-`graph-map.json` は、Graph シナリオ向けの追加情報を記録します。branch、parent、role などの情報を含みます。
+`graph-map.json` は、Graph シナリオ向けの追加情報を記録します。branch、parent、role などの情報を含みます。コミットの `parents` と `parent_hashes` は、シナリオで宣言された親です。`commit_generator` 操作を持つコミットでは、Git 上の第一親は最後の生成コミットで、それは `generated_commits` に並んでいます（`docs/generator-options.md` §2）。
 
 ### verify-graph
 
-生成済みリポジトリが `scenario.graph.yml` と対応しているかを検査します。
+生成済みリポジトリが `scenario.graph.yml` と対応しているかを検査します。コミットとバグの位置に加えて、リポジトリが生成直後の状態のままか（`graph-map.json` が記録するブランチとタグ、HEAD、index とワークツリーに変更がないか）も検査します。そのため、SZZ ツールがチェックアウト・コミット・ブランチ作成をしたリポジトリは検証に失敗します。一方、`generate-all-repos` と `evaluate` の古さの判定は、こうした変更を許します（`docs/generator-options.md` §6）。
 
 ```bash
 szzbench verify-graph   generated-input-repos/SZZG-0001/default/repo   --scenario advanced-scenarios/SZZG-0001/scenario.graph.yml
@@ -1231,6 +1233,8 @@ szzbench evaluate \
 ```
 
 アダプタは、ツールを実行した生成済みリポジトリの識別子 `repository_id` も書きます。同じシナリオの別の生成物に対して作られたレコードは stale として FAIL になります。
+
+読めないレコードは読み込みエラーです。リストでない `predictions`（`null` を含む）、`inducing_commit` がない予測、または `inducing_commit` が空でない文字列ではない予測、型の誤った `rank`・`fix_commit`・`status`・`repository_id`、`predictions` のリストとトップレベルの `inducing_commit` の両方を持つレコードがこれに当たります。このとき `evaluate` は終了コード 1 で終わり、レコードが指すシナリオは、ほかのレコードの予測内容にかかわらず `run_status: invalid` として FAIL になります（`docs/evaluation-policies.md` §1.6）。Issue #138 までは、予測を読めなかったレコードも空の答えとして採点され、`expect_no_bic` のシナリオで PASS していました。
 
 `--generated-root` 以下の生成済みリポジトリをすべて評価するには `--include-generated` を使います。このとき、どのレコードにも現れないシナリオは、棄権ではなく記録の欠落（`run_status: missing`）として FAIL になります。ツールが実行されて何も見つけなかったシナリオには、上の `SZZ-0047` のような空のレコードを書いてください。`tools/adapters/` のアダプタはそのようなレコードを書きます。
 
