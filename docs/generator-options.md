@@ -673,6 +673,11 @@ output was made from:
 | `verified` | whether verification ran and passed |
 | `scenario_id`, `format`, `git_version` | for the record |
 
+A generation that fails writes no manifest: it writes `generation.log` and
+`generation-error.json` instead, and one that fails verification also keeps
+`verify-result.json`. Until issue #163 the classic generator wrote neither of
+the first two when the verification failed.
+
 An output is **stale** when it has no manifest -- an interrupted generation,
 or one made before 2026-09-29 -- or when its scenario file or the generator's
 code has changed since it was generated; for a run with verification, an

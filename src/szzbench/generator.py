@@ -15,7 +15,10 @@ from .validator import validate_scenario_file
 from .verifier import verify_generated_repo
 
 class GenerationError(RuntimeError):
-    pass
+    def __init__(self, message: str, *, verify_result: ValidationResult | None = None) -> None:
+        super().__init__(message)
+        #: The findings, when it was the verification that failed: the CLI prints them (issue #163).
+        self.verify_result = verify_result
 
 def generate_repository(scenario_path: Path, out_dir: Path, *, force: bool = False, verify: bool = True) -> tuple[dict, ValidationResult | None]:
     scenario_path = scenario_path.resolve()
@@ -82,7 +85,15 @@ def generate_repository(scenario_path: Path, out_dir: Path, *, force: bool = Fal
             verify_result = verify_generated_repo(repo_dir, scenario_path, metadata_dir / "commit-map.json")
             (metadata_dir / "verify-result.json").write_text(json.dumps(verify_result.to_dict(), indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
             if verify_result.has_errors():
-                raise GenerationError("Generated repository failed verification.")
+                # Recorded here like every other failure (issue #163): the except clause
+                # below does not catch GenerationError, so the output used to be left
+                # without generation.log and generation-error.json.
+                error = "Generated repository failed verification."
+                for finding in verify_result.error_findings():
+                    log(f"Verification: {finding.format()}")
+                log(f"ERROR: {error}")
+                _record_failure(metadata_dir, generation_log, error)
+                raise GenerationError(error, verify_result=verify_result)
         log("Generation completed successfully.")
         (metadata_dir / "generation.log").write_text("\n".join(generation_log) + "\n", encoding="utf-8")
         # written last: an output without it is incomplete (issue #93)
@@ -97,3 +108,9 @@ def generate_repository(scenario_path: Path, out_dir: Path, *, force: bool = Fal
         (metadata_dir / "generation-error.json").write_text(json.dumps(error_info, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         (metadata_dir / "generation.log").write_text("\n".join(generation_log) + "\n", encoding="utf-8")
         raise GenerationError(str(exc)) from exc
+
+def _record_failure(metadata_dir: Path, generation_log: list[str], error: str) -> None:
+    """What the except clause of generate_repository writes for its own errors."""
+    error_info = {"error": error, "timestamp": datetime.now(timezone.utc).isoformat()}
+    (metadata_dir / "generation-error.json").write_text(json.dumps(error_info, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    (metadata_dir / "generation.log").write_text("\n".join(generation_log) + "\n", encoding="utf-8")

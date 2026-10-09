@@ -7,6 +7,7 @@ from typing import Literal
 import json
 import traceback
 
+from .findings import Finding
 from .generator import GenerationError, generate_repository
 from .graph_generator import GraphGenerationError, generate_graph_repository
 from .manifest import staleness
@@ -37,6 +38,8 @@ class GeneratedRepositoryItem:
     stale_reason: str | None = None
     #: the traceback of an exception other than a generation error (issue #162)
     traceback: str | None = None
+    #: the errors of a verification that failed the generation (issue #163)
+    verification_errors: tuple[Finding, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -134,6 +137,7 @@ def generate_all_repositories(
                     overwritten=overwrite and output_exists,
                     error=str(exc),
                     stale_reason=stale_reason,
+                    verification_errors=(tuple(exc.verify_result.error_findings()) if exc.verify_result is not None else ()),
                 )
             )
             continue
