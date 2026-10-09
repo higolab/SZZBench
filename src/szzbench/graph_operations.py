@@ -19,7 +19,7 @@ from .operations import (
     text_field,
     write_text_raw,
 )
-from .paths import PathValidationError, safe_join
+from .paths import PathValidationError, another_spelling_on_disk, safe_join, validate_repo_relative_path
 
 SUPPORTED_GRAPH_OPERATIONS = {
     "write_file",
@@ -115,6 +115,7 @@ def apply_graph_operation_to_filesystem(repo_dir: Path, op: dict[str, Any]) -> N
     below a file, reached the user as the bare OS message (issue #175).
     """
     try:
+        _refuse_another_spelling(repo_dir, op)
         _apply_graph_operation(repo_dir, op)
     except PathValidationError:
         raise
@@ -122,6 +123,32 @@ def apply_graph_operation_to_filesystem(repo_dir: Path, op: dict[str, Any]) -> N
         raise OperationError(f"{op.get('type')} {_operation_target(op)}: {_value_error_reason(op, exc)}") from exc
     except OSError as exc:                       # incl. IsADirectoryError, NotADirectoryError, shutil.SameFileError
         raise OperationError(f"{op.get('type')} {_operation_target(op)}: {_os_error_reason(repo_dir, exc)}") from exc
+
+
+def _refuse_another_spelling(repo_dir: Path, op: dict[str, Any]) -> None:
+    """Refuse a path of ``op`` that reaches an entry of the worktree spelt otherwise (issue #153).
+
+    ``src/a.java`` written beside ``src/A.java`` overwrote it on macOS and was
+    a second file on Linux, and a ``replace`` in ``src/a.java`` changed
+    ``src/A.java`` on macOS and failed on Linux: the generated repository
+    depended on the platform.  ``validate-graph --simulate`` refuses the same
+    paths (``validator.file_path_conflict``), but ``generate-graph`` does not
+    run it, and a scenario with commits Git computes is simulated by
+    generating it.  A path that is not valid is left to ``safe_join``.
+    """
+    op_type = op.get("type")
+    for key in PATH_FIELDS_BY_OPERATION.get(op_type, ()) if isinstance(op_type, str) else ():
+        relative = op.get(key)
+        try:
+            validate_repo_relative_path(relative)
+        except PathValidationError:
+            continue
+        found = another_spelling_on_disk(repo_dir, relative)
+        if found is not None:
+            mine, theirs = found
+            raise OperationError(f"{op_type} {_operation_target(op)}: {mine!a} differs only in letter case or Unicode "
+                                 f"normalization from {theirs!a}, which the worktree has: macOS (and Windows, for letter "
+                                 "case) reads both as one name, so generation would depend on the platform")
 
 
 def _operation_target(op: dict[str, Any]) -> str:

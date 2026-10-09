@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import os
 import re
+import unicodedata
 from pathlib import Path, PurePosixPath
 
 class PathValidationError(ValueError):
@@ -15,6 +17,22 @@ _HFS_IGNORED = frozenset(
     "\u206a\u206b\u206c\u206d\u206e\u206f"
     "\ufeff"
 )
+
+
+def file_system_key(name: str) -> str:
+    """``name`` as the file systems of macOS compare names: two names with one key are one file there.
+
+    APFS and HFS+ ignore letter case and Unicode normalization (``café`` with a
+    precomposed ``é`` and ``café`` with ``e`` and a combining accent are one
+    file), and HFS+ ignores some invisible code points as well (#135).  The key
+    is Unicode's canonical caseless match, NFD(casefold(NFD(name))), of the name
+    without those code points; Windows, which ignores letter case only, is
+    covered by it too (PR #231 review).  It is taken name by name, so the key of
+    a path is the keys of its names joined by ``/``.  Ref names (issue #229) and
+    file paths (issue #153) are compared by it.
+    """
+    visible = "".join(ch for ch in name if ch not in _HFS_IGNORED)
+    return unicodedata.normalize("NFD", unicodedata.normalize("NFD", visible).casefold())
 
 
 def _names_the_git_directory(component: str) -> bool:
@@ -97,3 +115,30 @@ def safe_join(root: Path, relative: str) -> Path:
     except ValueError as exc:
         raise PathValidationError("path escapes repository root") from exc
     return resolved
+
+
+def another_spelling_on_disk(root: Path, relative: str) -> tuple[str, str] | None:
+    """``(prefix of relative, entry of root)`` when ``relative`` reaches an entry spelt otherwise (issue #153).
+
+    ``relative`` is walked name by name.  A name its directory does not hold as
+    written, but holds in a spelling with the same :func:`file_system_key`
+    (``a.java`` beside ``A.java``), is that entry on macOS (and on Windows, for
+    letter case) and a new one on Linux, so what a write makes of it depends on
+    the platform.  The two paths are given up to that name; None when every
+    name is there as written, or is not there at all.
+    """
+    names = relative.split("/")
+    directory = root
+    for depth, name in enumerate(names):
+        try:
+            entries = os.listdir(directory)
+        except OSError:                  # not there (yet), or a file: the write itself says so
+            return None
+        if name not in entries:
+            key = file_system_key(name)
+            other = next((entry for entry in sorted(entries) if file_system_key(entry) == key), None)
+            if other is None:
+                return None
+            return "/".join(names[:depth + 1]), "/".join([*names[:depth], other])
+        directory = directory / name
+    return None

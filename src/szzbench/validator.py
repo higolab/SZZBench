@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Collection, Iterable
 import difflib
 import re
 
 from .findings import ValidationResult
 from .operations import SUPPORTED_OPERATIONS, FUTURE_OPERATIONS, OperationError, apply_operation_to_memory, find_all_occurrences, type_label
-from .paths import PathValidationError, validate_repo_relative_path
+from .paths import PathValidationError, file_system_key, validate_repo_relative_path
 from .retired_ids import read_retired_ids
 from .scenario import load_yaml
 from .gitutils import resolved_commit_authors
@@ -407,6 +407,48 @@ def validate_static(data: dict[str, Any], *, scenario_path: Path | None = None) 
                     result.warning("W091", f"bug {bid} BIC '{bic}' has role '{role}', not 'bug_introducing'.", loc)
     return result
 
+
+def file_path_conflict(path: str, files: Collection[str]) -> str | None:
+    """Why a worktree with the files ``files`` cannot take a file at ``path``, or None (issues #153, #175).
+
+    Both simulators keep a snapshot as a flat dict of paths, which has no
+    directories and compares names as strings.  Generation writes to a file
+    system.  There ``path`` cannot lie below a file or be a directory:
+    generation stopped with ``File exists`` or ``Is a directory`` where the
+    classic simulator saw one more file (the graph simulator has refused both
+    since issue #175).  And macOS (Windows, for letter case) reads two names
+    with one ``file_system_key`` as one: ``src/a.java`` overwrote
+    ``src/A.java`` there and was a second file on Linux, where both simulators
+    saw a second file.  Names are compared one by one, so ``src/foo/B.java``
+    beside ``src/Foo/A.java`` is refused as well.  Writing a file of ``files``
+    again, spelt as it is there, is no conflict.  The message starts with
+    ``target``; the caller names the operation before it.
+    """
+    if path in files:
+        return None
+    names = path.split("/")
+    keys = [file_system_key(name) for name in names]
+    for other in files:
+        other_names = other.split("/")
+        depth = 0
+        while depth < min(len(names), len(other_names)) and file_system_key(other_names[depth]) == keys[depth]:
+            if other_names[depth] != names[depth]:
+                mine, theirs = "/".join(names[:depth + 1]), "/".join(other_names[:depth + 1])
+                kind = "file" if depth + 1 == len(other_names) else "directory"
+                # two normalizations of a name look alike: spell them out
+                spelt = "" if (mine + theirs).isascii() else f" (spelt {mine!a} and {theirs!a})"
+                target = path if mine == path else f"{path}: its directory {mine}"
+                return (f"target {target} differs only in letter case or Unicode normalization from the {kind} "
+                        f"{theirs}{spelt}: macOS (and Windows, for letter case) reads both as one name, so "
+                        "generation would depend on the platform")
+            depth += 1
+        if depth == len(other_names):
+            return f"target lies below the file {other}: {path}"
+        if depth == len(names):
+            return f"target is a directory: {path}"
+    return None
+
+
 def simulate_commits(data: dict[str, Any]) -> tuple[dict[str, dict[str, str]] | None, ValidationResult]:
     result = ValidationResult()
     files: dict[str, str] = {}
@@ -416,6 +458,11 @@ def simulate_commits(data: dict[str, Any]) -> tuple[dict[str, dict[str, str]] | 
         before = deepcopy(files)
         for j, op in enumerate(commit.get("operations", [])):
             try:
+                path = op.get("path")
+                if op.get("type") == "write_file" and isinstance(path, str):
+                    conflict = file_path_conflict(path, files)      # issue #153
+                    if conflict is not None:
+                        raise OperationError(f"write_file {conflict}")
                 apply_operation_to_memory(files, op)
             except OperationError as exc:
                 result.error("E2XX", f"Operation failed in commit '{cid}': {exc}", f"commits[{i}].operations[{j}]")

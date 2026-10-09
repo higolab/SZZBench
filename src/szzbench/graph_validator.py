@@ -16,7 +16,7 @@ from .graph_simulator import git_performed_features, simulate_graph_scenario, si
 from .gitutils import (GitError, format_timestamp, history_graph, parse_timestamp, planned_generated_commits,
                        reachable_commit_ids)
 from .operations import type_label
-from .paths import PathValidationError, validate_repo_relative_path
+from .paths import PathValidationError, file_system_key, validate_repo_relative_path
 from .policies import SUPPORTED_EVALUATION_POLICIES
 from .validator import (COMMIT_MESSAGE_RULE, commit_message_problem, lint_author_coincidence, lint_defeats, lint_difficulty,
                         lint_factors, lint_leakage, lint_readme_header, lint_tier)
@@ -311,7 +311,8 @@ def _validate_operation(op: Any, result: ValidationResult, loc: str, *, strict_p
 _OCTAL_MODE = re.compile(r"[0-7]{3,4}")
 #: The operations that write the file at one path to another.  Two paths that differ only in
 #: letter case are one file on a case-insensitive file system: a case-only rename failed on
-#: macOS and succeeded on Linux (issue #175).
+#: macOS and succeeded on Linux (issue #175).  The paths are compared by
+#: ``paths.file_system_key``, as the simulators compare the paths of a snapshot (issue #153).
 _CASE_SENSITIVE_PAIRS = {
     "rename_file": ("from", "to"),
     "move_file": ("from", "to"),
@@ -346,9 +347,10 @@ def _validate_operation_values(op: dict[str, Any], op_type: str, result: Validat
     if op_type in _CASE_SENSITIVE_PAIRS:
         source_key, target_key = _CASE_SENSITIVE_PAIRS[op_type]
         source, target = op.get(source_key), op.get(target_key)
-        if isinstance(source, str) and isinstance(target, str) and source != target and source.casefold() == target.casefold():
-            result.error("GE060", f"{op_type} from '{source}' to '{target}' changes only the letter case; a "
-                         "case-insensitive file system (macOS, Windows) sees one file there, so what generation "
+        if (isinstance(source, str) and isinstance(target, str) and source != target
+                and file_system_key(source) == file_system_key(target)):
+            result.error("GE060", f"{op_type} from '{source}' to '{target}' changes only the letter case or the Unicode "
+                         "normalization; macOS (and Windows, for letter case) sees one file there, so what generation "
                          "makes of it would depend on the platform.", f"{loc}.{target_key}")
 
 

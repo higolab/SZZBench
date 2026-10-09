@@ -320,6 +320,29 @@ change is `GE202`, where generation stops with `commit would be empty`. Until
 issue #175 the simulator wrote one placeholder file at `path` instead, and a
 commit that edited a generated file failed `--simulate` (`GE201`).
 
+### File names that differ only in letter case (*both*)
+
+Generation writes to a file system, which has directories and, on macOS
+(and on Windows, for letter case), takes two names that differ only in
+letter case or Unicode normalization for one. `src/a.java` written beside
+`src/A.java` overwrote it on macOS and was a second file on Linux, and
+`src/A.java/B.java` beside the file `src/A.java` failed with `File exists`
+everywhere. Both simulators refuse these writes (`E2XX`, `GE201`; issue
+#153): a file below a file or at a directory, and a path that meets a file
+or directory of the snapshot in another spelling, compared name by name
+(`paths.file_system_key`, the comparison of tag names, GE158). The graph
+generator, which `generate-graph` runs without the simulation, refuses an
+operation whose path reaches an entry of the worktree spelt otherwise, before
+the operation changes anything.
+
+To rename a file in its letter case, delete it in one commit and write it in
+a later one. Within one commit the rename still depends on the platform, and
+neither simulator says so: Git on macOS keeps the spelling its index has, so
+a `delete_file` of `src/Range.java` followed by a `write_file` of
+`src/range.java` commits `src/Range.java` there, and a `rename_file` through
+another name commits nothing (`commit would be empty`). A `rename_file` that
+changes only the letter case is GE060.
+
 ### Unchanged limitations
 
 * `apply_patch` is still not implemented (validation accepts it; generation
