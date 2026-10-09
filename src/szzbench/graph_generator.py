@@ -211,7 +211,9 @@ def generate_graph_repository(
         write_manifest(metadata_dir, scenario_id=str(scenario.get("meta", {}).get("id") or out_dir.parent.name),
                        scenario_path=scenario_path, commit_map=commit_map, verified=verify)
         return commit_map, verify_result
-    except (OperationError, PathValidationError, GitError, OSError, GraphGenerationError) as exc:
+    # ValueError includes PathValidationError; a path the file system refuses
+    # (a NUL byte) used to end generation in a traceback (issue #136)
+    except (OperationError, ValueError, GitError, OSError, GraphGenerationError) as exc:
         log(f"ERROR: {exc}")
         error_info = {"error": str(exc), "timestamp": datetime.now(timezone.utc).isoformat()}
         (metadata_dir / "generation-error.json").write_text(json.dumps(error_info, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
