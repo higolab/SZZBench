@@ -17,7 +17,8 @@ import {
   generateScenarioYaml,
   initialState,
   localValidate,
-  nextVersion
+  nextVersion,
+  selectFaultType
 } from './scenarioModel';
 
 type Finding = { severity: string; code: string; message: string; location: string | null };
@@ -288,7 +289,7 @@ function App() {
               </select>
             </label>
             <label>Fault type
-              <select value={state.faultType} onChange={(e) => update('faultType', e.target.value as FaultType)}>
+              <select value={state.faultType} onChange={(e) => setState((s) => selectFaultType(s, e.target.value as FaultType))}>
                 <option value="line_modification">line_modification</option>
                 <option value="omission">omission</option>
               </select>
@@ -309,6 +310,11 @@ function App() {
               <label>Added statement<textarea rows={5} value={state.addedStatement} onChange={(e) => update('addedStatement', e.target.value)} /></label>
             </div>
           )}
+          <p className="small">
+            {state.faultType === 'line_modification'
+              ? 'validate looks each statement up in the BIC or BFC version exactly as typed, indentation and line breaks included.'
+              : 'validate looks the added statement up in the BFC version exactly as typed, indentation and line breaks included; the missing statement describes what the BIC left out.'}
+          </p>
 
           <label className="checkLabel">
             <input type="checkbox" checked={state.overwrite} onChange={(e) => update('overwrite', e.target.checked)} />
