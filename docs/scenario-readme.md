@@ -84,7 +84,7 @@ A README carries one header. A second one in the body (a begin marker with its
 table, its end marker and the title line above it) or a stray end marker is
 reported as `carries a second header at line N` (or `a stray header end
 marker`), and `--write` removes it the way it removes a `## Factors` copy.
-Markers quoted inside fenced code are text. Until issue #184 a malformed
+Markers quoted inside fenced code, or in indented code (a line indented by four or more spaces, or by a tab), are text. Until issue #184 a malformed
 header was reported as missing, `--write` put a new header above the old one,
 and the doubled README then passed every check.
 

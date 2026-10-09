@@ -51,8 +51,11 @@ OPEN_FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
 CLOSE_FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})[ \t]*$")
 #: A line meant as a header marker however it is spelled: an HTML comment
 #: opening with ``szzbench:header`` (begin) or ``/szzbench:header`` (end), in
-#: any case, with any whitespace around it and anything after it (issue #184).
-MARKER_LINE_RE = re.compile(r"^\s*<!--\s*(/?)\s*szzbench\s*:\s*header\b", re.IGNORECASE)
+#: any case, with any whitespace inside it and anything after it (issue #184).
+#: It is indented by at most three spaces, as Markdown's HTML blocks are: a line
+#: indented further, or by a tab, is indented code, which quotes a marker as
+#: text (PR #222 review).
+MARKER_LINE_RE = re.compile(r"^ {0,3}<!--\s*(/?)\s*szzbench\s*:\s*header\b", re.IGNORECASE)
 BOM = "\ufeff"
 
 #: ``expected_szz`` sections the classic schema does not have.

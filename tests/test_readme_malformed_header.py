@@ -128,6 +128,35 @@ def test_a_header_quoted_in_fenced_code_is_text():
     assert check_readme(written, HEADER) == []
 
 
+INDENTED_EXAMPLE = ("\n## Notes\n\nA custom header looks like this:\n\n"
+                    "    <!-- szzbench:header v1 -->\n    | custom | example |\n    <!-- /szzbench:header -->\n\n"
+                    "The example ends here.\n")
+
+
+@pytest.mark.parametrize("indent", ["    ", "\t", "     "], ids=["four-spaces", "tab", "five-spaces"])
+def test_a_header_quoted_in_indented_code_is_text(tmp_path, capsys, indent):
+    """Four-space-indented code quoted a marker as text too; it was a second header and --write
+    deleted its comment lines (PR #222 review)."""
+    example = INDENTED_EXAMPLE.replace("    ", indent)
+    current = TEXT + example
+    assert check_readme(current, HEADER) == []
+    assert apply_header(current, HEADER) == current
+    malformed = MALFORMED["no-end-marker"][0] + example
+    assert check_readme(malformed, HEADER) == ["header is malformed: no end marker after the table"]
+    assert apply_header(malformed, HEADER) == current
+    directory = _copy(tmp_path, CLASSIC, current)
+    assert main(["readme", "--write", str(directory)]) == 0
+    assert (directory / "README.md").read_bytes() == current.encode("utf-8")
+    assert "1 README header(s) current, 0 rewritten" in capsys.readouterr().out
+
+
+def test_a_marker_indented_by_up_to_three_spaces_is_still_a_marker():
+    """Markdown reads such a line as an HTML block, so a header leftover indented so is still one."""
+    leftover = TEXT + "\n   " + HEADER_BEGIN + "\n| tier | control |\n" + HEADER_END + "\n"
+    assert any(problem.startswith("carries a second header") for problem in check_readme(leftover, HEADER))
+    assert apply_header(leftover, HEADER) == TEXT
+
+
 # --- a BOM and CRLF line endings ---------------------------------------------------------
 
 def _crlf(text: str) -> str:
