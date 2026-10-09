@@ -26,14 +26,14 @@ from .coverage import format_report as format_coverage, run_coverage
 from .readme import format_readme_report, resolve_targets, run_readme, scenario_files
 from .evaluator import evaluate_predictions
 
-def print_result(result, *, json_output: bool = False) -> None:
+def print_result(result, *, json_output: bool = False, file=None) -> None:
     if json_output:
-        print(json.dumps(result.to_dict(), indent=2, ensure_ascii=False))
+        print(json.dumps(result.to_dict(), indent=2, ensure_ascii=False), file=file)
         return
     for finding in result.findings:
-        location = f" ({finding.location})" if finding.location else ""
-        print(f"[{finding.severity}] {finding.code}: {finding.message}{location}")
-    print(f"Summary: {result.error_count()} error(s), {result.warning_count()} warning(s), {result.info_count()} info item(s)")
+        print(finding.format(), file=file)
+    print(f"Summary: {result.error_count()} error(s), {result.warning_count()} warning(s), {result.info_count()} info item(s)",
+          file=file)
 
 def cmd_validate(args) -> int:
     _, result, _ = validate_scenario_file(Path(args.scenario), simulate=args.simulate, lint=args.lint)
@@ -58,6 +58,8 @@ def cmd_generate(args) -> int:
         commit_map, verify_result = generate_repository(Path(args.scenario), Path(args.out), force=args.force, verify=not args.no_verify)
     except GenerationError as exc:
         print(f"[ERROR] GENERATION_FAILED: {exc}", file=sys.stderr)
+        if exc.verify_result is not None:       # why verification failed: it was in verify-result.json only (#163)
+            print_result(exc.verify_result, file=sys.stderr)
         return 1
     print(f"Generated repository under: {Path(args.out).resolve()}")
     print(f"Created {len(commit_map)} commit(s).")
@@ -94,6 +96,8 @@ def cmd_generate_graph(args) -> int:
         commit_map, verify_result = generate_graph_repository(Path(args.scenario), Path(args.out), force=args.force, verify=not args.no_verify)
     except GraphGenerationError as exc:
         print(f"[ERROR] GRAPH_GENERATION_FAILED: {exc}", file=sys.stderr)
+        if exc.verify_result is not None:       # why verification failed (issue #163)
+            print_result(exc.verify_result, file=sys.stderr)
         return 1
     print(f"Generated graph repository under: {Path(args.out).resolve()}")
     print(f"Created {len(commit_map)} graph commit(s).")
@@ -127,6 +131,8 @@ def cmd_generate_all_repos(args) -> int:
             print(f"{verb} [{item.kind}] {item.scenario_id}: {output} ({item.commit_count} commit(s)).")
         else:
             print(f"Failed [{item.kind}] {item.scenario_id}: {output}: {item.error}", file=sys.stderr)
+            for finding in item.verification_errors:    # why verification failed (issue #163)
+                print(f"  {finding.format()}", file=sys.stderr)
             if item.traceback:                  # not a generation error: say where it came from (#162)
                 print("  " + item.traceback.rstrip().replace("\n", "\n  "), file=sys.stderr)
 

@@ -15,6 +15,11 @@ class Finding:
     def to_dict(self) -> dict:
         return asdict(self)
 
+    def format(self) -> str:
+        """The line the CLI prints: ``[ERROR] E602: Commit message mismatch for 'c0'. (commits.c0.message)``."""
+        location = f" ({self.location})" if self.location else ""
+        return f"[{self.severity}] {self.code}: {self.message}{location}"
+
 class ValidationResult:
     def __init__(self, findings: Iterable[Finding] | None = None):
         self.findings: list[Finding] = list(findings or [])
@@ -36,6 +41,9 @@ class ValidationResult:
 
     def has_errors(self) -> bool:
         return any(f.severity == "ERROR" for f in self.findings)
+
+    def error_findings(self) -> list[Finding]:
+        return [f for f in self.findings if f.severity == "ERROR"]
 
     def error_count(self) -> int:
         return sum(1 for f in self.findings if f.severity == "ERROR")

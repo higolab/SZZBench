@@ -23,6 +23,88 @@ ALLOWED_ROLES = {
 #: `generate` in an AttributeError traceback (issue #151).
 TEXT_FIELDS_BY_OPERATION = {"write_file": ("content",), "replace": ("old", "new")}
 
+# --- the commit message rule (E012 / GE070, issue #163) ----------------------
+
+#: What both validators tell the author after the problem itself.
+COMMIT_MESSAGE_RULE = "Write it on one line, without leading or trailing whitespace; a message body is not supported."
+
+#: A message that starts so is a sign-off, which Git does not count as a message.
+SIGN_OFF_PREFIX = "Signed-off-by: "
+
+#: The characters Git drops at the end of a line: its own isspace(), not Python's.
+_GIT_LINE_END_WHITESPACE = " \t\r"
+
+
+def subject_read_back(message: str) -> str:
+    """The subject the verifiers read back after ``git commit -m <message>``.
+
+    Without an editor ``git commit`` cleans the message up with
+    ``--cleanup=whitespace``: every line loses its trailing spaces, tabs and
+    carriage returns, and the blank lines before and after the text go.  The
+    subject (``git log --format=%s``) is the first paragraph, its lines joined
+    by a space.  ``gitutils.git_message``, which both verifiers compare with
+    ``message``, decodes a carriage return as a line break and strips the
+    subject of the whitespace Python knows, which is more than Git's.
+    """
+    lines = [line.rstrip(_GIT_LINE_END_WHITESPACE) for line in message.split("\n")]
+    while lines and not lines[0]:
+        lines.pop(0)
+    paragraph: list[str] = []
+    for line in lines:
+        if not line:
+            break
+        paragraph.append(line)
+    return " ".join(paragraph).replace("\r", "\n").strip()
+
+
+def commit_message_problem(message: str) -> str | None:
+    """Why ``git commit -m <message>`` would not store ``message`` as the subject verification reads back, or None.
+
+    The rule both suites apply (issue #163): a ``message`` is the commit's
+    subject, a single line without leading or trailing whitespace.  The
+    verifiers compare it with the subject Git gives back (E602, GE623), so a
+    message with a trailing newline (``message: |``) or with a body after a
+    blank line passed validation and failed generation, with no word on why.
+    A tab, a no-break space or any other character inside the line is stored
+    and read back as written.  Measured with Git 2.39 and 2.50, which agree.
+    """
+    if "\0" in message:
+        return "contains a NUL character, which cannot be passed to git commit"
+    try:
+        message.encode("utf-8")
+    except UnicodeEncodeError as exc:
+        return (f"contains a lone surrogate (U+{ord(message[exc.start]):04X}), which is not UTF-8 text, "
+                "so Git cannot store it as written")
+    if not message:
+        return "is empty, and Git refuses a commit with an empty message"
+    if not message.strip():
+        return "is only whitespace, which Git removes, and Git refuses a commit with an empty message"
+    if message.startswith(SIGN_OFF_PREFIX) and "\n" not in message:
+        return (f"starts with '{SIGN_OFF_PREFIX.strip()}': Git does not count a sign-off line as a message, "
+                "and refuses the commit as having an empty message")
+    subject = subject_read_back(message)
+    if subject == message:
+        return None
+    text = message.strip()
+    if "\n" in text:
+        paragraphs = [part for part in re.split(r"\n[ \t\r]*\n", text) if part.strip()]
+        line_count = text.count("\n") + 1
+        what = ("has a body after a blank line, which Git stores apart from the subject" if len(paragraphs) > 1
+                else f"spans {line_count} lines, which Git joins into one subject")
+    elif message.lstrip(" \t\r").startswith("\n"):
+        what = "starts with a line break, which Git drops"
+    elif message.rstrip(" \t\r").endswith("\n"):
+        what = "ends with a line break (a `message: |` block scalar keeps one), which Git drops"
+    elif "\r" in text:
+        what = "contains a carriage return, which verification reads back as a line break"
+    elif message != message.lstrip():
+        what = f"starts with whitespace ({message[0]!r}), which verification strips from the subject"
+    elif message[-1] in _GIT_LINE_END_WHITESPACE:
+        what = f"ends with whitespace ({message[-1]!r}), which Git drops"
+    else:
+        what = f"ends with whitespace ({message[-1]!r}), which verification strips from the subject"
+    return f"{what}: the subject read back would be {subject!r}, so verification would fail"
+
 # --- opt-in lint vocabulary (shared with graph_validator) -------------------
 
 # Schema keys and operation names that must not be used as scenario factors.
@@ -207,6 +289,12 @@ def validate_static(data: dict[str, Any], *, scenario_path: Path | None = None) 
         if "message" in commit and not isinstance(commit["message"], str):
             # git commit -m got the value and raised TypeError in generate (issue #151)
             result.error("E010", f"commit.message must be a string, not {type_label(commit['message'])}.", f"{loc}.message")
+        elif isinstance(commit.get("message"), str):
+            # a trailing newline or a body passed, and generation failed at verification (issue #163)
+            problem = commit_message_problem(commit["message"])
+            if problem is not None:
+                result.error("E012", f"Commit '{commit.get('id')}' message {problem}. {COMMIT_MESSAGE_RULE}",
+                             f"{loc}.message")
         cid = commit.get("id")
         if isinstance(cid, str):
             if cid in commit_by_id:

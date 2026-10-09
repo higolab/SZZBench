@@ -366,6 +366,8 @@ Add `--no-verify` to skip verification after generation.
 szzbench generate   scenarios/SZZ-0006/scenario.yml   --out generated-input-repos/SZZ-0006/default   --force   --no-verify
 ```
 
+When verification finds an error, `generate` prints the findings after `[ERROR] GENERATION_FAILED: Generated repository failed verification.` and exits 1. The output keeps `metadata/verify-result.json`, `generation.log` and `generation-error.json`, but has no `manifest.json`, so `generate-all-repos` generates it again.
+
 `--force` replaces an existing `--out` only when it is a previous generated output, or a directory that holds nothing but `repo/` and `metadata/`. It refuses, and deletes nothing, when `--out` is a file, holds anything else, contains the scenario file, or is the current directory or one of its parents. The same rule applies to `generate-graph` and to `generate-all-repos`.
 
 The generated directory has the following structure.
@@ -464,6 +466,8 @@ generated-input-repos/SZZG-0001/default/
 `commit-map.json` records the mapping between logical commit IDs and actual Git hashes.
 
 `graph-map.json` records additional information for Graph scenarios. It includes information such as branches, parents, and roles. A commit's `parents` and `parent_hashes` are its declared parents. For a commit that owns `commit_generator` operations, Git's first parent is its last generated commit, listed in `generated_commits` (`docs/generator-options.md` §2).
+
+When verification finds an error, `generate-graph` prints the findings and records the failure as `generate` does.
 
 ### verify-graph
 
@@ -596,7 +600,7 @@ szzbench generate-all-repos --overwrite
 
 `--overwrite` deletes the existing `generated-input-repos/<SCENARIO_ID>/default/` output for each scenario before generating it again.
 
-A scenario that fails does not stop the run: it is listed as `Failed`, with the error, and the command goes on with the next scenario, prints its summary and exits 1. An error that is not a generation error (a crash in SZZBench) is listed with its traceback.
+A scenario that fails does not stop the run: it is listed as `Failed`, with the error, and the command goes on with the next scenario, prints its summary and exits 1. An error that is not a generation error (a crash in SZZBench) is listed with its traceback, and a generation that fails verification with the verification errors.
 
 Add `--no-verify` to skip post-generation verification for all generated repositories.
 
@@ -1085,6 +1089,8 @@ szzbench generate   scenarios/SZZ-0006/scenario.yml   --out generated-input-repo
 szzbench generate   scenarios/SZZ-0006/scenario.yml   --out generated-input-repos/SZZ-0006/default   --force   --no-verify
 ```
 
+verify でエラーが見つかると、`generate` は `[ERROR] GENERATION_FAILED: Generated repository failed verification.` に続けてその所見を表示し、終了コード 1 で終わります。出力には `metadata/verify-result.json`、`generation.log`、`generation-error.json` が残り、`manifest.json` は書かれないので、`generate-all-repos` はその出力を生成し直します。
+
 `--force` が既存の `--out` を置き換えるのは、それが以前の生成物か、`repo/` と `metadata/` しか含まないディレクトリの場合だけです。`--out` がファイルである、それ以外のものを含む、シナリオファイルを含む、作業ディレクトリそのものかその親である、のいずれかに当たるときは、何も削除せずに拒否します。`generate-graph` と `generate-all-repos` にも同じ規則が適用されます。
 
 生成されるディレクトリは次のような構成です。
@@ -1183,6 +1189,8 @@ generated-input-repos/SZZG-0001/default/
 `commit-map.json` は、論理コミット ID と実際の Git hash の対応を記録します。
 
 `graph-map.json` は、Graph シナリオ向けの追加情報を記録します。branch、parent、role などの情報を含みます。コミットの `parents` と `parent_hashes` は、シナリオで宣言された親です。`commit_generator` 操作を持つコミットでは、Git 上の第一親は最後の生成コミットで、それは `generated_commits` に並んでいます（`docs/generator-options.md` §2）。
+
+verify でエラーが見つかったときの表示と記録は、`generate` と同じです。
 
 ### verify-graph
 
@@ -1315,7 +1323,7 @@ szzbench generate-all-repos --overwrite
 
 `--overwrite` は、対象シナリオの既存出力 `generated-input-repos/<SCENARIO_ID>/default/` を削除してから再生成します。
 
-あるシナリオの生成に失敗しても実行は止まりません。そのシナリオはエラーとともに `Failed` として表示され、コマンドは次のシナリオに進み、最後に集計を表示して終了コード 1 で終わります。生成のエラーではない例外（SZZBench 内部のクラッシュ）は、トレースバックも表示します。
+あるシナリオの生成に失敗しても実行は止まりません。そのシナリオはエラーとともに `Failed` として表示され、コマンドは次のシナリオに進み、最後に集計を表示して終了コード 1 で終わります。生成のエラーではない例外（SZZBench 内部のクラッシュ）は、トレースバックも表示します。生成後の verify で失敗したシナリオは、verify のエラーも表示します。
 
 生成後の検証をまとめてスキップする場合は、`--no-verify` を使います。
 

@@ -18,7 +18,8 @@ from .gitutils import (GitError, format_timestamp, history_graph, parse_timestam
 from .operations import type_label
 from .paths import PathValidationError, validate_repo_relative_path
 from .policies import SUPPORTED_EVALUATION_POLICIES
-from .validator import lint_author_coincidence, lint_defeats, lint_difficulty, lint_factors, lint_leakage, lint_readme_header, lint_tier
+from .validator import (COMMIT_MESSAGE_RULE, commit_message_problem, lint_author_coincidence, lint_defeats, lint_difficulty,
+                        lint_factors, lint_leakage, lint_readme_header, lint_tier)
 
 GRAPH_ID_RE = re.compile(r"^SZZG-\d{4}$")
 
@@ -153,6 +154,12 @@ def validate_graph_static(data: dict[str, Any], *, scenario_path: Path | None = 
             # commit id; verification was the first to object, or nothing did (issue #151)
             result.error("GE040", f"commit.message must be a string when present, not {type_label(commit['message'])}.",
                          f"{loc}.message")
+        elif isinstance(commit.get("message"), str):
+            # the rule of E012: a trailing newline or a body failed generation at verification
+            # (GE623); a commit without message (inherit_message, revert_of) is not affected (issue #163)
+            problem = commit_message_problem(commit["message"])
+            if problem is not None:
+                result.error("GE070", f"Commit '{cid}' message {problem}. {COMMIT_MESSAGE_RULE}", f"{loc}.message")
         parents = commit.get("parents", [])
         if not isinstance(parents, list):
             result.error("GE036", "commit.parents must be a list.", f"{loc}.parents")

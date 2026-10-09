@@ -37,7 +37,10 @@ from .paths import PathValidationError, safe_join
 
 
 class GraphGenerationError(RuntimeError):
-    pass
+    def __init__(self, message: str, *, verify_result: ValidationResult | None = None) -> None:
+        super().__init__(message)
+        #: The findings, when it was the verification that failed: the CLI prints them (issue #163).
+        self.verify_result = verify_result
 
 
 # Temporary ref used while importing generated commits with ``git fast-import``.
@@ -199,7 +202,10 @@ def generate_graph_repository(
             verify_result = verify_graph_generated_repo(repo_dir, scenario_path, metadata_dir / "commit-map.json", metadata_dir / "graph-map.json")
             (metadata_dir / "verify-result.json").write_text(json.dumps(verify_result.to_dict(), indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
             if verify_result.has_errors():
-                raise GraphGenerationError("Generated graph repository failed verification.")
+                # the except clause below records it, after these lines (issue #163)
+                for finding in verify_result.error_findings():
+                    log(f"Verification: {finding.format()}")
+                raise GraphGenerationError("Generated graph repository failed verification.", verify_result=verify_result)
 
         log("Graph generation completed successfully.")
         (metadata_dir / "generation.log").write_text("\n".join(generation_log) + "\n", encoding="utf-8")

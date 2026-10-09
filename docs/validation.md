@@ -105,6 +105,7 @@ became errors — the code keeps its number when its severity changes, so
 | E003 | error | the file is a graph scenario: its `schema_version` is a graph schema (the rule of GE001), or it has none and the file is named `scenario.graph.yml` (GW014). `validate` reports it before any other check, and `generate` and `verify` refuse the file too. The message names the graph command to run instead (`validate-graph`, `generate-graph`, `verify-graph`) ([issue #119](https://github.com/higolab/SZZBench/issues/119)) |
 | E010 | error | a required field is missing or has the wrong type (`schema_version`, `meta`, `repository`, `commits`, `bugs`, `meta.id/title/category/factors`, `repository.name/default_branch/language`, commit `id/message/operations`, bug `id/bug_fixing_commit/bug_introducing_commits`). A commit `message` must be a string: a number, or a blank `message:` (YAML null), used to pass and end `generate` in a `TypeError` traceback from `git commit` ([issue #151](https://github.com/higolab/SZZBench/issues/151)) |
 | E011 | error | `commits` is empty |
+| E012 | error | a commit `message` that `git commit -m` would not store as written, so that the subject verification reads back (`git log --format=%s`, stripped) would not be the message and E602 would fail `generate`. A message is one line, without leading or trailing whitespace; a message body is not supported. Rejected: a line break anywhere -- a trailing newline (a `message: \|` block scalar keeps one), a body after a blank line, two lines (Git joins them into one subject), a carriage return; leading or trailing whitespace (Git drops trailing spaces, tabs and carriage returns, and verification strips all leading and trailing whitespace, a no-break or an ideographic space included, from the subject it reads back); an empty or whitespace-only message, and a `Signed-off-by: ` line on its own, which Git refuses as an empty message; a NUL character; a lone surrogate. A tab, a no-break space or any other character inside the line is stored and read back as written (measured with Git 2.39 and 2.50). The message names the problem and the subject Git would give back. Such a message used to pass `validate --simulate --lint` and fail `generate` at verification, which printed no reason ([issue #163](https://github.com/higolab/SZZBench/issues/163)) |
 | E020 | error | duplicate commit id |
 | E030 | error | unknown commit `role` (see `ALLOWED_ROLES`), or a `role` that is not a string. A list or a mapping (`role: [bug_introducing]`) used to end `validate`, `--json` included, in a `TypeError` traceback ([issue #150](https://github.com/higolab/SZZBench/issues/150)) |
 | E040 | error | unknown operation type |
@@ -181,11 +182,20 @@ fails `verify` while it is still fresh for `evaluate`, `baselines` and
 the repository: `git status` runs with `--no-optional-locks`, so not even the
 index's stat data is refreshed.
 
+When the verification that `generate` runs finds an error, `generate` prints
+the findings after `GENERATION_FAILED` and exits 1, and `generate-all-repos`
+prints the errors under the scenario it lists as `Failed`. The output keeps
+`metadata/verify-result.json` and, like any failed generation,
+`generation.log` (ending with the errors) and `generation-error.json`, but no
+`manifest.json`. Until [issue #163](https://github.com/higolab/SZZBench/issues/163) the findings were in
+`verify-result.json` only, and the classic output had neither of the other two
+files. `generate-graph` does the same.
+
 | code | level | condition |
 |---|---|---|
 | E600 | error | `commit-map.json` cannot be read, or has no entry or no hash for a commit of the scenario |
 | E601 | error | a commit-map hash is not a commit of the repository, or Git cannot read it |
-| E602 | error | a commit's subject differs from its `message` |
+| E602 | error | a commit's subject differs from its `message`. A `message` Git would not store as written is E012 in `validate` ([issue #163](https://github.com/higolab/SZZBench/issues/163)) |
 | E603 | error | the repository path is not a Git repository (missing, or without `.git`) ([issue #166](https://github.com/higolab/SZZBench/issues/166)) |
 | E604 | error | a commit of the scenario is in the repository but **no ref reaches it**: no branch, tag or `HEAD` (the reflog does not count), so `git log --all` does not show it -- after `git reset --hard` or `git commit --amend`, for example. Before [issue #167](https://github.com/higolab/SZZBench/issues/167) the existence of the object was enough |
 | E605 | error | `commit-map.json` records an `author`, `author_date` or `committer_date` the commit does not have. The dates are compared as instants (`Z`, `+00:00` and any other offset of the same instant are equal; Git keeps whole seconds); the author as Git records it, `name <email>` without the surrounding white space and punctuation Git drops (which differs between Git versions). `role` and `date` record the scenario's words and are not compared |
@@ -243,6 +253,7 @@ index's stat data is refreshed.
 | GE058 | error | a `write_binary_file` `content_base64` that is not a string or does not decode as base64. ASCII whitespace is ignored; any other character outside the alphabet, a non-ASCII one or a no-break space included, and wrong padding are not. Validation, `--simulate` and generation read the value the same way. Generation used to end in a traceback, or to drop the characters outside the alphabet and write a shorter file ([issue #172](https://github.com/higolab/SZZBench/issues/172)) |
 | GE059 | error | a `write_generated_text_file` `lines` that is not a non-negative integer ([issue #172](https://github.com/higolab/SZZBench/issues/172)) |
 | GE060 | error | a `rename_file`, `move_file` or `copy_file` (`from` / `to`), or a `move_entity` or `copy_entity` (`from_file` / `to_file`), whose two paths differ only in letter case (`a.txt` -> `A.txt`). A case-insensitive file system (macOS, Windows) sees one file there: such a rename failed generation on macOS and succeeded on Linux ([issue #175](https://github.com/higolab/SZZBench/issues/175)) |
+| GE070 | error | the rule of E012 for a commit `message`, which verification compares with the commit's subject (GE623): one line, without leading or trailing whitespace, not empty, not a lone `Signed-off-by: ` line, no NUL and no lone surrogate. A commit without `message` is not checked: its subject comes from Git (`inherit_message`, the `Revert "..."` of `revert_of`). The body the generator adds (`cherry_pick_trailer`, the `This reverts commit` line of `revert_of`) is not part of `message`. A trailing newline or a body used to pass `validate-graph` and fail `generate-graph` at verification ([issue #163](https://github.com/higolab/SZZBench/issues/163)) |
 | GE080 | error | `bugs` is not a list |
 | GE081 | error | a bug is not an object |
 | GE082 | error | `bug.id` missing |
@@ -291,7 +302,7 @@ With `--simulate`:
 | GE200 | error | the parent snapshot cannot be prepared (unsimulated parent, merge conflict) |
 | GE201 | error | an operation failed during in-memory replay, generation's own refusals included: a file written where the tree has a directory or below a file, `move_entity` / `copy_entity` with `overwrite: false` onto an existing file ([issue #175](https://github.com/higolab/SZZBench/issues/175)) |
 | GE202 | error | a non-merge commit without `allow_empty` would be empty. A `chmod` that changes the mode Git records (`100644` / `100755`) is a change; an owner of `commit_generator` commits is not empty unless its `count` is 0 |
-| GE203 | error | generating the scenario with Git in a temporary directory failed; the message and location name the commit that failed (an unresolved conflict, a revert or cherry-pick that changes nothing, an operation that no longer applies). Also one GE203 per error of verifying the generated repository as `generate-graph` does: the message starts with the verifier's code (`GE623`, `GE663`, ...) and the location is the verifier's, e.g. `commits[5].message` or `bugs[0].faults[0]` ([issue #173](https://github.com/higolab/SZZBench/issues/173)) |
+| GE203 | error | generating the scenario with Git in a temporary directory failed; the message and location name the commit that failed (an unresolved conflict, a revert or cherry-pick that changes nothing, an operation that no longer applies). Also one GE203 per error of verifying the generated repository as `generate-graph` does: the message starts with the verifier's code (`GE630`, `GE663`, ...) and the location is the verifier's, e.g. `bugs[0].faults[0]` ([issue #173](https://github.com/higolab/SZZBench/issues/173)) |
 | GI203 | info | the scenario was simulated by generating it with Git, and the result verified without errors; the message lists the commits Git computes |
 
 The in-memory replay models file operations. What the generator lets Git
