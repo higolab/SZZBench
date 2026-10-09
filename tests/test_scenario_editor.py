@@ -230,6 +230,27 @@ def test_the_checks_warn_where_validate_refuses_the_statement(tmp_path):
     assert [finding["code"] for finding in _lint(_save_as_the_server_does(tmp_path, generated))["findings"]] == ["E311"]
 
 
+@pytest.mark.parametrize("tail", ["", "}\n"], ids=["method", "method-and-closing-brace"])
+def test_a_source_with_an_indented_first_line_loads_back_as_typed(tmp_path, tail):
+    """A plain ``|`` block takes its indentation from its first line that is not
+    empty, so a source pasted from an indented line set it too deep: a method on
+    its own lost its indentation on load, and with the class's closing brace
+    after it the scenario did not load at all."""
+    def method(low: str, high: str) -> str:
+        return ("    public boolean contains(int value, int min, int max) {\n"
+                f"        return value {low} min && value {high} max;\n    }}\n{tail}")
+
+    sources = [method(">=", "<="), method(">", "<"), method(">=", "<=")]
+    versions = [_version(0, "initial", "Add the range check", sources[0]),
+                _version(1, "bug_introducing", "Exclude the bounds from the range check", sources[1]),
+                _version(2, "bug_fixing", "Include the bounds in the range check", sources[2])]
+    path = _save_as_the_server_does(tmp_path, _model(tmp_path, tier="control", versions=versions))
+    commits = yaml.safe_load(path.read_text(encoding="utf-8"))["commits"]
+    assert [commits[0]["operations"][0]["content"]] + [c["operations"][0]["new"] for c in commits[1:]] == sources
+    assert [c["operations"][0]["old"] for c in commits[1:]] == sources[:2]
+    _strict_and_generate(tmp_path, path)
+
+
 # ---------------------------------------------------------------------------
 # the save endpoint
 # ---------------------------------------------------------------------------

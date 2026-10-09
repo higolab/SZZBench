@@ -258,9 +258,9 @@ function lf(value: string): string {
 }
 
 /**
- * A version's file as validate and generation read it back from `content: |`
- * or `new: |`: `block(...).trimEnd()` leaves no trailing blank line or space,
- * and the block keeps one final newline.
+ * A version's file as validate and generation read it back from `content:` or
+ * `new:`: `block(...).trimEnd()` leaves no trailing blank line or space, and
+ * the block keeps one final newline.
  */
 function fileAt(source: string): string {
   const text = lf(source).trimEnd();
@@ -274,6 +274,19 @@ function block(value: string, indent: number): string {
     return `${pad}\n`;
   }
   return normalized.split('\n').map((line) => `${pad}${line}`).join('\n') + '\n';
+}
+
+/**
+ * `key: |` and a version's source under it, two columns past the key.  YAML
+ * takes the indentation of a block without an indicator from its first line
+ * that is not empty, so a source whose first such line starts with a space (a
+ * fragment, or a file indented as a whole) set it too deep, and the scenario
+ * did not load.  That source gets the indicator, `|2`, as a multi-line
+ * statement does (issue #192); every other source keeps the plain `|`.
+ */
+function sourceLines(key: string, source: string, indent: number): string[] {
+  const first = lf(source).trimEnd().split('\n').find((line) => line !== '') ?? '';
+  return [`${' '.repeat(indent)}${key}: ${first.startsWith(' ') ? '|2' : '|'}`, block(source, indent + 2).trimEnd()];
 }
 
 /**
@@ -352,15 +365,12 @@ export function generateScenarioYaml(state: AppState): string {
     if (i === 0) {
       lines.push('      - type: "write_file"');
       lines.push(`        path: ${yamlScalar(state.sourceFilePath)}`);
-      lines.push('        content: |');
-      lines.push(block(v.source, 10).trimEnd());
+      lines.push(...sourceLines('content', v.source, 8));
     } else {
       lines.push('      - type: "replace"');
       lines.push(`        path: ${yamlScalar(state.sourceFilePath)}`);
-      lines.push('        old: |');
-      lines.push(block(state.versions[i - 1].source, 10).trimEnd());
-      lines.push('        new: |');
-      lines.push(block(v.source, 10).trimEnd());
+      lines.push(...sourceLines('old', state.versions[i - 1].source, 8));
+      lines.push(...sourceLines('new', v.source, 8));
       const labels = labelsForVersion(v, state);
       if (labels.length > 0) {
         lines.push('        labels:');

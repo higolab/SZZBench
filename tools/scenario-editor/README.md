@@ -89,7 +89,8 @@ README by hand and run `szzbench readme --write scenarios/SZZ-XXXX` before the s
   substring of the file at the commit, so one copied from the source keeps its indentation and line breaks: a
   single line is a double-quoted scalar, several lines a literal block with an indentation indicator (`|2`, or
   `|2-` when the text has no final newline), as the shipped omission scenarios write them. The lightweight checks
-  look the statements up the same way, so they warn before the save is refused.
+  look the statements up the same way, so they warn before the save is refused. A version's source is a plain `|`
+  block, or `|2` when its first line is indented, which a plain block would strip or fail to load.
 - Each fault type starts from its own worked example, which passes `validate --lint --strict` as it stands: the
   bounds of the range check for `line_modification`, and a guard against reversed bounds that the BFC adds for
   `omission`. An omission fix only adds lines (W420), so the two cannot share a history. Picking the other fault
