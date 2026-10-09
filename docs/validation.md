@@ -274,6 +274,7 @@ index's stat data is refreshed.
 | GE141 | error | a developer hint refers to an unknown commit |
 | GE142 | error | a developer hint references an unknown commit |
 | GE150 | error | the commit graph contains a cycle |
+| GW151 | warning | a commit moves its branch off the branch's history, and afterwards no ref reaches commits the branch held. A branch's tip is the last commit declared on it; a commit whose branch exists and whose first parent is not that tip resets the branch to the first parent ([generator-options.md](generator-options.md) §3). When the tip is an ancestor of the first parent, that is a fast-forward (SZZG-0052's and SZZG-0128's `c4`) and nothing is reported. Otherwise the commits that no branch, tag or `HEAD` reaches once generation has finished (`graph.ref_lifecycle` applied, as `gitutils.reachable_commit_ids` models it) are not in `git log --all`, although `commit-map.json` lists them; the message names them, and the location is the `parents` of the commit that resets the branch. Not reported: a commit on a branch `graph.ref_lifecycle.delete_branches` deletes, and one that a commit's `rebase_of` or `squashes` names. A commit that two resets leave behind is named at the later one. Checked only when the checks before it (top-level fields, `meta`, `repository`, the commits) found no error. Until [issue #174](https://github.com/higolab/SZZBench/issues/174) validation (`--lint` included), `generation.log` and `verify-graph` said nothing; the log now records every reset |
 
 With `--simulate`:
 

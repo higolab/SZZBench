@@ -107,7 +107,7 @@ def generate_graph_repository(
                 )
             log(f"Preparing graph commit {cid} on branch {branch}: {commit_spec.get('message', '')}")
 
-            _checkout_for_commit(repo_dir, branch, parents, commit_map, branch_heads, default_branch)
+            _checkout_for_commit(repo_dir, cid, branch, parents, commit_map, branch_heads, default_branch, log)
 
             metadata = resolve_commit_metadata(scenario, commit_spec, index)
             inherits = _apply_inherit_options(repo_dir, commit_spec, commit_map, metadata, log)
@@ -231,11 +231,13 @@ def _scenario_uses_operation(scenario: dict[str, Any], op_type: str) -> bool:
 
 def _checkout_for_commit(
     repo_dir: Path,
+    commit_id: str,
     branch: str,
     parents: list[str],
     commit_map: dict[str, dict[str, Any]],
     branch_heads: dict[str, str],
     default_branch: str,
+    log,
 ) -> None:
     if not parents:
         # Only the first commit gets here (a later one is refused, GE048).  The
@@ -256,7 +258,15 @@ def _checkout_for_commit(
         run_git(repo_dir, ["checkout", branch])
         head = run_git(repo_dir, ["rev-parse", "HEAD"]).stdout.strip()
         if head != parent_hash:
+            # The branch moves to the first parent.  Unless that is a fast-forward,
+            # it no longer contains its old tip, which may leave commits that no
+            # ref reaches (GW151); the log says so (issue #174).
+            behind = int(run_git(repo_dir, ["rev-list", "--count", f"{parent_hash}..{head}"]).stdout.strip())
             run_git(repo_dir, ["reset", "--hard", parent_hash])
+            old_tip = next((cid for cid, entry in commit_map.items() if entry.get("hash") == head), "?")
+            log(f"Reset branch {branch} from {old_tip} ({head}) to {first_parent} ({parent_hash}), the first parent "
+                f"of {commit_id} (fast-forward: "
+                + ("yes)" if behind == 0 else f"no; the branch no longer contains {behind} commit(s))"))
     else:
         _checkout_or_create_branch(repo_dir, branch, parent_hash)
 
