@@ -356,7 +356,11 @@ export function generateScenarioYaml(state: AppState): string {
   state.versions.forEach((v, i) => {
     lines.push(`  - id: ${yamlScalar(v.id)}`);
     lines.push(`    message: ${yamlScalar(v.message)}`);
-    lines.push(`    author: ${yamlScalar(v.author)}`);
+    // an author field left blank is no author, as a blank date is no date: the generator picks one,
+    // and validate refuses `author: ""` (E014, issue #152)
+    if (v.author.trim()) {
+      lines.push(`    author: ${yamlScalar(v.author)}`);
+    }
     if (v.date.trim()) {
       lines.push(`    date: ${yamlScalar(v.date.trim())}`);
     }
