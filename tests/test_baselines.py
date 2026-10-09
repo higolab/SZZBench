@@ -93,7 +93,7 @@ def test_every_predictor_declares_a_known_family():
 def _generate(tmp_path: Path, scenario_id: str, commits, bugs, tier: str = "control",
               expected_szz: dict | None = None) -> None:
     data = {
-        "schema_version": "graph-0.1-draft",
+        "schema_version": "graph-1.0",
         "meta": {"id": scenario_id, "title": "baseline fixture", "category": "test",
                  "category_code": "G1", "tier": tier, "factors": []},
         "repository": {"name": scenario_id.lower(), "default_branch": "main",

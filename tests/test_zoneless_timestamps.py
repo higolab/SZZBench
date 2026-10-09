@@ -16,10 +16,13 @@ from pathlib import Path
 import pytest
 import yaml
 
+import szzbench.generator as generator
 from support import git
+from szzbench.findings import ValidationResult
 from szzbench.generator import GenerationError, generate_repository
 from szzbench.gitutils import _as_timestamp_string, parse_timestamp, resolve_commit_metadata
 from szzbench.graph_generator import generate_graph_repository
+from szzbench.validator import validate_scenario_file
 
 ROOT = Path(__file__).resolve().parents[1]
 CLASSIC = ROOT / "scenarios/SZZ-0005/scenario.yml"
@@ -115,8 +118,15 @@ def test_the_offset_written_with_or_without_a_colon_gives_the_same_hashes(tmp_pa
     assert _hashes(with_colon, tmp_path / "colon-out") == _hashes(without, tmp_path / "basic-out")
 
 
-def test_a_date_that_is_not_iso_8601_is_an_error_naming_the_field(tmp_path):
+def test_a_date_that_is_not_iso_8601_is_an_error_naming_the_field(tmp_path, monkeypatch):
     scenario = _classic_copy(tmp_path, "copy", lambda text: text.replace('date: "2023-10-19T11:36:00Z"', 'date: "yesterday"', 1))
     assert '"yesterday"' in scenario.read_text(encoding="utf-8")
+    # validate reports it since issue #152, so generate stops before Git
+    _, result, _ = validate_scenario_file(scenario, simulate=True)
+    assert [(f.code, f.location) for f in result.error_findings()] == [("E013", "commits[1].date")]
+    with pytest.raises(GenerationError, match="Scenario validation failed"):
+        generate_repository(scenario, tmp_path / "out", force=True)
+    # and the generator, without the validator, names the field rather than handing Git the value
+    monkeypatch.setattr(generator, "validate_scenario_file", lambda path, simulate: (None, ValidationResult(), None))
     with pytest.raises(GenerationError, match=r"date is not a valid ISO 8601 timestamp: 'yesterday'"):
         generate_repository(scenario, tmp_path / "out", force=True)

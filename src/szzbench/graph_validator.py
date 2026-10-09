@@ -15,13 +15,24 @@ from .graph_scenario import (commit_id_of, graph_bfc_entries, graph_bic_entries,
 from .graph_simulator import git_performed_features, simulate_graph_scenario, simulate_graph_scenario_with_git
 from .gitutils import (GitError, format_timestamp, history_graph, parse_timestamp, planned_generated_commits,
                        reachable_commit_ids)
-from .operations import type_label
+from .operations import OperationError, resolve_line_ending, type_label
 from .paths import PathValidationError, file_system_key, validate_repo_relative_path
 from .policies import SUPPORTED_EVALUATION_POLICIES
-from .validator import (COMMIT_MESSAGE_RULE, commit_message_problem, lint_author_coincidence, lint_defeats, lint_difficulty,
-                        lint_factors, lint_leakage, lint_readme_header, lint_tier)
+from .validator import (COMMIT_MESSAGE_RULE, check_commit_metadata, commit_message_problem, lint_author_coincidence,
+                        lint_defeats, lint_difficulty, lint_factors, lint_leakage, lint_readme_header, lint_tier,
+                        timestamp_problem)
 
 GRAPH_ID_RE = re.compile(r"^SZZG-\d{4}$")
+
+#: The schema_version of a graph scenario since the suite was frozen (README, issue #19);
+#: every shipped one declares it (issue #152).
+GRAPH_SCHEMA_VERSION = "graph-1.0"
+
+#: The operations whose ``line_ending`` / ``encoding`` graph generation reads
+#: (``graph_operations._apply_graph_operation``); GE061 checks them there (issue #152).
+LINE_ENDING_OPERATIONS = frozenset({"write_file", "replace", "insert_after"})
+ENCODING_OPERATIONS = frozenset({"write_file", "replace", "insert_after", "move_entity", "copy_entity",
+                                 "write_generated_text_file", "format_file"})
 
 # Shared with the evaluator via szzbench.policies (kept under the old name for callers).
 ALLOWED_EVALUATION_POLICIES = SUPPORTED_EVALUATION_POLICIES
@@ -95,6 +106,11 @@ def validate_graph_static(data: dict[str, Any], *, scenario_path: Path | None = 
     for key in ["schema_version", "meta", "repository", "commits", "bugs"]:
         if key not in data:
             result.error("GE010", f"Missing required top-level field '{key}'.", key)
+    schema_version = data.get("schema_version")
+    if isinstance(schema_version, str) and "graph" in schema_version and schema_version != GRAPH_SCHEMA_VERSION:
+        # any string containing "graph" passed GE001 (issue #152)
+        result.error("GE002", f"schema_version is '{schema_version}'; a graph scenario declares "
+                     f'schema_version: "{GRAPH_SCHEMA_VERSION}".', "schema_version")
 
     meta = data.get("meta") if isinstance(data.get("meta"), dict) else None
     repository = data.get("repository") if isinstance(data.get("repository"), dict) else None
@@ -114,6 +130,8 @@ def validate_graph_static(data: dict[str, Any], *, scenario_path: Path | None = 
         for key in ["title", "category", "factors"]:
             if key not in meta:
                 result.warning("GW015", f"meta.{key} is missing.", f"meta.{key}")
+            elif key != "factors" and not isinstance(meta[key], str):
+                result.error("GE017", f"meta.{key} must be a string, not {type_label(meta[key])}.", f"meta.{key}")
         if "factors" in meta and not isinstance(meta.get("factors"), list):
             result.error("GE016", "meta.factors must be a list.", "meta.factors")
 
@@ -123,6 +141,15 @@ def validate_graph_static(data: dict[str, Any], *, scenario_path: Path | None = 
         for key in ["name", "default_branch"]:
             if key not in repository:
                 result.warning("GW021", f"repository.{key} is missing.", f"repository.{key}")
+        for key in ["name", "default_branch", "language"]:
+            if key in repository and not isinstance(repository[key], str):
+                # default_branch: 1 reached git as an int (issue #152)
+                result.error("GE022", f"repository.{key} must be a string, not {type_label(repository[key])}.",
+                             f"repository.{key}")
+        if "base_date" in repository:
+            problem = timestamp_problem(repository["base_date"])
+            if problem is not None:
+                result.error("GE071", f"repository.base_date {problem}.", "repository.base_date")
 
     if not isinstance(data.get("commits"), list):
         result.error("GE030", "commits must be a list.", "commits")
@@ -160,6 +187,7 @@ def validate_graph_static(data: dict[str, Any], *, scenario_path: Path | None = 
             problem = commit_message_problem(commit["message"])
             if problem is not None:
                 result.error("GE070", f"Commit '{cid}' message {problem}. {COMMIT_MESSAGE_RULE}", f"{loc}.message")
+        check_commit_metadata(commit, cid, loc, result, timestamp_code="GE071", author_code="GE072")   # issue #152
         parents = commit.get("parents", [])
         if not isinstance(parents, list):
             result.error("GE036", "commit.parents must be a list.", f"{loc}.parents")
@@ -344,6 +372,23 @@ def _validate_operation_values(op: dict[str, Any], op_type: str, result: Validat
         if not (isinstance(lines, int) and not isinstance(lines, bool) and lines >= 0):
             result.error("GE059", f"write_generated_text_file lines must be a non-negative integer, not {lines!r}.",
                          f"{loc}.lines")
+    # line_ending and encoding were read by generation only, and commit_generator's
+    # count by --simulate and generation, which generate-graph does not simulate (issue #152)
+    if op_type in LINE_ENDING_OPERATIONS:
+        try:
+            resolve_line_ending(op)                       # the generator's own reading
+        except OperationError as exc:
+            result.error("GE061", f"Operation '{op_type}' {exc}.", f"{loc}.line_ending")
+    if op_type in ENCODING_OPERATIONS and op.get("encoding") is not None:
+        problem = _encoding_problem(op["encoding"])
+        if problem is not None:
+            result.error("GE061", f"Operation '{op_type}' encoding {problem}.", f"{loc}.encoding")
+    if op_type == "commit_generator":
+        for key, least in (("count", 0), ("files", 1)):
+            value = op.get(key)
+            if key in op and not (isinstance(value, int) and not isinstance(value, bool) and value >= least):
+                what = "a non-negative integer" if least == 0 else "a positive integer"
+                result.error("GE062", f"commit_generator {key} must be {what}, not {value!r}.", f"{loc}.{key}")
     if op_type in _CASE_SENSITIVE_PAIRS:
         source_key, target_key = _CASE_SENSITIVE_PAIRS[op_type]
         source, target = op.get(source_key), op.get(target_key)
@@ -352,6 +397,22 @@ def _validate_operation_values(op: dict[str, Any], op_type: str, result: Validat
             result.error("GE060", f"{op_type} from '{source}' to '{target}' changes only the letter case or the Unicode "
                          "normalization; macOS (and Windows, for letter case) sees one file there, so what generation "
                          "makes of it would depend on the platform.", f"{loc}.{target_key}")
+
+
+def _encoding_problem(value: Any) -> str | None:
+    """Why graph generation cannot open a file with ``encoding=value``, or None.
+
+    The graph operations hand the name to Python unchecked, which accepts any
+    text codec it knows (``latin-1``, ``utf-16``); an unknown one, or a codec
+    that is not a text encoding (``base64``), made generation fail.
+    """
+    if not isinstance(value, str):
+        return f"must be the name of a text encoding such as 'utf-8', not {type_label(value)}"
+    try:
+        "".encode(value)                                  # the lookup open(encoding=...) makes
+    except (LookupError, ValueError):                     # ValueError: a NUL in the name, the 'undefined' codec
+        return f"{value!r} is not a text encoding Python knows"
+    return None
 
 
 def _validate_commit_ref_entry(entry: Any, commit_by_id: dict[str, dict[str, Any]], result: ValidationResult, loc: str, label: str) -> None:
@@ -642,7 +703,9 @@ def _validate_graph_acyclic(commits: list[Any]) -> ValidationResult:
     parent_map: dict[str, list[str]] = {}
     for commit in commits:
         if isinstance(commit, dict) and isinstance(commit.get("id"), str):
-            parent_map[commit["id"]] = [p for p in commit.get("parents", []) if isinstance(p, str)]
+            # GE036 reports parents that are not a list; iterating `parents: 42` raised (issue #152)
+            parents = commit.get("parents")
+            parent_map[commit["id"]] = [p for p in parents if isinstance(p, str)] if isinstance(parents, list) else []
     visiting: set[str] = set()
     visited: set[str] = set()
 

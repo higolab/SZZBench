@@ -22,7 +22,7 @@ NOTE = "docs/note.md"
 
 def _write(tmp_path: Path, scenario_id: str, commits, bugs, category="G1", **top_level) -> None:
     data = {
-        "schema_version": "graph-0.1-draft",
+        "schema_version": "graph-1.0",
         "meta": {"id": scenario_id, "title": "coverage fixture", "category": "test",
                  "category_code": category, "factors": ["single-bic"]},
         "repository": {"name": scenario_id.lower(), "default_branch": "main",

@@ -111,7 +111,7 @@ szzbench verify-graph
 szzbench new-graph-scenario
 ```
 
-`scenario.graph.yml` is more expressive than the normal `scenario.yml`. Its schema is no longer a draft: it is versioned `graph-1.0`, and `docs/decisions/vocabulary.md` §4 records the bar it was measured against.
+`scenario.graph.yml` is more expressive than the normal `scenario.yml`. Its schema is no longer a draft: it is versioned `graph-1.0`, and `docs/decisions/vocabulary.md` §4 records the bar it was measured against. A graph scenario declares `schema_version: "graph-1.0"` and a classic one `schema_version: "1.0"`, quoted; `validate-graph` and `validate` reject any other value (GE002, E004, E010).
 
 ### Scenario schema boundary policy
 
@@ -876,7 +876,7 @@ szzbench verify-graph
 szzbench new-graph-scenario
 ```
 
-`scenario.graph.yml` は、通常の `scenario.yml` より表現力が高いスキーマです。すでに draft ではなく、バージョンは `graph-1.0` です。凍結時に満たした基準は `docs/decisions/vocabulary.md` の §4 に記録しています。
+`scenario.graph.yml` は、通常の `scenario.yml` より表現力が高いスキーマです。すでに draft ではなく、バージョンは `graph-1.0` です。凍結時に満たした基準は `docs/decisions/vocabulary.md` の §4 に記録しています。Graph シナリオは `schema_version: "graph-1.0"`、通常のシナリオは `schema_version: "1.0"` を引用符付きで書きます。ほかの値は `validate-graph` と `validate` がエラーにします（GE002、E004、E010）。
 
 ### シナリオスキーマの境界方針
 

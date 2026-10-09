@@ -1,17 +1,19 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 import difflib
 import re
 
 from .findings import ValidationResult
-from .operations import SUPPORTED_OPERATIONS, FUTURE_OPERATIONS, OperationError, apply_operation_to_memory, find_all_occurrences, type_label
+from .operations import (SUPPORTED_OPERATIONS, FUTURE_OPERATIONS, OperationError, apply_operation_to_memory,
+                         find_all_occurrences, resolve_encoding, resolve_line_ending, type_label)
 from .paths import PathValidationError, file_path_conflict, validate_repo_relative_path
 from .retired_ids import read_retired_ids
 from .scenario import load_yaml
-from .gitutils import resolved_commit_authors
+from .gitutils import _AUTHOR_RE, TIMESTAMP_KEYS, GitError, parse_timestamp, resolved_commit_authors
 
 ALLOWED_ROLES = {
     "initial", "bug_introducing", "bug_fixing", "distractor", "refactoring",
@@ -104,6 +106,97 @@ def commit_message_problem(message: str) -> str | None:
     else:
         what = f"ends with whitespace ({message[-1]!r}), which verification strips from the subject"
     return f"{what}: the subject read back would be {subject!r}, so verification would fail"
+
+# --- the commit metadata the generators read (E013 / E014, GE071 / GE072, issue #152) ---
+
+#: The schema_version of a classic scenario: every shipped one declares it.
+CLASSIC_SCHEMA_VERSION = "1.0"
+
+#: What Git drops from either end of an author's name (``verifier._IDENT_END_CRUD``,
+#: which this module cannot import): Git 2.39 refuses a name made only of them.
+_IDENT_CRUD = "".join(chr(code) for code in range(33)) + ".,:;<>\"\\'"
+
+
+#: The instants Git records as written, with Git 2.39 and 2.50 alike: from the
+#: epoch up to, not including, 2100, in a year from 1970 to 2099 where the value is
+#: written.  Outside them Git refuses the value ("invalid date format") or records
+#: another date: both read 0001-01-01 as 2001-01-01, and 2.39 records an instant
+#: before the epoch as an unsigned timestamp near 2**64.
+GIT_FIRST_INSTANT = datetime(1970, 1, 1, tzinfo=timezone.utc)
+GIT_END_INSTANT = datetime(2100, 1, 1, tzinfo=timezone.utc)
+
+
+def timestamp_problem(value: Any) -> str | None:
+    """Why the generators cannot give ``value`` to Git as a pinned timestamp, or None.
+
+    A commit's ``date``, ``author_date`` and ``committer_date`` and
+    ``repository.base_date`` are read by ``gitutils.parse_timestamp``: an ISO
+    8601 string, or the ``datetime`` PyYAML makes of an unquoted one, and the
+    instant has to be one Git records (``GIT_FIRST_INSTANT`` to
+    ``GIT_END_INSTANT``).  Nothing else looked at them, so ``date: yesterday``
+    passed validation and failed generation.  A blank value (YAML null) is
+    refused too: without the key the generator picks a date, and with a blank
+    one it did the same without a word.
+    """
+    if isinstance(value, date) and not isinstance(value, datetime):
+        return (f"is the date {value.isoformat()} without a time (YAML reads an unquoted date as one); "
+                f"write a timestamp such as '{value.isoformat()}T10:00:00Z'")
+    if not isinstance(value, (str, datetime)):
+        return (f"must be an ISO 8601 timestamp such as '2024-01-01T10:00:00Z', not {type_label(value)}; "
+                "without the key the generator picks a date")
+    shown = repr(value) if isinstance(value, str) else f"'{value.isoformat()}'"
+    try:
+        parsed = parse_timestamp(value)
+    except GitError:
+        return f"{shown} is not an ISO 8601 timestamp such as '2024-01-01T10:00:00Z'"
+    if not (1970 <= parsed.year <= 2099 and GIT_FIRST_INSTANT <= parsed < GIT_END_INSTANT):
+        return (f"{shown} is not a date Git records: write an instant from 1970-01-01T00:00:00Z up to "
+                "2099-12-31T23:59:59Z, in a year from 1970 to 2099 where it is written")
+    return None
+
+
+def author_problem(value: Any) -> str | None:
+    """Why the generators would not record ``value`` as the commit's author, or None.
+
+    ``gitutils.resolve_commit_metadata`` replaced an ``author`` that is not a
+    non-empty string by a default author, and ``parse_author`` read a string
+    without ``<email>`` as a name with the benchmark's own address; both
+    passed validation without a word.  An author is ``Name <email>`` as
+    ``parse_author`` reads it, with a name Git keeps and an address.
+    """
+    if not isinstance(value, str):
+        return f"must be a string 'Name <email>', not {type_label(value)}; without the key the generator picks an author"
+    match = _AUTHOR_RE.match(value)
+    if match is None:
+        return f"{value!r} is not 'Name <email>'"
+    if not match.group("name").strip(_IDENT_CRUD):
+        return f"{value!r} has no name, and Git refuses a commit without one"
+    if not match.group("email").strip():
+        return f"{value!r} has an empty e-mail address"
+    return None
+
+
+#: The keys of a classic ``fix`` that hold the text validation looks up (E311).
+FIX_STATEMENT_KEYS = ("statement", "added_statement", "removed_statement")
+
+
+def _is_blank(value: Any) -> bool:
+    """A statement that is a string and has nothing but whitespace: it is found in any text."""
+    return isinstance(value, str) and not value.strip()
+
+
+def check_commit_metadata(commit: dict[str, Any], cid: Any, loc: str, result: ValidationResult, *,
+                          timestamp_code: str, author_code: str) -> None:
+    """``timestamp_code`` for a date the generators cannot read, ``author_code`` for an author they would not record."""
+    for key in TIMESTAMP_KEYS:
+        if key in commit:
+            problem = timestamp_problem(commit[key])
+            if problem is not None:
+                result.error(timestamp_code, f"Commit '{cid}' {key} {problem}.", f"{loc}.{key}")
+    if "author" in commit:
+        problem = author_problem(commit["author"])
+        if problem is not None:
+            result.error(author_code, f"Commit '{cid}' author {problem}.", f"{loc}.author")
 
 # --- opt-in lint vocabulary (shared with graph_validator) -------------------
 
@@ -247,6 +340,15 @@ def validate_static(data: dict[str, Any], *, scenario_path: Path | None = None) 
     for key in ["schema_version", "meta", "repository", "commits", "bugs"]:
         if key not in data:
             result.error("E010", f"Missing required top-level field '{key}'.", key)
+    if "schema_version" in data:
+        # 1.0 unquoted is a number, and the value was compared with nothing (issue #152)
+        schema_version = data["schema_version"]
+        if not isinstance(schema_version, str):
+            result.error("E010", f"schema_version must be a string, not {type_label(schema_version)}; quote it: "
+                         f'schema_version: "{CLASSIC_SCHEMA_VERSION}".', "schema_version")
+        elif schema_version != CLASSIC_SCHEMA_VERSION:
+            result.error("E004", f"schema_version is '{schema_version}'; a classic scenario declares "
+                         f'schema_version: "{CLASSIC_SCHEMA_VERSION}".', "schema_version")
     meta = data.get("meta") if isinstance(data.get("meta"), dict) else None
     repository = data.get("repository") if isinstance(data.get("repository"), dict) else None
     commits = data.get("commits") if isinstance(data.get("commits"), list) else []
@@ -257,9 +359,12 @@ def validate_static(data: dict[str, Any], *, scenario_path: Path | None = None) 
         for key in ["id", "title", "category", "factors"]:
             if key not in meta:
                 result.error("E010", f"meta is missing required field '{key}'.", f"meta.{key}")
+            elif key != "factors" and not isinstance(meta[key], str):
+                # checked for presence only, as the docs claimed otherwise (issue #152)
+                result.error("E010", f"meta.{key} must be a string, not {type_label(meta[key])}.", f"meta.{key}")
         if not isinstance(meta.get("factors", []), list):
             result.error("E010", "meta.factors must be a list.", "meta.factors")
-        if scenario_path is not None and "id" in meta:
+        if scenario_path is not None and isinstance(meta.get("id"), str):
             parent = scenario_path.parent.name
             if parent != meta["id"]:
                 result.warning("W001", f"meta.id is '{meta['id']}', but scenario directory is '{parent}'.", "meta.id")
@@ -269,6 +374,14 @@ def validate_static(data: dict[str, Any], *, scenario_path: Path | None = None) 
         for key in ["name", "default_branch", "language"]:
             if key not in repository:
                 result.error("E010", f"repository is missing required field '{key}'.", f"repository.{key}")
+            elif not isinstance(repository[key], str):
+                # default_branch: 1 ended generate in a TypeError traceback from git (issue #152)
+                result.error("E010", f"repository.{key} must be a string, not {type_label(repository[key])}.",
+                             f"repository.{key}")
+        if "base_date" in repository:
+            problem = timestamp_problem(repository["base_date"])
+            if problem is not None:
+                result.error("E013", f"repository.base_date {problem}.", "repository.base_date")
     if not isinstance(data.get("commits"), list):
         result.error("E010", "'commits' must be a list.", "commits")
     if not isinstance(data.get("bugs"), list):
@@ -301,6 +414,10 @@ def validate_static(data: dict[str, Any], *, scenario_path: Path | None = None) 
                 result.error("E020", f"Duplicate commit id '{cid}'.", f"{loc}.id")
             commit_by_id[cid] = commit
             commit_ids.append(cid)
+        elif "id" in commit:
+            # id: 0 was skipped here, and commit-map.json keys it '0' (issue #152)
+            result.error("E010", f"commit.id must be a string, not {type_label(cid)}.", f"{loc}.id")
+        check_commit_metadata(commit, cid, loc, result, timestamp_code="E013", author_code="E014")
         role = commit.get("role")
         if role is not None and not isinstance(role, str):
             # a list or a mapping raised TypeError on the set lookup below, out of
@@ -342,6 +459,16 @@ def validate_static(data: dict[str, Any], *, scenario_path: Path | None = None) 
                     validate_repo_relative_path(path)
                 except PathValidationError as exc:
                     result.error("E050", f"Invalid path '{path}': {exc}", f"{op_loc}.path")
+            elif "path" in op:
+                # path: 123 skipped the check above, and generation refused it (issue #152)
+                result.error("E041", f"Operation '{op_type}' field 'path' must be a string path, not {type_label(path)}.",
+                             f"{op_loc}.path")
+            for key, resolve in (("line_ending", resolve_line_ending), ("encoding", resolve_encoding)):
+                # read by the operation itself, which --simulate does not do for line_ending (issue #152)
+                try:
+                    resolve(op)
+                except OperationError as exc:
+                    result.error("E042", f"Operation '{op_type}' {exc}.", f"{op_loc}.{key}")
     bug_ids: set[str] = set()
     index_by_commit = {cid: i for i, cid in enumerate(commit_ids)}
     for i, bug in enumerate(bugs):
@@ -380,6 +507,10 @@ def validate_static(data: dict[str, Any], *, scenario_path: Path | None = None) 
                 result.error("E061", f"bug {bid} refers to unknown bug-introducing commit '{bic}'.", f"{loc}.bug_introducing_commits")
             elif isinstance(bfc, str) and bfc in commit_by_id and index_by_commit[bic] >= index_by_commit[bfc]:
                 result.error("E070", f"BIC '{bic}' must precede BFC '{bfc}' in the initial linear-history model.", loc)
+        for key in ("fault", "fix"):
+            if key in bug and not isinstance(bug[key], dict):
+                # every check reads them as mappings: a list skipped them all (issue #152)
+                result.error("E010", f"bug {bid} {key} must be an object, not {type_label(bug[key])}.", f"{loc}.{key}")
         fault = bug.get("fault")
         if isinstance(fault, dict):
             fcommit = fault.get("commit")
@@ -448,15 +579,25 @@ def validate_oracle_against_snapshots(data: dict[str, Any], snapshots: dict[str,
         fault = bug.get("fault", {})
         fix = bug.get("fix", {})
         bfc = bug.get("bug_fixing_commit")
+        # An empty statement is in every text: an empty fix.statement passed E311 and
+        # was "already present" (W330), an empty fault.statement was "absent" (issue #152)
+        blank_fix = [key for key in FIX_STATEMENT_KEYS if isinstance(fix, dict) and _is_blank(fix.get(key))]
+        for key in blank_fix:
+            result.error("E311", f"bug {bid} fix.{key} is empty; write the text the fix leaves in (or removes from) "
+                         "the file.", f"{loc}.fix.{key}")
         if isinstance(fault, dict):
             fcommit = fault.get("commit")
             ffile = fault.get("file")
             change_type = fault.get("change_type")
+            blank_fault = change_type != "omission" and _is_blank(fault.get("statement"))
+            if blank_fault:
+                result.error("E301", f"bug {bid} fault.statement is empty; write the faulty text as fault.commit "
+                             "leaves it.", f"{loc}.fault.statement")
             if fcommit in snapshots and isinstance(ffile, str):
                 snap = snapshots[fcommit]
                 if ffile not in snap:
                     result.error("E300", f"bug {bid} fault.file '{ffile}' does not exist at fault.commit '{fcommit}'.", f"{loc}.fault.file")
-                elif change_type != "omission":
+                elif change_type != "omission" and not blank_fault:
                     stmt = fault.get("statement")
                     if not isinstance(stmt, str):
                         result.error("E301", f"bug {bid} fault.statement is required for non-omission bugs.", f"{loc}.fault.statement")
@@ -473,7 +614,7 @@ def validate_oracle_against_snapshots(data: dict[str, Any], snapshots: dict[str,
                 snap = snapshots[fix_commit]
                 if fix_file not in snap:
                     result.error("E310", f"bug {bid} fix.file '{fix_file}' does not exist at fix.commit '{fix_commit}'.", f"{loc}.fix.file")
-                else:
+                elif not blank_fix:
                     fix_text = fix.get("added_statement") or fix.get("statement")
                     removed_text = fix.get("removed_statement")
                     if isinstance(fix_text, str):
@@ -503,7 +644,7 @@ def validate_oracle_against_snapshots(data: dict[str, Any], snapshots: dict[str,
                         result.warning("W320", f"bug {bid} fault.file is absent in the BFC parent '{parent_id}'.", loc)
                     elif stmt not in parent_snapshot[ffile] and not rewrite_declared:
                         result.warning("W320", f"bug {bid} fault.statement is not present immediately before BFC '{bfc}'; declare the rewrite with a factor if intended.", loc)
-            if isinstance(fix, dict):
+            if isinstance(fix, dict) and not blank_fix:
                 fix_file = fix.get("file")
                 fix_text = fix.get("added_statement") or fix.get("statement")
                 if isinstance(fix_file, str) and isinstance(fix_text, str) and fix_file in parent_snapshot:

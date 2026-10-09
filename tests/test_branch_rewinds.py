@@ -220,12 +220,13 @@ def test_malformed_input_does_not_reach_the_history_model(tmp_path):
     result = validate_graph_static(data)
     assert [f.code for f in result.findings if f.severity == "ERROR"] == ["GE044"]
     assert _gw151(result) == []
-    # passes the static checks; planned_generated_commits raises OverflowError on it
+    # planned_generated_commits raises OverflowError on it; the static checks report it (GE062, issue #152)
     data = _rewind()
     data["commits"][1]["operations"] = [{"type": "commit_generator", "generator": "churn", "count": float("inf")}]
-    assert validate_graph_static(data).findings == []
+    assert [(f.code, f.location) for f in validate_graph_static(data).findings] == [
+        ("GE062", "commits[1].operations[0].count")]
     _, result = validate_graph_scenario_file(_path(tmp_path, data), simulate=True)
-    assert [(f.code, f.location) for f in result.findings] == [("GE201", "commits[1].operations[0]")]
+    assert [(f.code, f.location) for f in result.findings] == [("GE062", "commits[1].operations[0].count")]
 
 
 def test_no_shipped_graph_scenario_leaves_a_commit_behind():

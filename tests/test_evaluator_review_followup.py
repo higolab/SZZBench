@@ -23,7 +23,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 NO_BIC_SCENARIO = textwrap.dedent(
     """\
-    schema_version: graph-0.1-draft
+    schema_version: graph-1.0
     meta:
       id: SZZG-9400
       title: Timeout raised after an external service changed its limits
