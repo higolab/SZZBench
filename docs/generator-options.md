@@ -130,6 +130,11 @@ operation, the generator switches the repository to `core.filemode=true`
 after `git init`, so the mode change is recorded (`100644` -> `100755`) and a
 chmod-only commit is no longer empty. No scenario key is needed.
 
+`validate-graph --simulate` keeps the mode Git records (`100755` when the
+owner may execute the file, `100644` otherwise) and counts a change of it, so
+a chmod-only commit passes it without `allow_empty` too. Until issue #175 it
+modelled `chmod` as a no-op and reported such a commit as empty (`GE202`).
+
 Limitation: on file systems without an executable bit (most Windows setups)
 the chmod still has no effect and such a commit needs `allow_empty: true`.
 
@@ -291,9 +296,16 @@ value such as `generated/unrelated-batch-1.txt` (the old placeholder file)
 means its parent directory, and a root-level file such as `notes.txt` means
 the repository root (files are then named `<generator>-<NN>.txt` without a
 directory). `files` defaults to 1. `count` larger than 2000
-is capped (a note is written to `generation.log`). The simulator still models
-the old placeholder file, so `validate-graph --simulate` does not report the
-owning commit as empty.
+is capped (a note is written to `generation.log`).
+
+`validate-graph --simulate` writes the same files with the same content -- the
+generator and the simulator take the names and contents from one function,
+`graph_operations.commit_generator_changes` -- so a later commit may edit a
+generated file. Like generation, it does not report an owner of generated
+commits as empty; `count: 0` generates nothing, so an owner without another
+change is `GE202`, where generation stops with `commit would be empty`. Until
+issue #175 the simulator wrote one placeholder file at `path` instead, and a
+commit that edited a generated file failed `--simulate` (`GE201`).
 
 ### Unchanged limitations
 

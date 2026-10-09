@@ -275,6 +275,16 @@ def _validate_operation(op: Any, result: ValidationResult, loc: str, *, strict_p
 
 #: The values generation reads from three operations, checked before it runs (issue #172).
 _OCTAL_MODE = re.compile(r"[0-7]{3,4}")
+#: The operations that write the file at one path to another.  Two paths that differ only in
+#: letter case are one file on a case-insensitive file system: a case-only rename failed on
+#: macOS and succeeded on Linux (issue #175).
+_CASE_SENSITIVE_PAIRS = {
+    "rename_file": ("from", "to"),
+    "move_file": ("from", "to"),
+    "copy_file": ("from", "to"),
+    "move_entity": ("from_file", "to_file"),
+    "copy_entity": ("from_file", "to_file"),
+}
 
 
 def _validate_operation_values(op: dict[str, Any], op_type: str, result: ValidationResult, loc: str) -> None:
@@ -295,6 +305,13 @@ def _validate_operation_values(op: dict[str, Any], op_type: str, result: Validat
         if not (isinstance(lines, int) and not isinstance(lines, bool) and lines >= 0):
             result.error("GE059", f"write_generated_text_file lines must be a non-negative integer, not {lines!r}.",
                          f"{loc}.lines")
+    if op_type in _CASE_SENSITIVE_PAIRS:
+        source_key, target_key = _CASE_SENSITIVE_PAIRS[op_type]
+        source, target = op.get(source_key), op.get(target_key)
+        if isinstance(source, str) and isinstance(target, str) and source != target and source.casefold() == target.casefold():
+            result.error("GE060", f"{op_type} from '{source}' to '{target}' changes only the letter case; a "
+                         "case-insensitive file system (macOS, Windows) sees one file there, so what generation "
+                         "makes of it would depend on the platform.", f"{loc}.{target_key}")
 
 
 def _validate_commit_ref_entry(entry: Any, commit_by_id: dict[str, dict[str, Any]], result: ValidationResult, loc: str, label: str) -> None:
@@ -638,8 +655,7 @@ def lint_graph_scenario(data: dict[str, Any], *, scenario_path: Path | None = No
     """Run the GW4xx lints on a statically valid graph scenario.
 
     Ghost invariants (add-only BFC / delete-only BIC) are not implemented for
-    the graph suite because graph_simulator does not expose per-commit
-    snapshots.
+    the graph suite.
 
     ``scenario_path`` enables the lints that compare the scenario against its
     sibling README; without it they are skipped.

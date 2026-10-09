@@ -215,6 +215,7 @@ as one deleted and one added line, like `git blame` without `-w`.
 | GE057 | error | a `chmod` `mode` that is not a quoted string of 3 or 4 octal digits (`'755'`). YAML reads an unquoted `0755` as the integer 493, which used to reach generation and end in a traceback ([issue #172](https://github.com/higolab/SZZBench/issues/172)) |
 | GE058 | error | a `write_binary_file` `content_base64` that is not a string or does not decode as base64. ASCII whitespace is ignored; any other character outside the alphabet, a non-ASCII one or a no-break space included, and wrong padding are not. Validation, `--simulate` and generation read the value the same way. Generation used to end in a traceback, or to drop the characters outside the alphabet and write a shorter file ([issue #172](https://github.com/higolab/SZZBench/issues/172)) |
 | GE059 | error | a `write_generated_text_file` `lines` that is not a non-negative integer ([issue #172](https://github.com/higolab/SZZBench/issues/172)) |
+| GE060 | error | a `rename_file`, `move_file` or `copy_file` (`from` / `to`), or a `move_entity` or `copy_entity` (`from_file` / `to_file`), whose two paths differ only in letter case (`a.txt` -> `A.txt`). A case-insensitive file system (macOS, Windows) sees one file there: such a rename failed generation on macOS and succeeded on Linux ([issue #175](https://github.com/higolab/SZZBench/issues/175)) |
 | GE080 | error | `bugs` is not a list |
 | GE081 | error | a bug is not an object |
 | GE082 | error | `bug.id` missing |
@@ -253,8 +254,8 @@ With `--simulate`:
 | code | severity | meaning |
 |---|---|---|
 | GE200 | error | the parent snapshot cannot be prepared (unsimulated parent, merge conflict) |
-| GE201 | error | an operation failed during in-memory replay |
-| GE202 | error | a non-merge commit without `allow_empty` would be empty |
+| GE201 | error | an operation failed during in-memory replay, generation's own refusals included: a file written where the tree has a directory or below a file, `move_entity` / `copy_entity` with `overwrite: false` onto an existing file ([issue #175](https://github.com/higolab/SZZBench/issues/175)) |
+| GE202 | error | a non-merge commit without `allow_empty` would be empty. A `chmod` that changes the mode Git records (`100644` / `100755`) is a change; an owner of `commit_generator` commits is not empty unless its `count` is 0 |
 | GE203 | error | generating the scenario with Git in a temporary directory failed; the message and location name the commit that failed (an unresolved conflict, a revert or cherry-pick that changes nothing, an operation that no longer applies) |
 | GI203 | info | the scenario was simulated by generating it with Git; the message lists the commits Git computes |
 
@@ -269,6 +270,16 @@ replay and its operation-level locations. Until 2026-09-29 the replay was used
 for all of them, and nine shipped scenarios that generate and verify failed
 `--simulate` with 17 errors. `graph_simulator.git_performed_features` holds the
 list, with the generator's own conditions.
+
+`tests/test_simulator_drift.py` keeps the replay and generation together: it
+generates every shipped graph scenario and compares the in-memory snapshot of
+each commit with the generated tree (paths, contents and modes), giving the
+replay the generated trees of the commits Git computes. The only differences
+it allows are the two that [generator-options.md](generator-options.md) §2
+states: the replay works on LF text, and it leaves out the `header` / `footer`
+of `write_generated_text_file`. Until issue #175 nothing compared them, and
+`commit_generator`, `chmod`, `move_entity`'s `overwrite` and a file written
+over a directory had drifted apart.
 
 ### Lints (`--lint`)
 
@@ -302,9 +313,9 @@ list, with the generator's own conditions.
 | GW472 | warning | `issues[].reported_at` is neither an ISO 8601 string nor the `datetime` PyYAML makes of an unquoted one — it is reported rather than silently skipped |
 
 Ghost invariants (the graph counterparts of W420/W421) are **not**
-implemented: `graph_simulator.simulate_graph_scenario` does not expose
-per-commit snapshots, so there is nothing to diff. No graph scenario
-currently declares a ghost class.
+implemented. `graph_simulator.simulated_snapshots` returns the per-commit
+snapshots of the in-memory replay (issue #175), but no lint diffs them. No
+graph scenario currently declares a ghost class.
 
 Not resolved as commit references: `interactive_rebase` (its values are
 actions such as `squash` or `reorder`) and `reverts` (free-form: commit ids,

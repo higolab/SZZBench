@@ -27,7 +27,7 @@ from .gitutils import (
     run_git_with_input,
     timestamp_to_git_raw,
 )
-from .graph_operations import apply_graph_operation_to_filesystem, commit_generator_directory
+from .graph_operations import CommitGeneratorPlan, apply_graph_operation_to_filesystem, commit_generator_changes, commit_generator_plan
 from .graph_scenario import load_graph_scenario
 from .graph_validator import validate_graph_scenario_file
 from .operations import OperationError, normalize_newlines
@@ -40,10 +40,6 @@ class GraphGenerationError(RuntimeError):
     pass
 
 
-# Upper bound for one ``commit_generator`` operation (issue #18).
-# Generated files keep at most this many change lines so that blobs stay small
-# even for thousands of generated commits.
-GENERATED_FILE_MAX_LINES = 50
 # Temporary ref used while importing generated commits with ``git fast-import``.
 _GENERATED_IMPORT_REF = "refs/szzbench/generated"
 
@@ -607,27 +603,17 @@ def _expand_commit_generators(
     meta = scenario.get("meta") if isinstance(scenario.get("meta"), dict) else {}
     scenario_id = str(meta.get("id") or owner_id)
 
-    plan: list[tuple[str, str, int, int]] = []  # (generator, directory, count, files)
+    plan: list[CommitGeneratorPlan] = []
     for op in ops:
-        generator = str(op.get("generator") or "unrelated_changes")
         try:
-            requested = int(op.get("count"))
-        except (TypeError, ValueError):
-            raise GraphGenerationError(f"commit_generator.count of commit '{owner_id}' must be an integer.")
-        if requested < 0:
-            raise GraphGenerationError(f"commit_generator.count of commit '{owner_id}' must not be negative.")
-        count = min(requested, MAX_GENERATED_COMMITS)
-        if count != requested:
-            log(f"commit_generator count {requested} of commit {owner_id} capped at {MAX_GENERATED_COMMITS}")
-        try:
-            files = int(op.get("files", 1) or 1)
-        except (TypeError, ValueError):
-            raise GraphGenerationError(f"commit_generator.files of commit '{owner_id}' must be an integer.")
-        files = max(1, files)
-        directory = commit_generator_directory(op.get("path"))
-        plan.append((generator, directory, count, files))
+            entry = commit_generator_plan(op, owner_id)
+        except ValueError as exc:
+            raise GraphGenerationError(str(exc)) from None
+        if entry.count != entry.requested:
+            log(f"commit_generator count {entry.requested} of commit {owner_id} capped at {MAX_GENERATED_COMMITS}")
+        plan.append(entry)
 
-    total = sum(count for _, _, count, _ in plan)
+    total = sum(entry.count for entry in plan)
     if total == 0:
         return []
 
@@ -665,51 +651,49 @@ def _expand_commit_generators(
     placement_detail = {"author": author_placement, "committer": committer_placement}
 
     parent_hash = run_git(repo_dir, ["rev-parse", "--verify", "-q", "HEAD"]).stdout.strip() if parents else ""
-    file_contents: dict[str, str] = {}
+
+    def read_existing(rel_path: str) -> str:
+        try:
+            existing = safe_join(repo_dir, rel_path)
+        except PathValidationError as exc:
+            raise GraphGenerationError(f"commit_generator of commit '{owner_id}' produced an invalid path '{rel_path}': {exc}") from exc
+        _refuse_generated_path_below_a_file(repo_dir, rel_path, owner_id)
+        try:
+            return existing.read_text(encoding="utf-8") if existing.exists() else ""
+        except (OSError, ValueError) as exc:      # a directory, a file that is not UTF-8 (issue #175)
+            reason = exc.strerror if isinstance(exc, OSError) and exc.strerror else str(exc)
+            raise GraphGenerationError(f"commit_generator of commit '{owner_id}' cannot append to '{rel_path}': {reason}") from exc
+
     stream: list[bytes] = []
     generated: list[dict[str, Any]] = []
-    sequence = 0
     previous_id: str | None = parents[0] if parents else None
-    for generator, directory, count, files in plan:
-        for k in range(1, count + 1):
-            sequence += 1
-            gid = planned_ids[sequence - 1]
-            file_index = (k - 1) % files + 1
-            file_name = f"{generator}-{file_index:02d}.txt"
-            rel_path = f"{directory}/{file_name}" if directory else file_name
-            if rel_path not in file_contents:
-                try:
-                    existing = safe_join(repo_dir, rel_path)
-                except PathValidationError as exc:
-                    raise GraphGenerationError(f"commit_generator of commit '{owner_id}' produced an invalid path '{rel_path}': {exc}") from exc
-                file_contents[rel_path] = existing.read_text(encoding="utf-8") if existing.exists() else ""
-            # The written line must not carry the generated commit id: a logical-id
-            # prefix inside the repository is an answer cue (issue #8).
-            file_contents[rel_path] = _append_generated_line(file_contents[rel_path], f"{generator} change {sequence}")
-            author = deterministic_author(scenario_id, gid)
-            author_date = format_timestamp(author_dates[sequence - 1])
-            committer_date = format_timestamp(committer_dates[sequence - 1])
-            message = f"Update {rel_path} ({generator} {sequence}/{total})"
-            stream.append(
-                _fast_import_commit(sequence, message, author, author_date, committer_date, parent_hash if sequence == 1 else None, rel_path, file_contents[rel_path])
-            )
-            generated.append(
-                {
-                    "id": gid,
-                    "message": message,
-                    "author": author,
-                    "author_date": author_date,
-                    "committer_date": committer_date,
-                    "timestamp_placement": placement,
-                    "timestamp_placement_detail": dict(placement_detail),
-                    "role": "generated",
-                    "branch": branch,
-                    "parents": [previous_id] if previous_id else [],
-                    "generated_by": owner_id,
-                    "path": rel_path,
-                }
-            )
-            previous_id = gid
+    # file names and contents come from graph_operations, which the simulator shares (issue #175)
+    for sequence, (generator, rel_path, content) in enumerate(commit_generator_changes(plan, read_existing), start=1):
+        gid = planned_ids[sequence - 1]
+        author = deterministic_author(scenario_id, gid)
+        author_date = format_timestamp(author_dates[sequence - 1])
+        committer_date = format_timestamp(committer_dates[sequence - 1])
+        message = f"Update {rel_path} ({generator} {sequence}/{total})"
+        stream.append(
+            _fast_import_commit(sequence, message, author, author_date, committer_date, parent_hash if sequence == 1 else None, rel_path, content)
+        )
+        generated.append(
+            {
+                "id": gid,
+                "message": message,
+                "author": author,
+                "author_date": author_date,
+                "committer_date": committer_date,
+                "timestamp_placement": placement,
+                "timestamp_placement_detail": dict(placement_detail),
+                "role": "generated",
+                "branch": branch,
+                "parents": [previous_id] if previous_id else [],
+                "generated_by": owner_id,
+                "path": rel_path,
+            }
+        )
+        previous_id = gid
 
     marks_path = repo_dir / ".git" / "szzbench-fast-import-marks"
     args = ["fast-import", "--quiet", "--done", f"--export-marks={marks_path}"]
@@ -739,12 +723,15 @@ def _expand_commit_generators(
     return generated_ids
 
 
-def _append_generated_line(content: str, line: str) -> str:
-    lines = content.splitlines()
-    lines.append(line)
-    if len(lines) > GENERATED_FILE_MAX_LINES:
-        lines = lines[-GENERATED_FILE_MAX_LINES:]
-    return "\n".join(lines) + "\n"
+def _refuse_generated_path_below_a_file(repo_dir: Path, rel_path: str, owner_id: str) -> None:
+    """A generated file below an existing file: ``git fast-import`` would silently
+    replace that file with a directory (issue #175)."""
+    parent = Path(rel_path).parent
+    while parent != Path("."):
+        if (repo_dir / parent).is_file():
+            raise GraphGenerationError(f"commit_generator of commit '{owner_id}' cannot write '{rel_path}': "
+                                       f"{parent.as_posix()} is a file")
+        parent = parent.parent
 
 
 def _effective_parent_date(parent_entry: dict[str, Any] | None, kind: str) -> datetime | None:
