@@ -84,10 +84,10 @@ comes from `--summary` (which `git show` adds by default for a full diff as
 and was executed from a checkout of HEAD: it produces `build/classes/example/Range.class`.
 The previous `python -m example.Range` nonsense for a Java project is gone.
 
-`c2` keeps `allow_empty: true`, but no longer *needs* it in a normal generation run. It is
-kept for the two environments in which the mode change cannot be recorded: the in-memory
-simulator behind `validate-graph --simulate`, which still models `chmod` as a no-op (and
-would otherwise report `GE202`), and file systems without an executable bit.
+`c2` keeps `allow_empty: true`, but no longer *needs* it in a normal generation run, nor in
+`validate-graph --simulate`, whose in-memory simulator models the file mode since issue #175
+(it used to model `chmod` as a no-op and report `GE202`). It is kept for file systems without
+an executable bit, on which the mode change cannot be recorded.
 
 ## Behaviour check (measured)
 
