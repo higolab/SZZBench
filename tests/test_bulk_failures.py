@@ -1,10 +1,12 @@
 """generate-all-repos goes on after a scenario fails in any way (issue #162).
 
 The loop caught only GenerationError and GraphGenerationError.  Any other
-exception -- here the AttributeError the classic validator raises for a
-non-string ``write_file.content`` (#151) -- stopped the run with a traceback:
-the scenarios after it were never generated, the ones before it were not
-listed, and no summary was printed.
+exception -- such as the AttributeError the classic validator raised for a
+non-string ``write_file.content`` until #151 -- stopped the run with a
+traceback: the scenarios after it were never generated, the ones before it
+were not listed, and no summary was printed.  The tests inject such an
+exception into one scenario's generation, so that they do not depend on which
+inputs still crash the generator.
 """
 from __future__ import annotations
 
@@ -32,16 +34,26 @@ def _roots(tmp_path: Path) -> tuple[Path, Path, Path]:
     return scenarios, advanced, tmp_path / "repos"
 
 
+def _crash_one(real_generate, sid: str = "SZZ-0006"):
+    """``generate_repository``, except that ``sid``'s generation raises an unexpected exception."""
+    def generate(scenario_path, output_dir, **kwargs):
+        if scenario_path.parent.name == sid:
+            raise AttributeError("'int' object has no attribute 'replace'")
+        return real_generate(scenario_path, output_dir, **kwargs)
+    return generate
+
+
 def _break(scenarios: Path, sid: str = "SZZ-0006") -> None:
+    """A non-string ``write_file.content``: an AttributeError until #151, a validation error since."""
     path = scenarios / sid / "scenario.yml"
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
     data["commits"][0]["operations"][0]["content"] = 12345
     path.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8")
 
 
-def test_a_crash_in_one_scenario_fails_that_scenario_only(tmp_path):
+def test_a_crash_in_one_scenario_fails_that_scenario_only(tmp_path, monkeypatch):
     scenarios, advanced, out = _roots(tmp_path)
-    _break(scenarios)
+    monkeypatch.setattr(bulk, "generate_repository", _crash_one(bulk.generate_repository))
     result = generate_all_repositories(scenarios_root=scenarios, advanced_scenarios_root=advanced, output_root=out)
     by_id = {item.scenario_id: item for item in result.items}
     assert [by_id[sid].status for sid in ("SZZ-0005", "SZZ-0006", "SZZ-0012", "SZZG-0001")] == \
@@ -54,9 +66,21 @@ def test_a_crash_in_one_scenario_fails_that_scenario_only(tmp_path):
 
 def test_the_cli_lists_every_scenario_prints_the_summary_and_exits_1(tmp_path):
     scenarios, advanced, out = _roots(tmp_path)
-    _break(scenarios)
+    # the CLI in a subprocess, with SZZ-0006's generation made to raise as _crash_one does
+    driver = (
+        "import sys\n"
+        "import szzbench.bulk_generator as bulk\n"
+        "real_generate = bulk.generate_repository\n"
+        "def generate(scenario_path, output_dir, **kwargs):\n"
+        "    if scenario_path.parent.name == 'SZZ-0006':\n"
+        "        raise AttributeError(\"'int' object has no attribute 'replace'\")\n"
+        "    return real_generate(scenario_path, output_dir, **kwargs)\n"
+        "bulk.generate_repository = generate\n"
+        "from szzbench.cli import main\n"
+        "sys.exit(main(sys.argv[1:]))\n"
+    )
     completed = subprocess.run(
-        [sys.executable, "-m", "szzbench.cli", "generate-all-repos", "--scenarios-root", str(scenarios),
+        [sys.executable, "-c", driver, "generate-all-repos", "--scenarios-root", str(scenarios),
          "--advanced-scenarios-root", str(advanced), "--out-root", str(out)],
         capture_output=True, text=True, env={**os.environ, "PYTHONPATH": str(ROOT / "src")})
     assert completed.returncode == 1
@@ -66,6 +90,19 @@ def test_the_cli_lists_every_scenario_prints_the_summary_and_exits_1(tmp_path):
     failed_line = next(line for line in completed.stderr.splitlines() if line.startswith("Failed [classic] SZZ-0006"))
     assert "AttributeError: " in failed_line
     assert "  Traceback (most recent call last):" in completed.stderr       # where it came from, indented under it
+
+
+def test_a_non_string_content_is_a_validation_failure_of_that_scenario_only(tmp_path):
+    """The input the crash tests used until #151: now a GenerationError, reported without a traceback."""
+    scenarios, advanced, out = _roots(tmp_path)
+    _break(scenarios)
+    result = generate_all_repositories(scenarios_root=scenarios, advanced_scenarios_root=advanced, output_root=out)
+    by_id = {item.scenario_id: item for item in result.items}
+    assert [by_id[sid].status for sid in ("SZZ-0005", "SZZ-0006", "SZZ-0012", "SZZG-0001")] == \
+        ["generated", "failed", "generated", "generated"]
+    failed = by_id["SZZ-0006"]
+    assert "Scenario validation failed" in failed.error and failed.traceback is None
+    assert result.failed_count == 1 and result.generated_count == 3
 
 
 def test_a_crash_after_the_output_was_begun_marks_it_as_failed(tmp_path, monkeypatch):
