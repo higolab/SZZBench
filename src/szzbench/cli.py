@@ -212,7 +212,10 @@ def cmd_readme(args) -> int:
     print(json.dumps(report, indent=2, ensure_ascii=False) if args.json else format_readme_report(report, write=args.write))
     if report["errors"]:
         return 1
-    return 1 if (report["stale"] and not args.write) else 0
+    if args.write:
+        # --write checks what it wrote: a README still stale afterwards fails the run (issue #184)
+        return 1 if report["unresolved"] else 0
+    return 1 if report["stale"] else 0
 
 def cmd_evaluate(args) -> int:
     if args.predictions is None and not args.include_generated:

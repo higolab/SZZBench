@@ -52,8 +52,9 @@ never touched by a tool: the purpose, the commit structure, what a tool must
 do to pass, and the evidence — behaviour at each commit, the blame of the
 lines the fix deletes, counterfactuals — that the oracle is right.
 `szzbench readme --write` replaces the header and leaves the body byte for
-byte, blank lines included; the one exception is a real `## Factors` or
-`## Source` section, which it removes. A heading quoted inside a fenced code
+byte, blank lines included; the exceptions are a real `## Factors` or
+`## Source` section and the leftovers of an old header (see below), which it
+removes. A heading quoted inside a fenced code
 block (backticks or tildes) is text, not a section, and is left alone. The
 sections vary by scenario because the evidence does; the skeleton
 `new-scenario` / `new-graph-scenario` writes proposes `## Purpose`,
@@ -64,17 +65,54 @@ One prose block is checked all the same: a graph README's `## Expected history`
 block, whose parenthesised operation lists are a copy of `commits[].operations`
 and are compared with them by `GW454`.
 
+## A malformed header, a second header, BOM and CRLF
+
+The header is recognised by its exact shape: the title line, one blank line,
+the begin marker, table rows, the end marker. A README whose header has been
+edited out of that shape still has a header, found by its first marker line
+outside fenced code however that marker is spelled. It is reported as
+`header is malformed: …` with what is wrong — two blank lines or none under
+the title, text before the title line, no end marker, a marker spelled
+differently (`<!-- /SZZBench:header -->`, trailing whitespace), a blank line
+inside the table — and `--write` replaces it whole: from the start of the file
+through its end marker, or through its last table row when the end marker is
+missing. Text above the title line, or between it and the begin marker, is not
+dropped; it becomes the first paragraph of the body, under the new header.
+Everything after the old header is kept byte for byte.
+
+A README carries one header. A second one in the body (a begin marker with its
+table, its end marker and the title line above it) or a stray end marker is
+reported as `carries a second header at line N` (or `a stray header end
+marker`), and `--write` removes it the way it removes a `## Factors` copy.
+Markers quoted inside fenced code are text. Until issue #184 a malformed
+header was reported as missing, `--write` put a new header above the old one,
+and the doubled README then passed every check.
+
+A UTF-8 BOM and CRLF line endings are not a difference: the README is compared
+without the BOM and with LF endings, so a checkout made with
+`core.autocrlf=true` is current. `--write` keeps both: a leading BOM stays in
+front, and the header is written with the line ending of the file's first
+line, so a CRLF README gets no LF lines.
+
+`--write` reads back what it wrote and checks it again. A README still stale
+afterwards is listed under `still stale after the write`, and the command
+exits with 1. A header the scenario would render out of shape — a field value
+with a line break — is not written at all (`not written`). A line break or a
+run of whitespace in `meta.title` is rendered as one space. A README that is
+not valid UTF-8 is listed as unreadable (an `error:` line, exit 1).
+
 ## Keeping the two in step
 
 ```sh
 szzbench readme                    # check every README of both suites; exit 1 when one is stale
-szzbench readme --write            # regenerate the stale or missing headers
+szzbench readme --write            # regenerate the stale, malformed or missing headers
 szzbench readme --write advanced-scenarios/SZZG-0022   # one scenario (file or directory)
 ```
 
 `validate --lint` and `validate-graph --lint` report the same disagreement as
-`W455` / `GW455`: the header is missing, it differs from what the scenario
-renders (the message quotes the first differing line), or a hand-written
+`W455` / `GW455`: the header is missing, it is malformed (the message says
+how), it differs from what the scenario renders (the message quotes the first
+differing line), a second header is left in the body, or a hand-written
 `## Factors` / `## Source` copy is present. `tests/test_readme_header.py`
 asserts that every shipped README is current, so a metadata or oracle change
 that forgets `szzbench readme --write` fails the test suite.

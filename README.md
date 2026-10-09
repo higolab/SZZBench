@@ -617,7 +617,7 @@ szzbench readme --write
 szzbench readme --write advanced-scenarios/SZZG-0022
 ```
 
-`--write` regenerates the stale or missing headers, for both suites or for the scenarios named on the command line. See [docs/scenario-readme.md](docs/scenario-readme.md).
+`--write` regenerates the stale, malformed or missing headers, for both suites or for the scenarios named on the command line. A header edited out of its generated shape is replaced whole, so one header remains, and a README's BOM and CRLF line endings are kept. `--write` checks what it wrote and exits with 1 when a README is still stale. See [docs/scenario-readme.md](docs/scenario-readme.md).
 
 ## clean
 
@@ -1334,7 +1334,7 @@ szzbench readme --write
 szzbench readme --write advanced-scenarios/SZZG-0022
 ```
 
-`--write` は、両スイート全体、またはコマンドラインで指定したシナリオについて、古い・欠けているヘッダを再生成します。詳細は [docs/scenario-readme.md](docs/scenario-readme.md) を参照してください。
+`--write` は、両スイート全体、またはコマンドラインで指定したシナリオについて、古い・形の崩れた・欠けているヘッダを再生成します。生成された形から崩れたヘッダは丸ごと置き換えるので、ヘッダは 1 つだけ残ります。README の BOM と CRLF の改行はそのまま保ちます。`--write` は書いた結果を検査し直し、まだ古い README があれば終了コード 1 を返します。詳細は [docs/scenario-readme.md](docs/scenario-readme.md) を参照してください。
 
 ## clean
 

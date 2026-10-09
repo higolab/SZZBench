@@ -15,6 +15,11 @@ the features a scenario actually uses.
 ``szzbench readme`` checks every README against its scenario (exit 1 when a
 header is missing or stale) and ``--write`` regenerates them; ``validate
 --lint`` reports the same disagreement as ``W455`` / ``GW455``.
+
+A header edited out of its exact shape is *malformed*, not missing: ``--write``
+replaces the whole old header rather than stacking a new one above it, and a
+second header left in the body is stale (issue #184).  A UTF-8 BOM and CRLF
+line endings are not a difference; ``--write`` keeps both.
 """
 from __future__ import annotations
 
@@ -44,6 +49,11 @@ HEADING_RE = re.compile(r"^#{1,6} ")
 #: Headings inside a block are text, not sections.
 OPEN_FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
 CLOSE_FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})[ \t]*$")
+#: A line meant as a header marker however it is spelled: an HTML comment
+#: opening with ``szzbench:header`` (begin) or ``/szzbench:header`` (end), in
+#: any case, with any whitespace around it and anything after it (issue #184).
+MARKER_LINE_RE = re.compile(r"^\s*<!--\s*(/?)\s*szzbench\s*:\s*header\b", re.IGNORECASE)
+BOM = "\ufeff"
 
 #: ``expected_szz`` sections the classic schema does not have.
 GRAPH_ONLY_ORACLE_LEVELS = ("entity_level", "branch_level", "work_item_level", "bug_level")
@@ -247,9 +257,15 @@ def header_rows(data: dict[str, Any], suite: str) -> list[tuple[str, str]]:
 
 
 def render_header(data: dict[str, Any], suite: str) -> str:
-    """The exact text a README must start with."""
+    """The exact text a README must start with.
+
+    The title is put on one line: a line break or a run of whitespace in
+    ``meta.title`` becomes one space, so the header keeps the shape it is
+    recognised by (issue #184).
+    """
     meta = data.get("meta") if isinstance(data.get("meta"), dict) else {}
-    lines = [f"# {meta.get('id')}: {str(meta.get('title', '')).strip()}", "", HEADER_BEGIN, "| | |", "|---|---|"]
+    title = " ".join(str(meta.get("title", "")).split())
+    lines = [f"# {meta.get('id')}: {title}", "", HEADER_BEGIN, "| | |", "|---|---|"]
     for key, value in header_rows(data, suite):
         lines.append(f"| {key} | {value} |")
     lines.append(HEADER_END)
@@ -274,6 +290,30 @@ def split_header(text: str) -> tuple[str | None, str]:
     return match.group(0), text[match.end():]
 
 
+def _outside_fences(lines: list[str]) -> list[bool]:
+    """Per line, whether it is outside fenced code; a fence line itself is inside.
+
+    ``lines`` may keep their endings, ``\\n`` or ``\\r\\n``.
+    """
+    flags: list[bool] = []
+    fence: str | None = None
+    for line in lines:
+        content = line.rstrip("\r\n")
+        if fence is not None:
+            closing = CLOSE_FENCE_RE.match(content)
+            if closing and closing.group(1)[0] == fence[0] and len(closing.group(1)) >= len(fence):
+                fence = None
+            flags.append(False)           # every line inside a block is content
+            continue
+        opening = OPEN_FENCE_RE.match(content)
+        if opening and not (opening.group(1)[0] == "`" and "`" in opening.group(2)):
+            fence = opening.group(1)
+            flags.append(False)
+            continue
+        flags.append(True)
+    return flags
+
+
 def legacy_sections(text: str) -> list[tuple[int, int, str]]:
     """``(first_line, end_line, title)`` of every real ``## Factors`` / ``## Source`` section.
 
@@ -283,19 +323,10 @@ def legacy_sections(text: str) -> list[tuple[int, int, str]]:
     """
     lines = text.splitlines(keepends=True)
     found: list[tuple[int, int, str]] = []
-    fence: str | None = None
     current: tuple[int, str] | None = None
-    for index, line in enumerate(lines):
-        if fence is not None:
-            closing = CLOSE_FENCE_RE.match(line.rstrip("\n"))
-            if closing and closing.group(1)[0] == fence[0] and len(closing.group(1)) >= len(fence):
-                fence = None
-            continue                      # every line inside a block is content
-        opening = OPEN_FENCE_RE.match(line.rstrip("\n"))
-        if opening and not (opening.group(1)[0] == "`" and "`" in opening.group(2)):
-            fence = opening.group(1)
-            continue
-        if not HEADING_RE.match(line):
+    for index, outside in enumerate(_outside_fences(lines)):
+        line = lines[index].rstrip("\r\n")
+        if not outside or not HEADING_RE.match(line):
             continue
         if current is not None:
             found.append((current[0], index, current[1]))
@@ -329,12 +360,237 @@ def remove_legacy_sections(text: str) -> str:
     return "".join(lines)
 
 
+# --- finding an old header by its markers (issue #184) ---------------------------
+
+#: Said of a malformed header when no narrower reason applies.
+SHAPE_REASON = ("it is not the generated shape: the title line, one blank line, the begin marker, "
+                "table rows, the end marker")
+
+
+def _split_lines(text: str) -> list[str]:
+    """``text`` cut after every ``\\n``, endings kept, so the pieces join back to ``text``.
+
+    Only ``\\n`` ends a line, as in ``HEADER_SHAPE_RE``; ``str.splitlines``
+    would also cut at a form feed or a Unicode line separator.
+    """
+    pieces = text.split("\n")
+    lines = [piece + "\n" for piece in pieces[:-1]]
+    if pieces[-1]:
+        lines.append(pieces[-1])
+    return lines
+
+
+def _content(line: str) -> str:
+    """A line without its ``\\n`` or ``\\r\\n``."""
+    if line.endswith("\r\n"):
+        return line[:-2]
+    return line[:-1] if line.endswith("\n") else line
+
+
+def _normalized(text: str) -> str:
+    """``text`` as it is compared: without a leading BOM, with LF line endings."""
+    return (text[1:] if text.startswith(BOM) else text).replace("\r\n", "\n")
+
+
+def _marker(content: str) -> str | None:
+    """``"begin"`` or ``"end"`` for a line meant as a header marker, else ``None``."""
+    match = MARKER_LINE_RE.match(content)
+    if match is None:
+        return None
+    return "end" if match.group(1) else "begin"
+
+
+def _is_row(content: str) -> bool:
+    return content.startswith("|")
+
+
+def _is_title(content: str) -> bool:
+    return content.lstrip(BOM).startswith("# ")
+
+
+def _table_after(contents: list[str], begin: int) -> tuple[list[int], int]:
+    """The table rows under a begin marker, and the line the table stops at.
+
+    Blank lines are passed over, so a blank line inside the table does not cut
+    it short; the line it stops at is neither a row nor blank.
+    """
+    rows: list[int] = []
+    index = begin + 1
+    while index < len(contents) and (_is_row(contents[index]) or not contents[index].strip()):
+        if _is_row(contents[index]):
+            rows.append(index)
+        index += 1
+    return rows, index
+
+
+def _misspelled(kind: str, have: str, want: str) -> str:
+    if have.strip() == want:
+        side = "trailing" if have.startswith(want) else "leading" if have.endswith(want) else "leading and trailing"
+        return f"the {kind} marker has {side} whitespace"
+    return f"the {kind} marker reads {have!r}, not {want!r}"
+
+
+def _trimmed(contents: list[str], first: int, end: int) -> tuple[int, int] | None:
+    """``(first, end)`` without the blank lines at either edge; ``None`` when nothing is left."""
+    while first < end and not contents[first].strip():
+        first += 1
+    while end > first and not contents[end - 1].strip():
+        end -= 1
+    return (first, end) if first < end else None
+
+
+@dataclass
+class HeaderRegion:
+    """The old header at the top of a README, found by its markers.
+
+    ``end`` is the first line after it.  ``reasons`` says how it departs from
+    the generated shape.  ``kept`` lists the author's text inside it -- above
+    the title line, or between the title line and the begin marker -- as
+    ``(first, end)`` line ranges, which ``apply_header`` moves under the new
+    header instead of dropping.
+    """
+    end: int
+    reasons: list[str]
+    kept: list[tuple[int, int]]
+
+
+def header_region(contents: list[str]) -> HeaderRegion | None:
+    """The old header a README opens with, however malformed; ``None`` without one.
+
+    ``contents`` are the README's lines without their endings.  The header is
+    found by its first marker line outside fenced code, whatever its spelling.
+    It runs from the start of the file through the end marker, or through the
+    last table row when the end marker is missing.
+    """
+    outside = _outside_fences(contents)
+    first = next((i for i, content in enumerate(contents) if outside[i] and _marker(content)), None)
+    if first is None:
+        return None
+    begin: int | None
+    end_marker: int | None
+    if _marker(contents[first]) == "begin":
+        top = begin = first
+        rows, stop = _table_after(contents, begin)
+        end_marker = stop if stop < len(contents) and _marker(contents[stop]) == "end" else None
+        end = end_marker + 1 if end_marker is not None else (rows[-1] if rows else begin) + 1
+    else:
+        begin, end_marker, end = None, first, first + 1
+        rows = []
+        index = first - 1
+        while index >= 0 and (_is_row(contents[index]) or not contents[index].strip()):
+            if _is_row(contents[index]):
+                rows.insert(0, index)
+            index -= 1
+        top = rows[0] if rows else first
+
+    reasons: list[str] = []
+    title = next((i for i in range(top - 1, -1, -1) if outside[i] and _is_title(contents[i])), None)
+    if title is None:
+        reasons.append("no `# <id>: <title>` line above the begin marker")
+        kept = [(0, top)]
+    else:
+        above, between = range(0, title), range(title + 1, top)
+        if any(contents[i].strip() for i in above):
+            reasons.append("text before the title line")
+        elif above:
+            reasons.append(f"{len(above)} blank line{'s' if len(above) > 1 else ''} before the title line")
+        if any(contents[i].strip() for i in between):
+            reasons.append("text between the title line and the begin marker")
+        elif not between:
+            reasons.append("no blank line between the title line and the begin marker")
+        elif len(between) > 1:
+            reasons.append(f"{len(between)} blank lines between the title line and the begin marker, not one")
+        elif contents[title + 1]:
+            reasons.append("whitespace on the blank line between the title line and the begin marker")
+        kept = [(0, title), (title + 1, top)]
+    if begin is None:
+        reasons.append("no begin marker above the table" if rows else "no begin marker above the end marker")
+    elif contents[begin] != HEADER_BEGIN:
+        reasons.append(_misspelled("begin", contents[begin], HEADER_BEGIN))
+    if not rows:
+        reasons.append("no table rows")
+    last = end_marker if end_marker is not None else end - 1
+    if any(not contents[i].strip() for i in range(top + 1, last)):
+        reasons.append("a blank line inside the table")
+    if end_marker is None:
+        reasons.append("no end marker after the table")
+    elif contents[end_marker] != HEADER_END:
+        reasons.append(_misspelled("end", contents[end_marker], HEADER_END))
+    trimmed = [_trimmed(contents, a, b) for a, b in kept]
+    return HeaderRegion(end=end, reasons=reasons, kept=[r for r in trimmed if r is not None])
+
+
+def extra_headers(contents: list[str]) -> list[tuple[int, int, int, str]]:
+    """``(first, end, marker, kind)`` of every header marker in a README body.
+
+    Only markers outside fenced code count.  A begin marker (``kind``
+    ``"header"``) brings its table, its end marker and the ``# `` title line
+    above it: the leftover of an old header.  An end marker on its own
+    (``kind`` ``"end marker"``) is a stray one.  ``marker`` is the marker's
+    line.
+    """
+    outside = _outside_fences(contents)
+    found: list[tuple[int, int, int, str]] = []
+    index = 0
+    while index < len(contents):
+        kind = _marker(contents[index]) if outside[index] else None
+        if kind is None:
+            index += 1
+            continue
+        first, end = index, index + 1
+        if kind == "begin":
+            rows, stop = _table_after(contents, index)
+            if stop < len(contents) and _marker(contents[stop]) == "end":
+                end = stop + 1
+            elif rows:
+                end = rows[-1] + 1
+            above = index - 1
+            while above >= 0 and not contents[above].strip():
+                above -= 1
+            if above >= 0 and outside[above] and _is_title(contents[above]):
+                first = above
+        found.append((first, end, index, "header" if kind == "begin" else "end marker"))
+        index = end
+    return found
+
+
+def remove_extra_headers(text: str) -> str:
+    """``text`` without the header leftovers ``extra_headers`` finds; every other byte is kept.
+
+    A leftover takes the blank lines under it, so the prose around it keeps
+    one separation; one at the end of the file takes the blank lines above it.
+    """
+    lines = _split_lines(text)
+    blocks = extra_headers([_content(line) for line in lines])
+    for first, end, _, _ in reversed(blocks):
+        while end < len(lines) and not lines[end].strip():
+            end += 1
+        del lines[first:end]
+        if first >= len(lines):
+            while len(lines) > 1 and not lines[-1].strip():
+                lines.pop()
+    return "".join(lines)
+
+
+def _opens_with_blank_line(text: str) -> bool:
+    return text.startswith("\n") or text.startswith("\r\n")
+
+
 def check_readme(text: str, header: str) -> list[str]:
-    """Why a README disagrees with its scenario; empty when it agrees."""
+    """Why a README disagrees with its scenario; empty when it agrees.
+
+    A leading UTF-8 BOM and CRLF line endings are not a disagreement: the file
+    is compared without the one and with LF for the other (issue #184).
+    """
     problems: list[str] = []
-    existing, rest = split_header(text)
-    if existing is None:
+    normalized = _normalized(text)
+    lines = _split_lines(normalized)
+    region = header_region([_content(line) for line in lines])
+    existing, rest = split_header(normalized)
+    if existing is None and region is None:
         problems.append("has no generated header")
+    elif existing is None:
+        problems.append("header is malformed: " + "; ".join(region.reasons or [SHAPE_REASON]))
     elif existing != header:
         for have, want in zip(existing.splitlines(), header.splitlines()):
             if have != want:
@@ -342,6 +598,11 @@ def check_readme(text: str, header: str) -> list[str]:
                 break
         else:
             problems.append("header is stale: the two differ in length")
+    if region is not None:
+        rest = "".join(lines[region.end:])
+        for _, _, marker, kind in extra_headers([_content(line) for line in lines[region.end:]]):
+            what = "a second header" if kind == "header" else "a stray header end marker"
+            problems.append(f"carries {what} at line {region.end + marker + 1}, a leftover of an old header")
     for _, _, title in legacy_sections(rest):
         problems.append(f"carries a `## {title}` section, a hand-written copy of what the header states")
     return problems
@@ -365,18 +626,37 @@ def apply_header(text: str, header: str) -> str:
     title line and the blank lines under it make room for the header, and on
     an update only the header is replaced.  Nothing after the end marker is
     reflowed or re-spaced except at the boundary of a removed legacy section.
+
+    A malformed header is replaced whole, from the start of the file through
+    its end marker, or through its last table row when the end marker is
+    missing, so exactly one header remains; text the author had put above its
+    title line, or between that line and the begin marker, becomes the first
+    paragraph of the body.  A second header in the body is removed the way a
+    legacy section is.  A leading BOM and the file's line endings (those of
+    its first line) are kept: the header is written with them (issue #184).
     """
-    existing, rest = split_header(text)
-    if existing is None:
+    bom = BOM if text.startswith(BOM) else ""
+    text = text[len(bom):]
+    first_break = text.find("\n")
+    newline = "\r\n" if first_break > 0 and text[first_break - 1] == "\r" else "\n"
+    lines = _split_lines(text)
+    region = header_region([_content(line) for line in lines])
+    if region is None:
         rest = _strip_leading_title(text)
         if rest:
-            rest = "\n" + rest
-    rest = remove_legacy_sections(rest)
+            rest = newline + rest
+    else:
+        rest = "".join(lines[region.end:])
+        kept = newline.join("".join(lines[first:end]) for first, end in region.kept)
+        if kept:
+            rest = kept + (newline + rest if rest and not _opens_with_blank_line(rest) else rest)
+    rest = remove_legacy_sections(remove_extra_headers(rest))
+    header = header.replace("\n", newline)
     if not rest.strip():
-        return header
-    if not rest.startswith("\n"):
-        rest = "\n" + rest
-    return header + rest
+        return bom + header
+    if not _opens_with_blank_line(rest):
+        rest = newline + rest
+    return bom + header + rest
 
 
 # --- running over the suites ------------------------------------------------
@@ -387,11 +667,14 @@ class ReadmeStatus:
     readme: Path
     problems: list[str] = field(default_factory=list)
     written: bool = False
+    #: What ``--write`` left wrong: the problems found in the file it wrote,
+    #: or why it did not write (issue #184).
+    unresolved: list[str] = field(default_factory=list)
     error: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {"scenario_id": self.scenario_id, "readme": str(self.readme), "problems": self.problems,
-                "written": self.written, "error": self.error}
+                "written": self.written, "unresolved": self.unresolved, "error": self.error}
 
 
 def scenario_files(scenarios_root: Path, advanced_scenarios_root: Path) -> list[Path]:
@@ -414,8 +697,20 @@ def resolve_targets(targets: list[str]) -> list[Path]:
     return files
 
 
+#: Why a stale README is left as it is: its header would not be found again.
+NOT_WRITABLE = ("the header rendered from the scenario file is not one title line and one table row per field "
+                "(a value has a line break); fix the scenario file")
+
+
 def sync_readme(scenario_path: Path, *, write: bool) -> ReadmeStatus:
-    """Check one README against its scenario; rewrite it when ``write``."""
+    """Check one README against its scenario; rewrite it when ``write``.
+
+    The README is read as stored, so a BOM and CRLF endings survive a write.
+    What is written is read back and checked again, and what is still wrong
+    is kept in ``unresolved``; a header the scenario renders out of shape (a
+    value with a line break) is not written at all, because the next write
+    could not find where it ends (issue #184).
+    """
     readme = scenario_path.with_name("README.md")
     status = ReadmeStatus(scenario_id=scenario_path.parent.name, readme=readme)
     data, result = load_yaml(scenario_path)
@@ -423,11 +718,24 @@ def sync_readme(scenario_path: Path, *, write: bool) -> ReadmeStatus:
         status.error = "; ".join(f.message for f in result.findings)
         return status
     header = render_header(data, suite_of(scenario_path))
-    text = readme.read_text(encoding="utf-8") if readme.exists() else ""
+    try:
+        text = readme.read_bytes().decode("utf-8") if readme.exists() else ""
+    except UnicodeDecodeError as exc:
+        # A README that is not UTF-8 ended in a traceback (issue #184).
+        status.error = (f"Cannot read {readme.name}: it is not UTF-8 (byte 0x{exc.object[exc.start]:02x} at "
+                        f"position {exc.start}); save it as UTF-8.")
+        return status
+    except OSError as exc:
+        status.error = f"Cannot read {readme.name}: {exc}"
+        return status
     status.problems = check_readme(text, header) if text else ["is missing"]
     if status.problems and write:
-        readme.write_text(apply_header(text, header), encoding="utf-8")
+        if HEADER_SHAPE_RE.fullmatch(header) is None:
+            status.unresolved = [NOT_WRITABLE]
+            return status
+        readme.write_text(apply_header(text, header), encoding="utf-8", newline="")
         status.written = True
+        status.unresolved = check_readme(readme.read_bytes().decode("utf-8"), header)
     return status
 
 
@@ -438,6 +746,7 @@ def run_readme(files: list[Path], *, write: bool) -> dict[str, Any]:
         "current": sum(1 for s in statuses if not s.problems and s.error is None),
         "written": sum(1 for s in statuses if s.written),
         "stale": [s.to_dict() for s in statuses if s.problems],
+        "unresolved": [s.to_dict() for s in statuses if s.unresolved],
         "errors": [s.to_dict() for s in statuses if s.error],
     }
 
@@ -449,10 +758,15 @@ def format_readme_report(report: dict[str, Any], *, write: bool) -> str:
         lines.append(f"{verb}: {item['readme']}")
         for problem in item["problems"]:
             lines.append(f"    {problem}")
+        if item["unresolved"]:
+            lines.append("    still stale after the write:" if item["written"] else "    not written:")
+            lines.extend(f"        {problem}" for problem in item["unresolved"])
     for item in report["errors"]:
         lines.append(f"error: {item['scenario_id']}: {item['error']}")
-    lines.append(
-        f"{report['scenario_count']} scenario(s): {report['current']} README header(s) current, "
-        f"{len(report['stale'])} {'rewritten' if write else 'stale or missing'}, {len(report['errors'])} unreadable"
-    )
+    summary = (f"{report['scenario_count']} scenario(s): {report['current']} README header(s) current, "
+               f"{report['written'] if write else len(report['stale'])} {'rewritten' if write else 'stale or missing'}, "
+               f"{len(report['errors'])} unreadable")
+    if report["unresolved"]:
+        summary += f"; {len(report['unresolved'])} still stale"
+    lines.append(summary)
     return "\n".join(lines)
