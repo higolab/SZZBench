@@ -170,6 +170,30 @@ W420/W421/W430/W431 compare the simulated snapshots before and after a commit
 with `difflib.SequenceMatcher` on whole lines, i.e. a re-indented line counts
 as one deleted and one added line, like `git blame` without `-w`.
 
+### Generated-repository checks (`verify`, also run by `generate`)
+
+`verify` answers whether a repository is still the one `generate` made from
+the scenario. Since issue #167 that includes the state the generator leaves
+behind, so an output an SZZ tool has checked out, committed or left files in
+fails `verify` while it is still fresh for `evaluate`, `baselines` and
+`coverage`, which ask only that every commit is there and reachable
+([generator-options.md](generator-options.md) §6). `verify` writes nothing into
+the repository: `git status` runs with `--no-optional-locks`, so not even the
+index's stat data is refreshed.
+
+| code | level | condition |
+|---|---|---|
+| E600 | error | `commit-map.json` cannot be read, or has no entry or no hash for a commit of the scenario |
+| E601 | error | a commit-map hash is not a commit of the repository, or Git cannot read it |
+| E602 | error | a commit's subject differs from its `message` |
+| E603 | error | the repository path is not a Git repository (missing, or without `.git`) ([issue #166](https://github.com/higolab/SZZBench/issues/166)) |
+| E604 | error | a commit of the scenario is in the repository but **no ref reaches it**: no branch, tag or `HEAD` (the reflog does not count), so `git log --all` does not show it -- after `git reset --hard` or `git commit --amend`, for example. Before [issue #167](https://github.com/higolab/SZZBench/issues/167) the existence of the object was enough |
+| E605 | error | `commit-map.json` records an `author`, `author_date` or `committer_date` the commit does not have. The dates are compared as instants (`Z`, `+00:00` and any other offset of the same instant are equal; Git keeps whole seconds); the author as Git records it, `name <email>` without the surrounding white space and punctuation Git drops (which differs between Git versions). `role` and `date` record the scenario's words and are not compared |
+| E606 | error | a commit's parents are not the previous commit of the scenario (the first commit has none): the classic generator writes a linear history |
+| E607 | error | the branch `repository.default_branch` does not exist, or does not point at the scenario's last commit |
+| E608 | error | `HEAD` is detached or on another branch; the generator leaves `repository.default_branch` checked out |
+| E609 | error | the index or the working tree has a change: a modified, staged or untracked file (`git status --porcelain` is not empty) |
+
 ## Graph suite (`validate-graph`)
 
 ### Default checks
