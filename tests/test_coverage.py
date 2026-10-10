@@ -351,9 +351,8 @@ def test_difficulty_floor_follows_the_blame_class_and_declarations_are_checked_a
     assert "[BELOW FLOOR] SZZG-9141 declares medium but blame is miss, so at least hard" in text
     assert "[UNGRADED] SZZG-9144 declares 'advanced'" in text
 
-def test_a_root_bug_fixing_commit_is_diffed_against_the_empty_tree(tmp_path):
-    """A one-commit scenario whose root commit is the fix (PR #74 review): the root has no
-    ``<hash>^``, and the failed Git call must not be read as an empty first-parent diff."""
+def _write_root_fix(tmp_path, scenario_id):
+    """A one-commit scenario whose root commit is the fix, with an empty oracle."""
     commits = [{"id": "c0", "branch": "main", "parents": [], "message": "add the range check with its guard",
                 "role": "bug_fixing",
                 "operations": [{"type": "write_file", "path": PATH, "content": JAVA % ">="}]}]
@@ -363,8 +362,36 @@ def test_a_root_bug_fixing_commit_is_diffed_against_the_empty_tree(tmp_path):
              "fixes": [{"id": "X001", "commit": "c0", "file": PATH, "statement": "return v >= lo;",
                         "fix_type": "line_addition"}]}]
     # a bug without introducing commits is accepted when the scenario declares expect_no_bic (GI086)
-    _write(tmp_path, "SZZG-9150", commits, bugs,
+    _write(tmp_path, scenario_id, commits, bugs,
            expected_szz={"commit_level": {"evaluation_policy": "exact_set", "expect_no_bic": True, "required": []}})
+
+
+def test_a_root_bug_fixing_commit_is_diffed_against_the_empty_tree(tmp_path):
+    """A one-commit scenario whose root commit is the fix (PR #74 review): the root has no
+    ``<hash>^``, and the failed Git call must not be read as an empty first-parent diff."""
+    _write_root_fix(tmp_path, "SZZG-9150")
     report = _run(tmp_path)
     assert report["errors"] == []
     assert [s["blame_class"] for s in report["shapes"]] == ["addition-only"]
+
+
+# --- the order and spelling of the distributions (issue #185) ----------------------
+
+def test_distributions_are_in_numeric_order_and_spell_an_empty_depth_none(tmp_path):
+    """Ordering by the string form printed ``10:1, 2:1``, and the empty oracles' depth came out
+    as ``None`` in coverage.md and ``null`` in coverage.json."""
+    _write(tmp_path, "SZZG-9160", _linear(noise_touches_fault_file=False), _bugs(["c1"]))   # depth 2, 4 commits
+    deep = _linear(noise_touches_fault_file=False)                 # eight generated commits before c2
+    deep[2]["operations"].insert(0, {"type": "commit_generator", "generator": "catalog_sync", "count": 8,
+                                     "files": 1, "path": "generated/catalog"})
+    _write(tmp_path, "SZZG-9161", deep, _bugs(["c1"]))                                     # depth 10, 12 commits
+    _write_root_fix(tmp_path, "SZZG-9162")                                                 # no depth, 1 commit
+    _write_root_fix(tmp_path, "SZZG-9163")                                                 # and its twin
+    report = _run(tmp_path)
+    assert report["errors"] == [], report["errors"]
+    text = format_report(report)
+    assert "      bic_depth              2:1, 10:1, none:2\n" in text
+    assert "      commit_count           1:2, 4:1, 12:1\n" in text
+    assert "  bic_depth=none  " in text                # the twins' group signature
+    # the JSON spells the empty depth as the text does
+    assert json.dumps(report["distributions"]["bic_depth"]) == '{"2": 1, "10": 1, "none": 2}'
