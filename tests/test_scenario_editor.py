@@ -44,6 +44,7 @@ const state = picks.reduce((s, type) => model.selectFaultType(s, type), { ...mod
 process.stdout.write(JSON.stringify({
   yaml: model.generateScenarioYaml(state),
   readme: model.generateReadme(state),
+  index: model.generateIndexEntry(state),
   next: model.nextVersion(state),
   checks: model.localValidate({ ...state, versions: [...state.versions, model.nextVersion(state)] }),
 }));
@@ -103,6 +104,18 @@ def test_the_default_scenario_generates_and_verifies(tmp_path):
     path = _save_as_the_server_does(tmp_path, _model(tmp_path, tier="control"))
     commit_map, verify = generate_repository(path, tmp_path / "out", force=True)
     assert sorted(commit_map) == ["c0", "c1", "c2"] and not verify.has_errors(), verify.to_dict()
+
+
+def test_the_index_entry_the_page_shows_passes_validate_index(tmp_path):
+    """The entry shown under "index.yml entry" lacked readme, which every index entry needs since #200, so
+    pasting it into scenarios/index.yml failed validate-index with IE046 (PR #272 review)."""
+    generated = _model(tmp_path, tier="control")
+    _save_as_the_server_does(tmp_path, generated)
+    (tmp_path / "scenarios/index.yml").write_text("scenarios:\n" + generated["index"], encoding="utf-8")
+    (tmp_path / "advanced-scenarios/index.yml").write_text("scenarios: []\n", encoding="utf-8")
+    completed = _cli("validate-index", "--json", "--scenarios-root", str(tmp_path / "scenarios"),
+                     "--advanced-scenarios-root", str(tmp_path / "advanced-scenarios"))
+    assert completed.returncode == 0 and json.loads(completed.stdout)["findings"] == [], completed.stdout
 
 
 def test_without_a_tier_lint_asks_for_one(tmp_path):

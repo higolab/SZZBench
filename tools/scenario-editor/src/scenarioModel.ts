@@ -482,6 +482,7 @@ ${state.factors.map((f) => `    - "${f}"`).join('\n')}
   difficulty: "${state.difficulty}"
   status: "${state.status}"
   path: "scenarios/${state.scenarioId}/scenario.yml"
+  readme: "scenarios/${state.scenarioId}/README.md"
 `;
 }
 

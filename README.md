@@ -102,6 +102,8 @@ They mainly assume the following:
 - work item / issue / developer hint
 - evaluation policies such as top-k and relaxed evaluation
 
+The keys a `scenario.graph.yml` may have are listed in [docs/graph-schema.md](docs/graph-schema.md); `validate-graph` warns about any other (`GW004`), except `notes` and keys that begin with `x-`, which are free notes.
+
 For Graph scenarios, use the following commands:
 
 ```bash
@@ -564,13 +566,13 @@ advanced-scenarios/SZZG-XXXX/
 └── README.md
 ```
 
-As with `new-scenario`, the entry goes at the end of the `scenarios:` list, before the index's `notes:` block, and nothing is written if the edited index would not load. `scenario_count` is updated as well.
+As with `new-scenario`, the entry goes at the end of the `scenarios:` list, in the shape both indexes share (issue #200), and nothing is written if the edited index would not load.
 
-`--category`, `--tier`, `--factor`, `--slug`, `--status` and `--root` work as they do for `new-scenario`, with `advanced-scenarios/` as the default root; a refused factor is named with its graph code (`GE400`, `GE402`), and the Graph index entry carries no slug. The skeleton has the same three commits, on `main`, and its README's `## Expected history` block is rendered from them, so `szzbench validate-graph --simulate --strict --strict-paths --lint` accepts it as it is, with at most `GI413`.
+`--category`, `--tier`, `--factor`, `--slug`, `--status` and `--root` work as they do for `new-scenario`, with `advanced-scenarios/` as the default root; a refused factor is named with its graph code (`GE400`, `GE402`). The Graph index entry has the keys of a classic one, `slug` and `readme` included. The skeleton has the same three commits, on `main`, and its README's `## Expected history` block is rendered from them, so `szzbench validate-graph --simulate --strict --strict-paths --lint` accepts it as it is, with at most `GI413`.
 
 ## validate-index
 
-Check `scenarios/index.yml` and `advanced-scenarios/index.yml` against the scenario directories: every scenario directory has an entry and every entry a scenario file, `scenario_count` agrees with the entries, no entry uses a retired id, and the fields an entry copies from its scenario's `meta`, such as the title, the status and the factors, still agree with it. The index repeats those fields, which is how it drifted before (issue #19).
+Check `scenarios/index.yml` and `advanced-scenarios/index.yml` against the scenario directories: every scenario directory has an entry and every entry a scenario file and a README, no entry uses a retired id, and the fields an entry copies from its scenario's `meta`, such as the title, the status and the factors, are all there and still agree with it. Both indexes have one shape: `scenarios:` and nothing else at the top, and the same ten keys in every entry (issue #200). The index repeats those fields, which is how it drifted before (issue #19).
 
 ```bash
 szzbench validate-index
@@ -990,6 +992,8 @@ advanced-scenarios/
 - direct BIC / origin BIC / contributing BIC
 - work item / issue / developer hint
 - top-k や relaxed evaluation などの評価ポリシー
+
+`scenario.graph.yml` が持てるキーは [docs/graph-schema.md](docs/graph-schema.md) に一覧があります。それ以外のキーには `validate-graph` が警告を出します（`GW004`）。ただし `notes` と `x-` で始まるキーは自由なメモとして扱います。
 
 Graph シナリオでは、次のコマンドを使います。
 
@@ -1411,13 +1415,13 @@ advanced-scenarios/SZZG-XXXX/
 └── README.md
 ```
 
-`new-scenario` と同じく、エントリは `scenarios:` リストの末尾（index の `notes:` ブロックの前）に追加され、編集後の index が読み込めない場合は何も書き込みません。`scenario_count` も更新されます。
+`new-scenario` と同じく、エントリは `scenarios:` リストの末尾に、2 つの index に共通の形で追加され（issue #200）、編集後の index が読み込めない場合は何も書き込みません。
 
-`--category`、`--tier`、`--factor`、`--slug`、`--status`、`--root` は `new-scenario` と同じように働きます。デフォルトのルートは `advanced-scenarios/` です。拒否された factor は Graph のコード（`GE400`、`GE402`）で示され、Graph の index のエントリは slug を持ちません。雛形は同じ 3 つのコミットを `main` に持ち、README の `## Expected history` ブロックはそのコミットから作られるので、`szzbench validate-graph --simulate --strict --strict-paths --lint` はこの雛形をそのまま受け付けます。報告されることがあるのは `GI413` だけです。
+`--category`、`--tier`、`--factor`、`--slug`、`--status`、`--root` は `new-scenario` と同じように働きます。デフォルトのルートは `advanced-scenarios/` です。拒否された factor は Graph のコード（`GE400`、`GE402`）で示されます。Graph の index のエントリも、classic と同じキー（`slug` と `readme` を含む）を持ちます。雛形は同じ 3 つのコミットを `main` に持ち、README の `## Expected history` ブロックはそのコミットから作られるので、`szzbench validate-graph --simulate --strict --strict-paths --lint` はこの雛形をそのまま受け付けます。報告されることがあるのは `GI413` だけです。
 
 ## validate-index
 
-`scenarios/index.yml` と `advanced-scenarios/index.yml` を、シナリオのディレクトリと照合します。すべてのシナリオディレクトリにエントリがあり、すべてのエントリにシナリオファイルがあること、`scenario_count` がエントリの数と一致すること、廃番の ID を使うエントリがないこと、エントリがシナリオの `meta` から写しているフィールド（タイトル、status、factors など）が今もシナリオと一致することを確かめます。index はこれらのフィールドを繰り返し持つため、以前はそこがずれていました（issue #19）。
+`scenarios/index.yml` と `advanced-scenarios/index.yml` を、シナリオのディレクトリと照合します。すべてのシナリオディレクトリにエントリがあり、すべてのエントリにシナリオファイルと README があること、廃番の ID を使うエントリがないこと、エントリがシナリオの `meta` から写しているフィールド（タイトル、status、factors など）がすべてそろい、今もシナリオと一致することを確かめます。2 つの index は同じ形で、最上位は `scenarios:` だけ、どのエントリも同じ 10 個のキーを持ちます（issue #200）。index はこれらのフィールドを繰り返し持つため、以前はそこがずれていました（issue #19）。
 
 ```bash
 szzbench validate-index
