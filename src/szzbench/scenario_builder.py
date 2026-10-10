@@ -10,7 +10,8 @@ from .findings import ValidationResult
 from .index_splice import IndexSpliceError, read_index_text, splice_index_entry, write_index_text
 from .retired_ids import read_retired_ids
 from .scenario import load_yaml
-from .validator import DEFEATABLE_FAMILIES, SCENARIO_DIFFICULTIES, SCENARIO_TIERS, lint_factors, load_index
+from .validator import (DEFEATABLE_FAMILIES, INDEX_ENTRY_KEYS, SCENARIO_DIFFICULTIES, SCENARIO_TIERS, lint_factors,
+                        load_index)
 
 DEFAULT_SCENARIOS_ROOT = Path("scenarios")
 SCENARIO_ID_RE = re.compile(r"^SZZ-(\d+)$")
@@ -95,17 +96,9 @@ def create_new_scenario(
         raise NewScenarioError(f"Scenario directory already exists: {scenario_dir}")
     # Edit the index before writing anything, so that an index the entry
     # cannot be added to leaves the root as it was (issue #111).
-    entry = {
-        "id": scenario_id,
-        "title": title,
-        "slug": scenario_slug,
-        "category_code": category_code,
-        "category": category,
-        "factors": scenario_factors,
-        "difficulty": difficulty,
-        "status": status,
-        "path": f"{root.name}/{scenario_id}/scenario.yml",
-    }
+    entry = index_entry(scenario_id=scenario_id, title=title, slug=scenario_slug, category_code=category_code,
+                        category=category, factors=scenario_factors, difficulty=difficulty, status=status,
+                        path=f"{root.name}/{scenario_id}/scenario.yml", readme=f"{root.name}/{scenario_id}/README.md")
     try:
         index_text = splice_index_entry(read_index_text(index_path, "scenarios:\n"), index_data, entry)
     except IndexSpliceError as exc:
@@ -137,6 +130,15 @@ def create_new_scenario(
         readme_path=readme_path,
         index_path=index_path,
     )
+
+
+def index_entry(*, scenario_id: str, title: str, slug: str, category_code: str, category: str, factors: list[str],
+                difficulty: str, status: str, path: str, readme: str) -> dict:
+    """A new scenario's index entry: the keys of both indexes, in their order
+    (``validator.INDEX_ENTRY_KEYS``, issue #200).  Both builders write it."""
+    values = {"id": scenario_id, "title": title, "slug": slug, "category_code": category_code, "category": category,
+              "factors": factors, "difficulty": difficulty, "status": status, "path": path, "readme": readme}
+    return {key: values[key] for key in INDEX_ENTRY_KEYS}
 
 
 def resolve_category(value: str) -> tuple[str, str] | None:

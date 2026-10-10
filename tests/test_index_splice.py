@@ -6,7 +6,8 @@ and `advanced-scenarios/index.yml` ends with a top-level `notes:` block, so
 both files stopped loading, `scenario_count` went stale, and a second run
 refused to start.  The earlier tests ran the builders on an empty root, or on
 a fixture in the builders' own style; these run them on copies of the shipped
-suites.
+suites.  Since issue #200 both indexes have one shape, with no `scenario_count`
+or `notes`, and the builders write entries of that shape.
 """
 from __future__ import annotations
 
@@ -92,33 +93,18 @@ def test_the_entry_ends_the_list_and_no_other_line_changes(work, command, roots)
     after = index.read_text(encoding="utf-8")
     lines = after.splitlines(keepends=True)
     start, end = _entry_block(lines, new_id)
-    # The entry follows the last old entry: at the end of the file for the
-    # classic index, before the top-level notes: block for the graph index.
-    old_lines = before.splitlines(keepends=True)
-    if "notes" in old:
-        assert lines[end] == "notes:\n"
-    else:
-        assert end == len(lines)
-    # Every other line is as it was, except the graph index's scenario_count.
-    expected_rest = [line.replace(f"scenario_count: {len(old['scenarios'])}\n",
-                                  f"scenario_count: {len(old['scenarios']) + 1}\n") for line in old_lines]
-    assert lines[:start] + lines[end:] == expected_rest
+    # The entry follows the last old entry, at the end of the file, and every other line is as it was.
+    assert end == len(lines)
+    assert lines[:start] + lines[end:] == before.splitlines(keepends=True)
 
-    entry = {"id": new_id, "title": "Probe"}
-    if suite == "scenarios":
-        entry.update(slug="probe", category_code=CODES[category], category=category, factors=[factor],
-                     difficulty="medium", status="draft", path=f"scenarios/{new_id}/{scenario_file}")
-    else:                                   # the graph index's own keys, in its own order
-        entry.update(category_code=CODES[category], category=category, path=f"advanced-scenarios/{new_id}/{scenario_file}",
-                     readme=f"advanced-scenarios/{new_id}/README.md", status="draft", factors=[factor])
+    # the keys of both indexes, in their order (issue #200)
+    entry = {"id": new_id, "title": "Probe", "slug": "probe", "category_code": CODES[category], "category": category,
+             "factors": [factor], "difficulty": "medium", "status": "draft", "path": f"{suite}/{new_id}/{scenario_file}",
+             "readme": f"{suite}/{new_id}/README.md"}
     assert lines[start:end] == yaml.safe_dump([entry], sort_keys=False).splitlines(keepends=True)
 
     new = yaml.safe_load(after)
-    assert new["scenarios"] == old["scenarios"] + [entry]
-    assert {key: value for key, value in new.items() if key != "scenarios"} == {
-        **{key: value for key, value in old.items() if key != "scenarios"},
-        **({"scenario_count": len(new["scenarios"])} if "scenario_count" in old else {}),
-    }
+    assert new == {"scenarios": old["scenarios"] + [entry]}
     assert _findings(work) == []
 
 
@@ -171,7 +157,9 @@ def test_an_index_that_cannot_be_extended_in_place_is_left_alone(tmp_path, comma
     assert sorted(path.name for path in root.iterdir()) == ["index.yml"]
 
 
-def test_an_empty_list_between_other_keys_takes_the_entry_and_the_count(tmp_path):
+def test_an_empty_list_between_other_keys_takes_the_entry_and_the_other_keys_stay(tmp_path):
+    """An index of the former graph shape: its keys besides `scenarios` stay as they are, a
+    `scenario_count` included, which nothing raises any more (validate-index reports it, IW004)."""
     root = tmp_path / "advanced-scenarios"
     root.mkdir()
     (root / "index.yml").write_text(
@@ -179,9 +167,10 @@ def test_an_empty_list_between_other_keys_takes_the_entry_and_the_count(tmp_path
         encoding="utf-8")
     create_new_graph_scenario(title="Probe", category="G4", factors=["branch-merge"], tier="control", root=root)
     assert (root / "index.yml").read_text(encoding="utf-8") == (
-        "schema_version: graph-index-0.1-draft\nscenario_count: 1\nscenarios:\n"
-        "- id: SZZG-0001\n  title: Probe\n  category_code: G4\n"
+        "schema_version: graph-index-0.1-draft\nscenario_count: 0\nscenarios:\n"
+        "- id: SZZG-0001\n  title: Probe\n  slug: probe\n  category_code: G4\n"
         "  category: Branch, merge, cherry-pick, backport, and release branches\n"
+        "  factors:\n  - branch-merge\n  difficulty: medium\n  status: draft\n"
         "  path: advanced-scenarios/SZZG-0001/scenario.graph.yml\n"
-        "  readme: advanced-scenarios/SZZG-0001/README.md\n  status: draft\n  factors:\n  - branch-merge\n"
+        "  readme: advanced-scenarios/SZZG-0001/README.md\n"
         "notes:\n- Keep this note.\n")

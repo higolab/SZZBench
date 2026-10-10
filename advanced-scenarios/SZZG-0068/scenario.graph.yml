@@ -79,7 +79,7 @@ commits:
     old: return value >= min && value <= max;
     new: return value > min && value <= max;
   rebase_of: f1
-  rebase_patch_modified: true
+  x-rebase_patch_modified: true
 - id: c2
   branch: main
   parents:

@@ -9,7 +9,7 @@ import unicodedata
 from .index_splice import IndexSpliceError, read_index_text, splice_index_entry, write_index_text
 from .retired_ids import read_retired_ids
 from .scenario import load_yaml
-from .scenario_builder import resolve_category, tier_lines, vocabulary_problem
+from .scenario_builder import index_entry, resolve_category, tier_lines, vocabulary_problem
 from .validator import SCENARIO_DIFFICULTIES, load_index
 
 DEFAULT_GRAPH_SCENARIOS_ROOT = Path("advanced-scenarios")
@@ -68,21 +68,14 @@ def create_new_graph_scenario(
     if scenario_dir.exists():
         raise NewGraphScenarioError(f"Graph scenario directory already exists: {scenario_dir}")
     # Edit the index before writing anything, so that an index the entry
-    # cannot be added to leaves the root as it was (issue #111).  The keys and
-    # their order are the graph index's own: it carries no slug or difficulty.
-    entry = {
-        "id": scenario_id,
-        "title": title,
-        "category_code": category_code,
-        "category": category,
-        "path": f"{root.name}/{scenario_id}/scenario.graph.yml",
-        "readme": f"{root.name}/{scenario_id}/README.md",
-        "status": status,
-        "factors": scenario_factors,
-    }
+    # cannot be added to leaves the root as it was (issue #111).  The entry has
+    # the keys of both indexes, in their order (issue #200).
+    entry = index_entry(scenario_id=scenario_id, title=title, slug=scenario_slug, category_code=category_code,
+                        category=category, factors=scenario_factors, difficulty=difficulty, status=status,
+                        path=f"{root.name}/{scenario_id}/scenario.graph.yml",
+                        readme=f"{root.name}/{scenario_id}/README.md")
     try:
-        index_text = splice_index_entry(
-            read_index_text(index_path, 'schema_version: "graph-index-0.1-draft"\nscenarios:\n'), index_data, entry)
+        index_text = splice_index_entry(read_index_text(index_path, "scenarios:\n"), index_data, entry)
     except IndexSpliceError as exc:
         raise NewGraphScenarioError(f"Cannot add {scenario_id} to {index_path}: {exc}. Nothing was written.") from exc
 
@@ -116,7 +109,7 @@ def create_new_graph_scenario(
 
 def _load_index(index_path: Path) -> dict:
     if not index_path.exists():
-        return {"schema_version": "graph-index-0.1-draft", "scenarios": []}
+        return {"scenarios": []}
     data, problem = load_index(index_path)         # a message that names index.yml (issue #158)
     if data is None:
         raise NewGraphScenarioError(f"Cannot read {index_path}: {problem}")
@@ -196,8 +189,7 @@ meta:
   factors: {_inline_list(factors)}
   difficulty: {_quote(difficulty)}
   status: {_quote(status)}
-{tier_lines(tier)}  related_simple_scenarios: []
-
+{tier_lines(tier)}
 repository:
   name: {_quote(repository_name)}
   default_branch: "main"
@@ -207,7 +199,6 @@ repository:
 
 graph:
   model: "commit_dag"
-  default_branch: "main"
   history_summary: >
     TODO: Summarize the intended commit graph.
 
@@ -279,8 +270,6 @@ expected_szz:
     required:
       - "c1"
 
-graph_extensions: []
-evaluation_points: []
 notes:
   - "TODO: Add notes about why this needs scenario.graph.yml."
 '''

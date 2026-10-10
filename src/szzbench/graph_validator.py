@@ -4,11 +4,12 @@ from datetime import datetime, timezone
 
 from pathlib import Path
 from typing import Any
+import difflib
 import re
 import reprlib
 
-from .evaluator import (_commit_level_policy, _is_int, _number_value, _selected_evaluation_variant, _string_list,
-                        classify_prediction)
+from .evaluator import (_UNREAD_GRAPH_ORACLE_SECTIONS, _commit_level_policy, _is_int, _number_value,
+                        _selected_evaluation_variant, _string_list, classify_prediction)
 from .findings import ValidationResult
 from .graph_operations import (PATH_FIELDS_BY_OPERATION, REQUIRED_FIELDS_BY_OPERATION, SUPPORTED_GRAPH_OPERATIONS,
                                WRITTEN_PATH_FIELDS_BY_OPERATION, decode_content_base64)
@@ -20,6 +21,7 @@ from .gitutils import (REWRITE_SOURCE_KEYS, GitError, commit_branch, format_time
 from .operations import OperationError, resolve_line_ending, type_label
 from .paths import PathValidationError, file_system_key, validate_repo_relative_path
 from .policies import SUPPORTED_EVALUATION_POLICIES
+from .readme import GRAPH_CONTEXT_SECTIONS
 from .validator import (ALLOWED_ROLES, COMMIT_MESSAGE_RULE, LINT_INPUT_ERRORS, check_commit_date_order,
                         check_commit_metadata, check_git_control_files, check_scheduled_dates, check_status,
                         classic_scenario_guard, commit_message_problem, lint_author_coincidence, lint_defeats,
@@ -85,6 +87,79 @@ LOCATION_STATEMENT_KEYS = ("statement", "added_statement", "removed_statement", 
 INHERIT_SOURCE_KEYS = REWRITE_SOURCE_KEYS
 #: What each inherit option makes the commit take from its source.
 INHERITED_FIELDS = {"inherit_message": "message", "inherit_author_date": "author_date", "inherit_author": "author"}
+
+# --- the keys of a graph scenario (issue #160) --------------------------------
+#
+# The loader kept every key and the checks read the ones they knew, so a key
+# nothing reads -- a misspelt `parent:`, a leftover such as `rebase_patch_modified`
+# -- was neither reported nor used.  Each object below has the keys that
+# generation, validation, simulation, verification or evaluation read, and those
+# docs/graph-schema.md describes; any object may also carry `notes` and keys that
+# start with `x-`, which are free-form.  Anything else is GW004.  What is inside the
+# context sections (`scenario_design`, `issues`, `work_items`, ...) and the oracle
+# sections the evaluator does not score (`line_level`, `entity_level`, `bug_level`,
+# `work_item_level`, `bug_instances`) is free-form; `graph.ref_lifecycle` has its
+# own check (GE152, GE155).  docs/graph-schema.md lists the same keys, and a test
+# compares the two.
+
+#: The key every object may carry as a free-form note, and the prefix of the others.
+FREE_FORM_KEY = "notes"
+FREE_FORM_PREFIX = "x-"
+
+#: The top level: the sections every scenario has, ``scenario_design``, and the context
+#: sections the README header lists (``readme.GRAPH_CONTEXT_SECTIONS``).
+TOP_LEVEL_KEYS = frozenset({"schema_version", "meta", "repository", "graph", "commits", "bugs", "expected_szz",
+                            "scenario_design", *GRAPH_CONTEXT_SECTIONS})
+META_KEYS = frozenset({"id", "title", "slug", "description", "category", "category_code", "factors",
+                       "difficulty", "status", "tier", "defeats"})
+REPOSITORY_KEYS = frozenset({"name", "default_branch", "language", "build_system", "source_root", "base_date"})
+GRAPH_KEYS = frozenset({"model", "history_summary", "ref_lifecycle"})
+COMMIT_KEYS = frozenset({
+    "id", "branch", "parents", "message", "role", "operations", "allow_empty",
+    "author", "date", "author_date", "committer_date",
+    "rebase_of", "squashes", "revert_of", "cherry_pick_of", "backport_of",
+    "inherit_message", "inherit_author_date", "inherit_author", "cherry_pick_trailer",
+    "apply_revert", "mainline", "resolution",
+    # recorded in graph-map.json as written (generator-options.md section 4)
+    "interactive_rebase", "rebase_conflict_resolution", "reverts", "revert_conflict_resolution",
+})
+#: The keys of each operation besides ``type``, as graph_operations, the simulator and the generator read them.
+OPERATION_KEYS: dict[str, frozenset[str]] = {
+    "write_file": frozenset({"path", "content", "line_ending", "encoding"}),
+    "replace": frozenset({"path", "old", "new", "occurrence", "line_ending", "encoding"}),
+    "insert_after": frozenset({"path", "anchor", "content", "occurrence", "line_ending", "encoding"}),
+    "delete_file": frozenset({"path"}),
+    "rename_file": frozenset({"from", "to", "overwrite"}),
+    "move_file": frozenset({"from", "to", "overwrite"}),
+    "copy_file": frozenset({"from", "to", "overwrite"}),
+    "move_entity": frozenset({"entity", "from_file", "to_file", "overwrite", "append", "remove_source_file",
+                              "line_ending", "encoding"}),
+    "copy_entity": frozenset({"entity", "from_file", "to_file", "overwrite", "append", "line_ending", "encoding"}),
+    "chmod": frozenset({"path", "mode"}),
+    "write_binary_file": frozenset({"path", "content_base64"}),
+    "write_generated_text_file": frozenset({"path", "lines", "template", "header", "footer", "encoding"}),
+    "commit_generator": frozenset({"generator", "count", "files", "path"}),
+    "apply_squash": frozenset({"from_commits"}),
+    "apply_patch_from": frozenset({"commit", "mainline", "parent"}),
+    "apply_patch": frozenset({"path", "patch"}),
+    "format_file": frozenset({"path", "line_ending", "encoding"}),
+}
+BUG_KEYS = frozenset({"id", "title", "bug_introducing_commits", "bug_fixing_commits", "bug_fixing_commit",
+                      "faults", "fault", "fixes", "fix", "origin_faults",
+                      # the refactoring metadata and bug instances the README lists among the graph-only features
+                      "refactorings", "bug_instances"})
+#: A fault's or fix's keys: what verification reads, and the labels that tell a reader one entry from another.
+LOCATION_KEYS = frozenset({"id", "commit", "file", "entity", *LOCATION_STATEMENT_KEYS,
+                           "description", "role", "case", "location", "semantic_role"})
+FAULT_KEYS = LOCATION_KEYS | {"change_type"}
+FIX_KEYS = LOCATION_KEYS | {"fix_type"}
+#: The scored oracle, and the sections the evaluator notes it does not score.
+EXPECTED_SZZ_KEYS = frozenset({"commit_level", "evaluation_variants", "default_variant", "branch_level",
+                               *_UNREAD_GRAPH_ORACLE_SECTIONS})
+COMMIT_LEVEL_KEYS = frozenset({"evaluation_policy", *EXPECTED_SZZ_COMMIT_LISTS, "known_distractors",
+                               "expect_no_bic", "minimum_required", "k_values", "status_k"})
+EVALUATION_VARIANT_KEYS = frozenset({"name", "description", "commit_level"})
+BRANCH_LEVEL_KEYS = frozenset({"bfc", "required"})
 
 
 def validate_graph_scenario_file(
@@ -319,13 +394,22 @@ def validate_graph_static(data: dict[str, Any], *, scenario_path: Path | None = 
                 )
             else:
                 result.error("GE084", f"bug {bid} must define bug_introducing_commits.", f"{loc}.bug_introducing_commits")
-        if not bfc_entries:
+        raw_bfcs, raw_bfc = bug.get("bug_fixing_commits"), bug.get("bug_fixing_commit")
+        if raw_bfcs is not None and not isinstance(raw_bfcs, list):
+            # graph_bfc_entries reads a list only, and the message said the field was missing (issue #160)
+            result.error("GE085", f"bug {bid}: bug_fixing_commits must be a list, not {type_label(raw_bfcs)}.",
+                         f"{loc}.bug_fixing_commits")
+        elif raw_bfcs is None and raw_bfc is not None and not isinstance(raw_bfc, str):
+            result.error("GE085", f"bug {bid}: bug_fixing_commit must be a commit id, not {type_label(raw_bfc)}.",
+                         f"{loc}.bug_fixing_commit")
+        elif not bfc_entries:
             result.error("GE085", f"bug {bid} must define bug_fixing_commits or bug_fixing_commit.", f"{loc}.bug_fixing_commits")
         for j, entry in enumerate(bic_entries):
             _validate_commit_ref_entry(entry, commit_by_id, result, f"{loc}.bug_introducing_commits[{j}]", "BIC")
         for j, entry in enumerate(bfc_entries):
             _validate_commit_ref_entry(entry, commit_by_id, result, f"{loc}.bug_fixing_commits[{j}]", "BFC")
 
+        _validate_location_containers(bug, str(bid), result, loc)                                       # issue #160
         for j, fault in enumerate(graph_faults(bug)):
             _validate_location_entry(fault, commit_by_id, result, f"{loc}.faults[{j}]", kind="fault")
         for j, fix in enumerate(graph_fixes(bug)):
@@ -334,11 +418,12 @@ def validate_graph_static(data: dict[str, Any], *, scenario_path: Path | None = 
     _validate_expected_szz(data.get("expected_szz"), commit_by_id, result)
     _warn_inferred_commit_level(data, result)
     _validate_context_sections(data, commit_by_id, result)
+    _warn_unknown_keys(data, result)                                                                      # issue #160
     return result
 
 
 def _validate_source_options(commits: list[Any], result: ValidationResult) -> None:
-    """GE074 / GE075: a commit option that copies from a source commit has one (issue #179); GE076.
+    """GE074 / GE075: a commit option that copies from a source commit has one (issue #179); GE076, GE077.
 
     Generation takes ``inherit_message`` / ``inherit_author_date`` /
     ``inherit_author`` from the first of ``rebase_of``, ``cherry_pick_of`` and
@@ -352,7 +437,7 @@ def _validate_source_options(commits: list[Any], result: ValidationResult) -> No
 
     GE076: ``inherit_author`` is ``true`` or ``false``, and a commit that
     inherits its author does not write one too, which one of the two would
-    silently override (issue #180).
+    silently override (issue #180).  GE077: so is ``allow_empty`` (issue #160).
     """
     for i, commit in enumerate(commits):
         if not isinstance(commit, dict):
@@ -379,6 +464,12 @@ def _validate_source_options(commits: list[Any], result: ValidationResult) -> No
             elif inherit_author and commit.get("author") is not None:
                 result.error("GE076", f"Commit '{cid}' sets both author and inherit_author: true, which takes the "
                              "author of its rewrite source; write only one of them.", f"{loc}.inherit_author")
+        if "allow_empty" in commit and not isinstance(commit["allow_empty"], bool):
+            # read as bool(): `allow_empty: "false"` let an empty commit through GW045 and GE202 (issue #160)
+            allow_empty = commit["allow_empty"]
+            shown = "a blank value" if allow_empty is None else repr(allow_empty)
+            result.error("GE077", f"Commit '{cid}' allow_empty must be true or false, not {shown}, which generation "
+                         f"and the checks read as {str(bool(allow_empty)).lower()}.", f"{loc}.allow_empty")
         if commit.get("cherry_pick_trailer"):
             operations = commit.get("operations") if isinstance(commit.get("operations"), list) else []
             sources = [commit.get("cherry_pick_of"), commit.get("backport_of"),
@@ -528,6 +619,27 @@ def _validate_commit_ref_entry(entry: Any, commit_by_id: dict[str, dict[str, Any
         result.error("GE093", f"{label} refers to unknown commit '{cid}'.", loc)
 
 
+def _validate_location_containers(bug: dict[str, Any], bid: str, result: ValidationResult, loc: str) -> None:
+    """GE107: ``faults`` / ``fixes`` is a list of objects, and ``fault`` / ``fix`` an object (issue #160).
+
+    ``graph_faults`` and ``graph_fixes`` read nothing else and skip the rest:
+    ``faults: {commit: no-such-commit}`` passed, its unknown commit never
+    checked (GE101), and so did an entry that is not an object.
+    """
+    for key, singular in (("faults", "fault"), ("fixes", "fix")):
+        value = bug.get(key)
+        if value is not None and not isinstance(value, list):
+            result.error("GE107", f"bug {bid}: {key} must be a list of {singular} entries, not {type_label(value)}.",
+                         f"{loc}.{key}")
+        for j, entry in enumerate(value if isinstance(value, list) else []):
+            if not isinstance(entry, dict):
+                result.error("GE107", f"bug {bid}: {key}[{j}] must be an object, not {type_label(entry)}.",
+                             f"{loc}.{key}[{j}]")
+        if bug.get(singular) is not None and not isinstance(bug[singular], dict):
+            result.error("GE107", f"bug {bid}: {singular} must be an object, not {type_label(bug[singular])}.",
+                         f"{loc}.{singular}")
+
+
 def _validate_location_entry(entry: dict[str, Any], commit_by_id: dict[str, dict[str, Any]], result: ValidationResult, loc: str, *, kind: str) -> None:
     commit = entry.get("commit")
     if not isinstance(commit, str):
@@ -599,6 +711,8 @@ def _validate_expected_szz(expected: Any, commit_by_id: dict[str, dict[str, Any]
         policy = commit_level.get("evaluation_policy")
         if isinstance(policy, str):
             policies.append((policy, "expected_szz.commit_level.evaluation_policy"))
+        elif "evaluation_policy" in commit_level:
+            _report_policy_type(policy, "expected_szz.commit_level.evaluation_policy", result)
         _validate_oracle_lists(commit_level, commit_by_id, result, "expected_szz.commit_level")
     variants = expected.get("evaluation_variants")
     if variants is not None and not isinstance(variants, list):
@@ -619,8 +733,11 @@ def _validate_expected_szz(expected: Any, commit_by_id: dict[str, dict[str, Any]
             if isinstance(cl, dict):
                 _validate_oracle_lists(cl, commit_by_id, result, f"expected_szz.evaluation_variants[{i}].commit_level")
                 variant_policy = cl.get("evaluation_policy")
+                variant_loc = f"expected_szz.evaluation_variants[{i}].commit_level.evaluation_policy"
                 if isinstance(variant_policy, str):
-                    policies.append((variant_policy, f"expected_szz.evaluation_variants[{i}].commit_level.evaluation_policy"))
+                    policies.append((variant_policy, variant_loc))
+                elif "evaluation_policy" in cl:
+                    _report_policy_type(variant_policy, variant_loc, result)
     for policy, loc in policies:
         if policy not in ALLOWED_EVALUATION_POLICIES:
             result.warning("GW123", f"Unknown evaluation_policy '{policy}'.", loc)
@@ -658,6 +775,15 @@ def _validate_expected_szz(expected: Any, commit_by_id: dict[str, dict[str, Any]
                     result.error("GE127", f"{loc}.required must be a list of commit ids (write [] for an intentionally empty answer).", f"{loc}.required")
                 else:
                     _validate_commit_list(spec["required"], commit_by_id, result, f"{loc}.required")
+
+
+def _report_policy_type(policy: Any, loc: str, result: ValidationResult) -> None:
+    """GE123: an ``evaluation_policy`` that is not a string (issue #160).  The vocabulary
+    check (GW123) read strings only, and the evaluator scores anything else as
+    ``exact_set`` without the note an unknown name gets."""
+    shown = type_label(policy) if policy is None else f"{type_label(policy)} {policy!r}"
+    result.error("GE123", f"evaluation_policy must be a string, the name of a policy such as 'exact_set', not "
+                 f"{shown}; the evaluator would score it as exact_set without a note.", loc)
 
 
 def _warn_inferred_commit_level(data: dict[str, Any], result: ValidationResult) -> None:
@@ -785,6 +911,69 @@ def _validate_context_sections(data: dict[str, Any], commit_by_id: dict[str, dic
             for j, ref in enumerate(refs):
                 if isinstance(ref, str) and ref not in commit_by_id:
                     result.error("GE142", f"developer_hints[{i}] references unknown commit '{ref}'.", f"developer_hints[{i}].referenced_commits[{j}]")
+
+
+def _warn_unknown_keys(data: dict[str, Any], result: ValidationResult) -> None:
+    """GW004: a key that no object of the graph schema has (issue #160).
+
+    Only objects are looked into: a section of the wrong type is another
+    check's.  The hint names a key of the same object that is spelt nearly
+    the same (``parent`` -> ``parents``).
+    """
+    def check(obj: Any, allowed: frozenset[str], loc: str, subject: str) -> None:
+        if not isinstance(obj, dict):
+            return
+        for key in obj:
+            if key in allowed or key == FREE_FORM_KEY or (isinstance(key, str) and key.startswith(FREE_FORM_PREFIX)):
+                continue
+            near = difflib.get_close_matches(key, sorted(allowed), n=1, cutoff=0.8) if isinstance(key, str) else []
+            hint = f" (did you mean '{near[0]}'?)" if near else ""
+            result.warning("GW004", f"{subject} has an unknown key {key!r}{hint}, which nothing reads. A free-form "
+                           f"note goes under '{FREE_FORM_KEY}' or a key that starts with '{FREE_FORM_PREFIX}' "
+                           "(docs/graph-schema.md).", f"{loc}.{key}" if loc else str(key))
+
+    check(data, TOP_LEVEL_KEYS, "", "The scenario")
+    check(data.get("meta"), META_KEYS, "meta", "meta")
+    check(data.get("repository"), REPOSITORY_KEYS, "repository", "repository")
+    check(data.get("graph"), GRAPH_KEYS, "graph", "graph")
+    commits = data.get("commits")
+    for i, commit in enumerate(commits if isinstance(commits, list) else []):
+        if not isinstance(commit, dict):
+            continue
+        name = f"Commit '{commit['id']}'" if isinstance(commit.get("id"), str) else f"commits[{i}]"
+        check(commit, COMMIT_KEYS, f"commits[{i}]", name)
+        operations = commit.get("operations")
+        for j, op in enumerate(operations if isinstance(operations, list) else []):
+            op_type = op.get("type") if isinstance(op, dict) else None
+            if isinstance(op_type, str) and op_type in OPERATION_KEYS:       # an unknown type is GE052
+                check(op, OPERATION_KEYS[op_type] | {"type"}, f"commits[{i}].operations[{j}]",
+                      f"{name}: operation '{op_type}'")
+    bugs = data.get("bugs")
+    for i, bug in enumerate(bugs if isinstance(bugs, list) else []):
+        if not isinstance(bug, dict):
+            continue
+        name = f"bug {bug['id']}" if isinstance(bug.get("id"), str) else f"bugs[{i}]"
+        check(bug, BUG_KEYS, f"bugs[{i}]", name)
+        for key, allowed, kind in (("faults", FAULT_KEYS, "fault"), ("fixes", FIX_KEYS, "fix")):
+            entries = bug.get(key)
+            for j, entry in enumerate(entries if isinstance(entries, list) else []):
+                check(entry, allowed, f"bugs[{i}].{key}[{j}]", f"{name}: {key}[{j}]")
+            check(bug.get(kind), allowed, f"bugs[{i}].{kind}", f"{name}: {kind}")
+    expected = data.get("expected_szz")
+    if not isinstance(expected, dict):
+        return
+    check(expected, EXPECTED_SZZ_KEYS, "expected_szz", "expected_szz")
+    check(expected.get("commit_level"), COMMIT_LEVEL_KEYS, "expected_szz.commit_level", "expected_szz.commit_level")
+    variants = expected.get("evaluation_variants")
+    for i, variant in enumerate(variants if isinstance(variants, list) else []):
+        loc = f"expected_szz.evaluation_variants[{i}]"
+        check(variant, EVALUATION_VARIANT_KEYS, loc, loc)
+        if isinstance(variant, dict):
+            check(variant.get("commit_level"), COMMIT_LEVEL_KEYS, f"{loc}.commit_level", f"{loc}.commit_level")
+    branch_level = expected.get("branch_level")
+    for branch, spec in (branch_level.items() if isinstance(branch_level, dict) else []):
+        loc = f"expected_szz.branch_level.{branch}"
+        check(spec, BRANCH_LEVEL_KEYS, loc, loc)
 
 
 REPORTED_LINE_RE = re.compile(r"^Reported:\s*(\S+)\s*$", re.M)

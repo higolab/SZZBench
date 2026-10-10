@@ -13,6 +13,7 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0005/scenario.yml
+  readme: scenarios/SZZ-0005/README.md
 - id: SZZ-0006
   title: Arithmetic sign error
   slug: arithmetic-sign-error
@@ -26,6 +27,7 @@ scenarios:
   difficulty: easy
   status: active
   path: scenarios/SZZ-0006/scenario.yml
+  readme: scenarios/SZZ-0006/README.md
 - id: SZZ-0012
   title: Logical conjunction error
   slug: logical-conjunction-error
@@ -39,6 +41,7 @@ scenarios:
   difficulty: easy
   status: active
   path: scenarios/SZZ-0012/scenario.yml
+  readme: scenarios/SZZ-0012/README.md
 - id: SZZ-0014
   title: Negated boolean condition
   slug: negated-boolean-condition
@@ -52,6 +55,7 @@ scenarios:
   difficulty: easy
   status: active
   path: scenarios/SZZ-0014/scenario.yml
+  readme: scenarios/SZZ-0014/README.md
 - id: SZZ-0015
   title: Wrong return variable
   slug: wrong-return-variable
@@ -65,6 +69,7 @@ scenarios:
   difficulty: easy
   status: active
   path: scenarios/SZZ-0015/scenario.yml
+  readme: scenarios/SZZ-0015/README.md
 - id: SZZ-0021
   title: Wrong threshold constant
   slug: wrong-threshold-constant
@@ -78,6 +83,7 @@ scenarios:
   difficulty: easy
   status: active
   path: scenarios/SZZ-0021/scenario.yml
+  readme: scenarios/SZZ-0021/README.md
 - id: SZZ-0028
   title: BFC removes an erroneous guard
   slug: bfc-removes-erroneous-guard
@@ -90,6 +96,7 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0028/scenario.yml
+  readme: scenarios/SZZ-0028/README.md
 - id: SZZ-0044
   title: Incorrect status transition condition
   slug: status-transition-bic
@@ -103,6 +110,7 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0044/scenario.yml
+  readme: scenarios/SZZ-0044/README.md
 - id: SZZ-0047
   title: Simple omission bug
   slug: simple-omission-bug
@@ -116,6 +124,7 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0047/scenario.yml
+  readme: scenarios/SZZ-0047/README.md
 - id: SZZ-0050
   title: Index lower bound error
   slug: index-lower-bound-error
@@ -129,6 +138,7 @@ scenarios:
   difficulty: easy
   status: active
   path: scenarios/SZZ-0050/scenario.yml
+  readme: scenarios/SZZ-0050/README.md
 - id: SZZ-0053
   title: Bounds check omission
   slug: bounds-check-omission
@@ -142,6 +152,7 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0053/scenario.yml
+  readme: scenarios/SZZ-0053/README.md
 - id: SZZ-0070
   title: State transition check omission
   slug: state-transition-check-omission
@@ -155,6 +166,7 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0070/scenario.yml
+  readme: scenarios/SZZ-0070/README.md
 - id: SZZ-0076
   title: Path traversal check omission
   slug: path-traversal-check-omission
@@ -169,6 +181,7 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0076/scenario.yml
+  readme: scenarios/SZZ-0076/README.md
 - id: SZZ-0078
   title: Guard deletion introduces bug
   slug: guard-deletion-bic
@@ -182,6 +195,7 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0078/scenario.yml
+  readme: scenarios/SZZ-0078/README.md
 - id: SZZ-0079
   title: Null check deletion introduces bug
   slug: null-check-deletion-bic
@@ -196,6 +210,7 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0079/scenario.yml
+  readme: scenarios/SZZ-0079/README.md
 - id: SZZ-0080
   title: Zero-denominator guard deletion introduces a division by zero
   slug: zero-guard-deletion-bic
@@ -210,6 +225,7 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0080/scenario.yml
+  readme: scenarios/SZZ-0080/README.md
 - id: SZZ-0081
   title: Formatting after bug introduction
   slug: formatting-after-bic
@@ -225,6 +241,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0081/scenario.yml
+  readme: scenarios/SZZ-0081/README.md
 - id: SZZ-0083
   title: Whitespace-only rewrite after bug introduction
   slug: whitespace-only-rewrite-after-bic
@@ -239,6 +256,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0083/scenario.yml
+  readme: scenarios/SZZ-0083/README.md
 - id: SZZ-0084
   title: Whitespace-only rewrite after BIC with preserved line
   slug: whitespace-preserved-after-bic
@@ -254,6 +272,7 @@ scenarios:
   difficulty: easy
   status: active
   path: scenarios/SZZ-0084/scenario.yml
+  readme: scenarios/SZZ-0084/README.md
 - id: SZZ-0085
   title: Comment insertion after BIC
   slug: comment-insertion-after-bic
@@ -268,6 +287,7 @@ scenarios:
   difficulty: easy
   status: active
   path: scenarios/SZZ-0085/scenario.yml
+  readme: scenarios/SZZ-0085/README.md
 - id: SZZ-0086
   title: Logging insertion after BIC
   slug: logging-insertion-after-bic
@@ -282,6 +302,7 @@ scenarios:
   difficulty: easy
   status: active
   path: scenarios/SZZ-0086/scenario.yml
+  readme: scenarios/SZZ-0086/README.md
 - id: SZZ-0087
   title: Unrelated method addition after BIC
   slug: unrelated-method-after-bic
@@ -296,6 +317,7 @@ scenarios:
   difficulty: easy
   status: active
   path: scenarios/SZZ-0087/scenario.yml
+  readme: scenarios/SZZ-0087/README.md
 - id: SZZ-0088
   title: Class body reformat after BIC
   slug: class-body-reformat-after-bic
@@ -310,6 +332,7 @@ scenarios:
   difficulty: easy
   status: active
   path: scenarios/SZZ-0088/scenario.yml
+  readme: scenarios/SZZ-0088/README.md
 - id: SZZ-0089
   title: Import addition after BIC
   slug: import-addition-after-bic
@@ -325,6 +348,7 @@ scenarios:
   difficulty: easy
   status: active
   path: scenarios/SZZ-0089/scenario.yml
+  readme: scenarios/SZZ-0089/README.md
 - id: SZZ-0090
   title: Guard clause addition after BIC
   slug: guard-clause-after-bic
@@ -340,6 +364,7 @@ scenarios:
   difficulty: easy
   status: active
   path: scenarios/SZZ-0090/scenario.yml
+  readme: scenarios/SZZ-0090/README.md
 - id: SZZ-0091
   title: Dead code removal after BIC
   slug: dead-code-removal-after-bic
@@ -355,6 +380,7 @@ scenarios:
   difficulty: easy
   status: active
   path: scenarios/SZZ-0091/scenario.yml
+  readme: scenarios/SZZ-0091/README.md
 - id: SZZ-0092
   title: Loop to conditional rewrite after BIC
   slug: loop-to-conditional-after-bic
@@ -369,6 +395,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0092/scenario.yml
+  readme: scenarios/SZZ-0092/README.md
 - id: SZZ-0093
   title: If-else to guard clause after BIC
   slug: if-else-to-guard-after-bic
@@ -383,6 +410,7 @@ scenarios:
   difficulty: easy
   status: active
   path: scenarios/SZZ-0093/scenario.yml
+  readme: scenarios/SZZ-0093/README.md
 - id: SZZ-0094
   title: Annotation addition after BIC
   slug: annotation-addition-after-bic
@@ -397,6 +425,7 @@ scenarios:
   difficulty: easy
   status: active
   path: scenarios/SZZ-0094/scenario.yml
+  readme: scenarios/SZZ-0094/README.md
 - id: SZZ-0095
   title: Generic type change after BIC
   slug: generic-type-change-after-bic
@@ -411,6 +440,7 @@ scenarios:
   difficulty: easy
   status: active
   path: scenarios/SZZ-0095/scenario.yml
+  readme: scenarios/SZZ-0095/README.md
 - id: SZZ-0096
   title: Lambda rewrite after BIC
   slug: lambda-rewrite-after-bic
@@ -425,6 +455,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0096/scenario.yml
+  readme: scenarios/SZZ-0096/README.md
 - id: SZZ-0098
   title: Enum case addition after BIC
   slug: enum-case-after-bic
@@ -439,6 +470,7 @@ scenarios:
   difficulty: easy
   status: active
   path: scenarios/SZZ-0098/scenario.yml
+  readme: scenarios/SZZ-0098/README.md
 - id: SZZ-0099
   title: Synchronized modifier after BIC
   slug: synchronized-after-bic
@@ -453,6 +485,7 @@ scenarios:
   difficulty: easy
   status: active
   path: scenarios/SZZ-0099/scenario.yml
+  readme: scenarios/SZZ-0099/README.md
 - id: SZZ-0100
   title: Try block rewrite after BIC
   slug: try-block-rewrite-after-bic
@@ -467,6 +500,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0100/scenario.yml
+  readme: scenarios/SZZ-0100/README.md
 - id: SZZ-0101
   title: Throws declaration after BIC
   slug: throws-declaration-after-bic
@@ -480,6 +514,7 @@ scenarios:
   difficulty: easy
   status: active
   path: scenarios/SZZ-0101/scenario.yml
+  readme: scenarios/SZZ-0101/README.md
 - id: SZZ-0102
   title: Import reorder after BIC
   slug: import-reorder-after-bic
@@ -493,6 +528,7 @@ scenarios:
   difficulty: easy
   status: active
   path: scenarios/SZZ-0102/scenario.yml
+  readme: scenarios/SZZ-0102/README.md
 - id: SZZ-0103
   title: Comment deletion after BIC
   slug: comment-deletion-after-bic
@@ -506,6 +542,7 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0103/scenario.yml
+  readme: scenarios/SZZ-0103/README.md
 - id: SZZ-0104
   title: Method order change after BIC
   slug: method-order-change-after-bic
@@ -519,6 +556,7 @@ scenarios:
   difficulty: easy
   status: active
   path: scenarios/SZZ-0104/scenario.yml
+  readme: scenarios/SZZ-0104/README.md
 - id: SZZ-0105
   title: Dead code addition after BIC
   slug: dead-code-addition-after-bic
@@ -532,6 +570,7 @@ scenarios:
   difficulty: easy
   status: active
   path: scenarios/SZZ-0105/scenario.yml
+  readme: scenarios/SZZ-0105/README.md
 - id: SZZ-0107
   title: Large commit with small bug
   slug: large-commit-small-bug
@@ -546,6 +585,7 @@ scenarios:
   difficulty: easy
   status: active
   path: scenarios/SZZ-0107/scenario.yml
+  readme: scenarios/SZZ-0107/README.md
 - id: SZZ-0108
   title: CRLF-like full file rewrite
   slug: crlf-like-full-file-rewrite
@@ -561,6 +601,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0108/scenario.yml
+  readme: scenarios/SZZ-0108/README.md
 - id: SZZ-0109
   title: Comment-only intermediate before fix
   slug: comment-only-intermediate
@@ -575,6 +616,7 @@ scenarios:
   difficulty: easy
   status: active
   path: scenarios/SZZ-0109/scenario.yml
+  readme: scenarios/SZZ-0109/README.md
 - id: SZZ-0110
   title: Large noisy intermediate history
   slug: large-noisy-intermediate
@@ -589,6 +631,7 @@ scenarios:
   difficulty: easy
   status: active
   path: scenarios/SZZ-0110/scenario.yml
+  readme: scenarios/SZZ-0110/README.md
 - id: SZZ-0111
   title: Generated-looking repetitive code
   slug: generated-looking-repetitive-code
@@ -604,6 +647,7 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0111/scenario.yml
+  readme: scenarios/SZZ-0111/README.md
 - id: SZZ-0112
   title: Huge method surrounding small bug
   slug: huge-method-small-bug
@@ -619,6 +663,7 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0112/scenario.yml
+  readme: scenarios/SZZ-0112/README.md
 - id: SZZ-0113
   title: Malformed commit message
   slug: malformed-commit-message
@@ -635,6 +680,7 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0113/scenario.yml
+  readme: scenarios/SZZ-0113/README.md
 - id: SZZ-0114
   title: Tangled bug-introducing commit
   slug: tangled-bug-introducing-commit
@@ -648,6 +694,7 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0114/scenario.yml
+  readme: scenarios/SZZ-0114/README.md
 - id: SZZ-0115
   title: Tangled bug-fixing commit
   slug: tangled-bug-fixing-commit
@@ -661,6 +708,7 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0115/scenario.yml
+  readme: scenarios/SZZ-0115/README.md
 - id: SZZ-0116
   title: Multiple-hunk bug-fixing commit
   slug: multiple-hunk-bfc
@@ -675,6 +723,7 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0116/scenario.yml
+  readme: scenarios/SZZ-0116/README.md
 - id: SZZ-0117
   title: BFC with test file addition
   slug: bfc-with-test-addition
@@ -688,6 +737,7 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0117/scenario.yml
+  readme: scenarios/SZZ-0117/README.md
 - id: SZZ-0118
   title: BFC with comment update
   slug: bfc-with-comment-update
@@ -701,6 +751,7 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0118/scenario.yml
+  readme: scenarios/SZZ-0118/README.md
 - id: SZZ-0119
   title: BFC with logging addition
   slug: bfc-with-logging-addition
@@ -714,6 +765,7 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0119/scenario.yml
+  readme: scenarios/SZZ-0119/README.md
 - id: SZZ-0121
   title: BFC with cleanup of unrelated method
   slug: bfc-with-cleanup
@@ -728,6 +780,7 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0121/scenario.yml
+  readme: scenarios/SZZ-0121/README.md
 - id: SZZ-0122
   title: BFC touches an extra file besides the fault
   slug: bfc-with-extra-file
@@ -741,6 +794,7 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0122/scenario.yml
+  readme: scenarios/SZZ-0122/README.md
 - id: SZZ-0123
   title: BFC with two faulty expressions fixed
   slug: bfc-fixes-two-expressions
@@ -756,6 +810,7 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0123/scenario.yml
+  readme: scenarios/SZZ-0123/README.md
 - id: SZZ-0124
   title: Variable rename after BIC
   slug: variable-rename-after-bic
@@ -770,6 +825,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0124/scenario.yml
+  readme: scenarios/SZZ-0124/README.md
 - id: SZZ-0125
   title: Method rename after BIC
   slug: method-rename-after-bic
@@ -784,6 +840,7 @@ scenarios:
   difficulty: easy
   status: active
   path: scenarios/SZZ-0125/scenario.yml
+  readme: scenarios/SZZ-0125/README.md
 - id: SZZ-0127
   title: Method signature extension after BIC
   slug: method-signature-extension-after-bic
@@ -798,6 +855,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0127/scenario.yml
+  readme: scenarios/SZZ-0127/README.md
 - id: SZZ-0128
   title: Extract helper after BIC
   slug: extract-helper-after-bic
@@ -812,6 +870,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0128/scenario.yml
+  readme: scenarios/SZZ-0128/README.md
 - id: SZZ-0129
   title: Inline helper after BIC
   slug: inline-helper-after-bic
@@ -825,6 +884,7 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0129/scenario.yml
+  readme: scenarios/SZZ-0129/README.md
 - id: SZZ-0130
   title: Field extraction after BIC
   slug: field-extraction-after-bic
@@ -839,6 +899,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0130/scenario.yml
+  readme: scenarios/SZZ-0130/README.md
 - id: SZZ-0132
   title: Basic multiple bug-introducing commits
   slug: basic-multiple-bic
@@ -852,6 +913,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0132/scenario.yml
+  readme: scenarios/SZZ-0132/README.md
 - id: SZZ-0133
   title: Duplicate fault statement
   slug: duplicate-fault-statement
@@ -866,6 +928,7 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0133/scenario.yml
+  readme: scenarios/SZZ-0133/README.md
 - id: SZZ-0134
   title: Validation weakening plus caller acceptance
   slug: validation-weakening-plus-caller
@@ -878,6 +941,7 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0134/scenario.yml
+  readme: scenarios/SZZ-0134/README.md
 - id: SZZ-0136
   title: Range minimum and maximum changed separately
   slug: range-min-max-changed-separately
@@ -890,6 +954,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0136/scenario.yml
+  readme: scenarios/SZZ-0136/README.md
 - id: SZZ-0137
   title: Null handling and empty handling changed separately
   slug: null-and-empty-handling
@@ -902,6 +967,7 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0137/scenario.yml
+  readme: scenarios/SZZ-0137/README.md
 - id: SZZ-0142
   title: Authentication and token checks introduced separately
   slug: auth-token-multi-bic
@@ -914,6 +980,7 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0142/scenario.yml
+  readme: scenarios/SZZ-0142/README.md
 - id: SZZ-0146
   title: Duplicate boundary checks
   slug: duplicate-boundary-checks
@@ -928,6 +995,7 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0146/scenario.yml
+  readme: scenarios/SZZ-0146/README.md
 - id: SZZ-0154
   title: One BFC fixes multiple BICs for one composite bug
   slug: 1-bfc-bic-bic
@@ -942,6 +1010,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0154/scenario.yml
+  readme: scenarios/SZZ-0154/README.md
 - id: SZZ-0155
   title: Same bug introduced independently
   slug: same-bug-introduced-independently
@@ -955,6 +1024,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0155/scenario.yml
+  readme: scenarios/SZZ-0155/README.md
 - id: SZZ-0156
   title: Multiple overloaded methods
   slug: multiple-overloaded-methods
@@ -968,6 +1038,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0156/scenario.yml
+  readme: scenarios/SZZ-0156/README.md
 - id: SZZ-0158
   title: BFC message has misleading reference
   slug: bfc-message-misleading-reference
@@ -981,6 +1052,7 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0158/scenario.yml
+  readme: scenarios/SZZ-0158/README.md
 - id: SZZ-0159
   title: Bug reason only in commit message
   slug: bug-reason-in-message
@@ -994,6 +1066,7 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0159/scenario.yml
+  readme: scenarios/SZZ-0159/README.md
 - id: SZZ-0160
   title: Fault in a private helper reached only through its caller
   slug: private-helper-fault
@@ -1007,6 +1080,7 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0160/scenario.yml
+  readme: scenarios/SZZ-0160/README.md
 - id: SZZ-0166
   title: Signature-only cleanup between BIC and BFC
   slug: signature-only-cleanup-distractor
@@ -1021,6 +1095,7 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0166/scenario.yml
+  readme: scenarios/SZZ-0166/README.md
 - id: SZZ-0168
   title: Cause can be inferred from test failure
   slug: test-failure
@@ -1032,6 +1107,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0168/scenario.yml
+  readme: scenarios/SZZ-0168/README.md
 - id: SZZ-0169
   title: Root cause not in changed lines
   slug: root-cause-not-in-changed-lines
@@ -1042,6 +1118,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0169/scenario.yml
+  readme: scenarios/SZZ-0169/README.md
 - id: SZZ-0170
   title: BIC is a test-only commit
   slug: bic-test-only-commit
@@ -1053,6 +1130,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0170/scenario.yml
+  readme: scenarios/SZZ-0170/README.md
 - id: SZZ-0171
   title: Dependency update as BIC
   slug: bic-dependency-update
@@ -1066,6 +1144,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0171/scenario.yml
+  readme: scenarios/SZZ-0171/README.md
 - id: SZZ-0172
   title: Config and code interaction
   slug: config-code
@@ -1079,6 +1158,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0172/scenario.yml
+  readme: scenarios/SZZ-0172/README.md
 - id: SZZ-0173
   title: File creation only as fix
   slug: file-creation-only-as-fix
@@ -1092,6 +1172,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0173/scenario.yml
+  readme: scenarios/SZZ-0173/README.md
 - id: SZZ-0174
   title: Addition-only fix for a missing null check
   slug: addition-only-fix-missing-null-check
@@ -1106,6 +1187,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0174/scenario.yml
+  readme: scenarios/SZZ-0174/README.md
 - id: SZZ-0175
   title: Addition-only fix for a missing break in a switch
   slug: addition-only-fix-missing-break
@@ -1120,6 +1202,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0175/scenario.yml
+  readme: scenarios/SZZ-0175/README.md
 - id: SZZ-0176
   title: Addition-only fix for an unhandled enum branch
   slug: addition-only-fix-missing-branch
@@ -1134,6 +1217,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0176/scenario.yml
+  readme: scenarios/SZZ-0176/README.md
 - id: SZZ-0177
   title: Deletion-only BIC removes a guard that an addition-only BFC restores
   slug: deletion-only-bic-addition-only-bfc
@@ -1148,6 +1232,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0177/scenario.yml
+  readme: scenarios/SZZ-0177/README.md
 - id: SZZ-0178
   title: Faulty line rewritten twice before the fix (depth-2 line history)
   slug: deep-line-history-depth-2
@@ -1163,6 +1248,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0178/scenario.yml
+  readme: scenarios/SZZ-0178/README.md
 - id: SZZ-0179
   title: Last of two rewrites of a line is the BIC (control for depth-2 line history)
   slug: deep-line-history-control-last-rewrite-is-bic
@@ -1178,6 +1264,7 @@ scenarios:
   difficulty: easy
   status: active
   path: scenarios/SZZ-0179/scenario.yml
+  readme: scenarios/SZZ-0179/README.md
 - id: SZZ-0180
   title: BIC is a large initial import
   slug: initial-import-bic
@@ -1192,6 +1279,7 @@ scenarios:
   difficulty: easy
   status: active
   path: scenarios/SZZ-0180/scenario.yml
+  readme: scenarios/SZZ-0180/README.md
 - id: SZZ-0181
   title: Omission fix with an adjacent unrelated line edit
   slug: omission-fix-with-adjacent-edit
@@ -1207,6 +1295,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0181/scenario.yml
+  readme: scenarios/SZZ-0181/README.md
 - id: SZZ-0182
   title: 'Cross-file ghost: BIC deletes a validation call in one file, BFC adds a check in another'
   slug: cross-file-ghost-deleted-validation-call
@@ -1221,6 +1310,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0182/scenario.yml
+  readme: scenarios/SZZ-0182/README.md
 - id: SZZ-0183
   title: Two-file BFC whose second hunk blames a non-BIC commit
   slug: two-file-bfc-second-hunk-non-bic
@@ -1235,6 +1325,7 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0183/scenario.yml
+  readme: scenarios/SZZ-0183/README.md
 - id: SZZ-0184
   title: BFC also modifies existing test lines owned by another commit
   slug: bfc-modifies-test-lines
@@ -1249,6 +1340,7 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0184/scenario.yml
+  readme: scenarios/SZZ-0184/README.md
 - id: SZZ-0185
   title: BFC deletes comment and blank lines of a distractor together with the faulty line
   slug: bfc-deletes-cosmetic-lines-with-fault
@@ -1262,6 +1354,7 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0185/scenario.yml
+  readme: scenarios/SZZ-0185/README.md
 - id: SZZ-0186
   title: Multi-hunk BFC whose hunks blame different commits
   slug: mixed-origin-hunks-bfc
@@ -1277,6 +1370,7 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0186/scenario.yml
+  readme: scenarios/SZZ-0186/README.md
 - id: SZZ-0187
   title: BFC touching three files with a single BIC
   slug: three-file-bfc-single-bic
@@ -1292,6 +1386,7 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0187/scenario.yml
+  readme: scenarios/SZZ-0187/README.md
 - id: SZZ-0188
   title: Fault in a multi-line statement whose lines come from different commits
   slug: multi-line-statement-mixed-origin
@@ -1307,6 +1402,7 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0188/scenario.yml
+  readme: scenarios/SZZ-0188/README.md
 - id: SZZ-0189
   title: Missing close() fixed by an addition whose only deleted line is a distractor's comment
   slug: missing-close-fix-deletes-only-comment
@@ -1322,6 +1418,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0189/scenario.yml
+  readme: scenarios/SZZ-0189/README.md
 - id: SZZ-0190
   title: Unit change and a later consumer that assumes the old unit
   slug: unit-change-later-consumer
@@ -1336,6 +1433,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0190/scenario.yml
+  readme: scenarios/SZZ-0190/README.md
 - id: SZZ-0191
   title: The other bug-introducing commit is in the method the fixed line calls
   slug: bic-in-the-called-method
@@ -1349,6 +1447,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0191/scenario.yml
+  readme: scenarios/SZZ-0191/README.md
 - id: SZZ-0192
   title: Blame lands on an equivalence-preserving rewrite and returns the wrong commit
   slug: blame-lands-on-rewrite
@@ -1364,6 +1463,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0192/scenario.yml
+  readme: scenarios/SZZ-0192/README.md
 - id: SZZ-0193
   title: A widened precondition that only becomes a fault once a later commit can reach it
   slug: widened-precondition-reached-later
@@ -1377,6 +1477,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0193/scenario.yml
+  readme: scenarios/SZZ-0193/README.md
 - id: SZZ-0194
   title: The other bug-introducing commit is in a class the fix never touches
   slug: bic-in-a-file-the-fix-never-touches
@@ -1390,6 +1491,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0194/scenario.yml
+  readme: scenarios/SZZ-0194/README.md
 - id: SZZ-0195
   title: Scale change carried in stored state, and a later reader of the raw field
   slug: scale-change-in-stored-state
@@ -1404,6 +1506,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0195/scenario.yml
+  readme: scenarios/SZZ-0195/README.md
 - id: SZZ-0196
   title: An overload added earlier captures a call written later
   slug: overload-captures-later-call
@@ -1418,6 +1521,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0196/scenario.yml
+  readme: scenarios/SZZ-0196/README.md
 - id: SZZ-0197
   title: Extracted methods take ownership of an earlier faulty comparison
   slug: extract-method-takes-ownership
@@ -1433,6 +1537,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0197/scenario.yml
+  readme: scenarios/SZZ-0197/README.md
 - id: SZZ-0198
   title: A guard that substitutes a different value, and a later caller that reaches it
   slug: guard-substitutes-different-value
@@ -1447,6 +1552,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0198/scenario.yml
+  readme: scenarios/SZZ-0198/README.md
 - id: SZZ-0199
   title: The unit of a configuration value changes, and a later reader shows it raw
   slug: configuration-unit-change
@@ -1462,6 +1568,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0199/scenario.yml
+  readme: scenarios/SZZ-0199/README.md
 - id: SZZ-0200
   title: Wrong threshold constant in a Python module
   slug: wrong-threshold-constant-python
@@ -1475,6 +1582,7 @@ scenarios:
   difficulty: easy
   status: active
   path: scenarios/SZZ-0200/scenario.yml
+  readme: scenarios/SZZ-0200/README.md
 - id: SZZ-0201
   title: 'Floor division mistaken for a typo: `//` becomes `/` in an index expression'
   slug: floor-division-mistaken-for-typo
@@ -1488,6 +1596,7 @@ scenarios:
   difficulty: easy
   status: active
   path: scenarios/SZZ-0201/scenario.yml
+  readme: scenarios/SZZ-0201/README.md
 - id: SZZ-0202
   title: 'Mutable default argument: the fault is on the def line'
   slug: mutable-default-argument
@@ -1502,6 +1611,7 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0202/scenario.yml
+  readme: scenarios/SZZ-0202/README.md
 - id: SZZ-0203
   title: Dictionary lookup added without a key check (Python omission twin of SZZ-0047)
   slug: missing-key-check-python
@@ -1516,6 +1626,7 @@ scenarios:
   difficulty: medium
   status: active
   path: scenarios/SZZ-0203/scenario.yml
+  readme: scenarios/SZZ-0203/README.md
 - id: SZZ-0204
   title: Type annotation added to the faulty line after the BIC
   slug: type-annotation-rewrite-after-bic
@@ -1532,6 +1643,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0204/scenario.yml
+  readme: scenarios/SZZ-0204/README.md
 - id: SZZ-0205
   title: f-string conversion rewrites the faulty format line after the BIC
   slug: f-string-conversion-after-bic
@@ -1548,6 +1660,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0205/scenario.yml
+  readme: scenarios/SZZ-0205/README.md
 - id: SZZ-0206
   title: BOM-only rewrite of the faulty line
   slug: bom-only-rewrite-of-faulty-line
@@ -1564,6 +1677,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0206/scenario.yml
+  readme: scenarios/SZZ-0206/README.md
 - id: SZZ-0207
   title: Code BIC fixed by a configuration change
   slug: code-bic-fixed-in-config
@@ -1580,6 +1694,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0207/scenario.yml
+  readme: scenarios/SZZ-0207/README.md
 - id: SZZ-0208
   title: Configuration key rename as the BIC
   slug: config-key-rename-bic
@@ -1596,6 +1711,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0208/scenario.yml
+  readme: scenarios/SZZ-0208/README.md
 - id: SZZ-0209
   title: Path-traversal check weakened, then rewritten three times before the fix (depth-3 line history)
   slug: deep-line-history-depth-3-path-traversal
@@ -1612,6 +1728,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0209/scenario.yml
+  readme: scenarios/SZZ-0209/README.md
 - id: SZZ-0210
   title: Size check that overflows, moved into a helper and rewritten twice more before the fix (depth-3 line history across a method extraction)
   slug: deep-line-history-depth-3-method-extract-overflow
@@ -1629,6 +1746,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0210/scenario.yml
+  readme: scenarios/SZZ-0210/README.md
 - id: SZZ-0211
   title: Authorization guard weakened, then rewritten four times before the fix (depth-4 line history with one whitespace-only hop)
   slug: deep-line-history-depth-4-authorization-guard
@@ -1647,6 +1765,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0211/scenario.yml
+  readme: scenarios/SZZ-0211/README.md
 - id: SZZ-0212
   title: A whitespace-only reformat between two faults takes ownership of the first
   slug: reformat-between-two-faults
@@ -1662,6 +1781,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0212/scenario.yml
+  readme: scenarios/SZZ-0212/README.md
 - id: SZZ-0213
   title: "A tangled three-hunk fix: one hunk blames a bystander, one repairs an omission by adding lines"
   slug: tangled-fix-bystander-and-omission
@@ -1679,6 +1799,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0213/scenario.yml
+  readme: scenarios/SZZ-0213/README.md
 - id: SZZ-0214
   title: A null check deleted while nothing reached it, a caller added later, and a fix that only adds
   slug: guard-deleted-then-reached-ghost-fix
@@ -1694,6 +1815,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0214/scenario.yml
+  readme: scenarios/SZZ-0214/README.md
 - id: SZZ-0215
   title: "A correct change on the faulty line takes ownership of it: two single-token faults, one fix"
   slug: correct-change-owns-the-faulty-line
@@ -1710,6 +1832,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0215/scenario.yml
+  readme: scenarios/SZZ-0215/README.md
 - id: SZZ-0216
   title: A method moved to a new class between two faults carries the first one's line into a file blame reads as new
   slug: method-move-between-two-faults
@@ -1728,6 +1851,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0216/scenario.yml
+  readme: scenarios/SZZ-0216/README.md
 - id: SZZ-0217
   title: The fix message quotes the commit that changed what the callee returns
   slug: fix-message-quotes-the-callee-change
@@ -1744,6 +1868,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0217/scenario.yml
+  readme: scenarios/SZZ-0217/README.md
 - id: SZZ-0218
   title: "Blame names every required commit and one more: the fix also removes an instrumentation counter"
   slug: blame-over-reports-a-cleanup
@@ -1760,6 +1885,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0218/scenario.yml
+  readme: scenarios/SZZ-0218/README.md
 - id: SZZ-0219
   title: Two faults with two behaviour-preserving rewrites of the first one's line between them
   slug: two-faults-across-two-rewrites
@@ -1778,6 +1904,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0219/scenario.yml
+  readme: scenarios/SZZ-0219/README.md
 - id: SZZ-0220
   title: The fix also deletes the deprecated alias an intermediate commit added, so blame names one commit too many
   slug: fix-deletes-a-dead-alias
@@ -1794,6 +1921,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0220/scenario.yml
+  readme: scenarios/SZZ-0220/README.md
 - id: SZZ-0221
   title: A guard narrowed while nothing reached the narrowed case, and a caller written later that does
   slug: guard-narrowed-then-reached
@@ -1809,6 +1937,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0221/scenario.yml
+  readme: scenarios/SZZ-0221/README.md
 - id: SZZ-0222
   title: "Blame answers one commit and every one of them is wrong: an omission restored beside a duplicate guard removed"
   slug: blame-answers-only-wrong-commits
@@ -1825,6 +1954,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0222/scenario.yml
+  readme: scenarios/SZZ-0222/README.md
 - id: SZZ-0223
   title: A signature change moves the faulty constant out of the method and into its caller's argument
   slug: signature-change-moves-the-constant
@@ -1843,6 +1973,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0223/scenario.yml
+  readme: scenarios/SZZ-0223/README.md
 - id: SZZ-0224
   title: The contract that changed is in a Javadoc, and the caller written afterwards follows the old one
   slug: contract-changed-in-a-javadoc
@@ -1859,6 +1990,7 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0224/scenario.yml
+  readme: scenarios/SZZ-0224/README.md
 - id: SZZ-0225
   title: The wrong expectation was written into a test first, and a rename inside the test took ownership of it
   slug: wrong-expectation-written-into-a-test
@@ -1877,3 +2009,4 @@ scenarios:
   difficulty: hard
   status: active
   path: scenarios/SZZ-0225/scenario.yml
+  readme: scenarios/SZZ-0225/README.md

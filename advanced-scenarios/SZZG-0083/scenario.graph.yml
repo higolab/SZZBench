@@ -80,7 +80,7 @@ commits:
   inherit_message: true
   inherit_author_date: true
   committer_date: '2024-01-05T07:55:00Z'
-  large_noisy_rebased_commit: true
+  x-large_noisy_rebased_commit: true
   operations:
   - type: replace
     path: src/main/java/example/StatusText.java

@@ -147,23 +147,12 @@ expected_szz:
     evaluation_policy: exact_set
     required:
     - c1
-commit_generators:
-- type: catalog_sync
-  count: 500
-  files: 10
-  materialized_as:
-  - c2
-- type: telemetry_export
-  count: 500
-  files: 10
-  materialized_as:
-  - c3
 scenario_design:
   purpose: Evaluate whether SZZ still finds the bug-introducing commit when a thousand unrelated commits separate it from
     the fix, and whether the tool scales to that history.
   key_property: |
     The two commit_generator operations are really expanded: the generated repository contains 1005 commits (5 logical ones
-    plus 500 catalog-synchronization and 500 telemetry-export commits), which is exactly what commit_generators declares.
+    plus 500 catalog-synchronization and 500 telemetry-export commits), which is exactly what the two operations declare.
     None of the 1000 generated commits touches src/, so the fault line survives unchanged from c1 to the parent of the BFC
     and blame has to walk back over the whole history.
   evaluation_points:

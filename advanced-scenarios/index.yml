@@ -1,249 +1,288 @@
-schema_version: graph-index-0.1-draft
-description: Index of draft advanced graph scenarios for SZZBench.
-scenario_count: 146
 scenarios:
 - id: SZZG-0001
   title: BFC performs rename and fix in the same commit
+  slug: bfc-rename-fix
   category_code: G1
   category: Refactoring, move, rename, and semantic rewrite
+  factors:
+  - file-rename
+  difficulty: medium
+  status: active
   path: advanced-scenarios/SZZG-0001/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0001/README.md
-  status: active
-  factors:
-  - file-rename
 - id: SZZG-0002
   title: BFC performs file move and fix in the same commit
+  slug: bfc-file-move-fix
   category_code: G1
   category: Refactoring, move, rename, and semantic rewrite
+  factors:
+  - file-move
+  difficulty: medium
+  status: active
   path: advanced-scenarios/SZZG-0002/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0002/README.md
-  status: active
-  factors:
-  - file-move
 - id: SZZG-0003
   title: File rename between BIC and BFC
+  slug: file-rename-between-bic-and-bfc
   category_code: G1
   category: Refactoring, move, rename, and semantic rewrite
-  path: advanced-scenarios/SZZG-0003/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0003/README.md
-  status: active
   factors:
   - file-rename
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0003/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0003/README.md
 - id: SZZG-0004
   title: File move between BIC and BFC
+  slug: file-move-between-bic-and-bfc
   category_code: G1
   category: Refactoring, move, rename, and semantic rewrite
-  path: advanced-scenarios/SZZG-0004/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0004/README.md
-  status: active
   factors:
   - file-rename
   - file-move
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0004/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0004/README.md
 - id: SZZG-0005
   title: Method move between classes
+  slug: method-move-between-classes
   category_code: G1
   category: Refactoring, move, rename, and semantic rewrite
-  path: advanced-scenarios/SZZG-0005/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0005/README.md
-  status: active
   factors:
   - refactoring
   - method-move
   - post-bic-refactoring
   - wrong-variable
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0005/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0005/README.md
 - id: SZZG-0006
   title: Extract class after BIC
+  slug: extract-class-after-bic
   category_code: G1
   category: Refactoring, move, rename, and semantic rewrite
-  path: advanced-scenarios/SZZG-0006/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0006/README.md
-  status: active
   factors:
   - refactoring
   - extract-class
   - method-move
   - post-bic-refactoring
   - exception-swallowed
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0006/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0006/README.md
 - id: SZZG-0007
   title: Line moved and duplicated
+  slug: line-moved-and-duplicated
   category_code: G1
   category: Refactoring, move, rename, and semantic rewrite
-  path: advanced-scenarios/SZZG-0007/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0007/README.md
-  status: active
   factors:
   - method-move
   - copy-propagation
   - off-by-one
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0007/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0007/README.md
 - id: SZZG-0008
   title: Semantically equivalent rewrite
+  slug: semantically-equivalent-rewrite
   category_code: G1
   category: Refactoring, move, rename, and semantic rewrite
-  path: advanced-scenarios/SZZG-0008/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0008/README.md
-  status: active
   factors:
   - semantic-rewrite
   - related-but-not-correct
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0008/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0008/README.md
 - id: SZZG-0009
   title: Intermediate method extraction between BIC and BFC
+  slug: intermediate-method-extraction
   category_code: G1
   category: Refactoring, move, rename, and semantic rewrite
-  path: advanced-scenarios/SZZG-0009/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0009/README.md
-  status: active
   factors:
   - intermediate-refactoring
   - extract-method
   - line-history-break
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0009/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0009/README.md
 - id: SZZG-0010
   title: Intermediate file move and package rename between BIC and BFC
+  slug: intermediate-file-move-package-rename
   category_code: G1
   category: Refactoring, move, rename, and semantic rewrite
-  path: advanced-scenarios/SZZG-0010/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0010/README.md
-  status: active
   factors:
   - file-rename
   - file-move
   - package-rename
   - intermediate-refactoring
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0010/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0010/README.md
 - id: SZZG-0011
   title: Bug introduced inside a refactoring commit
+  slug: bug-introduced-inside-refactoring
   category_code: G1
   category: Refactoring, move, rename, and semantic rewrite
-  path: advanced-scenarios/SZZG-0011/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0011/README.md
-  status: active
   factors:
   - bug-introducing-refactoring
   - mixed-change
   - rename-method
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0011/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0011/README.md
 - id: SZZG-0012
   title: BFC performs method extraction and bug fix in the same commit
+  slug: bfc-extract-method-and-fix
   category_code: G1
   category: Refactoring, move, rename, and semantic rewrite
-  path: advanced-scenarios/SZZG-0012/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0012/README.md
-  status: active
   factors:
   - bfc-refactoring
   - extract-method
   - mixed-bfc
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0012/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0012/README.md
 - id: SZZG-0013
   title: Semantic-preserving rewrite between BIC and BFC
+  slug: semantic-preserving-rewrite
   category_code: G1
   category: Refactoring, move, rename, and semantic rewrite
-  path: advanced-scenarios/SZZG-0013/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0013/README.md
-  status: active
   factors:
   - intermediate-rewrite
   - formatting-noise
   - line-history-break
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0013/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0013/README.md
 - id: SZZG-0014
   title: Buggy code copied to a new file
+  slug: buggy-code-copied-to-new-file
   category_code: G2
   category: Clone, copy propagation, and origin-vs-direct BIC
-  path: advanced-scenarios/SZZG-0014/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0014/README.md
-  status: active
   factors:
   - copy-propagation
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0014/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0014/README.md
 - id: SZZG-0015
   title: Buggy code copied while original is fixed later
+  slug: buggy-code-copied-original-later-fixed
   category_code: G2
   category: Clone, copy propagation, and origin-vs-direct BIC
-  path: advanced-scenarios/SZZG-0015/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0015/README.md
-  status: active
   factors:
   - copy-propagation
   - boundary-condition
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0015/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0015/README.md
 - id: SZZG-0016
   title: Original and clone fixed together
+  slug: original-clone
   category_code: G2
   category: Clone, copy propagation, and origin-vs-direct BIC
-  path: advanced-scenarios/SZZG-0016/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0016/README.md
-  status: active
   factors:
   - null-check-omission
   - copy-propagation
+  difficulty: medium
+  status: active
+  path: advanced-scenarios/SZZG-0016/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0016/README.md
 - id: SZZG-0017
   title: Clone diverges before fix
+  slug: clone
   category_code: G2
   category: Clone, copy propagation, and origin-vs-direct BIC
-  path: advanced-scenarios/SZZG-0017/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0017/README.md
-  status: active
   factors:
   - copy-propagation
   - off-by-one
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0017/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0017/README.md
 - id: SZZG-0018
   title: Only one clone instance is fixed first
+  slug: clone
   category_code: G2
   category: Clone, copy propagation, and origin-vs-direct BIC
-  path: advanced-scenarios/SZZG-0018/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0018/README.md
-  status: active
   factors:
   - copy-propagation
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0018/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0018/README.md
 - id: SZZG-0019
   title: Bug propagates into generated code
+  slug: generated-code
   category_code: G2
   category: Clone, copy propagation, and origin-vs-direct BIC
-  path: advanced-scenarios/SZZG-0019/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0019/README.md
-  status: active
   factors:
   - single-bic
   - single-bfc
   - copy-propagation
   - generated-file
   - wrong-constant
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0019/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0019/README.md
 - id: SZZG-0020
   title: Explicit evaluation of direct BIC vs origin BIC
+  slug: direct-bic-vs-origin-bic
   category_code: G2
   category: Clone, copy propagation, and origin-vs-direct BIC
-  path: advanced-scenarios/SZZG-0020/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0020/README.md
-  status: active
   factors:
   - copy-propagation
   - evaluation-variant
   - direct-bic
   - origin-bic
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0020/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0020/README.md
 - id: SZZG-0021
   title: Clone removal as fix
+  slug: clone-removal-as-fix
   category_code: G2
   category: Clone, copy propagation, and origin-vs-direct BIC
-  path: advanced-scenarios/SZZG-0021/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0021/README.md
-  status: active
   factors:
   - copy-propagation
   - boolean-negation
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0021/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0021/README.md
 - id: SZZG-0022
   title: Copy propagation with direct and origin BIC evaluation variants
+  slug: copy-propagation-direct-origin-evaluation-variants
   category_code: G2
   category: Clone, copy propagation, and origin-vs-direct BIC
-  path: advanced-scenarios/SZZG-0022/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0022/README.md
-  status: active
   factors:
   - copy-propagation
   - direct-bic
   - origin-bic
   - evaluation-variant
   - relaxed-with-credit
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0022/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0022/README.md
 - id: SZZG-0023
   title: Rebase with copy propagation
+  slug: rebase-with-copy-propagation
   category_code: G2
   category: Clone, copy propagation, and origin-vs-direct BIC
-  path: advanced-scenarios/SZZG-0023/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0023/README.md
-  status: active
   factors:
   - branch
   - rebase
@@ -251,13 +290,15 @@ scenarios:
   - duplicate-code
   - direct-bic
   - origin-bic
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0023/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0023/README.md
 - id: SZZG-0024
   title: Clone diverges before rebase
+  slug: clone-diverges-before-rebase
   category_code: G2
   category: Clone, copy propagation, and origin-vs-direct BIC
-  path: advanced-scenarios/SZZG-0024/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0024/README.md
-  status: active
   factors:
   - branch
   - rebase
@@ -266,257 +307,303 @@ scenarios:
   - direct-bic
   - origin-bic
   - wrong-operator
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0024/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0024/README.md
 - id: SZZG-0025
   title: Clone origin versus copied direct BIC
+  slug: clone-origin-versus-direct-bic
   category_code: G2
   category: Clone, copy propagation, and origin-vs-direct BIC
-  path: advanced-scenarios/SZZG-0025/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0025/README.md
-  status: active
   factors:
   - clone
   - copy-propagation
   - origin-bic-policy
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0025/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0025/README.md
 - id: SZZG-0026
   title: Copy followed by bug introduction only in the copied code
+  slug: copy-then-copied-bic
   category_code: G2
   category: Clone, copy propagation, and origin-vs-direct BIC
-  path: advanced-scenarios/SZZG-0026/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0026/README.md
-  status: active
   factors:
   - copy-propagation
   - clone-divergence
   - direct-bic-in-copy
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0026/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0026/README.md
 - id: SZZG-0027
   title: Clone divergence before fixing one clone
+  slug: clone-divergence-before-fix
   category_code: G2
   category: Clone, copy propagation, and origin-vs-direct BIC
-  path: advanced-scenarios/SZZG-0027/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0027/README.md
-  status: active
   factors:
   - clone
   - clone-divergence
   - ambiguous-blame
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0027/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0027/README.md
 - id: SZZG-0028
   title: The copy and the later edit are both required; the origin is not
+  slug: origin-and-direct-clone-bics
   category_code: G2
   category: Clone, copy propagation, and origin-vs-direct BIC
-  path: advanced-scenarios/SZZG-0028/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0028/README.md
-  status: active
   factors:
   - clone
   - multi-bic
   - origin-and-direct-bic
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0028/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0028/README.md
 - id: SZZG-0029
   title: Partial fix followed by complete fix
+  slug: bfc-partial-fix
   category_code: G3
   category: Multiple BICs, multiple BFCs, and partial fixes
-  path: advanced-scenarios/SZZG-0029/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0029/README.md
-  status: active
   factors:
   - multi-bfc
+  difficulty: medium
+  status: active
+  path: advanced-scenarios/SZZG-0029/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0029/README.md
 - id: SZZG-0030
   title: Attempted fix followed by follow-up fix
+  slug: follow-up-fix-bfc
   category_code: G3
   category: Multiple BICs, multiple BFCs, and partial fixes
-  path: advanced-scenarios/SZZG-0030/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0030/README.md
-  status: active
   factors:
   - multi-bfc
   - attempted-fix
   - follow-up-fix
   - incorrect-fix
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0030/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0030/README.md
 - id: SZZG-0031
   title: One BIC fixed by multiple BFCs
+  slug: 1-bic-bfc
   category_code: G3
   category: Multiple BICs, multiple BFCs, and partial fixes
-  path: advanced-scenarios/SZZG-0031/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0031/README.md
-  status: active
   factors:
   - multi-bfc
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0031/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0031/README.md
 - id: SZZG-0032
   title: Multiple BFCs progressively fix the same bug
+  slug: bfc-bug
   category_code: G3
   category: Multiple BICs, multiple BFCs, and partial fixes
-  path: advanced-scenarios/SZZG-0032/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0032/README.md
-  status: active
   factors:
   - multi-bfc
   - progressive-fix
   - same-bug
   - partial-fix
   - complete-fix
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0032/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0032/README.md
 - id: SZZG-0033
   title: Partial credit when only some BICs are returned
+  slug: bic-partial-credit
   category_code: G3
   category: Multiple BICs, multiple BFCs, and partial fixes
-  path: advanced-scenarios/SZZG-0033/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0033/README.md
-  status: active
   factors:
   - multi-bic
   - partial-credit
   - evaluation-variant
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0033/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0033/README.md
 - id: SZZG-0034
   title: One BFC fixes multiple independent bugs
+  slug: 1-bfc-bug
   category_code: G3
   category: Multiple BICs, multiple BFCs, and partial fixes
-  path: advanced-scenarios/SZZG-0034/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0034/README.md
-  status: active
   factors:
   - multiple-bug
   - single-bfc
   - independent-faults
   - different-files
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0034/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0034/README.md
 - id: SZZG-0035
   title: One BIC causes multiple bug symptoms
+  slug: bic-bug
   category_code: G3
   category: Multiple BICs, multiple BFCs, and partial fixes
-  path: advanced-scenarios/SZZG-0035/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0035/README.md
-  status: active
   factors:
   - root-cause
   - wrong-constant
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0035/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0035/README.md
 - id: SZZG-0036
   title: Fix split across multiple commits
+  slug: fix-commit
   category_code: G3
   category: Multiple BICs, multiple BFCs, and partial fixes
-  path: advanced-scenarios/SZZG-0036/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0036/README.md
-  status: active
   factors:
   - multi-bfc
   - test-file-added
+  difficulty: medium
+  status: active
+  path: advanced-scenarios/SZZG-0036/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0036/README.md
 - id: SZZG-0037
   title: One BFC fixes multiple BICs across multiple files
+  slug: multi-bic-multi-file-fix
   category_code: G3
   category: Multiple BICs, multiple BFCs, and partial fixes
-  path: advanced-scenarios/SZZG-0037/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0037/README.md
-  status: active
   factors:
   - multi-bic
   - multiple-file
   - single-bfc
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0037/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0037/README.md
 - id: SZZG-0038
   title: One directly blamed BIC and one context-only BIC
+  slug: multi-bic-context-only
   category_code: G3
   category: Multiple BICs, multiple BFCs, and partial fixes
-  path: advanced-scenarios/SZZG-0038/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0038/README.md
-  status: active
   factors:
   - multi-bic
   - caller-callee
   - partial-observability
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0038/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0038/README.md
 - id: SZZG-0039
   title: Prerequisite BIC and symptom BIC fixed together
+  slug: multi-bic-prerequisite-symptom
   category_code: G3
   category: Multiple BICs, multiple BFCs, and partial fixes
-  path: advanced-scenarios/SZZG-0039/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0039/README.md
-  status: active
   factors:
   - multi-bic
   - causal-chain
   - single-bfc
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0039/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0039/README.md
 - id: SZZG-0040
   title: Multiple BICs where one true BIC is not directly touched by the BFC
+  slug: multi-bic-untouched-root-cause
   category_code: G3
   category: Multiple BICs, multiple BFCs, and partial fixes
-  path: advanced-scenarios/SZZG-0040/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0040/README.md
-  status: active
   factors:
   - multi-bic
   - not-directly-touched-by-fix
   - caller-callee
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0040/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0040/README.md
 - id: SZZG-0041
   title: Ambiguous blame with duplicate faulty lines
+  slug: ambiguous-duplicate-faulty-line
   category_code: G3
   category: Multiple BICs, multiple BFCs, and partial fixes
-  path: advanced-scenarios/SZZG-0041/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0041/README.md
-  status: active
   factors:
   - ambiguous-blame
   - duplicate-code
   - same-statement-multiple-locations
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0041/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0041/README.md
 - id: SZZG-0042
   title: BFC is a merge commit
+  slug: bfc-merge-commit
   category_code: G4
   category: Branch, merge, cherry-pick, backport, and release branches
-  path: advanced-scenarios/SZZG-0042/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0042/README.md
-  status: active
   factors:
   - merge-commit
   - bug-fixing-commit
   - branch
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0042/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0042/README.md
 - id: SZZG-0043
   title: BIC on feature branch, BFC on main
+  slug: bic-on-feature-branch-bfc-on-main
   category_code: G4
   category: Branch, merge, cherry-pick, backport, and release branches
-  path: advanced-scenarios/SZZG-0043/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0043/README.md
-  status: active
   factors:
   - branch
   - merge
   - feature-branch-bic
   - main-branch-bfc
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0043/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0043/README.md
 - id: SZZG-0044
   title: BIC before merge, BFC after merge
+  slug: bic-before-merge-bfc-after-merge
   category_code: G4
   category: Branch, merge, cherry-pick, backport, and release branches
-  path: advanced-scenarios/SZZG-0044/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0044/README.md
-  status: active
   factors:
   - branch
   - merge
   - pre-merge-bic
   - post-merge-bfc
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0044/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0044/README.md
 - id: SZZG-0045
   title: BIC in merge commit
+  slug: bic-in-merge-commit
   category_code: G4
   category: Branch, merge, cherry-pick, backport, and release branches
-  path: advanced-scenarios/SZZG-0045/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0045/README.md
-  status: active
   factors:
   - branch
   - merge
   - merge-commit-bic
   - string-comparison
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0045/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0045/README.md
 - id: SZZG-0046
   title: BFC in merge commit
+  slug: bfc-in-merge-commit
   category_code: G4
   category: Branch, merge, cherry-pick, backport, and release branches
-  path: advanced-scenarios/SZZG-0046/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0046/README.md
-  status: active
   factors:
   - branch
   - merge
   - merge-commit-bfc
   - partial-fix
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0046/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0046/README.md
 - id: SZZG-0047
   title: Squash merge
+  slug: squash-merge
   category_code: G4
   category: Branch, merge, cherry-pick, backport, and release branches
-  path: advanced-scenarios/SZZG-0047/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0047/README.md
-  status: active
   factors:
   - branch
   - squash-merge
@@ -524,26 +611,30 @@ scenarios:
   - direct-bic
   - origin-bic
   - exception-swallowed
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0047/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0047/README.md
 - id: SZZG-0048
   title: Cherry-pick BIC
+  slug: cherry-pick-bic
   category_code: G4
   category: Branch, merge, cherry-pick, backport, and release branches
-  path: advanced-scenarios/SZZG-0048/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0048/README.md
-  status: active
   factors:
   - branch
   - cherry-pick
   - release-branch
   - direct-bic
   - origin-bic
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0048/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0048/README.md
 - id: SZZG-0049
   title: Cherry-pick BFC
+  slug: cherry-pick-bfc
   category_code: G4
   category: Branch, merge, cherry-pick, backport, and release branches
-  path: advanced-scenarios/SZZG-0049/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0049/README.md
-  status: active
   factors:
   - branch
   - cherry-pick
@@ -551,13 +642,15 @@ scenarios:
   - copy-propagation
   - backport-like-fix
   - off-by-one
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0049/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0049/README.md
 - id: SZZG-0050
   title: Backport fix
+  slug: backport-fix
   category_code: G4
   category: Branch, merge, cherry-pick, backport, and release branches
-  path: advanced-scenarios/SZZG-0050/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0050/README.md
-  status: active
   factors:
   - branch
   - backport
@@ -565,59 +658,69 @@ scenarios:
   - release-specific-changes
   - copy-propagation
   - null-check-omission
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0050/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0050/README.md
 - id: SZZG-0051
   title: Backport introduces release-specific bug
+  slug: backport-introduces-bug
   category_code: G4
   category: Branch, merge, cherry-pick, backport, and release branches
-  path: advanced-scenarios/SZZG-0051/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0051/README.md
-  status: active
   factors:
   - branch
   - backport
   - wrong-constant
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0051/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0051/README.md
 - id: SZZG-0052
   title: Criss-cross merge
+  slug: criss-cross-merge
   category_code: G4
   category: Branch, merge, cherry-pick, backport, and release branches
-  path: advanced-scenarios/SZZG-0052/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0052/README.md
-  status: active
   factors:
   - branch
   - merge
   - criss-cross-merge
   - multiple-merge-bases
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0052/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0052/README.md
 - id: SZZG-0053
   title: Release-branch-only bug
+  slug: release-branch-only-bug
   category_code: G4
   category: Branch, merge, cherry-pick, backport, and release branches
-  path: advanced-scenarios/SZZG-0053/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0053/README.md
-  status: active
   factors:
   - release-branch
   - branch-only-bug
   - boolean-negation
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0053/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0053/README.md
 - id: SZZG-0054
   title: Fixed on main but unfixed on release
+  slug: fixed-on-main-unfixed-on-release
   category_code: G4
   category: Branch, merge, cherry-pick, backport, and release branches
-  path: advanced-scenarios/SZZG-0054/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0054/README.md
-  status: active
   factors:
   - release-branch
   - partial-fix-propagation
   - unfixed-release
   - wrong-variable
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0054/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0054/README.md
 - id: SZZG-0055
   title: Release branch change rebased onto main
+  slug: release-branch-change-rebased-onto-main
   category_code: G4
   category: Branch, merge, cherry-pick, backport, and release branches
-  path: advanced-scenarios/SZZG-0055/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0055/README.md
-  status: active
   factors:
   - branch
   - rebase
@@ -625,13 +728,15 @@ scenarios:
   - release-to-main
   - direct-bic
   - origin-bic
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0055/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0055/README.md
 - id: SZZG-0056
   title: Main fix rebased onto release branch
+  slug: main-fix-rebased-onto-release-branch
   category_code: G4
   category: Branch, merge, cherry-pick, backport, and release branches
-  path: advanced-scenarios/SZZG-0056/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0056/README.md
-  status: active
   factors:
   - branch
   - rebase
@@ -640,13 +745,15 @@ scenarios:
   - rebased-bfc
   - multi-bfc
   - integer-overflow
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0056/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0056/README.md
 - id: SZZG-0057
   title: Rebase old feature branch after unrelated main changes
+  slug: rebase-old-feature-branch-after-unrelated-main-changes
   category_code: G4
   category: Branch, merge, cherry-pick, backport, and release branches
-  path: advanced-scenarios/SZZG-0057/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0057/README.md
-  status: active
   factors:
   - branch
   - rebase
@@ -654,13 +761,15 @@ scenarios:
   - unrelated-main-changes
   - direct-bic
   - origin-bic
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0057/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0057/README.md
 - id: SZZG-0058
   title: Bug-fixing commit is rebased onto main
+  slug: bug-fixing-commit-is-rebased-onto-main
   category_code: G4
   category: Branch, merge, cherry-pick, backport, and release branches
-  path: advanced-scenarios/SZZG-0058/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0058/README.md
-  status: active
   factors:
   - branch
   - rebase
@@ -668,57 +777,67 @@ scenarios:
   - rebased-bfc
   - direct-bic
   - origin-bic
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0058/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0058/README.md
 - id: SZZG-0059
   title: Merge commit itself is the BIC
+  slug: merge-commit-as-bic
   category_code: G4
   category: Branch, merge, cherry-pick, backport, and release branches
-  path: advanced-scenarios/SZZG-0059/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0059/README.md
-  status: active
   factors:
   - merge-commit
   - bug-introducing-merge
   - non-linear-history
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0059/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0059/README.md
 - id: SZZG-0060
   title: BFC on main after feature-branch BIC is merged
+  slug: bfc-main-after-feature-merge
   category_code: G4
   category: Branch, merge, cherry-pick, backport, and release branches
-  path: advanced-scenarios/SZZG-0060/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0060/README.md
-  status: active
   factors:
   - feature-branch
   - merge-commit
   - bfc-after-merge
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0060/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0060/README.md
 - id: SZZG-0061
   title: Cherry-picked BIC appears as duplicate commits on two branches
+  slug: cherry-picked-bic-duplicates
   category_code: G4
   category: Branch, merge, cherry-pick, backport, and release branches
-  path: advanced-scenarios/SZZG-0061/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0061/README.md
-  status: active
   factors:
   - cherry-pick
   - duplicate-patch
   - non-linear-history
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0061/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0061/README.md
 - id: SZZG-0062
   title: Backported fix on maintenance branch traces to original mainline BIC
+  slug: backported-fix-maintenance-branch
   category_code: G4
   category: Branch, merge, cherry-pick, backport, and release branches
-  path: advanced-scenarios/SZZG-0062/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0062/README.md
-  status: active
   factors:
   - backport
   - maintenance-branch
   - cross-branch-bic
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0062/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0062/README.md
 - id: SZZG-0064
   title: Rebase with non-BIC intermediate commit
+  slug: rebase-with-non-bic-intermediate-commit
   category_code: G5
   category: Rebase-specific history rewriting
-  path: advanced-scenarios/SZZG-0064/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0064/README.md
-  status: active
   factors:
   - branch
   - rebase
@@ -727,13 +846,15 @@ scenarios:
   - direct-bic
   - origin-bic
   - inherited-commit-metadata
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0064/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0064/README.md
 - id: SZZG-0065
   title: Rebase conflict resolution introduces bug
+  slug: rebase-conflict-resolution-introduces-bug
   category_code: G5
   category: Rebase-specific history rewriting
-  path: advanced-scenarios/SZZG-0065/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0065/README.md
-  status: active
   factors:
   - branch
   - rebase
@@ -741,52 +862,60 @@ scenarios:
   - conflict-resolution-bic
   - direct-bic
   - fault-in-neither-parent
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0065/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0065/README.md
 - id: SZZG-0066
   title: Rebase conflict resolution propagates existing bug
+  slug: rebase-conflict-resolution-propagates-existing-bug
   category_code: G5
   category: Rebase-specific history rewriting
-  path: advanced-scenarios/SZZG-0066/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0066/README.md
-  status: active
   factors:
   - branch
   - rebase
   - rebase-conflict-resolution
   - origin-bic
   - direct-bic
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0066/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0066/README.md
 - id: SZZG-0067
   title: Rebase conflict resolution fixes bug
+  slug: rebase-conflict-resolution-fixes-bug
   category_code: G5
   category: Rebase-specific history rewriting
-  path: advanced-scenarios/SZZG-0067/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0067/README.md
-  status: active
   factors:
   - branch
   - rebase
   - rebase-conflict-resolution
   - conflict-resolution-bfc
   - rebased-bic
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0067/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0067/README.md
 - id: SZZG-0068
   title: Rebase changes patch content during replay
+  slug: rebase-changes-patch-content-during-replay
   category_code: G5
   category: Rebase-specific history rewriting
-  path: advanced-scenarios/SZZG-0068/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0068/README.md
-  status: active
   factors:
   - branch
   - rebase
   - patch-modified-during-rebase
   - origin-bic
   - direct-bic
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0068/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0068/README.md
 - id: SZZG-0069
   title: Rebase splits original BIC into multiple commits
+  slug: rebase-splits-original-bic-into-multiple-commits
   category_code: G5
   category: Rebase-specific history rewriting
-  path: advanced-scenarios/SZZG-0069/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0069/README.md
-  status: active
   factors:
   - branch
   - rebase
@@ -795,13 +924,15 @@ scenarios:
   - origin-bic
   - direct-bic
   - wrong-constant
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0069/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0069/README.md
 - id: SZZG-0070
   title: Rebase combines multiple BICs into one commit
+  slug: rebase-combines-multiple-bics-into-one-commit
   category_code: G5
   category: Rebase-specific history rewriting
-  path: advanced-scenarios/SZZG-0070/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0070/README.md
-  status: active
   factors:
   - branch
   - rebase
@@ -810,13 +941,15 @@ scenarios:
   - multiple-origin-bic
   - direct-bic
   - off-by-one
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0070/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0070/README.md
 - id: SZZG-0071
   title: Interactive rebase edits BIC commit
+  slug: interactive-rebase-edits-bic-commit
   category_code: G5
   category: Rebase-specific history rewriting
-  path: advanced-scenarios/SZZG-0071/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0071/README.md
-  status: active
   factors:
   - branch
   - rebase
@@ -824,13 +957,15 @@ scenarios:
   - patch-modified-during-rebase
   - direct-bic
   - origin-bic
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0071/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0071/README.md
 - id: SZZG-0072
   title: Interactive rebase drops original BIC but bug remains
+  slug: interactive-rebase-drops-original-bic-but-bug-remains
   category_code: G5
   category: Rebase-specific history rewriting
-  path: advanced-scenarios/SZZG-0072/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0072/README.md
-  status: active
   factors:
   - branch
   - rebase
@@ -839,13 +974,15 @@ scenarios:
   - deleted-branch
   - direct-bic
   - origin-bic
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0072/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0072/README.md
 - id: SZZG-0073
   title: Interactive rebase reorders commits before BIC
+  slug: interactive-rebase-reorders-commits-before-bic
   category_code: G5
   category: Rebase-specific history rewriting
-  path: advanced-scenarios/SZZG-0073/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0073/README.md
-  status: active
   factors:
   - branch
   - rebase
@@ -855,13 +992,15 @@ scenarios:
   - origin-bic
   - inherited-commit-metadata
   - api-misuse
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0073/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0073/README.md
 - id: SZZG-0075
   title: Interactive rebase squashes BIC and BFC into neutral commit
+  slug: interactive-rebase-squashes-bic-and-bfc-into-neutral-commit
   category_code: G5
   category: Rebase-specific history rewriting
-  path: advanced-scenarios/SZZG-0075/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0075/README.md
-  status: active
   factors:
   - branch
   - rebase
@@ -870,13 +1009,15 @@ scenarios:
   - transient-bug
   - scope-boundary
   - no-main-line-bfc
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0075/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0075/README.md
 - id: SZZG-0076
   title: Multiple BICs replayed by rebase
+  slug: multiple-bics-replayed-by-rebase
   category_code: G5
   category: Rebase-specific history rewriting
-  path: advanced-scenarios/SZZG-0076/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0076/README.md
-  status: active
   factors:
   - branch
   - rebase
@@ -886,13 +1027,15 @@ scenarios:
   - origin-bic
   - integer-overflow
   - wrong-operator
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0076/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0076/README.md
 - id: SZZG-0077
   title: Rebased BIC fixed by multiple BFCs
+  slug: rebased-bic-fixed-by-multiple-bfcs
   category_code: G5
   category: Rebase-specific history rewriting
-  path: advanced-scenarios/SZZG-0077/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0077/README.md
-  status: active
   factors:
   - branch
   - rebase
@@ -900,13 +1043,15 @@ scenarios:
   - multi-bfc
   - partial-fix
   - complete-fix
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0077/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0077/README.md
 - id: SZZG-0078
   title: Rebase commit message reveals origin
+  slug: rebase-commit-message-reveals-origin
   category_code: G5
   category: Rebase-specific history rewriting
-  path: advanced-scenarios/SZZG-0078/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0078/README.md
-  status: active
   factors:
   - branch
   - rebase
@@ -914,13 +1059,15 @@ scenarios:
   - message-trailer
   - origin-bic
   - direct-bic
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0078/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0078/README.md
 - id: SZZG-0081
   title: Rebase with formatting rewrite noise
+  slug: rebase-with-formatting-rewrite-noise
   category_code: G5
   category: Rebase-specific history rewriting
-  path: advanced-scenarios/SZZG-0081/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0081/README.md
-  status: active
   factors:
   - branch
   - rebase
@@ -930,13 +1077,15 @@ scenarios:
   - direct-bic
   - origin-bic
   - null-check-omission
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0081/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0081/README.md
 - id: SZZG-0082
   title: Rebase with generated file update
+  slug: rebase-with-generated-file-update
   category_code: G5
   category: Rebase-specific history rewriting
-  path: advanced-scenarios/SZZG-0082/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0082/README.md
-  status: active
   factors:
   - branch
   - rebase
@@ -944,13 +1093,15 @@ scenarios:
   - generated-code-noise
   - direct-bic
   - boolean-negation
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0082/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0082/README.md
 - id: SZZG-0083
   title: Huge noisy rebased commit
+  slug: huge-noisy-rebased-commit
   category_code: G5
   category: Rebase-specific history rewriting
-  path: advanced-scenarios/SZZG-0083/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0083/README.md
-  status: active
   factors:
   - branch
   - rebase
@@ -961,13 +1112,15 @@ scenarios:
   - direct-bic
   - origin-bic
   - wrong-variable
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0083/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0083/README.md
 - id: SZZG-0084
   title: Partial revert reintroduces bug
+  slug: partial-revert
   category_code: G6
   category: Revert-specific reintroduction
-  path: advanced-scenarios/SZZG-0084/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0084/README.md
-  status: active
   factors:
   - linear-history
   - revert
@@ -976,38 +1129,44 @@ scenarios:
   - re-bic
   - origin-bic
   - revert-footer
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0084/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0084/README.md
 - id: SZZG-0085
   title: Old BIC and re-BIC are both plausible
+  slug: old-bic-re-bic-plausible
   category_code: G6
   category: Revert-specific reintroduction
-  path: advanced-scenarios/SZZG-0085/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0085/README.md
-  status: active
   factors:
   - reintroduction
   - partial-revert
   - origin-bic
   - evaluation-variant
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0085/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0085/README.md
 - id: SZZG-0086
   title: Revert of fix reintroduces bug
+  slug: revert-of-fix-reintroduces-bug
   category_code: G6
   category: Revert-specific reintroduction
-  path: advanced-scenarios/SZZG-0086/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0086/README.md
-  status: active
   factors:
   - revert
   - revert-of-fix
   - reintroduced-bug
   - re-bic
   - origin-bic
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0086/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0086/README.md
 - id: SZZG-0088
   title: Partial revert of fix reintroduces one fault
+  slug: partial-revert-of-fix-reintroduces-one-fault
   category_code: G6
   category: Revert-specific reintroduction
-  path: advanced-scenarios/SZZG-0088/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0088/README.md
-  status: active
   factors:
   - revert
   - partial-revert
@@ -1015,13 +1174,15 @@ scenarios:
   - single-fault-reintroduced
   - re-bic
   - wrong-variable
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0088/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0088/README.md
 - id: SZZG-0089
   title: Revert of revert with conflict resolution
+  slug: revert-of-revert-with-conflict-resolution
   category_code: G6
   category: Revert-specific reintroduction
-  path: advanced-scenarios/SZZG-0089/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0089/README.md
-  status: active
   factors:
   - revert
   - revert-of-revert
@@ -1030,26 +1191,30 @@ scenarios:
   - variable-rename
   - revert-footer
   - re-bic
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0089/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0089/README.md
 - id: SZZG-0090
   title: Repeated revert toggling before final fix
+  slug: repeated-revert-toggling-before-final-fix
   category_code: G6
   category: Revert-specific reintroduction
-  path: advanced-scenarios/SZZG-0090/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0090/README.md
-  status: active
   factors:
   - revert
   - revert-of-revert
   - repeated-toggling
   - reintroduced-bug
   - re-bic
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0090/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0090/README.md
 - id: SZZG-0091
   title: Multiple BICs with partial revert reintroducing one fault
+  slug: multiple-bics-with-partial-revert-reintroducing-one-fault
   category_code: G6
   category: Revert-specific reintroduction
-  path: advanced-scenarios/SZZG-0091/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0091/README.md
-  status: active
   factors:
   - revert
   - partial-revert
@@ -1057,312 +1222,370 @@ scenarios:
   - single-fault-reintroduced
   - re-bic
   - wrong-operator
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0091/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0091/README.md
 - id: SZZG-0093
   title: BIC occurs during feature work
+  slug: feature-bic
   category_code: G7
   category: Issue, message, context, and non-local evidence
-  path: advanced-scenarios/SZZG-0093/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0093/README.md
-  status: active
   factors:
   - work-item
   - feature-work
   - bic-inside-work-item
   - commit-series
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0093/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0093/README.md
 - id: SZZG-0094
   title: BIC and BFC belong to the same issue commit series
+  slug: bic-bfc-issue-commit
   category_code: G7
   category: Issue, message, context, and non-local evidence
-  path: advanced-scenarios/SZZG-0094/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0094/README.md
-  status: active
   factors:
   - issue-evidence
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0094/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0094/README.md
 - id: SZZG-0095
   title: BIC separated from BFC by an intermediate work-item commit
+  slug: bic-bfc-intermediate-work-item
   category_code: G7
   category: Issue, message, context, and non-local evidence
-  path: advanced-scenarios/SZZG-0095/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0095/README.md
-  status: active
   factors:
   - work-item
   - intermediate-commit
   - related-but-not-correct
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0095/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0095/README.md
 - id: SZZG-0096
   title: Multiple candidate BICs inside a work item
+  slug: work-item-bic
   category_code: G7
   category: Issue, message, context, and non-local evidence
-  path: advanced-scenarios/SZZG-0096/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0096/README.md
-  status: active
   factors:
   - work-item
   - evaluation-variant
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0096/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0096/README.md
 - id: SZZG-0097
   title: Work item inference without issue ID
+  slug: issue-id-work-item
   category_code: G7
   category: Issue, message, context, and non-local evidence
-  path: advanced-scenarios/SZZG-0097/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0097/README.md
-  status: active
   factors:
   - work-item
   - work-item-inference
   - no-issue-id
   - commit-series
   - related-but-not-correct
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0097/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0097/README.md
 - id: SZZG-0098
   title: Commit message names the regressed region
+  slug: commit-message
   category_code: G7
   category: Issue, message, context, and non-local evidence
-  path: advanced-scenarios/SZZG-0098/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0098/README.md
-  status: active
   factors:
   - message-evidence
   - commit-messages
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0098/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0098/README.md
 - id: SZZG-0099
   title: BFC message references the wrong commit
+  slug: bfc-message-references-wrong-commit
   category_code: G7
   category: Issue, message, context, and non-local evidence
-  path: advanced-scenarios/SZZG-0099/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0099/README.md
-  status: active
   factors:
   - message-evidence
   - misleading-message
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0099/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0099/README.md
 - id: SZZG-0100
   title: Unrelated commits mixed in the same issue
+  slug: issue-commit
   category_code: G7
   category: Issue, message, context, and non-local evidence
-  path: advanced-scenarios/SZZG-0100/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0100/README.md
-  status: active
   factors:
   - work-item
   - issue-evidence
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0100/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0100/README.md
 - id: SZZG-0101
   title: Caller/callee interaction bug
+  slug: caller-callee
   category_code: G7
   category: Issue, message, context, and non-local evidence
-  path: advanced-scenarios/SZZG-0101/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0101/README.md
-  status: active
   factors:
   - caller-callee
   - api-misuse
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0101/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0101/README.md
 - id: SZZG-0102
   title: Issue text names the regressed column
+  slug: issue-description
   category_code: G7
   category: Issue, message, context, and non-local evidence
-  path: advanced-scenarios/SZZG-0102/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0102/README.md
-  status: active
   factors:
   - issue-evidence
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0102/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0102/README.md
 - id: SZZG-0103
   title: Caller-side context is needed to identify the BIC
+  slug: caller-context-needed
   category_code: G7
   category: Issue, message, context, and non-local evidence
-  path: advanced-scenarios/SZZG-0103/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0103/README.md
-  status: active
   factors:
   - caller-callee
   - not-directly-local
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0103/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0103/README.md
 - id: SZZG-0104
   title: Configuration BIC is fixed by code-side normalization
+  slug: config-bic-fixed-in-code
   category_code: G7
   category: Issue, message, context, and non-local evidence
-  path: advanced-scenarios/SZZG-0104/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0104/README.md
-  status: active
   factors:
   - configuration-change
   - cross-artifact-fix
   - caller-callee
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0104/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0104/README.md
 - id: SZZG-0105
   title: Defensive check BFC masks an earlier root-cause BIC
+  slug: defensive-check-masks-root-cause
   category_code: G7
   category: Issue, message, context, and non-local evidence
-  path: advanced-scenarios/SZZG-0105/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0105/README.md
-  status: active
   factors:
   - defensive-fix
   - root-cause-not-touched
   - caller-callee
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0105/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0105/README.md
 - id: SZZG-0107
   title: BFC includes generated files
+  slug: bfc-generated-file
   category_code: G8
   category: Non-source, binary, generated, and scalability edge cases
-  path: advanced-scenarios/SZZG-0107/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0107/README.md
-  status: active
   factors:
   - generated-files
   - boolean-negation
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0107/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0107/README.md
 - id: SZZG-0108
   title: Binary file change
+  slug: binary-file
   category_code: G8
   category: Non-source, binary, generated, and scalability edge cases
-  path: advanced-scenarios/SZZG-0108/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0108/README.md
-  status: active
   factors:
   - binary-file
   - wrong-constant
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0108/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0108/README.md
 - id: SZZG-0109
   title: File deletion
+  slug: file-deletion
   category_code: G8
   category: Non-source, binary, generated, and scalability edge cases
-  path: advanced-scenarios/SZZG-0109/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0109/README.md
-  status: active
   factors:
   - file-deletion
+  difficulty: medium
+  status: active
+  path: advanced-scenarios/SZZG-0109/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0109/README.md
 - id: SZZG-0110
   title: Empty intermediate commit
+  slug: empty-intermediate-commit
   category_code: G8
   category: Non-source, binary, generated, and scalability edge cases
-  path: advanced-scenarios/SZZG-0110/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0110/README.md
-  status: active
   factors:
   - single-bic
   - single-bfc
   - boundary-condition
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0110/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0110/README.md
 - id: SZZG-0111
   title: Chmod-only intermediate
+  slug: chmod-only-intermediate
   category_code: G8
   category: Non-source, binary, generated, and scalability edge cases
-  path: advanced-scenarios/SZZG-0111/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0111/README.md
-  status: active
   factors:
   - file-mode-change
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0111/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0111/README.md
 - id: SZZG-0112
   title: Non-UTF-8 file
+  slug: non-utf-8-file
   category_code: G8
   category: Non-source, binary, generated, and scalability edge cases
-  path: advanced-scenarios/SZZG-0112/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0112/README.md
-  status: active
   factors:
   - encoding
   - non-utf8-file
   - binary-file
   - config-bic
   - config-bfc
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0112/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0112/README.md
 - id: SZZG-0113
   title: Huge file
+  slug: huge-file
   category_code: G8
   category: Non-source, binary, generated, and scalability edge cases
-  path: advanced-scenarios/SZZG-0113/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0113/README.md
-  status: active
   factors:
   - generated-file
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0113/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0113/README.md
 - id: SZZG-0114
   title: Huge history
+  slug: huge-history
   category_code: G8
   category: Non-source, binary, generated, and scalability edge cases
-  path: advanced-scenarios/SZZG-0114/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0114/README.md
-  status: active
   factors:
   - generated-history
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0114/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0114/README.md
 - id: SZZG-0115
   title: Top-k evaluation
+  slug: top-k-evaluation
   category_code: G9
   category: Evaluation policy variants
+  factors:
+  - evaluation-variant
+  difficulty: easy
+  status: active
   path: advanced-scenarios/SZZG-0115/scenario.graph.yml
   readme: advanced-scenarios/SZZG-0115/README.md
-  status: active
-  factors:
-  - evaluation-variant
 - id: SZZG-0116
   title: Entity-level-only expected SZZ policy
+  slug: entity-level-only-expected-szz
   category_code: G9
   category: Evaluation policy variants
-  path: advanced-scenarios/SZZG-0116/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0116/README.md
-  status: active
   factors:
   - evaluation-variant
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0116/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0116/README.md
 - id: SZZG-0117
   title: The unit change arrives through a merge, the consumer is written after it
+  slug: unit-change-through-a-merge
   category_code: G4
   category: Branch, merge, cherry-pick, backport, and release branches
-  path: advanced-scenarios/SZZG-0117/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0117/README.md
-  status: active
   factors:
   - multi-bic
   - merge
   - release-branch
   - value-flow
   - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0117/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0117/README.md
 - id: SZZG-0118
   title: A reduced copy of a helper, and a later call routed through it
+  slug: reduced-copy-called-later
   category_code: G2
   category: Clone, copy propagation, and origin-vs-direct BIC
-  path: advanced-scenarios/SZZG-0118/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0118/README.md
-  status: active
   factors:
   - multi-bic
   - clone
   - origin-and-direct-bic
   - caller-callee-interaction
   - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0118/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0118/README.md
 - id: SZZG-0119
   title: A move that inlines two named conditions takes ownership of an earlier fault
+  slug: move-and-inline-takes-ownership
   category_code: G1
   category: Refactoring, move, rename, and semantic rewrite
-  path: advanced-scenarios/SZZG-0119/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0119/README.md
-  status: active
   factors:
   - multi-bic
   - file-move
   - inline-refactoring
   - behaviour-preserving-rewrite
   - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0119/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0119/README.md
 - id: SZZG-0120
   title: Two branches that are each harmless, and a merge that is not
+  slug: harmless-branches-harmful-merge
   category_code: G3
   category: Multiple BICs, multiple BFCs, and partial fixes
-  path: advanced-scenarios/SZZG-0120/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0120/README.md
-  status: active
   factors:
   - multi-bic
   - merge
   - guard-removal
   - caller-callee-interaction
   - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0120/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0120/README.md
 - id: SZZG-0121
   title: A cherry-picked unit change in a file the fix never opens
+  slug: cherry-picked-unit-change-other-file
   category_code: G4
   category: Branch, merge, cherry-pick, backport, and release branches
-  path: advanced-scenarios/SZZG-0121/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0121/README.md
-  status: active
   factors:
   - multi-bic
   - cherry-pick
   - origin-and-direct-bic
   - value-flow
   - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0121/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0121/README.md
 - id: SZZG-0122
   title: Rebased feature branch deleted after the rebase (twin of SZZG-0057)
+  slug: rebase-branch-deleted-twin
   category_code: G4
   category: Branch, merge, cherry-pick, backport, and release branches
-  path: advanced-scenarios/SZZG-0122/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0122/README.md
-  status: active
   factors:
   - branch
   - rebase
@@ -1370,171 +1593,199 @@ scenarios:
   - unrelated-main-changes
   - direct-bic
   - origin-bic
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0122/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0122/README.md
 - id: SZZG-0123
   title: The fix lands on the un-rebased branch, which is merged after its commits were rebased
+  slug: fix-on-unrebased-branch-merged-later
   category_code: G5
   category: Rebase-specific history rewriting
-  path: advanced-scenarios/SZZG-0123/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0123/README.md
-  status: active
   factors:
   - rebase
   - merge
   - fix-on-feature-branch
   - origin-and-replay-both-reachable
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0123/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0123/README.md
 - id: SZZG-0124
   title: A cherry-pick whose conflict adaptation introduces the bug
+  slug: cherry-pick-adaptation-introduces-bug
   category_code: G4
   category: Branch, merge, cherry-pick, backport, and release branches
-  path: advanced-scenarios/SZZG-0124/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0124/README.md
-  status: active
   factors:
   - cherry-pick
   - conflict-resolution
   - adaptation-introduces-bug
   - release-branch
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0124/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0124/README.md
 - id: SZZG-0125
   title: A cherry-pick whose conflict adaptation is faithful to a faulty source
+  slug: cherry-pick-adaptation-faithful-to-faulty-source
   category_code: G4
   category: Branch, merge, cherry-pick, backport, and release branches
-  path: advanced-scenarios/SZZG-0125/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0125/README.md
-  status: active
   factors:
   - cherry-pick
   - conflict-resolution
   - origin-and-direct-bic
   - release-branch
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0125/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0125/README.md
 - id: SZZG-0126
   title: The fix is a git revert of the faulty commit, after another revert that is not
+  slug: fix-is-git-revert-after-noise-revert
   category_code: G6
   category: Revert-specific reintroduction
-  path: advanced-scenarios/SZZG-0126/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0126/README.md
-  status: active
   factors:
   - revert
   - revert-is-fix
   - resolvable-message-handle
   - revert-as-distractor
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0126/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0126/README.md
 - id: SZZG-0127
   title: Reverting a merge commit brings the merged branch's fix back out
+  slug: merge-revert-reintroduces-bug
   category_code: G6
   category: Revert-specific reintroduction
-  path: advanced-scenarios/SZZG-0127/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0127/README.md
-  status: active
   factors:
   - revert
   - merge-revert
   - reintroduction
   - fix-on-feature-branch
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0127/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0127/README.md
 - id: SZZG-0128
   title: Feature branch integrated by fast-forward, no merge commit (twin of SZZG-0043)
+  slug: fast-forward-integration-twin
   category_code: G4
   category: Branch, merge, cherry-pick, backport, and release branches
-  path: advanced-scenarios/SZZG-0128/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0128/README.md
-  status: active
   factors:
   - fast-forward
   - branch
   - merge
   - feature-branch-bic
   - main-branch-bfc
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0128/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0128/README.md
 - id: SZZG-0129
   title: Octopus merge with the faulty branch on a non-first parent
+  slug: octopus-merge-bic-on-later-parent
   category_code: G4
   category: Branch, merge, cherry-pick, backport, and release branches
-  path: advanced-scenarios/SZZG-0129/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0129/README.md
-  status: active
   factors:
   - merge
   - octopus-merge
   - bic-on-non-first-parent
   - multi-branch-integration
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0129/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0129/README.md
 - id: SZZG-0130
   title: A bug report filed between the BIC and a later rewrite; its date rules the rewrite out
+  slug: report-date-excludes-later-rewrite
   category_code: G7
   category: Issue, message, context, and non-local evidence
-  path: advanced-scenarios/SZZG-0130/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0130/README.md
-  status: active
   factors:
   - bug-report-date
   - tool-visible-context
   - rewrite-after-bic
   - basic-blame-distractor
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0130/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0130/README.md
 - id: SZZG-0131
   title: The BIC was rebased after the bug report; excluding commits by committer date rules it out
+  slug: report-date-heuristic-wrong-for-rebased-bic
   category_code: G7
   category: Issue, message, context, and non-local evidence
-  path: advanced-scenarios/SZZG-0131/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0131/README.md
-  status: active
   factors:
   - bug-report-date
   - tool-visible-context
   - rebase
   - origin-and-direct-bic
   - author-date-vs-committer-date
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0131/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0131/README.md
 - id: SZZG-0132
   title: The fix message names the rewrite commit that blame also returns
+  slug: message-and-blame-both-point-at-rewrite
   category_code: G7
   category: Issue, message, context, and non-local evidence
-  path: advanced-scenarios/SZZG-0132/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0132/README.md
-  status: active
   factors:
   - misleading-message
   - rewrite-after-bic
   - basic-blame-distractor
   - semantics-required
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0132/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0132/README.md
 - id: SZZG-0133
   title: A binary asset is changed by both the BIC and the BFC
+  slug: binary-asset-changed-in-bic-and-bfc
   category_code: G8
   category: Non-source, binary, generated, and scalability edge cases
-  path: advanced-scenarios/SZZG-0133/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0133/README.md
-  status: active
   factors:
   - binary-file
   - binary-bic
   - binary-bfc
   - no-line-level-evidence
+  difficulty: medium
+  status: active
+  path: advanced-scenarios/SZZG-0133/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0133/README.md
 - id: SZZG-0134
   title: A .gitattributes line-ending rule is the BIC
+  slug: gitattributes-line-ending-bic
   category_code: G8
   category: Non-source, binary, generated, and scalability edge cases
-  path: advanced-scenarios/SZZG-0134/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0134/README.md
-  status: active
   factors:
   - gitattributes-bic
   - line-ending
   - non-source-bic
   - cross-artifact-fix
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0134/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0134/README.md
 - id: SZZG-0135
   title: 'Externally caused fault: the fix has no bug-introducing commit in the repository'
+  slug: external-cause-no-bic
   category_code: G9
   category: Evaluation policy variants
-  path: advanced-scenarios/SZZG-0135/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0135/README.md
-  status: active
   factors:
   - expect-no-bic
   - external-cause
   - tool-visible-context
   - single-bfc
+  difficulty: medium
+  status: active
+  path: advanced-scenarios/SZZG-0135/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0135/README.md
 - id: SZZG-0136
   title: 'The fault predates the repository: an import commit is the history''s boundary, not the BIC'
+  slug: import-boundary-not-bic
   category_code: G9
   category: Evaluation policy variants
-  path: advanced-scenarios/SZZG-0136/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0136/README.md
-  status: active
   factors:
   - expect-no-bic
   - history-boundary
@@ -1542,49 +1793,57 @@ scenarios:
   - tool-visible-context
   - evaluation-variant
   - single-bfc
+  difficulty: medium
+  status: active
+  path: advanced-scenarios/SZZG-0136/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0136/README.md
 - id: SZZG-0137
   title: 'The fault is present since the initial commit, which wrote it: c0 is the BIC'
+  slug: initial-commit-is-bic
   category_code: G9
   category: Evaluation policy variants
-  path: advanced-scenarios/SZZG-0137/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0137/README.md
-  status: active
   factors:
   - initial-commit-bic
   - single-bic
   - single-bfc
   - tool-visible-context
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0137/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0137/README.md
 - id: SZZG-0138
   title: 'Partial credit with a majority threshold: two of three contributing BICs suffice'
+  slug: partial-credit-majority
   category_code: G9
   category: Evaluation policy variants
-  path: advanced-scenarios/SZZG-0138/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0138/README.md
-  status: active
   factors:
   - partial-credit
   - multi-bic
   - single-bfc
   - addition-only-fix
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0138/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0138/README.md
 - id: SZZG-0139
   title: 'Partial credit across a merge: one BIC on each side, either one is a passing answer'
+  slug: partial-credit-across-merge
   category_code: G9
   category: Evaluation policy variants
-  path: advanced-scenarios/SZZG-0139/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0139/README.md
-  status: active
   factors:
   - partial-credit
   - multi-bic
   - single-bfc
   - branch-merge
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0139/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0139/README.md
 - id: SZZG-0140
   title: 'Top-k with a strict status cut-off: the BIC must be ranked first, hit@3 is only reported'
+  slug: top-k-strict-status
   category_code: G9
   category: Evaluation policy variants
-  path: advanced-scenarios/SZZG-0140/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0140/README.md
-  status: active
   factors:
   - top-k
   - formatting-noise
@@ -1592,13 +1851,15 @@ scenarios:
   - boundary-condition
   - single-bic
   - single-bfc
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0140/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0140/README.md
 - id: SZZG-0141
   title: 'Credit that saturates: two origins at half credit each can fill a two-commit oracle without full recall'
+  slug: relaxed-credit-saturation
   category_code: G9
   category: Evaluation policy variants
-  path: advanced-scenarios/SZZG-0141/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0141/README.md
-  status: active
   factors:
   - relaxed-credit
   - origin-vs-direct
@@ -1606,13 +1867,15 @@ scenarios:
   - multi-bic
   - single-bfc
   - evaluation-variant
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0141/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0141/README.md
 - id: SZZG-0142
   title: 'An origin worth a full point: credit 1.0 fills the metric while the status still needs the direct BIC'
+  slug: relaxed-credit-full-origin
   category_code: G9
   category: Evaluation policy variants
-  path: advanced-scenarios/SZZG-0142/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0142/README.md
-  status: active
   factors:
   - relaxed-credit
   - origin-vs-direct
@@ -1621,13 +1884,15 @@ scenarios:
   - single-bic
   - single-bfc
   - evaluation-variant
+  difficulty: easy
+  status: active
+  path: advanced-scenarios/SZZG-0142/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0142/README.md
 - id: SZZG-0143
   title: Divergent fixes on main and release for one BIC, with a branch-level oracle
+  slug: divergent-bfcs-branch-level-oracle
   category_code: G4
   category: Branch, merge, cherry-pick, backport, and release branches
-  path: advanced-scenarios/SZZG-0143/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0143/README.md
-  status: active
   factors:
   - branch
   - release-branch
@@ -1637,13 +1902,15 @@ scenarios:
   - branch-level-oracle
   - formatting-noise
   - wrong-constant
+  difficulty: medium
+  status: active
+  path: advanced-scenarios/SZZG-0143/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0143/README.md
 - id: SZZG-0144
   title: The fix message names the issue whose change blame cannot reach
+  slug: fix-message-names-the-earlier-issue
   category_code: G7
   category: Issue, message, context, and non-local evidence
-  path: advanced-scenarios/SZZG-0144/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0144/README.md
-  status: active
   factors:
   - multi-bic
   - single-bfc
@@ -1653,13 +1920,15 @@ scenarios:
   - value-flow
   - wrong-constant
   - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0144/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0144/README.md
 - id: SZZG-0145
   title: The unit change is a regenerated five-thousand-line table the fix never opens
+  slug: unit-change-in-a-generated-table
   category_code: G8
   category: Non-source, binary, generated, and scalability edge cases
-  path: advanced-scenarios/SZZG-0145/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0145/README.md
-  status: active
   factors:
   - multi-bic
   - single-bfc
@@ -1669,13 +1938,15 @@ scenarios:
   - value-flow
   - config-value
   - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0145/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0145/README.md
 - id: SZZG-0146
-  title: "One history, two contracts: the default variant requires the cause, the other only the commit that made it visible"
+  title: 'One history, two contracts: the default variant requires the cause, the other only the commit that made it visible'
+  slug: two-contracts-cause-and-observable
   category_code: G9
   category: Evaluation policy variants
-  path: advanced-scenarios/SZZG-0146/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0146/README.md
-  status: active
   factors:
   - multi-bic
   - single-bfc
@@ -1684,13 +1955,15 @@ scenarios:
   - value-flow
   - wrong-constant
   - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0146/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0146/README.md
 - id: SZZG-0147
   title: A revert of a revert brings the unit change back, and a consumer is written after it
+  slug: revert-of-revert-reintroduces-the-unit-change
   category_code: G6
   category: Revert-specific reintroduction
-  path: advanced-scenarios/SZZG-0147/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0147/README.md
-  status: active
   factors:
   - multi-bic
   - single-bfc
@@ -1700,13 +1973,15 @@ scenarios:
   - value-flow
   - wrong-constant
   - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0147/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0147/README.md
 - id: SZZG-0148
-  title: "Partial credit whose threshold blame cannot meet: three causes, one reachable"
+  title: 'Partial credit whose threshold blame cannot meet: three causes, one reachable'
+  slug: partial-credit-threshold-blame-misses
   category_code: G9
   category: Evaluation policy variants
-  path: advanced-scenarios/SZZG-0148/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0148/README.md
-  status: active
   factors:
   - multi-bic
   - single-bfc
@@ -1716,13 +1991,15 @@ scenarios:
   - missing-branch
   - wrong-operator
   - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0148/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0148/README.md
 - id: SZZG-0149
   title: Three release branches, three causes, and a credit threshold blame cannot meet
+  slug: three-branches-one-threshold
   category_code: G4
   category: Branch, merge, cherry-pick, backport, and release branches
-  path: advanced-scenarios/SZZG-0149/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0149/README.md
-  status: active
   factors:
   - branch
   - release-branch
@@ -1734,13 +2011,15 @@ scenarios:
   - missing-branch
   - off-by-one
   - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0149/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0149/README.md
 - id: SZZG-0150
   title: The merge resolves the conflict by inlining, and owns the boundary the branch moved
+  slug: merge-resolution-inlines-the-boundary
   category_code: G1
   category: Refactoring, move, rename, and semantic rewrite
-  path: advanced-scenarios/SZZG-0150/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0150/README.md
-  status: active
   factors:
   - multi-bic
   - single-bfc
@@ -1750,13 +2029,15 @@ scenarios:
   - value-flow
   - off-by-one
   - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0150/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0150/README.md
 - id: SZZG-0151
   title: A merge takes the branch's side and puts the reverted unit back without saying so
+  slug: merge-undoes-the-revert
   category_code: G6
   category: Revert-specific reintroduction
-  path: advanced-scenarios/SZZG-0151/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0151/README.md
-  status: active
   factors:
   - multi-bic
   - single-bfc
@@ -1765,13 +2046,15 @@ scenarios:
   - merge
   - value-flow
   - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0151/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0151/README.md
 - id: SZZG-0152
   title: The fix message names a release, and only the changelog of that release says what changed
+  slug: the-changelog-of-the-named-release
   category_code: G7
   category: Issue, message, context, and non-local evidence
-  path: advanced-scenarios/SZZG-0152/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0152/README.md
-  status: active
   factors:
   - multi-bic
   - single-bfc
@@ -1780,13 +2063,15 @@ scenarios:
   - refactoring-after-bic
   - value-flow
   - blame-unreachable-bic
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0152/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0152/README.md
 - id: SZZG-0153
   title: The unit lives in a binary table, and the commit that changed it has no line to blame
+  slug: the-unit-lives-in-a-binary-table
   category_code: G8
   category: Non-source, binary, generated, and scalability edge cases
-  path: advanced-scenarios/SZZG-0153/scenario.graph.yml
-  readme: advanced-scenarios/SZZG-0153/README.md
-  status: active
   factors:
   - multi-bic
   - single-bfc
@@ -1794,5 +2079,7 @@ scenarios:
   - non-source-bic
   - value-flow
   - blame-unreachable-bic
-notes:
-- Scenario IDs are ordered by the SZZBench scenario taxonomy.
+  difficulty: hard
+  status: active
+  path: advanced-scenarios/SZZG-0153/scenario.graph.yml
+  readme: advanced-scenarios/SZZG-0153/README.md

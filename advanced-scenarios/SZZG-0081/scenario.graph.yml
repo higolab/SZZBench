@@ -81,7 +81,7 @@ commits:
   - r1
   message: Apply the four-space indentation of the project formatter
   role: formatting
-  rebase_cleanup: formatting_rewrite
+  x-rebase_cleanup: formatting_rewrite
   date: '2024-01-05T08:15:00Z'
   operations:
   - type: write_file
@@ -172,6 +172,6 @@ scenario_design:
 notes:
 - 'The generated repository is designed so that plain blame misses the BIC: the graph verifier therefore reports GW703 for this
   scenario. That warning is expected and documents the difficulty, it is not a defect.'
-- 'rebase_cleanup: formatting_rewrite records that the reformatting was part of the rebase cleanup.'
+- 'x-rebase_cleanup: formatting_rewrite records that the reformatting was part of the rebase cleanup.'
 - Rewritten 2026-09-21 from the shared Range.contains template to a null-check-omission fault (GitHub issue 13); the history
   shape, oracle and coverage dimensions are unchanged.

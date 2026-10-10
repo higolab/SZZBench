@@ -53,7 +53,7 @@ commits:
   - c0
   message: Start range filter cleanup
   role: intermediate
-  work_item: INFERRED-WI-001
+  x-work_item: INFERRED-WI-001
   operations:
   - type: replace
     path: src/main/java/example/RangeFilter.java
@@ -69,7 +69,7 @@ commits:
   - c1
   message: Tighten boundary behavior in range filter
   role: bug_introducing
-  work_item: INFERRED-WI-001
+  x-work_item: INFERRED-WI-001
   operations:
   - type: replace
     path: src/main/java/example/RangeFilter.java
@@ -81,7 +81,7 @@ commits:
   - c2
   message: Wire range filter into request path
   role: intermediate
-  work_item: INFERRED-WI-001
+  x-work_item: INFERRED-WI-001
   operations:
   - type: replace
     path: src/main/java/example/RangeFilter.java
@@ -124,7 +124,7 @@ bugs:
     file: src/main/java/example/RangeFilter.java
     statement: return normalized >= min && normalized <= max;
     fix_type: line_modification
-  work_item: INFERRED-WI-001
+  x-work_item: INFERRED-WI-001
 expected_szz:
   commit_level:
     evaluation_policy: exact_set

@@ -81,7 +81,7 @@ commits:
     old: return (int) Math.min(100L << doublings, 30000L);
     new: return (int) Math.min(10L << doublings, 30000L);
   rebase_of: f1
-  rebase_split_part: base
+  x-rebase_split_part: base
 - id: r2
   branch: main
   parents:
@@ -94,7 +94,7 @@ commits:
     old: return (int) Math.min(10L << doublings, 30000L);
     new: return (int) Math.min(10L << doublings, 3000L);
   rebase_of: f1
-  rebase_split_part: cap
+  x-rebase_split_part: cap
 - id: c3
   branch: main
   parents:

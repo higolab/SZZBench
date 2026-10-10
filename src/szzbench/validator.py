@@ -1381,6 +1381,16 @@ def _lint_fault_line_integrity(
 
 # --- index consistency ------------------------------------------------------
 
+#: The one shape of both index files (issue #200): ``scenarios`` at the top level, and
+#: entries with these keys, in this order.  All but ``path`` and ``readme`` are copied
+#: from the scenario's ``meta``.  The graph index had a ``schema_version`` that called it a
+#: draft, a ``description``, a ``scenario_count`` and ``notes``, and entries without
+#: ``slug`` and ``difficulty``; the classic entries had no ``readme``.
+INDEX_TOP_LEVEL_KEYS = ("scenarios",)
+INDEX_ENTRY_KEYS = ("id", "title", "slug", "category_code", "category", "factors", "difficulty", "status", "path",
+                    "readme")
+
+
 def load_index(index_path: Path) -> tuple[dict[str, Any] | None, str | None]:
     """``index_path`` as loaded, or None and why it cannot be read, in words that name the index (issue #158).
 
@@ -1437,6 +1447,12 @@ def validate_index_file(index_path: Path, root: Path, scenario_filename: str) ->
     if data is None:
         result.error("IE001", f"Cannot load index: {problem}", prefix)
         return result
+    for key in data:
+        if key not in INDEX_TOP_LEVEL_KEYS:
+            # the graph index's schema_version, description, scenario_count and notes, which
+            # nothing read but IE010 / IE011, now retired (issue #200)
+            result.warning("IW004", f"The index has a top-level key {key!r}, which nothing reads; an index has "
+                           "'scenarios' only.", f"{prefix}:{key}")
     entries = data.get("scenarios")
     if not isinstance(entries, list):
         result.error("IE002", "'scenarios' must be a list.", f"{prefix}:scenarios")
@@ -1444,12 +1460,6 @@ def validate_index_file(index_path: Path, root: Path, scenario_filename: str) ->
     if not root.is_dir():
         result.error("IE003", f"Scenario root '{root.as_posix()}' is not a directory.", prefix)
         return result
-    count = data.get("scenario_count")
-    if count is not None and (not isinstance(count, int) or isinstance(count, bool)):
-        # '146' != 146, and IE010 printed both as 146 (issue #158)
-        result.error("IE011", f"scenario_count must be an integer, not {type_label(count)} {count!r}.", f"{prefix}:scenario_count")
-    elif count is not None and count != len(entries):
-        result.error("IE010", f"scenario_count is {count}, but the index lists {len(entries)} entries.", f"{prefix}:scenario_count")
 
     expected_rel = lambda sid: f"{root.name}/{sid}/{scenario_filename}"  # noqa: E731
     # the entries' paths are relative to the directory that holds the root (IW023)
@@ -1476,6 +1486,17 @@ def validate_index_file(index_path: Path, root: Path, scenario_filename: str) ->
         if sid in retired:
             # A withdrawn scenario leaves a gap that stays one (issue #112).
             result.error("IE047", f"Index entry '{sid}' uses a retired id (docs/retired-ids.md); ids are never reused.", f"{loc}.id")
+        # Both indexes have entries of one shape (issue #200).  The comparisons below
+        # skip a key the entry does not have, so the graph index's missing slug and
+        # difficulty were never compared.
+        for key in entry:
+            if key not in INDEX_ENTRY_KEYS:
+                result.warning("IW004", f"Index entry '{sid}' has a key {key!r}, which nothing reads; an entry has "
+                               f"{', '.join(INDEX_ENTRY_KEYS)}.", f"{loc}.{key}")
+        for key in INDEX_ENTRY_KEYS[1:]:
+            if key not in entry:
+                result.error("IE046", f"Index entry '{sid}' has no {key}; an entry has {', '.join(INDEX_ENTRY_KEYS)}.",
+                             f"{loc}.{key}")
         scenario_file = root / sid / scenario_filename
         if not scenario_file.is_file():
             result.error("IE022", f"Index entry '{sid}' has no scenario file at '{expected_rel(sid)}'.", loc)
@@ -1484,7 +1505,7 @@ def validate_index_file(index_path: Path, root: Path, scenario_filename: str) ->
         if isinstance(path_value, str) and Path(path_value).as_posix() != expected_rel(sid):
             result.warning("IW023", f"Index entry '{sid}' path is '{path_value}', expected '{expected_rel(sid)}'.", f"{loc}.path")
         if "readme" in entry:
-            # the graph index names every scenario's README; nothing looked at it (issue #158)
+            # nothing looked at the graph index's readme (issue #158); both indexes have one since issue #200
             readme = entry["readme"]
             problem = _index_readme_problem(readme, repository_root)
             if problem is not None:

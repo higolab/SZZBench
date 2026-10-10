@@ -8,7 +8,8 @@ index checks (issue #158), and graph commit options generation needs a source fo
 * #158: an empty or missing ``index.yml`` was reported in ``load_yaml``'s words for a
   scenario file ("The root of scenario.yml ..."), a string ``scenario_count`` as
   ``IE010: scenario_count is 146, but the index lists 146 entries.``, and nothing looked at
-  an entry's ``readme`` or at the order of the entries.
+  an entry's ``readme`` or at the order of the entries.  (Since issue #200 an index has no
+  ``scenario_count``: IE010 and IE011 are retired, and the key is IW004.)
 * #179: ``inherit_message`` / ``inherit_author_date`` without a single source commit (a
   ``rebase_of`` list included), ``cherry_pick_trailer`` without a source, and a default
   branch no commit is on passed ``validate-graph``; generation then stopped on the first
@@ -95,17 +96,19 @@ def _index_root(tmp_path: Path, entries: list[dict], *, count=None) -> Path:
     root = tmp_path / "advanced-scenarios"
     for entry in entries:
         (root / entry["id"]).mkdir(parents=True)
-        (root / entry["id"] / "scenario.graph.yml").write_text(
-            yaml.safe_dump({"meta": {"id": entry["id"], "title": entry["title"]}}), encoding="utf-8")
+        meta = {key: value for key, value in entry.items() if key not in ("path", "readme")}
+        (root / entry["id"] / "scenario.graph.yml").write_text(yaml.safe_dump({"meta": meta}), encoding="utf-8")
         (root / entry["id"] / "README.md").write_text("# README\n", encoding="utf-8")
-    index = {"scenario_count": len(entries) if count is None else count, "scenarios": entries}
+    index = {"scenarios": entries} if count is None else {"scenario_count": count, "scenarios": entries}
     (root / "index.yml").write_text(yaml.safe_dump(index, sort_keys=False), encoding="utf-8")
     return root
 
 
 def _entry(sid: str, readme: str | None = None) -> dict:
-    return {"id": sid, "title": sid, "path": f"advanced-scenarios/{sid}/scenario.graph.yml",
-            "readme": readme or f"advanced-scenarios/{sid}/README.md"}
+    """An entry of the shape of both indexes (issue #200)."""
+    return {"id": sid, "title": sid, "slug": sid.lower(), "category_code": "G1", "category": "Probe",
+            "factors": ["file-rename"], "difficulty": "easy", "status": "active",
+            "path": f"advanced-scenarios/{sid}/scenario.graph.yml", "readme": readme or f"advanced-scenarios/{sid}/README.md"}
 
 
 def test_an_empty_or_missing_index_is_named_in_the_message(tmp_path):
@@ -122,11 +125,11 @@ def test_an_empty_or_missing_index_is_named_in_the_message(tmp_path):
     assert sorted(p.name for p in root.iterdir()) == ["index.yml"]
 
 
-def test_a_string_scenario_count_is_a_type_error_not_a_count_mismatch(tmp_path):
+def test_a_string_scenario_count_is_a_key_outside_the_shape_not_a_count_mismatch(tmp_path):
     root = _index_root(tmp_path, [_entry("SZZG-0001")], count="1")
     result = validate_index_file(root / "index.yml", root, "scenario.graph.yml")
     assert [(f.code, f.message) for f in result.findings] == [
-        ("IE011", "scenario_count must be an integer, not str '1'.")]
+        ("IW004", "The index has a top-level key 'scenario_count', which nothing reads; an index has 'scenarios' only.")]
 
 
 def test_a_dangling_readme_is_an_error_and_entries_out_of_id_order_a_warning(tmp_path):
