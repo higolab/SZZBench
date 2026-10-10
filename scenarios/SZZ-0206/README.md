@@ -77,7 +77,7 @@ known distractor.
   git 2.50.1; the same holds for `-M` and `-C`).
 
 Blame class of plain blame: **miss** — B-SZZ returns `{c2}`. The verifier
-reports this as W700 ("basic git blame reaches c2, not the expected BIC"),
+reports this as W703 ("basic git blame reaches c2, not the expected BIC"),
 as it does for SZZ-0108: the finding *is* the scenario.
 
 ## What a tool must do

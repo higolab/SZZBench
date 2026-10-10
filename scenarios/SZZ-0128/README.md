@@ -65,7 +65,7 @@ variants on the same line at `c3^`:
 Copy/move detection alone is not enough here: the moved chunk is short, and
 its indentation changed, so git only follows it when whitespace is ignored
 as well. `szzbench generate` reports the informational finding
-`W700: basic git blame reaches <c2>, not expected BIC(s) ['c1']`, which is
+`W703: basic git blame reaches <c2>, not expected BIC(s) ['c1']`, which is
 the designed property of the scenario (as in SZZ-0081 and SZZ-0178).
 
 ## What a tool must do

@@ -56,7 +56,7 @@ is *not* deleted. `git blame` at `c3^` on the deleted line returns **`c2`**,
 so the outcome is **miss**. `git blame -C -C` also returns **`c2`**: the
 line was rewritten in place, so copy detection has nothing to follow.
 `szzbench generate` therefore reports the informational finding
-`W700: basic git blame reaches <c2>, not expected BIC(s) ['c1']`, which is
+`W703: basic git blame reaches <c2>, not expected BIC(s) ['c1']`, which is
 the designed property of the scenario (as in SZZ-0081 and SZZ-0178), not a
 defect.
 
