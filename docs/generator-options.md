@@ -255,8 +255,9 @@ byte-identical to `c0`'s (issue #164).
 
 ### `encoding` (*both*)
 
-Available on `write_file` and `replace` in both suites (and on the graph
-`insert_after`). It names the codec used for the bytes on disk; the default
+Available on `write_file` and `replace` in both suites, and on the graph
+`insert_after`, `move_entity`, `copy_entity`, `write_generated_text_file` and
+`format_file`. It names the codec used for the bytes on disk; the default
 is `utf-8`. Its one intended use is `utf-8-sig`, which reads and writes a
 UTF-8 byte order mark: a `write_file` with `encoding: utf-8-sig` and otherwise
 unchanged content — or a `replace` with `encoding: utf-8-sig` whose `old`
@@ -280,19 +281,25 @@ equals `new` — is a *BOM-only re-save*, the commit shape of SZZ-0206.
   new: "20480"
 ```
 
-In the classic suite the key is closed like `line_ending`: `utf-8` or
-`utf-8-sig` in any spelling Python accepts, anything else an error (E042).
-The classic in-memory simulator applies the codec's read and write behaviour
-to the simulated text, which stores a BOM as a leading U+FEFF: `utf-8-sig`
-strips one on read and writes one, `utf-8` keeps it as text. A BOM added or
-removed by either operation is therefore a change (not `E250`), statements
-stay substrings of the decoded text, and the simulator accepts a history
-exactly when Git would record it as distinct commits. The graph operations
-pass any codec name to Python unchecked and the graph simulator does not model
-it; a graph commit that changes only the encoding needs another change or
-`allow_empty` to pass `GE202`. `validate-graph` checks that the name is a text
-encoding Python knows (GE061): `encoding: bogus` used to pass it and fail
-generation (issue #152).
+In both suites the key is closed like `line_ending`: `utf-8` or `utf-8-sig`
+in any spelling Python accepts (`UTF8`, `utf_8_sig`), anything else an error
+(E042 / GE061). Both in-memory simulators apply the codec's read and write
+behaviour to the simulated text, which stores a BOM as a leading U+FEFF:
+`utf-8-sig` strips one on read and writes one, `utf-8` keeps it as text. A BOM
+added or removed by any operation is therefore a change (not `E250` /
+`GE202`), statements stay substrings of the decoded text, and the simulators
+accept a history exactly when Git would record it as distinct commits.
+
+The graph key was open until issue #240: `validate-graph` accepted any text
+encoding Python knows (GE061 refused only an unknown one, issue #152), and the
+graph simulator did not read the key. A file written in `utf-16` and edited
+without the key, UTF-8 text read as `latin-1`, or text that `latin-1` cannot
+encode passed `validate-graph --simulate` and failed generation; a statement
+in a `utf-16` file failed verification (GE663), because the verifier reads
+every blob as UTF-8; and a commit that only added a BOM was `GE202` in the
+simulation while generation committed it. No shipped scenario named another
+codec. A file in another encoding is written as bytes with
+`write_binary_file`, as SZZG-0112 writes its CP1252 file.
 
 ### `write_generated_text_file.header` / `.footer` (*graph*)
 
@@ -831,7 +838,7 @@ patch operation, so it reports the generation errors above as GE203; until
 | `repository.base_date` | top level | both |
 | `author_date`, `committer_date` | commit | both |
 | `line_ending` | `write_file`, `replace`, `insert_after`, `format_file`, `move_entity`, `copy_entity` operations | both (`insert_after`, `format_file`, `move_entity`, `copy_entity`: graph) |
-| `encoding` | `write_file`, `replace`, `insert_after` operations | both (`insert_after`: graph) |
+| `encoding` (`utf-8`, `utf-8-sig`) | `write_file`, `replace`, `insert_after`, `move_entity`, `copy_entity`, `write_generated_text_file`, `format_file` operations | both (all but `write_file` and `replace`: graph) |
 | `header`, `footer` | `write_generated_text_file` operation | graph |
 | `commit_generator.path` (directory), `count` (capped 2000), `files` | operation (semantics) | graph |
 | `inherit_message`, `inherit_author_date`, `inherit_author` | commit with `rebase_of`/`cherry_pick_of`/`backport_of` | graph |

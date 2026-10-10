@@ -312,6 +312,7 @@ def test_every_file_operation_is_simulated_as_generated(tmp_path):
         _commit("c0", [], _write_file("a.txt", "a\n"), _write_file("run.sh", "#!/bin/sh\necho hi\n"),
                 _write_file("src/A.java", "class A {}\n"), _write_file("src/B.java", "class B {}\n"),
                 _write_file("fmt.txt", "x  \ny\n"), _write_file("readme.txt", "r\n"),
+                dict(_write_file("bom.txt", "x = 1  \n"), encoding="utf-8-sig"),           # a byte order mark (issue #240)
                 {"type": "write_binary_file", "path": "bin/logo.bin", "content_base64": "/wD/AA=="},
                 {"type": "write_generated_text_file", "path": "gen/data.txt", "lines": 3, "template": "row {line}"}),
         _commit("c1", ["c0"], _chmod("run.sh", "755")),
@@ -331,7 +332,9 @@ def test_every_file_operation_is_simulated_as_generated(tmp_path):
         _commit("c9", ["c8"], {"type": "copy_entity", "entity": {"name": "B"}, "from_file": "src/B.java",
                                "to_file": "src/C.java"},
                 {"type": "format_file", "path": "fmt.txt"},
-                {"type": "insert_after", "path": "a.txt", "anchor": "b\n", "content": "c\n"}),
+                {"type": "insert_after", "path": "a.txt", "anchor": "b\n", "content": "c\n"},
+                _replace("bom.txt", "x = 1", "x = 2"),                                   # utf-8 keeps the mark as text
+                {"type": "format_file", "path": "bom.txt", "encoding": "utf-8-sig"}),    # strips it on read, writes one
         _commit("c10", ["c9"], _write_file("src/D.java", "class D {}\n"), _chmod("src/D.java", "700"),
                 {"type": "delete_file", "path": "run.sh"}),
         _commit("c11", ["c10"], {"type": "copy_entity", "entity": {"name": "C"}, "from_file": "src/C.java",

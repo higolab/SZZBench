@@ -7,7 +7,8 @@ import tempfile
 
 from .findings import ValidationResult
 from .graph_operations import CommitGeneratorPlan, commit_generator_changes, commit_generator_plan, decode_content_base64
-from .operations import OperationError, insert_after_once, normalize_newlines, replace_once, text_field
+from .operations import (OperationError, decode_stored, encode_stored, insert_after_once, normalize_newlines, replace_once,
+                         resolve_encoding, text_field)
 from .paths import PathValidationError, file_path_conflict, validate_repo_relative_path
 
 #: The mode Git records for a file whose owner may execute it (``SimFile.mode``).
@@ -271,25 +272,33 @@ def _clone_snapshot(snapshot: Snapshot) -> Snapshot:
 def _apply_simulated_operation(snapshot: Snapshot, op: dict[str, Any]) -> None:
     op_type = op.get("type")
 
+    # A text file is stored as its bytes decoded with UTF-8, so a byte order mark is a leading
+    # U+FEFF; each operation reads and writes it with its encoding, as the classic replay does
+    # (operations.decode_stored / encode_stored).  The replay used to ignore the key (issue #240).
     if op_type == "write_file":
         path = _validated_path(op["path"])
-        _set_file(snapshot, path, SimFile(normalize_newlines(text_field(op, "content")), _mode(snapshot, path)), op_type)
+        content = encode_stored(normalize_newlines(text_field(op, "content")), resolve_encoding(op))
+        _set_file(snapshot, path, SimFile(content, _mode(snapshot, path)), op_type)
         return
 
     if op_type == "replace":
         path = _validated_path(op["path"])
-        content = _require_text(snapshot, path, "replace")
+        encoding = resolve_encoding(op)
+        content = decode_stored(_require_text(snapshot, path, "replace"), encoding)
         old = normalize_newlines(text_field(op, "old"))
         new = normalize_newlines(text_field(op, "new"))
-        _set_file(snapshot, path, SimFile(replace_once(content, old, new, op.get("occurrence")), snapshot[path].mode), op_type)
+        replaced = encode_stored(replace_once(content, old, new, op.get("occurrence")), encoding)
+        _set_file(snapshot, path, SimFile(replaced, snapshot[path].mode), op_type)
         return
 
     if op_type == "insert_after":
         path = _validated_path(op["path"])
-        content = _require_text(snapshot, path, "insert_after")
+        encoding = resolve_encoding(op)
+        content = decode_stored(_require_text(snapshot, path, "insert_after"), encoding)
         anchor = normalize_newlines(text_field(op, "anchor"))
         inserted = normalize_newlines(text_field(op, "content"))
-        _set_file(snapshot, path, SimFile(insert_after_once(content, anchor, inserted, op.get("occurrence")), snapshot[path].mode), op_type)
+        extended = encode_stored(insert_after_once(content, anchor, inserted, op.get("occurrence")), encoding)
+        _set_file(snapshot, path, SimFile(extended, snapshot[path].mode), op_type)
         return
 
     if op_type == "delete_file":
@@ -323,16 +332,17 @@ def _apply_simulated_operation(snapshot: Snapshot, op: dict[str, Any]) -> None:
     if op_type in {"move_entity", "copy_entity"}:
         src = _validated_path(op["from_file"])
         dst = _validated_path(op["to_file"])
-        content = _require_text(snapshot, src, op_type)
+        encoding = resolve_encoding(op)
+        content = decode_stored(_require_text(snapshot, src, op_type), encoding)
         if dst in snapshot and not op.get("overwrite", True):     # the generator's default (issue #175)
             raise OperationError(f"{op_type} target file already exists: {dst}")
         header = _entity_operation_header(op_type, op)
         if dst in snapshot and op.get("append", False):
-            previous = _require_text(snapshot, dst, op_type)
+            previous = decode_stored(_require_text(snapshot, dst, op_type), encoding)
             new_content = previous.rstrip() + "\n\n" + header + content
         else:
             new_content = header + content
-        _set_file(snapshot, dst, SimFile(new_content, _mode(snapshot, dst)), op_type)
+        _set_file(snapshot, dst, SimFile(encode_stored(new_content, encoding), _mode(snapshot, dst)), op_type)
         if op_type == "move_entity" and op.get("remove_source_file", False):
             del snapshot[src]
         return
@@ -356,14 +366,15 @@ def _apply_simulated_operation(snapshot: Snapshot, op: dict[str, Any]) -> None:
         lines = int(op["lines"])
         template = str(op["template"])
         content = "\n".join(_render_template_line(template, line_no) for line_no in range(1, lines + 1)) + "\n"
-        _set_file(snapshot, path, SimFile(content, _mode(snapshot, path)), op_type)
+        _set_file(snapshot, path, SimFile(encode_stored(content, resolve_encoding(op)), _mode(snapshot, path)), op_type)
         return
 
     if op_type == "format_file":
         path = _validated_path(op["path"])
-        content = _require_text(snapshot, path, "format_file")
+        encoding = resolve_encoding(op)
+        content = decode_stored(_require_text(snapshot, path, "format_file"), encoding)
         formatted = "\n".join(line.rstrip() for line in content.splitlines()) + "\n"
-        _set_file(snapshot, path, SimFile(formatted, snapshot[path].mode), op_type)
+        _set_file(snapshot, path, SimFile(encode_stored(formatted, encoding), snapshot[path].mode), op_type)
         return
 
     if op_type == "apply_patch":

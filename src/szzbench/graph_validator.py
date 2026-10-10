@@ -18,7 +18,7 @@ from .graph_scenario import (branch_name_problems, commit_id_of, graph_bfc_entri
 from .graph_simulator import git_performed_features, simulate_graph_scenario, simulate_graph_scenario_with_git
 from .gitutils import (REWRITE_SOURCE_KEYS, GitError, commit_branch, format_timestamp, history_graph, parse_timestamp,
                        planned_generated_commits, reachable_commit_ids, scenario_default_branch)
-from .operations import OperationError, resolve_line_ending, type_label
+from .operations import OperationError, resolve_encoding, resolve_line_ending, type_label
 from .paths import PathValidationError, file_system_key, validate_repo_relative_path
 from .policies import SUPPORTED_EVALUATION_POLICIES
 from .readme import GRAPH_CONTEXT_SECTIONS
@@ -36,6 +36,9 @@ GRAPH_SCHEMA_VERSION = "graph-1.0"
 #: The operations whose ``line_ending`` / ``encoding`` graph generation reads
 #: (``graph_operations._apply_graph_operation``); GE061 checks them there (issue #152).
 #: ``format_file``, ``move_entity`` and ``copy_entity`` read ``line_ending`` since issue #181.
+#: ``encoding`` is ``utf-8`` or ``utf-8-sig``, the codecs the replay models, as in the
+#: classic suite (E042): any other codec Python knows passed, and the replay, which did
+#: not read the key, accepted what generation then refused (issue #240).
 LINE_ENDING_OPERATIONS = frozenset({"write_file", "replace", "insert_after", "format_file", "move_entity", "copy_entity"})
 ENCODING_OPERATIONS = frozenset({"write_file", "replace", "insert_after", "move_entity", "copy_entity",
                                  "write_generated_text_file", "format_file"})
@@ -568,9 +571,11 @@ def _validate_operation_values(op: dict[str, Any], op_type: str, result: Validat
         except OperationError as exc:
             result.error("GE061", f"Operation '{op_type}' {exc}.", f"{loc}.line_ending")
     if op_type in ENCODING_OPERATIONS and op.get("encoding") is not None:
-        problem = _encoding_problem(op["encoding"])
-        if problem is not None:
-            result.error("GE061", f"Operation '{op_type}' encoding {problem}.", f"{loc}.encoding")
+        try:
+            resolve_encoding(op)                          # the rule of E042, which the replay models (issue #240)
+        except (OperationError, ValueError):              # ValueError: a NUL in the name, which codecs.lookup refuses
+            result.error("GE061", f"Operation '{op_type}' encoding must be 'utf-8' or 'utf-8-sig', got "
+                         f"{op['encoding']!r}.", f"{loc}.encoding")
     if op_type == "commit_generator":
         for key, least in (("count", 0), ("files", 1)):
             value = op.get(key)
@@ -585,22 +590,6 @@ def _validate_operation_values(op: dict[str, Any], op_type: str, result: Validat
             result.error("GE060", f"{op_type} from '{source}' to '{target}' changes only the letter case or the Unicode "
                          "normalization; macOS (and Windows, for letter case) sees one file there, so what generation "
                          "makes of it would depend on the platform.", f"{loc}.{target_key}")
-
-
-def _encoding_problem(value: Any) -> str | None:
-    """Why graph generation cannot open a file with ``encoding=value``, or None.
-
-    The graph operations hand the name to Python unchecked, which accepts any
-    text codec it knows (``latin-1``, ``utf-16``); an unknown one, or a codec
-    that is not a text encoding (``base64``), made generation fail.
-    """
-    if not isinstance(value, str):
-        return f"must be the name of a text encoding such as 'utf-8', not {type_label(value)}"
-    try:
-        "".encode(value)                                  # the lookup open(encoding=...) makes
-    except (LookupError, ValueError):                     # ValueError: a NUL in the name, the 'undefined' codec
-        return f"{value!r} is not a text encoding Python knows"
-    return None
 
 
 def _validate_commit_ref_entry(entry: Any, commit_by_id: dict[str, dict[str, Any]], result: ValidationResult, loc: str, label: str) -> None:
