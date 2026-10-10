@@ -25,6 +25,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import re
 import subprocess
 import sys
 import textwrap
@@ -33,6 +34,7 @@ from pathlib import Path
 
 import pytest
 
+from szzbench.cli import main
 from szzbench.evaluator import evaluate_predictions
 from szzbench.generator import generate_repository
 from szzbench.graph_generator import generate_graph_repository
@@ -120,6 +122,16 @@ def test_an_explicit_empty_record_is_still_an_abstention(generated, tmp_path):
     item = by_id["SZZG-0135"]
     assert (item.status, item.run_status, item.run_errors) == ("PASS", "ok", [])
     assert (item.precision, item.recall) == (None, None)
+
+
+def test_an_explicit_empty_record_is_a_scored_run_not_an_empty_one(generated, tmp_path, capsys):
+    """A run that scored nothing fails (issue #141); one that scored an empty answer does not."""
+    path = tmp_path / "predictions.jsonl"
+    path.write_text(json.dumps({"scenario_id": "SZZG-0135", "predictions": []}) + "\n", encoding="utf-8")
+    assert main(["evaluate", "--predictions", str(path), "--generated-root", str(generated),
+                 "--scenarios-root", str(ROOT / "scenarios"), "--advanced-scenarios-root", str(ROOT / "advanced-scenarios"),
+                 "--fail-on-non-pass"]) == 0
+    assert "EVALUATE_FAILED" not in capsys.readouterr().err
 
 
 def test_an_unknown_reference_fails_an_empty_oracle_with_precision_zero(generated, tmp_path):
@@ -841,19 +853,32 @@ def test_converting_a_result_leaves_out_the_logical_ids_a_commit_map_that_is_no_
     assert "fix_commit_id" not in prediction and "inducing_commit_id" not in prediction
 
 
-def test_the_cli_summary_counts_tool_errors_missing_records_and_unknown_references(generated, tmp_path):
+def test_the_cli_summary_counts_tool_errors_missing_records_stale_predictions_and_unknown_references(generated, tmp_path):
     path = tmp_path / "predictions.jsonl"
-    path.write_text(json.dumps({"scenario_id": "SZZ-0006", "predictions": _predict("c1", UNKNOWN)}) + "\n"
+    path.write_text(json.dumps({"scenario_id": "SZZ-0006", "repository_id": "0" * 16,      # stale
+                                "predictions": _predict("c1", UNKNOWN)}) + "\n"
                     + json.dumps({"scenario_id": "SZZG-0135", "status": "error"}) + "\n", encoding="utf-8")
     completed = subprocess.run([sys.executable, "-m", "szzbench.cli", "evaluate", "--predictions", str(path),
                                 "--generated-root", str(generated), "--scenarios-root", str(ROOT / "scenarios"),
-                                "--advanced-scenarios-root", str(ROOT / "advanced-scenarios"), "--include-generated"],
+                                "--advanced-scenarios-root", str(ROOT / "advanced-scenarios"), "--include-generated",
+                                "--out", str(tmp_path / "out")],
                                capture_output=True, text=True, check=True,
                                env={**os.environ, "PYTHONPATH": str(ROOT / "src")})
-    lines = {line.split(":")[0].strip(): line.split(":", 1)[1].strip()
-             for line in completed.stdout.splitlines() if line.startswith("  ")}
-    assert (lines["PASS"], lines["Tool errors"], lines["Missing records"], lines["Unknown (as FP)"]) == ("0", "1", "1", "1")
-    assert lines["Precision"] == "0.500"
+    rows = [line for line in completed.stdout.splitlines() if line.startswith("  ")]
+    lines = {line.split(":")[0].strip(): line.split(":", 1)[1].strip() for line in rows}
+    # the stale scenario had no line, so its FAIL was unexplained on stdout (issue #144)
+    assert (lines["FAIL"], lines["Tool errors"], lines["Missing records"], lines["Stale predictions"]) == ("3", "1", "1", "1")
+    assert (lines["PASS"], lines["Unknown (as FP)"], lines["Precision"]) == ("0", "1", "0.500")
+    # every value in one column ("Related not-correct:" was one wider), and the counts of the
+    # Markdown summary, in its order
+    assert len({len(row) - len(row.split(":", 1)[1].lstrip()) for row in rows}) == 1
+    markdown = (tmp_path / "out/evaluation-results.md").read_text(encoding="utf-8")
+    summary = markdown.split("## Summary\n\n", 1)[1].split("\n\n", 1)[0].splitlines()
+
+    def counts(line):
+        return re.findall(r"\d+(?:\.\d+)?|(?<= )-$", line.split(":", 1)[1])
+
+    assert [counts(row) for row in rows] == [counts(line) for line in summary]
 
 
 def test_an_adapter_error_record_is_scored_as_a_tool_error(tmp_path):
