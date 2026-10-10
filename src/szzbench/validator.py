@@ -763,6 +763,11 @@ def validate_static(data: dict[str, Any], *, scenario_path: Path | None = None) 
                     resolve(op)
                 except OperationError as exc:
                     result.error("E042", f"Operation '{op_type}' {exc}.", f"{op_loc}.{key}")
+                except ValueError:
+                    # codecs.lookup refuses a NUL in the name with ValueError, which ended validate and
+                    # generate in a traceback; the graph validator reports it as GE061 (issue #276)
+                    result.error("E042", f"Operation '{op_type}' {key} must be 'utf-8' or 'utf-8-sig', got "
+                                 f"{op.get(key)!r}.", f"{op_loc}.{key}")
     check_scheduled_dates(data, result, code="E013")     # PR #236 review
     check_commit_date_order(data, result, code="E016", timestamp_code="E013")    # issue #241
     check_git_control_files(data, result, code="E051", written_fields=WRITTEN_PATH_FIELDS)    # issue #164
