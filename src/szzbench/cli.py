@@ -24,7 +24,7 @@ from .graph_verifier import verify_graph_generated_repo
 from .baselines import FAMILIES as BASELINE_FAMILIES, format_report as format_baselines, run_baselines
 from .coverage import format_report as format_coverage, run_coverage
 from .readme import format_readme_report, resolve_targets, run_readme, scenario_files
-from .evaluator import evaluate_predictions
+from .evaluator import _format_fix_shape_counts, evaluate_predictions
 
 def print_result(result, *, json_output: bool = False, file=None) -> None:
     if json_output:
@@ -164,7 +164,31 @@ def cmd_verify_graph(args) -> int:
         return 1
     return 0
 
+def _prepare_out_dir(out: str | None, code: str) -> bool:
+    """Create the ``--out`` directory before the command does its work (issue #143).
+
+    The commands created it only to write their reports, so a file of that name
+    ended them, a whole ``baselines`` run included, in a FileExistsError traceback.
+    """
+    if out is None:
+        return True
+    path = Path(out)
+    if path.exists() and not path.is_dir():
+        print(f"[ERROR] {code}: --out must be a directory, and {out} is not one.", file=sys.stderr)
+        return False
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        reason = exc.strerror or str(exc)
+        if exc.filename is not None and str(exc.filename) != str(path):     # a parent it could not create
+            reason = f"{exc.filename}: {reason}"
+        print(f"[ERROR] {code}: cannot create the --out directory {out} ({reason}).", file=sys.stderr)
+        return False
+    return True
+
 def cmd_baselines(args) -> int:
+    if not _prepare_out_dir(args.out, "BASELINES_FAILED"):
+        return 1
     report = run_baselines(
         generated_root=Path(args.generated_root),
         scenarios_root=Path(args.scenarios_root),
@@ -181,7 +205,6 @@ def cmd_baselines(args) -> int:
     text = format_baselines(report)
     if args.out:
         out_dir = Path(args.out)
-        out_dir.mkdir(parents=True, exist_ok=True)
         (out_dir / "baselines.json").write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         (out_dir / "baselines.md").write_text(text + "\n", encoding="utf-8")
     print(json.dumps(report, indent=2, ensure_ascii=False) if args.json else text)
@@ -189,6 +212,8 @@ def cmd_baselines(args) -> int:
 
 
 def cmd_coverage(args) -> int:
+    if not _prepare_out_dir(args.out, "COVERAGE_FAILED"):
+        return 1
     report = run_coverage(
         generated_root=Path(args.generated_root),
         scenarios_root=Path(args.scenarios_root),
@@ -204,7 +229,6 @@ def cmd_coverage(args) -> int:
     text = format_coverage(report)
     if args.out:
         out_dir = Path(args.out)
-        out_dir.mkdir(parents=True, exist_ok=True)
         (out_dir / "coverage.json").write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         (out_dir / "coverage.md").write_text(text + "\n", encoding="utf-8")
     print(json.dumps(report, indent=2, ensure_ascii=False) if args.json else text)
@@ -224,12 +248,21 @@ def cmd_readme(args) -> int:
     return 1 if report["stale"] else 0
 
 def cmd_evaluate(args) -> int:
-    if args.predictions is None and not args.include_generated:
+    if not args.predictions and not args.include_generated:
         print("[ERROR] EVALUATE_FAILED: --predictions is required unless --include-generated is used.", file=sys.stderr)
+        return 1
+    generated_root = Path(args.generated_root)
+    if args.include_generated and not generated_root.is_dir():
+        # the walk over it found nothing, and nothing said so (issue #141)
+        problem = "is not a directory" if generated_root.exists() else "does not exist"
+        print(f"[ERROR] EVALUATE_FAILED: --generated-root {args.generated_root} {problem}; pass the directory "
+              "generate-all-repos wrote, or run it first.", file=sys.stderr)
+        return 1
+    if not _prepare_out_dir(args.out, "EVALUATE_FAILED"):
         return 1
     report = evaluate_predictions(
         Path(args.predictions) if args.predictions else None,
-        generated_root=Path(args.generated_root),
+        generated_root=generated_root,
         scenarios_root=Path(args.scenarios_root),
         advanced_scenarios_root=Path(args.advanced_scenarios_root),
         variant=args.variant,
@@ -237,9 +270,13 @@ def cmd_evaluate(args) -> int:
         evaluation_variant=args.evaluation_variant,
         reference_format=args.reference_format,
     )
+    if not report.scenarios:
+        # An empty predictions file or a root without outputs scored nothing, and exited 0 even
+        # with --fail-on-non-pass (issue #141).  An error of the report, so that the --out
+        # reports agree with the exit code.
+        report.errors.append(_nothing_scored_message(args, report.errors))
     if args.out:
         out_dir = Path(args.out)
-        out_dir.mkdir(parents=True, exist_ok=True)
         (out_dir / "evaluation-results.json").write_text(
             json.dumps(report.to_dict(), indent=2, ensure_ascii=False) + "\n",
             encoding="utf-8",
@@ -248,25 +285,7 @@ def cmd_evaluate(args) -> int:
     if args.json:
         print(json.dumps(report.to_dict(), indent=2, ensure_ascii=False))
     else:
-        summary = report.summary()
-        print("Summary:")
-        print(f"  Total:              {summary['total_scenarios']}")
-        print(f"  PASS:               {summary['pass']}")
-        print(f"  FAIL:               {summary['fail']}")
-        print(f"  Tool errors:        {summary['tool_errors']}")
-        print(f"  Missing records:    {summary['missing_records']}")
-        print(f"  Invalid records:    {summary['invalid_records']}")
-        print(f"  True positives:     {summary['true_positives']}")
-        print(f"  False positives:    {summary['false_positives']}")
-        print(f"  Unknown (as FP):    {summary['unknown_predictions']}")
-        print(f"  False negatives:    {summary['false_negatives']}")
-        print(f"  Allowed FP:         {summary['allowed_false_positives']}")
-        print(f"  Hard FP:            {summary['hard_false_positives']}")
-        print(f"  Related origins:    {summary['related_origin_hits']}")
-        print(f"  Related not-correct: {summary['related_but_not_correct_hits']}")
-        print(f"  Weighted credit:    {_display_credit(summary['weighted_credit'], summary['possible_credit'])}")
-        print(f"  Precision:          {_display_ratio(summary['precision'])}")
-        print(f"  Recall:             {_display_ratio(summary['recall'])}")
+        _print_evaluation_summary(report.summary())
         if args.out:
             print(f"Wrote: {_display_path(Path(args.out) / 'evaluation-results.json')}")
             print(f"Wrote: {_display_path(Path(args.out) / 'evaluation-results.md')}")
@@ -281,6 +300,56 @@ def cmd_evaluate(args) -> int:
     if args.fail_on_non_pass and report.summary()["fail"] > 0:
         return 1
     return 0
+
+def _nothing_scored_message(args, errors: list[str]) -> str:
+    """Why ``evaluate`` scored no scenario (issue #141).
+
+    An unreadable file, a scenario that does not exist and a stale output each
+    have their error already.  Without one, the predictions file holds no
+    record, and ``--include-generated`` found no output of a scenario.
+    """
+    if errors:
+        return "EVALUATE_FAILED: no scenario was scored; the other errors say why."
+    causes = []
+    if args.predictions:
+        causes.append(f"{args.predictions} holds no prediction record")
+    if args.include_generated:
+        causes.append(f"--generated-root {args.generated_root} holds no <scenario-id>/{args.variant} output of a "
+                      "known scenario; run generate-all-repos first")
+    return "EVALUATE_FAILED: no scenario was scored: " + ", and ".join(causes) + "."
+
+def _print_evaluation_summary(summary: dict) -> None:
+    # The counts of the Markdown summary (EvaluationReport.to_markdown), in its order: stale
+    # predictions, the distractor hits, the branch-level and attribution failures and the fix
+    # shapes had no line, so a FAIL they caused was not accounted for on stdout (issue #144).
+    rows = [
+        ("Total", summary["total_scenarios"]),
+        ("PASS", summary["pass"]),
+        ("FAIL", summary["fail"]),
+        ("Tool errors", summary["tool_errors"]),
+        ("Missing records", summary["missing_records"]),
+        ("Stale predictions", summary["stale_predictions"]),
+        ("Invalid records", summary["invalid_records"]),
+        ("True positives", summary["true_positives"]),
+        ("False positives", summary["false_positives"]),
+        ("Unknown (as FP)", summary["unknown_predictions"]),
+        ("False negatives", summary["false_negatives"]),
+        ("Allowed FP", summary["allowed_false_positives"]),
+        ("Hard FP", summary["hard_false_positives"]),
+        ("Related origins", summary["related_origin_hits"]),
+        ("Related not-correct", summary["related_but_not_correct_hits"]),
+        ("Known distractor hits", summary["known_distractor_hits"]),
+        ("Branch-level failures", f"{summary['branch_level_failures']} of {summary['branch_level_scenarios']} scenario(s)"),
+        ("Attribution failures", f"{summary['attribution_failures']} of {summary['attribution_scenarios']} scenario(s)"),
+        ("Fix shapes (per BFC)", _format_fix_shape_counts(summary["fix_shape_counts"])),
+        ("Weighted credit", _display_credit(summary["weighted_credit"], summary["possible_credit"])),
+        ("Precision", _display_ratio(summary["precision"])),
+        ("Recall", _display_ratio(summary["recall"])),
+    ]
+    width = max(len(label) for label, _ in rows) + 2      # the colon and one space after the longest label
+    print("Summary:")
+    for label, value in rows:
+        print(f"  {label + ':':<{width}}{value}")
 
 def cmd_new_graph_scenario(args) -> int:
     try:
