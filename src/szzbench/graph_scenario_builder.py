@@ -9,6 +9,7 @@ import unicodedata
 from .index_splice import IndexSpliceError, read_index_text, splice_index_entry, write_index_text
 from .retired_ids import read_retired_ids
 from .scenario import load_yaml
+from .scenario_builder import resolve_category, tier_lines, vocabulary_problem
 from .validator import SCENARIO_DIFFICULTIES, load_index
 
 DEFAULT_GRAPH_SCENARIOS_ROOT = Path("advanced-scenarios")
@@ -32,9 +33,10 @@ def create_new_graph_scenario(
     *,
     title: str,
     category: str,
+    factors: list[str],
+    tier: str,
     root: Path = DEFAULT_GRAPH_SCENARIOS_ROOT,
     slug: str | None = None,
-    factors: list[str] | None = None,
     difficulty: str = "medium",
     status: str = "draft",
 ) -> NewGraphScenarioResult:
@@ -48,6 +50,10 @@ def create_new_graph_scenario(
         # ``advanced`` was the graph suite's placeholder until 2026-09-22; a new
         # scenario is graded like any other (decisions/vocabulary.md section 4).
         raise NewGraphScenarioError(f"--difficulty must be one of {', '.join(SCENARIO_DIFFICULTIES)}, not '{difficulty}'")
+    problem = vocabulary_problem(category=category, factors=factors, tier=tier, status=status, prefix="GW")
+    if problem:
+        raise NewGraphScenarioError(problem)
+    category_code, category = resolve_category(category)
 
     root = root.resolve()
     index_path = root / "index.yml"
@@ -57,7 +63,7 @@ def create_new_graph_scenario(
     scenario_dir = root / scenario_id
     scenario_path = scenario_dir / "scenario.graph.yml"
     readme_path = scenario_dir / "README.md"
-    scenario_factors = factors or []
+    scenario_factors = list(factors)
 
     if scenario_dir.exists():
         raise NewGraphScenarioError(f"Graph scenario directory already exists: {scenario_dir}")
@@ -67,6 +73,7 @@ def create_new_graph_scenario(
     entry = {
         "id": scenario_id,
         "title": title,
+        "category_code": category_code,
         "category": category,
         "path": f"{root.name}/{scenario_id}/scenario.graph.yml",
         "readme": f"{root.name}/{scenario_id}/README.md",
@@ -87,9 +94,11 @@ def create_new_graph_scenario(
             title=title,
             slug=scenario_slug,
             category=category,
+            category_code=category_code,
             factors=scenario_factors,
             difficulty=difficulty,
             status=status,
+            tier=tier,
         ),
         encoding="utf-8",
     )
@@ -167,9 +176,11 @@ def _graph_scenario_template(
     title: str,
     slug: str,
     category: str,
+    category_code: str,
     factors: list[str],
     difficulty: str,
     status: str,
+    tier: str,
 ) -> str:
     repository_name = f"{scenario_id}-{slug}"
     return f'''schema_version: "graph-1.0"
@@ -181,10 +192,11 @@ meta:
   description: >
     TODO: Describe the graph scenario and why it is useful for SZZ evaluation.
   category: {_quote(category)}
+  category_code: {_quote(category_code)}
   factors: {_inline_list(factors)}
   difficulty: {_quote(difficulty)}
   status: {_quote(status)}
-  related_simple_scenarios: []
+{tier_lines(tier)}  related_simple_scenarios: []
 
 repository:
   name: {_quote(repository_name)}
@@ -220,7 +232,7 @@ commits:
   - id: "c1"
     branch: "main"
     parents: ["c0"]
-    message: "Introduce bug"
+    message: "Narrow the range check"
     role: "bug_introducing"
     operations:
       - type: "replace"
@@ -274,15 +286,25 @@ notes:
 '''
 
 
+#: The phrase of each skeleton commit in the README's ``## Expected history`` block.
+HISTORY_PHRASES = {"initial": "create initial state", "bug_introducing": "introduce bug", "bug_fixing": "fix bug"}
+
+
 def _readme_template(scenario_path: Path) -> str:
     """The generated header rendered from the skeleton, then the sections a
     graph scenario README carries by hand (``docs/scenario-readme.md``).  The
     header's ``graph features`` row states which graph-only features the
-    scenario uses, so the README does not repeat that."""
+    scenario uses, so the README does not repeat that.  The operation lists
+    of ``## Expected history`` are rendered from the skeleton's commits, the
+    way GW454 reads them, so that the README agrees with the scenario it was
+    written next to (issue #156)."""
+    from .graph_validator import _readme_operation_summary
     from .readme import render_header, suite_of
 
     data, _ = load_yaml(scenario_path)
-    return render_header(data or {}, suite_of(scenario_path)) + """
+    history = "\n".join(f"{commit['id']}: {HISTORY_PHRASES[commit['role']]} ({_readme_operation_summary(commit)})"
+                        for commit in data["commits"])
+    return render_header(data, suite_of(scenario_path)) + f"""
 ## Purpose
 
 TODO: What this scenario checks, and what a tool has to get right to pass it.
@@ -290,9 +312,7 @@ TODO: What this scenario checks, and what a tool has to get right to pass it.
 ## Expected history
 
 ```text
-c0: create initial state (write_file TODO)
-c1: introduce bug (replace TODO)
-c2: fix bug (replace TODO)
+{history}
 ```
 
 ## Expected BIC / BFC

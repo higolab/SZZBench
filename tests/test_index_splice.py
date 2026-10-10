@@ -23,11 +23,12 @@ from szzbench.validator import validate_scenario_indexes
 
 REPO = Path(__file__).resolve().parents[1]
 
-# command -> (suite root, scenario file, --category, --factor)
+# command -> (suite root, scenario file, --category, --factor); --category gives the name, and the entry gets the code too
 SUITES = {
     "new-scenario": ("scenarios", "scenario.yml", "Basic semantic line changes", "line-modification"),
     "new-graph-scenario": ("advanced-scenarios", "scenario.graph.yml", "Evaluation policy variants", "evaluation-variant"),
 }
+CODES = {"Basic semantic line changes": "S1", "Evaluation policy variants": "G9"}
 
 
 @pytest.fixture
@@ -44,7 +45,8 @@ def _szzbench(cwd: Path, *args: str) -> subprocess.CompletedProcess:
 
 def _new(cwd: Path, command: str, title: str = "Probe", *root: str) -> subprocess.CompletedProcess:
     _, _, category, factor = SUITES[command]
-    return _szzbench(cwd, command, "--title", title, "--category", category, "--factor", factor, *root)
+    return _szzbench(cwd, command, "--title", title, "--category", category, "--factor", factor, "--tier", "control",
+                     *root)
 
 
 def _entry_block(lines: list[str], scenario_id: str) -> tuple[int, int]:
@@ -104,10 +106,10 @@ def test_the_entry_ends_the_list_and_no_other_line_changes(work, command, roots)
 
     entry = {"id": new_id, "title": "Probe"}
     if suite == "scenarios":
-        entry.update(slug="probe", category=category, factors=[factor], difficulty="medium", status="draft",
-                     path=f"scenarios/{new_id}/{scenario_file}")
+        entry.update(slug="probe", category_code=CODES[category], category=category, factors=[factor],
+                     difficulty="medium", status="draft", path=f"scenarios/{new_id}/{scenario_file}")
     else:                                   # the graph index's own keys, in its own order
-        entry.update(category=category, path=f"advanced-scenarios/{new_id}/{scenario_file}",
+        entry.update(category_code=CODES[category], category=category, path=f"advanced-scenarios/{new_id}/{scenario_file}",
                      readme=f"advanced-scenarios/{new_id}/README.md", status="draft", factors=[factor])
     assert lines[start:end] == yaml.safe_dump([entry], sort_keys=False).splitlines(keepends=True)
 
@@ -175,10 +177,11 @@ def test_an_empty_list_between_other_keys_takes_the_entry_and_the_count(tmp_path
     (root / "index.yml").write_text(
         "schema_version: graph-index-0.1-draft\nscenario_count: 0\nscenarios: []\nnotes:\n- Keep this note.\n",
         encoding="utf-8")
-    create_new_graph_scenario(title="Probe", category="G4", root=root)
+    create_new_graph_scenario(title="Probe", category="G4", factors=["branch-merge"], tier="control", root=root)
     assert (root / "index.yml").read_text(encoding="utf-8") == (
         "schema_version: graph-index-0.1-draft\nscenario_count: 1\nscenarios:\n"
-        "- id: SZZG-0001\n  title: Probe\n  category: G4\n"
+        "- id: SZZG-0001\n  title: Probe\n  category_code: G4\n"
+        "  category: Branch, merge, cherry-pick, backport, and release branches\n"
         "  path: advanced-scenarios/SZZG-0001/scenario.graph.yml\n"
-        "  readme: advanced-scenarios/SZZG-0001/README.md\n  status: draft\n  factors: []\n"
+        "  readme: advanced-scenarios/SZZG-0001/README.md\n  status: draft\n  factors:\n  - branch-merge\n"
         "notes:\n- Keep this note.\n")

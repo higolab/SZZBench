@@ -21,10 +21,10 @@ from .cleaner import (
 from .generator import GenerationError, generate_repository
 from .graph_generator import GraphGenerationError, generate_graph_repository
 from .scenario import load_yaml
-from .scenario_builder import DEFAULT_SCENARIOS_ROOT, NewScenarioError, create_new_scenario
+from .scenario_builder import DEFAULT_SCENARIOS_ROOT, NEW_SCENARIO_STATUSES, NewScenarioError, create_new_scenario
 from .graph_scenario_builder import DEFAULT_GRAPH_SCENARIOS_ROOT, NewGraphScenarioError, create_new_graph_scenario
-from .validator import (SCENARIO_DIFFICULTIES, classic_scenario_guard, graph_scenario_guard, validate_scenario_file,
-                        validate_scenario_indexes)
+from .validator import (SCENARIO_DIFFICULTIES, SCENARIO_TIERS, classic_scenario_guard, graph_scenario_guard,
+                        validate_scenario_file, validate_scenario_indexes)
 from .graph_validator import validate_graph_scenario_file
 from .verifier import verify_generated_repo
 from .graph_verifier import verify_graph_generated_repo
@@ -423,9 +423,10 @@ def cmd_new_graph_scenario(args) -> int:
         result = create_new_graph_scenario(
             title=args.title,
             category=args.category,
+            factors=args.factor,
+            tier=args.tier,
             root=Path(args.root),
             slug=args.slug,
-            factors=args.factor,
             difficulty=args.difficulty,
             status=args.status,
         )
@@ -494,9 +495,10 @@ def cmd_new_scenario(args) -> int:
         result = create_new_scenario(
             title=args.title,
             category=args.category,
+            factors=args.factor,
+            tier=args.tier,
             root=Path(args.root),
             slug=args.slug,
-            factors=args.factor,
             difficulty=args.difficulty,
             status=args.status,
         )
@@ -535,6 +537,13 @@ def _add_verification_options(parser: argparse.ArgumentParser, no_verify_help: s
     exclusive.add_argument("--no-verify", action="store_true", help=no_verify_help)
     exclusive.add_argument("--strict", action="store_true", help=strict_help)
     parser.add_argument("--json", action="store_true", help="Print JSON output")
+
+# The skeleton options checked against docs/decisions/vocabulary.md (issues #156, #157).
+CATEGORY_HELP = ("Category, by code or name from docs/decisions/vocabulary.md section 3 (e.g. S1 or "
+                 "'Basic semantic line changes'); both are written")
+TIER_HELP = "What the scenario is for (docs/decisions/vocabulary.md section 7); required, no default"
+FACTOR_HELP = ("Semantic factor; required, can be repeated. A schema key or operation name, a mix of '-' and '_', "
+               "or whitespace is refused (docs/decisions/vocabulary.md section 1.1)")
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="szzbench")
@@ -650,13 +659,15 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_new_graph = sub.add_parser("new-graph-scenario", help="Create a new graph scenario skeleton")
     p_new_graph.add_argument("--title", required=True, help="Graph scenario title")
-    p_new_graph.add_argument("--category", required=True, help="Graph scenario category")
+    p_new_graph.add_argument("--category", required=True, help=CATEGORY_HELP)
+    p_new_graph.add_argument("--tier", required=True, choices=SCENARIO_TIERS, help=TIER_HELP)
     p_new_graph.add_argument("--root", default=str(DEFAULT_GRAPH_SCENARIOS_ROOT), help="Graph scenario root directory")
     p_new_graph.add_argument("--slug", help="Override the generated slug")
-    p_new_graph.add_argument("--factor", action="append", default=[], help="Graph scenario factor; can be repeated")
+    p_new_graph.add_argument("--factor", action="append", required=True, help=FACTOR_HELP)
     p_new_graph.add_argument("--difficulty", default="medium", choices=SCENARIO_DIFFICULTIES,
                              help="Graph scenario difficulty (default: medium; check it against the measured floor with 'szzbench coverage')")
-    p_new_graph.add_argument("--status", default="draft", help="Graph scenario status")
+    p_new_graph.add_argument("--status", default="draft", choices=NEW_SCENARIO_STATUSES,
+                             help="Graph scenario status (default: draft)")
     p_new_graph.set_defaults(func=cmd_new_graph_scenario)
 
     p_clean = sub.add_parser("clean", help="Remove generated repositories")
@@ -668,13 +679,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_clean.set_defaults(func=cmd_clean)
     p_new = sub.add_parser("new-scenario", help="Create a new scenario skeleton")
     p_new.add_argument("--title", required=True, help="Scenario title")
-    p_new.add_argument("--category", required=True, help="Scenario category")
+    p_new.add_argument("--category", required=True, help=CATEGORY_HELP)
+    p_new.add_argument("--tier", required=True, choices=SCENARIO_TIERS, help=TIER_HELP)
     p_new.add_argument("--root", default=str(DEFAULT_SCENARIOS_ROOT), help="Scenario root directory")
     p_new.add_argument("--slug", help="Override the generated slug")
-    p_new.add_argument("--factor", action="append", default=[], help="Scenario factor; can be repeated")
+    p_new.add_argument("--factor", action="append", required=True, help=FACTOR_HELP)
     p_new.add_argument("--difficulty", default="medium", choices=SCENARIO_DIFFICULTIES,
                        help="Scenario difficulty (default: medium; check it against the measured floor with 'szzbench coverage')")
-    p_new.add_argument("--status", default="draft", help="Scenario status")
+    p_new.add_argument("--status", default="draft", choices=NEW_SCENARIO_STATUSES, help="Scenario status (default: draft)")
     p_new.set_defaults(func=cmd_new_scenario)
     return parser
 

@@ -56,14 +56,17 @@ byte, blank lines included; the exceptions are a real `## Factors` or
 `## Source` section and the leftovers of an old header (see below), which it
 removes. A heading quoted inside a fenced code
 block (backticks or tildes) is text, not a section, and is left alone. The
-sections vary by scenario because the evidence does; the skeleton
+sections vary by scenario because the evidence does; the skeleton that
 `new-scenario` / `new-graph-scenario` writes proposes `## Purpose`,
 `## Commit structure` (`## Expected history` in the graph suite) and
-`## Expected behavior` / `## Expected BIC / BFC`.
+`## Expected behavior` / `## Expected BIC / BFC`, under a header rendered from
+its three-commit placeholder history.
 
 One prose block is checked all the same: a graph README's `## Expected history`
 block, whose parenthesised operation lists are a copy of `commits[].operations`
-and are compared with them by `GW454`.
+and are compared with them by `GW454`. The graph skeleton renders that block
+from its own commits, so a fresh skeleton passes the lint; once the author
+changes the operations, the block has to follow (issue #156).
 
 ## A malformed header, a second header, BOM and CRLF
 

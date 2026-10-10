@@ -106,7 +106,7 @@ def test_validate_index_reports_one_scenario_file_and_goes_on(layout):
 def test_new_scenario_reports_an_index_that_is_not_utf8(layout):
     _reencode(layout / "scenarios/index.yml", "utf-16")
     completed = _cli("new-scenario", "--title", "Probe", "--category", "Basic semantic line changes",
-                     "--root", str(layout / "scenarios"))
+                     "--factor", "line-modification", "--tier", "control", "--root", str(layout / "scenarios"))
     assert completed.returncode == 1 and "Traceback" not in completed.stderr
     assert completed.stderr.startswith("[ERROR] NEW_SCENARIO_FAILED: ")
     assert "it is not UTF-8 (byte 0xff at position 0)" in completed.stderr

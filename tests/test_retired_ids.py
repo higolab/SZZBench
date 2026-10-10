@@ -96,7 +96,8 @@ def test_the_builders_skip_the_highest_id_once_it_is_retired(work, suite):
     _retire(work, suite, highest)
     assert _findings(work) == []                    # a clean retirement, as validate-index sees it
     build = create_new_scenario if suite == "scenarios" else create_new_graph_scenario
-    result = build(title="Probe", category="Probe", root=work / suite)
+    result = build(title="Probe", category="S1" if suite == "scenarios" else "G1", factors=["probe"], tier="control",
+                   root=work / suite)
     prefix, number = highest.split("-")
     assert result.scenario_id == f"{prefix}-{int(number) + 1:04d}"
 

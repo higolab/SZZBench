@@ -24,7 +24,7 @@ def _codes(result) -> set[str]:
 def test_the_graph_skeleton_default_difficulty_passes_gw461(tmp_path):
     root = tmp_path / "advanced-scenarios"
     assert main(["new-graph-scenario", "--title", "Difficulty default probe", "--category", "G4",
-                 "--root", str(root)]) == 0
+                 "--tier", "control", "--factor", "branch-merge", "--root", str(root)]) == 0
     path = root / "SZZG-0001" / "scenario.graph.yml"
     data, _ = load_yaml(path)
     assert data["meta"]["difficulty"] == "medium"
@@ -35,14 +35,16 @@ def test_the_graph_skeleton_default_difficulty_passes_gw461(tmp_path):
 
 
 def test_the_graph_builder_api_default_matches_the_cli(tmp_path):
-    result = create_new_graph_scenario(title="API default probe", category="G4", root=tmp_path / "advanced-scenarios")
+    result = create_new_graph_scenario(title="API default probe", category="G4", factors=["branch-merge"],
+                                       tier="control", root=tmp_path / "advanced-scenarios")
     data, _ = load_yaml(result.scenario_path)
     assert data["meta"]["difficulty"] == "medium"
 
 
 def test_the_classic_skeleton_default_difficulty_passes_w461(tmp_path):
     root = tmp_path / "scenarios"
-    assert main(["new-scenario", "--title", "Difficulty default probe", "--category", "S1", "--root", str(root)]) == 0
+    assert main(["new-scenario", "--title", "Difficulty default probe", "--category", "S1", "--tier", "control",
+                 "--factor", "line-modification", "--root", str(root)]) == 0
     path = root / "SZZ-0001" / "scenario.yml"
     _, result, _ = validate_scenario_file(path, lint=True)
     assert "W461" not in _codes(result)
@@ -50,10 +52,12 @@ def test_the_classic_skeleton_default_difficulty_passes_w461(tmp_path):
 
 def test_a_retired_or_unknown_difficulty_is_refused_by_both_builders(tmp_path):
     with pytest.raises(NewGraphScenarioError, match="easy, medium, hard"):
-        create_new_graph_scenario(title="t", category="G4", root=tmp_path / "g", difficulty="advanced")
+        create_new_graph_scenario(title="t", category="G4", factors=["branch-merge"], tier="control",
+                                  root=tmp_path / "g", difficulty="advanced")
     with pytest.raises(NewScenarioError, match="easy, medium, hard"):
-        create_new_scenario(title="t", category="S1", root=tmp_path / "s", difficulty="expert")
+        create_new_scenario(title="t", category="S1", factors=["line-modification"], tier="control",
+                            root=tmp_path / "s", difficulty="expert")
     with pytest.raises(SystemExit):        # argparse refuses it before the builder runs
-        main(["new-graph-scenario", "--title", "t", "--category", "G4", "--root", str(tmp_path / "g2"),
-              "--difficulty", "advanced"])
+        main(["new-graph-scenario", "--title", "t", "--category", "G4", "--tier", "control", "--factor", "branch-merge",
+              "--root", str(tmp_path / "g2"), "--difficulty", "advanced"])
     assert not (tmp_path / "g").exists() and not (tmp_path / "g2").exists()
