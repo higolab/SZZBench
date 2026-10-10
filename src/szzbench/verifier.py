@@ -272,24 +272,46 @@ def verify_generated_repo(repo_dir: Path, scenario_path: Path, commit_map_path: 
             ffile = fault.get("file")
             stmt = fault.get("statement")
             if parent_hash and isinstance(ffile, str) and isinstance(stmt, str):
-                try:
-                    parent_content = git_show(repo_dir, parent_hash, ffile)
-                    line_number = None
-                    for line_index, line in enumerate(parent_content.splitlines(), start=1):
-                        if stmt in line:
-                            line_number = line_index
-                            break
-                    if line_number is None and rewrite_declared:
-                        result.info("I701", f"bug {bid}: fault.statement not present in BFC parent, as the declared rewrite factor predicts; basic blame unavailable by design.", loc)
-                    elif line_number is None:
-                        result.warning("W700", f"bug {bid}: fault.statement not present in BFC parent; basic blame unavailable.", loc)
-                    else:
-                        blamed_hash = git_blame_line(repo_dir, parent_hash, ffile, line_number)
-                        expected_hashes = {commit_map[bic]["hash"] for bic in bics if bic in commit_map}
-                        if blamed_hash in expected_hashes:
-                            result.info("I700", f"bug {bid}: basic git blame reaches expected BIC.", loc)
-                        else:
-                            result.warning("W700", f"bug {bid}: basic git blame reaches {blamed_hash}, not expected BIC(s) {sorted(bics)}.", loc)
-                except GitError as exc:
-                    result.warning("W700", f"bug {bid}: basic blame check failed: {exc}", loc)
+                _verify_basic_blame(repo_dir, commit_map, parent_hash, ffile, stmt, bics, rewrite_declared, result,
+                                    loc, bid)
     return result
+
+
+def _verify_basic_blame(repo_dir: Path, commit_map: dict, parent_hash: str, ffile: str, stmt: str, bics: list,
+                        rewrite_declared: bool, result: ValidationResult, loc: str, bid: str) -> None:
+    """Blame the fault statement at the BFC's parent, with the graph verifier's codes (issue #275).
+
+    W700 used to stand for every outcome but I700 and I701: a statement absent
+    from the parent, blame that reaches another commit, and a check that could
+    not run.  A script reading ``verify --json`` could not tell a property of
+    the scenario from a failure of the environment without parsing the message.
+    Each outcome now has the number ``graph_verifier._verify_basic_blame``
+    gives it: W700 / GW700 when the file cannot be read, W701 / GW701,
+    W702 / GW702 when ``git blame`` fails, W703 / GW703.
+    """
+    try:
+        parent_content = git_show(repo_dir, parent_hash, ffile)
+    except GitError as exc:
+        result.warning("W700", f"bug {bid}: basic blame check skipped: {exc}", loc)
+        return
+    line_number = None
+    for line_index, line in enumerate(parent_content.splitlines(), start=1):
+        if stmt in line:
+            line_number = line_index
+            break
+    if line_number is None:
+        if rewrite_declared:
+            result.info("I701", f"bug {bid}: fault.statement not present in BFC parent, as the declared rewrite factor predicts; basic blame unavailable by design.", loc)
+        else:
+            result.warning("W701", f"bug {bid}: fault.statement not present in BFC parent; basic blame unavailable.", loc)
+        return
+    try:
+        blamed_hash = git_blame_line(repo_dir, parent_hash, ffile, line_number)
+    except GitError as exc:
+        result.warning("W702", f"bug {bid}: basic blame check failed: {exc}", loc)
+        return
+    expected_hashes = {commit_map[bic]["hash"] for bic in bics if bic in commit_map}
+    if blamed_hash in expected_hashes:
+        result.info("I700", f"bug {bid}: basic git blame reaches expected BIC.", loc)
+    else:
+        result.warning("W703", f"bug {bid}: basic git blame reaches {blamed_hash}, not expected BIC(s) {sorted(bics)}.", loc)

@@ -231,7 +231,7 @@ is found in a CRLF file as in an LF one (no E301 / GE663), and
 verifier's rule, finds it too (no GE205, issue #238). The basic blame
 check looks for the statement inside a single line of the BFC's parent, so it
 cannot follow a statement that spans lines, whatever the line endings: such a
-statement gets W700 / GW701 ("not present in BFC parent"), or I701 / GI701
+statement gets W701 / GW701 ("not present in BFC parent"), or I701 / GI701
 when the scenario declares a rewrite factor (issue #170). A BOM is not handled
 by this key; see `encoding`.
 

@@ -3,7 +3,8 @@
 #169: ``validate``, ``verify`` and ``evaluate`` had ``--json`` and ``--strict``;
 ``generate``, ``generate-graph``, ``generate-all-repos`` and ``clean`` refused
 both (exit 2), and ``generate-all-repos`` dropped the verification result, so
-a W700 warning was written to ``metadata/verify-result.json`` and never shown.
+a W700 warning (W703 since issue #275) was written to ``metadata/verify-result.json``
+and never shown.
 
 #171: ``clean --root`` scanned and emptied whatever it was given -- ``/``, the
 home directory, the checkout -- without asking, and a ``manifest.json`` that
@@ -25,7 +26,7 @@ from szzbench.bulk_generator import generate_all_repositories
 
 ROOT = Path(__file__).resolve().parents[1]
 #: shipped scenarios whose verification warns: basic blame misses the expected BIC
-WARNED = {"generate": ("scenarios/SZZ-0078/scenario.yml", "W700"),
+WARNED = {"generate": ("scenarios/SZZ-0078/scenario.yml", "W703"),
           "generate-graph": ("advanced-scenarios/SZZG-0016/scenario.graph.yml", "GW703")}
 
 
@@ -75,7 +76,7 @@ def test_generate_all_repos_prints_keeps_and_fails_on_the_verification_warnings(
     assert first.returncode == 0, first.stderr
     warnings = [line for line in first.stderr.splitlines() if ": [WARNING] " in line]
     assert [line.split(": [WARNING] ")[0] for line in warnings] == ["SZZ-0078", "SZZG-0016"]
-    assert warnings[0].startswith("SZZ-0078: [WARNING] W700: bug B001: basic git blame reaches ")
+    assert warnings[0].startswith("SZZ-0078: [WARNING] W703: bug B001: basic git blame reaches ")
     assert "  Warned:      2 " in first.stdout
 
     # every output is up to date now: the verification each generation recorded still counts
@@ -86,7 +87,7 @@ def test_generate_all_repos_prints_keeps_and_fails_on_the_verification_warnings(
                                    "failed": 0, "warned": 2, "orphaned": 0}
     by_id = {item["scenario_id"]: item for item in document["items"]}
     assert by_id["SZZ-0005"]["verification"]["warnings"] == 0
-    assert [f["code"] for f in by_id["SZZ-0078"]["verification"]["findings"]] == ["W700"]
+    assert [f["code"] for f in by_id["SZZ-0078"]["verification"]["findings"]] == ["W703"]
     assert by_id["SZZG-0016"]["output_dir"] == str(out.resolve() / "SZZG-0016" / "default")
 
     (out / "SZZ-0078/default/metadata/verify-result.json").unlink()
