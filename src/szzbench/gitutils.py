@@ -377,23 +377,47 @@ def resolved_commit_authors(scenario: dict[str, Any]) -> list[tuple[str, str]]:
     ``commit_generator`` operations expand into, which the generator attributes with
     ``deterministic_author(scenario id, generated id)``; every commit — generated ones on their
     own account — only if a ref still reaches it once the ref lifecycle has run
-    (``reachable_commit_ids``), as ``git log --all`` leaves the others out.  Any check that
-    reasons about "the commits written by X" must use this list, not ``scenario['commits']`` alone.
+    (``reachable_commit_ids``), as ``git log --all`` leaves the others out.  A commit with
+    ``inherit_author`` has its rewrite source's author, as generation gives it (issue #180).
+    Any check that reasons about "the commits written by X" must use this list, not
+    ``scenario['commits']`` alone.
     """
     meta = scenario.get("meta") if isinstance(scenario.get("meta"), dict) else {}
     repository = scenario.get("repository") if isinstance(scenario.get("repository"), dict) else {}
     scenario_id = str(meta.get("id") or repository.get("name") or "scenario")
     reachable = reachable_commit_ids(scenario)
     rows: list[tuple[str, str]] = []
+    authors: dict[str, str] = {}        # of every earlier scenario commit, reachable or not, as a source may not be
     for index, commit in enumerate(scenario.get("commits") or []):
         if not isinstance(commit, dict) or not isinstance(commit.get("id"), str):
             continue
         for generated_id in planned_generated_commits(commit["id"], commit):     # ancestors come first
             if generated_id in reachable:
                 rows.append((generated_id, canonical_author(deterministic_author(scenario_id, generated_id))))
+        author = resolve_commit_metadata(scenario, commit, index).author
+        source = rewrite_source_id(commit) if commit.get("inherit_author") else None
+        if source in authors:
+            author = authors[source]
+        authors[commit["id"]] = author
         if commit["id"] in reachable:
-            rows.append((commit["id"], canonical_author(resolve_commit_metadata(scenario, commit, index).author)))
+            rows.append((commit["id"], canonical_author(author)))
     return rows
+
+
+#: The keys by which a rebased, cherry-picked or backported commit names its source.
+#: ``inherit_message``, ``inherit_author_date`` and ``inherit_author`` copy from the first
+#: of them that is a commit id (``rewrite_source_id``); a ``rebase_of`` list, a
+#: squash-rebase, names several commits and is not one (GE074, issue #179).
+REWRITE_SOURCE_KEYS = ("rebase_of", "cherry_pick_of", "backport_of")
+
+
+def rewrite_source_id(commit_spec: dict[str, Any]) -> str | None:
+    """The logical commit a rebased, cherry-picked or backported commit inherits from, or None."""
+    for key in REWRITE_SOURCE_KEYS:
+        value = commit_spec.get(key)
+        if isinstance(value, str) and value:
+            return value
+    return None
 
 
 

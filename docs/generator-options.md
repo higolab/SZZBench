@@ -32,6 +32,7 @@ Commits with explicit `author` and `date` keep byte-identical hashes.
 |---|---|
 | commit has `author` | used verbatim; it must be `Name <email>` (E014 / GE072) |
 | commit has no `author` | one of six pool authors, chosen by a stable hash of `(meta.id, commit index)` |
+| commit has `inherit_author: true` (*graph*) | the author of its rewrite source (§3) |
 | commit has `date` | used verbatim for both author and committer date |
 | commit has no `date` | the scenario's base date plus irregular weekday gaps (see below) |
 
@@ -133,17 +134,20 @@ another date (both read `0001-01-01` as `2001-01-01`) (issue #152).
 
 `date` keeps the value written in the scenario (or `null`); `author_date` and
 `committer_date` are what Git was given, always with a zone (`Z` or an offset);
-`author` is the effective author (pool author when the scenario had none).
+`author` is the effective author (pool author when the scenario had none, the
+rewrite source's with `inherit_author`, §3).
 
 The committer of every commit is its author: both generators give Git the
 effective author's name and e-mail as the committer's too, so
 `git log --format='%an <%ae> | %cn <%ce>'` shows the same identity twice, and
 `commit-map.json` has no separate committer field. `committer_date` is the only
-committer field a scenario controls. The `user.name` / `user.email` in the
-generated repository's `.git/config` (`SZZ Benchmark
-<szz-benchmark@example.com>`) are not the identity of any generated commit;
-Git uses them only where it records an identity without a commit, such as the
-reflog entry of a checkout (issue #170).
+committer field a scenario controls. A commit with `inherit_author` (§3) is
+authored and committed by its source's identity, so the author ≠ committer
+signature of a real `git cherry-pick` or `git rebase` is still not generated.
+The `user.name` / `user.email` in the generated repository's `.git/config`
+(`SZZ Benchmark <szz-benchmark@example.com>`) are not the identity of any
+generated commit; Git uses them only where it records an identity without a
+commit, such as the reflog entry of a checkout (issue #170).
 
 ## 2. Operations and placeholders (#18)
 
@@ -165,8 +169,10 @@ the chmod still has no effect and such a commit needs `allow_empty: true`.
 
 ### `line_ending: lf | crlf` (*both*)
 
-Available on `write_file`, `replace` and `insert_after` (the latter is graph
-only). Text is normalised to LF internally and re-encoded when written.
+Available on `write_file`, `replace` and `insert_after`, and on the graph
+operations `format_file`, `move_entity` and `copy_entity` (`insert_after` and
+these three are graph only). Text is normalised to LF internally and re-encoded
+when written.
 
 ```yaml
 - type: write_file
@@ -193,15 +199,20 @@ Defaults:
 * `replace` / `insert_after` without the key keep the file's existing
   convention: a file whose every newline is CRLF stays CRLF; anything else
   (LF or mixed) is written as LF, as before.
-* The graph operations `format_file`, `move_entity` and `copy_entity` do
-  not take the key and keep a convention by the same rule. `format_file`
-  writes the file back in its own: a CRLF file stays CRLF, and a missing
-  final newline is added as CRLF. `move_entity` / `copy_entity` write the
-  destination, header line included, in the source file's convention, or,
-  with `append`, in the destination's own, into which the source text is
-  re-encoded. The three used to write LF always, so a `format_file` on a
-  CRLF file also rewrote every line ending, which the simulator, working on
-  LF text, did not see (issue #181).
+* `format_file`, `move_entity` and `copy_entity` without the key keep a
+  convention by the same rule. `format_file` writes the file back in its
+  own: a CRLF file stays CRLF, and a missing final newline is added as CRLF.
+  `move_entity` / `copy_entity` write the destination, header line included,
+  in the source file's convention, or, with `append`, in the destination's
+  own, into which the source text is re-encoded. The three used to write LF
+  always, so a `format_file` on a CRLF file also rewrote every line ending,
+  which the simulator, working on LF text, did not see (issue #181).
+* With the key, those three write the file in the convention it names, as
+  `replace` does: `format_file` with `line_ending: lf` on a CRLF file strips
+  trailing whitespace and converts every line ending (a formatter that also
+  normalises line endings), and `move_entity` / `copy_entity` write the whole
+  destination, an appended one included, in it. They took no key until
+  issue #181, and such a formatting commit could not be written.
 
 Any other value is an error in `validate` / `validate-graph` (E042 / GE061),
 read as generation reads it (`operations.resolve_line_ending`); `--simulate`
@@ -221,6 +232,13 @@ cannot follow a statement that spans lines, whatever the line endings: such a
 statement gets W700 / GW701 ("not present in BFC parent"), or I701 / GI701
 when the scenario declares a rewrite factor (issue #170). A BOM is not handled
 by this key; see `encoding`.
+
+Working on LF text, the simulators also find nothing in a commit whose only
+change is its line endings -- a `write_file` with `line_ending: crlf` of the
+text an LF file already holds, a `format_file` with `line_ending: lf` on a CRLF
+file without trailing whitespace -- and report it as empty (E250 / GE202),
+while generation commits the conversion. In the graph suite `allow_empty: true`
+lets such a commit pass `--simulate`.
 
 `line_ending` describes the bytes written to the working tree. What Git stores
 -- the blob that `git show`, the verifier and SZZ tools read -- is decided when
@@ -444,15 +462,16 @@ rule, and their names (`<generator>-NN.txt`) are never one of these files.
 * `apply_patch` is still not implemented (validation accepts it; generation
   raises).
 * `format_file` only strips trailing whitespace from every line; a CRLF file
-  stays CRLF (see `line_ending` above).
+  stays CRLF unless `line_ending` names another convention (see
+  `line_ending` above).
 * `move_entity` / `copy_entity` remain the whole-file approximation with a
   `// SZZBench move_entity: ...` header (issue #2), written in the line
-  endings of the source file, or with `append` of the destination (see
-  `line_ending` above).
+  endings of the source file, or with `append` of the destination, unless
+  `line_ending` names one (see `line_ending` above).
 
 ## 3. History-rewriting fidelity (#17)
 
-### `inherit_message` / `inherit_author_date` (*graph*)
+### `inherit_message` / `inherit_author_date` / `inherit_author` (*graph*)
 
 For commits that declare `rebase_of` (or `cherry_pick_of` / `backport_of`).
 
@@ -464,6 +483,7 @@ For commits that declare `rebase_of` (or `cherry_pick_of` / `backport_of`).
   rebase_of: f1
   inherit_message: true        # subject of f1, because r1 has no message
   inherit_author_date: true    # author date of f1; committer date stays default/explicit
+  inherit_author: true         # author (and committer) of f1 instead of a pool author
   operations:
   - type: replace
     path: src/main/java/example/Range.java
@@ -477,15 +497,27 @@ For commits that declare `rebase_of` (or `cherry_pick_of` / `backport_of`).
   date is the commit's own `committer_date`/`date` or the deterministic
   default, which reproduces the `author date < committer date` pattern of a
   real rebase.
-* Defaults: both `false` (nothing inherited, as before).
+* `inherit_author: true` copies the source's author, name and e-mail, which
+  `git cherry-pick` and `git rebase` keep: the commit gets the identity the
+  source was committed with, which `commit-map.json` records as its
+  `author`, and the author lint (W413 / GW413) counts the commit as that
+  author's. The committer is that identity too, as for every commit (§1).
+  The value is `true` or `false`, and a commit that inherits its author does
+  not write `author` as well, which one of the two would silently override
+  (GE076). Without it a replayed commit has the pool author of its own
+  position, as the shipped cherry-picks SZZG-0065 `r1` and SZZG-0124 `r1`
+  do, each by another pool author than its source's (issue #180).
+* Defaults: all three `false` (nothing inherited, as before). No shipped
+  scenario sets `inherit_author`, so no shipped hash changed with it.
 * The source is the first of `rebase_of`, `cherry_pick_of` and `backport_of`
   that is a commit id. A `rebase_of` list (a squash-rebase) is not a source,
-  since it names several commits: a commit that sets either option and has no
-  source is refused by `validate-graph` (GE074), which says so for a list.
+  since it names several commits: a commit that sets any of the options and
+  has no source is refused by `validate-graph` (GE074), which says so for a list.
   Generation used to stop at such a commit, and for a list its message said
   that the commit had no `rebase_of` (issue #179).
 * `commit-map.json` records `inherits: {source, source_hash, message,
-  author_date, subject?}`.
+  author_date, subject?, author?}`; `author: true` is there only for a commit
+  with `inherit_author`, so the records of the others are as before.
 
 `rebase_of` still does not replay the source commit: the `operations` (or an
 `apply_patch_from`) describe the rebased content, exactly as before.
@@ -760,11 +792,11 @@ patch operation, so it reports the generation errors above as GE203; until
 |---|---|---|
 | `repository.base_date` | top level | both |
 | `author_date`, `committer_date` | commit | both |
-| `line_ending` | `write_file`, `replace`, `insert_after` operations | both (`insert_after`: graph) |
+| `line_ending` | `write_file`, `replace`, `insert_after`, `format_file`, `move_entity`, `copy_entity` operations | both (`insert_after`, `format_file`, `move_entity`, `copy_entity`: graph) |
 | `encoding` | `write_file`, `replace`, `insert_after` operations | both (`insert_after`: graph) |
 | `header`, `footer` | `write_generated_text_file` operation | graph |
 | `commit_generator.path` (directory), `count` (capped 2000), `files` | operation (semantics) | graph |
-| `inherit_message`, `inherit_author_date` | commit with `rebase_of`/`cherry_pick_of`/`backport_of` | graph |
+| `inherit_message`, `inherit_author_date`, `inherit_author` | commit with `rebase_of`/`cherry_pick_of`/`backport_of` | graph |
 | `cherry_pick_trailer` | commit | graph |
 | `revert_of`, `apply_revert`, `mainline` | commit | graph |
 | `resolution` | commit | graph |

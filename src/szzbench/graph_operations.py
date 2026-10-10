@@ -10,7 +10,6 @@ from typing import Any, Callable, Iterable, Iterator, NamedTuple
 from .gitutils import MAX_GENERATED_COMMITS, commit_generator_count, commit_generator_files
 from .operations import (
     OperationError,
-    detect_crlf,
     encode_line_endings,
     insert_after_once,
     normalize_newlines,
@@ -287,14 +286,15 @@ def _apply_graph_operation(repo_dir: Path, op: dict[str, Any]) -> None:
         if dst.exists() and not op.get("overwrite", True):
             raise OperationError(f"{op_type} target file already exists: {op['to_file']}")
         header = _entity_operation_header(op_type, op)
-        # The file written keeps the line endings of the file it continues: an appended
-        # destination its own, any other the source file's (issue #181).
+        # An explicit line_ending wins, as on replace; otherwise the file written keeps the
+        # line endings of the file it continues: an appended destination its own, any other
+        # the source file's (issue #181).
         if dst.exists() and op.get("append", False):
             previous = read_text_raw(dst, encoding)
-            text, line_ending = previous.rstrip() + "\n\n" + header + content, _kept_line_ending(previous)
+            text, continued = previous.rstrip() + "\n\n" + header + content, previous
         else:
-            text, line_ending = header + content, _kept_line_ending(content)
-        write_text_raw(dst, encode_line_endings(text, line_ending), encoding)
+            text, continued = header + content, content
+        write_text_raw(dst, encode_line_endings(text, resolve_line_ending(op, continued)), encoding)
         if op_type == "move_entity" and op.get("remove_source_file", False):
             src.unlink()
             _remove_empty_parents(src.parent, repo_dir)
@@ -335,10 +335,11 @@ def _apply_graph_operation(repo_dir: Path, op: dict[str, Any]) -> None:
             raise OperationError(f"format target does not exist: {op['path']}")
         encoding = op.get("encoding") or "utf-8"
         raw = read_text_raw(path, encoding)
-        # Only trailing whitespace changes: a CRLF file stays CRLF.  read_text used to
-        # turn every \r\n into \n, so the commit also rewrote each line ending (issue #181).
+        # Without line_ending only trailing whitespace changes: a CRLF file stays CRLF.
+        # read_text used to turn every \r\n into \n, so the commit also rewrote each line
+        # ending (issue #181).  An explicit line_ending converts the file, as on replace.
         formatted = "\n".join(line.rstrip() for line in normalize_newlines(raw).splitlines()) + "\n"
-        write_text_raw(path, encode_line_endings(formatted, _kept_line_ending(raw)), encoding)
+        write_text_raw(path, encode_line_endings(formatted, resolve_line_ending(op, raw)), encoding)
         return
 
     if op_type == "apply_patch":
@@ -351,16 +352,6 @@ def _apply_graph_operation(repo_dir: Path, op: dict[str, Any]) -> None:
         raise OperationError("apply_patch_from must be handled by the graph generator, not the generic operation layer")
 
     raise OperationError(f"unsupported graph operation: {op_type}")
-
-
-def _kept_line_ending(existing: str) -> str:
-    """The newline of a file rewritten from ``existing`` text, for the operations that read no
-    ``line_ending`` key (``format_file``, ``move_entity``, ``copy_entity``; issue #181).
-
-    The rule ``replace`` follows without the key (``operations.resolve_line_ending``):
-    CRLF when every newline of ``existing`` is CRLF, LF otherwise (LF or mixed).
-    """
-    return "\r\n" if detect_crlf(existing) else "\n"
 
 
 def _render_template_line(template: str, line_no: int) -> str:
