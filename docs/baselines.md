@@ -519,8 +519,8 @@ nothing could be scored or `--out` is not a directory it can create
 | dimension | meaning |
 |---|---|
 | `oracle_size` | how many commits the answer contains |
-| `bic_depth` | commits between the deepest required BIC and the fix |
-| `fault_file_distractors` | commits before the fix that touch a file the fault lives in and are **not** the answer |
+| `bic_depth` | how far the deepest required BIC is from the fix: the last bug-fixing commit's position minus the earliest required BIC's position in the history order (1 when the fix directly follows the BIC; `none` for an empty oracle) |
+| `fault_file_distractors` | commits before the fix (earlier in the history order than the last bug-fixing commit) that touch a file the fault lives in and are **not** the answer |
 | `commit_count`, `ref_count` | size and branchiness of the history |
 | `blame_class` | what plain first-parent blame on the lines the fix deletes does with the oracle: `exact` (returns exactly the required set), `extra` (the required set and more), `miss` (a required commit is not blamed), `addition-only` (the fix deletes nothing: it only adds lines, changes a file mode or changes a binary file — the evaluator's `addition_only`, `mode_only` and `binary` fix shapes) or `empty-first-parent` (the fix is a merge whose first-parent diff is empty). Measured, never hand-edited; not part of the redundancy signature |
 | `difficulty_floor` | the least `difficulty` the blame class allows (`exact` → `easy`, `extra` / `addition-only` → `medium`, `miss` / `empty-first-parent` → `hard`); the report lists declarations below it as contradictions and above it as overrides |
@@ -529,6 +529,23 @@ nothing could be scored or `--out` is not a directory it can create
 (`_commit_level_policy`), so a default evaluation variant and an inferred
 direct BIC are read the same way a scored run reads them. `bic_depth` measures
 the **farthest** required BIC — the deepest commit a tool has to reach.
+
+**Before the fix** means earlier in the history order a predictor sees
+(`git rev-list --all --topo-order --reverse`, see
+[What a predictor sees](#what-a-predictor-sees)), not *an ancestor of the
+fix*. That order puts every parent before its children but interleaves the
+branches, so `fault_file_distractors` also counts a commit the fix does not
+descend from when Git lists it before the last fix: the original of a rebased
+commit, a commit on a release branch, or one on a branch merged only after the
+fix. A blame-style tool walking back from the fix never meets such a commit,
+but a tool that reads `--all` does, so the count includes the traps for that
+kind of tool too; the definition is kept on purpose (issue #191). `bic_depth`
+is read off the same order: it is a difference of two positions, so a commit of
+another branch that Git lists between the BIC and the fix adds to it, and it is
+not the length of the path from the BIC to the fix along the fix's ancestry. A
+commit *touches* a file when `git diff --name-only` against its first parent
+names it; the bug-fixing commits and the required commits themselves are not
+counted.
 
 Measured on the shipped suite (279 scenarios), `szzbench coverage` prints:
 
