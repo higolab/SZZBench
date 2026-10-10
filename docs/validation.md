@@ -451,7 +451,7 @@ with the index path.
 | IE021 | error | duplicate entry id |
 | IE022 | error | the entry has no `<root>/<id>/<scenario file>` |
 | IW023 | warning | the entry's `path` differs from `<root>/<id>/<scenario file>` |
-| IE024 | error | the entry's `readme` (when present; the graph index has one for every entry) is not a string naming an existing file, read relative to the directory that holds the root, as `path` is ([issue #158](https://github.com/higolab/SZZBench/issues/158)) |
+| IE024 | error | the entry's `readme` (when present; the graph index has one for every entry) is not a string naming an existing file, read relative to the directory that holds the root, as `path` is. A path the file system will not let `validate-index` look at (a directory without search permission, a NUL byte) is reported here too, with the reason, rather than ending the run: `Path.is_file` raises then on Python 3.10–3.13 (PR #261 review) ([issue #158](https://github.com/higolab/SZZBench/issues/158)) |
 | IE030 | error | a scenario directory under the root has no index entry |
 | IE040 | error | the entry id differs from the scenario's `meta.id` |
 | IE041 | error | the entry title differs from the scenario's `meta.title` |

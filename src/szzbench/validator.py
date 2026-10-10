@@ -1367,6 +1367,24 @@ def load_index(index_path: Path) -> tuple[dict[str, Any] | None, str | None]:
     return None, finding.message        # E000 (not UTF-8) and E001 (YAML) name no scenario file
 
 
+def _index_readme_problem(readme: Any, repository_root: Path) -> str | None:
+    """Why an index entry's ``readme`` names no README ``validate-index`` can see, or None (issue #158).
+
+    ``Path.is_file`` raises ``PermissionError`` and the other ``OSError``s on
+    Python 3.10-3.13 (3.14 returns False), and ``ValueError`` for a NUL byte, so
+    an entry pointing into a directory without search permission ended
+    ``validate-index`` in a traceback (PR #261 review).
+    """
+    if not isinstance(readme, str) or not readme:
+        return "names no file"
+    try:
+        if (repository_root / readme).is_file():
+            return None
+    except (OSError, ValueError) as exc:
+        return f"cannot be checked ({getattr(exc, 'strerror', None) or exc})"
+    return "names no file"
+
+
 def validate_index_file(index_path: Path, root: Path, scenario_filename: str) -> ValidationResult:
     """Check one index.yml against the scenario directories under ``root``.
 
@@ -1428,8 +1446,9 @@ def validate_index_file(index_path: Path, root: Path, scenario_filename: str) ->
         if "readme" in entry:
             # the graph index names every scenario's README; nothing looked at it (issue #158)
             readme = entry["readme"]
-            if not isinstance(readme, str) or not readme or not (repository_root / readme).is_file():
-                result.error("IE024", f"Index entry '{sid}' readme {readme!r} names no file (expected "
+            problem = _index_readme_problem(readme, repository_root)
+            if problem is not None:
+                result.error("IE024", f"Index entry '{sid}' readme {readme!r} {problem} (expected "
                              f"'{root.name}/{sid}/README.md').", f"{loc}.readme")
         scenario_data, scenario_load = load_yaml(scenario_file)
         if scenario_data is None:

@@ -140,6 +140,26 @@ def test_a_dangling_readme_is_an_error_and_entries_out_of_id_order_a_warning(tmp
     assert "'SZZG-0001' comes after 'SZZG-0002'" in result.findings[1].message
 
 
+def test_a_readme_that_cannot_be_checked_is_ie024_not_a_traceback(tmp_path, monkeypatch):
+    """On Python 3.10-3.13 ``Path.is_file`` raises for a path inside a directory without search
+    permission (3.14 returns False), and validate-index ended in a traceback (PR #261 review).  The
+    error is raised here on every version, so that the test does not depend on the runtime or on
+    file permissions, which a root container ignores."""
+    root = _index_root(tmp_path, [_entry("SZZG-0001", readme="locked/README.md")])
+    real_is_file = Path.is_file
+
+    def is_file(self):
+        if "locked" in self.parts:
+            raise PermissionError(13, "Permission denied", str(self))
+        return real_is_file(self)
+
+    monkeypatch.setattr(Path, "is_file", is_file)
+    result = validate_index_file(root / "index.yml", root, "scenario.graph.yml")
+    assert [(f.code, f.location) for f in result.findings] == [
+        ("IE024", f"{(root / 'index.yml').as_posix()}:scenarios[0].readme")]
+    assert "readme 'locked/README.md' cannot be checked (Permission denied)" in result.findings[0].message
+
+
 # --- #179: commit options generation needs a source for, and the default branch -----------
 
 def _graph_scenario(tmp_path: Path, commits: list[dict]) -> Path:
