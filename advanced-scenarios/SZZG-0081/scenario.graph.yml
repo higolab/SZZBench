@@ -12,7 +12,7 @@ meta:
   factors:
   - branch
   - rebase
-  - formatting-rewrite
+  - formatting-noise
   - whitespace-only-change
   - blame-stops-at-formatting
   - direct-bic

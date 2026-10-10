@@ -8,7 +8,7 @@
 | status | `active` |
 | difficulty | `hard` |
 | language | `java` |
-| factors | `context`, `commit-messages` |
+| factors | `message-evidence`, `commit-messages` |
 | oracle | `exact_set`; required `c1`; related but not correct `c2`, `c3` · BFC `c4` |
 | defeats | `blame`, `shape` |
 | graph features | `context` |

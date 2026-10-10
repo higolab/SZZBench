@@ -1,17 +1,20 @@
 # Decision: controlled vocabularies for factors, roles, categories, status and difficulty (issue #19)
 
-Status: **decided and applied** (2026-09-19; proposed 2026-09-17; §7 `meta.tier` applied in PR #39). The mechanical defects listed in issue #19 (stale index count, wrong references, garbled text) are fixed independently; this document settles the vocabularies that the metadata sweep and the validator lint (issue #16, `--lint`) will use.
+Status: **decided and applied** (2026-09-19; proposed 2026-09-17; §7 `meta.tier` applied in PR #39; on 2026-10-10 the factor vocabulary of §1 was opened (issues #196, #197) and `attempted_fix` left the BFC roles of §2.1 (issue #187)). The mechanical defects listed in issue #19 (stale index count, wrong references, garbled text) are fixed independently; this document settles the vocabularies that the metadata sweep and the validator lint (issue #16, `--lint`) will use.
 
 ## 1. Factors
 
 ### 1.1 Rules
 
-- Factors are **semantic properties of the history or the fault**, written in lower-case hyphen-case (`multi-file-bfc`), in both suites. Today the normal suite uses hyphens and the graph suite underscores; the sweep converts the graph suite.
-- Schema keys, section names and operation names are **not** factors. Operation names are replaced by their semantic equivalent (table below).
-- Every scenario has at least one *structure* factor and one *fault* factor. The BIC/BFC count is always stated (`single-bic`/`multi-bic`, `single-bfc`/`multi-bfc`).
-- Free-form `<something>-after-bic` tags are replaced by the closest canonical noise factor plus, when useful, a `noise:` note in the README; the title already carries the specific variant.
+The factor vocabulary is **open** (decided 2026-10-10, issue #197). §1.2 and §1.3 list the **recommended** words: an author uses a listed word where one fits, and may add any other tag that names a property the lists do not have. No lint reports a factor outside the lists: `--lint` checks a factor's style and refuses schema keys and operation names (below), and does not ask whether the word is listed.
 
-### 1.2 Canonical structure factors (history shape)
+- Factors are **semantic properties of the history or the fault**, written in lower-case hyphen-case (`multi-file-bfc`), in both suites. The graph suite used underscores until its lists were normalised to hyphen-case on 2026-09-19 (PR #46); `E402` / `GE402` report a scenario that mixes the two styles.
+- Schema keys, section names and operation names are **not** factors (`E400` / `GE400`). Operation names are replaced by their semantic equivalent (§1.4).
+- A scenario names at least one *structure* factor and one *fault* factor where it can, and `meta.factors` is never empty (`E401` / `GE401`). Nothing checks the first part: on 2026-10-10, 259 of the 279 shipped scenarios named a listed structure factor and 76 a listed fault factor. The number of BICs and BFCs is **not** required as a factor (issue #196): it is a property of the oracle, which the README header's `oracle` row shows and `szzbench coverage` measures (`oracle_size`), the way §4 measures `blame_class` instead of declaring it. `single-bic`/`multi-bic` and `single-bfc`/`multi-bfc` stay in §1.2 for the scenarios that declare them.
+- A specific variant may be a tag of its own (`import-reorder-after-bic`, `lambda-rewrite-after-bic`); the title usually names it as well. The listed word for its class (`formatting-noise`, `comment-noise`, `cosmetic-line-noise`, `refactoring-after-bic`) is the recommended companion.
+- Some checks read a factor as a **declaration**, so a free tag can mean something to the validator. A factor *containing* one of a few substrings silences W301, W320, W330, W420, W430 and W431, and turns the verifier's W700 / GW701 into I701 / GI701 (`after-bic`, `format`, `noise`, `duplicate`, `root-cause` and the rest are listed with each code in [validation.md](../validation.md)). Replacing a tag by a listed word can therefore change what is declared: `comment-insertion-after-bic` contains `after-bic`, which silences W430, and `comment-noise` contains `noise`, which silences W420 and W431 instead. A few exact words declare a shape a check then holds the scenario to (`addition-only-fix` for W420, `deletion-only-bic` for W421) or allow what a check otherwise refuses (`gitattributes-bic`, E051 / GE063).
+
+### 1.2 Recommended structure factors (history shape)
 
 | factor | meaning |
 |---|---|
@@ -43,23 +46,31 @@ Status: **decided and applied** (2026-09-19; proposed 2026-09-17; §7 `meta.tier
 | `caller-callee`, `cross-file-cause`, `root-cause-not-in-diff` | non-local evidence |
 | `evaluation-variant`, `top-k`, `partial-credit` | oracle policy scenarios (replaces `expected_szz`, `evaluation_variants`) |
 
-### 1.3 Canonical fault factors
+### 1.3 Recommended fault factors
 
 `boundary-condition`, `off-by-one`, `wrong-operator`, `boolean-negation`, `wrong-variable`, `wrong-constant`, `null-check-omission`, `missing-break`, `missing-branch`, `guard-removed`, `resource-not-closed`, `exception-swallowed`, `string-comparison`, `integer-overflow`, `api-misuse`, `config-value`, `duplicate-statement`, `composite-fault`.
 
-### 1.4 Synonym table (sweep input)
+### 1.4 Old spellings (synonym table)
 
-| today | canonical |
+The table was the input of the sweep (§6 step 1). Its first column is spelled as the scenarios spelled it then, before the graph suite's lists became hyphen-case. A spelling it names is to be replaced by the word in the second column, and a new scenario does not use it; what has been applied is listed below the table.
+
+| old spelling | replacement |
 |---|---|
 | `multi-bic`, `multiple_bic`, `multiple-bic` | `multi-bic` |
 | `single_bfc`, `single-bfc` | `single-bfc` |
 | `context`, `context-aware`, `context_dependent` | `message-evidence` or `caller-callee` (per scenario) |
 | `multi-file-bfc`, `multi_file`, `multiple_file` | `multi-file-bfc` |
-| `formatting`, `formatting_rewrite`, `whitespace-only-after-bic`, `class-body-reformat-after-bic`, … | `formatting-noise` |
+| `formatting`, `formatting_rewrite`, `whitespace-only-after-bic`, `class-body-reformat-after-bic` | `formatting-noise` |
 | `comment-insertion-after-bic`, `comment-deletion-after-bic`, `comment-only-intermediate` | `comment-noise` |
 | `rename_file`, `move_file`, `copy_file`, `delete_file`, `move_entity`, `copy_entity`, `chmod`, `write_binary_file`, `write_generated_text_file`, `commit_generators`, `allow_empty` | `file-rename`, `file-move`, `copy-propagation`, `file-deletion`, `method-move`, `copy-propagation`, `file-mode-change`, `binary-file`, `generated-file`, `generated-history`, (drop) |
 | `expected_szz`, `evaluation_variants`, `faults`, `bug_fixing_commits`, `issues`, `work_items`, `clone_relationships`, `bug_instances`, `developer_hints`, `edit`, `drop`, `same_bug`, `root_cause`, `code_interaction` | drop (schema keys) or map: `issues`→`issue-evidence`, `work_items`→`work-item`, `root_cause`→`root-cause-not-in-diff`, `code_interaction`→`caller-callee` |
 | `direct_bic`, `origin_bic`, `rebased_bic`, `re_bic`, `dropped_origin_bic` | `origin-vs-direct` (+ `rebase`/`revert` as applicable) |
+
+What has been applied:
+
+- **2026-09-19 (PR #46).** Every spelling that `E400` / `GE400` now reject: the schema keys and operation names of `RESERVED_FACTOR_WORDS`.
+- **2026-10-10 (issue #197).** The rows for `context`, formatting and comments, to the ten spellings still in use: `context` (5 scenarios), `context-aware` (3), `context-dependent` (5), and `formatting`, `formatting-rewrite`, `whitespace-only-after-bic`, `class-body-reformat-after-bic`, `comment-insertion-after-bic`, `comment-deletion-after-bic` and `comment-only-intermediate` (1 each). Per scenario, `context` became `message-evidence` where a message is the evidence (SZZ-0166, SZZ-0168, SZZG-0098) and `caller-callee` where the code that calls or reads the faulty code is (SZZ-0172, SZZG-0038, SZZG-0040, SZZG-0104, SZZG-0105). Where the scenario already declared a word of the same row or group, the old spelling was dropped instead: `message-evidence` (SZZ-0159), `caller-callee` (SZZG-0101, SZZG-0103), `misleading-message` (SZZ-0158, whose message is evidence to reject, the contrast with its twin SZZ-0159) and `issue-evidence` (SZZG-0102, whose commit subjects carry only issue identifiers).
+- **Not applied.** The hyphen-case forms of the last row's spellings (`origin-bic`, `direct-bic`, `re-bic`, `rebased-bic`, `dropped-origin-bic`: 33 graph scenarios) and of `multi_file` / `multiple_file` (SZZG-0083, SZZG-0037), `root_cause` (SZZ-0169, SZZG-0035), `code_interaction` (SZZ-0172) and `same_bug` (SZZ-0154, SZZG-0032) are still in use. Issue #197 swept the ten spellings it named. The target does not hold for every one of the rest: SZZG-0083's `multi-file` describes its bug-introducing commit, not its fix, and SZZG-0065's `direct-bic` has no origin to be distinguished from.
 
 ## 2. Roles
 
@@ -67,14 +78,14 @@ Status: **decided and applied** (2026-09-19; proposed 2026-09-17; §7 `meta.tier
 
 **BIC entries** — canonical roles `direct`, `origin`, `contributing`, `reintroducing`. The 23 spellings in use (`direct_squash_bic`, `merge_introducing`, `direct_reintroduction`, `origin_bic`, `old_origin_bic`, `related_reintroducing`, …) are classified by `normalize_bic_role()` (issue #15, PR #27) and rewritten to the canonical spelling by the sweep. `normalize_bic_role()` classifies **BIC roles only**: it returns `other` for every BFC role, including `complete_fix` and `partial_fix`, so it must not be applied to BFC entries.
 
-**BFC entries** — canonical roles `complete_fix` (the commit removes the fault of this bug entry), `partial_fix` (removes part of it; another BFC completes it) and `attempted_fix` (a developer attempt that does **not** remove the fault; kept as context and excluded from the evaluated BFC set). BFC roles are not normalized: the sweep applied the table below explicitly, no BFC counterpart of `normalize_bic_role()` was written, and every shipped BFC entry now declares `complete_fix` (153) or `partial_fix` (6). `validate-graph --lint` accepts those two spellings only (`GE404`); `attempted_fix` is not among them today (issue #187). Today BFC roles do not influence scoring: the verifier's blame check uses the *last* BFC entry and PR #27's `fix_shape` classifies every listed BFC regardless of role.
+**BFC entries** — canonical roles `complete_fix` (the commit removes the fault of this bug entry) and `partial_fix` (removes part of it; another BFC completes it). Every BFC entry is a fix the evaluator scores. A developer's attempt that does **not** remove the fault is not a BFC entry: the commit's own role (`commits[].role`, §2.2) records the attempt (decided 2026-10-10, issue #187). Until then this paragraph listed a third BFC role, `attempted_fix`, "kept as context and excluded from the evaluated BFC set"; no code excluded such an entry, `validate-graph --lint` rejected the spelling (`GE404`), and no shipped BFC entry declared it. BFC roles are not normalized: the sweep applied the table below explicitly, no BFC counterpart of `normalize_bic_role()` was written, and every shipped BFC entry now declares `complete_fix` (153) or `partial_fix` (6). `validate-graph --lint` accepts those two spellings only (`GE404`). Today BFC roles do not influence scoring: the verifier's blame check uses the *last* BFC entry and PR #27's `fix_shape` classifies every listed BFC regardless of role.
 
 | canonical | today (scenarios) |
 |---|---|
 | `complete_fix` | `complete_fix`; `main_fix` (SZZG-0049, 0050, 0054); `merge_fix` (SZZG-0042, 0046); `final_fix` (SZZG-0085); `complete_fix_upper_bound` (SZZG-0032); `follow_up_fix` (SZZG-0030 c3); `cherry_picked_release_fix` (SZZG-0049 r2) and `backport_fix` (SZZG-0050 r2) — the replay is recorded by `cherry_pick_of`/`backport_of`, not by the role; `shared_bfc` (SZZG-0034 c3: one commit that completely fixes each of two bug entries) |
 | `partial_fix` | `partial_fix`; `partial_fix_lower_bound` (SZZG-0032 c2) |
 | classified per bug entry | `symptom_fix` (SZZG-0035): the scenario declares **two** bug entries — B001 (`acceptImport`, single BFC c2) and B002 (`acceptSearch`, single BFC c3) — and each BFC completely restores its method's inclusive check, so both map to `complete_fix` with the symptom detail kept in `description`. Narrative roles like this are classified by the repair's scope *within its own bug entry*, never by an unconditional string mapping; a `symptom_fix` would be `partial_fix` only where the same bug entry lists another BFC that completes the repair |
-| `attempted_fix` | `attempted_fix` (SZZG-0030 c2; under D6 of the origin/direct contract it is also the direct BIC of the new `\|\|` fault) |
+| not a BFC role | `attempted_fix` (SZZG-0030 c2). The commit does remove B001's exclusive bounds, so B001 lists it as `complete_fix` (issue #3); under D6 of the origin/direct contract it is also the direct BIC of B002, the new `\|\|` fault. That it was an attempt is the commit's role (`commits[].role: attempted_fix`, a spelling §2.2 maps onto the canonical commit roles, issue #195) |
 
 Narrative detail ("main-line fix", "release fix", "upper bound") moves to the entry's `description`.
 
@@ -124,7 +135,7 @@ Legacy README labels map as follows: "BFC shape scenarios" → S4/G1 by content;
 
 ## 6. Sweep plan (after issues #15–#18 land)
 
-1. Apply the factor synonym table and role mapping to all scenarios with a script; commit as one change.
+1. Apply the factor synonym table and role mapping to all scenarios with a script; commit as one change. **Done for the factors and the bug-entry roles, in two parts.** On 2026-09-19 (PR #46) the bug-entry roles were migrated (§2.1), the schema keys and operation names among the factors replaced and the graph suite's factor lists normalised to hyphen-case. On 2026-10-10 (issue #197) the vocabulary was declared open (§1.1) rather than closed by a lint, and §1.4 was applied to the ten old spellings still in use; the hyphen-case forms that remain are listed under §1.4. The commit roles of §2.2 are still to be mapped (issue #195).
 2. Regenerate README files from YAML (single template per suite); remove boilerplate (`Evaluates <title> and checks whether…`, `Draft status`, `c0: c0:` prefixes, stale `difference_from_*` keys, garbled text in SZZG-0046). **Re-scoped and done on 2026-09-22 (issue #19).** A single template would have overwritten the hand-written prose that 98 of the graph READMEs had gained in #41–#47, so the regeneration was defined as *augmenting*: every README opens with a **generated header** — title, category code and name, tier, status, difficulty, language, factors, the oracle as the evaluator resolves it and, in the graph suite, the graph-only features the scenario uses — rendered by `szzbench readme` and checked by `W455` / `GW455`; everything after it is the author's ([scenario-readme.md](../scenario-readme.md)). The hand-written `## Factors` and `## Source` copies (8 of the former disagreed with the YAML, 35 of the latter used the legacy category names) were removed by the same command. Gone earlier, on 2026-09-19: the `Draft status` sections (52), the `c0: c0:` prefixes, SZZG-0046's garbled text; the `## Expected history` blocks are re-derived from the YAML (`GW454`). The template-era boilerplate went the same day in the second PR of issue #19: in the 44 oldest graph READMEs the `Evaluate <title> and whether…` purposes were replaced by the scenario's own `scenario_design.purpose`, and the generic `Why this needs scenario.graph.yml` sentence, the `Required graph-schema features` list, the three generic `Evaluation points`, the bare `Expected BICs` code blocks and the `Files` tree were removed (hand-written bodies under the same headings stayed); in the YAML, the generic `current_schema_limitation` sentence (39 scenarios; the 11 hand-written ones stay), every `required_extensions_from_source` (49, all `This scenario uses factors: …; operations: …`, with pre-sweep factor names) and the generic three-bullet `evaluation_points` (32) were removed. The classic `Evaluates <title> and checks whether…` descriptions (SZZ-0155, SZZ-0156, SZZ-0171) and SZZ-0103's garbled description were rewritten. `tests/test_readme_boilerplate.py` keeps the sentences from coming back.
 3. Run `validate --strict --lint` and `validate-index`; fix residuals; flip `status` to `active` for scenarios that pass.
 4. Turn the `--lint` vocabulary warnings into errors. **Done 2026-09-22**: `W400`–`W402` and `GW400`–`GW404` are `E400`–`E402` / `GE400`–`GE404`; both suites were at zero findings when the severity changed.

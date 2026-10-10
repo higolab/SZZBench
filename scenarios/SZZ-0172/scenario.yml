@@ -10,7 +10,7 @@ meta:
   factors:
   - config
   - code-interaction
-  - context
+  - caller-callee
   - config-value
   difficulty: hard
   status: active

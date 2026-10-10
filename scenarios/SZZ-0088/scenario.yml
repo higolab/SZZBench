@@ -16,7 +16,7 @@ meta:
     - "single-bic"
     - "single-bfc"
     - "line-modification"
-    - "class-body-reformat-after-bic"
+    - "formatting-noise"
     - "blame-reaches-bic"
   difficulty: "easy"
   status: "active"

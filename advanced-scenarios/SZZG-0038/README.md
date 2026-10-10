@@ -8,7 +8,7 @@
 | status | `active` |
 | difficulty | `hard` |
 | language | `java` |
-| factors | `multi-bic`, `context-dependent`, `partial-observability` |
+| factors | `multi-bic`, `caller-callee`, `partial-observability` |
 | oracle | `exact_set`; required `c1`, `c2` · BFC `c3` |
 | graph features | 2 BICs; 2 fault sites |
 <!-- /szzbench:header -->

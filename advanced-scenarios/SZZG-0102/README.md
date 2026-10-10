@@ -8,7 +8,7 @@
 | status | `active` |
 | difficulty | `hard` |
 | language | `java` |
-| factors | `issue-evidence`, `context` |
+| factors | `issue-evidence` |
 | oracle | `exact_set`; required `c1`; related but not correct `c2`, `c3` · BFC `c4` |
 | defeats | `blame`, `shape` |
 | graph features | `issues`; `context` |

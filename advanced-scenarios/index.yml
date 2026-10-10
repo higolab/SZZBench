@@ -139,7 +139,7 @@ scenarios:
   status: active
   factors:
   - intermediate-rewrite
-  - formatting
+  - formatting-noise
   - line-history-break
 - id: SZZG-0014
   title: Buggy code copied to a new file
@@ -415,7 +415,7 @@ scenarios:
   status: active
   factors:
   - multi-bic
-  - context-dependent
+  - caller-callee
   - partial-observability
 - id: SZZG-0039
   title: Prerequisite BIC and symptom BIC fixed together
@@ -438,7 +438,7 @@ scenarios:
   factors:
   - multi-bic
   - not-directly-touched-by-fix
-  - context-dependent
+  - caller-callee
 - id: SZZG-0041
   title: Ambiguous blame with duplicate faulty lines
   category_code: G3
@@ -923,7 +923,7 @@ scenarios:
   factors:
   - branch
   - rebase
-  - formatting-rewrite
+  - formatting-noise
   - whitespace-only-change
   - blame-stops-at-formatting
   - direct-bic
@@ -1119,7 +1119,7 @@ scenarios:
   readme: advanced-scenarios/SZZG-0098/README.md
   status: active
   factors:
-  - context
+  - message-evidence
   - commit-messages
 - id: SZZG-0099
   title: BFC message references the wrong commit
@@ -1150,7 +1150,6 @@ scenarios:
   status: active
   factors:
   - caller-callee
-  - context
   - api-misuse
 - id: SZZG-0102
   title: Issue text names the regressed column
@@ -1161,7 +1160,6 @@ scenarios:
   status: active
   factors:
   - issue-evidence
-  - context
 - id: SZZG-0103
   title: Caller-side context is needed to identify the BIC
   category_code: G7
@@ -1170,7 +1168,6 @@ scenarios:
   readme: advanced-scenarios/SZZG-0103/README.md
   status: active
   factors:
-  - context-dependent
   - caller-callee
   - not-directly-local
 - id: SZZG-0104
@@ -1183,7 +1180,7 @@ scenarios:
   factors:
   - configuration-change
   - cross-artifact-fix
-  - context-dependent
+  - caller-callee
 - id: SZZG-0105
   title: Defensive check BFC masks an earlier root-cause BIC
   category_code: G7
@@ -1194,7 +1191,7 @@ scenarios:
   factors:
   - defensive-fix
   - root-cause-not-touched
-  - context-dependent
+  - caller-callee
 - id: SZZG-0107
   title: BFC includes generated files
   category_code: G8

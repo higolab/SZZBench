@@ -8,7 +8,7 @@
 | status | `active` |
 | difficulty | `medium` |
 | language | `java` |
-| factors | `single-bic`, `single-bfc`, `line-modification`, `context-aware`, `message-evidence` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `message-evidence` |
 | oracle | `exact_set`; required `c1` · BFC `c2` |
 <!-- /szzbench:header -->
 

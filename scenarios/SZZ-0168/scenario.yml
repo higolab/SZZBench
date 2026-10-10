@@ -8,7 +8,7 @@ meta:
   category: "Context, message, and non-local evidence"
   factors:
   - test-context
-  - context
+  - message-evidence
   difficulty: hard
   status: active
   tier: control

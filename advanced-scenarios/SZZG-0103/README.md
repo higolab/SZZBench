@@ -8,7 +8,7 @@
 | status | `active` |
 | difficulty | `hard` |
 | language | `java` |
-| factors | `context-dependent`, `caller-callee`, `not-directly-local` |
+| factors | `caller-callee`, `not-directly-local` |
 | oracle | `exact_set`; required `c1` · BFC `c2` |
 | defeats | `blame`, `shape` |
 | graph features | none: a linear history with one bug and an exact-set oracle, kept in the graph suite for its category |
