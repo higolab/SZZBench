@@ -8,6 +8,7 @@ meta:
   category_code: "G3"
   factors:
   - multi-bfc
+  - test-file-added
   difficulty: medium
   status: active
   tier: control
@@ -55,7 +56,7 @@ commits:
   parents:
   - c1
   message: 'Add the range boundary test'
-  role: test_added
+  role: test_change
   operations:
   - type: write_file
     path: src/test/java/example/RangeTest.java
@@ -125,7 +126,10 @@ fix_series:
   - c3
   - c4
 scenario_design:
-  purpose: Evaluate whether a test-only commit between the fault and the fix changes what a method reports.
+  purpose: >-
+    Check that a test-only commit inside the fix series changes nothing: c2 adds a test file between the
+    bug-introducing commit and the two fixes, and a method must report c1 for both fixes, exactly as in SZZG-0029,
+    which has the same fault and fixes without it.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.

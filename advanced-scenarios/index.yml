@@ -395,6 +395,7 @@ scenarios:
   status: active
   factors:
   - multi-bfc
+  - test-file-added
 - id: SZZG-0037
   title: One BFC fixes multiple BICs across multiple files
   category_code: G3
