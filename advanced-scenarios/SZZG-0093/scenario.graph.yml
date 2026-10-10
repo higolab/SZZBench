@@ -49,7 +49,7 @@ commits:
   parents:
   - c0
   message: 'WI-001 start the range filtering feature'
-  role: feature_work
+  role: intermediate
   work_item: WI-001
   operations:
   - type: replace
@@ -75,7 +75,7 @@ commits:
   parents:
   - c2
   message: 'WI-001 add the caller for range filtering'
-  role: feature_work
+  role: intermediate
   work_item: WI-001
   operations:
   - type: replace

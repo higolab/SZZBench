@@ -70,7 +70,7 @@ commits:
   parents:
   - c1
   message: 'ISSUE-10 rename the normalize parameter to rawValue'
-  role: unrelated
+  role: intermediate
   operations:
   - type: replace
     path: src/main/java/example/RangeService.java
@@ -87,7 +87,7 @@ commits:
   parents:
   - c2
   message: 'ISSUE-10 document the range validation rules'
-  role: unrelated
+  role: intermediate
   operations:
   - type: write_file
     path: docs/range-validation.md

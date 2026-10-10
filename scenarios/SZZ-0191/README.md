@@ -10,6 +10,7 @@
 | language | `java` |
 | factors | `multi-bic`, `single-bfc`, `caller-callee-interaction`, `blame-unreachable-bic` |
 | oracle | `exact_set`; required `c1`, `c3` · BFC `c4` |
+| defeats | `blame`, `shape`, `position` |
 <!-- /szzbench:header -->
 
 ## Purpose

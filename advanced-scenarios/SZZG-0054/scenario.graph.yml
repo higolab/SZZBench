@@ -91,7 +91,7 @@ commits:
   parents:
   - c2
   message: 'Add the release follow-up note'
-  role: unfixed_release
+  role: intermediate
   operations:
   - type: write_file
     path: docs/release-followup.md

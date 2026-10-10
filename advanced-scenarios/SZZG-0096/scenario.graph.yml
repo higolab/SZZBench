@@ -48,7 +48,7 @@ commits:
   parents:
   - c0
   message: 'Read the enabled flag from a system property'
-  role: candidate
+  role: distractor
   operations:
   - type: replace
     path: src/main/java/example/RangeService.java
@@ -70,7 +70,7 @@ commits:
   parents:
   - c2
   message: 'Clamp the value at zero'
-  role: candidate
+  role: distractor
   operations:
   - type: replace
     path: src/main/java/example/RangeService.java

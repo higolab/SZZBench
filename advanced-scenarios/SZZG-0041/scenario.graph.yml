@@ -76,7 +76,7 @@ commits:
   parents:
   - c1
   message: Treat the admin request limit as an exclusive upper bound
-  role: other
+  role: intermediate
   operations:
   - type: replace
     path: src/main/java/example/Limits.java

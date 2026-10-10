@@ -64,7 +64,7 @@ commits:
   parents:
   - c1
   message: 'Accept both bounds again'
-  role: prior_fix
+  role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/Range.java

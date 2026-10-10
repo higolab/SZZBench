@@ -17,6 +17,7 @@ meta:
   difficulty: "hard"
   status: "active"
   tier: "discriminating"
+  defeats: ["blame", "shape", "position"]
   category_code: "S6"
 
 repository:
@@ -145,6 +146,12 @@ bugs:
         faulty_statements:
           - "return divide(total, count, true);"
         note: "The bug has multiple contributing commits, but the BFC directly modifies a line introduced in c2."
+
+scenario_design:
+  failure_mode: >-
+    A tool fails here when it stops at blame's `c2`, the call `divide(total,
+    count, true)` the fix repairs: `c1`, which made `divide` skip its zero
+    check when that flag is set, is on no line the fix deletes.
 
 checks:
   - type: "git_history_contains"

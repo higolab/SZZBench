@@ -93,7 +93,7 @@ commits:
   branch: release
   parents:
   - c0
-  role: cherry_pick
+  role: intermediate
   cherry_pick_of: c1
   cherry_pick_trailer: true
   inherit_message: true

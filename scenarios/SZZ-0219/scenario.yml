@@ -173,6 +173,13 @@ bugs:
           history, and no blame variant shortens the walk, because both steps
           changed tokens.
 
+scenario_design:
+  failure_mode: >-
+    A tool fails here when it takes blame's answer, `c3` and `c4`: `c2`
+    extracted the quota comparison into a local and `c3` renamed it, so
+    `c1`, which made the check inclusive, is two behaviour-preserving steps
+    back along the line's history.
+
 checks:
   - type: "git_history_contains"
     commits: ["c0", "c1", "c2", "c3", "c4", "c5"]

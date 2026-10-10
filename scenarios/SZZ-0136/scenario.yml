@@ -12,6 +12,7 @@ meta:
   difficulty: hard
   status: active
   tier: discriminating
+  defeats: [blame, shape, position]
   category_code: "S6"
 repository:
   name: SZZ-0136-range-min-max-changed-separately
@@ -150,6 +151,11 @@ bugs:
       available: true
       faulty_statements:
       - return value > min && value < max;
+scenario_design:
+  failure_mode: >-
+    A tool fails here when it stops at blame's `c2`: `c2` rewrote the line
+    to add the exclusive upper bound and kept the exclusive lower bound `c1`
+    had written, so `c1` is on no line that still exists.
 checks:
 - type: git_history_contains
   commits:

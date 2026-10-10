@@ -76,7 +76,7 @@ commits:
   parents:
   - c2
   message: 'Subtract the credit and put the status labels the right way round'
-  role: prior_fix
+  role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/InvoiceSummary.java

@@ -10,6 +10,7 @@
 | language | `java` |
 | factors | `multi-bic`, `not-directly-touched-by-fix`, `caller-callee` |
 | oracle | `exact_set`; required `c1`, `c2` · BFC `c3` |
+| defeats | `blame`, `shape`, `position` |
 | graph features | 2 BICs; 2 fault sites |
 <!-- /szzbench:header -->
 

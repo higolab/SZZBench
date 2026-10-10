@@ -10,6 +10,7 @@
 | language | `java` |
 | factors | `multi-bic`, `merge`, `guard-removal`, `caller-callee-interaction`, `blame-unreachable-bic` |
 | oracle | `exact_set`; required `c1`, `c2` · BFC `c4` |
+| defeats | `blame`, `shape`, `position` |
 | graph features | 2 branches; merge commit `c3`; 2 BICs; 2 fault sites |
 <!-- /szzbench:header -->
 

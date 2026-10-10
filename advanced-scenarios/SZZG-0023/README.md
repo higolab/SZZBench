@@ -40,7 +40,7 @@ created the copy (`r2`), while the rebased original (`r1`, same comparison in
 |---|---|---|---|---|
 | `c0` | `main` | – | `initial` | Add ScoreBand with the accepted review score range |
 | `f1` | `feature` | c0 | `origin_bug_introducing` | Require review scores strictly inside the accepted band |
-| `f2` | `feature` | f1 | `origin_bug_propagating` | Add DraftScoreBand for draft submissions |
+| `f2` | `feature` | f1 | `origin_bug_introducing` | Add DraftScoreBand for draft submissions |
 | `r1` | `main` | c0 | `bug_introducing` | *(subject and author date inherited from `f1`)* |
 | `r2` | `main` | r1 | `bug_introducing` | *(subject and author date inherited from `f2`)* |
 | `c3` | `main` | r2 | `bug_fixing` | Accept the draft band bounds again so 0 and 100 stay valid draft scores |

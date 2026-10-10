@@ -61,7 +61,7 @@ commits:
   parents:
   - c1
   message: 'Rename the copied method to endPosition'
-  role: clone_divergence
+  role: intermediate
   operations:
   - type: replace
     path: src/main/java/example/Selection.java

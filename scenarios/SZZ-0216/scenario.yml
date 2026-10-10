@@ -183,6 +183,13 @@ bugs:
           FareTable.java lists c1 because Git sees the new file as a copy of
           TicketPricing.java.
 
+scenario_design:
+  failure_mode: >-
+    A tool fails here when it stops at the move `c2`, which created
+    `FareTable.java` and is what blame names for the fare line: the fare
+    check `c1` made inclusive is reached only by following that file back to
+    `TicketPricing.java` (`git blame -C10`, or `git log --follow`).
+
 checks:
   - type: "git_history_contains"
     commits: ["c0", "c1", "c2", "c3", "c4"]

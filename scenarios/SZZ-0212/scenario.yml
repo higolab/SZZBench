@@ -160,6 +160,13 @@ bugs:
           re-indented by c2, so plain blame returns c2, a commit that changed
           no token; `git blame -w` returns c1.
 
+scenario_design:
+  failure_mode: >-
+    A tool fails here when it takes plain blame's answer, `c2` and `c3`: the
+    reformat `c2` re-indented every line, and the weight check `c1` made
+    exclusive is reached only by blaming whitespace-insensitively (`git
+    blame -w`).
+
 checks:
   - type: "git_history_contains"
     commits: ["c0", "c1", "c2", "c3", "c4"]

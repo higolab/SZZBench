@@ -19,6 +19,7 @@ meta:
   difficulty: "hard"
   status: "active"
   tier: "discriminating"
+  defeats: ["blame", "shape", "position"]
   category_code: "S6"
 
 repository:
@@ -159,6 +160,12 @@ bugs:
           Every line the fix deletes lives in Invoice.java, while the unit
           change that makes the new method wrong lives in TaxTable.java, which
           the fix never opens.
+
+scenario_design:
+  failure_mode: >-
+    A tool fails here when it stays in the file the fix edits: blame returns
+    `c3`, the caller in `Invoice.java`, and `c1`, which changed the rate
+    table to per-mille, is in `TaxTable.java`, which the fix never opens.
 
 checks:
   - type: "git_history_contains"

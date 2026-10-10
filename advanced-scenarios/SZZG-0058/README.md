@@ -34,7 +34,7 @@ r2: rebase feature fix commit onto main
 |---|---|---|---|---|
 | `c0` | `main` | none | `initial` | c0: create initial correct implementation |
 | `f1` | `feature` | c0 | `origin_bug_introducing` | f1: introduce bug on feature |
-| `f2` | `feature` | f1 | `origin_bug_fixing` | f2: fix bug on feature |
+| `f2` | `feature` | f1 | `bug_fixing` | f2: fix bug on feature |
 | `r1` | `main` | c0 | `bug_introducing` | r1: rebase feature bug commit onto main |
 | `r2` | `main` | r1 | `bug_fixing` | r2: rebase feature fix commit onto main |
 

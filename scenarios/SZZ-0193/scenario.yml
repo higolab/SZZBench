@@ -20,6 +20,7 @@ meta:
   difficulty: "hard"
   status: "active"
   tier: "discriminating"
+  defeats: ["blame", "shape", "position"]
   category_code: "S6"
 
 repository:
@@ -154,6 +155,12 @@ bugs:
           c1 removed the guard that would have rejected the negative amount the
           new path can produce; while it stood, the refund path would have been
           safe.
+
+scenario_design:
+  failure_mode: >-
+    A tool fails here when it stops at blame's `c3`, the refund path: `c1`
+    removed the guard against a negative amount by deleting lines, and is
+    reached only by reasoning about what the fixed call can now pass.
 
 checks:
   - type: "git_history_contains"

@@ -175,6 +175,13 @@ bugs:
           path existed, the only route to the helper rejected a negative total,
           and c3 is in a file the fix never opens.
 
+scenario_design:
+  failure_mode: >-
+    A tool fails here when it stops at blame's `c1`, the narrowed guard:
+    `c3`, the refund path that first sends a small negative amount to the
+    helper, is in a file the fix never opens, and until it existed `c1`
+    changed no answer.
+
 checks:
   - type: "git_history_contains"
     commits: ["c0", "c1", "c2", "c3", "c4"]

@@ -43,9 +43,9 @@ c4: fix the boundary bug after the feature work
 | Commit | Branch | Parents | Role | Work item | Description |
 |---|---|---|---|---|---|
 | `c0` | `main` | none | initial | none | Creates the base range filter. |
-| `c1` | `main` | `c0` | feature_work | `WI-001` | Starts the range filtering feature without introducing a bug. |
+| `c1` | `main` | `c0` | intermediate | `WI-001` | Starts the range filtering feature without introducing a bug. |
 | `c2` | `main` | `c1` | bug_introducing | `WI-001` | Introduces the boundary bug during feature implementation. |
-| `c3` | `main` | `c2` | feature_work | `WI-001` | Adds a caller that uses the buggy method. |
+| `c3` | `main` | `c2` | intermediate | `WI-001` | Adds a caller that uses the buggy method. |
 | `c4` | `main` | `c3` | bug_fixing | none | Fixes the boundary bug. |
 
 ## Code states

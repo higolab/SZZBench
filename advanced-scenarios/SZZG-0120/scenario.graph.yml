@@ -22,6 +22,7 @@ meta:
   difficulty: hard
   status: active
   tier: discriminating
+  defeats: [blame, shape, position]
 repository:
   name: SZZG-0120-harmless-branches-harmful-merge
   default_branch: main
@@ -153,5 +154,9 @@ scenario_design:
   - Whether the expected BIC set is reported exactly.
   - Whether a bug that exists only in a merged tree is attributed to both parents.
   - Whether a merge commit that changed nothing is correctly not reported.
+  failure_mode: >-
+    A tool fails here when it stops at blame's `c2`, the loyalty subtraction, or reports the merge
+    `c3`, which changed nothing itself: `c1`, which dropped the guard against a negative subtotal,
+    is in another file on the other side of the merge.
 notes:
 - c3 is a clean merge - the two branches touch different files - and carries no operations.

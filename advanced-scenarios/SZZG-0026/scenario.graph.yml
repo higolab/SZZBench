@@ -46,7 +46,7 @@ commits:
   parents:
   - c0
   message: 'Copy the formatter for reports'
-  role: other
+  role: intermediate
   operations:
   - type: copy_file
     from: src/main/java/example/Formatter.java

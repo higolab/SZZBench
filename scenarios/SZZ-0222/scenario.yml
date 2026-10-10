@@ -225,6 +225,13 @@ bugs:
           pair, which c0 wrote, so blame answers c0 and nothing else: no true
           positive and one false positive.
 
+scenario_design:
+  failure_mode: >-
+    A tool fails here when it takes blame's answer, `c0`: the only line the
+    fix deletes is one of the two identical null checks `c2` kept, which git
+    attributes to `c0`, and the size check `c1` dropped and the batch check
+    `c3` never made come back as added lines only.
+
 checks:
   - type: "git_history_contains"
     commits: ["c0", "c1", "c2", "c3", "c4"]

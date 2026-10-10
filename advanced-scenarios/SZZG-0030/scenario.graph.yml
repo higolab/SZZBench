@@ -57,7 +57,7 @@ commits:
   parents:
   - c1
   message: 'Accept the range bounds again'
-  role: attempted_fix
+  role: intermediate
   operations:
   - type: replace
     path: src/main/java/example/Range.java
@@ -68,7 +68,7 @@ commits:
   parents:
   - c2
   message: 'Require both bounds to hold'
-  role: follow_up_fix
+  role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/Range.java

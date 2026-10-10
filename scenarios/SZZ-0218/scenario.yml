@@ -179,6 +179,12 @@ bugs:
           {c1, c2, c3}, a superset of the answer, and the scenario fails on the
           false positive rather than on a false negative.
 
+scenario_design:
+  failure_mode: >-
+    A tool fails here when it reports every commit blame names: the fix also
+    drops `c2`'s unused call counter, so blame returns `c1`, `c2` and `c3`,
+    and the answer is `c1` and `c3` without `c2`.
+
 checks:
   - type: "git_history_contains"
     commits: ["c0", "c1", "c2", "c3", "c4"]

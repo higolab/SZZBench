@@ -48,7 +48,7 @@ scenario tested nothing about cherry-picks (GitHub issue 4).
 | `c1` | `feature` | c0 | `origin_bug_introducing` | Require batch sizes strictly inside the quota limits |
 | `c2` | `feature` | c1 | `intermediate` | Document the upload batch limits for the client team |
 | `c3` | `main` | c0, c2 | `merge` | Merge branch 'feature' into main |
-| `r1` | `release` | c0 | `cherry_pick` | Require batch sizes strictly inside the quota limits *(subject and author date inherited from `c1`)* |
+| `r1` | `release` | c0 | `intermediate` | Require batch sizes strictly inside the quota limits *(subject and author date inherited from `c1`)* |
 | `c4` | `release` | r1 | `bug_fixing` | Accept the quota limit values again so a full batch of 50 files is allowed |
 
 Refs after generation (`git for-each-ref`): `refs/heads/main` → `c3`,

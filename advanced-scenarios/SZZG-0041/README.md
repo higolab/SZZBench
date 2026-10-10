@@ -39,7 +39,7 @@ c3: restore the inclusive user check (BFC, second occurrence)
 |---|---|---|---|---|
 | `c0` | `main` | none | initial | Creates `Limits` with `ADMIN_LIMIT = 1000`, `USER_LIMIT = 100`, `withinAdminLimit(int)` and `withinUserLimit(int)`; both end in `return value <= limit;`. |
 | `c1` | `main` | `c0` | bug_introducing | `replace ... occurrence: 2` turns the **user** statement into `return value < limit;`. |
-| `c2` | `main` | `c1` | other | Turns the **admin** statement into `return value < limit;`. From here the two statements are byte-identical. This change is never undone. |
+| `c2` | `main` | `c1` | intermediate | Turns the **admin** statement into `return value < limit;`. From here the two statements are byte-identical. This change is never undone. |
 | `c3` | `main` | `c2` | bug_fixing | `replace ... occurrence: 2` restores `return value <= limit;` in the **user** method only. |
 
 `c1` and `c3` must state `occurrence: 2` because their `old` text matches two lines of the file; without it the

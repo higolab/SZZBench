@@ -15,6 +15,7 @@ meta:
   difficulty: hard
   status: active
   tier: discriminating
+  defeats: [blame, shape, position]
 repository:
   name: SZZG-0028-origin-and-direct-clone-bics
   default_branch: main
@@ -171,6 +172,11 @@ scenario_design:
   - Whether the copy commit c2 rather than the origin c1 is reported.
   - Whether the second, directly written fault c3 is reported alongside it.
   - Whether the expected_szz evaluation policy is applied correctly.
+  failure_mode: >-
+    A tool fails here when it stops at blame's `c3`, which wrapped the copied line in `Math.abs` and
+    kept its missing trim, or when it follows the line past the copy `c2` to `c1`, the origin in
+    `AmountParser.java`: the answer is the copy that carried the fault into the fixed file and the
+    commit that added the second one.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.

@@ -21,6 +21,7 @@ meta:
   difficulty: "hard"
   status: "active"
   tier: "discriminating"
+  defeats: ["blame", "shape", "position"]
   category_code: "S6"
 
 repository:
@@ -153,6 +154,12 @@ bugs:
           The fix deletes two lines. The low-mark line was last written by the
           behaviour-preserving rewrite c3, so plain blame returns c3 rather
           than c2, which is the commit that made that side exclusive.
+
+scenario_design:
+  failure_mode: >-
+    A tool fails here when it takes plain blame's answer, `c3` and `c4`: the
+    low-mark line was last written by `c3`, a behaviour-preserving rewrite,
+    and `c2`, which made that side exclusive, is one step behind it.
 
 checks:
   - type: "git_history_contains"

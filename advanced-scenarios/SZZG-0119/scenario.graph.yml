@@ -22,6 +22,7 @@ meta:
   difficulty: hard
   status: active
   tier: discriminating
+  defeats: [blame, shape, position]
 repository:
   name: SZZG-0119-move-and-inline-takes-ownership
   default_branch: main
@@ -65,7 +66,7 @@ commits:
   parents:
   - c1
   message: 'Move the pager into its own package and inline the bounds'
-  role: refactor
+  role: refactoring
   operations:
   - type: move_file
     from: src/main/java/example/Pager.java
@@ -153,5 +154,9 @@ scenario_design:
   - Whether the expected BIC set is reported exactly.
   - Whether a fault whose line was rewritten by a behaviour-preserving commit is still found.
   - Whether the file is followed across the move.
+  failure_mode: >-
+    A tool fails here when it stops at blame's `c3`: the move `c2` inlined both bounds into one
+    expression, so `c1`'s exclusive lower bound is on no line that still exists, and following the
+    file across the move reaches `c1` only with a rename threshold below Git's default.
 notes:
 - The inline in c2 is behaviour-preserving; it is not a bug-introducing commit and must not be reported.

@@ -22,6 +22,7 @@ meta:
   difficulty: "hard"
   status: "active"
   tier: "discriminating"
+  defeats: ["blame", "shape", "position"]
   category_code: "S6"
 
 repository:
@@ -183,6 +184,13 @@ bugs:
           c1's faulty comparison into a private method, and one written by c5.
           Blame therefore returns c3 and c5: a commit that changed no behaviour
           instead of the commit that made the comparison wrong.
+
+scenario_design:
+  failure_mode: >-
+    A tool fails here when it takes plain blame's answer, `c3` and `c5`: the
+    refactoring `c3` moved `c1`'s faulty age comparison into a private
+    method without changing behaviour, so `c1` is one step behind the line
+    blame names.
 
 checks:
   - type: "git_history_contains"

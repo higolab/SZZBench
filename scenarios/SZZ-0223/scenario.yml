@@ -171,6 +171,12 @@ bugs:
           returns c3 alone; c1 is in another file, on a constant the refactoring
           deleted.
 
+scenario_design:
+  failure_mode: >-
+    A tool fails here when it stops at blame's `c3`: the fixed line carries
+    both faults, and its mistyped rate was copied there by `c2`'s
+    refactoring from the constant `c1` mistyped in another file.
+
 checks:
   - type: "git_history_contains"
     commits: ["c0", "c1", "c2", "c3", "c4"]

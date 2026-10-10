@@ -63,7 +63,7 @@ commits:
   parents:
   - c1
   message: 'Guard the name and use the salutations the right way round'
-  role: prior_fix
+  role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/Greeting.java

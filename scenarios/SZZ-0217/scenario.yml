@@ -177,6 +177,13 @@ bugs:
           caller that existed; it is not reachable from the deleted line by
           blame. The fix message quotes c1's subject.
 
+scenario_design:
+  failure_mode: >-
+    A tool fails here when it stops at blame's `c3`, the caller that reads
+    the parsed delay as seconds: `c1`, which made the parser return
+    milliseconds, is reached through the callee the fixed line calls or
+    through the fix message, which quotes `c1`'s subject.
+
 checks:
   - type: "git_history_contains"
     commits: ["c0", "c1", "c2", "c3", "c4"]

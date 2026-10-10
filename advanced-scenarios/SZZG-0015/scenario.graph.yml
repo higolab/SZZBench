@@ -78,7 +78,7 @@ commits:
   parents:
   - c2
   message: Include the bounds in A.contains
-  role: origin_bug_fixing
+  role: bug_fixing
   operations:
   - type: replace
     path: src/main/java/example/A.java
