@@ -23,7 +23,8 @@ from .graph_generator import GraphGenerationError, generate_graph_repository
 from .scenario import load_yaml
 from .scenario_builder import DEFAULT_SCENARIOS_ROOT, NewScenarioError, create_new_scenario
 from .graph_scenario_builder import DEFAULT_GRAPH_SCENARIOS_ROOT, NewGraphScenarioError, create_new_graph_scenario
-from .validator import SCENARIO_DIFFICULTIES, graph_scenario_guard, validate_scenario_file, validate_scenario_indexes
+from .validator import (SCENARIO_DIFFICULTIES, classic_scenario_guard, graph_scenario_guard, validate_scenario_file,
+                        validate_scenario_indexes)
 from .graph_validator import validate_graph_scenario_file
 from .verifier import verify_generated_repo
 from .graph_verifier import verify_graph_generated_repo
@@ -57,18 +58,22 @@ def cmd_generate(args) -> int:
     if scenario is not None:
         guard = graph_scenario_guard(scenario, Path(args.scenario), "generate")
         if guard.has_errors():
-            if args.json:
-                error = "; ".join(f"{finding.code}: {finding.message}" for finding in guard.error_findings())
-                _print_json(_generation_document(args, "classic", error=error))
-                return 1
-            for finding in guard.findings:
-                print(f"[ERROR] {finding.code}: {finding.message}", file=sys.stderr)
-            return 1
+            return _report_refused_scenario(args, "classic", guard)
     try:
         commit_map, verify_result = generate_repository(Path(args.scenario), Path(args.out), force=args.force, verify=not args.no_verify)
     except GenerationError as exc:
         return _report_failed_generation(args, "classic", "GENERATION_FAILED", exc)
     return _report_generation(args, "classic", commit_map, verify_result, "Generated repository under", "commit(s)")
+
+def _report_refused_scenario(args, kind: str, guard) -> int:
+    """What ``generate`` and ``generate-graph`` print for a scenario of the other suite (E003, GE003), and exit 1."""
+    if args.json:
+        error = "; ".join(f"{finding.code}: {finding.message}" for finding in guard.error_findings())
+        _print_json(_generation_document(args, kind, error=error))
+        return 1
+    for finding in guard.findings:
+        print(f"[ERROR] {finding.code}: {finding.message}", file=sys.stderr)
+    return 1
 
 def _report_generation(args, kind: str, commit_map: dict, verify_result, generated: str, commits: str) -> int:
     """What ``generate`` and ``generate-graph`` print for a generation that succeeded, and their exit code.
@@ -139,6 +144,13 @@ def cmd_validate_index(args) -> int:
     return 1 if result.has_errors() else 0
 
 def cmd_generate_graph(args) -> int:
+    # Before generate_graph_repository, whose validation would only say "run
+    # validate-graph" for a classic scenario rather than name generate (issue #155).
+    scenario, _ = load_yaml(Path(args.scenario))
+    if scenario is not None:
+        guard = classic_scenario_guard(scenario, Path(args.scenario), "generate-graph")
+        if guard.has_errors():
+            return _report_refused_scenario(args, "graph", guard)
     try:
         commit_map, verify_result = generate_graph_repository(Path(args.scenario), Path(args.out), force=args.force, verify=not args.no_verify)
     except GraphGenerationError as exc:

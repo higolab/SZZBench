@@ -9,7 +9,7 @@ import unicodedata
 from .index_splice import IndexSpliceError, read_index_text, splice_index_entry, write_index_text
 from .retired_ids import read_retired_ids
 from .scenario import load_yaml
-from .validator import SCENARIO_DIFFICULTIES
+from .validator import SCENARIO_DIFFICULTIES, load_index
 
 DEFAULT_SCENARIOS_ROOT = Path("scenarios")
 SCENARIO_ID_RE = re.compile(r"^SZZ-(\d+)$")
@@ -105,10 +105,9 @@ def create_new_scenario(
 def _load_index(index_path: Path) -> dict:
     if not index_path.exists():
         return {"scenarios": []}
-    data, result = load_yaml(index_path)
-    if result.has_errors() or data is None:
-        details = "; ".join(f.message for f in result.findings) or "invalid index.yml"
-        raise NewScenarioError(f"Cannot read {index_path}: {details}")
+    data, problem = load_index(index_path)         # a message that names index.yml (issue #158)
+    if data is None:
+        raise NewScenarioError(f"Cannot read {index_path}: {problem}")
     scenarios = data.get("scenarios")
     if scenarios is None:
         data["scenarios"] = []

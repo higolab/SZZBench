@@ -23,7 +23,7 @@ from .gitutils import (
 )
 from .graph_scenario import graph_bfc_entries, graph_bic_entries, graph_faults, graph_fixes, load_graph_scenario
 from .operations import find_all_occurrences
-from .validator import FAULT_REWRITE_FACTOR_RE, factor_matches
+from .validator import FAULT_REWRITE_FACTOR_RE, classic_scenario_guard, factor_matches
 
 #: A full object name (SHA-1 or SHA-256), the only form a commit-map hash is fed to Git in.
 _OBJECT_NAME_RE = re.compile(r"[0-9a-f]{40}(?:[0-9a-f]{24})?")
@@ -56,6 +56,11 @@ def verify_graph_generated_repo(
     result.extend(load_result)
     if scenario is None:
         return result
+    # The graph checks would compare the repository with a graph a classic
+    # scenario does not have, and never name `verify` (issue #155).
+    guard = classic_scenario_guard(scenario, scenario_path, "verify-graph")
+    if guard.has_errors():
+        return ValidationResult([f for f in result.findings if f.code != "GE001"] + guard.findings)
     if not (repo_dir / ".git").exists():
         # one finding instead of a FileNotFoundError from the first Git call (issue #166)
         result.error("GE603", f"{repo_dir} is not a Git repository; generate it first, or check the path.", str(repo_dir))
