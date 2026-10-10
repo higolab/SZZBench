@@ -26,6 +26,7 @@ import pytest
 import szzbench.graph_validator as graph_validator
 import szzbench.validator as validator
 from szzbench.bulk_generator import generate_all_repositories
+from szzbench.cli import _print_generate_all_repos
 
 ROOT = Path(__file__).resolve().parents[1]
 MESSAGE = 'message: "Initial required field annotation"'        # SZZ-0005's c0
@@ -190,7 +191,7 @@ def test_a_replacement_that_fails_keeps_the_whole_previous_output(tmp_path, monk
     assert message in item.error
 
 
-def test_a_previous_output_that_cannot_be_removed_is_reported_and_removed_by_the_next_run(tmp_path, monkeypatch):
+def test_a_previous_output_that_cannot_be_removed_is_reported_and_removed_by_the_next_run(tmp_path, monkeypatch, capsys):
     scenarios, advanced, out, output, _ = _marked_output(tmp_path)
     backup = output.parent / "default.old"
     real_rmtree = shutil.rmtree
@@ -201,12 +202,16 @@ def test_a_previous_output_that_cannot_be_removed_is_reported_and_removed_by_the
         return real_rmtree(path, *args, **kwargs)
 
     monkeypatch.setattr(shutil, "rmtree", rmtree)
-    [item] = generate_all_repositories(scenarios_root=scenarios, advanced_scenarios_root=advanced, output_root=out,
-                                       overwrite=True).items
+    result = generate_all_repositories(scenarios_root=scenarios, advanced_scenarios_root=advanced, output_root=out,
+                                       overwrite=True)
+    [item] = result.items
     monkeypatch.setattr(shutil, "rmtree", real_rmtree)
     assert (item.status, item.error) == ("generated", None)          # the new output is in place
     assert item.leftover == (f"the previous output, moved aside to {backup}, could not be removed: "
                              f"[Errno 13] Permission denied: '{backup}'. The next run removes it")
+    capsys.readouterr()
+    _print_generate_all_repos(result)                                # the text output says so too, not --json only
+    assert f"{item.scenario_id}: [WARNING] {item.leftover}.\n" in capsys.readouterr().err
     assert not (output / "metadata/marker").exists() and (backup / "metadata/marker").is_file()
     [item] = _run(scenarios, advanced, out).items
     assert (item.status, item.leftover) == ("skipped", None) and not backup.exists()

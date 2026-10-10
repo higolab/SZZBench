@@ -197,6 +197,9 @@ def _print_generate_all_repos(result) -> None:
                 print(f"  {finding.format()}", file=sys.stderr)
             if item.traceback:                  # not a generation error: say where it came from (#162)
                 print("  " + item.traceback.rstrip().replace("\n", "\n  "), file=sys.stderr)
+        if item.leftover:
+            # the new output is in place, but the previous one moved aside could not be removed (#168)
+            print(f"{item.scenario_id}: [WARNING] {item.leftover}.", file=sys.stderr)
         if item.status != "failed" and item.verification is not None:
             # what `generate` prints, named by the scenario since stdout and stderr can be read apart (#169)
             for finding in item.verification.findings:

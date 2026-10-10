@@ -691,7 +691,7 @@ The command scans the following files.
 - `scenarios/*/scenario.yml`
 - `advanced-scenarios/*/scenario.graph.yml`
 
-Each generated repository is written under `generated-input-repos/<SCENARIO_ID>/default/`. `--scenarios-root` and `--advanced-scenarios-root` scan other suite roots, and `--out-root` writes under another root than `generated-input-repos/`; like the defaults, they are relative to the current directory.
+Each generated repository is written under `generated-input-repos/<SCENARIO_ID>/default/`. `--scenarios-root` and `--advanced-scenarios-root` scan other suite roots, and `--out-root` writes under another root than `generated-input-repos/`; like the defaults, they are relative to the current directory. Only the scenario directories directly under each root are read. The command stops before it writes anything when the two roots hold the same id (letter case aside, since a case-insensitive file system would give both one output) or when `--out-root` is a scenario root or lies inside one (issue #168).
 
 Every generation writes `metadata/manifest.json` last. It records the scenario file's hash, a fingerprint of the generator's code, and the repository id that prediction records carry. An existing output is skipped only when that manifest still matches and the output still has everything it describes. An output without one (an interrupted generation, or one made before 2026-09-29), with one that cannot be read or parsed (the reason says why), whose scenario file or generator code has changed since, or that has lost part of what the manifest describes (such as its repository, one of its commits, its commit map or its copy of the scenario) is stale and is regenerated, with the reason printed (`docs/generator-options.md` §6). The command is therefore safe to run repeatedly: it brings every output up to date and leaves current ones alone. `evaluate`, `baselines` and `coverage` refuse to score a stale output.
 
@@ -701,9 +701,9 @@ To remove existing generated repositories and create them again, use `--overwrit
 szzbench generate-all-repos --overwrite
 ```
 
-`--overwrite` deletes the existing `generated-input-repos/<SCENARIO_ID>/default/` output for each scenario before generating it again.
+`--overwrite` generates each scenario again even when its output is current. Every generation, of a stale output too, writes into `generated-input-repos/<SCENARIO_ID>/default.tmp/`, and the new output replaces `default/` only once it has been generated and verified: the previous output is moved aside to `default.old/` and removed after the new one is in place (issue #168).
 
-A scenario that fails does not stop the run: it is listed as `Failed`, with the error, and the command goes on with the next scenario, prints its summary and exits 1. An error that is not a generation error (a crash in SZZBench) is listed with its traceback, and a generation that fails verification with the verification errors.
+A scenario that fails does not stop the run: it is listed as `Failed`, with the error, and the command goes on with the next scenario, prints its summary and exits 1. An error that is not a generation error (a crash in SZZBench) is listed with its traceback, and a generation that fails verification with the verification errors. The previous output, if there is one, is left in place, and the files of the failed attempt (`generation.log`, `generation-error.json` and, after a failed verification, `metadata/verify-result.json`) stay in `<SCENARIO_ID>/default.tmp/`; the `Failed` line says where. A `default.old/` that could not be removed after a replacement is printed as a warning (`SZZ-0005: [WARNING] the previous output, moved aside to …`), and the next run removes it.
 
 Add `--no-verify` to skip post-generation verification for all generated repositories.
 
@@ -711,7 +711,7 @@ Add `--no-verify` to skip post-generation verification for all generated reposit
 szzbench generate-all-repos --no-verify
 ```
 
-The verification warnings of every output are printed to stderr, one line each, after the scenario id (`SZZ-0078: [WARNING] W700: ...`), and the summary counts the outputs with a warning as `Warned`. An output skipped as up to date reports the verification its generation recorded in `metadata/verify-result.json`; one without a readable `verify-result.json` is generated again. Add `--strict` to exit with 1 when the verification of any output warns (it cannot be combined with `--no-verify`), and `--json` to print one JSON document on stdout and nothing else: `items` (one per scenario, with the keys of `generate --json` and `scenario_id`, `overwritten`, `stale_reason` and `traceback`), `orphans`, and `summary` with the counts of the text summary.
+The verification warnings of every output are printed to stderr, one line each, after the scenario id (`SZZ-0078: [WARNING] W700: ...`), and the summary counts the outputs with a warning as `Warned`. An output skipped as up to date reports the verification its generation recorded in `metadata/verify-result.json`; one without a readable `verify-result.json` is generated again. Add `--strict` to exit with 1 when the verification of any output warns (it cannot be combined with `--no-verify`), and `--json` to print one JSON document on stdout and nothing else: `items` (one per scenario, with the keys of `generate --json` and `scenario_id`, `overwritten`, `stale_reason`, `traceback` and `leftover`, the warning about a `default.old/` left behind or `null`), `orphans`, and `summary` with the counts of the text summary.
 
 ```bash
 szzbench generate-all-repos --strict
@@ -1538,7 +1538,7 @@ szzbench generate-all-repos
 - `scenarios/*/scenario.yml`
 - `advanced-scenarios/*/scenario.graph.yml`
 
-各リポジトリは `generated-input-repos/<SCENARIO_ID>/default/` 以下に生成されます。`--scenarios-root` と `--advanced-scenarios-root` を付けるとほかのスイートのルートを走査し、`--out-root` を付けると `generated-input-repos/` 以外のルートの下に書き出します。デフォルトと同じく、どれも作業ディレクトリからの相対パスです。
+各リポジトリは `generated-input-repos/<SCENARIO_ID>/default/` 以下に生成されます。`--scenarios-root` と `--advanced-scenarios-root` を付けるとほかのスイートのルートを走査し、`--out-root` を付けると `generated-input-repos/` 以外のルートの下に書き出します。デフォルトと同じく、どれも作業ディレクトリからの相対パスです。読むのは各ルートの直下にあるシナリオのディレクトリだけです。2 つのルートに同じ id がある場合（大文字小文字の違いは同じとみなします。大文字小文字を区別しないファイルシステムでは出力が 1 つになるためです）や、`--out-root` がシナリオのルートそのもの、またはその中にある場合は、何も書き出す前に止まります（issue #168）。
 
 生成は最後に `metadata/manifest.json` を書き出します。ここには、シナリオファイルのハッシュ、生成器のコードの指紋、予測の記録が持つリポジトリの識別子が記録されます。既存の出力は、この manifest が今も一致し、manifest が記述するものがすべて残っている場合にだけスキップされます。manifest がない出力（中断した生成や、2026-09-29 より前に作られたもの）、manifest を読めない・解析できない出力（理由にその訳を示します）、その後シナリオファイルや生成器のコードが変わった出力、manifest が記述するもの（リポジトリ、そのコミット、commit map、シナリオのコピーなど）の一部を失った出力は「古い」とみなされ、理由を表示して作り直されます（`docs/generator-options.md` §6）。そのため繰り返し実行しても安全で、すべての出力を最新にし、最新のものには手を付けません。`evaluate`、`baselines`、`coverage` は古い出力を採点しません。
 
@@ -1548,9 +1548,9 @@ szzbench generate-all-repos
 szzbench generate-all-repos --overwrite
 ```
 
-`--overwrite` は、対象シナリオの既存出力 `generated-input-repos/<SCENARIO_ID>/default/` を削除してから再生成します。
+`--overwrite` は、出力が最新でも各シナリオを生成し直します。生成は、古い出力の作り直しも含めて、いつも `generated-input-repos/<SCENARIO_ID>/default.tmp/` に書き出し、生成と verify が通ってから `default/` と差し替えます。旧出力は `default.old/` に退避し、新しい出力を置いた後で削除します（issue #168）。
 
-あるシナリオの生成に失敗しても実行は止まりません。そのシナリオはエラーとともに `Failed` として表示され、コマンドは次のシナリオに進み、最後に集計を表示して終了コード 1 で終わります。生成のエラーではない例外（SZZBench 内部のクラッシュ）は、トレースバックも表示します。生成後の verify で失敗したシナリオは、verify のエラーも表示します。
+あるシナリオの生成に失敗しても実行は止まりません。そのシナリオはエラーとともに `Failed` として表示され、コマンドは次のシナリオに進み、最後に集計を表示して終了コード 1 で終わります。生成のエラーではない例外（SZZBench 内部のクラッシュ）は、トレースバックも表示します。生成後の verify で失敗したシナリオは、verify のエラーも表示します。旧出力があればそのまま残し、失敗した試行のファイル（`generation.log`、`generation-error.json`、verify に失敗した場合は `metadata/verify-result.json`）は `<SCENARIO_ID>/default.tmp/` に残します。その場所は `Failed` の行に表示します。差し替えの後で `default.old/` を削除できなかった場合は警告として表示し（`SZZ-0005: [WARNING] the previous output, moved aside to …`）、次の実行で削除します。
 
 生成後の検証をまとめてスキップする場合は、`--no-verify` を使います。
 
@@ -1558,7 +1558,7 @@ szzbench generate-all-repos --overwrite
 szzbench generate-all-repos --no-verify
 ```
 
-各出力の verify の警告は、1 件 1 行で、シナリオ ID に続けて標準エラーに表示します（`SZZ-0078: [WARNING] W700: ...`）。集計では、警告のある出力の数を `Warned` として示します。最新としてスキップした出力については、その生成が `metadata/verify-result.json` に記録した verify の結果を報告します。読める `verify-result.json` がない出力は生成し直します。`--strict` を付けると、どれかの出力の verify に警告があれば終了コード 1 で終わります（`--no-verify` とは同時に指定できません）。`--json` を付けると、標準出力に JSON 文書を 1 つだけ出力します。中身は `items`（シナリオごとに 1 つで、`generate --json` のキーに `scenario_id`、`overwritten`、`stale_reason`、`traceback` を加えたもの）、`orphans`、テキストの集計と同じ件数を持つ `summary` です。
+各出力の verify の警告は、1 件 1 行で、シナリオ ID に続けて標準エラーに表示します（`SZZ-0078: [WARNING] W700: ...`）。集計では、警告のある出力の数を `Warned` として示します。最新としてスキップした出力については、その生成が `metadata/verify-result.json` に記録した verify の結果を報告します。読める `verify-result.json` がない出力は生成し直します。`--strict` を付けると、どれかの出力の verify に警告があれば終了コード 1 で終わります（`--no-verify` とは同時に指定できません）。`--json` を付けると、標準出力に JSON 文書を 1 つだけ出力します。中身は `items`（シナリオごとに 1 つで、`generate --json` のキーに `scenario_id`、`overwritten`、`stale_reason`、`traceback`、`leftover`（残った `default.old/` についての警告、または `null`）を加えたもの）、`orphans`、テキストの集計と同じ件数を持つ `summary` です。
 
 ```bash
 szzbench generate-all-repos --strict
