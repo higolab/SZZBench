@@ -12,7 +12,8 @@ from .evaluator import (_UNREAD_GRAPH_ORACLE_SECTIONS, _commit_level_policy, _is
                         _selected_evaluation_variant, _string_list, classify_prediction)
 from .findings import ValidationResult
 from .graph_operations import (PATH_FIELDS_BY_OPERATION, REQUIRED_FIELDS_BY_OPERATION, SUPPORTED_GRAPH_OPERATIONS,
-                               WRITTEN_PATH_FIELDS_BY_OPERATION, decode_content_base64)
+                               WRITTEN_PATH_FIELDS_BY_OPERATION, commit_generator_changes, commit_generator_plan,
+                               decode_content_base64)
 from .graph_scenario import (branch_name_problems, commit_id_of, graph_bfc_entries, graph_bic_entries, graph_faults,
                              graph_fixes, load_graph_scenario, ref_lifecycle_problems)
 from .graph_simulator import git_performed_features, simulate_graph_scenario, simulate_graph_scenario_with_git
@@ -354,6 +355,7 @@ def validate_graph_static(data: dict[str, Any], *, scenario_path: Path | None = 
     check_commit_date_order(data, result, code="GE073", timestamp_code="GE071", graph=True)    # issue #241
     check_git_control_files(data, result, code="GE063", written_fields=WRITTEN_PATH_FIELDS_BY_OPERATION)   # issue #164
     _validate_case_changes(commits, result)                                                               # issue #235
+    _validate_binary_files(commits, result)                                                               # issue #277
     for code, location, message in branch_name_problems(data):                                            # issue #239
         result.error(code, message, location)
     result.extend(_validate_graph_acyclic(commits))
@@ -659,6 +661,184 @@ def _validate_case_changes(commits: list[Any], result: ValidationResult) -> None
                          f"in letter case or Unicode normalization{spelt}: Git on macOS (and on Windows, for letter case) "
                          f"keeps the spelling its index has, so the commit would record '{gone}' there, or nothing, and "
                          f"'{path}' on Linux. Delete the file in one commit and write it in a later one.", location)
+
+
+#: The operations that read a file as text, and the fields that name it: the ones the replay
+#: of ``--simulate`` refuses on a file ``write_binary_file`` wrote (``graph_simulator._require_text``).
+#: ``move_entity`` and ``copy_entity`` read ``to_file`` only to append to it.
+_TEXT_READ_FIELDS = {
+    "replace": ("path",),
+    "insert_after": ("path",),
+    "format_file": ("path",),
+    "move_entity": ("from_file", "to_file"),
+    "copy_entity": ("from_file", "to_file"),
+}
+#: The operations after which the file at ``path`` is not binary: a text write, or a removal.
+_TEXT_WRITE_OR_REMOVAL = ("write_file", "write_generated_text_file", "delete_file")
+
+#: A commit's binary files: path -> the commit and the location of the write_binary_file that wrote it.
+_BinaryFiles = dict[str, tuple[str, str]]
+#: What a commit changes: path -> the binary file it leaves there, or None (a text file, or none).
+_BinaryChanges = dict[str, "tuple[str, str] | None"]
+
+
+def _validate_binary_files(commits: list[Any], result: ValidationResult) -> None:
+    """GE065: a text operation on a file ``write_binary_file`` wrote (issue #277).
+
+    The replay of ``--simulate`` kept such a file as bytes and refused a
+    ``replace`` on it (GE201), while generation read the bytes as UTF-8 and
+    committed the edit.  A file written as bytes now stays binary for the rest
+    of the history: ``rename_file``, ``move_file`` and ``copy_file`` take it
+    along, and only a text write (``write_file``, ``write_generated_text_file``,
+    the ``to_file`` of ``move_entity`` / ``copy_entity``, the files of
+    ``commit_generator``) or a removal ends it.  The operations the replay
+    refuses on bytes are refused here: ``replace``, ``insert_after``,
+    ``format_file``, and ``move_entity`` / ``copy_entity`` reading its
+    ``from_file``, or its ``to_file`` to append.  A refused operation changes
+    nothing, as in the replay.  The check is static, so ``generate-graph``
+    refuses the scenario too.  What Git computes is not known before
+    generation, so it only adds binary files: a merge keeps those of every
+    parent, a cherry-pick (``cherry_pick_of`` / ``backport_of``,
+    ``apply_patch_from``, ``apply_squash``) adds the ones its source writes as
+    bytes, a ``git revert`` the ones its source rewrites, moves or removes; a
+    ``resolution``, applied only where Git reports a conflict, is not read.
+    Each commit records what it changes (``changes``) without comparing
+    binary files, which a change Git makes to text leaves as they were: every
+    path an operation writes or removes, what a cherry-pick or revert brought
+    in, and, for a merge, every binary file of a parent.  Picking a
+    cherry-pick of a commit then brings what picking the commit does, and so
+    does reverting it, and a copy that restores the bytes a path already had
+    here is a change (PR #281 review).
+    """
+    states: dict[str, _BinaryFiles] = {}
+    changes: dict[str, _BinaryChanges] = {}
+    parents_of: dict[str, list[str]] = {}
+    for i, commit in enumerate(commits):
+        if not isinstance(commit, dict) or not isinstance(commit.get("id"), str):
+            continue
+        cid = commit["id"]
+        parents = [p for p in commit["parents"] if isinstance(p, str)] if isinstance(commit.get("parents"), list) else []
+        operations = commit["operations"] if isinstance(commit.get("operations"), list) else []
+        parents_of[cid] = parents
+        binary = dict(states.get(parents[0], {})) if parents else {}
+        # generation commits the files of commit_generator first, as text, from the first parent
+        plans = []
+        for op in operations:
+            if isinstance(op, dict) and op.get("type") == "commit_generator":
+                try:
+                    plans.append(commit_generator_plan(op, cid))
+                except ValueError:        # GE062
+                    pass
+        for _, path, _ in commit_generator_changes(plans, lambda _: ""):
+            binary.pop(path, None)
+        for parent in parents[1:]:
+            for path, origin in states.get(parent, {}).items():
+                binary.setdefault(path, origin)
+        # what this commit changes, in order: path -> (brought in by Git, what Git left there); a path an
+        # operation writes or removes is its binary file at the end of the commit
+        recorded: dict[str, tuple[bool, Any]] = {}
+        revert = commit.get("revert_of")
+        if isinstance(revert, str) and (not operations or commit.get("apply_revert")):
+            _bring(binary, recorded, _brought_changes(revert, states, changes, parents_of, reverted=True))
+        picked = commit.get("cherry_pick_of") or commit.get("backport_of")
+        if isinstance(picked, str) and not operations:
+            _bring(binary, recorded, _brought_changes(picked, states, changes, parents_of, reverted=False))
+
+        for j, op in enumerate(operations):
+            if not isinstance(op, dict) or not isinstance(op.get("type"), str):     # GE050, GE051
+                continue
+            op_type = op["type"]
+            refused = False
+            if op_type in ("apply_patch_from", "apply_squash"):
+                sources = [op.get("commit")] if op_type == "apply_patch_from" else op.get("from_commits")
+                for source in sources if isinstance(sources, list) else []:
+                    if isinstance(source, str):
+                        _bring(binary, recorded, _brought_changes(source, states, changes, parents_of, reverted=False))
+            elif op_type in _TEXT_READ_FIELDS:
+                for key in _TEXT_READ_FIELDS[op_type]:
+                    path = op.get(key)
+                    if not isinstance(path, str) or path not in binary:
+                        continue
+                    if key == "to_file" and not (op.get("append") and op.get("overwrite", True)):
+                        continue          # overwritten, or refused as an existing target
+                    refused = True
+                    origin, location = binary[path]
+                    reads = "appends to" if key == "to_file" else "reads"
+                    result.error("GE065", f"Commit '{cid}' {op_type} {reads} '{path}' as text, but write_binary_file "
+                                 f"wrote it in commit '{origin}' ({location}): a file written as bytes stays binary, "
+                                 "and generation refuses a text operation on it, as the replay of --simulate does. "
+                                 "Write the file with write_file (encoding and line_ending set its bytes) to edit it "
+                                 "as text, or write its new bytes with write_binary_file.",
+                                 f"commits[{i}].operations[{j}].{key}")
+                if not refused and op_type in ("move_entity", "copy_entity"):
+                    target, source = op.get("to_file"), op.get("from_file")
+                    if isinstance(target, str):
+                        binary.pop(target, None)
+                    if op_type == "move_entity" and op.get("remove_source_file") and isinstance(source, str):
+                        binary.pop(source, None)
+            elif op_type == "write_binary_file" and isinstance(op.get("path"), str):
+                binary[op["path"]] = (cid, f"commits[{i}].operations[{j}]")
+            elif op_type in _TEXT_WRITE_OR_REMOVAL and isinstance(op.get("path"), str):
+                binary.pop(op["path"], None)
+            elif op_type in ("rename_file", "move_file", "copy_file"):
+                source, target = op.get("from"), op.get("to")
+                if isinstance(source, str) and isinstance(target, str):
+                    origin = binary.pop(source, None) if op_type != "copy_file" else binary.get(source)
+                    if origin is not None:
+                        binary[target] = origin
+                    else:
+                        binary.pop(target, None)
+            if not refused:
+                for path in _changed_paths(op):
+                    recorded[path] = (False, None)
+        # a merge's result is not known here, nor its mainline: every binary file of a parent may be a change
+        changes[cid] = ({path: binary.get(path) for parent in parents for path in states.get(parent, {})}
+                        if len(parents) > 1 else {})
+        changes[cid].update({path: left if brought else binary.get(path)
+                             for path, (brought, left) in recorded.items()})
+        states[cid] = binary
+
+
+def _brought_changes(source: str, states: dict[str, _BinaryFiles], changes: dict[str, _BinaryChanges],
+                     parents_of: dict[str, list[str]], *, reverted: bool) -> _BinaryChanges:
+    """What Git changes in a commit that cherry-picks ``source``, or reverts it: the paths ``source`` changes.
+
+    A cherry-pick leaves each path as ``source`` left it; a revert takes it
+    back to the binary file a parent of ``source`` has there (the first that
+    has one), or to None.  What ``source`` itself brought in by a cherry-pick
+    or revert counts.  Comparing the binary files of ``source`` and its
+    parents missed it: a pick kept the writer the path already had, so a pick
+    of a pick, or its revert, brought nothing; and after a change Git made to
+    text, which keeps the old writer here, a copy of the same bytes back
+    looked like no change (PR #281 review).
+    """
+    changed = changes.get(source, {})
+    if not reverted:
+        return dict(changed)
+    befores = [states.get(parent, {}) for parent in parents_of.get(source, [])]
+    return {path: next((before[path] for before in befores if path in before), None) for path in changed}
+
+
+def _bring(binary: _BinaryFiles, recorded: dict[str, tuple[bool, Any]], changed: _BinaryChanges) -> None:
+    """Apply what a cherry-pick or revert changes, and record it in ``recorded``.
+
+    A binary file replaces what was there.  A change to text leaves
+    ``binary`` as it was, since Git's result is not known, but is recorded,
+    so that a revert of the commit brings the binary file back and a pick of
+    it brings none.
+    """
+    for path, origin in changed.items():
+        if origin is not None:
+            binary[path] = origin
+        recorded[path] = (True, origin)
+
+
+def _changed_paths(op: dict[str, Any]) -> list[str]:
+    """The paths an operation writes or removes, whatever it writes there."""
+    keys = [*WRITTEN_PATH_FIELDS_BY_OPERATION.get(op["type"], ()), *_REMOVED_PATH_FIELDS.get(op["type"], ())]
+    if op["type"] == "move_entity" and op.get("remove_source_file"):
+        keys.append("from_file")
+    return [op[key] for key in keys if isinstance(op.get(key), str)]
 
 
 def _validate_commit_ref_entry(entry: Any, commit_by_id: dict[str, dict[str, Any]], result: ValidationResult, loc: str, label: str) -> None:

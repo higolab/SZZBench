@@ -303,6 +303,31 @@ simulation while generation committed it. No shipped scenario named another
 codec. A file in another encoding is written as bytes with
 `write_binary_file`, as SZZG-0112 writes its CP1252 file.
 
+### `write_binary_file` and the text operations (*graph*)
+
+`write_binary_file` writes the bytes of `content_base64` as they are: the
+CP1252 file of SZZG-0112, the binary blobs of SZZG-0108, SZZG-0133 and
+SZZG-0153. A file it writes stays binary for the rest of the history, as the
+replay of `validate-graph --simulate` keeps it: a later `replace`,
+`insert_after` or `format_file` on it, or a `move_entity` / `copy_entity` that
+reads it (as its `from_file`, or as its `to_file` with `append`), is GE065,
+and since the check is static, `generate-graph` refuses the scenario too.
+`rename_file`, `move_file` and `copy_file` take the file along; writing it as
+text (`write_file`, `write_generated_text_file`, the `to_file` of an entity
+operation, a `commit_generator` file) or deleting it ends it. A commit Git
+computes keeps the binary files of its parents and adds those its merge,
+cherry-pick or revert may bring in (GE065, [validation.md](validation.md)).
+So the two operations keep their roles: text whose exact bytes matter -- a
+byte order mark, CRLF line endings -- is written with `write_file` and its
+`encoding` and `line_ending`, and stays editable; new bytes for a binary file
+come from another `write_binary_file`.
+
+Until issue #277 generation read such a file as UTF-8 text and committed the
+edit, while `--simulate` refused it (GE201): a scenario that wrote text with
+`write_binary_file` and edited it later generated without an error and failed
+strict simulated validation. No shipped scenario edits a file
+`write_binary_file` wrote.
+
 ### `write_generated_text_file.header` / `.footer` (*graph*)
 
 ```yaml

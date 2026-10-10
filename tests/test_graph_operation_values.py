@@ -155,12 +155,13 @@ def test_a_value_that_slips_past_validation_is_a_reported_failure(tmp_path, monk
     assert "ERROR: " + message.split(":")[0] in (metadata / "generation.log").read_text(encoding="utf-8")
 
 
-def test_format_file_on_a_binary_file_is_a_reported_failure_without_a_traceback(tmp_path):
-    scenario = _write(tmp_path, _with_ops(BINARY, {"type": "format_file", "path": "assets/logo.bin"}))
-    completed = subprocess.run([sys.executable, "-m", "szzbench.cli", "generate-graph", str(scenario), "--out", str(tmp_path / "out")],
-                               capture_output=True, text=True, env={**os.environ, "PYTHONPATH": str(ROOT / "src")})
-    assert completed.returncode == 1 and "Traceback" not in completed.stderr
-    assert completed.stderr.strip() == ("[ERROR] GRAPH_GENERATION_FAILED: format_file 'assets/logo.bin': "
-                                        "the file is not text in utf-8 (byte 0xff at position 0)")
+def test_format_file_on_a_binary_file_is_ge065_and_a_reported_failure_without_a_traceback(tmp_path, monkeypatch):
+    """Validation refuses it since issue #277 (GE065); behind it, the generator reports it itself."""
+    data = _with_ops(BINARY, {"type": "format_file", "path": "assets/logo.bin"})
+    assert _errors(data) == [("GE065", "commits[0].operations[2].path")]
+    monkeypatch.setattr(graph_generator, "validate_graph_scenario_file", lambda path: (None, ValidationResult()))
+    with pytest.raises(GraphGenerationError, match=r"^format_file 'assets/logo.bin': "
+                       r"the file is not text in utf-8 \(byte 0xff at position 0\)$"):
+        generate_graph_repository(_write(tmp_path, data), tmp_path / "out", force=True)
     assert (tmp_path / "out/metadata/generation-error.json").is_file()
     assert (tmp_path / "out/metadata/generation.log").is_file()
