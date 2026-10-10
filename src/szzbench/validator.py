@@ -5,6 +5,7 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 import difflib
+import math
 import re
 
 from .findings import ValidationResult
@@ -256,6 +257,81 @@ def check_scheduled_dates(data: dict[str, Any], result: ValidationResult, *, cod
     result.error(code, f"Commit '{cid}' names no date, and the schedule from {since} gives it the {key} {value}, "
                  f"which Git does not record (it records an instant from 1970-01-01T00:00:00Z up to "
                  f"2099-12-31T23:59:59Z){later}: choose an earlier base date, or write the commit's date.", where)
+
+
+def _committer_date_source(commit: dict[str, Any], repository: dict[str, Any]) -> tuple[str | None, str]:
+    """The key that writes ``commit``'s committer date, or None when it is scheduled, and how to name it."""
+    for key in ("committer_date", "date"):          # resolve_commit_metadata's order
+        if commit.get(key) is not None:
+            return key, f"its {key}"
+    base = "repository.base_date" if repository.get("base_date") is not None else "the default base date"
+    return None, f"scheduled from {base}, as '{commit['id']}' writes no date or committer_date"
+
+
+def check_commit_date_order(data: dict[str, Any], result: ValidationResult, *, code: str, timestamp_code: str,
+                            graph: bool = False) -> None:
+    """``code`` for a commit the generators would commit before one of its parents (issue #241).
+
+    Each commit gets the dates it writes, or one from the schedule
+    (``gitutils.resolve_commit_metadata``, which both generators call).  As
+    soon as any commit writes a date, the others get the plain schedule,
+    ``repository.base_date`` (or ``2024-01-01T10:00:00Z``) plus the commit's
+    index in days, and a written date that did not fit it put a child before
+    its parent, as did two written dates in the wrong order.  The graph
+    verifier found it after generation (GE630, by hash), and the classic
+    suite generated and verified such a history.  The committer date, the
+    one GE630 compares (``inherit_author_date`` changes the author date
+    only), is compared with each parent's: the previous commit in the
+    classic suite, every entry of ``parents`` in the graph suite.  Two
+    scheduled dates are in order (the schedule grows with the index, and
+    parents come first), so the finding is at the child's written date, or
+    else at the parent's.  Instants are compared in whole seconds, as Git
+    records them.  Run after ``check_scheduled_dates``: no date is compared
+    once one is reported (``timestamp_code``).
+    """
+    if any(f.code == timestamp_code for f in result.findings):
+        return
+    commits = data.get("commits") if isinstance(data.get("commits"), list) else []
+    repository = data.get("repository") if isinstance(data.get("repository"), dict) else {}
+    # (index, commit, committer date, its second) of each commit whose date resolves
+    seen: dict[str, tuple[int, dict[str, Any], str, int]] = {}
+    previous: str | None = None          # the classic parent
+    for index, commit in enumerate(commits):
+        cid = commit.get("id") if isinstance(commit, dict) else None
+        if not isinstance(cid, str):
+            previous = None
+            continue
+        if graph:
+            declared = commit.get("parents") if isinstance(commit.get("parents"), list) else []
+            # an unknown or later parent is GE038 / GE039, a repeated one GE049
+            parents = [p for p in dict.fromkeys(p for p in declared if isinstance(p, str)) if p in seen]
+        else:
+            parents = [previous] if previous in seen else []
+        previous = None
+        try:
+            committed = resolve_commit_metadata(data, commit, index).committer_date
+            second = math.floor(parse_timestamp(committed).timestamp())
+        except (GitError, ValueError, TypeError, OverflowError):
+            continue                     # a value other checks report
+        for pid in parents:
+            parent_index, parent, parent_committed, parent_second = seen[pid]
+            if parent_second <= second:
+                continue
+            child_key, child_source = _committer_date_source(commit, repository)
+            parent_key, parent_source = _committer_date_source(parent, repository)
+            if child_key is None:
+                advice = f"write an earlier date for '{pid}', or a date for '{cid}' too"
+            elif parent_key is None:
+                advice = f"write a date for '{pid}' too, or a later one for '{cid}'"
+            else:
+                advice = f"write an earlier date for '{pid}' or a later one for '{cid}'"
+            # at the date the scenario writes: the child's, or else the parent's
+            where = (f"commits[{index}].{child_key}" if child_key is not None
+                     else f"commits[{parent_index}].{parent_key}" if parent_key is not None else f"commits[{index}]")
+            result.error(code, f"Commit '{cid}' would be committed at {committed} ({child_source}), before its parent "
+                         f"'{pid}' at {parent_committed} ({parent_source}): {advice}.", where)
+        seen.setdefault(cid, (index, commit, committed, second))
+        previous = cid
 
 
 #: The keys of a classic ``fix`` that hold the text validation looks up (E311).
@@ -618,6 +694,7 @@ def validate_static(data: dict[str, Any], *, scenario_path: Path | None = None) 
                 except OperationError as exc:
                     result.error("E042", f"Operation '{op_type}' {exc}.", f"{op_loc}.{key}")
     check_scheduled_dates(data, result, code="E013")     # PR #236 review
+    check_commit_date_order(data, result, code="E016", timestamp_code="E013")    # issue #241
     check_git_control_files(data, result, code="E051", written_fields=WRITTEN_PATH_FIELDS)    # issue #164
     bug_ids: set[str] = set()
     index_by_commit = {cid: i for i, cid in enumerate(commit_ids)}

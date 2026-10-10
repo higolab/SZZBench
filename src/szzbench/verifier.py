@@ -91,6 +91,24 @@ def _verify_recorded_metadata(cid: str, entry: dict, commit: _Commit, result: Va
             result.error("E605", f"commit-map.json records {field} {entry.get(field)!r} for '{cid}', but the commit "
                          f"has {actual}.", f"commits.{cid}")
 
+def _verify_date_order(cid: str, commit: _Commit, read: dict[str, tuple[str, _Commit]], result: ValidationResult) -> None:
+    """The commit is committed no earlier than its parents, as GE630 checks a graph repository (issue #241).
+
+    The classic verifier had no such check, and a scenario whose written
+    dates put a child before its parent generated and verified.  Validation
+    now refuses that scenario (E016); this finds a repository generated
+    before that, or changed afterwards.  Compared on the seconds Git records
+    (``%ct``), not the ISO text, whose offsets differ.  A parent that is not
+    a commit of the scenario is E606's.
+    """
+    for parent_hash in commit.parents:
+        if parent_hash not in read:
+            continue
+        pid, parent = read[parent_hash]
+        if parent.committer_epoch > commit.committer_epoch:
+            result.error("E610", f"Commit {commit.hash[:8]} ({cid}) was committed at {commit.committer_iso}, before its "
+                         f"parent {parent.hash[:8]} ({pid}) at {parent.committer_iso}.", f"commits.{cid}")
+
 def _verify_as_generated(repo_dir: Path, scenario: dict, resolved: dict[str, str], result: ValidationResult) -> None:
     """The repository is still as the generator left it (issue #167).
 
@@ -172,6 +190,7 @@ def verify_generated_repo(repo_dir: Path, scenario_path: Path, commit_map_path: 
     # the full hash of every commit that exists, by logical id, for the checks of
     # the repository as a whole (issue #167)
     resolved: dict[str, str] = {}
+    read: dict[str, tuple[str, _Commit]] = {}        # hash -> (logical id, commit), for the date order
     previous: str | None = ""        # the parent the next commit must have: "" for none, None when unknown
     for commit_spec in scenario.get("commits", []):
         cid = commit_spec.get("id")
@@ -200,6 +219,8 @@ def verify_generated_repo(repo_dir: Path, scenario_path: Path, commit_map_path: 
             wanted = f"the previous commit ({parent})" if parent else "none, as the first commit"
             result.error("E606", f"Commit '{cid}' has parent(s) {', '.join(commit.parents) or 'none'}; the generator "
                          f"gives it {wanted}.", f"commits.{cid}")
+        _verify_date_order(cid, commit, read, result)
+        read.setdefault(commit.hash, (cid, commit))
     _verify_as_generated(repo_dir, scenario, resolved, result)
     for i, bug in enumerate(scenario.get("bugs", [])):
         loc = f"bugs[{i}]"

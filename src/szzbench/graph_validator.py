@@ -18,8 +18,8 @@ from .gitutils import (GitError, commit_branch, format_timestamp, history_graph,
 from .operations import OperationError, resolve_line_ending, type_label
 from .paths import PathValidationError, file_system_key, validate_repo_relative_path
 from .policies import SUPPORTED_EVALUATION_POLICIES
-from .validator import (COMMIT_MESSAGE_RULE, check_commit_metadata, check_git_control_files, check_scheduled_dates,
-                        commit_message_problem, lint_author_coincidence,
+from .validator import (COMMIT_MESSAGE_RULE, check_commit_date_order, check_commit_metadata, check_git_control_files,
+                        check_scheduled_dates, commit_message_problem, lint_author_coincidence,
                         lint_defeats, lint_difficulty, lint_factors, lint_leakage, lint_readme_header, lint_tier,
                         timestamp_problem)
 
@@ -249,6 +249,7 @@ def validate_graph_static(data: dict[str, Any], *, scenario_path: Path | None = 
             _validate_operation(op, result, f"{loc}.operations[{j}]", strict_paths=strict_paths)
 
     check_scheduled_dates(data, result, code="GE071", graph=True)    # PR #236 review
+    check_commit_date_order(data, result, code="GE073", timestamp_code="GE071", graph=True)    # issue #241
     check_git_control_files(data, result, code="GE063", written_fields=WRITTEN_PATH_FIELDS_BY_OPERATION)   # issue #164
     for code, location, message in branch_name_problems(data):                                            # issue #239
         result.error(code, message, location)
