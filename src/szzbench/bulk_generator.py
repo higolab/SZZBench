@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
 import json
+import os
 import shutil
 import traceback
 
@@ -141,11 +142,14 @@ def generate_all_repositories(
         *[(path, "classic") for path in _find_scenario_files(scenarios_root, "scenario.yml")],
         *[(path, "graph") for path in _find_scenario_files(advanced_scenarios_root, "scenario.graph.yml")],
     ]
-    # checked before anything is written: the second scenario overwrote the first one's
-    # output, and was reported as a routine regeneration (issue #168)
-    clash = _shared_output_problem(scenario_specs, output_root)
-    if clash is not None:
-        raise GenerateAllRepositoriesError(clash)
+    # checked before anything is written (issue #168): outputs written among the scenarios,
+    # and two scenarios whose outputs overwrite each other -- the second was reported as a
+    # routine regeneration
+    problem = (_output_root_problem(output_root, {"--scenarios-root": scenarios_root,
+                                                  "--advanced-scenarios-root": advanced_scenarios_root})
+               or _shared_output_problem(scenario_specs, output_root))
+    if problem is not None:
+        raise GenerateAllRepositoriesError(problem)
     output_root.mkdir(parents=True, exist_ok=True)
 
     items: list[GeneratedRepositoryItem] = []
@@ -274,6 +278,35 @@ def _saved_verification(output_dir: Path) -> ValidationResult | None:
                                 for entry in data["findings"])
     except (OSError, ValueError, LookupError, TypeError, AttributeError):
         return None
+
+
+def _output_root_problem(output_root: Path, scenario_roots: dict[str, Path]) -> str | None:
+    """Why the resolved ``output_root`` must not be written into, or None (issue #168).
+
+    An output root in a scenario root, or the root itself, writes the outputs, and
+    the copy of its scenario each one keeps in ``metadata/``, among the scenarios.
+    The directories are compared as the file system sees them, so that another
+    spelling of a scenario root on a case-insensitive file system counts too.
+    """
+    problems = []
+    for option, root in scenario_roots.items():
+        root = root.resolve()
+        for candidate in (output_root, *output_root.parents):
+            if _same_directory(candidate, root):
+                where = "the same directory as" if candidate == output_root else "inside"
+                problems.append(f"--out-root {output_root} is {where} {option} {root}")
+                break
+    if not problems:
+        return None
+    return ("; ".join(problems) + ": the outputs would be written among the scenarios. "
+            "Choose an output root outside both scenario roots")
+
+
+def _same_directory(path: Path, other: Path) -> bool:
+    try:
+        return path == other or (path.exists() and os.path.samefile(path, other))
+    except OSError:
+        return False
 
 
 def _shared_output_problem(scenario_specs: list[tuple[Path, ScenarioKind]], output_root: Path) -> str | None:

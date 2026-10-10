@@ -5,9 +5,10 @@ generated twice into one ``<out-root>/<id>/default``, the graph scenario
 overwriting the classic output as a routine "Regenerated".  Scenario files
 were found recursively, so with ``--out-root`` inside a scenario root the
 next run took the copy of the scenario that every output keeps in
-``metadata/`` for a scenario named ``metadata``.  And a stale output was
-removed before its regeneration began, so a regeneration that failed left a
-partial output where a complete one had been.
+``metadata/`` for a scenario named ``metadata``; such an ``--out-root`` is
+refused now, and only ``<root>/*/`` is read.  And a stale output was removed
+before its regeneration began, so a regeneration that failed left a partial
+output where a complete one had been.
 """
 from __future__ import annotations
 
@@ -41,6 +42,14 @@ def _run(scenarios: Path, advanced: Path, out: Path):
     return generate_all_repositories(scenarios_root=scenarios, advanced_scenarios_root=advanced, output_root=out)
 
 
+def _cli(cwd: Path, out_root: str) -> subprocess.CompletedProcess:
+    """``generate-all-repos`` with roots relative to ``cwd``."""
+    return subprocess.run(
+        [sys.executable, "-m", "szzbench.cli", "generate-all-repos", "--scenarios-root", "scenarios",
+         "--advanced-scenarios-root", "advanced-scenarios", "--out-root", out_root],
+        cwd=cwd, capture_output=True, text=True, env={**os.environ, "PYTHONPATH": str(ROOT / "src")})
+
+
 def _replace(scenarios: Path, old: str, new: str) -> None:
     path = scenarios / "SZZ-0005/scenario.yml"
     path.write_text(path.read_text(encoding="utf-8").replace(old, new, 1), encoding="utf-8")
@@ -59,10 +68,7 @@ def test_an_id_in_both_suites_stops_the_run_before_anything_is_written(tmp_path,
     """Letter case does not count: a case-insensitive file system has one directory for both outputs."""
     shutil.copytree(ROOT / "scenarios/SZZ-0005", tmp_path / "scenarios" / classic_name)
     shutil.copytree(ROOT / "advanced-scenarios/SZZG-0107", tmp_path / "advanced-scenarios" / graph_name)
-    completed = subprocess.run(
-        [sys.executable, "-m", "szzbench.cli", "generate-all-repos", "--scenarios-root", "scenarios",
-         "--advanced-scenarios-root", "advanced-scenarios", "--out-root", "repos"],
-        cwd=tmp_path, capture_output=True, text=True, env={**os.environ, "PYTHONPATH": str(ROOT / "src")})
+    completed = _cli(tmp_path, "repos")
     assert completed.returncode == 1 and completed.stdout == ""
     assert completed.stderr.startswith("[ERROR] GENERATE_ALL_REPOS_FAILED: Two scenarios share an id")
     root = tmp_path.resolve()
@@ -71,15 +77,29 @@ def test_an_id_in_both_suites_stops_the_run_before_anything_is_written(tmp_path,
     assert not (tmp_path / "repos").exists()
 
 
-def test_outputs_below_a_scenario_root_are_not_taken_for_scenarios(tmp_path):
-    """Only ``<root>/*/scenario.yml`` is a scenario, as the README says; not ``<id>/default/metadata/scenario.yml``."""
-    scenarios, advanced, _ = _roots(tmp_path)
-    first = _run(scenarios, advanced, scenarios)
-    second = _run(scenarios, advanced, scenarios)
-    assert [(item.scenario_id, item.status) for item in first.items] == [("SZZ-0005", "generated")]
-    assert [(item.scenario_id, item.status) for item in second.items] == [("SZZ-0005", "skipped")]
-    assert sorted(child.name for child in scenarios.iterdir()) == ["SZZ-0005"]
-    assert second.orphans == []
+@pytest.mark.parametrize("out_root, option, root", [("scenarios", "--scenarios-root", "scenarios"),
+                                                    ("advanced-scenarios/repos", "--advanced-scenarios-root",
+                                                     "advanced-scenarios")])
+def test_an_out_root_inside_a_scenario_root_is_refused(tmp_path, out_root, option, root):
+    scenarios, _, _ = _roots(tmp_path)
+    completed = _cli(tmp_path, out_root)
+    assert completed.returncode == 1 and completed.stdout == ""
+    base = tmp_path.resolve()
+    where = "the same directory as" if out_root == root else "inside"
+    assert completed.stderr.startswith(f"[ERROR] GENERATE_ALL_REPOS_FAILED: --out-root {base / out_root} is {where} "
+                                       f"{option} {base / root}: the outputs would be written among the scenarios.")
+    assert not (tmp_path / "advanced-scenarios/repos").exists() and not (scenarios / "SZZ-0005/default").exists()
+
+
+def test_output_copies_below_a_scenario_root_are_not_taken_for_scenarios(tmp_path):
+    """Only ``<root>/*/scenario.yml`` is a scenario, as the README says: not the copy an output keeps in
+    ``metadata/``, such as one ``generate --out scenarios/SZZ-0005/default`` left below the root."""
+    scenarios, advanced, out = _roots(tmp_path)
+    (scenarios / "SZZ-0005/default/metadata").mkdir(parents=True)
+    shutil.copy2(scenarios / "SZZ-0005/scenario.yml", scenarios / "SZZ-0005/default/metadata/scenario.yml")
+    result = _run(scenarios, advanced, out)
+    assert [(item.scenario_id, item.status) for item in result.items] == [("SZZ-0005", "generated")]
+    assert sorted(child.name for child in out.iterdir()) == ["SZZ-0005"]
 
 
 def test_a_failed_regeneration_leaves_the_complete_output_in_place(tmp_path, monkeypatch):
