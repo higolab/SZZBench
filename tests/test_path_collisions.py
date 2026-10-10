@@ -92,15 +92,15 @@ ROWS = {
     "two-spellings": (_resave_as(f"./{REQUEST}"), [("E050", "commits[1].operations[0].path")],
                       "current directory '.' is not allowed"),
     # (b) in the spellings the grammar allows: on macOS the commit would be empty, on Linux a new file
-    "two-spellings-by-case": (_resave_as(REQUEST.lower()), [("E2XX", "commits[1].operations[0]")],
+    "two-spellings-by-case": (_resave_as(REQUEST.lower()), [("E201", "commits[1].operations[0]")],
                               f"write_file target {REQUEST.lower()} differs only in letter case or Unicode "
                               f"normalization from the file {REQUEST}: {PLATFORM}"),
     # (c): on macOS the write replaced UserRequest.java, and c1's replace found no @Required(true)
-    "case": (_also_write("src/main/java/example/userrequest.java"), [("E2XX", "commits[0].operations[2]")],
+    "case": (_also_write("src/main/java/example/userrequest.java"), [("E201", "commits[0].operations[2]")],
              "write_file target src/main/java/example/userrequest.java differs only in letter case or Unicode "
              f"normalization from the file {REQUEST}: {PLATFORM}"),
     # (d): generation stopped with [Errno 17] File exists
-    "parent-is-file": (_also_write("src/main/java/example/Required.java/Extra.java"), [("E2XX", "commits[0].operations[2]")],
+    "parent-is-file": (_also_write("src/main/java/example/Required.java/Extra.java"), [("E201", "commits[0].operations[2]")],
                        "write_file target lies below the file src/main/java/example/Required.java: "
                        "src/main/java/example/Required.java/Extra.java"),
 }
@@ -218,7 +218,7 @@ def test_the_classic_simulation_refuses_what_a_file_system_cannot_hold(first, se
         assert errors == []
     else:
         [(code, location, message)] = errors
-        assert (code, location) == ("E2XX", "commits[1].operations[0]")
+        assert (code, location) == ("E201", "commits[1].operations[0]")
         assert message.startswith("Operation failed in commit 'c1': write_file target ") and says in message, message
 
 

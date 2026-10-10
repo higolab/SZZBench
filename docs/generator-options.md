@@ -420,7 +420,7 @@ Generation writes to a file system, which has directories and, on macOS
 letter case or Unicode normalization for one. `src/a.java` written beside
 `src/A.java` overwrote it on macOS and was a second file on Linux, and
 `src/A.java/B.java` beside the file `src/A.java` failed with `File exists`
-everywhere. Both simulators refuse these writes (`E2XX`, `GE201`; issue
+everywhere. Both simulators refuse these writes (`E201`, `GE201`; issue
 #153): a file below a file or at a directory, and a path that meets a file
 or directory of the snapshot in another spelling, compared name by name
 (`paths.file_system_key`, the comparison of tag names, GE158). The graph
