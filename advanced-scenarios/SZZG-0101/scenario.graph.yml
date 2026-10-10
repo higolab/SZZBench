@@ -8,7 +8,6 @@ meta:
   category_code: "G7"
   factors:
   - caller-callee
-  - context
   - api-misuse
   difficulty: easy
   status: active

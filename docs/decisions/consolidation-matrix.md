@@ -50,7 +50,7 @@ Columns: **visible difference** = what a tool sees in the repository (DAG / refs
 | SZZG-0021 ↔ SZZG-0109 | file deletion as fix / file deletion | 0021 has clone metadata | similar | T | **merge** into one file-deletion scenario with candidates |
 | SZZG-0025 → SZZG-0022 | copy propagation | same shape; contradictory oracle | differs (D4 fixes it) | N | **merge** after D4 |
 | SZZG-0031 → SZZG-0032 | one BIC, multiple BFCs | DAG/tree-equivalent | same | T | **merge** |
-| SZZG-0036 → SZZG-0029 | partial then complete fix | 0036 adds a test-note commit | same | N | **merge** |
+| SZZG-0036 → SZZG-0029 | partial then complete fix | 0036 adds a test-note commit | same | N | **keep both** (decided 2026-10-10, issue #198, instead of the proposed merge): 0036 is the control for a test-only commit inside the fix series; see §7 |
 | SZZG-0037 → SZZG-0034 | one BFC, multiple BICs | same DAG shape | **different contract** (independent bugs vs composite fault) | T | **keep both** once per-bug scoring exists; until then merge |
 | SZZG-0038 → SZZG-0040 | context-only BIC | same inline-constant trick | same | N | **merge** |
 | SZZG-0045 → SZZG-0059 | merge commit as BIC | 0045 adds text in neither parent; 0059 discards a branch change | same idea, different mechanism | T / N | **keep both** (different failure modes: evil-merge text vs discarded change) |
@@ -91,7 +91,7 @@ Same roles, operation sequence, oracle shape and fault text; they differ only in
 
 Applying the defaults above yields roughly 25–30 merges and 4–6 deletions instead of 38/13, and turns a further 8–10 candidates into repairs. The suite size after consolidation is therefore ~155–160 before the additions of issues #20–#24, not 143. The exact number is a result of the per-item decisions, not a target.
 
-## 7. Status (2026-09-28)
+## 7. Status (2026-09-28; the last open row decided 2026-10-10)
 
 This matrix had no status column, so every reader re-derived which rows still applied. Measured on
 the 281-scenario suite before the retirements below, and recorded here once.
@@ -129,10 +129,13 @@ rebuilt:
 | SZZG-0060 → SZZG-0043 (§4) | they now differ by seven declared factors, which is this matrix's own criterion (§1 step 3) pointing the other way. |
 | SZZG-0013 → SZZG-0008 (§4) | five factors apart, same reason. |
 
-**Still open, on the same evidence as the two executed rows.** SZZG-0036 → SZZG-0029: SZZG-0036 is
-SZZG-0029 plus one `test_added` commit between the BIC and the first fix — same category, same
-single factor `multi-bfc`, same oracle, same outcome under every predictor. Either declare what the
-extra commit tests, since nothing in the scenario says "a test-only commit sits between BIC and
-BFC", or merge it. Not decided here.
+**Kept, with what the scenario tests declared (2026-10-10, issue #198).** This status first left one
+row open: SZZG-0036 was SZZG-0029 plus one `test_added` commit between the BIC and the first fix —
+same category, same single factor `multi-bfc`, same oracle, same outcome under every predictor — and
+nothing in the scenario said what the extra commit was for.
+
+| row | decision | evidence today |
+|---|---|---|
+| SZZG-0036 → SZZG-0029 (§4) | keep both. The extra commit is an input a tool may treat differently from SZZG-0029's history: a test-only commit that belongs to the fix's work (the scenario's `fix_series` lists it with the two fixes) but is neither a fix nor a cause. §1 step 4 keeps a control that exercises a filter a tool can get wrong, here whether such a commit is taken as part of the fix or as a candidate. In the two executed rows above, the retired scenario added nothing to its survivor's history. | `c2`'s role is `test_change` (it was `test_added`, outside the commit roles of `decisions/vocabulary.md` §2.2), the factors add `test-file-added`, and the README's purpose says what `c2` tests: it adds a test file and deletes no line, so every fix must still lead to `c1`, as in SZZG-0029. The two scenarios answering alike under the position, shape and blame baselines is what the control asserts. |
 
 Rows not listed above were not re-checked on 2026-09-28.

@@ -8,7 +8,7 @@
 | status | `active` |
 | difficulty | `hard` |
 | language | `java` |
-| factors | `intermediate-rewrite`, `formatting`, `line-history-break` |
+| factors | `intermediate-rewrite`, `formatting-noise`, `line-history-break` |
 | oracle | `exact_set`; required `c1` · BFC `c3` |
 | graph features | none: a linear history with one bug and an exact-set oracle, kept in the graph suite for its category |
 <!-- /szzbench:header -->

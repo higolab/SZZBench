@@ -11,7 +11,7 @@ meta:
   - single-bic
   - single-bfc
   - line-modification
-  - comment-deletion-after-bic
+  - comment-noise
   difficulty: medium
   status: active
   tier: control

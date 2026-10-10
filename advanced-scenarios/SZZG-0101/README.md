@@ -8,7 +8,7 @@
 | status | `active` |
 | difficulty | `easy` |
 | language | `java` |
-| factors | `caller-callee`, `context`, `api-misuse` |
+| factors | `caller-callee`, `api-misuse` |
 | oracle | `exact_set`; required `c2`; related but not correct `c1` · BFC `c3` |
 | defeats | none (a control: every declared cheap rule may solve it) |
 | graph features | `context` |

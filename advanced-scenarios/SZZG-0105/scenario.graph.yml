@@ -10,7 +10,7 @@ meta:
   factors:
   - defensive-fix
   - root-cause-not-touched
-  - context-dependent
+  - caller-callee
   difficulty: hard
   status: active
   tier: control

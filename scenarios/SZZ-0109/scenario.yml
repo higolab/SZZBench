@@ -15,7 +15,7 @@ meta:
   - single-bfc
   - line-modification
   - robustness
-  - comment-only-intermediate
+  - comment-noise
   difficulty: easy
   status: active
   tier: control

@@ -10,7 +10,7 @@ meta:
   category_code: "G1"
   factors:
   - intermediate-rewrite
-  - formatting
+  - formatting-noise
   - line-history-break
   difficulty: hard
   status: active

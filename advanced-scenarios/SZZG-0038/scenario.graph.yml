@@ -10,7 +10,7 @@ meta:
   category_code: "G3"
   factors:
   - multi-bic
-  - context-dependent
+  - caller-callee
   - partial-observability
   difficulty: hard
   status: active

@@ -234,7 +234,7 @@ scenarios:
   - single-bic
   - single-bfc
   - line-modification
-  - whitespace-only-after-bic
+  - formatting-noise
   - basic-blame-distractor
   difficulty: hard
   status: active
@@ -263,7 +263,7 @@ scenarios:
   - single-bic
   - single-bfc
   - line-modification
-  - comment-insertion-after-bic
+  - comment-noise
   - blame-reaches-bic
   difficulty: easy
   status: active
@@ -305,7 +305,7 @@ scenarios:
   - single-bic
   - single-bfc
   - line-modification
-  - class-body-reformat-after-bic
+  - formatting-noise
   - blame-reaches-bic
   difficulty: easy
   status: active
@@ -502,7 +502,7 @@ scenarios:
   - single-bic
   - single-bfc
   - line-modification
-  - comment-deletion-after-bic
+  - comment-noise
   difficulty: medium
   status: active
   path: scenarios/SZZ-0103/scenario.yml
@@ -571,7 +571,7 @@ scenarios:
   - single-bfc
   - line-modification
   - robustness
-  - comment-only-intermediate
+  - comment-noise
   difficulty: easy
   status: active
   path: scenarios/SZZ-0109/scenario.yml
@@ -977,7 +977,6 @@ scenarios:
   - single-bic
   - single-bfc
   - line-modification
-  - context-aware
   - misleading-message
   difficulty: medium
   status: active
@@ -991,7 +990,6 @@ scenarios:
   - single-bic
   - single-bfc
   - line-modification
-  - context-aware
   - message-evidence
   difficulty: medium
   status: active
@@ -1018,7 +1016,7 @@ scenarios:
   - single-bic
   - single-bfc
   - line-modification
-  - context-aware
+  - message-evidence
   - intermediate-cleanup
   difficulty: medium
   status: active
@@ -1030,7 +1028,7 @@ scenarios:
   category: Context, message, and non-local evidence
   factors:
   - test-context
-  - context
+  - message-evidence
   difficulty: hard
   status: active
   path: scenarios/SZZ-0168/scenario.yml
@@ -1076,7 +1074,7 @@ scenarios:
   factors:
   - config
   - code-interaction
-  - context
+  - caller-callee
   - config-value
   difficulty: hard
   status: active

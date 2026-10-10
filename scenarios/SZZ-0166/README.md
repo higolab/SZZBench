@@ -8,7 +8,7 @@
 | status | `active` |
 | difficulty | `medium` |
 | language | `java` |
-| factors | `single-bic`, `single-bfc`, `line-modification`, `context-aware`, `intermediate-cleanup` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `message-evidence`, `intermediate-cleanup` |
 | oracle | `exact_set`; required `c1`; known distractors `c2` · BFC `c3` |
 <!-- /szzbench:header -->
 

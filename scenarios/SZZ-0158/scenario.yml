@@ -14,7 +14,6 @@ meta:
   - single-bic
   - single-bfc
   - line-modification
-  - context-aware
   - misleading-message
   difficulty: medium
   status: active

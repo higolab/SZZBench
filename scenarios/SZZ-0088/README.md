@@ -8,7 +8,7 @@
 | status | `active` |
 | difficulty | `easy` |
 | language | `java` |
-| factors | `single-bic`, `single-bfc`, `line-modification`, `class-body-reformat-after-bic`, `blame-reaches-bic` |
+| factors | `single-bic`, `single-bfc`, `line-modification`, `formatting-noise`, `blame-reaches-bic` |
 | oracle | `exact_set`; required `c1`; known distractors `c2` · BFC `c3` |
 <!-- /szzbench:header -->
 
