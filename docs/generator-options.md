@@ -189,6 +189,15 @@ Defaults:
 * `replace` / `insert_after` without the key keep the file's existing
   convention: a file whose every newline is CRLF stays CRLF; anything else
   (LF or mixed) is written as LF, as before.
+* The graph operations `format_file`, `move_entity` and `copy_entity` do
+  not take the key and keep a convention by the same rule. `format_file`
+  writes the file back in its own: a CRLF file stays CRLF, and a missing
+  final newline is added as CRLF. `move_entity` / `copy_entity` write the
+  destination, header line included, in the source file's convention, or,
+  with `append`, in the destination's own, into which the source text is
+  re-encoded. The three used to write LF always, so a `format_file` on a
+  CRLF file also rewrote every line ending, which the simulator, working on
+  LF text, did not see (issue #181).
 
 Any other value is an error in `validate` / `validate-graph` (E042 / GE061),
 read as generation reads it (`operations.resolve_line_ending`); `--simulate`
@@ -430,9 +439,12 @@ rule, and their names (`<generator>-NN.txt`) are never one of these files.
 
 * `apply_patch` is still not implemented (validation accepts it; generation
   raises).
-* `format_file` only strips trailing whitespace from every line.
+* `format_file` only strips trailing whitespace from every line; a CRLF file
+  stays CRLF (see `line_ending` above).
 * `move_entity` / `copy_entity` remain the whole-file approximation with a
-  `// SZZBench move_entity: ...` header (issue #2).
+  `// SZZBench move_entity: ...` header (issue #2), written in the line
+  endings of the source file, or with `append` of the destination (see
+  `line_ending` above).
 
 ## 3. History-rewriting fidelity (#17)
 
