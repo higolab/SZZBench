@@ -738,6 +738,20 @@ exactly `message`, so the verifier's subject check is unaffected. Default:
   compute reverts. Until 2026-09-29 it reported such a commit as "would be
   empty" (issue #94).
 
+### `apply_patch_from`'s `mainline` (*graph*)
+
+```yaml
+- type: apply_patch_from
+  commit: m1                   # git cherry-pick --no-commit --mainline 1 <hash of m1>
+  mainline: 1                  # the parent the patch is taken against, needed for a merge
+```
+
+The operation runs `git cherry-pick --no-commit` of the commit it names, with
+`--mainline N` when `mainline` is set, as `revert_of` runs `git revert`.
+Default: unset. `parent` is an older spelling of `mainline` that generation
+still reads (`mainline` wins when both are present); no shipped scenario
+uses either. The key was read without being documented until issue #183.
+
 ### `resolution` (*graph*) - conflict resolution
 
 ```yaml
@@ -823,6 +837,7 @@ patch operation, so it reports the generation errors above as GE203; until
 | `inherit_message`, `inherit_author_date`, `inherit_author` | commit with `rebase_of`/`cherry_pick_of`/`backport_of` | graph |
 | `cherry_pick_trailer` | commit | graph |
 | `revert_of`, `apply_revert`, `mainline` | commit | graph |
+| `mainline` (`parent`, an older spelling) | `apply_patch_from` operation | graph |
 | `resolution` | commit | graph |
 | `graph.ref_lifecycle.delete_branches`, `graph.ref_lifecycle.tags[].name/commit` | top level | graph |
 

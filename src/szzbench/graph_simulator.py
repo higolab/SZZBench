@@ -27,15 +27,25 @@ Snapshot = dict[str, SimFile]
 
 
 def simulate_graph_scenario(data: dict[str, Any]) -> ValidationResult:
-    """Run a lightweight graph generation simulation.
+    """Replay a graph scenario in memory, as ``validate-graph --simulate`` does when Git computes no commit of it.
 
-    The simulator tracks repository file contents per logical commit.  It is
-    intentionally conservative: it catches operation-level failures before Git
-    generation, but it does not try to model every detail of Git's merge
-    machinery.
+    The replay keeps the files of every commit (:func:`simulated_snapshots`)
+    and reports the operations generation would refuse (GE201) and the commits
+    it would find empty (GE202).  It models file operations only.  A commit
+    whose content generation lets Git compute (:func:`git_performed_features`)
+    is GE200, and nothing is replayed: ``validate-graph --simulate`` generates
+    such a scenario with Git instead (:func:`simulate_graph_scenario_with_git`).
+    The replay used to approximate merges and patches file by file, code that
+    no command reached once those scenarios went to Git (issues #94, #183).
     """
     result = ValidationResult()
-    simulated_snapshots(data, result)
+    refused = _commits_git_computes(data)
+    for index, cid, found in refused:
+        result.error("GE200", f"The in-memory simulation does not model commit '{cid}', whose content Git computes "
+                     f"({', '.join(found)}); validate-graph --simulate generates such a scenario with Git.",
+                     f"commits[{index}]")
+    if not refused:
+        simulated_snapshots(data, result)
     return result
 
 
@@ -47,29 +57,38 @@ def git_performed_features(data: dict[str, Any]) -> list[str]:
     ``apply_revert``, ``cherry_pick_of`` / ``backport_of`` without operations,
     and the ``apply_patch_from`` / ``apply_squash`` operations; a conflict
     ``resolution`` is applied only where Git reports a conflict.  The in-memory
-    model approximates merges and patches file by file and does not model the
-    rest, so a scenario with any of them is simulated with Git (issue #94).
-    The conditions are the generator's own.
+    model does not model any of them, so a scenario with one is simulated with
+    Git (issue #94).  The conditions are the generator's own.
     """
-    features: list[str] = []
-    for commit in data.get("commits") or []:
-        if not isinstance(commit, dict) or not isinstance(commit.get("id"), str):
-            continue
-        cid = commit["id"]
-        found: list[str] = []
-        if len([parent for parent in commit.get("parents") or [] if isinstance(parent, str)]) >= 2:
-            found.append("merge")
-        if commit.get("revert_of") is not None and (not commit.get("operations") or commit.get("apply_revert")):
-            found.append("git revert")
-        if (commit.get("cherry_pick_of") or commit.get("backport_of")) and not commit.get("operations"):
-            found.append("git cherry-pick")
-        for op in commit.get("operations") or []:
-            if isinstance(op, dict) and op.get("type") in ("apply_patch_from", "apply_squash") and op["type"] not in found:
-                found.append(op["type"])
-        if commit.get("resolution"):
-            found.append("resolution")
-        features.extend(f"{cid}: {what}" for what in found)
-    return features
+    return [f"{cid}: {what}" for _, cid, found in _commits_git_computes(data) for what in found]
+
+
+def _commits_git_computes(data: dict[str, Any]) -> list[tuple[int, str, list[str]]]:
+    """``(index, id, what Git computes)`` for every commit :func:`git_performed_features` lists."""
+    computed: list[tuple[int, str, list[str]]] = []
+    for index, commit in enumerate(data.get("commits") or []):
+        if isinstance(commit, dict) and isinstance(commit.get("id"), str):
+            found = _computed_by_git(commit)
+            if found:
+                computed.append((index, commit["id"], found))
+    return computed
+
+
+def _computed_by_git(commit: dict[str, Any]) -> list[str]:
+    """What generation lets Git compute in ``commit`` (see :func:`git_performed_features`)."""
+    found: list[str] = []
+    if len([parent for parent in commit.get("parents") or [] if isinstance(parent, str)]) >= 2:
+        found.append("merge")
+    if commit.get("revert_of") is not None and (not commit.get("operations") or commit.get("apply_revert")):
+        found.append("git revert")
+    if (commit.get("cherry_pick_of") or commit.get("backport_of")) and not commit.get("operations"):
+        found.append("git cherry-pick")
+    for op in commit.get("operations") or []:
+        if isinstance(op, dict) and op.get("type") in ("apply_patch_from", "apply_squash") and op["type"] not in found:
+            found.append(op["type"])
+    if commit.get("resolution"):
+        found.append("resolution")
+    return found
 
 
 def simulate_graph_scenario_with_git(scenario_path: Path, data: dict[str, Any], features: list[str]) -> ValidationResult:
@@ -136,13 +155,13 @@ def simulated_snapshots(data: dict[str, Any], result: ValidationResult | None = 
     A commit in ``given`` is not simulated: its snapshot is the one given.  The
     drift test (tests/test_simulator_drift.py) gives the generated trees of the
     commits Git computes and compares every other snapshot with the generated
-    tree (issue #175).
+    tree (issue #175).  Any other commit Git computes is a ``ValueError``: the
+    replay does not model it (issue #183).
     """
     result = result if result is not None else ValidationResult()
     given = given or {}
     commits = data.get("commits") if isinstance(data.get("commits"), list) else []
     states: dict[str, Snapshot] = {}
-    parent_map: dict[str, list[str]] = {}
 
     for i, commit in enumerate(commits):
         if not isinstance(commit, dict):
@@ -152,12 +171,15 @@ def simulated_snapshots(data: dict[str, Any], result: ValidationResult | None = 
             continue
         loc = f"commits[{i}]"
         parents = [p for p in commit.get("parents", []) or [] if isinstance(p, str)]
-        parent_map[cid] = parents
         if cid in given:
             states[cid] = _clone_snapshot(given[cid])
             continue
+        computed = _computed_by_git(commit)
+        if computed:
+            raise ValueError(f"the in-memory simulation does not model commit '{cid}', whose content Git computes "
+                             f"({', '.join(computed)}); give its snapshot, or simulate the scenario with Git")
         try:
-            snapshot = _checkout_snapshot(parents, states, parent_map)
+            snapshot = _checkout_snapshot(parents, states)
         except OperationError as exc:
             result.error("GE200", f"Graph simulation cannot prepare commit '{cid}': {exc}", f"{loc}.parents")
             states[cid] = {}
@@ -171,13 +193,13 @@ def simulated_snapshots(data: dict[str, Any], result: ValidationResult | None = 
             if not isinstance(op, dict) or op.get("type") == "commit_generator":
                 continue
             try:
-                _apply_simulated_operation(snapshot, op, states, parent_map)
+                _apply_simulated_operation(snapshot, op)
             except (OperationError, ValueError, PathValidationError) as exc:
                 result.error("GE201", f"Graph simulation failed for commit '{cid}': {exc}", op_loc)
                 had_operation_error = True
 
         # an owner of generated commits is committed with --allow-empty, as the generator does
-        if not had_operation_error and len(parents) < 2 and not commit.get("allow_empty") and not generated:
+        if not had_operation_error and not commit.get("allow_empty") and not generated:
             if snapshot == before_operations:
                 result.error("GE202", f"Commit '{cid}' would be empty during graph generation.", loc)
         states[cid] = snapshot
@@ -226,72 +248,27 @@ def _expand_commit_generators(snapshot: Snapshot, commit: dict[str, Any], cid: s
     return done, False
 
 
-def _checkout_snapshot(parents: list[str], states: dict[str, Snapshot], parent_map: dict[str, list[str]]) -> Snapshot:
+def _checkout_snapshot(parents: list[str], states: dict[str, Snapshot]) -> Snapshot:
+    """The snapshot a commit starts from: its parent's, or none for a root.
+
+    A commit with a second parent is a merge, which Git computes and the
+    replay does not model (``_computed_by_git``).  A parent that has not been
+    simulated is unknown or declared later: GE039 and GE038 stop validation
+    before any simulation runs, so only a direct call reaches the GE200 its
+    error becomes.
+    """
     if not parents:
         return {}
-    first_parent = parents[0]
-    if first_parent not in states:
-        raise OperationError(f"parent commit has not been simulated: {first_parent}")
-    snapshot = _clone_snapshot(states[first_parent])
-    for extra_parent in parents[1:]:
-        if extra_parent not in states:
-            raise OperationError(f"merge parent has not been simulated: {extra_parent}")
-        ancestor_id = _nearest_common_ancestor(first_parent, extra_parent, parent_map)
-        ancestor = states.get(ancestor_id, {}) if ancestor_id else {}
-        snapshot = _merge_snapshots(snapshot, states[extra_parent], ancestor)
-    return snapshot
+    if parents[0] not in states:
+        raise OperationError(f"parent commit has not been simulated: {parents[0]}")
+    return _clone_snapshot(states[parents[0]])
 
 
 def _clone_snapshot(snapshot: Snapshot) -> Snapshot:
     return dict(snapshot)
 
 
-def _merge_snapshots(left: Snapshot, right: Snapshot, ancestor: Snapshot) -> Snapshot:
-    merged = _clone_snapshot(left)
-    for path in set(left) | set(right) | set(ancestor):
-        ancestor_file = ancestor.get(path)
-        left_file = left.get(path)
-        right_file = right.get(path)
-        if right_file == ancestor_file:
-            continue
-        if left_file == ancestor_file or left_file == right_file:
-            if right_file is None:
-                merged.pop(path, None)
-            else:
-                merged[path] = right_file
-            continue
-        raise OperationError(f"merge conflict for path: {path}")
-    return merged
-
-
-def _nearest_common_ancestor(a: str, b: str, parent_map: dict[str, list[str]]) -> str | None:
-    a_distances = _ancestor_distances(a, parent_map)
-    b_distances = _ancestor_distances(b, parent_map)
-    common = set(a_distances) & set(b_distances)
-    if not common:
-        return None
-    return min(common, key=lambda cid: (a_distances[cid] + b_distances[cid], a_distances[cid], cid))
-
-
-def _ancestor_distances(start: str, parent_map: dict[str, list[str]]) -> dict[str, int]:
-    distances: dict[str, int] = {}
-    queue: list[tuple[str, int]] = [(start, 0)]
-    while queue:
-        cid, distance = queue.pop(0)
-        if cid in distances and distances[cid] <= distance:
-            continue
-        distances[cid] = distance
-        for parent in parent_map.get(cid, []):
-            queue.append((parent, distance + 1))
-    return distances
-
-
-def _apply_simulated_operation(
-    snapshot: Snapshot,
-    op: dict[str, Any],
-    states: dict[str, Snapshot],
-    parent_map: dict[str, list[str]],
-) -> None:
+def _apply_simulated_operation(snapshot: Snapshot, op: dict[str, Any]) -> None:
     op_type = op.get("type")
 
     if op_type == "write_file":
@@ -389,70 +366,11 @@ def _apply_simulated_operation(
         _set_file(snapshot, path, SimFile(formatted, snapshot[path].mode), op_type)
         return
 
-    if op_type == "apply_patch_from":
-        _apply_patch_from_commit(snapshot, str(op["commit"]), op, states, parent_map)
-        return
-
-    if op_type == "apply_squash":
-        from_commits = op.get("from_commits", []) or []
-        if not isinstance(from_commits, list):
-            raise OperationError("apply_squash.from_commits must be a list")
-        for source_id in from_commits:
-            if not isinstance(source_id, str):
-                raise OperationError("apply_squash.from_commits entries must be commit ids")
-            _apply_patch_from_commit(snapshot, source_id, op, states, parent_map)
-        return
-
     if op_type == "apply_patch":
         raise OperationError("apply_patch is recognized by the graph schema but is not implemented in this MVP")
 
-
-def _apply_patch_from_commit(
-    snapshot: Snapshot,
-    source_id: str,
-    op: dict[str, Any],
-    states: dict[str, Snapshot],
-    parent_map: dict[str, list[str]],
-) -> None:
-    if source_id not in states:
-        raise OperationError(f"apply_patch_from refers to unknown or later commit '{source_id}'")
-    source_parents = parent_map.get(source_id, [])
-    if not source_parents:
-        before: Snapshot = {}
-    else:
-        mainline = int(op.get("mainline", op.get("parent", 1)))
-        if mainline < 1 or mainline > len(source_parents):
-            raise OperationError(f"apply_patch_from mainline parent out of range for '{source_id}'")
-        parent_id = source_parents[mainline - 1]
-        before = states.get(parent_id, {})
-    _apply_snapshot_diff(snapshot, before, states[source_id], source_id)
-
-
-def _apply_snapshot_diff(snapshot: Snapshot, before: Snapshot, after: Snapshot, source_id: str) -> None:
-    for path in set(before) | set(after):
-        before_file = before.get(path)
-        after_file = after.get(path)
-        current_file = snapshot.get(path)
-        if before_file == after_file:
-            continue
-        if after_file is None:
-            if current_file is None:
-                continue
-            if current_file != before_file:
-                raise OperationError(f"apply_patch_from patch for '{source_id}' does not apply cleanly to {path}")
-            del snapshot[path]
-            continue
-        if before_file is None:
-            if current_file is None or current_file == after_file:
-                snapshot[path] = after_file
-                continue
-            raise OperationError(f"apply_patch_from patch for '{source_id}' would overwrite {path}")
-        if current_file == before_file:
-            snapshot[path] = after_file
-        elif current_file == after_file:
-            continue
-        else:
-            raise OperationError(f"apply_patch_from patch for '{source_id}' does not apply cleanly to {path}")
+    # apply_patch_from and apply_squash are computed by Git, and never reach here (issue #183)
+    raise OperationError(f"unsupported graph operation: {op_type}")
 
 
 def _validated_path(path: str) -> str:

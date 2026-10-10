@@ -344,7 +344,7 @@ With `--simulate`:
 
 | code | severity | meaning |
 |---|---|---|
-| GE200 | error | the parent snapshot cannot be prepared (unsimulated parent, merge conflict) |
+| GE200 | error | the in-memory replay refuses a commit it does not model: one whose content Git computes (a merge, a `revert_of` or `cherry_pick_of` / `backport_of` that Git performs, `apply_patch_from`, `apply_squash`, a `resolution`; `graph_simulator.git_performed_features`), or one whose parent it has not simulated. `validate-graph --simulate` does not report it: it generates a scenario with a commit Git computes with Git (GE203, GI203), and it simulates only a scenario without errors, in which an unknown or later parent is GE039 / GE038. It is the error of a direct call of `graph_simulator.simulate_graph_scenario`, which approximated a merge or a patch file by file, a model no command reached after issue #94 ([issue #183](https://github.com/higolab/SZZBench/issues/183)) |
 | GE201 | error | an operation failed during in-memory replay, generation's own refusals included: a file written where the tree has a directory or below a file, `move_entity` / `copy_entity` with `overwrite: false` onto an existing file ([issue #175](https://github.com/higolab/SZZBench/issues/175)), and a file written at a path that differs from a file or directory of the snapshot only in letter case or Unicode normalization, by the rule of E2XX ([issue #153](https://github.com/higolab/SZZBench/issues/153)). Every operation that writes a file is checked: `write_file`, `write_binary_file`, `write_generated_text_file`, the `to` / `to_file` of `copy_file`, `move_file`, `rename_file`, `copy_entity` and `move_entity`, and the files of `commit_generator`. Such a scenario used to pass, and generation overwrote the other file on macOS and wrote a second one on Linux. The generator refuses the same paths itself, since `generate-graph` does not run the simulation and a scenario with commits Git computes is simulated by generating it (GE203): an operation whose path reaches an entry of the worktree spelt otherwise fails with that reason, a `replace` in `src/a.java` beside `src/A.java` included, which changed `A.java` on macOS and failed on Linux |
 | GE202 | error | a non-merge commit without `allow_empty` would be empty. A `chmod` that changes the mode Git records (`100644` / `100755`) is a change; an owner of `commit_generator` commits is not empty unless its `count` is 0. The replay works on LF text, so a commit whose only change is its line endings (a `format_file` with `line_ending: lf` on a CRLF file without trailing whitespace) is reported too, while generation commits the conversion; `allow_empty: true` lets it pass (generator-options §2, `line_ending`) |
 | GE203 | error | generating the scenario with Git in a temporary directory failed; the message and location name the commit that failed (an unresolved conflict, a revert or cherry-pick that changes nothing, an operation that no longer applies). Also one GE203 per error of verifying the generated repository as `generate-graph` does: the message starts with the verifier's code (`GE630`, `GE663`, ...) and the location is the verifier's, e.g. `bugs[0].faults[0]` ([issue #173](https://github.com/higolab/SZZBench/issues/173)) |
@@ -354,13 +354,15 @@ The in-memory replay models file operations. What the generator lets Git
 compute -- merge commits, `revert_of` performed by `git revert` (no operations,
 or `apply_revert: true`), `cherry_pick_of` / `backport_of` without operations,
 the `apply_patch_from` and `apply_squash` operations, and conflict
-`resolution` -- it approximated file by file or not at all. So a scenario with
-any of these is simulated by the generator itself, in a temporary directory
-(issue #94); every other scenario keeps the in-memory replay and its
-operation-level locations. Until 2026-09-29 the replay was used for all of
-them, and nine shipped scenarios that generate and verify failed `--simulate`
-with 17 errors. `graph_simulator.git_performed_features` holds the list, with
-the generator's own conditions.
+`resolution` -- it does not model. So a scenario with any of these is
+simulated by the generator itself, in a temporary directory (issue #94); every
+other scenario keeps the in-memory replay and its operation-level locations.
+Until 2026-09-29 the replay was used for all of them, approximating merges and
+patches file by file and the rest not at all, and nine shipped scenarios that
+generate and verify failed `--simulate` with 17 errors.
+`graph_simulator.git_performed_features` holds the list, with the generator's
+own conditions. The file-level approximation, which no command reached
+afterwards, was removed in issue #183.
 
 The temporary repository is then verified, as `generate-graph` verifies what
 it generates, so a scenario that passes this simulation also generates. Until
