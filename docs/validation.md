@@ -102,7 +102,7 @@ became errors — the code keeps its number when its severity changes, so
 | E000 | error | scenario file cannot be read, or is not UTF-8 (the message gives the first byte that is not, and its offset; [issue #149](https://github.com/higolab/SZZBench/issues/149)) |
 | E001 | error | YAML parse error (duplicate keys are rejected) |
 | E002 | error | the YAML root is not a mapping |
-| E003 | error | the file is a graph scenario: its `schema_version` is a graph schema (the rule of GE001), or it has none and the file is named `scenario.graph.yml` (GW014). `validate` reports it before any other check, and `generate` and `verify` refuse the file too. The message names the graph command to run instead (`validate-graph`, `generate-graph`, `verify-graph`) ([issue #119](https://github.com/higolab/SZZBench/issues/119)) |
+| E003 | error | the file is a graph scenario: its `schema_version` is a graph schema (the rule of GE001), or it has none and the file is named `scenario.graph.yml` (GW014). `validate` reports it before any other check, and `generate` and `verify` refuse the file too. The message names the graph command to run instead (`validate-graph`, `generate-graph`, `verify-graph`) ([issue #119](https://github.com/higolab/SZZBench/issues/119)). The graph commands refuse a classic scenario with GE003 |
 | E004 | error | `schema_version` is a string other than `"1.0"`, the version every classic scenario declares. A graph schema is E003 instead. The value used to be compared with nothing ([issue #152](https://github.com/higolab/SZZBench/issues/152)) |
 | E010 | error | a required field is missing or has the wrong type. Required: `schema_version`, `meta`, `repository`, `commits`, `bugs`, `meta.id/title/category/factors`, `repository.name/default_branch/language`, commit `id/message/operations`, bug `id/bug_fixing_commit/bug_introducing_commits`. Typed: `meta`, `repository` and each commit, operation and bug are objects; `commits`, `bugs`, `meta.factors`, `commit.operations` and `bug_introducing_commits` are lists; `schema_version` (quote it: YAML reads an unquoted `1.0` as a number), `meta.id/title/category`, `repository.name/default_branch/language`, commit `id` and `message`, bug `id`, `bug_fixing_commit` and each `bug_introducing_commits` entry are strings (a number, or a blank value, which YAML reads as null, is not); a bug's `fault` and `fix`, when present, are objects. A commit `message` that was a number or null used to end `generate` in a `TypeError` traceback from `git commit` ([issue #151](https://github.com/higolab/SZZBench/issues/151)); until [issue #152](https://github.com/higolab/SZZBench/issues/152) only the containers, `meta.factors` and the bug fields were typed: `repository.default_branch: 1` ended `generate` in a traceback, a commit `id: 0` failed verification (`commit-map.json` keys are strings), and a `fault` written as a list skipped every fault check |
 | E011 | error | `commits` is empty |
@@ -220,6 +220,7 @@ files. `generate-graph` does the same.
 |---|---|---|
 | GE001 | error | `schema_version` is not a graph schema: not a string containing `graph` |
 | GE002 | error | `schema_version` is a graph schema other than `graph-1.0`, the version of the frozen suite (README). Any string containing `graph` used to pass ([issue #152](https://github.com/higolab/SZZBench/issues/152)) |
+| GE003 | error | the file is a classic scenario, the mirror of E003: its `schema_version` is a string without `graph` (the rule of GE001; every classic scenario declares `"1.0"`) and the file is not named `scenario.graph.yml`, or it has none and the file is named `scenario.yml`. `validate-graph` reports it in place of GE001 and runs no other check, and `generate-graph` and `verify-graph` refuse the file too. The message names the classic command to run instead (`validate`, `generate`, `verify`). `validate-graph` used to report GE001 and go on with the graph checks (GE013, GW014, GE048, GW120), `generate-graph` said "Run 'szzbench validate-graph'", and `verify-graph` compared the repository with a graph the scenario does not have. A wrong `schema_version` in a file named `scenario.graph.yml` (a graph scenario), a non-string one, and none in a file of another name keep GE001 and the graph checks. No file is a graph scenario to E003 and a classic one to GE003 ([issue #155](https://github.com/higolab/SZZBench/issues/155)) |
 | GE010 | error | missing top-level field |
 | GE011 | error | `meta` is not an object |
 | GE012 | error | `meta.id` missing |
@@ -231,6 +232,7 @@ files. `generate-graph` does the same.
 | GE020 | error | `repository` is not an object |
 | GW021 | warning | `repository.name` / `repository.default_branch` missing |
 | GE022 | error | `repository.name` / `repository.default_branch` / `repository.language` is present and not a string, YAML null included. `default_branch: 1` was handed to Git as a number ([issue #152](https://github.com/higolab/SZZBench/issues/152)) |
+| GW022 | warning | no commit is on `repository.default_branch` (`main` without the key): every commit names another `branch`. `git init` names the unborn branch after the default branch, and a branch is born with its first commit, so the generated repository does not have it; `generate-graph` and `verify-graph` passed such a scenario ([issue #179](https://github.com/higolab/SZZBench/issues/179)) |
 | GE023 | error | `repository.default_branch` or a commit's `branch` is not a branch name the generator can create: the rule of E015. An empty `branch: ""` is refused as well: without the key, or with a blank value (YAML null), a commit is on the default branch (`gitutils.commit_branch`), and an empty string is a name, not a valid one. A name is reported once, where the scenario first names it. Both fields were checked for their type only (GE022, GE035): a name Git refuses stopped `generate-graph` with Git's message (`git checkout -B a b <hash> failed: fatal: 'a b' is not a valid branch name`), and the validator, the generator and the verifiers read an empty name in three ways: `branch: ""` put the commits on the default branch without a word, while `default_branch: ""` reached Git, which refused it. `generate-graph` checks this rule and GE024 before `git init` ([issue #239](https://github.com/higolab/SZZBench/issues/239)) |
 | GE024 | error | two branch names of the scenario, the default branch included (`main` without the key), that a file system reads as one ref, or one of which would be a directory of the other. Names are compared by `paths.file_system_key`, as tag names (GE158) and file paths (E2XX, GE201) are: `Feature` beside `feature`, a commit on `Main` beside the default branch `main`, or two names apart only by a code point HFS+ ignores; and `feature` beside `feature/x` (or `Feature/x`). On macOS `Feature` beside `feature` generated one branch where the scenario has two: `git checkout -B Feature <c1>` reset `feature`, `graph-map.json` recorded both names while the repository had one, and `verify-graph`, which compares the refs with those `git for-each-ref` listed at generation (GE641-GE643), reported 0 errors; with `Main` the default branch `main` ended at the scenario's last commit. `feature` beside `feature/x` stopped `generate-graph` with Git's `cannot lock ref`. Two spellings of one name in Unicode normalization are GE023, since one of them is not NFC. The error is at the later name; a tag named like a branch is GE158 ([issue #239](https://github.com/higolab/SZZBench/issues/239)) |
 | GE030 | error | `commits` is not a list |
@@ -273,6 +275,8 @@ files. `generate-graph` does the same.
 | GE071 | error | the rule of E013 for a commit's `date`, `author_date` or `committer_date`, and `repository.base_date`, the offset with seconds and the schedule from the base date included; the author date of a commit with `inherit_author_date`, which takes its rewrite source's, is not checked on the schedule ([issue #152](https://github.com/higolab/SZZBench/issues/152)) |
 | GE072 | error | the rule of E014 for a commit's `author`, a NUL or a lone surrogate included ([issue #152](https://github.com/higolab/SZZBench/issues/152)) |
 | GE073 | error | the rule of E016 for a commit and each of its `parents`, a merge's included: a commit that generation would commit before a parent. `inherit_author_date` changes the author date only, and the committer date is compared. Such a scenario used to pass `validate-graph --simulate` and fail generation at verification with GE630, which named two hashes; `--simulate` reported it as GE203 only when the scenario has commits Git computes ([issue #241](https://github.com/higolab/SZZBench/issues/241)) |
+| GE074 | error | a commit sets `inherit_message` or `inherit_author_date` (to any value but `false`, null, 0 or an empty one, as generation reads them) without a source to inherit from: generation takes the subject and the author date from the first of `rebase_of`, `cherry_pick_of` and `backport_of` that is a commit id. A `rebase_of` list (a squash-rebase, GE046) is not one, and the message says so. Such a commit passed `validate-graph`, `--simulate` included, and stopped generation, which for a `rebase_of` list said that the commit had no `rebase_of`. Whether the source is an earlier commit is GE043's and GE047's ([issue #179](https://github.com/higolab/SZZBench/issues/179)) |
+| GE075 | error | a commit sets `cherry_pick_trailer` without a commit to name in the trailer: no `cherry_pick_of`, no `backport_of` and no `apply_patch_from` operation, the sources generation reads (generator-options §3). Such a commit passed `validate-graph` and stopped generation ([issue #179](https://github.com/higolab/SZZBench/issues/179)) |
 | GE080 | error | `bugs` is not a list |
 | GE081 | error | a bug is not an object |
 | GE082 | error | `bug.id` missing |
@@ -415,7 +419,7 @@ not refresh the index file.
 | GE630 | error | a commit is committed **before one of its parents**. A scenario that pins some timestamps and leaves the rest to the generator can otherwise invert its own history, which changes what date-based candidate filters and recency heuristics see (issue #9, PR #34 re-review). The commits checked are those `git log --all` reaches and every commit of `commit-map.json` with its ancestors: the commits of a branch that `graph.ref_lifecycle.delete_branches` removed are in the commit map but no longer reachable from a ref, and escaped the check until issue #176. The message names each commit's logical ids from `commit-map.json` beside its hash, as GW631's does; it named the hashes only. `validate-graph` refuses a scenario whose dates would do this (GE073) ([issue #241](https://github.com/higolab/SZZBench/issues/241)) |
 | GW631 | warning | a commit's author date is **after** its committer date. An author date *before* the committer date is the normal signature of a rebase and is not flagged |
 | GW632 | warning | the commit-date check could not run (Git failed, or a timestamp was unreadable) |
-| GE633 | error | an owner's `generated_commits` in `commit-map.json` is not the list of `<owner>.g<N>` ids its `commit_generator` operations plan (count capped at 2000) (issue #176) |
+| GE633 | error | an owner's `generated_commits` in `commit-map.json` is not the list of `<owner>.g<N>` ids its `commit_generator` operations plan (count capped at 2000) (issue #176). A count that generation refuses (`many`, `.inf`, a negative one; GE062 in `validate-graph`) plans no commits: for an output generated before the count was changed, GE633 says that the operations plan no commits, and GE627 reports the owner's first parent ([issue #230](https://github.com/higolab/SZZBench/issues/230)) |
 | GE634 | error | the hash `commit-map.json` records for a generated commit is not a commit of the repository (issue #176) |
 | GE635 | error | a generated commit's parents are not the previous generated commit -- for `<owner>.g1` the owner's declared first parent, or none when the owner is the root (issue #176) |
 | GE636 | error | a generated commit's author, author date, committer date or subject is not what `commit-map.json` records (dates compared in Git's raw `<epoch> <offset>` form, the one the generator writes) (issue #176) |
@@ -438,14 +442,16 @@ with the index path.
 
 | code | severity | meaning |
 |---|---|---|
-| IE001 | error | the index cannot be read or parsed |
+| IE001 | error | the index cannot be read or parsed. The message names the index: `index.yml does not exist.`, `index.yml is empty.`, `The root of index.yml must be a mapping/object.`; it used `load_yaml`'s words for a scenario file ("The root of scenario.yml ...", "Cannot read scenario file: ..."), and so did `new-scenario` and `new-graph-scenario` ([issue #158](https://github.com/higolab/SZZBench/issues/158)) |
 | IE002 | error | `scenarios` is not a list |
 | IE003 | error | the scenario root is not a directory |
 | IE010 | error | `scenario_count` (when present) differs from the number of entries |
+| IE011 | error | `scenario_count` is present and not an integer (`'146'`, `146.0`, `true`). IE010 compared `'146'` with 146 and printed both as 146 ([issue #158](https://github.com/higolab/SZZBench/issues/158)) |
 | IE020 | error | an entry is not an object with a string `id` |
 | IE021 | error | duplicate entry id |
 | IE022 | error | the entry has no `<root>/<id>/<scenario file>` |
 | IW023 | warning | the entry's `path` differs from `<root>/<id>/<scenario file>` |
+| IE024 | error | the entry's `readme` (when present; the graph index has one for every entry) is not a string naming an existing file, read relative to the directory that holds the root, as `path` is. A path the file system will not let `validate-index` look at (a directory without search permission, a NUL byte) is reported here too, with the reason, rather than ending the run: `Path.is_file` raises then on Python 3.10–3.13 (PR #261 review) ([issue #158](https://github.com/higolab/SZZBench/issues/158)) |
 | IE030 | error | a scenario directory under the root has no index entry |
 | IE040 | error | the entry id differs from the scenario's `meta.id` |
 | IE041 | error | the entry title differs from the scenario's `meta.title` |
@@ -454,6 +460,7 @@ with the index path.
 | IE045 | error | an index entry's `status` differs from the scenario's `meta.status` |
 | IE046 | error | an index entry's `slug`, `category`, `category_code` or `difficulty` differs from the scenario's `meta` value. These four are copied into the index like `title`, `status` and `factors`, and were the last mirrored fields nothing checked |
 | IE047 | error | an index entry, or a directory under the scenario root, uses a retired id: one in the first column of the table in `docs/retired-ids.md`, read from the `docs/` beside the root. A withdrawn scenario's id is never reused ([issue #112](https://github.com/higolab/SZZBench/issues/112)) |
+| IW048 | warning | an entry's id is lower than the one before it: the index lists its entries in id order, the order in which `new-scenario` appends and the Scenario Editor inserts an entry ([issue #111](https://github.com/higolab/SZZBench/issues/111)). Reported at each entry that breaks the order ([issue #158](https://github.com/higolab/SZZBench/issues/158)) |
 | IE042 | error | the scenario file of an entry cannot be loaded |
 
 ## Verifier findings that depend on a declaration
@@ -469,4 +476,15 @@ scenario declares:
 | I700 / GI703 | info | basic blame reaches an expected BIC |
 | W700 / GW703 | warning | basic blame reaches a commit that is not an expected BIC |
 | GW700 / GW702 | warning | the blame check could not run (file unreadable, `git blame` failed) |
+
+`generate`, `generate-graph` and `generate-all-repos` run the verification after
+generating, unless `--no-verify` is given, and print its findings. A warning,
+such as W700 for SZZ-0078 and GW703 for SZZG-0016, whose basic blame reaches
+another commit than the expected BIC, leaves the exit code 0; with `--strict` it
+makes it 1, as `verify --strict` does. `generate-all-repos` prints the
+verification warnings of every output to stderr, one line each after the
+scenario id (`SZZ-0078: [WARNING] W700: ...`), the warnings that an output
+skipped as up to date recorded in `metadata/verify-result.json` included, and
+`--strict` fails on those too. `--strict` cannot be combined with `--no-verify`
+([issue #169](https://github.com/higolab/SZZBench/issues/169)).
 

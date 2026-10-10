@@ -21,7 +21,7 @@ from .operations import OperationError, resolve_line_ending, type_label
 from .paths import PathValidationError, file_system_key, validate_repo_relative_path
 from .policies import SUPPORTED_EVALUATION_POLICIES
 from .validator import (COMMIT_MESSAGE_RULE, LINT_INPUT_ERRORS, check_commit_date_order, check_commit_metadata,
-                        check_git_control_files, check_scheduled_dates, commit_message_problem,
+                        check_git_control_files, check_scheduled_dates, classic_scenario_guard, commit_message_problem,
                         lint_author_coincidence, lint_defeats, lint_difficulty, lint_factors, lint_leakage,
                         lint_readme_header, lint_tier, timestamp_problem)
 
@@ -78,6 +78,13 @@ EXPECTED_SZZ_COMMIT_LISTS = ("required", "acceptable_related", "related_origins"
 #: The keys of a fault or fix location that hold a statement (GE104, issue #237).
 LOCATION_STATEMENT_KEYS = ("statement", "added_statement", "removed_statement", "missing_statement")
 
+#: Where generation takes the subject and the author date of ``inherit_message`` /
+#: ``inherit_author_date`` from: the first of these that is a commit id
+#: (``graph_generator._rewrite_source_id``), GE074 (issue #179).
+INHERIT_SOURCE_KEYS = ("rebase_of", "cherry_pick_of", "backport_of")
+#: What each inherit option makes the commit take from its source.
+INHERITED_FIELDS = {"inherit_message": "message", "inherit_author_date": "author_date"}
+
 
 def validate_graph_scenario_file(
     path: Path,
@@ -94,6 +101,10 @@ def validate_graph_scenario_file(
     data, result = load_graph_scenario(path)
     if data is None:
         return None, result
+    guard = classic_scenario_guard(data, path, "validate-graph")
+    if guard.has_errors():
+        # one finding that says what the file is and which command reads it, in place of GE001 (issue #155)
+        return data, ValidationResult([f for f in result.findings if f.code != "GE001"] + guard.findings)
     result.extend(validate_graph_static(data, scenario_path=path, strict_paths=strict_paths))
     if simulate and not result.has_errors():
         # what generation lets Git compute is checked by generating with Git (#94)
@@ -257,6 +268,8 @@ def validate_graph_static(data: dict[str, Any], *, scenario_path: Path | None = 
         for j, op in enumerate(operations):
             _validate_operation(op, result, f"{loc}.operations[{j}]", strict_paths=strict_paths)
 
+    _validate_source_options(commits, result)                                                             # issue #179
+    _warn_default_branch_without_commits(data, commits, result)                                           # issue #179
     check_scheduled_dates(data, result, code="GE071", graph=True)    # PR #236 review
     check_commit_date_order(data, result, code="GE073", timestamp_code="GE071", graph=True)    # issue #241
     check_git_control_files(data, result, code="GE063", written_fields=WRITTEN_PATH_FIELDS_BY_OPERATION)   # issue #164
@@ -320,6 +333,60 @@ def validate_graph_static(data: dict[str, Any], *, scenario_path: Path | None = 
     _warn_inferred_commit_level(data, result)
     _validate_context_sections(data, commit_by_id, result)
     return result
+
+
+def _validate_source_options(commits: list[Any], result: ValidationResult) -> None:
+    """GE074 / GE075: a commit option that copies from a source commit has one (issue #179).
+
+    Generation takes ``inherit_message`` / ``inherit_author_date`` from the
+    first of ``rebase_of``, ``cherry_pick_of`` and ``backport_of`` that is a
+    commit id, and the lines of ``cherry_pick_trailer`` from
+    ``cherry_pick_of`` / ``backport_of`` and every ``apply_patch_from``
+    operation (``_cherry_pick_trailer_sources``); a commit with none passed
+    ``validate-graph``, ``--simulate`` included, and stopped generation.  A
+    ``rebase_of`` list (a squash-rebase, GE046) is not a source: generation
+    said the commit had no ``rebase_of``.  Whether a source is an earlier
+    commit is GE043's and GE047's.
+    """
+    for i, commit in enumerate(commits):
+        if not isinstance(commit, dict):
+            continue
+        cid = commit["id"] if isinstance(commit.get("id"), str) else f"<commit[{i}]>"
+        loc = f"commits[{i}]"
+        flags = [key for key in INHERITED_FIELDS if commit.get(key)]        # read as generation reads them: bool()
+        if flags and not any(isinstance(commit.get(key), str) and commit.get(key) for key in INHERIT_SOURCE_KEYS):
+            options = " and ".join(flags)
+            if isinstance(commit.get("rebase_of"), list):
+                fields = " and ".join(INHERITED_FIELDS[flag] for flag in flags)
+                result.error("GE074", f"Commit '{cid}' sets {options}, but its rebase_of is a list (a squash-rebase), "
+                             "and generation inherits from one commit: a rebase_of, cherry_pick_of or backport_of that "
+                             f"is a commit id. Write the {fields} instead.", f"{loc}.{flags[0]}")
+            else:
+                result.error("GE074", f"Commit '{cid}' sets {options}, but has no rebase_of, cherry_pick_of or "
+                             "backport_of to inherit from.", f"{loc}.{flags[0]}")
+        if commit.get("cherry_pick_trailer"):
+            operations = commit.get("operations") if isinstance(commit.get("operations"), list) else []
+            sources = [commit.get("cherry_pick_of"), commit.get("backport_of"),
+                       *(op.get("commit") for op in operations if isinstance(op, dict) and op.get("type") == "apply_patch_from")]
+            if not any(isinstance(source, str) and source for source in sources):
+                result.error("GE075", f"Commit '{cid}' sets cherry_pick_trailer, but has no cherry_pick_of, backport_of "
+                             "or apply_patch_from operation to name in the trailer.", f"{loc}.cherry_pick_trailer")
+
+
+def _warn_default_branch_without_commits(data: dict[str, Any], commits: list[Any], result: ValidationResult) -> None:
+    """GW022: no commit is on ``repository.default_branch`` (issue #179).
+
+    ``git init`` names the unborn branch after it, and a branch is born with
+    its first commit: the generated repository had the other branches only,
+    and ``verify-graph`` passed.  A branch name that is not a string is
+    GE022's or GE035's.
+    """
+    default_branch = scenario_default_branch(data)
+    branches = [commit_branch(commit, default_branch) for commit in commits if isinstance(commit, dict)]
+    if isinstance(default_branch, str) and branches and default_branch not in branches:
+        result.warning("GW022", f"No commit is on the default branch '{default_branch}' (repository.default_branch, "
+                       "'main' without the key), so the generated repository will not have that branch.",
+                       "repository.default_branch")
 
 
 def _validate_operation(op: Any, result: ValidationResult, loc: str, *, strict_paths: bool) -> None:

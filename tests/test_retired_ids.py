@@ -69,7 +69,10 @@ def _bring_back(work: Path, sid: str, *, entry: bool = True) -> None:
         text = index.read_text(encoding="utf-8")
         start = text.index("- id: SZZ-0005\n")
         end = text.index("- id: ", start + 1)
-        index.write_text(text + text[start:end].replace("SZZ-0005", sid), encoding="utf-8")
+        # in id order, as new-scenario and the Scenario Editor keep the entries (IW048, issue #158)
+        at = next((m.start() for m in re.finditer(r"^- id: (\S+)$", text, flags=re.MULTILINE) if m.group(1) > sid),
+                  len(text))
+        index.write_text(text[:at] + text[start:end].replace("SZZ-0005", sid) + text[at:], encoding="utf-8")
 
 
 def _findings(work: Path) -> list[tuple[str, str]]:

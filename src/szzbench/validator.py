@@ -530,6 +530,39 @@ def graph_scenario_guard(data: dict[str, Any], path: Path, command: str) -> Vali
     return result
 
 
+#: The classic command that does what each graph command does (issue #155).
+CLASSIC_COMMANDS = {graph: classic for classic, graph in GRAPH_COMMANDS.items()}
+
+
+def classic_scenario_guard(data: dict[str, Any], path: Path, command: str) -> ValidationResult:
+    """GE003: a classic scenario handed to a graph command (issue #155), the mirror of E003.
+
+    ``validate-graph`` reported GE001 and went on to check the file against
+    the graph schema (GE013, GW014, GE048, GW120), ``generate-graph`` said
+    "Run 'szzbench validate-graph'", and ``verify-graph`` compared the
+    repository with a graph the scenario does not have; none named the
+    classic command.  A file is a classic scenario when its
+    ``schema_version`` is a string without ``graph`` (GE001's rule; every
+    shipped one declares ``"1.0"``) and it is not named
+    ``scenario.graph.yml``, or when it has no ``schema_version`` and is named
+    ``scenario.yml``.  A graph scenario that declares a wrong version in its
+    own ``scenario.graph.yml``, a non-string ``schema_version``, and none in
+    a file of another name keep GE001 and the graph checks.  No file is both
+    a graph scenario to E003 and a classic one here.
+    """
+    result = ValidationResult()
+    schema_version = data.get("schema_version")
+    if isinstance(schema_version, str) and "graph" not in schema_version and path.name != "scenario.graph.yml":
+        reason = f"its schema_version is '{schema_version}'"
+    elif schema_version is None and path.name == "scenario.yml":
+        reason = "it is named scenario.yml and has no schema_version"
+    else:
+        return result
+    result.error("GE003", f"{path.as_posix()} is a classic scenario ({reason}), and `szzbench {command}` reads only graph "
+                 f"scenarios. Run `szzbench {CLASSIC_COMMANDS[command]}` instead.", "schema_version")
+    return result
+
+
 def validate_scenario_file(
     path: Path,
     *,
@@ -1308,6 +1341,50 @@ def _lint_fault_line_integrity(
 
 # --- index consistency ------------------------------------------------------
 
+def load_index(index_path: Path) -> tuple[dict[str, Any] | None, str | None]:
+    """``index_path`` as loaded, or None and why it cannot be read, in words that name the index (issue #158).
+
+    ``load_yaml`` words its messages for a scenario file, and ``validate-index``
+    (IE001) and the builders passed them on: an empty ``index.yml`` read "The
+    root of scenario.yml must be a mapping/object", and a missing one "Cannot
+    read scenario file: [Errno 2] ...".
+    """
+    name = index_path.name
+    try:
+        raw = index_path.read_bytes()
+    except FileNotFoundError:
+        return None, f"{name} does not exist."
+    except OSError as exc:
+        return None, f"Cannot read {name}: {exc.strerror or exc}."
+    if not raw.strip():
+        return None, f"{name} is empty."
+    data, result = load_yaml(index_path)
+    if data is not None:
+        return data, None
+    finding = result.findings[0]
+    if finding.code == "E002":
+        return None, f"The root of {name} must be a mapping/object."
+    return None, finding.message        # E000 (not UTF-8) and E001 (YAML) name no scenario file
+
+
+def _index_readme_problem(readme: Any, repository_root: Path) -> str | None:
+    """Why an index entry's ``readme`` names no README ``validate-index`` can see, or None (issue #158).
+
+    ``Path.is_file`` raises ``PermissionError`` and the other ``OSError``s on
+    Python 3.10-3.13 (3.14 returns False), and ``ValueError`` for a NUL byte, so
+    an entry pointing into a directory without search permission ended
+    ``validate-index`` in a traceback (PR #261 review).
+    """
+    if not isinstance(readme, str) or not readme:
+        return "names no file"
+    try:
+        if (repository_root / readme).is_file():
+            return None
+    except (OSError, ValueError) as exc:
+        return f"cannot be checked ({getattr(exc, 'strerror', None) or exc})"
+    return "names no file"
+
+
 def validate_index_file(index_path: Path, root: Path, scenario_filename: str) -> ValidationResult:
     """Check one index.yml against the scenario directories under ``root``.
 
@@ -1316,10 +1393,9 @@ def validate_index_file(index_path: Path, root: Path, scenario_filename: str) ->
     """
     result = ValidationResult()
     prefix = index_path.as_posix()
-    data, load_result = load_yaml(index_path)
+    data, problem = load_index(index_path)
     if data is None:
-        for finding in load_result.findings:
-            result.error("IE001", f"Cannot load index: {finding.message}", prefix)
+        result.error("IE001", f"Cannot load index: {problem}", prefix)
         return result
     entries = data.get("scenarios")
     if not isinstance(entries, list):
@@ -1329,11 +1405,17 @@ def validate_index_file(index_path: Path, root: Path, scenario_filename: str) ->
         result.error("IE003", f"Scenario root '{root.as_posix()}' is not a directory.", prefix)
         return result
     count = data.get("scenario_count")
-    if count is not None and count != len(entries):
+    if count is not None and (not isinstance(count, int) or isinstance(count, bool)):
+        # '146' != 146, and IE010 printed both as 146 (issue #158)
+        result.error("IE011", f"scenario_count must be an integer, not {type_label(count)} {count!r}.", f"{prefix}:scenario_count")
+    elif count is not None and count != len(entries):
         result.error("IE010", f"scenario_count is {count}, but the index lists {len(entries)} entries.", f"{prefix}:scenario_count")
 
     expected_rel = lambda sid: f"{root.name}/{sid}/{scenario_filename}"  # noqa: E731
+    # the entries' paths are relative to the directory that holds the root (IW023)
+    repository_root = root.absolute().parent
     seen: set[str] = set()
+    previous_id: str | None = None
     retired = read_retired_ids(root)
     for i, entry in enumerate(entries):
         loc = f"{prefix}:scenarios[{i}]"
@@ -1345,6 +1427,12 @@ def validate_index_file(index_path: Path, root: Path, scenario_filename: str) ->
             result.error("IE021", f"Duplicate index entry '{sid}'.", f"{loc}.id")
             continue
         seen.add(sid)
+        if previous_id is not None and sid < previous_id:
+            # the builders append a new entry at the end, and the Scenario Editor
+            # inserts one, in id order (issue #111); nothing kept the order (issue #158)
+            result.warning("IW048", f"Index entry '{sid}' comes after '{previous_id}'; the index lists its entries "
+                           "in id order.", f"{loc}.id")
+        previous_id = sid
         if sid in retired:
             # A withdrawn scenario leaves a gap that stays one (issue #112).
             result.error("IE047", f"Index entry '{sid}' uses a retired id (docs/retired-ids.md); ids are never reused.", f"{loc}.id")
@@ -1355,6 +1443,13 @@ def validate_index_file(index_path: Path, root: Path, scenario_filename: str) ->
         path_value = entry.get("path")
         if isinstance(path_value, str) and Path(path_value).as_posix() != expected_rel(sid):
             result.warning("IW023", f"Index entry '{sid}' path is '{path_value}', expected '{expected_rel(sid)}'.", f"{loc}.path")
+        if "readme" in entry:
+            # the graph index names every scenario's README; nothing looked at it (issue #158)
+            readme = entry["readme"]
+            problem = _index_readme_problem(readme, repository_root)
+            if problem is not None:
+                result.error("IE024", f"Index entry '{sid}' readme {readme!r} {problem} (expected "
+                             f"'{root.name}/{sid}/README.md').", f"{loc}.readme")
         scenario_data, scenario_load = load_yaml(scenario_file)
         if scenario_data is None:
             detail = "; ".join(f.message for f in scenario_load.findings)

@@ -478,6 +478,12 @@ For commits that declare `rebase_of` (or `cherry_pick_of` / `backport_of`).
   default, which reproduces the `author date < committer date` pattern of a
   real rebase.
 * Defaults: both `false` (nothing inherited, as before).
+* The source is the first of `rebase_of`, `cherry_pick_of` and `backport_of`
+  that is a commit id. A `rebase_of` list (a squash-rebase) is not a source,
+  since it names several commits: a commit that sets either option and has no
+  source is refused by `validate-graph` (GE074), which says so for a list.
+  Generation used to stop at such a commit, and for a list its message said
+  that the commit had no `rebase_of` (issue #179).
 * `commit-map.json` records `inherits: {source, source_hash, message,
   author_date, subject?}`.
 
@@ -508,6 +514,11 @@ or `feature` beside `feature/x`, is an error (GE024), since macOS made one
 branch of the first pair and Git refuses the second. The generators check
 both rules before `git init`, so a name never reaches `git branch -M` or
 `git checkout -B`.
+
+`git init` names the unborn branch after the default branch, and a branch is
+born with its first commit. A scenario none of whose commits is on the default
+branch therefore generates a repository without it; `validate-graph` warns
+(GW022, issue #179).
 
 The generator keeps one branch per `branch` name, and **a branch's tip is the
 last commit declared on it**. A commit whose branch does not exist yet creates
@@ -610,7 +621,9 @@ valid for `commit-map.json`, but tools that walk from refs will not see them.
 
 Appends `(cherry picked from commit <hash>)` as a body line, like
 `git cherry-pick -x`. Sources are `cherry_pick_of`/`backport_of` and every
-`apply_patch_from` operation of the commit (one line each). The subject stays
+`apply_patch_from` operation of the commit (one line each). A commit with
+none of them has nothing to name, and `validate-graph` refuses it (GE075);
+generation used to be the first to stop (issue #179). The subject stays
 exactly `message`, so the verifier's subject check is unaffected. Default:
 `false`. The body is recorded in `commit-map.json` under `body`.
 
@@ -849,9 +862,12 @@ A generation that fails writes no manifest: it writes `generation.log` and
 the first two when the verification failed.
 
 An output is **stale** when it has no manifest -- an interrupted generation,
-or one made before 2026-09-29 -- or when its scenario file or the generator's
-code has changed since it was generated; for a run with verification, an
-unverified output is stale too. Any edit to the scenario file counts, metadata
+or one made before 2026-09-29 --, when its manifest cannot be read or parsed or
+holds no JSON object (the reason says so: "its manifest
+(metadata/manifest.json) is unreadable: ..."; it used to read as no manifest,
+issue #171), or when its scenario file or the generator's code has changed
+since it was generated; for a run with verification, an unverified output is
+stale too. Any edit to the scenario file counts, metadata
 included, because the output carries a copy of the scenario and the adapters
 read the bug-fixing commits from it. The validation, verification and
 reporting modules the generators also import are left out of the fingerprint:
@@ -902,7 +918,10 @@ after a tool has worked in it, regenerate it (`generate-graph --force`, or
 
 - `generate-all-repos` regenerates a stale output instead of skipping it and
   prints why ("Regenerated ... the old output was stale: ..."). An up-to-date
-  output is still skipped. Until 2026-09-29 an output counted as done as soon
+  output is still skipped. With verification, an output whose
+  `metadata/verify-result.json` is missing or unreadable is regenerated too:
+  `generate-all-repos` reports, and `--strict` judges, the verification each
+  output recorded (issue #169). Until 2026-09-29 an output counted as done as soon
   as `repo/.git` existed: an edited scenario kept its old repository, and a
   generation that failed half way -- a `repo/.git` with no commits -- was
   reported as Skipped.
