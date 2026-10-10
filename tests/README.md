@@ -12,7 +12,7 @@ Without these tools, the tests that need them are skipped. `pytest -rs` lists ev
 
 ## CI
 
-`.github/workflows/tests.yml` runs on every push to `main`. Pull request CI and its required status checks are temporarily paused. It does two things:
+`.github/workflows/tests.yml` runs on every push to `main`, and a later push does not cancel the run of an earlier one; on a pull request, a new commit cancels the run of the commit before it (issue #205). Pull request CI and its required status checks are temporarily paused. It does two things:
 
 - **Runs the whole suite** on Linux, using `pytest -rs`, in two jobs:
   - Python 3.14 with the current Git of the `ubuntu-latest` runner;
