@@ -7,6 +7,12 @@
 # --ref-format=files only from Git 2.45.  The two pytest jobs take both ways:
 # the current Python with the runner's current Git, and the oldest Python
 # pyproject.toml declares with Debian 12's Git 2.39.
+#
+# Each push to main has a run of its own, which no later push cancels: the
+# concurrency group of a push names its commit.  On a pull request, a new commit
+# still cancels the run of the one before (issue #205).  A group shared by every
+# push to main, without cancelling, would not do: GitHub keeps one pending run
+# per group, so a third push in a row would cancel the second one's.
 name: tests
 
 on:
@@ -18,8 +24,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: tests-${{ github.ref }}
-  cancel-in-progress: true
+  group: tests-${{ github.ref }}-${{ github.event_name == 'push' && github.sha || '' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   pytest-current:
