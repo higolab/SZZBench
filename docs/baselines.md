@@ -25,15 +25,22 @@ Ordered by how much of the repository each one reads.
 ## What a predictor sees
 
 A predictor is handed the **materialized Git history**, not the scenario file:
-the commits of `git rev-list --all --topo-order --reverse`, each with the
-author and subject Git records. That order is deterministic and puts a parent
-before its children, and it includes the commits `commit_generator` expands,
-which never appear in a scenario's `commits:` list — SZZG-0114 has five of
-those entries and 1005 real commits. Messages likewise come from Git, so a
-rebased commit that inherits its source's subject is read with that subject.
+a `History` holding the commits of `git rev-list --all --topo-order --reverse`,
+each with its hash and the author and subject Git records, the hashes of the
+bug-fixing commits, and the repository to run Git in. That order is
+deterministic and puts a parent before its children, and it includes the
+commits `commit_generator` expands, which never appear in a scenario's
+`commits:` list — SZZG-0114 has five of those entries and 1005 real commits.
+Messages likewise come from Git, so a rebased commit that inherits its source's
+subject is read with that subject.
 
 A predictor names a commit by its **hash**; mapping a hash back to a logical id
-is the evaluator's job, which is also what a real tool run does.
+is the evaluator's job, which is also what a real tool run does. The logical
+ids of `commit-map.json` and the scenario's id, category, `tier` and `defeats`
+stay with the runner, which uses them to choose the `position-k` rules, to
+report per category and to check the declarations against the measurement. No
+rule is handed them (issue #190), and `tests/test_baselines.py` fails if one of
+them is added to what a rule receives.
 
 The `metadata` family enumerates one rule per author in the suite and reports
 each separately. An attacker picks **one** rule and applies it everywhere;
@@ -58,7 +65,7 @@ correct answer there. Everywhere else it scores nothing.
 
 ## Measured on the shipped suite
 
-279 generated scenarios, measured 2026-09-28 (after the history-rewriting scenarios of
+279 generated scenarios, measured 2026-09-29 (after the history-rewriting scenarios of
 issue #22, SZZG-0122–0129, the tool-visible-context scenarios of issue #23, SZZG-0130–0134,
 the Python scenarios of issue #24, SZZ-0200–0206, and its root-commit-contract and
 policy-family scenarios, SZZG-0135–0142, the two configuration scenarios that closed
@@ -233,7 +240,11 @@ not more scenarios of the current shape.
 `--json` and `--out DIR` (which writes `baselines.json` and `baselines.md`)
 report, per baseline, the scenarios it solved, plus the union across families,
 the scenarios nothing solves, and a per-category breakdown. The exit code is
-non-zero only when a scenario or commit map could not be read.
+non-zero when the report lists any error, each printed as `[ERROR]`: a scenario,
+commit map or generated history that could not be read, a generated output that
+is stale (#93), or a Git call that failed. It is also non-zero when no generated
+repository could be scored at all (`BASELINES_FAILED`). A warning, such as a
+generated output whose scenario was retired, leaves it at zero.
 
 ## The two tiers
 
@@ -333,8 +344,8 @@ the argument is short:
 - **An empty oracle is always solved by `abstain`.** `expect_no_bic` passes
   exactly when the prediction is empty, which is what `abstain` predicts.
 
-Measured on the shipped suite: all 218 one-commit oracles are solved by some
-`position-k`, both empty oracles by `abstain`, and every one of those 220
+Measured on the shipped suite: all 216 one-commit oracles are solved by some
+`position-k`, both empty oracles by `abstain`, and every one of those 218
 scenarios is declared `control`.
 `tests/test_second_mechanism.py::test_only_a_multi_commit_oracle_can_discriminate`
 fails the build if a scenario ever declares otherwise.
@@ -378,7 +389,8 @@ only shrink by adding scenarios whose oracle names more than one commit:
 | SZZ-0220 | S3 | the fix also drops a deprecated alias, so blame returns `{c0, c1, c2, c3}` against an answer of `{c1, c3}` and a tool has to reject **two** commits |
 | SZZG-0149 | G4 | three causes on three branches under `partial_credit` with a threshold of two, of which the fix's deleted line reaches one |
 
-S3 is now 39/42 and G4 27/30. SZZG-0149 earned its final shape from the check
+S3 is now 38/41 (39/42 until SZZ-0082 was retired in #90) and G4 27/30.
+SZZG-0149 earned its final shape from the check
 rather than from the design: written with a two-file fix and no commit between
 the last cause and the fix, the **shape** rule named the newest commit to touch
 each of those files — two of the three required commits, exactly the threshold —
@@ -496,6 +508,11 @@ gap. It replaces the 2026-09-17 review's merge/delete list (issue #12), whose
 szzbench coverage --out studies/coverage
 ```
 
+`--out DIR` writes `coverage.json` and `coverage.md`. The exit code follows the
+rule of `szzbench baselines` (see [Output](#output)): non-zero when the report
+lists any `[ERROR]`, including a scenario it cannot read for coverage, and when
+nothing could be scored (`COVERAGE_FAILED`).
+
 | dimension | meaning |
 |---|---|
 | `oracle_size` | how many commits the answer contains |
@@ -510,20 +527,21 @@ szzbench coverage --out studies/coverage
 direct BIC are read the same way a scored run reads them. `bic_depth` measures
 the **farthest** required BIC — the deepest commit a tool has to reach.
 
-Measured on the shipped suite (279 scenarios):
+Measured on the shipped suite (279 scenarios), `szzbench coverage` prints:
 
 ```text
-tier                   control:233, discriminating:46
-blame_class            addition-only:16, empty-first-parent:1, exact:155, extra:18, miss:89
-oracle_size            0:2, 1:216, 2:58, 3:3
-bic_depth              1:104, 2:108, 3:50, 4:9, 5:3, 6:2, 1003:1, none:2
-fault_file_distractors 0:15, 1:115, 2:103, 3:32, 4:12, 5:2
-commit_count           2:3, 3:59, 4:108, 5:74, 6:25, 7:7, 8:2, 1005:1
-ref_count              1:224, 2:49, 3:5, 4:1
-
-131 distinct signatures; 48 groups of two or more, covering 196 scenarios
+  distribution of each difficulty dimension
+      tier                   control:233, discriminating:46
+      blame_class            addition-only:16, empty-first-parent:1, exact:155, extra:18, miss:89
+      oracle_size            0:2, 1:216, 2:58, 3:3
+      bic_depth              1:104, 2:108, 3:50, 4:9, 5:3, 6:2, 1003:1, none:2
+      fault_file_distractors 0:15, 1:115, 2:103, 3:32, 4:12, 5:2
+      commit_count           2:3, 3:59, 4:108, 5:74, 6:25, 7:7, 8:2, 1005:1
+      ref_count              1:224, 2:49, 3:5, 4:1
 ```
 
+Further down, it prints
+`131 distinct signatures; 48 group(s) of two or more, covering 196 scenarios`.
 The largest groups are 29 S3, 13 S1, 9 S4, 8 S2 and 8 G1 scenarios that agree
 on every dimension; 83 scenarios have a signature of their own (`bic_depth`
 is `none` for the two empty oracles).
@@ -549,14 +567,16 @@ measured before the grading of 2026-09-22. Since then `difficulty` has a
 `decisions/vocabulary.md` §4): the graph suite was graded from it (93 `easy`,
 10 `medium`, 33 `hard`, from `advanced` throughout), the eight classic
 scenarios below their floor were raised (SZZ-0203 to `medium`; SZZ-0081,
-0082, 0083, 0136, 0204, 0205, 0206 to `hard`), and the 40 classic scenarios
-above their floor keep the author's grade as an override. Three were added
-after the grading: SZZ-0214, whose fix is addition-only, floor `medium`,
-declared `hard` because its README names the ghost fix as the failure mode; and
-SZZ-0218 and SZZ-0220, whose blame class is `extra`, floor `medium`, each
-declared `hard` in a `## Difficulty` section saying that the difficulty is in
-rejecting a commit blame hands over rather than in reaching one. The same run
-reports the check: **0 below the floor, 40 above, 0 ungraded.**
+0082, 0083, 0136, 0204, 0205, 0206 to `hard`), and the 38 classic scenarios
+above their floor kept the author's grade as an override. The current run lists
+40 overrides, all classic: SZZ-0120, one of the 38, was retired in #90, and
+three of the 40 were added after the grading — SZZ-0214, whose fix is
+addition-only, floor `medium`, declared `hard` because its README names the
+ghost fix as the failure mode; and SZZ-0218 and SZZ-0220, whose blame class is
+`extra`, floor `medium`, each declared `hard` in a `## Difficulty` section
+saying that the difficulty is in rejecting a commit blame hands over rather than
+in reaching one. The same run reports the check: **0 below the floor, 40 above,
+0 ungraded.**
 
 The same run prints the **fault statement reuse** block (issue #13), which
 counts how many scenarios declare each fault statement (`fault.statement`,
@@ -614,8 +634,12 @@ limit of the proxy, not a claim that they are redundant.
 
 Add a predictor to `src/szzbench/baselines.py` and register it in
 `build_predictors` as a `Baseline(name, family, description, predict)`, with the
-family whose inputs it stays within. A predictor returns commit **hashes**; the
-runner turns them into `Prediction` records and hands them to
-`evaluate_prediction_map`, so nothing in a baseline decides what counts as a
-correct answer. Leave `scores_on_abstention` at `False` unless the rule *is*
-silence — see [Saying nothing](#saying-nothing).
+family whose inputs it stays within. A predictor takes a `History` (see
+[What a predictor sees](#what-a-predictor-sees)) and returns commit **hashes**;
+a rule that works from each fix in turn also sets `attribute`, which takes the
+same `History` and returns `(fix hash, commit hash)` pairs. Nothing outside the
+`History` is any family's input, so a rule does not open the scenario file or
+the commit map beside the repository either. The runner turns the hashes into
+`Prediction` records and hands them to `evaluate_prediction_map`, so nothing in
+a baseline decides what counts as a correct answer. Leave `scores_on_abstention`
+at `False` unless the rule *is* silence — see [Saying nothing](#saying-nothing).

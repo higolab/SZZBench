@@ -17,6 +17,7 @@ from szzbench.baselines import (
     FAMILIES,
     CommitInfo,
     GitProbe,
+    History,
     Scenario,
     _all_non_bfc,
     _at_index,
@@ -32,51 +33,51 @@ from szzbench.graph_generator import generate_graph_repository
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
-def _scenario(subjects=None, authors=None, bfc="h3") -> Scenario:
+def _history(subjects=None, authors=None, bfc="h3") -> History:
     """A four-commit history, named by hash as the predictors see it."""
     subjects = subjects or {
         "h0": "add the range check", "h1": "make the range check exclusive",
         "h2": "document the range check", "h3": "accept the bounds again"}
     authors = authors or {"h0": "A <a@x>", "h1": "B <b@x>", "h2": "A <a@x>", "h3": "C <c@x>"}
-    return Scenario(
-        scenario_id="SZZG-9000", suite="graph", category="G1", tier="control",
-        commits=[CommitInfo(hash=h, logical_id=f"c{i}", author=authors[h], subject=subjects[h])
-                 for i, h in enumerate(["h0", "h1", "h2", "h3"])],
+    return History(
+        commits=[CommitInfo(hash=h, author=authors[h], subject=subjects[h]) for h in ["h0", "h1", "h2", "h3"]],
         bfc_hashes={bfc}, repo_dir=Path("/nonexistent"),
     )
 
 
 def test_position_predictors_read_only_the_order():
-    scenario = _scenario()
-    assert _at_index(0)(scenario) == ["h0"]
-    assert _at_index(1)(scenario) == ["h1"]
-    assert _at_index(9)(scenario) == []
-    assert _before_bfc(scenario) == ["h2"]
-    assert _all_non_bfc(scenario) == ["h0", "h1", "h2"]
+    history = _history()
+    assert _at_index(0)(history) == ["h0"]
+    assert _at_index(1)(history) == ["h1"]
+    assert _at_index(9)(history) == []
+    assert _before_bfc(history) == ["h2"]
+    assert _all_non_bfc(history) == ["h0", "h1", "h2"]
 
     # a fix in first position has no predecessor
-    assert _before_bfc(_scenario(bfc="h0")) == []
+    assert _before_bfc(_history(bfc="h0")) == []
 
 
 def test_author_predictor_returns_every_commit_of_that_author():
-    scenario = _scenario()
-    assert _by_author("A <a@x>")(scenario) == ["h0", "h2"]
-    assert _by_author("B <b@x>")(scenario) == ["h1"]
-    assert _by_author("nobody")(scenario) == []
+    history = _history()
+    assert _by_author("A <a@x>")(history) == ["h0", "h2"]
+    assert _by_author("B <b@x>")(history) == ["h1"]
+    assert _by_author("nobody")(history) == []
 
 
 def test_message_predictor_uses_its_own_vocabulary_and_skips_the_fix():
-    scenario = _scenario(subjects={
+    history = _history(subjects={
         "h0": "add the range check",
         "h1": "introduce context-sensitive bug",     # hyphenated: the lint pattern misses it
         "h2": "keep the faulty line for now",        # no "bug" at all
         "h3": "fix the bug",                          # the fix may say so
     })
-    assert _message_admits_fault(scenario) == ["h1", "h2"]
+    assert _message_admits_fault(history) == ["h1", "h2"]
 
 
 def test_every_predictor_declares_a_known_family():
-    predictors = build_predictors([_scenario()], GitProbe())
+    record = Scenario(scenario_id="SZZG-9000", suite="advanced-scenarios", category="G1", tier="control",
+                      history=_history(), logical_ids={})
+    predictors = build_predictors([record], GitProbe())
     names = [b.name for b in predictors]
     assert len(names) == len(set(names)), "baseline names must be unique"
     assert {b.family for b in predictors} <= set(FAMILIES)
@@ -216,7 +217,7 @@ def test_commits_expanded_by_commit_generator_are_visible(tmp_path):
     git = GitProbe()
     scenarios, _ = _load_scenarios(tmp_path / "repos", tmp_path, tmp_path / "advanced-scenarios",
                                    "default", git)
-    ids = [c.logical_id for c in scenarios[0].commits]
+    ids = [scenarios[0].logical_ids.get(h) for h in scenarios[0].history.hashes]
     assert ids == ["c0", "c1.g1", "c1.g2", "c1", "c2"], ids
     assert by_name["position-1"]["passed"] == 0, "c1.g1 is the second commit, not the BIC"
     assert by_name["position-before-fix"]["passed"] == 1
@@ -269,9 +270,48 @@ def test_an_inherited_message_is_what_the_message_predictor_reads(tmp_path):
     git = GitProbe()
     scenarios, _ = _load_scenarios(tmp_path / "repos", tmp_path, tmp_path / "advanced-scenarios",
                                    "default", git)
-    subjects = {c.logical_id: c.subject for c in scenarios[0].commits}
+    subjects = {scenarios[0].logical_ids.get(c.hash): c.subject for c in scenarios[0].history.commits}
     assert subjects["r1"] == "introduce the boundary bug", subjects
     assert git.failures == []
+
+
+def test_a_rule_is_handed_the_history_and_nothing_the_scenario_declares(tmp_path, monkeypatch):
+    """What the runner hands a rule carries no logical id, tier, category or `defeats` (issue #190).
+
+    Every predictor and attributor is wrapped, so a field added back fails here
+    whichever rule would read it; the fields are listed, not excluded.
+    """
+    import dataclasses
+
+    import szzbench.baselines as baselines
+
+    _generate(tmp_path, "SZZG-9005", _range_commits(), _range_bugs())
+    handed = []
+
+    def recording(rule):
+        def call(view):
+            handed.append(view)
+            return rule(view)
+        return call
+
+    build = baselines.build_predictors
+
+    def build_recording(*args, **kwargs):
+        rules = build(*args, **kwargs)
+        for rule in rules:
+            rule.predict = recording(rule.predict)
+            if rule.attribute is not None:
+                rule.attribute = recording(rule.attribute)
+        return rules
+
+    monkeypatch.setattr(baselines, "build_predictors", build_recording)
+    report = _run(tmp_path)
+    assert report["errors"] == [] and report["scenario_count"] == 1
+    assert handed
+    for view in handed:
+        assert [f.name for f in dataclasses.fields(view)] == ["commits", "bfc_hashes", "repo_dir"]
+        for commit in view.commits:
+            assert [f.name for f in dataclasses.fields(commit)] == ["hash", "author", "subject"]
 
 
 def test_a_failing_git_call_is_reported_rather_than_counted_as_no_prediction(tmp_path):
@@ -399,11 +439,11 @@ def test_the_restriction_keeps_every_passing_rule(tmp_path):
                                                           tmp_path / "advanced-scenarios"))
 
     passing: dict[str, set[int]] = {s.scenario_id: set() for s in scenarios}
-    longest = max(len(s.commits) for s in scenarios)
+    longest = max(len(s.history.commits) for s in scenarios)
     for index in range(longest):
         predictor = _at_index(index)
         predictions = {s.scenario_id: [Prediction(scenario_id=s.scenario_id, inducing_commit=h)
-                                       for h in predictor(s)] for s in scenarios}
+                                       for h in predictor(s.history)] for s in scenarios}
         report = evaluate_prediction_map(
             {k: v for k, v in predictions.items() if v},
             generated_root=tmp_path / "repos", scenarios_root=tmp_path,
@@ -509,7 +549,7 @@ def test_silence_is_credited_only_to_the_abstain_rule(tmp_path):
                                                                    tmp_path / "advanced-scenarios")):
         if baseline.scores_on_abstention:
             continue
-        quiet = {s.scenario_id for s in scenarios if not list(baseline.predict(s))}
+        quiet = {s.scenario_id for s in scenarios if not list(baseline.predict(s.history))}
         assert not (quiet & solved_by[baseline.name]), \
             f"{baseline.name} was credited without predicting: {sorted(quiet & solved_by[baseline.name])}"
 
@@ -521,10 +561,10 @@ def test_silence_is_credited_only_to_the_abstain_rule(tmp_path):
     # and no index whose prediction passes is pruned from the enumeration
     retained = set(position_indices(scenarios, _answer_hashes(scenarios, tmp_path,
                                                              tmp_path / "advanced-scenarios")))
-    for index in range(max(len(s.commits) for s in scenarios)):
+    for index in range(max(len(s.history.commits) for s in scenarios)):
         predictor = _at_index(index)
         predictions = {s.scenario_id: [Prediction(scenario_id=s.scenario_id, inducing_commit=h)
-                                       for h in predictor(s)] for s in scenarios}
+                                       for h in predictor(s.history)] for s in scenarios}
         predictions = {k: v for k, v in predictions.items() if v}
         if not predictions:
             continue

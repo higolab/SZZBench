@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
-from .baselines import GitProbe, Scenario, _bfc_hashes, _load_scenarios, blame_deleted_lines
+from .baselines import GitProbe, History, Scenario, _bfc_hashes, _load_scenarios, blame_deleted_lines
 from .evaluator import _commit_level_policy, _load_scenario_for_evaluation, classify_diff_text
 
 #: What plain first-parent blame on the lines the fix deletes does with the
@@ -35,6 +35,10 @@ DIFFICULTIES = ("easy", "medium", "hard")
 #: test different failure modes apart even when their shape agrees.
 SIGNATURE_FIELDS = ("suite", "category", "oracle_size", "bic_depth",
                     "fault_file_distractors", "commit_count", "ref_count")
+
+#: How the report spells a dimension with no value, such as the ``bic_depth``
+#: of an empty oracle, in ``coverage.md`` and ``coverage.json`` alike (issue #185).
+NO_VALUE = "none"
 
 
 @dataclass
@@ -154,7 +158,7 @@ def _fault_reuse(shapes: list[ScenarioShape]) -> dict[str, Any]:
     }
 
 
-def _blame_class(scenario: Scenario, git: GitProbe, required_hashes: set[str]) -> str | None:
+def _blame_class(history: History, git: GitProbe, required_hashes: set[str]) -> str | None:
     """Classify what naive blame does with this scenario's oracle.
 
     ``empty-first-parent``: no bug-fixing commit changes anything against its
@@ -166,19 +170,19 @@ def _blame_class(scenario: Scenario, git: GitProbe, required_hashes: set[str]) -
     besides, ``miss`` when a required commit is not blamed at all.  An empty
     oracle (``expect_no_bic``) with any blamed commit is ``extra``.
     """
-    bfcs = _bfc_hashes(scenario)
+    bfcs = _bfc_hashes(history)
     if not bfcs:
         return None
     # The first parent, or the empty tree for a root fix: a root commit has no
     # ``<hash>^``, and a failed Git call must not read as an empty merge diff.
-    shapes = [classify_diff_text(git(scenario.repo_dir, "diff", "--no-color", "--no-ext-diff", "-U0",
-                                     "--no-renames", git.parent_of(scenario.repo_dir, bfc), bfc))
+    shapes = [classify_diff_text(git(history.repo_dir, "diff", "--no-color", "--no-ext-diff", "-U0",
+                                     "--no-renames", git.parent_of(history.repo_dir, bfc), bfc))
               for bfc in bfcs]
     if all(shape == "empty_first_parent" for shape in shapes):
         return "empty-first-parent"
     if all(shape in ("empty_first_parent", "addition_only") for shape in shapes):
         return "addition-only"
-    blamed = set(blame_deleted_lines(git, scenario))
+    blamed = set(blame_deleted_lines(git, history))
     if blamed == required_hashes:
         return "exact"
     if required_hashes <= blamed:
@@ -189,23 +193,24 @@ def _blame_class(scenario: Scenario, git: GitProbe, required_hashes: set[str]) -
 def _shape(scenario: Scenario, data: dict[str, Any], git: GitProbe) -> ScenarioShape:
     required = _oracle_ids(data, scenario.suite)
     files = _fault_files(data)
-    order = scenario.hashes
+    history = scenario.history
+    order = history.hashes
     index_of = {h: i for i, h in enumerate(order)}
-    bfc_positions = [index_of[h] for h in scenario.bfc_hashes if h in index_of]
+    bfc_positions = [index_of[h] for h in history.bfc_hashes if h in index_of]
     last_bfc = max(bfc_positions) if bfc_positions else len(order) - 1
-    hash_of_id = {c.logical_id: c.hash for c in scenario.commits if c.logical_id}
+    hash_of_id = scenario.hash_of_id
     bic_positions = [index_of[hash_of_id[r]] for r in required if r in hash_of_id]
 
     # How many *wrong* answers a blame-style tool has to choose between: commits
     # before the fix that touch a file the fault lives in and are not the answer.
     required_hashes = {hash_of_id[r] for r in required if r in hash_of_id}
     distractors = 0
-    for position, commit in enumerate(scenario.commits):
-        if position >= last_bfc or commit.hash in scenario.bfc_hashes or commit.hash in required_hashes:
+    for position, commit in enumerate(history.commits):
+        if position >= last_bfc or commit.hash in history.bfc_hashes or commit.hash in required_hashes:
             continue
-        if set(git.paths_touched(scenario.repo_dir, commit.hash)) & files:
+        if set(git.paths_touched(history.repo_dir, commit.hash)) & files:
             distractors += 1
-    refs = [r for r in git(scenario.repo_dir, "for-each-ref", "--format=%(refname)").splitlines() if r]
+    refs = [r for r in git(history.repo_dir, "for-each-ref", "--format=%(refname)").splitlines() if r]
     meta = data.get("meta") if isinstance(data.get("meta"), dict) else {}
     return ScenarioShape(
         scenario_id=scenario.scenario_id,
@@ -213,7 +218,7 @@ def _shape(scenario: Scenario, data: dict[str, Any], git: GitProbe) -> ScenarioS
         category=scenario.category,
         tier=meta.get("tier"),
         difficulty=str(meta["difficulty"]) if meta.get("difficulty") is not None else None,
-        blame_class=_blame_class(scenario, git, required_hashes),
+        blame_class=_blame_class(history, git, required_hashes),
         commit_count=len(order),
         ref_count=len(refs),
         oracle_size=len(required),
@@ -263,6 +268,19 @@ def _difficulty_by_blame_class(shapes: list[ScenarioShape]) -> dict[str, dict[st
             for suite, by_class in sorted(table.items())}
 
 
+def _distribution(values: Iterable[Any]) -> dict[Any, int]:
+    """How many scenarios take each value: integers in numeric order, then
+    strings, then the missing value as :data:`NO_VALUE`.
+
+    Ordering by the string form put ``1003`` between ``1`` and ``2``, and the
+    missing value came out as ``None`` in ``coverage.md`` and ``null`` in
+    ``coverage.json`` (issue #185).
+    """
+    counts = collections.Counter(values)
+    order = sorted(counts, key=lambda k: (k is None, not isinstance(k, int), k if isinstance(k, int) else str(k)))
+    return {NO_VALUE if k is None else k: counts[k] for k in order}
+
+
 def run_coverage(
     *,
     generated_root: Path,
@@ -290,8 +308,7 @@ def run_coverage(
         groups[shape.signature()].append(shape.scenario_id)
 
     distributions = {
-        field: dict(sorted(collections.Counter(getattr(s, field) for s in shapes).items(),
-                           key=lambda kv: (kv[0] is None, str(kv[0]))))
+        field: _distribution(getattr(s, field) for s in shapes)
         for field in ("tier", "blame_class", "oracle_size", "bic_depth", "fault_file_distractors",
                       "commit_count", "ref_count")
     }
@@ -368,7 +385,8 @@ def format_report(report: dict[str, Any]) -> str:
         signature = group["signature"]
         shown = ", ".join(group["scenarios"][:8])
         more = " ..." if group["size"] > 8 else ""
-        lines.append(f"      {group['size']:3d}x  " + "  ".join(f"{k}={v}" for k, v in signature.items()))
+        lines.append(f"      {group['size']:3d}x  " + "  ".join(f"{k}={NO_VALUE if v is None else v}"
+                                                             for k, v in signature.items()))
         lines.append(f"           {shown}{more}")
     if len(groups) > 15:
         lines.append(f"      ... and {len(groups) - 15} more group(s)")
