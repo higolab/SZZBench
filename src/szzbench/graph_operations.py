@@ -7,7 +7,7 @@ import shutil
 from pathlib import Path, PurePosixPath
 from typing import Any, Callable, Iterable, Iterator, NamedTuple
 
-from .gitutils import MAX_GENERATED_COMMITS
+from .gitutils import MAX_GENERATED_COMMITS, commit_generator_count, commit_generator_files
 from .operations import (
     OperationError,
     detect_crlf,
@@ -427,21 +427,15 @@ def commit_generator_plan(op: dict[str, Any], owner_id: str) -> CommitGeneratorP
 
     A ``count`` or ``files`` that generation cannot use is a ``ValueError`` that
     names the field and the commit.  The generator and the simulator of
-    ``validate-graph --simulate`` both read the operation here (issue #175).
+    ``validate-graph --simulate`` both read the operation here (issue #175),
+    and ``count`` and ``files`` are read as ``gitutils.planned_generated_commits``
+    reads them for ``verify-graph`` (issue #230).
     """
     generator = str(op.get("generator") or "unrelated_changes")
-    try:
-        requested = int(op.get("count"))
-    except (TypeError, ValueError, OverflowError):
-        raise ValueError(f"commit_generator.count of commit '{owner_id}' must be an integer.") from None
-    if requested < 0:
-        raise ValueError(f"commit_generator.count of commit '{owner_id}' must not be negative.")
-    try:
-        files = int(op.get("files", 1) or 1)
-    except (TypeError, ValueError, OverflowError):
-        raise ValueError(f"commit_generator.files of commit '{owner_id}' must be an integer.") from None
+    requested = commit_generator_count(op, owner_id)
+    files = commit_generator_files(op, owner_id)
     return CommitGeneratorPlan(generator, commit_generator_directory(op.get("path")),
-                               min(requested, MAX_GENERATED_COMMITS), max(1, files), requested)
+                               min(requested, MAX_GENERATED_COMMITS), files, requested)
 
 
 def commit_generator_changes(plans: Iterable[CommitGeneratorPlan],

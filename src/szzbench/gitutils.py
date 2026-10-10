@@ -266,18 +266,38 @@ def commit_generator_count(op: dict[str, Any], owner_id: str) -> int:
     return requested
 
 
+def commit_generator_files(op: dict[str, Any], owner_id: str) -> int:
+    """The ``files`` of a ``commit_generator`` operation of commit ``owner_id``: at least 1, and 1 without the key.
+
+    A value ``int()`` cannot read is a ``ValueError`` that names the field and
+    the commit, as for ``count``.  ``graph_operations.commit_generator_plan``
+    and ``planned_generated_commits`` both read it here, so that an operation
+    generation refuses plans no commits for ``verify-graph`` either.
+    """
+    try:
+        files = int(op.get("files", 1) or 1)
+    except (TypeError, ValueError, OverflowError):
+        raise ValueError(f"commit_generator.files of commit '{owner_id}' must be an integer.") from None
+    return max(1, files)
+
+
 def planned_generated_commits(owner_id: str, commit_spec: dict[str, Any]) -> list[str]:
     """The ``<owner>.g<N>`` ids the generator will create for ``commit_spec``'s
     ``commit_generator`` operations, in order and with the count cap applied.
-    A count the generator would reject (``commit_generator_count``) is skipped
-    here; ``validate-graph`` reports it (GE062), and so do ``--simulate`` and
-    generation."""
+    An operation the generator would reject (``commit_generator_count``,
+    ``commit_generator_files``) is skipped here; ``validate-graph`` reports it
+    (GE062), and so do ``--simulate`` and generation.  So are ``operations``
+    that are not a list (GE044), which ended ``verify-graph`` in a TypeError."""
+    operations = commit_spec.get("operations") or []
+    if not isinstance(operations, list):
+        return []
     total = 0
-    for op in commit_spec.get("operations") or []:
+    for op in operations:
         if not isinstance(op, dict) or op.get("type") != "commit_generator":
             continue
         try:
             requested = commit_generator_count(op, owner_id)
+            commit_generator_files(op, owner_id)
         except ValueError:
             continue
         total += min(requested, MAX_GENERATED_COMMITS)

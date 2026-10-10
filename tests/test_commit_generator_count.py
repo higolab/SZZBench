@@ -6,7 +6,9 @@ refused a count ``int()`` cannot read, ``OverflowError`` included, while
 lint, GW151, ``verify-graph``) caught ``TypeError`` and ``ValueError`` only.
 ``count: .inf`` ended ``verify-graph`` in a traceback, and the author lint
 swallowed the exception and checked nothing.  Now the planned ids skip exactly
-the counts generation refuses (``gitutils.commit_generator_count``).
+the counts generation refuses (``gitutils.commit_generator_count``).  ``files`` is
+read the same way (``gitutils.commit_generator_files``), and ``operations`` that
+are not a list, which ended ``verify-graph`` in a TypeError, plan no commits.
 """
 from __future__ import annotations
 
@@ -72,6 +74,15 @@ def test_the_shared_reading_names_the_field_as_generation_does():
         with pytest.raises(ValueError) as read:
             gitutils.commit_generator_count(_generator(count), "c2")
         assert str(read.value) == str(refused.value), count
+    for files in (math.inf, "many"):
+        op = {**_generator(3), "files": files}
+        with pytest.raises(ValueError) as refused:
+            commit_generator_plan(op, "c2")
+        with pytest.raises(ValueError) as read:
+            gitutils.commit_generator_files(op, "c2")
+        assert str(read.value) == str(refused.value), files
+        # generation refuses the operation, so it plans no commits for verify-graph either
+        assert planned_generated_commits("c2", {"id": "c2", "operations": [op]}) == []
 
 
 @pytest.fixture(scope="module")
@@ -91,6 +102,18 @@ def test_verify_graph_reports_an_infinite_count_instead_of_a_traceback(tmp_path,
     The count plans no generated commits, so c2's first parent and its generated_commits disagree."""
     scenario = tmp_path / "scenario.graph.yml"
     scenario.write_text(yaml.safe_dump(_scenario(count), sort_keys=False), encoding="utf-8")     # count: .inf
+    result = verify_graph_generated_repo(generated / "repo", scenario)
+    assert [(f.code, f.location) for f in result.findings if f.severity == "ERROR"] == [
+        ("GE627", "commits[2].parents"), ("GE633", "commits[2]")]
+
+
+def test_verify_graph_reads_operations_that_are_not_a_list(tmp_path, generated):
+    """``operations: 5`` (GE044 in validate-graph) ended verify-graph in a TypeError: no commits are
+    planned for c2, whose generated commits the repository holds."""
+    data = _scenario(3)
+    data["commits"][2]["operations"] = 5
+    scenario = tmp_path / "scenario.graph.yml"
+    scenario.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
     result = verify_graph_generated_repo(generated / "repo", scenario)
     assert [(f.code, f.location) for f in result.findings if f.severity == "ERROR"] == [
         ("GE627", "commits[2].parents"), ("GE633", "commits[2]")]
