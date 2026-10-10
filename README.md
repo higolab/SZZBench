@@ -523,6 +523,8 @@ A record that cannot be read is a loading error: `predictions` that is not a lis
 
 Use `--include-generated` to evaluate every generated repository under `--generated-root`. A scenario that no record names then fails as a missing record (`run_status: missing`) rather than being read as an abstention, so write an empty record, like `SZZ-0047` above, for a scenario on which the tool ran and found nothing. The adapters under `tools/adapters/` write such records.
 
+A run that scores no scenario at all, such as one over an empty predictions file or over a `--generated-root` without outputs, is an error (`EVALUATE_FAILED`, exit 1), with or without `--fail-on-non-pass`; `--include-generated` refuses a `--generated-root` that does not exist (issue #141).
+
 For Graph scenarios, `--evaluation-variant` selects a named `expected_szz.evaluation_variants` entry such as `direct-only`, `origin-aware`, or `relaxed-with-credit`. If it is omitted, SZZBench uses the scenario's `default_variant` when one is defined, otherwise it uses `expected_szz.commit_level`. A scenario that does not define the requested name is scored as if the option were omitted, with a note naming the oracle used, and the run reports those scenarios in one warning; an empty name is the same as omitting the option. Classic scenarios have no variants, and the run says so once (`docs/evaluation-policies.md` §1.3). Hyphen and underscore differences are normalized for matching. This option is independent of `--variant`, which selects the generated repository directory under each scenario.
 
 The JSON report keeps the strict fields (`true_positives`, `false_positives`, `false_negatives`), reports `unknown_predictions`, `run_status` and `run_errors` per scenario, and also includes Graph-specific details when available: `evaluation_policy`, `evaluation_variant`, `hard_false_positives`, `related_origin_hits`, `related_but_not_correct_hits`, `acceptable_related_hits`, `weighted_credit`, `minimum_required_met`, and `top_k`.
@@ -614,9 +616,10 @@ Check that every scenario README opens with the header generated from its scenar
 
 ```bash
 szzbench readme
+szzbench readme scenarios
 ```
 
-The header — title, category, tier, status, difficulty, language, factors, the oracle as the evaluator resolves it and, for Graph scenarios, the graph-only features the scenario uses — is the only part of a README a tool writes; the prose after it belongs to the author and is never touched. `szzbench readme` exits with 1 when a header is missing or no longer matches the scenario, and `validate --lint` / `validate-graph --lint` report the same disagreement as `W455` / `GW455`.
+The header — title, category, tier, status, difficulty, language, factors, the oracle as the evaluator resolves it and, for Graph scenarios, the graph-only features the scenario uses — is the only part of a README a tool writes; the prose after it belongs to the author and is never touched. `szzbench readme` exits with 1 when a header is missing or no longer matches the scenario, and `validate --lint` / `validate-graph --lint` report the same disagreement as `W455` / `GW455`. A suite root (`scenarios`, `advanced-scenarios`), a scenario directory or a scenario file limits the check to those scenarios, and a target that resolves to no scenario file is an error (exit 1) (issue #188).
 
 ```bash
 szzbench readme --write
@@ -1246,6 +1249,8 @@ szzbench evaluate \
 
 `--generated-root` 以下の生成済みリポジトリをすべて評価するには `--include-generated` を使います。このとき、どのレコードにも現れないシナリオは、棄権ではなく記録の欠落（`run_status: missing`）として FAIL になります。ツールが実行されて何も見つけなかったシナリオには、上の `SZZ-0047` のような空のレコードを書いてください。`tools/adapters/` のアダプタはそのようなレコードを書きます。
 
+空の予測ファイルや、出力の無い `--generated-root` に対する実行のように、1 件も採点しなかった実行は、`--fail-on-non-pass` の有無にかかわらずエラー（`EVALUATE_FAILED`、終了コード 1）になります。`--include-generated` は存在しない `--generated-root` を拒否します（issue #141）。
+
 Graph scenario では、`--evaluation-variant` で `expected_szz.evaluation_variants` に定義された `direct-only`、`origin-aware`、`relaxed-with-credit` などの評価 variant を選べます。省略した場合は、シナリオに `default_variant` があればそれを使い、なければ `expected_szz.commit_level` を使います。指定した名前の variant を定義していないシナリオは、オプションを省略したときと同じ oracle で採点され、使った oracle が注記されます。そうしたシナリオは、実行全体で 1 件の警告にまとめて報告されます。空の名前はオプションの省略と同じです。classic scenario には variant がなく、そのことは実行ごとに 1 回だけ表示されます（`docs/evaluation-policies.md` §1.3）。variant 名の照合ではハイフンとアンダースコアの違いを吸収します。このオプションは、生成リポジトリのディレクトリを選ぶ `--variant` とは別物です。
 
 JSON レポートには従来の `true_positives`、`false_positives`、`false_negatives` と、シナリオごとの `unknown_predictions`、`run_status`、`run_errors` に加えて、Graph scenario 用の `evaluation_policy`、`evaluation_variant`、`hard_false_positives`、`related_origin_hits`、`related_but_not_correct_hits`、`acceptable_related_hits`、`weighted_credit`、`minimum_required_met`、`top_k` も出力されます。
@@ -1337,9 +1342,10 @@ szzbench generate-all-repos --no-verify
 
 ```bash
 szzbench readme
+szzbench readme scenarios
 ```
 
-ヘッダ（タイトル、カテゴリ、tier、status、difficulty、言語、factors、evaluator が解決するオラクル、Graph シナリオでは使用している graph 専用機能）は、README のうちツールが書く唯一の部分です。ヘッダより後の本文は作者のものであり、ツールは触りません。ヘッダが無い、またはシナリオと一致しない README があると `szzbench readme` は終了コード 1 を返し、`validate --lint` / `validate-graph --lint` も同じ不一致を `W455` / `GW455` として報告します。
+ヘッダ（タイトル、カテゴリ、tier、status、difficulty、言語、factors、evaluator が解決するオラクル、Graph シナリオでは使用している graph 専用機能）は、README のうちツールが書く唯一の部分です。ヘッダより後の本文は作者のものであり、ツールは触りません。ヘッダが無い、またはシナリオと一致しない README があると `szzbench readme` は終了コード 1 を返し、`validate --lint` / `validate-graph --lint` も同じ不一致を `W455` / `GW455` として報告します。スイートのルート（`scenarios`、`advanced-scenarios`）、シナリオのディレクトリ、シナリオファイルを指定すると、検査はそれらのシナリオに限られます。どのシナリオファイルにも当たらない指定はエラー（終了コード 1）になります（issue #188）。
 
 ```bash
 szzbench readme --write
