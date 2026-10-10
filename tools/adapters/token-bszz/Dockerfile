@@ -15,6 +15,20 @@
 #   repo.scala-sbt.org, which sbt-repositories points at.
 # - cregit itself (the replication package's modified copy, GPL v3) is not part of the image: it is
 #   mounted at /opt/cregit when the image runs.
+# - The base image and the apt packages are not pinned (issue #194). eclipse-temurin:8-jdk-focal is
+#   a tag, which its publisher can move to another build (a later JDK 8 update) or withdraw, and apt
+#   installs what Ubuntu 20.04's archive holds at build time, ctags and the libraries srcML loads
+#   included. The srcML package, sbt and the BFG fork are pinned. So an image built later may carry
+#   another JDK, ctags or library than the recorded run's.
+# - The run recorded in examples/token-bszz-run/ (2026-09-30) used the image
+#   sha256:914fb8714622..., with JDK 1.8.0_452, srcML 1.0.0, Exuberant Ctags 5.9 and BFG
+#   1.12.16-SNAPSHOT (blobexec-fbf55a1).
+#   Check a new image against these before comparing its runs with that one:
+#     docker run --rm --platform linux/amd64 szzbench-token-bszz \
+#         sh -c 'java -version; srcml --version; ctags --version | head -n 1'
+#   ctags matters most. tokenizeSrcMl.pl asks it for declarations with --_xformat, which Exuberant
+#   Ctags rejects, so the recorded tokens carry no declaration kinds. A ctags other than Exuberant
+#   Ctags 5.9 can change the tokens.
 FROM --platform=linux/amd64 eclipse-temurin:8-jdk-focal
 
 RUN apt-get update \

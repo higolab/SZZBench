@@ -43,6 +43,20 @@ published:
 cregit's own tools are not built at all. The one the rewrite needs, `srcml2token`, ships compiled
 in `cregit.zip`.
 
+The srcML package, sbt and the BFG fork are pinned to versions, but the base image and the apt
+packages are not. `eclipse-temurin:8-jdk-focal` is a tag, which can move to another build or be
+withdrawn, and apt installs what Ubuntu 20.04's archive holds at build time, ctags included. An
+image built today may therefore differ from the one this run used (**Measured**, at the top).
+Check its versions before comparing its runs with this one:
+
+```bash
+docker run --rm --platform linux/amd64 szzbench-token-bszz \
+    sh -c 'java -version; srcml --version; ctags --version | head -n 1'
+```
+
+This run's image reported JDK 1.8.0_452, srcML 1.0.0 and Exuberant Ctags 5.9. ctags matters most
+(see [What these numbers depend on](#what-these-numbers-depend-on)).
+
 ## The commands
 
 ```bash
@@ -83,6 +97,10 @@ the recorded image.
      becomes the token `comment`.
    - Other files keep their lines. The seven Python scenarios, SZZ-0200 to SZZ-0206, are left
      unchanged, and their answers are exactly line-level B-SZZ's.
+   - A rewrite that fails is that scenario's tool error. Its `tokenize.status` and `tokenize.log`
+     say why, and the other repositories are still rewritten. Any other step that fails stops
+     `tokenize-repos.sh`, and the adapter with it, with the failed command's message. Examples are
+     an image with no BFG jar, or with more than one, and a copy of a repository that fails.
 2. **It runs B-SZZ.** Each rewritten repository gets the original's metadata, with its commit map
    re-keyed to the rewritten hashes. Then `pyszz_variants_to_predictions.py --tools b-szz` runs on
    them.
@@ -141,7 +159,9 @@ for the ones below, each checked on the repositories.
 - **ctags.** `tokenizeSrcMl.pl` asks ctags for declarations with `--_xformat`, an option of
   Universal Ctags. This image, like the replication package's, installs Ubuntu 20.04's Exuberant
   Ctags, which rejects the option (`ctags: Unknown option: --_xformat`), so the tokens carry no
-  declaration kinds.
+  declaration kinds. The Dockerfile does not pin the package, so check `ctags --version` in a
+  rebuilt image, as [Setting it up](#setting-it-up) shows. Another ctags, a Universal Ctags in
+  particular, can change the tokens.
 - **BFG's parallelism.** The adapter runs BFG with one processor (`-XX:ActiveProcessorCount=1`).
   With several, a run over the suite once stopped for good, with two tokenizer processes waiting
   for their input. One processor rewrites the same history one blob at a time. A time limit with
