@@ -433,12 +433,21 @@ import in another spelling (`generated/` and `Generated/`, `noise-01.txt` and
 file on macOS.
 
 To rename a file in its letter case, delete it in one commit and write it in
-a later one. Within one commit the rename still depends on the platform, and
-neither simulator says so: Git on macOS keeps the spelling its index has, so
-a `delete_file` of `src/Range.java` followed by a `write_file` of
-`src/range.java` commits `src/Range.java` there, and a `rename_file` through
-another name commits nothing (`commit would be empty`). A `rename_file` that
-changes only the letter case is GE060.
+a later one. Within one commit the rename depends on the platform: Git on
+macOS keeps the spelling its index has, so a `delete_file` of `src/Range.java`
+followed by a `write_file` of `src/range.java` committed `src/Range.java`
+there, with the new content, and a `rename_file` through another name
+committed nothing (`commit would be empty`), while Linux commits
+`src/range.java`. `validate-graph` therefore refuses a commit that removes a
+file and ends with a file whose path differs from it only in letter case or
+Unicode normalization (GE064, a static check that `generate-graph` makes too;
+issue #235), and a `rename_file` that changes only the letter case is GE060.
+Until issue #235 neither simulator said so. Validation does not know which
+files a commit starts with, so a file the commit writes and then removes
+counts as removed. Paths are compared whole, as Git compares the entries of
+its index: `Src/a.java` removed and `src/a.java` written is refused, while
+`Src/a.java` removed and `src/b.java` written are committed as written (Git
+2.39.5 and 2.50.1 on APFS).
 
 ### Files Git reads: `.gitignore`, `.gitattributes`, `.gitmodules` (*both*)
 

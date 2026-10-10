@@ -353,6 +353,7 @@ def validate_graph_static(data: dict[str, Any], *, scenario_path: Path | None = 
     check_scheduled_dates(data, result, code="GE071", graph=True)    # PR #236 review
     check_commit_date_order(data, result, code="GE073", timestamp_code="GE071", graph=True)    # issue #241
     check_git_control_files(data, result, code="GE063", written_fields=WRITTEN_PATH_FIELDS_BY_OPERATION)   # issue #164
+    _validate_case_changes(commits, result)                                                               # issue #235
     for code, location, message in branch_name_problems(data):                                            # issue #239
         result.error(code, message, location)
     result.extend(_validate_graph_acyclic(commits))
@@ -590,6 +591,74 @@ def _validate_operation_values(op: dict[str, Any], op_type: str, result: Validat
             result.error("GE060", f"{op_type} from '{source}' to '{target}' changes only the letter case or the Unicode "
                          "normalization; macOS (and Windows, for letter case) sees one file there, so what generation "
                          "makes of it would depend on the platform.", f"{loc}.{target_key}")
+
+
+#: The fields of the operations that can make a file the commit did not have; ``replace``,
+#: ``insert_after`` and ``format_file`` rewrite one in place.
+_CREATING_PATH_FIELDS = {op_type: fields for op_type, fields in WRITTEN_PATH_FIELDS_BY_OPERATION.items()
+                         if op_type not in ("replace", "insert_after", "format_file")}
+#: The fields that name a file an operation removes (and ``move_entity``'s ``from_file`` with
+#: ``remove_source_file``).
+_REMOVED_PATH_FIELDS = {"delete_file": ("path",), "rename_file": ("from",), "move_file": ("from",)}
+
+
+def _validate_case_changes(commits: list[Any], result: ValidationResult) -> None:
+    """GE064: a commit removes a file and writes one whose name differs only in letter case or normalization (issue #235).
+
+    ``delete_file src/Range.java`` followed by ``write_file src/range.java``,
+    or two ``rename_file`` through another name, left the replay of
+    ``--simulate`` with ``src/range.java``.  Generation on macOS, where
+    ``git init`` sets ``core.ignorecase``, kept the spelling the index had:
+    the first committed ``src/Range.java`` with the new content, and
+    verification passed; the second committed nothing (``commit would be
+    empty``).  On Linux both commit ``src/range.java``.  GE060 refuses one
+    operation's own two paths, which this leaves to it, and GE201 a write
+    beside a file spelt otherwise; this is the route through a removal.  The
+    operations of a commit are read in order: a path a later operation writes
+    again is no longer removed, and one a later operation removes is no
+    longer written.  Validation does not know which files the
+    commit starts with, so a file the commit writes and then removes counts as
+    removed.  The check is static: ``generate-graph``, which does not
+    simulate, refuses the commit too, as does ``--simulate`` for a scenario
+    it generates with Git.  Paths are compared whole, as Git compares index
+    entries: ``Src/a.java`` and ``src/a.java`` are one entry on macOS, while
+    ``Src/a.java`` removed and ``src/b.java`` written are committed as written.
+    """
+    for i, commit in enumerate(commits):
+        if not isinstance(commit, dict) or not isinstance(commit.get("operations"), list):
+            continue
+        removed: dict[str, int] = {}                 # path -> the operation that removed it
+        written: dict[str, tuple[int, str]] = {}     # path -> the operation and the field that wrote it
+        for j, op in enumerate(commit["operations"]):
+            if not isinstance(op, dict) or not isinstance(op.get("type"), str):
+                continue
+            op_type = op["type"]
+            writes = [(True, key) for key in _CREATING_PATH_FIELDS.get(op_type, ())]
+            removes = [(False, key) for key in _REMOVED_PATH_FIELDS.get(op_type, ())]
+            if op_type == "move_entity" and op.get("remove_source_file"):
+                removes = [(False, "from_file")]
+            # a rename removes its source as it writes its target; move_entity writes before it removes
+            for is_write, key in (writes + removes if op_type == "move_entity" else removes + writes):
+                path = op.get(key)
+                if not isinstance(path, str):
+                    continue
+                if is_write:
+                    removed.pop(path, None)
+                    written[path] = (j, f"commits[{i}].operations[{j}].{key}")
+                else:
+                    written.pop(path, None)
+                    removed[path] = j
+        for path, (j, location) in written.items():
+            # one operation's own two paths are GE060's
+            gone = next((other for other in sorted(removed) if other != path and removed[other] != j
+                         and file_system_key(other) == file_system_key(path)), None)
+            if gone is None:
+                continue
+            spelt = "" if (gone + path).isascii() else f" (spelt {gone!a} and {path!a})"
+            result.error("GE064", f"Commit '{commit.get('id')}' removes '{gone}' and writes '{path}', which differ only "
+                         f"in letter case or Unicode normalization{spelt}: Git on macOS (and on Windows, for letter case) "
+                         f"keeps the spelling its index has, so the commit would record '{gone}' there, or nothing, and "
+                         f"'{path}' on Linux. Delete the file in one commit and write it in a later one.", location)
 
 
 def _validate_commit_ref_entry(entry: Any, commit_by_id: dict[str, dict[str, Any]], result: ValidationResult, loc: str, label: str) -> None:

@@ -22,6 +22,12 @@ commit does not have, passed ``--simulate`` and failed ``generate-graph`` at
 verification (GE663, GE662).  The replay now looks each one up by the
 verifier's own rule (GE205, GE204), and writes the ``header`` and ``footer``
 of ``write_generated_text_file``, in which SZZG-0145's fault statement is.
+
+Issue #235: a commit that deletes ``src/Range.java`` and writes
+``src/range.java``, or renames it there through another name, passed both
+checks; on macOS, where the repository ignores letter case, Git kept the
+spelling its index had, and committed ``src/Range.java`` or nothing.  It is
+GE064 now, a static check, so ``generate-graph`` refuses it too.
 """
 from __future__ import annotations
 
@@ -30,7 +36,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from szzbench.graph_generator import generate_graph_repository
+from szzbench.graph_generator import GraphGenerationError, generate_graph_repository
 from szzbench.graph_simulator import SimFile, simulate_graph_scenario, simulated_snapshots
 from szzbench.graph_validator import validate_graph_scenario_file, validate_graph_static
 
@@ -174,3 +180,39 @@ def test_the_replay_writes_the_header_a_statement_of_szzg_0145_is_in():
     table = simulated_snapshots(data)["c1"]["src/main/resources/zone-rates.csv"].content
     assert table.startswith("zone,rate_cents\nzone-1,100\n") and table.endswith("zone-5000,500000\n")
     assert simulate_graph_scenario(data).error_findings() == []
+
+
+# --- issue #235: a letter-case change within one commit -----------------------------------------
+
+RANGE = _write_file("src/Range.java", "class Range {}\n")
+DELETE_RANGE = {"type": "delete_file", "path": "src/Range.java"}
+
+
+#: The issue's two variants: macOS committed src/Range.java with the new content, or nothing.
+@pytest.mark.parametrize("c1, location", [
+    ((DELETE_RANGE, _write_file("src/range.java", "class range {}\n")), "commits[1].operations[1].path"),
+    (({"type": "rename_file", "from": "src/Range.java", "to": "src/tmp.java"},
+      {"type": "rename_file", "from": "src/tmp.java", "to": "src/range.java"}), "commits[1].operations[1].to"),
+], ids=["delete-then-write", "rename-through-another-name"])
+def test_a_case_change_within_one_commit_is_ge064_and_stops_generate_graph(tmp_path, c1, location):
+    data = _scenario(_commit("c0", [], RANGE), _commit("c1", ["c0"], *c1))
+    [error] = [f for f in validate_graph_static(data).findings if f.severity == "ERROR"]
+    assert (error.code, error.location) == ("GE064", location)
+    assert "removes 'src/Range.java' and writes 'src/range.java'" in error.message
+    with pytest.raises(GraphGenerationError, match="validation failed"):
+        generate_graph_repository(_write(tmp_path, data), tmp_path / "out", force=True)
+
+
+@pytest.mark.parametrize("commits", [
+    # the documented workaround: delete in one commit, write in a later one
+    (_commit("c0", [], RANGE), _commit("c1", ["c0"], DELETE_RANGE, _write_file("a.txt", "a\n")),
+     _commit("c2", ["c1"], _write_file("src/range.java", "class range {}\n"))),
+    # the new spelling is gone again by the end of the commit
+    (_commit("c0", [], RANGE), _commit("c1", ["c0"], DELETE_RANGE, _write_file("src/range.java", "x\n"),
+                                       {"type": "delete_file", "path": "src/range.java"})),
+    # a directory spelt otherwise holding another file: Git records src/b.java as written
+    (_commit("c0", [], _write_file("Src/a.java", "a\n")),
+     _commit("c1", ["c0"], {"type": "delete_file", "path": "Src/a.java"}, _write_file("src/b.java", "b\n"))),
+], ids=["over-two-commits", "written-and-removed-again", "another-file-in-the-directory"])
+def test_what_git_records_as_written_is_not_ge064(commits):
+    assert "GE064" not in {f.code for f in validate_graph_static(_scenario(*commits)).findings}
