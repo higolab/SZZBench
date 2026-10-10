@@ -42,11 +42,7 @@ def replaceable_output_problem(out_dir: Path, scenario_path: Path) -> str | None
     out_dir = out_dir.resolve()
     if not out_dir.is_dir():
         return f"--out {out_dir} exists and is not a directory"
-    try:
-        cwd = Path.cwd().resolve()
-    except OSError:
-        cwd = None
-    if cwd is not None and (cwd == out_dir or out_dir in cwd.parents):
+    if _holds_cwd(out_dir):
         return f"--out {out_dir} is the current directory or one of its parents"
     if out_dir in scenario_path.resolve().parents:
         return f"--out {out_dir} contains the scenario file being generated"
@@ -63,7 +59,47 @@ def replaceable_output_problem(out_dir: Path, scenario_path: Path) -> str | None
     return None
 
 
+def _holds_cwd(path: Path) -> bool:
+    """Whether the resolved ``path`` is the current directory or one of its parents."""
+    try:
+        cwd = Path.cwd().resolve()
+    except OSError:
+        return False
+    return cwd == path or path in cwd.parents
+
+
+def clean_root_problem(root: Path) -> str | None:
+    """Why ``clean`` must not scan ``root``, or None when it may (issue #171).
+
+    ``clean`` removes every generated output below its root, at any depth, so
+    a mistyped ``--root`` (``/``, the home directory, the checkout itself)
+    removed outputs anywhere below it, after a scan of the whole tree.
+    """
+    root = root.resolve()
+    if root.parent == root:
+        return f"--root {root} is the file-system root"
+    try:
+        home = Path.home().resolve()
+    except (OSError, RuntimeError, KeyError):     # no home directory to compare with
+        home = None
+    if root == home:
+        return f"--root {root} is the home directory"
+    if _holds_cwd(root):
+        return f"--root {root} is the current directory or one of its parents"
+    return None
+
+
+def is_default_clean_root(root: Path) -> bool:
+    """Whether ``root`` is ``generated-input-repos`` of the current directory, which ``clean`` empties without asking."""
+    return root.resolve() == DEFAULT_CLEAN_ROOT.resolve()
+
+
 def find_generated_outputs(root: Path) -> list[Path]:
+    problem = clean_root_problem(root)
+    if problem is not None:
+        raise CleanError(f"{problem}; clean removes every generated output below its root, at any depth. "
+                         f"Pass the directory generate-all-repos writes into ({DEFAULT_CLEAN_ROOT} by default), "
+                         "and check what it finds with --dry-run first.")
     root = root.resolve()
     if not root.exists():
         return []
@@ -80,15 +116,18 @@ def find_generated_outputs(root: Path) -> list[Path]:
     return sorted(outputs)
 
 
-def clean_generated_outputs(root: Path, *, dry_run: bool = False) -> list[Path]:
-    outputs = find_generated_outputs(root)
-    if dry_run:
-        return outputs
+def remove_generated_outputs(outputs: list[Path]) -> None:
     for output in outputs:
         try:
             shutil.rmtree(output, onerror=_make_writable_and_retry)
         except OSError as exc:
             raise CleanError(f"Failed to remove generated output {output}: {exc}") from exc
+
+
+def clean_generated_outputs(root: Path, *, dry_run: bool = False) -> list[Path]:
+    outputs = find_generated_outputs(root)
+    if not dry_run:
+        remove_generated_outputs(outputs)
     return outputs
 
 

@@ -7,7 +7,8 @@ repository id: a digest of the commit hashes, which prediction records carry so
 that a run can be matched to the repository it was made on.
 
 An output is **stale** when it has no manifest (an interrupted generation, or
-one made before the manifest existed), when its scenario file or the generator's
+one made before the manifest existed) or one that cannot be read or parsed (a
+damaged file, named as such), when its scenario file or the generator's
 code has changed since, when it is unverified and verification is asked for, or
 when what the manifest describes is no longer all there: ``repo/.git`` with
 every commit of the commit map, each still reachable from a ref, the commit map
@@ -86,21 +87,44 @@ def write_manifest(metadata_dir: Path, *, scenario_id: str, scenario_path: Path,
     return manifest
 
 
-def read_manifest(output_dir: Path) -> dict[str, Any] | None:
+NO_MANIFEST = "it has no generation manifest (an interrupted generation, or one made before 2026-09-29)"
+#: how load_manifest names what a manifest holds instead of an object
+_JSON_TYPES = {list: "array", str: "string", int: "number", float: "number", bool: "boolean", type(None): "null"}
+
+
+def load_manifest(output_dir: Path) -> tuple[dict[str, Any] | None, str | None]:
+    """The manifest of ``output_dir``, or None and why there is none (issue #171).
+
+    A missing manifest and one that cannot be read or parsed were both "no
+    generation manifest (an interrupted generation, ...)", which sent the
+    reader to the wrong explanation for a damaged file.
+    """
+    path = output_dir / "metadata" / MANIFEST_NAME
     try:
-        data = json.loads((output_dir / "metadata" / MANIFEST_NAME).read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return None
-    return data if isinstance(data, dict) else None
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, NotADirectoryError):
+        return None, NO_MANIFEST
+    except OSError as exc:
+        return None, f"its manifest (metadata/{MANIFEST_NAME}) is unreadable: {exc.strerror or exc}"
+    except ValueError as exc:       # JSON that does not parse, or bytes that are not UTF-8
+        return None, f"its manifest (metadata/{MANIFEST_NAME}) is unreadable: {exc}"
+    if not isinstance(data, dict):
+        kind = _JSON_TYPES.get(type(data), type(data).__name__)
+        return None, f"its manifest (metadata/{MANIFEST_NAME}) is unreadable: it holds a JSON {kind}, not an object"
+    return data, None
+
+
+def read_manifest(output_dir: Path) -> dict[str, Any] | None:
+    return load_manifest(output_dir)[0]
 
 
 def staleness(output_dir: Path, scenario_path: Path, *, require_verified: bool = False) -> str | None:
     """Why ``output_dir`` is not a complete output of ``scenario_path``; None when it is."""
     if not output_dir.is_dir():
         return f"nothing has been generated at {output_dir}"
-    manifest = read_manifest(output_dir)
+    manifest, problem = load_manifest(output_dir)
     if manifest is None:
-        return "it has no generation manifest (an interrupted generation, or one made before 2026-09-29)"
+        return problem
     if manifest.get("format") != MANIFEST_FORMAT:
         return f"its manifest has format {manifest.get('format')!r}, not {MANIFEST_FORMAT}"
     if manifest.get("scenario_sha256") != file_sha256(scenario_path):

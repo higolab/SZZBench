@@ -7,7 +7,7 @@ from typing import Literal
 import json
 import traceback
 
-from .findings import Finding
+from .findings import Finding, ValidationResult
 from .generator import GenerationError, generate_repository
 from .graph_generator import GraphGenerationError, generate_graph_repository
 from .manifest import staleness
@@ -40,6 +40,30 @@ class GeneratedRepositoryItem:
     traceback: str | None = None
     #: the errors of a verification that failed the generation (issue #163)
     verification_errors: tuple[Finding, ...] = ()
+    #: every finding of the verification, warnings included (issue #169): of this run's
+    #: generation, or, for a skipped output, the one its generation recorded in
+    #: metadata/verify-result.json.  None for a run without verification (--no-verify).
+    verification: ValidationResult | None = None
+
+    @property
+    def warned(self) -> bool:
+        return self.verification is not None and self.verification.warning_count() > 0
+
+    def to_dict(self) -> dict:
+        """One item of ``generate-all-repos --json``; ``generate --json`` prints the same keys for its one output."""
+        return {
+            "kind": self.kind,
+            "scenario_id": self.scenario_id,
+            "scenario": str(self.scenario_path),
+            "output_dir": str(self.output_dir),
+            "status": self.status,
+            "commit_count": self.commit_count,
+            "overwritten": self.overwritten,
+            "stale_reason": self.stale_reason,
+            "error": self.error,
+            "traceback": self.traceback,
+            "verification": self.verification.to_dict() if self.verification is not None else None,
+        }
 
 
 @dataclass(frozen=True)
@@ -74,6 +98,28 @@ class GenerateAllRepositoriesResult:
     @property
     def regenerated_count(self) -> int:
         return sum(1 for item in self.items if item.status == "generated" and item.stale_reason is not None)
+
+    @property
+    def warned_count(self) -> int:
+        """Outputs whose verification has a warning, the skipped ones included; ``--strict`` fails on them (issue #169)."""
+        return sum(1 for item in self.items if item.warned)
+
+    def to_dict(self) -> dict:
+        """What ``generate-all-repos --json`` prints (issue #169)."""
+        return {
+            "items": [item.to_dict() for item in self.items],
+            "orphans": [str(orphan) for orphan in self.orphans],
+            "summary": {
+                "total": self.total_count,
+                "generated": self.generated_count,
+                "skipped": self.skipped_count,
+                "overwritten": self.overwritten_count,
+                "regenerated": self.regenerated_count,
+                "failed": self.failed_count,
+                "warned": self.warned_count,
+                "orphaned": len(self.orphans),
+            },
+        }
 
 
 def generate_all_repositories(
@@ -110,6 +156,11 @@ def generate_all_repositories(
             # output from before the manifest -- is regenerated (issue #93).
             if output_exists and not overwrite:
                 stale_reason = staleness(output_dir, scenario_path, require_verified=verify)
+                saved = _saved_verification(output_dir) if verify and stale_reason is None else None
+                if verify and stale_reason is None and saved is None:
+                    # a verified output reports, and --strict judges, the verification it
+                    # recorded; without it, the output is verified again (issue #169)
+                    stale_reason = "its verification result (metadata/verify-result.json) is missing or unreadable"
                 if stale_reason is None:
                     items.append(
                         GeneratedRepositoryItem(
@@ -118,14 +169,17 @@ def generate_all_repositories(
                             scenario_path=scenario_path,
                             output_dir=output_dir,
                             status="skipped",
+                            verification=saved,
                         )
                     )
                     continue
 
             if kind == "classic":
-                commit_map, _ = generate_repository(scenario_path, output_dir, force=output_exists, verify=verify)
+                commit_map, verify_result = generate_repository(scenario_path, output_dir, force=output_exists,
+                                                                verify=verify)
             else:
-                commit_map, _ = generate_graph_repository(scenario_path, output_dir, force=output_exists, verify=verify)
+                commit_map, verify_result = generate_graph_repository(scenario_path, output_dir, force=output_exists,
+                                                                      verify=verify)
         except (GenerationError, GraphGenerationError) as exc:
             items.append(
                 GeneratedRepositoryItem(
@@ -138,6 +192,7 @@ def generate_all_repositories(
                     error=str(exc),
                     stale_reason=stale_reason,
                     verification_errors=(tuple(exc.verify_result.error_findings()) if exc.verify_result is not None else ()),
+                    verification=exc.verify_result,
                 )
             )
             continue
@@ -172,6 +227,7 @@ def generate_all_repositories(
                 commit_count=len(commit_map),
                 overwritten=overwrite and output_exists,
                 stale_reason=stale_reason,
+                verification=verify_result,
             )
         )
 
@@ -188,6 +244,16 @@ def _is_orphan(child: Path, known: set[str]) -> bool:
         return child.is_dir() and child.name not in known and (child / "default").is_dir()
     except OSError:
         return False
+
+
+def _saved_verification(output_dir: Path) -> ValidationResult | None:
+    """The findings the generation of ``output_dir`` wrote to ``metadata/verify-result.json``; None when unreadable."""
+    try:
+        data = json.loads((output_dir / "metadata" / "verify-result.json").read_text(encoding="utf-8"))
+        return ValidationResult(Finding(entry["severity"], entry["code"], entry["message"], entry.get("location"))
+                                for entry in data["findings"])
+    except (OSError, ValueError, LookupError, TypeError, AttributeError):
+        return None
 
 
 def _record_unexpected_failure(output_dir: Path, error: str) -> None:

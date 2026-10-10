@@ -193,8 +193,8 @@ def test_clean_removes_generated_outputs(tmp_path):
     assert out.exists()
     assert out_variant.exists()
 
-    clean = subprocess.run(
-        [sys.executable, "-m", "szzbench.cli", "clean", "--root", str(root)],
+    clean = subprocess.run(       # not the default root: --yes, or clean asks first (issue #171)
+        [sys.executable, "-m", "szzbench.cli", "clean", "--root", str(root), "--yes"],
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
