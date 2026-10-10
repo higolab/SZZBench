@@ -852,7 +852,8 @@ def simulate_commits(data: dict[str, Any]) -> tuple[dict[str, dict[str, str]] | 
                         raise OperationError(f"write_file {conflict}")
                 apply_operation_to_memory(files, op)
             except OperationError as exc:
-                result.error("E2XX", f"Operation failed in commit '{cid}': {exc}", f"commits[{i}].operations[{j}]")
+                # one code for every cause, as GE201; the message names the cause (issue #154)
+                result.error("E201", f"Operation failed in commit '{cid}': {exc}", f"commits[{i}].operations[{j}]")
                 return None, result
         if files == before:
             result.error("E250", f"Commit '{cid}' produces no changes.", f"commits[{i}]")

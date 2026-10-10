@@ -202,14 +202,14 @@ def test_text_field_names_the_operation_and_the_field():
 
 
 @pytest.mark.parametrize("row", ["content-int", "content-null", "old-int", "new-null"])
-def test_the_classic_simulation_reports_an_unvalidated_value_as_e2xx(row):
+def test_the_classic_simulation_reports_an_unvalidated_value_as_e201(row):
     """``simulate_commits`` without ``validate_static`` first: an error, not an AttributeError."""
     mutate, _, location = CLASSIC_ROWS[row]
     snapshots, result = simulate_commits(_mutated(CLASSIC, mutate))
     assert snapshots is None
     [finding] = result.findings
     field = location.rsplit(".", 1)[1]
-    assert (finding.code, finding.location) == ("E2XX", location.rsplit(".", 1)[0])
+    assert (finding.code, finding.location) == ("E201", location.rsplit(".", 1)[0])
     assert f".{field} must be a string" in finding.message
 
 
