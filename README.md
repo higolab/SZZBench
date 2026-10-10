@@ -874,6 +874,12 @@ This creates a ZIP file that excludes files not tracked by Git, such as `node_mo
 - Generated repositories are derived artifacts, so they should generally not be tracked by Git.
 - SZZBench is not intended to replace large real-project-based oracles. It is a complementary benchmark for checking SZZ failure modes with small, controlled histories.
 
+## Authors and license
+
+SZZBench is developed by Yoshiki Higo and Inase Kondo (The University of Osaka) and Masanari Kondo and Yasutaka Kamei (Kyushu University).
+
+The software (`src/`, `tests/` and the code under `tools/`) is licensed under the MIT License ([`LICENSE-MIT`](LICENSE-MIT)), and the scenarios, the examples and the documentation under CC BY 4.0 ([`LICENSE-CC-BY-4.0`](LICENSE-CC-BY-4.0)). [`LICENSES.md`](LICENSES.md) lists which files each licence covers and gives the attribution for the CC BY 4.0 materials: "The SZZBench authors, *SZZBench*, https://github.com/higolab/SZZBench".
+
 ---
 
 # 日本語版
@@ -1710,3 +1716,9 @@ git archive --format=zip --prefix=SZZBench/ --output=SZZBench_source.zip HEAD
 - Graph シナリオでは、履歴構造や oracle が複雑なため、`validate-graph --simulate` と `verify-graph` の両方で確認することを推奨します。
 - 生成されたリポジトリは派生物なので、基本的には Git 管理しません。
 - SZZBench は、実プロジェクト由来の大規模 oracle を置き換えるものではありません。SZZ の failure mode を小さく制御された履歴で確認するための補助的なベンチマークです。
+
+## 著者とライセンス
+
+SZZBench は、Yoshiki Higo と Inase Kondo（大阪大学）、Masanari Kondo と Yasutaka Kamei（九州大学）が開発しています。
+
+ソフトウェア（`src/`、`tests/`、`tools/` のコード）は MIT License（[`LICENSE-MIT`](LICENSE-MIT)）、シナリオ・例・文書は CC BY 4.0（[`LICENSE-CC-BY-4.0`](LICENSE-CC-BY-4.0)）で提供します。どのファイルにどちらのライセンスが適用されるかと、CC BY 4.0 の素材を利用するときの帰属表示（"The SZZBench authors, *SZZBench*, https://github.com/higolab/SZZBench"）は [`LICENSES.md`](LICENSES.md) にあります。
