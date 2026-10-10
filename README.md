@@ -457,7 +457,7 @@ Use `--strict` to exit with 1 on a warning as well as on an error (such as `W700
 Create a skeleton for a new normal scenario.
 
 ```bash
-szzbench new-scenario   --title "Formatting after bug introduction"   --category formatting   --factor formatting   --factor intermediate-history
+szzbench new-scenario   --title "Formatting after bug introduction"   --category "Intermediate noise and history noise"   --tier control   --factor formatting-noise   --factor intermediate-history
 ```
 
 By default, a directory like the following is created, and `scenarios/index.yml` is also updated.
@@ -470,7 +470,11 @@ scenarios/SZZ-XXXX/
 
 The new entry goes at the end of the index's `scenarios:` list, in the format of the shipped entries, and no other line of the index changes. If the edited index would not load, the command writes nothing and exits with status 1.
 
-`--difficulty` takes `easy`, `medium` or `hard` (default `medium`); `szzbench coverage` checks it against the measured floor once the repository is generated. The slug, which goes into `meta.slug`, the index entry and the repository name, is made from the title unless `--slug` gives it. `--status` sets `meta.status` (default `draft`), and `--root` creates the scenario under another suite root than `scenarios/` and updates that root's `index.yml`.
+The skeleton is the smallest history a scenario can have: `c0` writes a `Range` class, `c1` narrows its range check and `c2` restores it, with `c1` as the expected BIC and `c2` as the BFC. `szzbench validate --simulate --strict --lint` accepts it as it is, so the lints check the factors and the commit messages from the first run; at most it reports the information item `I413`, when the author the generator gives `c1` wrote nothing else. Replace the history, the bug and the checks with the scenario's own.
+
+`--category` names a category of [docs/decisions/vocabulary.md](docs/decisions/vocabulary.md), section 3, by its code (`S3`) or its name (`Intermediate noise and history noise`); both go into `meta` and the index entry, and any other value is refused. `--tier` is required and has no default: it declares what the scenario is for, `control` or `discriminating` (section 7), and a `discriminating` skeleton also lists every family under `meta.defeats`, as the tier requires. At least one `--factor` is required. The factor vocabulary is open, but a factor that `--lint` rejects, a schema key or operation name (`E400`) or a mix of hyphens and underscores (`E402`), is refused, and so is a factor that contains whitespace. A refused option writes nothing, and the command exits with status 1 (status 2 for an option argparse refuses).
+
+`--difficulty` takes `easy`, `medium` or `hard` (default `medium`); `szzbench coverage` checks it against the measured floor once the repository is generated. The slug, which goes into `meta.slug`, the index entry and the repository name, is made from the title unless `--slug` gives it. `--status` sets `meta.status` to `draft` (default) or `active`; `retired` belongs to a scenario that has been removed ([docs/retired-ids.md](docs/retired-ids.md)). `--root` creates the scenario under another suite root than `scenarios/` and updates that root's `index.yml`.
 
 ## Using Graph scenarios
 
@@ -547,7 +551,7 @@ szzbench verify-graph   generated-input-repos/SZZG-0001/default/repo   --scenari
 Create a skeleton for a new Graph scenario.
 
 ```bash
-szzbench new-graph-scenario   --title "BIC on feature branch and BFC on main"   --category branch-merge   --factor branch   --factor merge
+szzbench new-graph-scenario   --title "BIC on feature branch and BFC on main"   --category G4   --tier control   --factor branch-merge
 ```
 
 `--difficulty` takes `easy`, `medium` or `hard` (default `medium`; `advanced` is retired) and, like the classic suite's, is checked against the measured floor by `szzbench coverage` once the repository is generated (see [docs/decisions/vocabulary.md](docs/decisions/vocabulary.md), section 4).
@@ -562,7 +566,7 @@ advanced-scenarios/SZZG-XXXX/
 
 As with `new-scenario`, the entry goes at the end of the `scenarios:` list, before the index's `notes:` block, and nothing is written if the edited index would not load. `scenario_count` is updated as well.
 
-`--slug`, `--status` and `--root` work as they do for `new-scenario`, with `advanced-scenarios/` as the default root; the Graph index entry carries no slug.
+`--category`, `--tier`, `--factor`, `--slug`, `--status` and `--root` work as they do for `new-scenario`, with `advanced-scenarios/` as the default root; a refused factor is named with its graph code (`GE400`, `GE402`), and the Graph index entry carries no slug. The skeleton has the same three commits, on `main`, and its README's `## Expected history` block is rendered from them, so `szzbench validate-graph --simulate --strict --strict-paths --lint` accepts it as it is, with at most `GI413`.
 
 ## validate-index
 
@@ -1300,7 +1304,7 @@ szzbench verify   generated-input-repos/SZZ-0006/default/repo   --scenario scena
 新しい通常シナリオの雛形を作成します。
 
 ```bash
-szzbench new-scenario   --title "Formatting after bug introduction"   --category formatting   --factor formatting   --factor intermediate-history
+szzbench new-scenario   --title "Formatting after bug introduction"   --category "Intermediate noise and history noise"   --tier control   --factor formatting-noise   --factor intermediate-history
 ```
 
 デフォルトでは、次のようなディレクトリが作成され、`scenarios/index.yml` も更新されます。
@@ -1313,7 +1317,11 @@ scenarios/SZZ-XXXX/
 
 新しいエントリは、index の `scenarios:` リストの末尾に、同梱のエントリと同じ書式で追加されます。index のほかの行は変わりません。編集後の index が読み込めない場合は、何も書き込まずに終了ステータス 1 で終了します。
 
-`--difficulty` は `easy` / `medium` / `hard` のいずれか（デフォルトは `medium`）で、リポジトリ生成後に `szzbench coverage` が計測した床と照合します。slug（`meta.slug`、index のエントリ、リポジトリ名に入ります）はタイトルから作られ、`--slug` で指定することもできます。`--status` は `meta.status` を設定し（デフォルトは `draft`）、`--root` は `scenarios/` 以外のスイートのルートにシナリオを作って、そのルートの `index.yml` を更新します。
+雛形は、シナリオが持てる最小の履歴です。`c0` が `Range` クラスを書き、`c1` がその範囲の判定を狭め、`c2` が元に戻します。期待する BIC は `c1`、BFC は `c2` です。`szzbench validate --simulate --strict --lint` はこの雛形をそのまま受け付けるので、最初の実行から lint が factor とコミットメッセージを検査します。報告されることがあるのは情報の項目 `I413` だけです（生成器が `c1` に割り当てた作者が、ほかに何も書いていないとき）。履歴、バグ、checks は、そのシナリオ自身のものに置き換えてください。
+
+`--category` は [docs/decisions/vocabulary.md](docs/decisions/vocabulary.md) の第 3 節の分類を、コード（`S3`）か名前（`Intermediate noise and history noise`）で指定します。`meta` と index のエントリには両方が入り、それ以外の値は拒否されます。`--tier` は必須で、デフォルトはありません。シナリオが何のためにあるか（`control` か `discriminating`、第 7 節）を宣言するもので、`discriminating` の雛形には、この tier が求めるとおり、すべての family を並べた `meta.defeats` も入ります。`--factor` は 1 つ以上必須です。factor の語彙は開いていますが、`--lint` が拒否する factor（スキーマのキーや操作名（`E400`）、ハイフンとアンダースコアの混在（`E402`））と、空白を含む factor は拒否されます。拒否されたときは何も書き込まず、終了ステータス 1 で終了します（argparse が拒否するオプションでは 2）。
+
+`--difficulty` は `easy` / `medium` / `hard` のいずれか（デフォルトは `medium`）で、リポジトリ生成後に `szzbench coverage` が計測した床と照合します。slug（`meta.slug`、index のエントリ、リポジトリ名に入ります）はタイトルから作られ、`--slug` で指定することもできます。`--status` は `meta.status` を `draft`（デフォルト）か `active` に設定します。`retired` は削除されたシナリオのための値です（[docs/retired-ids.md](docs/retired-ids.md)）。`--root` は `scenarios/` 以外のスイートのルートにシナリオを作って、そのルートの `index.yml` を更新します。
 
 ## Graph シナリオの使い方
 
@@ -1390,7 +1398,7 @@ szzbench verify-graph   generated-input-repos/SZZG-0001/default/repo   --scenari
 新しい Graph シナリオの雛形を作成します。
 
 ```bash
-szzbench new-graph-scenario   --title "BIC on feature branch and BFC on main"   --category branch-merge   --factor branch   --factor merge
+szzbench new-graph-scenario   --title "BIC on feature branch and BFC on main"   --category G4   --tier control   --factor branch-merge
 ```
 
 `--difficulty` は `easy` / `medium` / `hard` のいずれか（デフォルトは `medium`、`advanced` は廃止）で、Classic スイートと同じく、リポジトリ生成後に `szzbench coverage` が計測した床と照合します（[docs/decisions/vocabulary.md](docs/decisions/vocabulary.md) の第 4 節）。
@@ -1405,7 +1413,7 @@ advanced-scenarios/SZZG-XXXX/
 
 `new-scenario` と同じく、エントリは `scenarios:` リストの末尾（index の `notes:` ブロックの前）に追加され、編集後の index が読み込めない場合は何も書き込みません。`scenario_count` も更新されます。
 
-`--slug`、`--status`、`--root` は `new-scenario` と同じように働きます。デフォルトのルートは `advanced-scenarios/` です。Graph の index のエントリは slug を持ちません。
+`--category`、`--tier`、`--factor`、`--slug`、`--status`、`--root` は `new-scenario` と同じように働きます。デフォルトのルートは `advanced-scenarios/` です。拒否された factor は Graph のコード（`GE400`、`GE402`）で示され、Graph の index のエントリは slug を持ちません。雛形は同じ 3 つのコミットを `main` に持ち、README の `## Expected history` ブロックはそのコミットから作られるので、`szzbench validate-graph --simulate --strict --strict-paths --lint` はこの雛形をそのまま受け付けます。報告されることがあるのは `GI413` だけです。
 
 ## validate-index
 

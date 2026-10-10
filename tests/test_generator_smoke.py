@@ -655,9 +655,11 @@ def test_new_scenario_creates_next_skeleton(tmp_path):
             "--title",
             "Formatting after bug introduction",
             "--category",
-            "formatting",
+            "Intermediate noise and history noise",
             "--factor",
             "formatting-after-bic",
+            "--tier",
+            "control",
         ],
         text=True,
         stdout=subprocess.PIPE,
@@ -675,7 +677,8 @@ def test_new_scenario_creates_next_skeleton(tmp_path):
     assert scenario["meta"]["id"] == "SZZ-0004"
     assert scenario["meta"]["title"] == "Formatting after bug introduction"
     assert scenario["meta"]["slug"] == "formatting-after-bug-introduction"
-    assert scenario["meta"]["category"] == "formatting"
+    assert scenario["meta"]["category"] == "Intermediate noise and history noise"
+    assert scenario["meta"]["category_code"] == "S3"
     assert scenario["meta"]["factors"] == ["formatting-after-bic"]
     assert scenario["meta"]["status"] == "draft"
 

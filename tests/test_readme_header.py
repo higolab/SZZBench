@@ -280,7 +280,7 @@ def test_lint_reports_a_missing_or_stale_header(tmp_path):
 def test_new_scenario_skeletons_start_with_a_current_header(tmp_path):
     root = tmp_path / "scenarios"
     assert main(["new-scenario", "--title", "Header skeleton", "--category", "S1", "--root", str(root),
-                 "--factor", "single-bic"]) == 0
+                 "--factor", "single-bic", "--tier", "control"]) == 0
     scenario = root / "SZZ-0001" / "scenario.yml"
     data, _ = load_yaml(scenario)
     readme = scenario.with_name("README.md").read_text()
@@ -290,7 +290,7 @@ def test_new_scenario_skeletons_start_with_a_current_header(tmp_path):
 
     groot = tmp_path / "advanced-scenarios"
     assert main(["new-graph-scenario", "--title", "Graph header skeleton", "--category", "G4", "--root", str(groot),
-                 "--factor", "branch-merge"]) == 0
+                 "--factor", "branch-merge", "--tier", "control"]) == 0
     gscenario = groot / "SZZG-0001" / "scenario.graph.yml"
     gdata, _ = load_yaml(gscenario)
     greadme = gscenario.with_name("README.md").read_text()

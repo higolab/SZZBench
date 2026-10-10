@@ -117,7 +117,8 @@ def test_an_empty_or_missing_index_is_named_in_the_message(tmp_path):
     result = validate_index_file(root / "index.yml", root, "scenario.yml")
     assert [(f.code, f.message) for f in result.findings] == [("IE001", "Cannot load index: index.yml is empty.")]
     with pytest.raises(NewScenarioError, match=r"index\.yml: index\.yml is empty\.$"):
-        create_new_scenario(title="Probe", category="Basic semantic line changes", root=root)
+        create_new_scenario(title="Probe", category="Basic semantic line changes", factors=["line-modification"],
+                            tier="control", root=root)
     assert sorted(p.name for p in root.iterdir()) == ["index.yml"]
 
 
