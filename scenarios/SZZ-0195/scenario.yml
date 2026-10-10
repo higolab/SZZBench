@@ -22,6 +22,7 @@ meta:
   difficulty: "hard"
   status: "active"
   tier: "discriminating"
+  defeats: ["blame", "shape", "position"]
   category_code: "S6"
 
 repository:
@@ -192,6 +193,12 @@ bugs:
           field that line reads and is not reachable from the deleted line by
           blame; while the field held yen the fee calculation would have been
           correct.
+
+scenario_design:
+  failure_mode: >-
+    A tool fails here when it stops at blame's `c4`, the fee calculation
+    that reads the raw balance: `c1`, which made the ledger store sen, is
+    reached only by following the field the fixed expression reads.
 
 checks:
   - type: "git_history_contains"

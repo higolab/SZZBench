@@ -10,6 +10,7 @@
 | language | `java` |
 | factors | `multi-bic`, `file-move`, `inline-refactoring`, `behaviour-preserving-rewrite`, `blame-unreachable-bic` |
 | oracle | `exact_set`; required `c1`, `c3` · BFC `c4` |
+| defeats | `blame`, `shape`, `position` |
 | graph features | operation `move_file`; 2 BICs; 2 fault sites |
 <!-- /szzbench:header -->
 

@@ -10,6 +10,7 @@
 | language | `java` |
 | factors | `clone`, `multi-bic`, `origin-and-direct-bic` |
 | oracle | default: `exact_set`; required `c2`, `c3`; related origins `c1` · `origin-aware`: `relaxed_with_related`; required `c2`, `c3`; acceptable `c1` (credit 0.5) · BFC `c4` |
+| defeats | `blame`, `shape`, `position` |
 | graph features | operation `copy_file`; 3 BICs; origin faults; 2 fault sites; 1 evaluation variant (`origin-aware`) |
 <!-- /szzbench:header -->
 

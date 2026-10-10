@@ -20,6 +20,7 @@ meta:
   difficulty: "hard"
   status: "active"
   tier: "discriminating"
+  defeats: ["blame", "shape", "position"]
   category_code: "S6"
 
 repository:
@@ -152,6 +153,13 @@ bugs:
           The fix deletes a line written by c3. Reaching c1 means following the
           call into known(), which the fix does not edit; while it normalized,
           the new caller would have been correct.
+
+scenario_design:
+  failure_mode: >-
+    A tool fails here when it stops at blame's `c3`, the new caller that
+    passes raw input: `c1`, which stopped the lookup normalizing its
+    argument, is in the method the fixed line calls, which the fix does not
+    edit.
 
 checks:
   - type: "git_history_contains"

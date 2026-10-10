@@ -52,7 +52,7 @@ commits:
   parents:
   - c0
   message: Start range filter cleanup
-  role: work_item_context
+  role: intermediate
   work_item: INFERRED-WI-001
   operations:
   - type: replace
@@ -80,7 +80,7 @@ commits:
   parents:
   - c2
   message: Wire range filter into request path
-  role: work_item_context
+  role: intermediate
   work_item: INFERRED-WI-001
   operations:
   - type: replace

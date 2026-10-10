@@ -173,6 +173,13 @@ bugs:
           than on a false negative, and a tool has to reject two commits rather
           than one.
 
+scenario_design:
+  failure_mode: >-
+    A tool fails here when it reports every commit blame names: the fix also
+    drops `c2`'s unused alias, and git attributes a deleted brace and blank
+    line to `c0`, so blame returns `c0`, `c1`, `c2` and `c3` for an answer
+    of `c1` and `c3`.
+
 checks:
   - type: "git_history_contains"
     commits: ["c0", "c1", "c2", "c3", "c4"]

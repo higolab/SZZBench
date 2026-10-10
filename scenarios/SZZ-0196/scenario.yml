@@ -22,6 +22,7 @@ meta:
   difficulty: "hard"
   status: "active"
   tier: "discriminating"
+  defeats: ["blame", "shape", "position"]
   category_code: "S6"
 
 repository:
@@ -166,6 +167,13 @@ bugs:
           The fix deletes a line written by c3. c1 added the overload that call
           binds to and is not reachable from the deleted line by blame; with a
           single format method the new call would have been correct.
+
+scenario_design:
+  failure_mode: >-
+    A tool fails here when it stops at blame's `c3`, the call that passes
+    cents as an int: `c1`, which added the whole-units overload that call
+    binds to, is reached only by resolving which method the fixed line
+    calls.
 
 checks:
   - type: "git_history_contains"

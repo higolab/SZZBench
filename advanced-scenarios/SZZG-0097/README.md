@@ -35,9 +35,9 @@ c4: fix boundary regression from range filter work
 | Commit | Branch | Parents | Role | Work item | Message |
 |---|---|---|---|---|---|
 | `c0` | `main` | none | initial | none | `c0: create initial range filter` |
-| `c1` | `main` | `c0` | work_item_context | `INFERRED-WI-001` | `Start range filter cleanup` |
+| `c1` | `main` | `c0` | intermediate | `INFERRED-WI-001` | `Start range filter cleanup` |
 | `c2` | `main` | `c1` | bug_introducing | `INFERRED-WI-001` | `Tighten boundary behavior in range filter` |
-| `c3` | `main` | `c2` | work_item_context | `INFERRED-WI-001` | `Wire range filter into request path` |
+| `c3` | `main` | `c2` | intermediate | `INFERRED-WI-001` | `Wire range filter into request path` |
 | `c4` | `main` | `c3` | bug_fixing | none | `Fix boundary regression from range filter work` |
 
 ## Inference signals

@@ -49,7 +49,7 @@ commits:
   parents:
   - c0
   message: 'Require the safe system property for the flag'
-  role: other
+  role: intermediate
   operations:
   - type: replace
     path: src/main/java/example/Flags.java
@@ -60,7 +60,7 @@ commits:
   parents:
   - c0
   message: 'Keep the simple flag on the feature branch'
-  role: other
+  role: intermediate
   allow_empty: true
   operations:
   - type: replace

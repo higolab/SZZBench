@@ -17,10 +17,24 @@ from .scenario import load_yaml
 from .gitutils import (_AUTHOR_RE, TIMESTAMP_KEYS, GitError, parse_timestamp, resolve_commit_metadata,
                        resolved_commit_authors)
 
+#: The commit roles (``commits[].role``) of both suites, decisions/vocabulary.md
+#: section 2.2: the classic suite's eleven, and five more the graph suite uses --
+#: generic noise, the commit an origin BIC copies or a rewrite replays, a
+#: reintroduction, the commit a release branch starts from, and a commit
+#: ``commit_generator`` expands (issue #18).  ``validate`` reports any other role
+#: (E030) and ``validate-graph --lint`` too (GE405, issue #195).  The role
+#: describes the commit for a reader: it is copied into commit-map.json and read
+#: by no scorer.
 ALLOWED_ROLES = {
     "initial", "bug_introducing", "bug_fixing", "distractor", "refactoring",
     "formatting", "test_change", "merge", "revert", "cleanup", "feature_addition",
+    "intermediate", "origin_bug_introducing", "bug_reintroducing", "release_branch_point", "generated",
 }
+
+#: The status of a scenario (decisions/vocabulary.md section 4): ``draft`` may fail
+#: the lints, ``active`` passes ``--strict --lint`` and generates, ``retired`` is
+#: listed in docs/retired-ids.md.  W002 / GW018 report any other (issue #157).
+SCENARIO_STATUSES = ("draft", "active", "retired")
 
 #: The operation fields whose value is text the generator writes or matches.  A
 #: number or a blank value (YAML null) in one ended `validate --simulate` and
@@ -361,6 +375,24 @@ def check_commit_metadata(commit: dict[str, Any], cid: Any, loc: str, result: Va
             result.error(author_code, f"Commit '{cid}' author {problem}.", f"{loc}.author")
 
 
+def check_status(meta: dict[str, Any], result: ValidationResult, *, code: str) -> None:
+    """W002 / GW018: ``meta.status``, when present, is one of ``SCENARIO_STATUSES`` (issue #157).
+
+    No check read the field: a status outside the vocabulary reached the index
+    and the README header, which show it as if it were one, and
+    ``validate-index`` was satisfied because both copies agreed.  A warning, so
+    ``--strict`` fails on it.  Without the key there is nothing to check.
+    """
+    if "status" not in meta:
+        return
+    status = meta["status"]
+    if not isinstance(status, str):
+        result.warning(code, f"meta.status must be one of {SCENARIO_STATUSES}, not {type_label(status)}.", "meta.status")
+    elif status not in SCENARIO_STATUSES:
+        result.warning(code, f"meta.status '{status}' is not one of {SCENARIO_STATUSES} "
+                       "(decisions/vocabulary.md section 4).", "meta.status")
+
+
 # --- Git's own files in the worktree (E051 / GE063, issue #164) --------------
 
 #: The files of the worktree that Git reads, in any directory, and what reading one does
@@ -626,6 +658,7 @@ def validate_static(data: dict[str, Any], *, scenario_path: Path | None = None) 
             parent = scenario_path.parent.name
             if parent != meta["id"]:
                 result.warning("W001", f"meta.id is '{meta['id']}', but scenario directory is '{parent}'.", "meta.id")
+        check_status(meta, result, code="W002")                                                           # issue #157
     if repository is None:
         result.error("E010", "'repository' must be an object.", "repository")
     else:
@@ -1016,11 +1049,18 @@ DEFEATABLE_FAMILIES = ("blame", "shape", "position")
 def lint_defeats(meta: Any, result: ValidationResult, *, prefix: str) -> None:
     """``<prefix>462``: ``meta.defeats`` names the cheap-rule families the scenario is built to make fail.
 
-    Optional.  When present it must be a list of distinct family names, and a
-    ``discriminating`` scenario must list every family, because that is what
-    the tier means.
+    Optional for a ``control``.  When present it must be a list of distinct
+    family names, and a ``discriminating`` scenario must declare it and list
+    every family, because that is what the tier means.
     """
-    if not isinstance(meta, dict) or "defeats" not in meta:
+    if not isinstance(meta, dict):
+        return
+    if "defeats" not in meta:
+        if meta.get("tier") == "discriminating":
+            # 18 discriminating scenarios declared nothing, so neither this lint nor
+            # `szzbench baselines` (declared_defeated_but_solved) checked them (issue #207)
+            result.warning(f"{prefix}462", "meta.defeats is missing; a discriminating scenario defeats every family: "
+                           f"declare defeats: [{', '.join(DEFEATABLE_FAMILIES)}] or change the tier.", "meta.defeats")
         return
     defeats = meta.get("defeats")
     if not isinstance(defeats, list) or not all(isinstance(item, str) for item in defeats):

@@ -191,6 +191,12 @@ bugs:
           that sentence is the evidence that c3's loop is one short, and it is
           in a file the fix never opens.
 
+scenario_design:
+  failure_mode: >-
+    A tool fails here when it stops at blame's `c3`, the loop that runs one
+    attempt too few: `c1` changed what the retry limit counts and said so
+    only in its Javadoc, in a file the fix never opens.
+
 checks:
   - type: "git_history_contains"
     commits: ["c0", "c1", "c2", "c3", "c4"]

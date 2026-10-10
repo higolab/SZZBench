@@ -75,7 +75,7 @@ commits:
   parents:
   - f1
   message: Add DraftScoreBand for draft submissions
-  role: origin_bug_propagating
+  role: origin_bug_introducing
   operations:
   - type: write_file
     path: src/main/java/example/DraftScoreBand.java

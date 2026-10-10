@@ -15,6 +15,7 @@ meta:
   difficulty: hard
   status: active
   tier: discriminating
+  defeats: [blame, shape, position]
 repository:
   name: SZZG-0040-multi-bic-untouched-root-cause
   default_branch: main
@@ -110,6 +111,10 @@ expected_szz:
     - c2
 scenario_design:
   purpose: Evaluate whether a method reports a bug-introducing commit that is on no line the fix deletes.
+  failure_mode: >-
+    A tool fails here when it stops at blame's `c2`: the fix also inlines the retry limit as 3 on
+    the line it repairs, and `c1`, which raised what `maxRetries()` returns to 10, is reached only
+    by following the call into a method the fix leaves alone.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.

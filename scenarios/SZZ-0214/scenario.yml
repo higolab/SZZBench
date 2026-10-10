@@ -182,6 +182,12 @@ bugs:
           faulty deleted line at the fix; c3 created a file the fix does not
           touch.
 
+scenario_design:
+  failure_mode: >-
+    A tool fails here when it works from the lines the fix deletes: there
+    are none, `c1` removed the null check by deleting lines, and `c3`, which
+    first passed a missing nickname, created a file the fix never opens.
+
 checks:
   - type: "git_history_contains"
     commits: ["c0", "c1", "c2", "c3", "c4"]

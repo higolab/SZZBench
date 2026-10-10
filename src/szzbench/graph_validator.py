@@ -20,10 +20,10 @@ from .gitutils import (GitError, commit_branch, format_timestamp, history_graph,
 from .operations import OperationError, resolve_line_ending, type_label
 from .paths import PathValidationError, file_system_key, validate_repo_relative_path
 from .policies import SUPPORTED_EVALUATION_POLICIES
-from .validator import (COMMIT_MESSAGE_RULE, LINT_INPUT_ERRORS, check_commit_date_order, check_commit_metadata,
-                        check_git_control_files, check_scheduled_dates, classic_scenario_guard, commit_message_problem,
-                        lint_author_coincidence, lint_defeats, lint_difficulty, lint_factors, lint_leakage,
-                        lint_readme_header, lint_tier, timestamp_problem)
+from .validator import (ALLOWED_ROLES, COMMIT_MESSAGE_RULE, LINT_INPUT_ERRORS, check_commit_date_order,
+                        check_commit_metadata, check_git_control_files, check_scheduled_dates, check_status,
+                        classic_scenario_guard, commit_message_problem, lint_author_coincidence, lint_defeats,
+                        lint_difficulty, lint_factors, lint_leakage, lint_readme_header, lint_tier, timestamp_problem)
 
 GRAPH_ID_RE = re.compile(r"^SZZG-\d{4}$")
 
@@ -151,6 +151,7 @@ def validate_graph_static(data: dict[str, Any], *, scenario_path: Path | None = 
                 result.error("GE017", f"meta.{key} must be a string, not {type_label(meta[key])}.", f"meta.{key}")
         if "factors" in meta and not isinstance(meta.get("factors"), list):
             result.error("GE016", "meta.factors must be a list.", "meta.factors")
+        check_status(meta, result, code="GW018")                                                          # issue #157
 
     if repository is None:
         result.error("GE020", "'repository' must be an object.", "repository")
@@ -233,7 +234,7 @@ def validate_graph_static(data: dict[str, Any], *, scenario_path: Path | None = 
                     result.error("GE039", f"Unknown parent commit '{parent}'.", f"{loc}.parents")
         role = commit.get("role")
         if role is not None and not isinstance(role, str):
-            # The graph suite has no role vocabulary, but a role is text: a list or a
+            # The role vocabulary is a lint (GE405, issue #195), but a role is text: a list or a
             # mapping raised TypeError in the merge-like test below, and passed
             # without a finding on a commit with one parent (issue #150)
             result.error("GE041", f"commit.role must be a string when present, not {type_label(role)}.", f"{loc}.role")
@@ -1095,14 +1096,60 @@ def lint_graph_scenario(data: dict[str, Any], *, scenario_path: Path | None = No
             role = entry.get("role")
             if isinstance(role, str) and role not in ALLOWED_BFC_ROLES:
                 result.error("GE404", f"BFC role '{role}' is not in {sorted(ALLOWED_BFC_ROLES)}.", f"bugs[{i}].bug_fixing_commits[{j}].role")
+    _lint_commit_roles(data, result)
     lint_leakage(commits, bfc_ids, result, prefix="GW")
     lint_author_coincidence(data, "advanced-scenarios", result, prefix="GW")
     _lint_approximate_operations(commits, result)
     _lint_origin_coverage(bugs, data, result)
+    _lint_history_summary(data, result)
     if scenario_path is not None:
         _lint_readme_history(commits, scenario_path, result)
         lint_readme_header(data, "advanced-scenarios", scenario_path, result, prefix="GW")
     return result
+
+
+def _lint_commit_roles(data: dict[str, Any], result: ValidationResult) -> None:
+    """GE405: a commit's ``role`` is one of ``ALLOWED_ROLES``, the list the classic suite's E030 enforces.
+
+    decisions/vocabulary.md section 2.2 made the list canonical for both suites
+    and planned this check; until issue #195 the graph validator read a role
+    only for GW040 / GW041, and 28 shipped commits kept 16 other spellings.  An
+    error, like the other vocabulary lints (GE400-GE404), and a lint, so a role
+    does not stop ``generate-graph``: no scorer reads it.
+    """
+    for i, commit in enumerate(data.get("commits") or []):
+        role = commit.get("role") if isinstance(commit, dict) else None
+        if isinstance(role, str) and role not in ALLOWED_ROLES:
+            result.error("GE405", f"Commit role '{role}' is not one of the commit roles both suites share: "
+                         f"{sorted(ALLOWED_ROLES)} (decisions/vocabulary.md section 2.2).", f"commits[{i}].role")
+
+
+#: A line of ``graph.history_summary`` that describes a commit: ``c3: merge feature branch into main``.
+HISTORY_SUMMARY_LINE = re.compile(r"^[ \t]*(?P<id>[A-Za-z]\w*):", re.M)
+#: The placeholder ``new-graph-scenario`` writes, ``TODO: Summarize the intended commit graph.``
+HISTORY_SUMMARY_PLACEHOLDER = "TODO"
+
+
+def _lint_history_summary(data: dict[str, Any], result: ValidationResult) -> None:
+    """GW456: ``graph.history_summary`` names a commit the scenario does not define.
+
+    The summary is prose for a reader of the YAML, one ``<id>: <phrase>`` line
+    per commit, and nothing read it: SZZG-0128, the fast-forward twin of
+    SZZG-0043, kept its twin's ``c3: merge feature branch into main`` although
+    it has no ``c3`` and no merge (issue #178).  Only the id that opens a line
+    is checked; the phrase is the author's.  The skeleton's ``TODO:`` line is
+    not a commit, and a summary that leaves a commit out is not reported.
+    """
+    graph = data.get("graph")
+    summary = graph.get("history_summary") if isinstance(graph, dict) else None
+    if not isinstance(summary, str):
+        return
+    ids = [c.get("id") for c in data.get("commits") or [] if isinstance(c, dict) and isinstance(c.get("id"), str)]
+    for match in HISTORY_SUMMARY_LINE.finditer(summary):
+        name = match.group("id")
+        if name not in ids and name != HISTORY_SUMMARY_PLACEHOLDER:
+            result.warning("GW456", f"graph.history_summary describes commit '{name}', which the scenario does not "
+                           f"define; its commits are {ids}.", "graph.history_summary")
 
 
 #: A line of a README ``## Expected history`` block: ``c1: introduce bug (replace A.java)``.

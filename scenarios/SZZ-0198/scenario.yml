@@ -23,6 +23,7 @@ meta:
   difficulty: "hard"
   status: "active"
   tier: "discriminating"
+  defeats: ["blame", "shape", "position"]
   category_code: "S6"
 
 repository:
@@ -159,6 +160,12 @@ bugs:
           touches. c1 raised the floor the subtraction reaches and is not
           reachable from the deleted line by blame; with the original floor the
           new caller would have returned the right answer.
+
+scenario_design:
+  failure_mode: >-
+    A tool fails here when it stops at blame's `c3`, the caller that
+    subtracts: `c1`, which raised the floor from zero to one, is reached
+    only through the method the fixed line calls.
 
 checks:
   - type: "git_history_contains"

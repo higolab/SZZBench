@@ -43,7 +43,7 @@ c5: git revert of c3, conflicting with c4 and resolved by hand
 |---|---|---|---|
 | `c0` | `initial` | Add the range check helpers | |
 | `c1` | `origin_bug_introducing` | Make both helpers strict | |
-| `c2` | `prior_fix` | Accept both bounds again | |
+| `c2` | `bug_fixing` | Accept both bounds again | |
 | `c3` | `bug_introducing` | Revert "Accept both bounds again" | `This reverts commit <hash of c2>.` |
 | `c4` | `intermediate` | Name the bound checks after what they check and add a description | |
 | `c5` | `bug_fixing` | Revert "Revert "Accept both bounds again"" | `This reverts commit <hash of c3>.` |

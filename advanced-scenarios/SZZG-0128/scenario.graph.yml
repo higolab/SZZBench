@@ -31,9 +31,7 @@ graph:
 
     c2: extend feature branch code that uses the buggy method
 
-    c3: merge feature branch into main
-
-    c4: fix bug on main after merge'
+    c4: fix bug on main, which reaches c2 by fast-forward (no merge commit)'
 commits:
 - id: c0
   author: Farid Haddad <farid.haddad@example.com>

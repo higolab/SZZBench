@@ -55,7 +55,7 @@ commits:
   parents:
   - c0
   message: 'Add the main retention policy'
-  role: source_change
+  role: intermediate
   operations:
   - type: write_file
     path: src/main/java/example/RetentionPolicy.java

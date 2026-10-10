@@ -149,6 +149,13 @@ bugs:
           and kept the operator; blame returns c2 under every variant, a
           correct commit, and c1 is on no line that still exists.
 
+scenario_design:
+  failure_mode: >-
+    A tool fails here when it takes blame's answer, `c2` and `c3`: the
+    correct commit `c2` raised the bonus threshold on the faulty line and
+    kept the wrong operator, so `c1`, which dropped the equality, is on no
+    line that still exists.
+
 checks:
   - type: "git_history_contains"
     commits: ["c0", "c1", "c2", "c3", "c4"]

@@ -59,7 +59,7 @@ commits:
   parents:
   - c1
   message: 'Cut the release branch'
-  role: other
+  role: intermediate
   allow_empty: true
   operations: []
 - id: c3

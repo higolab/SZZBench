@@ -40,7 +40,7 @@ c3: include the bounds in A.contains, later than the copy
 | `c0` | `main` | none | initial | Creates `example.A` with `contains(int, int, int)` returning `value > min && value < max` (bounds excluded). |
 | `c1` | `main` | `c0` | bug_introducing | `copy_file A.java -> B.java`, then one `replace` that turns `public class A {` into `public class B {`. The faulty statement is copied byte-for-byte. |
 | `c2` | `main` | `c1` | bug_fixing | Fixes the copied instance in `B.java`. This is the BFC of the recorded bug. `A.java` is untouched. |
-| `c3` | `main` | `c2` | origin_bug_fixing | Fixes the original instance in `A.java`, later than the scored fix. |
+| `c3` | `main` | `c2` | bug_fixing | Fixes the original instance in `A.java`, later than the scored fix. |
 
 `git show -C -C` on `c1` reports `copy from src/main/java/example/A.java` with `similarity index 87%`: the two
 files differ only in the class declaration line.

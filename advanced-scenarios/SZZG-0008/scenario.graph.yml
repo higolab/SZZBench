@@ -59,7 +59,7 @@ commits:
   parents:
   - c1
   message: 'Rewrite the API key predicate for readability'
-  role: semantic_rewrite
+  role: refactoring
   operations:
   - type: replace
     path: src/main/java/example/ApiKeyValidator.java

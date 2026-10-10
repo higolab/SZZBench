@@ -489,7 +489,9 @@ some rule of that family solves after all (`declared_defeated_but_solved`),
 scoped to the families that ran. The 82 G4–G8 scenarios declare it since
 2026-09-22 (blame defeated in 19, shape in 28, position in 4), and the
 twenty-four discriminating scenarios added since declare all three, so 106
-scenarios declare it, with no contradiction.
+scenarios declared it. On 2026-10-10 the eighteen discriminating scenarios that
+declared none gained all three (issue #207), so 124 scenarios declare it, with
+no contradiction.
 
 The check earns its keep. `SZZG-0118` was first declared `discriminating` and
 the measurement refused it: the generator's author rotation had given its two

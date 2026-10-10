@@ -187,6 +187,13 @@ bugs:
           to 42949672 overdue days; tests/test_reference_arithmetic.py holds the
           boundary.
 
+scenario_design:
+  failure_mode: >-
+    A tool fails here when it takes blame's answer, `c2` and `c3`: the wrong
+    expectation `c1` wrote into the test was rewritten by `c2`'s rename of
+    the helper it calls, so the commit where the fault began is one step
+    back in the test file's history.
+
 checks:
   - type: "git_history_contains"
     commits: ["c0", "c1", "c2", "c3", "c4"]

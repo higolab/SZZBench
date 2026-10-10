@@ -15,6 +15,7 @@ meta:
   difficulty: hard
   status: active
   tier: discriminating
+  defeats: [blame, shape, position]
 repository:
   name: SZZG-0038-multi-bic-context-only
   default_branch: main
@@ -121,6 +122,10 @@ expected_szz:
 scenario_design:
   purpose: >-
     Evaluate whether a method reports a bug-introducing commit that the fix reaches only through an inlined value.
+  failure_mode: >-
+    A tool fails here when it takes blame's answer, `c0` and `c1`: the fix replaces the call
+    `baseDiscount()`, a line `c0` wrote, with the value 10, and `c2`, which raised what that method
+    returns to 15, is reached only by following the call into a method the fix leaves alone.
 notes:
 - Draft scenario.graph.yml for graph-aware SZZBench support.
 - This file is intended for graph-aware generation and verification.

@@ -194,6 +194,13 @@ bugs:
           discount hunk adds the null check above c3's dereference and deletes
           nothing, so c3 is on no deleted line.
 
+scenario_design:
+  failure_mode: >-
+    A tool fails here when it takes blame's answer, `c0` and `c1`: the fix's
+    cleanup hunk deletes a constant `c0` wrote, and the hunk that repairs
+    `c3`'s missing null check only adds lines, so `c3` is on no line the fix
+    deletes.
+
 checks:
   - type: "git_history_contains"
     commits: ["c0", "c1", "c2", "c3", "c4"]

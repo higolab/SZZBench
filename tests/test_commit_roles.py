@@ -9,7 +9,9 @@ merge-like test (GW040 / GW041): the same value passed without a finding on a
 commit with one parent, and raised the same ``TypeError`` on a merge.
 
 A role that is not a string is now E030 in the classic suite and GE041 in the
-graph suite.  The graph suite keeps no role vocabulary: any string passes.
+graph suite.  The graph suite's static checks accept any string; whether it is
+one of the roles both suites share is the `--lint` check GE405 (issue #195,
+`tests/test_metadata_lints.py`).
 """
 from __future__ import annotations
 
@@ -100,8 +102,8 @@ def test_validate_graph_json_reports_it(tmp_path, kind):
     assert [(f["code"], f["location"]) for f in findings if f["severity"] == "ERROR"] == [("GE041", "commits[3].role")]
 
 
-def test_the_graph_suite_has_no_role_vocabulary():
-    """Any string is a role there; only the merge-like test reads it."""
+def test_the_graph_static_checks_accept_any_role_string():
+    """Any string passes them; only the merge-like test reads it.  The vocabulary is a lint (GE405)."""
     assert _errors(validate_graph_static(_with_role(GRAPH, 1, "a_role_nobody_listed"))) == []
     assert _errors(validate_graph_static(_with_role(GRAPH, 1, None))) == []      # a blank role is no role
     result = validate_graph_static(_with_role(MERGE, 3, "a_role_nobody_listed"))
