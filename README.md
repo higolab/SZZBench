@@ -368,6 +368,12 @@ szzbench generate   scenarios/SZZ-0006/scenario.yml   --out generated-input-repo
 
 When verification finds an error, `generate` prints the findings after `[ERROR] GENERATION_FAILED: Generated repository failed verification.` and exits 1. The output keeps `metadata/verify-result.json`, `generation.log` and `generation-error.json`, but has no `manifest.json`, so `generate-all-repos` generates it again.
 
+A verification warning (such as `W700`, basic blame does not reach the expected BIC) is printed and leaves the exit code 0. Add `--strict` to exit with 1 on a warning, as `verify --strict` does; the output is complete and kept either way. `--strict` cannot be combined with `--no-verify`. Add `--json` to print one JSON document on stdout and nothing else: `kind`, `scenario`, `output_dir`, `status` (`generated` or `failed`), `commit_count`, `error`, and `verification`, which is what `verify --json` prints (the counts and the findings), or `null` with `--no-verify`. A failed generation prints the document too, and exits 1.
+
+```bash
+szzbench generate   scenarios/SZZ-0006/scenario.yml   --out generated-input-repos/SZZ-0006/default   --force   --strict   --json
+```
+
 `--force` replaces an existing `--out` only when it is a previous generated output, or a directory that holds nothing but `repo/` and `metadata/`. It refuses, and deletes nothing, when `--out` is a file, holds anything else, contains the scenario file, or is the current directory or one of its parents. The same rule applies to `generate-graph` and to `generate-all-repos`.
 
 The generated directory has the following structure.
@@ -467,7 +473,7 @@ generated-input-repos/SZZG-0001/default/
 
 `graph-map.json` records additional information for Graph scenarios. It includes information such as branches, parents, and roles. A commit's `parents` and `parent_hashes` are its declared parents. For a commit that owns `commit_generator` operations, Git's first parent is its last generated commit, listed in `generated_commits` (`docs/generator-options.md` §2).
 
-When verification finds an error, `generate-graph` prints the findings and records the failure as `generate` does.
+When verification finds an error, `generate-graph` prints the findings and records the failure as `generate` does. `--strict` and `--json` work as they do for `generate`; `kind` is `graph`.
 
 ### verify-graph
 
@@ -592,7 +598,7 @@ The command scans the following files.
 
 Each generated repository is written under `generated-input-repos/<SCENARIO_ID>/default/`.
 
-Every generation writes `metadata/manifest.json` last. It records the scenario file's hash, a fingerprint of the generator's code, and the repository id that prediction records carry. An existing output is skipped only when that manifest still matches and the output still has everything it describes. An output without one (an interrupted generation, or one made before 2026-09-29), whose scenario file or generator code has changed since, or that has lost part of what the manifest describes (such as its repository, one of its commits, its commit map or its copy of the scenario) is stale and is regenerated, with the reason printed (`docs/generator-options.md` §6). The command is therefore safe to run repeatedly: it brings every output up to date and leaves current ones alone. `evaluate`, `baselines` and `coverage` refuse to score a stale output.
+Every generation writes `metadata/manifest.json` last. It records the scenario file's hash, a fingerprint of the generator's code, and the repository id that prediction records carry. An existing output is skipped only when that manifest still matches and the output still has everything it describes. An output without one (an interrupted generation, or one made before 2026-09-29), with one that cannot be read or parsed (the reason says why), whose scenario file or generator code has changed since, or that has lost part of what the manifest describes (such as its repository, one of its commits, its commit map or its copy of the scenario) is stale and is regenerated, with the reason printed (`docs/generator-options.md` §6). The command is therefore safe to run repeatedly: it brings every output up to date and leaves current ones alone. `evaluate`, `baselines` and `coverage` refuse to score a stale output.
 
 To remove existing generated repositories and create them again, use `--overwrite`.
 
@@ -608,6 +614,13 @@ Add `--no-verify` to skip post-generation verification for all generated reposit
 
 ```bash
 szzbench generate-all-repos --no-verify
+```
+
+The verification warnings of every output are printed to stderr, one line each, after the scenario id (`SZZ-0078: [WARNING] W700: ...`), and the summary counts the outputs with a warning as `Warned`. An output skipped as up to date reports the verification its generation recorded in `metadata/verify-result.json`; one without a readable `verify-result.json` is generated again. Add `--strict` to exit with 1 when the verification of any output warns (it cannot be combined with `--no-verify`), and `--json` to print one JSON document on stdout and nothing else: `items` (one per scenario, with the keys of `generate --json` and `scenario_id`, `overwritten`, `stale_reason` and `traceback`), `orphans`, and `summary` with the counts of the text summary.
+
+```bash
+szzbench generate-all-repos --strict
+szzbench generate-all-repos --json
 ```
 
 ## readme
@@ -649,6 +662,13 @@ szzbench clean --root generated-input-repos
 ```
 
 `clean` can be used for generated outputs from both normal scenarios and Graph scenarios.
+
+`clean` removes every generated output below its root, at any depth. It therefore refuses a root that is the file-system root, the home directory, or the current directory or one of its parents, and scans nothing. Under any root other than `generated-input-repos` of the current directory, it lists the outputs it found on stderr and asks before removing them; `--yes` removes them without asking. Where stdin is not a terminal, such as in a script, it refuses without `--yes` and removes nothing. `--dry-run` never asks. `--json` prints one JSON document on stdout: `root`, `dry_run`, `outputs` and `summary` (`found` and `removed`).
+
+```bash
+szzbench clean --root /tmp/szzbench-repos --dry-run
+szzbench clean --root /tmp/szzbench-repos --yes --json
+```
 
 ## Auxiliary tools
 
@@ -1094,6 +1114,12 @@ szzbench generate   scenarios/SZZ-0006/scenario.yml   --out generated-input-repo
 
 verify でエラーが見つかると、`generate` は `[ERROR] GENERATION_FAILED: Generated repository failed verification.` に続けてその所見を表示し、終了コード 1 で終わります。出力には `metadata/verify-result.json`、`generation.log`、`generation-error.json` が残り、`manifest.json` は書かれないので、`generate-all-repos` はその出力を生成し直します。
 
+verify の警告（基本の blame が期待する BIC に届かないことを示す `W700` など）は表示されるだけで、終了コードは 0 のままです。`--strict` を付けると、`verify --strict` と同じく警告があれば終了コード 1 で終わります。どちらの場合も出力は完全で、そのまま残ります。`--strict` と `--no-verify` は同時に指定できません。`--json` を付けると、標準出力に JSON 文書を 1 つだけ出力します。中身は `kind`、`scenario`、`output_dir`、`status`（`generated` または `failed`）、`commit_count`、`error`、`verification` で、`verification` は `verify --json` が出力するもの（件数と所見）、`--no-verify` のときは `null` です。生成に失敗したときも文書を出力し、終了コード 1 で終わります。
+
+```bash
+szzbench generate   scenarios/SZZ-0006/scenario.yml   --out generated-input-repos/SZZ-0006/default   --force   --strict   --json
+```
+
 `--force` が既存の `--out` を置き換えるのは、それが以前の生成物か、`repo/` と `metadata/` しか含まないディレクトリの場合だけです。`--out` がファイルである、それ以外のものを含む、シナリオファイルを含む、作業ディレクトリそのものかその親である、のいずれかに当たるときは、何も削除せずに拒否します。`generate-graph` と `generate-all-repos` にも同じ規則が適用されます。
 
 生成されるディレクトリは次のような構成です。
@@ -1193,7 +1219,7 @@ generated-input-repos/SZZG-0001/default/
 
 `graph-map.json` は、Graph シナリオ向けの追加情報を記録します。branch、parent、role などの情報を含みます。コミットの `parents` と `parent_hashes` は、シナリオで宣言された親です。`commit_generator` 操作を持つコミットでは、Git 上の第一親は最後の生成コミットで、それは `generated_commits` に並んでいます（`docs/generator-options.md` §2）。
 
-verify でエラーが見つかったときの表示と記録は、`generate` と同じです。
+verify でエラーが見つかったときの表示と記録は、`generate` と同じです。`--strict` と `--json` も `generate` と同じように働きます（`kind` は `graph`）。
 
 ### verify-graph
 
@@ -1318,7 +1344,7 @@ szzbench generate-all-repos
 
 各リポジトリは `generated-input-repos/<SCENARIO_ID>/default/` 以下に生成されます。
 
-生成は最後に `metadata/manifest.json` を書き出します。ここには、シナリオファイルのハッシュ、生成器のコードの指紋、予測の記録が持つリポジトリの識別子が記録されます。既存の出力は、この manifest が今も一致し、manifest が記述するものがすべて残っている場合にだけスキップされます。manifest がない出力（中断した生成や、2026-09-29 より前に作られたもの）、その後シナリオファイルや生成器のコードが変わった出力、manifest が記述するもの（リポジトリ、そのコミット、commit map、シナリオのコピーなど）の一部を失った出力は「古い」とみなされ、理由を表示して作り直されます（`docs/generator-options.md` §6）。そのため繰り返し実行しても安全で、すべての出力を最新にし、最新のものには手を付けません。`evaluate`、`baselines`、`coverage` は古い出力を採点しません。
+生成は最後に `metadata/manifest.json` を書き出します。ここには、シナリオファイルのハッシュ、生成器のコードの指紋、予測の記録が持つリポジトリの識別子が記録されます。既存の出力は、この manifest が今も一致し、manifest が記述するものがすべて残っている場合にだけスキップされます。manifest がない出力（中断した生成や、2026-09-29 より前に作られたもの）、manifest を読めない・解析できない出力（理由にその訳を示します）、その後シナリオファイルや生成器のコードが変わった出力、manifest が記述するもの（リポジトリ、そのコミット、commit map、シナリオのコピーなど）の一部を失った出力は「古い」とみなされ、理由を表示して作り直されます（`docs/generator-options.md` §6）。そのため繰り返し実行しても安全で、すべての出力を最新にし、最新のものには手を付けません。`evaluate`、`baselines`、`coverage` は古い出力を採点しません。
 
 既存の生成済みリポジトリを削除して作り直す場合は、`--overwrite` を使います。
 
@@ -1334,6 +1360,13 @@ szzbench generate-all-repos --overwrite
 
 ```bash
 szzbench generate-all-repos --no-verify
+```
+
+各出力の verify の警告は、1 件 1 行で、シナリオ ID に続けて標準エラーに表示します（`SZZ-0078: [WARNING] W700: ...`）。集計では、警告のある出力の数を `Warned` として示します。最新としてスキップした出力については、その生成が `metadata/verify-result.json` に記録した verify の結果を報告します。読める `verify-result.json` がない出力は生成し直します。`--strict` を付けると、どれかの出力の verify に警告があれば終了コード 1 で終わります（`--no-verify` とは同時に指定できません）。`--json` を付けると、標準出力に JSON 文書を 1 つだけ出力します。中身は `items`（シナリオごとに 1 つで、`generate --json` のキーに `scenario_id`、`overwritten`、`stale_reason`、`traceback` を加えたもの）、`orphans`、テキストの集計と同じ件数を持つ `summary` です。
+
+```bash
+szzbench generate-all-repos --strict
+szzbench generate-all-repos --json
 ```
 
 ## readme
@@ -1375,6 +1408,13 @@ szzbench clean --root generated-input-repos
 ```
 
 `clean` は通常シナリオと Graph シナリオの両方の生成物に使えます。
+
+`clean` はルート以下にある生成物を、深さに関係なくすべて削除します。そのため、ファイルシステムのルート、ホームディレクトリ、作業ディレクトリそのものかその親をルートに指定すると、何も走査せずに拒否します。作業ディレクトリの `generated-input-repos` 以外のルートでは、見つけた生成物を標準エラーに一覧表示し、削除してよいかを尋ねます。`--yes` を付けると尋ねずに削除します。スクリプトの中など標準入力が端末でないときは、`--yes` がなければ何も削除せずに拒否します。`--dry-run` は尋ねません。`--json` を付けると、`root`、`dry_run`、`outputs`、`summary`（`found` と `removed`）を持つ JSON 文書を標準出力に 1 つ出力します。
+
+```bash
+szzbench clean --root /tmp/szzbench-repos --dry-run
+szzbench clean --root /tmp/szzbench-repos --yes --json
+```
 
 ## 補助ツール
 

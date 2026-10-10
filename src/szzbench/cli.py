@@ -11,7 +11,13 @@ from .bulk_generator import (
     GenerateAllRepositoriesError,
     generate_all_repositories,
 )
-from .cleaner import CleanError, DEFAULT_CLEAN_ROOT, clean_generated_outputs
+from .cleaner import (
+    CleanError,
+    DEFAULT_CLEAN_ROOT,
+    find_generated_outputs,
+    is_default_clean_root,
+    remove_generated_outputs,
+)
 from .generator import GenerationError, generate_repository
 from .graph_generator import GraphGenerationError, generate_graph_repository
 from .scenario import load_yaml
@@ -51,22 +57,63 @@ def cmd_generate(args) -> int:
     if scenario is not None:
         guard = graph_scenario_guard(scenario, Path(args.scenario), "generate")
         if guard.has_errors():
+            if args.json:
+                error = "; ".join(f"{finding.code}: {finding.message}" for finding in guard.error_findings())
+                _print_json(_generation_document(args, "classic", error=error))
+                return 1
             for finding in guard.findings:
                 print(f"[ERROR] {finding.code}: {finding.message}", file=sys.stderr)
             return 1
     try:
         commit_map, verify_result = generate_repository(Path(args.scenario), Path(args.out), force=args.force, verify=not args.no_verify)
     except GenerationError as exc:
-        print(f"[ERROR] GENERATION_FAILED: {exc}", file=sys.stderr)
-        if exc.verify_result is not None:       # why verification failed: it was in verify-result.json only (#163)
-            print_result(exc.verify_result, file=sys.stderr)
+        return _report_failed_generation(args, "classic", "GENERATION_FAILED", exc)
+    return _report_generation(args, "classic", commit_map, verify_result, "Generated repository under", "commit(s)")
+
+def _report_generation(args, kind: str, commit_map: dict, verify_result, generated: str, commits: str) -> int:
+    """What ``generate`` and ``generate-graph`` print for a generation that succeeded, and their exit code.
+
+    The verification's warnings were printed and left the exit code 0; with
+    ``--strict`` they fail it, as ``verify --strict`` does (issue #169).
+    """
+    if args.json:
+        _print_json(_generation_document(args, kind, commit_map=commit_map, verify_result=verify_result))
+    else:
+        print(f"{generated}: {Path(args.out).resolve()}")
+        print(f"Created {len(commit_map)} {commits}.")
+        if verify_result is not None:
+            print_result(verify_result)
+    if verify_result is None:
+        return 0
+    if verify_result.has_errors():
         return 1
-    print(f"Generated repository under: {Path(args.out).resolve()}")
-    print(f"Created {len(commit_map)} commit(s).")
-    if verify_result is not None:
-        print_result(verify_result, json_output=False)
-        return 1 if verify_result.has_errors() else 0
-    return 0
+    return 1 if args.strict and verify_result.warning_count() > 0 else 0
+
+def _report_failed_generation(args, kind: str, code: str, exc) -> int:
+    if args.json:
+        _print_json(_generation_document(args, kind, verify_result=exc.verify_result, error=str(exc)))
+        return 1
+    print(f"[ERROR] {code}: {exc}", file=sys.stderr)
+    if exc.verify_result is not None:       # why verification failed: it was in verify-result.json only (#163)
+        print_result(exc.verify_result, file=sys.stderr)
+    return 1
+
+def _generation_document(args, kind: str, *, commit_map: dict | None = None, verify_result=None,
+                         error: str | None = None) -> dict:
+    """What ``generate --json`` and ``generate-graph --json`` print: the keys of an item of
+    ``generate-all-repos --json`` that apply to one generation (issue #169)."""
+    return {
+        "kind": kind,
+        "scenario": str(Path(args.scenario).resolve()),
+        "output_dir": str(Path(args.out).resolve()),
+        "status": "failed" if error is not None else "generated",
+        "commit_count": len(commit_map) if commit_map is not None else 0,
+        "error": error,
+        "verification": verify_result.to_dict() if verify_result is not None else None,
+    }
+
+def _print_json(document: dict) -> None:
+    print(json.dumps(document, indent=2, ensure_ascii=False))
 
 def cmd_verify(args) -> int:
     result = verify_generated_repo(Path(args.repo), Path(args.scenario), Path(args.commit_map) if args.commit_map else None)
@@ -95,16 +142,9 @@ def cmd_generate_graph(args) -> int:
     try:
         commit_map, verify_result = generate_graph_repository(Path(args.scenario), Path(args.out), force=args.force, verify=not args.no_verify)
     except GraphGenerationError as exc:
-        print(f"[ERROR] GRAPH_GENERATION_FAILED: {exc}", file=sys.stderr)
-        if exc.verify_result is not None:       # why verification failed (issue #163)
-            print_result(exc.verify_result, file=sys.stderr)
-        return 1
-    print(f"Generated graph repository under: {Path(args.out).resolve()}")
-    print(f"Created {len(commit_map)} graph commit(s).")
-    if verify_result is not None:
-        print_result(verify_result, json_output=False)
-        return 1 if verify_result.has_errors() else 0
-    return 0
+        return _report_failed_generation(args, "graph", "GRAPH_GENERATION_FAILED", exc)
+    return _report_generation(args, "graph", commit_map, verify_result, "Generated graph repository under",
+                              "graph commit(s)")
 
 def cmd_generate_all_repos(args) -> int:
     try:
@@ -118,7 +158,17 @@ def cmd_generate_all_repos(args) -> int:
     except GenerateAllRepositoriesError as exc:
         print(f"[ERROR] GENERATE_ALL_REPOS_FAILED: {exc}", file=sys.stderr)
         return 1
+    if args.json:
+        _print_json(result.to_dict())
+    else:
+        _print_generate_all_repos(result)
+    if result.failed_count:
+        return 1
+    # a verification warning was written to verify-result.json and never shown, and
+    # nothing could fail the run on it (issue #169)
+    return 1 if args.strict and result.warned_count else 0
 
+def _print_generate_all_repos(result) -> None:
     for item in result.items:
         output = _display_path(item.output_dir)
         if item.status == "skipped":
@@ -135,6 +185,11 @@ def cmd_generate_all_repos(args) -> int:
                 print(f"  {finding.format()}", file=sys.stderr)
             if item.traceback:                  # not a generation error: say where it came from (#162)
                 print("  " + item.traceback.rstrip().replace("\n", "\n  "), file=sys.stderr)
+        if item.status != "failed" and item.verification is not None:
+            # what `generate` prints, named by the scenario since stdout and stderr can be read apart (#169)
+            for finding in item.verification.findings:
+                if finding.severity == "WARNING":
+                    print(f"{item.scenario_id}: {finding.format()}", file=sys.stderr)
 
     print("Summary:")
     print(f"  Total:       {result.total_count}")
@@ -143,12 +198,12 @@ def cmd_generate_all_repos(args) -> int:
     print(f"  Overwritten: {result.overwritten_count}")
     print(f"  Regenerated: {result.regenerated_count} (stale outputs, without --overwrite)")
     print(f"  Failed:      {result.failed_count}")
+    print(f"  Warned:      {result.warned_count} (verification warnings; --strict fails on them)")
     if result.orphans:
         print(f"  Orphaned:    {len(result.orphans)}")
         for orphan in result.orphans:
             print(f"[WARNING] {_display_path(orphan)} has no scenario; it was probably retired "
                   f"(see docs/retired-ids.md). Remove it, or run `szzbench clean` and regenerate.", file=sys.stderr)
-    return 1 if result.failed_count else 0
 
 def cmd_verify_graph(args) -> int:
     result = verify_graph_generated_repo(
@@ -372,11 +427,24 @@ def cmd_new_graph_scenario(args) -> int:
 def cmd_clean(args) -> int:
     root = Path(args.root)
     try:
-        outputs = clean_generated_outputs(root, dry_run=args.dry_run)
+        outputs = find_generated_outputs(root)
+        if outputs and not args.dry_run:
+            # outside the default root, nothing is removed without a yes (issue #171)
+            if not args.yes and not is_default_clean_root(root) and not _confirm_clean(root.resolve(), outputs):
+                return 1
+            remove_generated_outputs(outputs)
     except CleanError as exc:
         print(f"[ERROR] CLEAN_FAILED: {exc}", file=sys.stderr)
         return 1
     root_display = root.resolve()
+    if args.json:
+        _print_json({
+            "root": str(root_display),
+            "dry_run": args.dry_run,
+            "outputs": [str(output) for output in outputs],
+            "summary": {"found": len(outputs), "removed": 0 if args.dry_run else len(outputs)},
+        })
+        return 0
     if not outputs:
         print(f"No generated repositories found under: {root_display}")
         return 0
@@ -386,6 +454,28 @@ def cmd_clean(args) -> int:
     suffix = "found" if args.dry_run else "removed"
     print(f"Summary: {len(outputs)} generated output(s) {suffix}.")
     return 0
+
+def _confirm_clean(root: Path, outputs: list[Path]) -> bool:
+    """Ask on the terminal before ``clean`` removes the outputs under a root that is not the default.
+
+    Everything goes to stderr, so that stdout keeps only what ``--json`` prints.
+    """
+    try:
+        interactive = sys.stdin is not None and sys.stdin.isatty()
+    except ValueError:                          # a closed stdin
+        interactive = False
+    if not interactive:
+        print(f"[ERROR] CLEAN_FAILED: {len(outputs)} generated output(s) found under {root}, which is not the default "
+              f"root {DEFAULT_CLEAN_ROOT}; clean asks before removing them there, and stdin is not a terminal. "
+              "Check them with --dry-run, then pass --yes. Nothing was removed.", file=sys.stderr)
+        return False
+    for output in outputs:
+        print(f"Would remove: {output}", file=sys.stderr)
+    print(f"Remove these {len(outputs)} generated output(s) under {root}? [y/N] ", end="", file=sys.stderr, flush=True)
+    if sys.stdin.readline().strip().lower() in ("y", "yes"):
+        return True
+    print("Nothing was removed.", file=sys.stderr)
+    return False
 
 def cmd_new_scenario(args) -> int:
     try:
@@ -423,6 +513,17 @@ def _display_credit(weighted_credit: float | None, possible_credit: float | None
     return f"{weighted_credit:.3f}/{possible_credit:.3f}"
 
 
+def _add_verification_options(parser: argparse.ArgumentParser, no_verify_help: str, *,
+                              strict_help: str = "Treat verification warnings as failures") -> None:
+    """``--no-verify``, ``--strict`` and ``--json`` of the generate commands (issue #169).
+
+    ``--strict`` with ``--no-verify`` would pass without a check, so argparse refuses the pair.
+    """
+    exclusive = parser.add_mutually_exclusive_group()
+    exclusive.add_argument("--no-verify", action="store_true", help=no_verify_help)
+    exclusive.add_argument("--strict", action="store_true", help=strict_help)
+    parser.add_argument("--json", action="store_true", help="Print JSON output")
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="szzbench")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -437,7 +538,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_generate.add_argument("scenario")
     p_generate.add_argument("--out", required=True, help="Output directory containing repo/ and metadata/")
     p_generate.add_argument("--force", action="store_true", help="Overwrite output directory if it exists")
-    p_generate.add_argument("--no-verify", action="store_true", help="Skip post-generation verification")
+    _add_verification_options(p_generate, "Skip post-generation verification")
     p_generate.set_defaults(func=cmd_generate)
     p_verify = sub.add_parser("verify", help="Verify a generated repository against scenario.yml")
     p_verify.add_argument("repo")
@@ -465,12 +566,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_generate_graph.add_argument("scenario")
     p_generate_graph.add_argument("--out", required=True, help="Output directory containing repo/ and metadata/")
     p_generate_graph.add_argument("--force", action="store_true", help="Overwrite output directory if it exists")
-    p_generate_graph.add_argument("--no-verify", action="store_true", help="Skip post-generation graph verification")
+    _add_verification_options(p_generate_graph, "Skip post-generation graph verification")
     p_generate_graph.set_defaults(func=cmd_generate_graph)
 
     p_generate_all = sub.add_parser("generate-all-repos", help="Generate repositories for every classic and graph scenario")
     p_generate_all.add_argument("--overwrite", action="store_true", help="Overwrite existing generated repositories")
-    p_generate_all.add_argument("--no-verify", action="store_true", help="Skip post-generation verification")
+    _add_verification_options(p_generate_all, "Skip post-generation verification",
+                              strict_help="Exit 1 when the verification of any output has a warning, a skipped "
+                                          "output's recorded one included")
     p_generate_all.add_argument("--out-root", default=str(DEFAULT_GENERATED_INPUT_REPOS_ROOT), help="Root directory for generated repositories")
     p_generate_all.add_argument("--scenarios-root", default=str(DEFAULT_SCENARIOS_ROOT), help="Root directory for classic scenarios")
     p_generate_all.add_argument("--advanced-scenarios-root", default=str(DEFAULT_ADVANCED_SCENARIOS_ROOT), help="Root directory for graph scenarios")
@@ -547,6 +650,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_clean = sub.add_parser("clean", help="Remove generated repositories")
     p_clean.add_argument("--root", default=str(DEFAULT_CLEAN_ROOT), help="Root directory to scan for generated outputs")
     p_clean.add_argument("--dry-run", action="store_true", help="Show generated outputs without removing them")
+    p_clean.add_argument("--yes", action="store_true",
+                         help="Remove without asking when --root is not the default generated-input-repos")
+    p_clean.add_argument("--json", action="store_true", help="Print JSON output")
     p_clean.set_defaults(func=cmd_clean)
     p_new = sub.add_parser("new-scenario", help="Create a new scenario skeleton")
     p_new.add_argument("--title", required=True, help="Scenario title")
