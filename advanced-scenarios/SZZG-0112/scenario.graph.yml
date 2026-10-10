@@ -115,14 +115,14 @@ bugs:
     commit: c1
     file: config/range-limits.properties
     change_type: non_utf8_binary_update
-    encoding: windows-1252
+    x-encoding: windows-1252
     description: The CP1252 file changes min=0/max=10 to min=1/max=9, excluding the boundary values.
   fixes:
   - id: X001
     commit: c2
     file: config/range-limits.properties
     fix_type: non_utf8_binary_update
-    encoding: windows-1252
+    x-encoding: windows-1252
     description: The CP1252 file restores min=0/max=10.
 expected_szz:
   commit_level:
@@ -153,7 +153,7 @@ notes:
   code showed (issue #23). ConfigBackedRange now loads the file and the effect is measured at every commit.
 - The properties file contains the byte 0xE9 in the word cafe encoded as CP1252, which is not valid standalone UTF-8.
 - Fault and fix descriptions avoid relying on text-line lookup inside the binary file.
-encoding:
+x-encoding:
   files:
   - path: config/range-limits.properties
     encoding: windows-1252

@@ -84,7 +84,7 @@ commits:
       gate.killSwitch=false
 
       '
-  generated_files: true
+  x-generated_files: true
 - id: c3
   branch: main
   parents:

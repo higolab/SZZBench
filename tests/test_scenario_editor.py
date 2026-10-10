@@ -359,8 +359,10 @@ def test_saving_validates_writes_the_header_and_inserts_one_index_entry(server, 
     assert added == ["- id: SZZ-0002", "  title: New SZZ scenario", "  slug: new-szz-scenario", "  category_code: S1",
                      "  category: Basic semantic line changes", "  factors:", "  - single-bic", "  - single-bfc",
                      "  - line-modification", "  difficulty: medium"]
-    assert after[:start] + after[start + 12:] == before      # every other line, byte for byte
-    assert after[start + 12] == "- id: SZZ-0005"             # inserted in id order
+    assert after[start + 10:start + 13] == ["  status: draft", "  path: scenarios/SZZ-0002/scenario.yml",
+                                             "  readme: scenarios/SZZ-0002/README.md"]   # the shape of both indexes (#200)
+    assert after[:start] + after[start + 13:] == before      # every other line, byte for byte
+    assert after[start + 13] == "- id: SZZ-0005"             # inserted in id order
 
 
 def test_saving_the_omission_example_writes_it(server, tmp_path):
@@ -394,7 +396,7 @@ def test_a_scenario_with_a_validation_error_is_not_saved(server, tmp_path):
 INDEX_ENTRY = ["- id: SZZ-0002", "  title: New SZZ scenario", "  slug: new-szz-scenario", "  category_code: S1",
                "  category: Basic semantic line changes", "  factors:", "  - single-bic", "  - single-bfc",
                "  - line-modification", "  difficulty: medium", "  status: draft",
-               "  path: scenarios/SZZ-0002/scenario.yml"]
+               "  path: scenarios/SZZ-0002/scenario.yml", "  readme: scenarios/SZZ-0002/README.md"]
 
 
 def test_the_downloaded_files_pass_strict_lint_where_the_docs_put_them(server, tmp_path):

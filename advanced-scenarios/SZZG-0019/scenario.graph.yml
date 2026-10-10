@@ -111,7 +111,7 @@ expected_szz:
       - commit: c0
         reason: origin_bic
         credit: 0.5
-files:
+x-files:
 - path: templates/Limits.tpl
   kind: template
 - path: src/generated/java/generated/GeneratedLimits.java

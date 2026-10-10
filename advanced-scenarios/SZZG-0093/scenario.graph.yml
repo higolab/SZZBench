@@ -50,7 +50,7 @@ commits:
   - c0
   message: 'WI-001 start the range filtering feature'
   role: intermediate
-  work_item: WI-001
+  x-work_item: WI-001
   operations:
   - type: replace
     path: src/main/java/example/RangeFilter.java
@@ -64,7 +64,7 @@ commits:
   - c1
   message: 'WI-001 filter values strictly inside the range'
   role: bug_introducing
-  work_item: WI-001
+  x-work_item: WI-001
   operations:
   - type: replace
     path: src/main/java/example/RangeFilter.java
@@ -76,7 +76,7 @@ commits:
   - c2
   message: 'WI-001 add the caller for range filtering'
   role: intermediate
-  work_item: WI-001
+  x-work_item: WI-001
   operations:
   - type: replace
     path: src/main/java/example/RangeFilter.java
@@ -117,7 +117,7 @@ bugs:
     file: src/main/java/example/RangeFilter.java
     statement: return value >= min && value <= max;
     fix_type: line_modification
-  work_item: WI-001
+  x-work_item: WI-001
 expected_szz:
   commit_level:
     evaluation_policy: exact_set
@@ -139,7 +139,7 @@ scenario_design:
     A tool fails here when it reports the neighbouring commits of the same work item, `c1` and `c3`, together
     with `c2`: only `c2` introduced the fault.
 notes:
-- This revision makes the work-item structure explicit through the top-level work_items section and per-commit work_item fields.
+- This revision makes the work-item structure explicit through the top-level work_items section and per-commit x-work_item keys.
 - c1 and c3 are related feature-work commits but are not the BIC.
 - The expected BIC is c2.
 work_items:

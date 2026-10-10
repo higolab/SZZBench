@@ -85,22 +85,24 @@ async function assertNotRetired(id) {
   }
 }
 
+/**
+ * The index entry of a scenario: the keys both index files have, in their order
+ * (INDEX_ENTRY_KEYS in src/szzbench/validator.py, issue #200).
+ */
 function buildIndexEntryFromScenario(scenario) {
   const meta = scenario?.meta || {};
-  const entry = {
+  return {
     id: meta.id,
     title: meta.title || '',
-    slug: meta.slug || ''
-  };
-  if (meta.category_code) entry.category_code = meta.category_code;
-  Object.assign(entry, {
+    slug: meta.slug || '',
+    category_code: meta.category_code || '',
     category: meta.category || '',
     factors: Array.isArray(meta.factors) ? meta.factors : [],
     difficulty: meta.difficulty || '',
     status: meta.status || 'draft',
-    path: `scenarios/${meta.id}/scenario.yml`
-  });
-  return entry;
+    path: `scenarios/${meta.id}/scenario.yml`,
+    readme: `scenarios/${meta.id}/README.md`
+  };
 }
 
 /**

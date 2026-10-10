@@ -2,13 +2,14 @@
 
 The skeleton builders used to append a two-space-indented entry to the end of
 the file.  The shipped indexes list their entries at column 0, and
-``advanced-scenarios/index.yml`` ends with a top-level ``notes:`` block, so the
+``advanced-scenarios/index.yml`` ended with a top-level ``notes:`` block, so the
 appended entry left both files unreadable.  Like the Scenario Editor's
 ``spliceIndexEntry``, the entry now goes into the ``scenarios:`` list itself,
-at the list's own indentation, and every other line stays byte for byte,
-except ``scenario_count``, which follows the list.  The result is loaded
-before anything is written: unless it reads back as the old index plus the
-new entry, the builder writes nothing.
+at the list's own indentation, and every other line stays byte for byte.  The
+result is loaded before anything is written: unless it reads back as the old
+index plus the new entry, the builder writes nothing.  Since issue #200 an
+index has no ``scenario_count`` for the splice to raise: a key other than
+``scenarios`` is left as it is, and ``validate-index`` reports it (IW004).
 """
 from __future__ import annotations
 
@@ -21,7 +22,6 @@ from .scenario import UniqueKeyLoader
 
 _LINE = re.compile(r"[^\r\n]*(?:\r\n|\r|\n)|[^\r\n]+\Z")
 _SCENARIOS_KEY = re.compile(r"scenarios:[ \t]*(\[[ \t]*\]|~|null|Null|NULL)?[ \t]*(?:#.*)?")
-_SCENARIO_COUNT = re.compile(r"(scenario_count:[ \t]*)\d+([ \t]*(?:#.*)?)")
 
 
 class IndexSpliceError(ValueError):
@@ -69,14 +69,6 @@ def splice_index_entry(text: str, data: dict, entry: dict) -> str:
     lines[at:at] = [indent + line + eol for line in rendered.rstrip("\n").split("\n")]
 
     expected = {**data, "scenarios": [*data["scenarios"], entry]}
-    if data.get("scenario_count") is not None:
-        count = next((i for i, line in enumerate(lines) if _SCENARIO_COUNT.fullmatch(_body(line))), None)
-        if count is None:
-            raise IndexSpliceError("its scenario_count is not a plain number on a line of its own")
-        expected["scenario_count"] = len(expected["scenarios"])
-        line = lines[count]
-        lines[count] = _SCENARIO_COUNT.sub(rf"\g<1>{expected['scenario_count']}\g<2>", _body(line)) + line[len(_body(line)):]
-
     spliced = "".join(lines)
     try:
         loaded = yaml.load(spliced, Loader=UniqueKeyLoader)

@@ -64,7 +64,7 @@ the stream as ISO-8859-1, in which the CP1252 byte `0xE9` is `é`.
 ## Why this needs `scenario.graph.yml`
 
 The non-UTF-8 file is modeled with `write_binary_file` so that invalid UTF-8 bytes can be represented safely.
-The fault and fix entries therefore carry a `description` and an `encoding` instead of a `statement`, and the
+The fault and fix entries therefore carry a `description` and an `x-encoding` instead of a `statement`, and the
 verifier's text-based statement lookup is not used for them.
 
 ## What a tool must do

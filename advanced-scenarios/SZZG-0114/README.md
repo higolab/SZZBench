@@ -78,9 +78,9 @@ $ git log --format=%H -- src | wc -l   -> 3         (only c0, c1 and c4 touch th
 (`c2.g1 … c2.g500`, `c3.g1 … c3.g500`); `c2` and `c3` each record 500 entries in
 `generated_commits`, and `graph-map.json` lists `{c2: 500, c3: 500}`. Every generated commit
 has `timestamp_placement: spaced`, so author and committer dates are strictly increasing
-between the parent and the owner. This matches the declared
-`commit_generators` (`catalog_sync: 500` materialized as `c2`, `telemetry_export: 500`
-materialized as `c3`, 1000 in total).
+between the parent and the owner. This matches the two `commit_generator` operations
+(`catalog_sync` with `count: 500` in `c2`, `telemetry_export` with `count: 500` in `c3`,
+1000 in total).
 
 `javac` (JDK 25, `-proc:none`) compiles **every one of the 1005 commit snapshots** without a
 failure (measured: 1005 snapshots, 0 failures, 342 s); the sources take one of two states

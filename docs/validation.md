@@ -234,6 +234,7 @@ generates the scenario again removes the attempt first.
 | GE001 | error | `schema_version` is not a graph schema: not a string containing `graph` |
 | GE002 | error | `schema_version` is a graph schema other than `graph-1.0`, the version of the frozen suite (README). Any string containing `graph` used to pass ([issue #152](https://github.com/higolab/SZZBench/issues/152)) |
 | GE003 | error | the file is a classic scenario, the mirror of E003: its `schema_version` is a string without `graph` (the rule of GE001; every classic scenario declares `"1.0"`) and the file is not named `scenario.graph.yml`, or it has none and the file is named `scenario.yml`. `validate-graph` reports it in place of GE001 and runs no other check, and `generate-graph` and `verify-graph` refuse the file too. The message names the classic command to run instead (`validate`, `generate`, `verify`). `validate-graph` used to report GE001 and go on with the graph checks (GE013, GW014, GE048, GW120), `generate-graph` said "Run 'szzbench validate-graph'", and `verify-graph` compared the repository with a graph the scenario does not have. A wrong `schema_version` in a file named `scenario.graph.yml` (a graph scenario), a non-string one, and none in a file of another name keep GE001 and the graph checks. No file is a graph scenario to E003 and a classic one to GE003 ([issue #155](https://github.com/higolab/SZZBench/issues/155)) |
+| GW004 | warning | a key that its object does not have: the top level, `meta`, `repository`, `graph`, a commit, an operation (by its `type`), a bug, a fault or fix entry, `expected_szz`, a `commit_level` (of `expected_szz` or of an evaluation variant), an evaluation variant, or a `branch_level` entry. [graph-schema.md](graph-schema.md) lists the keys: those generation, validation, the simulation, verification or evaluation read, and those the documentation describes. `notes` and any key that starts with `x-` are free-form notes in every object, and the keys inside the context sections (`scenario_design`, `issues`, ...) and the unscored oracle sections (`line_level`, ...) are not checked. The location is the key's, and the message names a key of the same object that is spelt nearly the same (`parent` -> `parents`). The loader kept every key and the checks read the ones they knew: a misspelt key was neither reported nor used, and nine shipped scenarios carried keys nothing reads, which are now `x-` keys ([issue #160](https://github.com/higolab/SZZBench/issues/160)) |
 | GE010 | error | missing top-level field |
 | GE011 | error | `meta` is not an object |
 | GE012 | error | `meta.id` missing |
@@ -292,12 +293,13 @@ generates the scenario again removes the attempt first.
 | GE074 | error | a commit sets `inherit_message`, `inherit_author_date` or `inherit_author` (to any value but `false`, null, 0 or an empty one, as generation reads them) without a source to inherit from: generation takes the subject, the author date and the author from the first of `rebase_of`, `cherry_pick_of` and `backport_of` that is a commit id. A `rebase_of` list (a squash-rebase, GE046) is not one, and the message says so. Such a commit passed `validate-graph`, `--simulate` included, and stopped generation, which for a `rebase_of` list said that the commit had no `rebase_of`. Whether the source is an earlier commit is GE043's and GE047's ([issue #179](https://github.com/higolab/SZZBench/issues/179)) |
 | GE075 | error | a commit sets `cherry_pick_trailer` without a commit to name in the trailer: no `cherry_pick_of`, no `backport_of` and no `apply_patch_from` operation, the sources generation reads (generator-options §3). Such a commit passed `validate-graph` and stopped generation ([issue #179](https://github.com/higolab/SZZBench/issues/179)) |
 | GE076 | error | a commit's `inherit_author` is not `true` or `false` (a string such as `yes`, a number, a blank value), or is `true` on a commit that also writes `author`: `inherit_author` takes the author of the rewrite source (generator-options §3), so one of the two would silently override the other. `inherit_message` and `inherit_author_date` are read as generation reads them, as any value but `false`, null, 0 or an empty one (GE074) ([issue #180](https://github.com/higolab/SZZBench/issues/180)) |
+| GE077 | error | a commit's `allow_empty` is not `true` or `false`: a string, a number, a blank value. Generation, GW045 and GE202 read it with `bool()`, so `allow_empty: "false"` let an empty commit through all three ([issue #160](https://github.com/higolab/SZZBench/issues/160)) |
 | GE080 | error | `bugs` is not a list |
 | GE081 | error | a bug is not an object |
 | GE082 | error | `bug.id` missing |
 | GE083 | error | duplicate bug id |
 | GE084 | error | bug without `bug_introducing_commits` (missing or empty; GI086 instead when `expect_no_bic` is declared), or with one that is not a list, which is an error even under `expect_no_bic`. A non-list used to raise or, as a string, to count as one commit per character ([issue #127](https://github.com/higolab/SZZBench/issues/127)) |
-| GE085 | error | bug without `bug_fixing_commits` / `bug_fixing_commit` |
+| GE085 | error | bug without `bug_fixing_commits` / `bug_fixing_commit`, or with a `bug_fixing_commits` that is not a list, or (without `bug_fixing_commits`) a `bug_fixing_commit` that is not a commit id. A string `bug_fixing_commits: c2` used to be reported as missing ([issue #160](https://github.com/higolab/SZZBench/issues/160)) |
 | GE090 | error | BIC/BFC entry `role` is not a string |
 | GE091 | error | BIC/BFC entry is neither a string nor an object |
 | GE092 | error | BIC/BFC entry without commit id |
@@ -309,10 +311,12 @@ generates the scenario again removes the attempt first.
 | GE104 | error | a fault's or fix's `statement`, `added_statement`, `removed_statement` or `missing_statement` is not a string (a blank value, YAML null, included) or is empty or only whitespace; or a fault with `change_type: omission` has no `missing_statement` (the counterpart of E351). A statement stays optional: binary changes, deleted files and omissions have none. `verify-graph` skipped GE663 and the blame check of a location whose statement was empty or not a string, without a finding, and found a whitespace-only one anywhere; this check is static, so `generate-graph`, which validates without `--simulate`, refuses it too. Statements are not looked up in the files here ([issue #237](https://github.com/higolab/SZZBench/issues/237)) |
 | GW106 | warning | a fault with `change_type: omission` also carries a `statement` (the counterpart of W350) |
 | GE105 | error | fault/fix `entity` is not an object |
+| GE107 | error | a bug's `faults` / `fixes` is not a list, an entry of one is not an object, or its `fault` / `fix` is not an object. The checks read nothing else and skipped the rest: `faults: {commit: no-such-commit}` passed, its unknown commit never checked by GE101 ([issue #160](https://github.com/higolab/SZZBench/issues/160)) |
 | GW120 | warning | `expected_szz` missing |
 | GE120 | error | `expected_szz` is not an object |
 | GE121 | error | `acceptable_related` refers to an unknown commit, in `expected_szz.commit_level` or in any `evaluation_variants[].commit_level` |
 | GE122 | error | `expected_szz.evaluation_variants` is not a list, or one of its entries is not an object with a non-empty string `name`. The evaluator selects a variant by its name; until [issue #127](https://github.com/higolab/SZZBench/issues/127) these passed without `--lint` and raised with it |
+| GE123 | error | an `evaluation_policy` that is not a string, in `expected_szz.commit_level` or in any `evaluation_variants[].commit_level`: a number, a list, a blank value. GW123 read strings only, and the evaluator scores anything else as `exact_set` without the note an unknown name gets ([issue #160](https://github.com/higolab/SZZBench/issues/160)) |
 | GW123 | warning | unknown `evaluation_policy` in `expected_szz.commit_level` **or in any `evaluation_variants[].commit_level`**. The vocabulary is `szzbench.policies.SUPPORTED_EVALUATION_POLICIES` = {`exact_set`, `direct_only`, `reintroduction_direct`, `partial_credit`, `top_k`, `relaxed_with_related`, `relaxed_with_credit`}, identical to the evaluator's set (a test enforces this). |
 | GE124 | error | a commit list (`required`, `relevant`, `related_origins`, `related_but_not_correct`, `known_distractors`, `acceptable_related`) of `expected_szz.commit_level` or of any `evaluation_variants[].commit_level` is not a list. Variants were checked for `required` only, and `acceptable_related` not at all, until the review of PR #124: GW130 hands both oracles to the evaluator, which reads every list. `known_distractors`, which the evaluator reads too, was not checked until [issue #159](https://github.com/higolab/SZZBench/issues/159): an unknown id never matched a prediction |
 | GE125 | error | a commit list entry is not a commit id |
@@ -457,25 +461,38 @@ For each of `scenarios/index.yml` (scenario file `scenario.yml`) and
 `advanced-scenarios/index.yml` (`scenario.graph.yml`). Locations are prefixed
 with the index path.
 
+Both files have one shape ([issue #200](https://github.com/higolab/SZZBench/issues/200)):
+a top-level `scenarios` list and nothing else, and entries with the keys `id`,
+`title`, `slug`, `category_code`, `category`, `factors`, `difficulty`,
+`status`, `path` and `readme`, in that order (`validator.INDEX_ENTRY_KEYS`).
+All but `path` and `readme` are copies of the scenario's `meta`; `path` is
+`<root>/<id>/<scenario file>` and `readme` `<root>/<id>/README.md`.
+`new-scenario`, `new-graph-scenario` and the Scenario Editor write entries of
+this shape. The graph index used to have a `schema_version`
+(`graph-index-0.1-draft`), a `description` that called its scenarios drafts, a
+`scenario_count` and `notes`, and entries without `slug` and `difficulty`; the
+classic entries had no `readme`.
+
 | code | severity | meaning |
 |---|---|---|
 | IE001 | error | the index cannot be read or parsed. The message names the index: `index.yml does not exist.`, `index.yml is empty.`, `The root of index.yml must be a mapping/object.`; it used `load_yaml`'s words for a scenario file ("The root of scenario.yml ...", "Cannot read scenario file: ..."), and so did `new-scenario` and `new-graph-scenario` ([issue #158](https://github.com/higolab/SZZBench/issues/158)) |
 | IE002 | error | `scenarios` is not a list |
 | IE003 | error | the scenario root is not a directory |
-| IE010 | error | `scenario_count` (when present) differs from the number of entries |
-| IE011 | error | `scenario_count` is present and not an integer (`'146'`, `146.0`, `true`). IE010 compared `'146'` with 146 and printed both as 146 ([issue #158](https://github.com/higolab/SZZBench/issues/158)) |
+| IW004 | warning | the index has a top-level key other than `scenarios`, or an entry has a key other than the ten above. Nothing reads one; a `scenario_count` left in an index is reported here ([issue #200](https://github.com/higolab/SZZBench/issues/200)) |
+| ~~IE010~~ | retired | `scenario_count` differed from the number of entries. The key was the graph index's alone, and nothing but this check read it; since [issue #200](https://github.com/higolab/SZZBench/issues/200) neither index has it, and one left in an index is IW004 |
+| ~~IE011~~ | retired | `scenario_count` was not an integer ([issue #158](https://github.com/higolab/SZZBench/issues/158)); retired with IE010 ([issue #200](https://github.com/higolab/SZZBench/issues/200)) |
 | IE020 | error | an entry is not an object with a string `id` |
 | IE021 | error | duplicate entry id |
 | IE022 | error | the entry has no `<root>/<id>/<scenario file>` |
 | IW023 | warning | the entry's `path` differs from `<root>/<id>/<scenario file>` |
-| IE024 | error | the entry's `readme` (when present; the graph index has one for every entry) is not a string naming an existing file, read relative to the directory that holds the root, as `path` is. A path the file system will not let `validate-index` look at (a directory without search permission, a NUL byte) is reported here too, with the reason, rather than ending the run: `Path.is_file` raises then on Python 3.10–3.13 (PR #261 review) ([issue #158](https://github.com/higolab/SZZBench/issues/158)) |
+| IE024 | error | the entry's `readme` (when present; IE046 reports one that is missing) is not a string naming an existing file, read relative to the directory that holds the root, as `path` is. A path the file system will not let `validate-index` look at (a directory without search permission, a NUL byte) is reported here too, with the reason, rather than ending the run: `Path.is_file` raises then on Python 3.10–3.13 (PR #261 review) ([issue #158](https://github.com/higolab/SZZBench/issues/158)) |
 | IE030 | error | a scenario directory under the root has no index entry |
 | IE040 | error | the entry id differs from the scenario's `meta.id` |
 | IE041 | error | the entry title differs from the scenario's `meta.title` |
 | IE043 | error | an index entry's `factors` differ from the scenario's `meta.factors`; the index repeats a field that changes with the scenario, which is how it drifted before ([issue #19](https://github.com/higolab/SZZBench/issues/19)) |
 | IE044 | error | an index entry's `factors`, or the scenario's `meta.factors`, is not a list; neither side is validated before IE043 compares them |
 | IE045 | error | an index entry's `status` differs from the scenario's `meta.status` |
-| IE046 | error | an index entry's `slug`, `category`, `category_code` or `difficulty` differs from the scenario's `meta` value. These four are copied into the index like `title`, `status` and `factors`, and were the last mirrored fields nothing checked |
+| IE046 | error | an index entry's `slug`, `category`, `category_code` or `difficulty` differs from the scenario's `meta` value, or the entry lacks one of the keys of an entry (above). These four are copied into the index like `title`, `status` and `factors`, and were the last mirrored fields nothing checked. A key the entry did not have was not compared, so the graph index's missing `slug` and `difficulty` passed ([issue #200](https://github.com/higolab/SZZBench/issues/200)) |
 | IE047 | error | an index entry, or a directory under the scenario root, uses a retired id: one in the first column of the table in `docs/retired-ids.md`, read from the `docs/` beside the root. A withdrawn scenario's id is never reused ([issue #112](https://github.com/higolab/SZZBench/issues/112)) |
 | IW048 | warning | an entry's id is lower than the one before it: the index lists its entries in id order, the order in which `new-scenario` appends and the Scenario Editor inserts an entry ([issue #111](https://github.com/higolab/SZZBench/issues/111)). Reported at each entry that breaks the order ([issue #158](https://github.com/higolab/SZZBench/issues/158)) |
 | IE042 | error | the scenario file of an entry cannot be loaded |

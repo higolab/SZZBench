@@ -494,9 +494,28 @@ def test_szzg_0064_valid_rebase_of_is_still_accepted():
 
 def _write_index_scenario(root: Path, sid: str, title: str, filename: str, *, meta_id: str | None = None) -> None:
     write_yaml(root / sid / filename, {"schema_version": "1.0", "meta": {"id": meta_id or sid, "title": title}})
+    (root / sid / "README.md").write_text("# README\n", encoding="utf-8")
 
 
-def _write_index(root: Path, entries: list[dict], count: int | None = None) -> None:
+#: The keys an index entry copies from meta besides id (issue #200: every entry has every key).
+_MIRRORED = ("title", "slug", "category_code", "category", "factors", "difficulty", "status")
+
+
+def _entry_rest(root: Path, sid: str, filename: str = "scenario.yml") -> dict:
+    """The keys of ``sid``'s index entry that a test is not about: the scenario's meta values
+    (None where it has none), its path and its README, which this writes."""
+    path = root / sid / filename
+    meta = yaml.safe_load(path.read_text(encoding="utf-8")).get("meta", {}) if path.is_file() else {}
+    if path.is_file():
+        (root / sid / "README.md").write_text("# README\n", encoding="utf-8")
+    return {**{key: meta.get(key) for key in _MIRRORED}, "path": f"{root.name}/{sid}/{filename}",
+            "readme": f"{root.name}/{sid}/README.md"}
+
+
+def _write_index(root: Path, entries: list, count: int | None = None) -> None:
+    filename = "scenario.graph.yml" if root.name == "advanced-scenarios" else "scenario.yml"
+    entries = [{**_entry_rest(root, entry["id"], filename), **entry} if isinstance(entry, dict) else entry
+               for entry in entries]
     doc: dict = {"scenarios": entries}
     if count is not None:
         doc = {"scenario_count": count, **doc}
@@ -506,7 +525,7 @@ def _write_index(root: Path, entries: list[dict], count: int | None = None) -> N
 def test_consistent_index_has_no_findings(tmp_path):
     root = tmp_path / "scenarios"
     _write_index_scenario(root, "SZZ-0001", "One", "scenario.yml")
-    _write_index(root, [{"id": "SZZ-0001", "title": "One", "path": "scenarios/SZZ-0001/scenario.yml"}], count=1)
+    _write_index(root, [{"id": "SZZ-0001", "title": "One", "path": "scenarios/SZZ-0001/scenario.yml"}])
     assert validate_index_file(root / "index.yml", root, "scenario.yml").findings == []
 
 
@@ -528,11 +547,13 @@ def test_index_inconsistencies_are_reported(tmp_path):
     )
     result = validate_index_file(root / "index.yml", root, "scenario.graph.yml")
     by_code = {f.code: f for f in result.findings}
-    assert sorted(codes(result)) == sorted(["IE010", "IE041", "IW023", "IE040", "IE022", "IE021", "IE020", "IE030"])
-    assert by_code["IE010"].message == "scenario_count is 116, but the index lists 5 entries."
+    # a scenario_count is a key outside the index shape since issue #200 (IE010 retired)
+    assert sorted(codes(result)) == sorted(["IW004", "IE041", "IW023", "IE040", "IE022", "IE021", "IE020", "IE030"])
+    assert by_code["IW004"].message == ("The index has a top-level key 'scenario_count', which nothing reads; an "
+                                        "index has 'scenarios' only.")
     assert by_code["IW023"].severity == "WARNING"
     assert "SZZG-0002" in by_code["IE030"].message
-    assert by_code["IE010"].location == f"{(root / 'index.yml').as_posix()}:scenario_count"
+    assert by_code["IW004"].location == f"{(root / 'index.yml').as_posix()}:scenario_count"
 
 
 def test_validate_index_cli_exit_code_and_json(tmp_path, capsys):
@@ -541,15 +562,15 @@ def test_validate_index_cli_exit_code_and_json(tmp_path, capsys):
     _write_index_scenario(s_root, "SZZ-0001", "One", "scenario.yml")
     _write_index(s_root, [{"id": "SZZ-0001", "title": "One"}])
     _write_index_scenario(a_root, "SZZG-0001", "Graph one", "scenario.graph.yml")
-    _write_index(a_root, [{"id": "SZZG-0001", "title": "Graph one"}], count=2)
+    _write_index(a_root, [{"id": "SZZG-0001", "title": "Graph two"}])
     argv = ["validate-index", "--scenarios-root", str(s_root), "--advanced-scenarios-root", str(a_root), "--json"]
 
     assert main(argv) == 1
     report = json.loads(capsys.readouterr().out)
     assert report["errors"] == 1
-    assert report["findings"][0]["code"] == "IE010"
+    assert report["findings"][0]["code"] == "IE041"
 
-    _write_index(a_root, [{"id": "SZZG-0001", "title": "Graph one"}], count=1)
+    _write_index(a_root, [{"id": "SZZG-0001", "title": "Graph one"}])
     assert main(argv) == 0
     assert json.loads(capsys.readouterr().out)["findings"] == []
 
@@ -1002,7 +1023,7 @@ def test_index_factors_must_match_the_scenario(tmp_path):
     def index(factors):
         path = tmp_path / "index.yml"
         path.write_text(yaml.safe_dump(
-            {"scenarios": [{"id": "SZZ-0001", "title": "A scenario", "factors": factors}]}, sort_keys=False))
+            {"scenarios": [{**_entry_rest(root, "SZZ-0001"), "id": "SZZ-0001", "factors": factors}]}, sort_keys=False))
         return path
 
     assert validate_index_file(index(["boundary-condition"]), root, "scenario.yml").findings == []
@@ -1030,7 +1051,7 @@ def test_index_factors_of_the_wrong_type_are_reported_not_coerced(tmp_path):
     def index(factors):
         path = tmp_path / "index.yml"
         path.write_text(yaml.safe_dump(
-            {"scenarios": [{"id": "SZZ-0001", "title": "A scenario", "factors": factors}]}, sort_keys=False))
+            {"scenarios": [{**_entry_rest(root, "SZZ-0001"), "id": "SZZ-0001", "factors": factors}]}, sort_keys=False))
         return path
 
     # an int on the index side used to raise TypeError
@@ -1057,7 +1078,7 @@ def test_index_status_must_match_the_scenario(tmp_path):
     def index(status):
         path = tmp_path / "index.yml"
         path.write_text(yaml.safe_dump(
-            {"scenarios": [{"id": "SZZ-0001", "title": "A scenario", "status": status}]}, sort_keys=False))
+            {"scenarios": [{**_entry_rest(root, "SZZ-0001"), "id": "SZZ-0001", "status": status}]}, sort_keys=False))
         return path
 
     assert validate_index_file(index("active"), root, "scenario.yml").findings == []
@@ -1116,7 +1137,7 @@ def test_index_mirrors_of_slug_category_and_difficulty(tmp_path):
     (root / "SZZ-0001" / "scenario.yml").write_text(yaml.safe_dump(scenario, sort_keys=False))
 
     def index(**overrides):
-        entry = {"id": "SZZ-0001", "title": "A scenario", "slug": "a-scenario",
+        entry = {**_entry_rest(root, "SZZ-0001"), "id": "SZZ-0001", "title": "A scenario", "slug": "a-scenario",
                  "category": "Basic semantic line changes", "category_code": "S1",
                  "difficulty": "medium", "status": "active"}
         entry.update(overrides)
