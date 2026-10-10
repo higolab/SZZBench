@@ -226,7 +226,9 @@ after generation: the verifiers read a file's content through Git as text
 (`gitutils.run_git`), and that reading turns every `\r\n`, and a lone `\r`,
 into `\n`, so `\r` never takes part in matching. A statement is matched against
 the LF text, whatever the blob holds; one that spans lines, written with `\n`,
-is found in a CRLF file as in an LF one (no E301 / GE663). The basic blame
+is found in a CRLF file as in an LF one (no E301 / GE663), and
+`validate-graph --simulate`, which looks it up in its LF text by the
+verifier's rule, finds it too (no GE205, issue #238). The basic blame
 check looks for the statement inside a single line of the BFC's parent, so it
 cannot follow a statement that spans lines, whatever the line endings: such a
 statement gets W700 / GW701 ("not present in BFC parent"), or I701 / GI701
@@ -255,8 +257,9 @@ byte-identical to `c0`'s (issue #164).
 
 ### `encoding` (*both*)
 
-Available on `write_file` and `replace` in both suites (and on the graph
-`insert_after`). It names the codec used for the bytes on disk; the default
+Available on `write_file` and `replace` in both suites, and on the graph
+`insert_after`, `move_entity`, `copy_entity`, `write_generated_text_file` and
+`format_file`. It names the codec used for the bytes on disk; the default
 is `utf-8`. Its one intended use is `utf-8-sig`, which reads and writes a
 UTF-8 byte order mark: a `write_file` with `encoding: utf-8-sig` and otherwise
 unchanged content — or a `replace` with `encoding: utf-8-sig` whose `old`
@@ -280,19 +283,25 @@ equals `new` — is a *BOM-only re-save*, the commit shape of SZZ-0206.
   new: "20480"
 ```
 
-In the classic suite the key is closed like `line_ending`: `utf-8` or
-`utf-8-sig` in any spelling Python accepts, anything else an error (E042).
-The classic in-memory simulator applies the codec's read and write behaviour
-to the simulated text, which stores a BOM as a leading U+FEFF: `utf-8-sig`
-strips one on read and writes one, `utf-8` keeps it as text. A BOM added or
-removed by either operation is therefore a change (not `E250`), statements
-stay substrings of the decoded text, and the simulator accepts a history
-exactly when Git would record it as distinct commits. The graph operations
-pass any codec name to Python unchecked and the graph simulator does not model
-it; a graph commit that changes only the encoding needs another change or
-`allow_empty` to pass `GE202`. `validate-graph` checks that the name is a text
-encoding Python knows (GE061): `encoding: bogus` used to pass it and fail
-generation (issue #152).
+In both suites the key is closed like `line_ending`: `utf-8` or `utf-8-sig`
+in any spelling Python accepts (`UTF8`, `utf_8_sig`), anything else an error
+(E042 / GE061). Both in-memory simulators apply the codec's read and write
+behaviour to the simulated text, which stores a BOM as a leading U+FEFF:
+`utf-8-sig` strips one on read and writes one, `utf-8` keeps it as text. A BOM
+added or removed by any operation is therefore a change (not `E250` /
+`GE202`), statements stay substrings of the decoded text, and the simulators
+accept a history exactly when Git would record it as distinct commits.
+
+The graph key was open until issue #240: `validate-graph` accepted any text
+encoding Python knows (GE061 refused only an unknown one, issue #152), and the
+graph simulator did not read the key. A file written in `utf-16` and edited
+without the key, UTF-8 text read as `latin-1`, or text that `latin-1` cannot
+encode passed `validate-graph --simulate` and failed generation; a statement
+in a `utf-16` file failed verification (GE663), because the verifier reads
+every blob as UTF-8; and a commit that only added a BOM was `GE202` in the
+simulation while generation committed it. No shipped scenario named another
+codec. A file in another encoding is written as bytes with
+`write_binary_file`, as SZZG-0112 writes its CP1252 file.
 
 ### `write_generated_text_file.header` / `.footer` (*graph*)
 
@@ -309,9 +318,10 @@ generation (issue #152).
 
 Both are optional strings written before/after the generated lines. A missing
 trailing newline is added, so `footer: "}"` and `footer: "}\n"` are
-equivalent. Defaults: empty. The simulator ignores `header`/`footer`, so
-`replace` operations that target header text pass generation but not
-`validate-graph --simulate`.
+equivalent. Defaults: empty. `validate-graph --simulate` writes them as
+generation does. Until issue #238 it left them out, so a `replace` of header
+text failed it although generation passed, and a fault statement in a header,
+SZZG-0145's, could not have been looked up (GE205).
 
 ### `commit_generator` (*graph*) - real expansion
 
@@ -423,12 +433,21 @@ import in another spelling (`generated/` and `Generated/`, `noise-01.txt` and
 file on macOS.
 
 To rename a file in its letter case, delete it in one commit and write it in
-a later one. Within one commit the rename still depends on the platform, and
-neither simulator says so: Git on macOS keeps the spelling its index has, so
-a `delete_file` of `src/Range.java` followed by a `write_file` of
-`src/range.java` commits `src/Range.java` there, and a `rename_file` through
-another name commits nothing (`commit would be empty`). A `rename_file` that
-changes only the letter case is GE060.
+a later one. Within one commit the rename depends on the platform: Git on
+macOS keeps the spelling its index has, so a `delete_file` of `src/Range.java`
+followed by a `write_file` of `src/range.java` committed `src/Range.java`
+there, with the new content, and a `rename_file` through another name
+committed nothing (`commit would be empty`), while Linux commits
+`src/range.java`. `validate-graph` therefore refuses a commit that removes a
+file and ends with a file whose path differs from it only in letter case or
+Unicode normalization (GE064, a static check that `generate-graph` makes too;
+issue #235), and a `rename_file` that changes only the letter case is GE060.
+Until issue #235 neither simulator said so. Validation does not know which
+files a commit starts with, so a file the commit writes and then removes
+counts as removed. Paths are compared whole, as Git compares the entries of
+its index: `Src/a.java` removed and `src/a.java` written is refused, while
+`Src/a.java` removed and `src/b.java` written are committed as written (Git
+2.39.5 and 2.50.1 on APFS).
 
 ### Files Git reads: `.gitignore`, `.gitattributes`, `.gitmodules` (*both*)
 
@@ -738,6 +757,20 @@ exactly `message`, so the verifier's subject check is unaffected. Default:
   compute reverts. Until 2026-09-29 it reported such a commit as "would be
   empty" (issue #94).
 
+### `apply_patch_from`'s `mainline` (*graph*)
+
+```yaml
+- type: apply_patch_from
+  commit: m1                   # git cherry-pick --no-commit --mainline 1 <hash of m1>
+  mainline: 1                  # the parent the patch is taken against, needed for a merge
+```
+
+The operation runs `git cherry-pick --no-commit` of the commit it names, with
+`--mainline N` when `mainline` is set, as `revert_of` runs `git revert`.
+Default: unset. `parent` is an older spelling of `mainline` that generation
+still reads (`mainline` wins when both are present); no shipped scenario
+uses either. The key was read without being documented until issue #183.
+
 ### `resolution` (*graph*) - conflict resolution
 
 ```yaml
@@ -817,12 +850,13 @@ patch operation, so it reports the generation errors above as GE203; until
 | `repository.base_date` | top level | both |
 | `author_date`, `committer_date` | commit | both |
 | `line_ending` | `write_file`, `replace`, `insert_after`, `format_file`, `move_entity`, `copy_entity` operations | both (`insert_after`, `format_file`, `move_entity`, `copy_entity`: graph) |
-| `encoding` | `write_file`, `replace`, `insert_after` operations | both (`insert_after`: graph) |
+| `encoding` (`utf-8`, `utf-8-sig`) | `write_file`, `replace`, `insert_after`, `move_entity`, `copy_entity`, `write_generated_text_file`, `format_file` operations | both (all but `write_file` and `replace`: graph) |
 | `header`, `footer` | `write_generated_text_file` operation | graph |
 | `commit_generator.path` (directory), `count` (capped 2000), `files` | operation (semantics) | graph |
 | `inherit_message`, `inherit_author_date`, `inherit_author` | commit with `rebase_of`/`cherry_pick_of`/`backport_of` | graph |
 | `cherry_pick_trailer` | commit | graph |
 | `revert_of`, `apply_revert`, `mainline` | commit | graph |
+| `mainline` (`parent`, an older spelling) | `apply_patch_from` operation | graph |
 | `resolution` | commit | graph |
 | `graph.ref_lifecycle.delete_branches`, `graph.ref_lifecycle.tags[].name/commit` | top level | graph |
 

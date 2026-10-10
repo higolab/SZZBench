@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable, Container
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 import json
 import re
 
@@ -553,30 +554,92 @@ def _verify_location(
     kind: str,
     bug_id: str,
 ) -> None:
+    found = look_up_location(entry, commit_map, repository_file_reader(repo_dir, commit_map), kind=kind)
+    if found is None:
+        return
+    commit_id = entry.get("commit")
+    if found.outcome == LOOKUP_ENTITY:
+        result.info("GI660", f"bug {bug_id} {kind} uses entity-level oracle; file content check skipped.", loc)
+    elif found.outcome == LOOKUP_DELETED:
+        result.info("GI661", f"bug {bug_id} fix is file deletion; file is absent at fix commit as expected.", loc)
+    elif found.outcome == LOOKUP_NO_FILE:
+        result.error("GE662", f"Cannot read {kind}.file for bug {bug_id}: {found.reason}", loc)
+    elif found.outcome == LOOKUP_NOT_FOUND:
+        result.error("GE663", f"bug {bug_id} {kind} statement not found at commit '{commit_id}'.", loc)
+    elif found.outcome == LOOKUP_REPEATED:
+        result.warning("GW664", f"bug {bug_id} {kind} statement appears {found.count} times at commit '{commit_id}'.", loc)
+
+
+# --- looking a fault or fix up in its file (issue #238) -----------------------------------------
+
+#: What :func:`look_up_location` finds.
+LOOKUP_ENTITY = "entity"            # no file: an entity oracle, whose content is not checked (GI660)
+LOOKUP_DELETED = "deleted"          # a ``file_deletion`` fix whose file is gone, as it says (GI661)
+LOOKUP_NO_FILE = "no file"          # the file cannot be read at the commit (GE662)
+LOOKUP_NOT_FOUND = "not found"      # the statement is not in the file (GE663)
+LOOKUP_REPEATED = "repeated"        # the statement is in the file more than once (GW664)
+
+
+class UnreadableFile(Exception):
+    """Raised by a ``read_file`` of :func:`look_up_location`: the commit has no such file, or it cannot be read."""
+
+
+class LocationLookup(NamedTuple):
+    """What :func:`look_up_location` found, one of the ``LOOKUP_*`` outcomes."""
+    outcome: str
+    reason: str = ""        # why the file cannot be read (LOOKUP_NO_FILE)
+    count: int = 0          # how often the statement occurs (LOOKUP_REPEATED)
+
+
+def look_up_location(entry: dict[str, Any], commits: Container[str], read_file: Callable[[str, str], str], *,
+                     kind: str) -> LocationLookup | None:
+    """Look a fault or fix up in the file of its commit, by the rule of GE662, GE663 and GW664.
+
+    ``read_file(commit, path)`` returns the file at the commit as the verifier
+    reads a blob -- UTF-8 with replacement characters, every line ending
+    ``\\n`` (issue #170) -- and raises :class:`UnreadableFile` with the reason
+    when it cannot.  The verifier reads the generated repository
+    (:func:`repository_file_reader`), ``validate-graph --simulate`` the
+    snapshots of its replay (``graph_simulator.snapshot_file_reader``): one
+    rule keeps the two from drifting apart (issue #238).  The statement is
+    ``statement``, else ``added_statement``.  ``kind`` is ``fault`` or ``fix``;
+    only a fix with ``fix_type: file_deletion`` may miss its file.  None when
+    there is nothing to say: the commit is not one of ``commits``, the entry
+    names neither a file nor an entity, or it has a file but no statement, or
+    the statement is there once.
+    """
     commit_id = entry.get("commit")
     file_path = entry.get("file")
-    statement = entry.get("statement") or entry.get("added_statement")
-    if not isinstance(commit_id, str) or commit_id not in commit_map:
-        return
+    if not isinstance(commit_id, str) or commit_id not in commits:
+        return None
     if not isinstance(file_path, str):
-        if entry.get("entity") is not None:
-            result.info("GI660", f"bug {bug_id} {kind} uses entity-level oracle; file content check skipped.", loc)
-        return
-    revision = commit_map[commit_id]["hash"]
+        return LocationLookup(LOOKUP_ENTITY) if entry.get("entity") is not None else None
     try:
-        content = git_show(repo_dir, revision, file_path)
-    except GitError as exc:
+        content = read_file(commit_id, file_path)
+    except UnreadableFile as exc:
         if entry.get("fix_type") == "file_deletion" and kind == "fix":
-            result.info("GI661", f"bug {bug_id} fix is file deletion; file is absent at fix commit as expected.", loc)
-        else:
-            result.error("GE662", f"Cannot read {kind}.file for bug {bug_id}: {exc}", loc)
-        return
-    if isinstance(statement, str) and statement:
-        count = len(find_all_occurrences(content, statement))
-        if count == 0:
-            result.error("GE663", f"bug {bug_id} {kind} statement not found at commit '{commit_id}'.", loc)
-        elif count > 1:
-            result.warning("GW664", f"bug {bug_id} {kind} statement appears {count} times at commit '{commit_id}'.", loc)
+            return LocationLookup(LOOKUP_DELETED)
+        return LocationLookup(LOOKUP_NO_FILE, reason=str(exc))
+    statement = entry.get("statement") or entry.get("added_statement")
+    if not isinstance(statement, str) or not statement:
+        return None
+    count = len(find_all_occurrences(content, statement))
+    if count == 0:
+        return LocationLookup(LOOKUP_NOT_FOUND)
+    if count > 1:
+        return LocationLookup(LOOKUP_REPEATED, count=count)
+    return None
+
+
+def repository_file_reader(repo_dir: Path, commit_map: dict[str, Any]) -> Callable[[str, str], str]:
+    """The ``read_file`` of :func:`look_up_location` for a generated repository: ``git show`` of the blob."""
+    def read(commit_id: str, path: str) -> str:
+        revision = commit_map[commit_id]["hash"]
+        try:
+            return git_show(repo_dir, revision, path)
+        except GitError as exc:
+            raise UnreadableFile(str(exc)) from exc
+    return read
 
 
 def _verify_basic_blame(repo_dir: Path, commit_map: dict[str, Any], bug: dict[str, Any], result: ValidationResult, loc: str, bug_id: str, factors: Any = None) -> None:

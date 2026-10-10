@@ -168,7 +168,7 @@ AUTHORS = [*STRINGS, "", "   ", "Alice", "alice@example.com", "<alice@example.co
            ". <alice@example.com>", "Alice <alice@example.com", "Alice alice@example.com>"]
 LINE_ENDINGS = [42, True, ["lf"], {"x": 1}, "", "cr", "\r\n", "unix"]
 CLASSIC_ENCODINGS = [42, True, ["utf-8"], {"x": 1}, "", "latin-1", "bogus", "base64"]
-GRAPH_ENCODINGS = [42, True, ["utf-8"], {"x": 1}, "", "bogus", "base64", "rot13", "utf\x00"]
+GRAPH_ENCODINGS = [42, True, ["utf-8"], {"x": 1}, "", "bogus", "base64", "rot13", "utf\x00", "latin-1", "utf-16"]
 
 #: (path, code, values): each value at the path is an error with that code at that field.
 CLASSIC_SWEEP = [
@@ -288,7 +288,7 @@ GRAPH_ACCEPTED = [
     (("commits", 1, "date"), "2024-01-02T10:00:00+09:00"),             # between c0 and c2 of the plain schedule
     (("repository", "base_date"), "2024-06-03T10:00:00Z"),
     (("commits", 0, "operations", 0, "line_ending"), "crlf"),
-    (("commits", 0, "operations", 0, "encoding"), "latin-1"),          # ASCII text: the same bytes
+    (("commits", 0, "operations", 0, "encoding"), "UTF_8_SIG"),        # a byte order mark (issue #240)
     (("commits", 0, "operations", 0, "encoding"), "UTF-8"),
     (("commits", 1, "operations", 1, "count"), 0),
     (("commits", 1, "operations", 1, "count"), 3),

@@ -18,6 +18,9 @@ file over a directory; the generator names the operation and the path of an OS
 error; and a case-only rename is GE060.  No test compared a simulated snapshot
 with a generated tree, so the drift went unnoticed: the last tests here do, for
 a scenario that exercises every file operation and for every shipped one.
+Since issue #238 they also compare how ``--simulate`` and verification look up
+each fault and fix, and the replay writes ``write_generated_text_file``'s
+``header`` and ``footer``, a difference they allowed until then.
 """
 from __future__ import annotations
 
@@ -32,9 +35,11 @@ import yaml
 import szzbench.graph_simulator as graph_simulator
 from szzbench.findings import ValidationResult
 from szzbench.graph_generator import GraphGenerationError, generate_graph_repository
-from szzbench.graph_operations import _block_text, apply_graph_operation_to_filesystem
-from szzbench.graph_simulator import git_performed_features
+from szzbench.graph_operations import apply_graph_operation_to_filesystem
+from szzbench.graph_scenario import graph_faults, graph_fixes
+from szzbench.graph_simulator import git_performed_features, snapshot_file_reader
 from szzbench.graph_validator import validate_graph_scenario_file, validate_graph_static
+from szzbench.graph_verifier import look_up_location, repository_file_reader
 from szzbench.gitutils import run_git_with_input
 from szzbench.operations import OperationError, normalize_newlines
 
@@ -261,23 +266,29 @@ def _given_snapshot(repo: Path, tree: dict[str, tuple[str, str]]) -> dict[str, g
     return snapshot
 
 
-def _documented_difference(data: dict, path: str, generated: bytes, simulated: bytes) -> bool:
-    """The two differences docs/generator-options.md §2 states: the simulator works on LF text,
-    and it leaves out ``write_generated_text_file``'s ``header`` and ``footer``."""
-    if generated.replace(b"\r\n", b"\n") == simulated:
-        return True
-    for commit in data["commits"]:
-        for op in commit.get("operations") or []:
-            if op.get("type") == "write_generated_text_file" and op.get("path") == path:
-                header, footer = _block_text(op.get("header")).encode(), _block_text(op.get("footer")).encode()
-                if (header or footer) and generated.startswith(header) and generated.endswith(footer) \
-                        and generated[len(header):len(generated) - len(footer)] == simulated:
-                    return True
-    return False
+def _documented_difference(generated: bytes, simulated: bytes) -> bool:
+    """The difference docs/generator-options.md §2 states: the simulator works on LF text.
+
+    It also left out ``write_generated_text_file``'s ``header`` and ``footer``,
+    which this allowed too, until issue #238.
+    """
+    return generated.replace(b"\r\n", b"\n") == simulated
+
+
+def _location_lookups(data: dict, commits, read_file) -> dict[str, tuple[str, int] | None]:
+    """What ``look_up_location`` finds for every fault and fix, by the verifier's locations."""
+    found = {}
+    for i, bug in enumerate(data.get("bugs") or []):
+        for key, kind, entries in (("faults", "fault", graph_faults(bug)), ("fixes", "fix", graph_fixes(bug))):
+            for j, entry in enumerate(entries):
+                lookup = look_up_location(entry, commits, read_file, kind=kind)
+                found[f"bugs[{i}].{key}[{j}]"] = None if lookup is None else (lookup.outcome, lookup.count)
+    return found
 
 
 def _drift(data: dict, repo: Path, commit_map: dict[str, dict]) -> list[str]:
-    """Where a simulated snapshot differs from the generated tree of its commit.
+    """Where a simulated snapshot differs from the generated tree of its commit, or a
+    fault or fix is looked up with another result in the two.
 
     The commits Git computes (merges, reverts, cherry-picks, patches, resolutions)
     are not modelled in memory: their generated trees are given to the simulator,
@@ -301,8 +312,13 @@ def _drift(data: dict, repo: Path, commit_map: dict[str, dict]) -> list[str]:
             content = _simulated_bytes(simulated[path])
             if mode != (simulated[path].mode or "100644"):
                 drift.append(f"{cid}: {path} is {mode} in Git, {simulated[path].mode or '100644'} simulated")
-            if blob != _blob_id(content) and not _documented_difference(data, path, git_bytes(repo, "cat-file", "blob", blob), content):
+            if blob != _blob_id(content) and not _documented_difference(git_bytes(repo, "cat-file", "blob", blob), content):
                 drift.append(f"{cid}: {path} differs")
+    # the statements of faults and fixes, looked up by --simulate and by verification (issue #238)
+    simulated_lookups = _location_lookups(data, snapshots, snapshot_file_reader(snapshots))
+    generated_lookups = _location_lookups(data, commit_map, repository_file_reader(repo, commit_map))
+    drift.extend(f"{loc}: {simulated_lookups[loc]} simulated, {generated_lookups[loc]} generated"
+                 for loc in simulated_lookups if simulated_lookups[loc] != generated_lookups[loc])
     return drift
 
 
@@ -312,8 +328,10 @@ def test_every_file_operation_is_simulated_as_generated(tmp_path):
         _commit("c0", [], _write_file("a.txt", "a\n"), _write_file("run.sh", "#!/bin/sh\necho hi\n"),
                 _write_file("src/A.java", "class A {}\n"), _write_file("src/B.java", "class B {}\n"),
                 _write_file("fmt.txt", "x  \ny\n"), _write_file("readme.txt", "r\n"),
+                dict(_write_file("bom.txt", "x = 1  \n"), encoding="utf-8-sig"),           # a byte order mark (issue #240)
                 {"type": "write_binary_file", "path": "bin/logo.bin", "content_base64": "/wD/AA=="},
-                {"type": "write_generated_text_file", "path": "gen/data.txt", "lines": 3, "template": "row {line}"}),
+                {"type": "write_generated_text_file", "path": "gen/data.txt", "lines": 3, "template": "row {line}",
+                 "header": "rows:", "footer": "end\n"}),                                    # issue #238
         _commit("c1", ["c0"], _chmod("run.sh", "755")),
         _commit("c2", ["c1"], _write_file("run.sh", "#!/bin/sh\necho bye\n"),             # keeps 100755
                 {"type": "copy_file", "from": "run.sh", "to": "tools/run-copy.sh"}),         # so does the copy
@@ -331,7 +349,9 @@ def test_every_file_operation_is_simulated_as_generated(tmp_path):
         _commit("c9", ["c8"], {"type": "copy_entity", "entity": {"name": "B"}, "from_file": "src/B.java",
                                "to_file": "src/C.java"},
                 {"type": "format_file", "path": "fmt.txt"},
-                {"type": "insert_after", "path": "a.txt", "anchor": "b\n", "content": "c\n"}),
+                {"type": "insert_after", "path": "a.txt", "anchor": "b\n", "content": "c\n"},
+                _replace("bom.txt", "x = 1", "x = 2"),                                   # utf-8 keeps the mark as text
+                {"type": "format_file", "path": "bom.txt", "encoding": "utf-8-sig"}),    # strips it on read, writes one
         _commit("c10", ["c9"], _write_file("src/D.java", "class D {}\n"), _chmod("src/D.java", "700"),
                 {"type": "delete_file", "path": "run.sh"}),
         _commit("c11", ["c10"], {"type": "copy_entity", "entity": {"name": "C"}, "from_file": "src/C.java",
