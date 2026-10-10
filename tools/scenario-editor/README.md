@@ -17,9 +17,12 @@ The editor is designed for the first practical workflow:
 From this directory:
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
+
+`npm ci` installs the versions recorded in `package-lock.json` and leaves the file as it is. `package.json` gives
+each dependency a caret range that starts at the locked version rather than `latest` (issue #193).
 
 Then open:
 

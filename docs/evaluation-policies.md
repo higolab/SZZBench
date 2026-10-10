@@ -320,6 +320,14 @@ trace and carries on, so for the SZZ Unleashed adapter, which runs the tool
 with `--jar`, a failure also includes a run that printed one
 (`examples/szz-unleashed-run/README.md`).
 
+**Exit code.** `evaluate` exits 1 when the report lists an error, such as a
+loading error, a stale generated output, a scenario that cannot be found or
+read, or a run that scored no scenario at all (issue #141), and 0 otherwise,
+however many scenarios FAIL: a FAIL is a result, not an error.
+`--fail-on-non-pass` makes it exit 1 also when any scenario's status is not
+PASS, whatever its `run_status`, so that a script can stop on a regression.
+The reports written with `--out` are the same either way.
+
 ### 1.7 Attribution: scenarios with several bug-fixing commits (issue #92)
 
 Commit-level scoring compares the union of the predicted BICs with the union of
