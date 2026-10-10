@@ -419,7 +419,7 @@ not refresh the index file.
 | GE630 | error | a commit is committed **before one of its parents**. A scenario that pins some timestamps and leaves the rest to the generator can otherwise invert its own history, which changes what date-based candidate filters and recency heuristics see (issue #9, PR #34 re-review). The commits checked are those `git log --all` reaches and every commit of `commit-map.json` with its ancestors: the commits of a branch that `graph.ref_lifecycle.delete_branches` removed are in the commit map but no longer reachable from a ref, and escaped the check until issue #176. The message names each commit's logical ids from `commit-map.json` beside its hash, as GW631's does; it named the hashes only. `validate-graph` refuses a scenario whose dates would do this (GE073) ([issue #241](https://github.com/higolab/SZZBench/issues/241)) |
 | GW631 | warning | a commit's author date is **after** its committer date. An author date *before* the committer date is the normal signature of a rebase and is not flagged |
 | GW632 | warning | the commit-date check could not run (Git failed, or a timestamp was unreadable) |
-| GE633 | error | an owner's `generated_commits` in `commit-map.json` is not the list of `<owner>.g<N>` ids its `commit_generator` operations plan (count capped at 2000) (issue #176) |
+| GE633 | error | an owner's `generated_commits` in `commit-map.json` is not the list of `<owner>.g<N>` ids its `commit_generator` operations plan (count capped at 2000) (issue #176). A count that generation refuses (`many`, `.inf`, a negative one; GE062 in `validate-graph`) plans no commits: for an output generated before the count was changed, GE633 says that the operations plan no commits, and GE627 reports the owner's first parent ([issue #230](https://github.com/higolab/SZZBench/issues/230)) |
 | GE634 | error | the hash `commit-map.json` records for a generated commit is not a commit of the repository (issue #176) |
 | GE635 | error | a generated commit's parents are not the previous generated commit -- for `<owner>.g1` the owner's declared first parent, or none when the owner is the root (issue #176) |
 | GE636 | error | a generated commit's author, author date, committer date or subject is not what `commit-map.json` records (dates compared in Git's raw `<epoch> <offset>` form, the one the generator writes) (issue #176) |
@@ -476,4 +476,15 @@ scenario declares:
 | I700 / GI703 | info | basic blame reaches an expected BIC |
 | W700 / GW703 | warning | basic blame reaches a commit that is not an expected BIC |
 | GW700 / GW702 | warning | the blame check could not run (file unreadable, `git blame` failed) |
+
+`generate`, `generate-graph` and `generate-all-repos` run the verification after
+generating, unless `--no-verify` is given, and print its findings. A warning,
+such as W700 for SZZ-0078 and GW703 for SZZG-0016, whose basic blame reaches
+another commit than the expected BIC, leaves the exit code 0; with `--strict` it
+makes it 1, as `verify --strict` does. `generate-all-repos` prints the
+verification warnings of every output to stderr, one line each after the
+scenario id (`SZZ-0078: [WARNING] W700: ...`), the warnings that an output
+skipped as up to date recorded in `metadata/verify-result.json` included, and
+`--strict` fails on those too. `--strict` cannot be combined with `--no-verify`
+([issue #169](https://github.com/higolab/SZZBench/issues/169)).
 

@@ -862,9 +862,12 @@ A generation that fails writes no manifest: it writes `generation.log` and
 the first two when the verification failed.
 
 An output is **stale** when it has no manifest -- an interrupted generation,
-or one made before 2026-09-29 -- or when its scenario file or the generator's
-code has changed since it was generated; for a run with verification, an
-unverified output is stale too. Any edit to the scenario file counts, metadata
+or one made before 2026-09-29 --, when its manifest cannot be read or parsed or
+holds no JSON object (the reason says so: "its manifest
+(metadata/manifest.json) is unreadable: ..."; it used to read as no manifest,
+issue #171), or when its scenario file or the generator's code has changed
+since it was generated; for a run with verification, an unverified output is
+stale too. Any edit to the scenario file counts, metadata
 included, because the output carries a copy of the scenario and the adapters
 read the bug-fixing commits from it. The validation, verification and
 reporting modules the generators also import are left out of the fingerprint:
@@ -915,7 +918,10 @@ after a tool has worked in it, regenerate it (`generate-graph --force`, or
 
 - `generate-all-repos` regenerates a stale output instead of skipping it and
   prints why ("Regenerated ... the old output was stale: ..."). An up-to-date
-  output is still skipped. Until 2026-09-29 an output counted as done as soon
+  output is still skipped. With verification, an output whose
+  `metadata/verify-result.json` is missing or unreadable is regenerated too:
+  `generate-all-repos` reports, and `--strict` judges, the verification each
+  output recorded (issue #169). Until 2026-09-29 an output counted as done as soon
   as `repo/.git` existed: an edited scenario kept its old repository, and a
   generation that failed half way -- a `repo/.git` with no commits -- was
   reported as Skipped.
