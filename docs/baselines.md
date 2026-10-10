@@ -522,7 +522,7 @@ nothing could be scored or `--out` is not a directory it can create
 | `bic_depth` | commits between the deepest required BIC and the fix |
 | `fault_file_distractors` | commits before the fix that touch a file the fault lives in and are **not** the answer |
 | `commit_count`, `ref_count` | size and branchiness of the history |
-| `blame_class` | what plain first-parent blame on the lines the fix deletes does with the oracle: `exact` (returns exactly the required set), `extra` (the required set and more), `miss` (a required commit is not blamed), `addition-only` (the fix deletes nothing) or `empty-first-parent` (the fix is a merge whose first-parent diff is empty). Measured, never hand-edited; not part of the redundancy signature |
+| `blame_class` | what plain first-parent blame on the lines the fix deletes does with the oracle: `exact` (returns exactly the required set), `extra` (the required set and more), `miss` (a required commit is not blamed), `addition-only` (the fix deletes nothing: it only adds lines, changes a file mode or changes a binary file — the evaluator's `addition_only`, `mode_only` and `binary` fix shapes) or `empty-first-parent` (the fix is a merge whose first-parent diff is empty). Measured, never hand-edited; not part of the redundancy signature |
 | `difficulty_floor` | the least `difficulty` the blame class allows (`exact` → `easy`, `extra` / `addition-only` → `medium`, `miss` / `empty-first-parent` → `hard`); the report lists declarations below it as contradictions and above it as overrides |
 
 `oracle_size` and `bic_depth` come from the evaluator's own policy resolution

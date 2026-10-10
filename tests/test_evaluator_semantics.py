@@ -394,6 +394,38 @@ def test_classify_diff_text():
     assert classify_diff_text(deleted_line_starting_with_dashes) == "modifies"
 
 
+def test_a_diff_without_a_hunk_is_binary_or_mode_only_not_an_addition():
+    """A mode change or a binary replacement adds no line (issue #148)."""
+    mode_only = "diff --git a/bin/run.sh b/bin/run.sh\nold mode 100644\nnew mode 100755\n"
+    assert classify_diff_text(mode_only) == "mode_only"
+    binary = textwrap.dedent(
+        """\
+        diff --git a/assets/icon.bin b/assets/icon.bin
+        index 85025d9..3255a7a 100644
+        Binary files a/assets/icon.bin and b/assets/icon.bin differ
+        """
+    )
+    assert classify_diff_text(binary) == "binary"
+    # `git diff --binary` prints the patch instead; a mode-only section beside it does not decide
+    binary_patch = mode_only + textwrap.dedent(
+        """\
+        diff --git a/assets/icon.bin b/assets/icon.bin
+        deleted file mode 100644
+        index 85025d9..0000000
+        GIT binary patch
+        literal 0
+        HcmV?d00001
+        """
+    )
+    assert classify_diff_text(binary_patch) == "binary"
+    # text hunks decide first: a mode change that also adds a line is an addition
+    mode_and_line = mode_only + "index 422c2b7..de98044\n--- a/bin/run.sh\n+++ b/bin/run.sh\n@@ -2,0 +3 @@\n+exit 0\n"
+    assert classify_diff_text(mode_and_line) == "addition_only"
+    # an empty file added has no hunk either, and stays an addition
+    empty_file = "diff --git a/marker b/marker\nnew file mode 100644\nindex 0000000..e69de29\n"
+    assert classify_diff_text(empty_file) == "addition_only"
+
+
 def _write_classic_scenario(path: Path, scenario_id: str, *, addition_only_fix: bool) -> None:
     if addition_only_fix:
         fix_operation = textwrap.dedent(
@@ -516,11 +548,95 @@ def test_fix_shape_is_classified_from_generated_repositories(tmp_path):
     assert by_id["SZZ-9301"].fix_shape == {"c1": "addition_only"}
     assert by_id["SZZG-0042"].fix_shape == {"c3": "empty_first_parent"}
     assert all(item.status == "PASS" for item in report.scenarios)
-    assert report.summary()["fix_shape_counts"] == {"empty_first_parent": 1, "addition_only": 1, "modifies": 1}
+    assert report.summary()["fix_shape_counts"] == {"empty_first_parent": 1, "addition_only": 1, "binary": 0,
+                                                    "mode_only": 0, "modifies": 1}
     markdown = report.to_markdown()
-    assert "- Fix shapes (per BFC): empty_first_parent 1, addition_only 1, modifies 1" in markdown
+    assert "- Fix shapes (per BFC): empty_first_parent 1, addition_only 1, binary 0, mode_only 0, modifies 1" in markdown
     assert "| c3:empty_first_parent |" in markdown
     assert by_id["SZZG-0042"].to_dict()["fix_shape"] == {"c3": "empty_first_parent"}
+
+
+FIXES_THAT_TOUCH_NO_TEXT_LINE = """\
+schema_version: graph-1.0
+meta:
+  id: SZZG-9001
+  title: Fixes that touch no text line
+  slug: fixes-that-touch-no-text-line
+  description: One fix only turns the execute bit on, the other only replaces a binary resource.
+  category: "Evaluation policy variants"
+  category_code: "G9"
+  factors: [non-source-bic]
+  difficulty: easy
+  status: draft
+repository:
+  name: SZZG-9001-fixes-that-touch-no-text-line
+  default_branch: main
+  language: text
+  build_system: none
+  source_root: src
+graph:
+  model: commit_dag
+commits:
+- id: c0
+  branch: main
+  parents: []
+  message: Add the launcher and the icon
+  role: initial
+  operations:
+  - {type: write_file, path: bin/run.sh, content: "#!/bin/sh\\necho run\\n"}
+  - {type: write_binary_file, path: assets/icon.bin, content_base64: AAECAwQ=}
+- id: c1
+  branch: main
+  parents: [c0]
+  message: Make the launcher executable
+  role: bug_fixing
+  operations:
+  - {type: chmod, path: bin/run.sh, mode: "0755"}
+- id: c2
+  branch: main
+  parents: [c1]
+  message: Replace the broken icon
+  role: bug_fixing
+  operations:
+  - {type: write_binary_file, path: assets/icon.bin, content_base64: /v3//A==}
+bugs:
+- id: B001
+  title: The launcher is not executable
+  bug_introducing_commits: [{commit: c0, role: direct}]
+  bug_fixing_commits: [{commit: c1, role: complete_fix}]
+  fixes:
+  - {id: X001, commit: c1, file: bin/run.sh, statement: "#!/bin/sh", fix_type: mode_change}
+- id: B002
+  title: The icon is corrupt
+  bug_introducing_commits: [{commit: c0, role: direct}]
+  bug_fixing_commits: [{commit: c2, role: complete_fix}]
+  fixes:
+  - {id: X002, commit: c2, file: assets/icon.bin, statement: "binary", fix_type: binary_replacement}
+expected_szz:
+  commit_level: {evaluation_policy: exact_set, required: [c0]}
+"""
+
+
+def test_mode_only_and_binary_fixes_are_counted_in_their_own_classes(tmp_path):
+    """The reproduction of issue #148: both fixes used to be ``addition_only``."""
+    scenario = tmp_path / "advanced-scenarios" / "SZZG-9001" / "scenario.graph.yml"
+    scenario.parent.mkdir(parents=True)
+    scenario.write_text(FIXES_THAT_TOUCH_NO_TEXT_LINE, encoding="utf-8")
+    _generate_graph_scenario(scenario, tmp_path / "generated" / "SZZG-9001" / "default")
+    predictions = tmp_path / "predictions.jsonl"
+    predictions.write_text(json.dumps({"scenario_id": "SZZG-9001", "predictions": [{"inducing_commit": "c0"}]}) + "\n",
+                           encoding="utf-8")
+    report = evaluate_predictions(predictions, generated_root=tmp_path / "generated",
+                                  scenarios_root=tmp_path / "scenarios",
+                                  advanced_scenarios_root=tmp_path / "advanced-scenarios")
+
+    assert report.errors == []
+    assert report.scenarios[0].fix_shape == {"c1": "mode_only", "c2": "binary"}
+    assert report.summary()["fix_shape_counts"] == {"empty_first_parent": 0, "addition_only": 0, "binary": 1,
+                                                    "mode_only": 1, "modifies": 0}
+    markdown = report.to_markdown()
+    assert "- Fix shapes (per BFC): empty_first_parent 0, addition_only 0, binary 1, mode_only 1, modifies 0" in markdown
+    assert "| c1:mode_only, c2:binary |" in markdown
 
 
 def test_fix_shape_is_skipped_with_note_when_repository_is_missing(tmp_path):
