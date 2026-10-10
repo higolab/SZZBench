@@ -12,6 +12,8 @@ import pytest
 import yaml
 
 from support import git_bytes, git_stdout
+import szzbench.graph_generator as graph_generator
+from szzbench.findings import ValidationResult
 from szzbench.generator import generate_repository
 from szzbench.gitutils import DEFAULT_AUTHOR_POOL, deterministic_author, deterministic_date, resolve_commit_metadata
 from szzbench.graph_generator import MAX_GENERATED_COMMITS, GraphGenerationError, generate_graph_repository
@@ -1073,12 +1075,15 @@ def _dated_history(tmp_path, name, *, c0, c1, c1_committer=None):
     return [f.code for f in verify.findings]
 
 
-def test_commit_date_checks_compare_instants_not_iso_text(tmp_path):
+def test_commit_date_checks_compare_instants_not_iso_text(tmp_path, monkeypatch):
     """GE630 / GW631 must respect UTC offsets (PR #34 re-review).
 
     ``2024-01-01T10:00:00+09:00`` is 01:00 UTC, an hour *before*
-    ``2024-01-01T02:00:00Z``, but sorts after it as text.
+    ``2024-01-01T02:00:00Z``, but sorts after it as text.  Validation refuses
+    the inverted histories since issue #241 (GE073), so they are generated
+    past it, as a repository generated before that.
     """
+    monkeypatch.setattr(graph_generator, "validate_graph_scenario_file", lambda path: (None, ValidationResult()))
     # parent 01:00 UTC written as +09:00, child 02:00 UTC -> chronologically fine
     codes = _dated_history(tmp_path, "ok", c0="2024-01-01T10:00:00+09:00", c1="2024-01-01T02:00:00Z")
     assert "GE630" not in codes
