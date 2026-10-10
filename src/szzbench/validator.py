@@ -28,6 +28,10 @@ ALLOWED_ROLES = {
 TEXT_FIELDS_BY_OPERATION = {"write_file": ("content",), "replace": ("old", "new")}
 #: The field that names the file an operation creates or rewrites (E051, issue #164).
 WRITTEN_PATH_FIELDS = {"write_file": ("path",), "replace": ("path",)}
+#: What a lint may meet in a scenario it has to resolve as the evaluator or the generator
+#: would.  The static checks report such input first; a lint that meets it anyway says so
+#: instead of passing in silence, and anything else is a bug that should be seen (issue #161).
+LINT_INPUT_ERRORS = (GitError, ValueError, TypeError, OverflowError)
 
 # --- the commit message rule (E012 / GE070, issue #163) ----------------------
 
@@ -880,8 +884,16 @@ def validate_oracle_against_snapshots(data: dict[str, Any], snapshots: dict[str,
         if isinstance(fault, dict) and fault.get("change_type") == "omission":
             if "statement" in fault:
                 result.warning("W350", f"bug {bid} is omission, but fault.statement is present.", f"{loc}.fault.statement")
+            missing = fault.get("missing_statement")
             if "missing_statement" not in fault:
                 result.error("E351", f"bug {bid} is omission, but fault.missing_statement is missing.", f"{loc}.fault.missing_statement")
+            elif not isinstance(missing, str):
+                # E351 tested the key only: null and a number passed (issue #237)
+                result.error("E351", f"bug {bid} fault.missing_statement must be a string, not {type_label(missing)}.",
+                             f"{loc}.fault.missing_statement")
+            elif _is_blank(missing):
+                result.error("E351", f"bug {bid} fault.missing_statement is empty; write the statement the fault "
+                             "omits.", f"{loc}.fault.missing_statement")
     return result
 
 
@@ -1019,11 +1031,12 @@ def lint_author_coincidence(data: dict[str, Any], suite: str, result: Validation
 
     try:
         required = set(_commit_level_policy(data, suite, None).required)
-    except Exception:  # a scenario the evaluator cannot read is reported elsewhere
-        return
-    try:
         history = resolved_commit_authors(data)   # scenario commits and the commits commit_generator expands
-    except Exception:
+    except LINT_INPUT_ERRORS as exc:
+        # a malformed date or base_date is E013 / GE071 since issue #152, and the lints run only
+        # without errors; if one gets here anyway, the lint says it did not run (issue #161)
+        result.warning(f"{prefix}413", f"the author lint could not resolve the history ({exc}), so the "
+                       "author coincidence was not checked.", "commits")
         return
     if not required or len(history) < 2:
         return

@@ -1006,11 +1006,11 @@ def _prediction_from_record(
             errors.append(f"{location}: prediction lacks inducing_commit.")
         return None
     rank = record.get("rank")
-    if rank is not None and not isinstance(rank, int):
+    if rank is not None and not _is_int(rank):           # `true` sorted as rank 1 (issue #146)
         errors.append(f"{location}: rank must be an integer when present.")
         return None
     confidence = record.get("confidence")
-    if confidence is not None and not isinstance(confidence, (int, float)):
+    if confidence is not None and _number_value(confidence) is None:
         errors.append(f"{location}: confidence must be a number when present.")
         return None
     fix_commit = _first_string(record, FIX_COMMIT_KEYS)
@@ -1030,7 +1030,7 @@ def _prediction_from_record(
         fix_commit=fix_commit,
         inducing_commit=inducing_commit,
         rank=rank,
-        confidence=float(confidence) if confidence is not None else None,
+        confidence=_number_value(confidence) if confidence is not None else None,
         tool=_first_string(record, ["tool"]),
         raw_file=_first_string(record, ["raw_file"]),
     )
@@ -1159,7 +1159,7 @@ def _graph_commit_level_policy(
     if unread_sections:
         notes.append(_UNREAD_SECTIONS_NOTE.format(sections=", ".join(unread_sections)))
 
-    acceptable_related = _acceptable_related_entries(selected_commit_level.get("acceptable_related"))
+    acceptable_related = _acceptable_related_entries(selected_commit_level.get("acceptable_related"), notes)
     related_origins = _string_list(selected_commit_level.get("related_origins"))
     related_but_not_correct = _string_list(selected_commit_level.get("related_but_not_correct"))
     relevant = _string_list(selected_commit_level.get("relevant"))
@@ -1191,7 +1191,7 @@ def _graph_commit_level_policy(
         related_but_not_correct=related_but_not_correct,
         relevant=relevant,
         minimum_required=_minimum_required_value(selected_commit_level.get("minimum_required"), notes),
-        k_values=_k_values(selected_commit_level.get("k_values")),
+        k_values=_k_values(selected_commit_level.get("k_values"), notes),
         status_k=_status_k_value(selected_commit_level.get("status_k"), notes),
         expect_no_bic=expect_no_bic,
         known_distractors=_string_list(selected_commit_level.get("known_distractors")),
@@ -1321,7 +1321,7 @@ def _graph_direct_bic_ids(scenario: dict[str, Any]) -> list[str]:
     return sorted(expected)
 
 
-def _acceptable_related_entries(value: Any) -> list[AcceptableRelated]:
+def _acceptable_related_entries(value: Any, notes: list[str]) -> list[AcceptableRelated]:
     entries: list[AcceptableRelated] = []
     if not isinstance(value, list):                     # GE124 reports it; see _string_list
         return entries
@@ -1329,13 +1329,18 @@ def _acceptable_related_entries(value: Any) -> list[AcceptableRelated]:
         if isinstance(item, str):
             entries.append(AcceptableRelated(commit=item))
         elif isinstance(item, dict) and isinstance(item.get("commit"), str):
-            credit = item.get("credit", 0.0)
+            credit = item.get("credit")
+            number = 0.0 if credit is None else _number_value(credit)
+            if number is None:
+                # `credit: true` counted 1.0; a string counted 0 without a word (issue #146, GE131)
+                notes.append(f"acceptable_related credit of '{item['commit']}' must be a number; ignoring it.")
+                number = 0.0
             reason = item.get("reason")
             entries.append(
                 AcceptableRelated(
                     commit=item["commit"],
                     reason=reason if isinstance(reason, str) else None,
-                    credit=float(credit) if isinstance(credit, (int, float)) else 0.0,
+                    credit=number,
                 )
             )
     return entries
@@ -1347,25 +1352,51 @@ def _string_list(value: Any) -> list[str]:
     return [item for item in value if isinstance(item, str)]
 
 
+def _is_int(value: Any) -> bool:
+    """An integer, and not a boolean.  ``bool`` is a subclass of ``int``, so
+    ``true`` passed for 1 in ``rank``, ``k_values`` and ``minimum_required``
+    (issue #146); validate-graph asks the same (GE131)."""
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def _number_value(value: Any) -> float | None:
+    """``credit`` or ``confidence`` as a float, or None when it is not a number:
+    a boolean (issue #146), a string, or an integer too large for a float,
+    which raised OverflowError."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    try:
+        return float(value)
+    except OverflowError:
+        return None
+
+
 def _minimum_required_value(value: Any, notes: list[str]) -> int | None:
     if value is None:
         return None
-    if isinstance(value, int) and value >= 0:
+    if _is_int(value) and value >= 0:
         return value
     notes.append("minimum_required must be a non-negative integer; ignoring it.")
     return None
 
 
-def _k_values(value: Any) -> list[int]:
-    if not isinstance(value, list):
+def _k_values(value: Any, notes: list[str]) -> list[int]:
+    if value is None:
         return []
-    return sorted({item for item in value if isinstance(item, int) and item > 0})
+    if not isinstance(value, list):
+        notes.append("k_values must be a list of positive integers; ignoring it.")
+        return []
+    ignored = [item for item in value if not (_is_int(item) and item > 0)]
+    if ignored:
+        # `true` became the hit_at key "True" (issue #146)
+        notes.append(f"k_values entries must be positive integers; ignoring {', '.join(map(repr, ignored))}.")
+    return sorted({item for item in value if _is_int(item) and item > 0})
 
 
 def _status_k_value(value: Any, notes: list[str]) -> int | None:
     if value is None:
         return None
-    if isinstance(value, int) and not isinstance(value, bool) and value > 0:
+    if _is_int(value) and value > 0:
         return value
     notes.append("status_k must be a positive integer; ignoring it.")
     return None
