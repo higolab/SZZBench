@@ -56,7 +56,7 @@ variants on that line: `git blame -M`, `-C`, `-C -C`, `-w`, `-w -M` and
 differs in more than whitespace, so no built-in git heuristic recovers the
 BIC; `git log -L 17,17:<file>` likewise stops at `c2` first.
 `szzbench generate` reports the informational finding
-`W700: basic git blame reaches <c2>, not expected BIC(s) ['c1']`, which is
+`W703: basic git blame reaches <c2>, not expected BIC(s) ['c1']`, which is
 the designed property of the scenario (as in SZZ-0081 and SZZ-0178).
 
 ## What a tool must do

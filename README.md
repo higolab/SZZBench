@@ -425,7 +425,7 @@ szzbench generate   scenarios/SZZ-0006/scenario.yml   --out generated-input-repo
 
 When verification finds an error, `generate` prints the findings after `[ERROR] GENERATION_FAILED: Generated repository failed verification.` and exits 1. The output keeps `metadata/verify-result.json`, `generation.log` and `generation-error.json`, but has no `manifest.json`, so `generate-all-repos` generates it again.
 
-A verification warning (such as `W700`, basic blame does not reach the expected BIC) is printed and leaves the exit code 0. Add `--strict` to exit with 1 on a warning, as `verify --strict` does; the output is complete and kept either way. `--strict` cannot be combined with `--no-verify`. Add `--json` to print one JSON document on stdout and nothing else: `kind`, `scenario`, `output_dir`, `status` (`generated` or `failed`), `commit_count`, `error`, and `verification`, which is what `verify --json` prints (the counts and the findings), or `null` with `--no-verify`. A failed generation prints the document too, and exits 1.
+A verification warning (such as `W703`, basic blame does not reach the expected BIC) is printed and leaves the exit code 0. Add `--strict` to exit with 1 on a warning, as `verify --strict` does; the output is complete and kept either way. `--strict` cannot be combined with `--no-verify`. Add `--json` to print one JSON document on stdout and nothing else: `kind`, `scenario`, `output_dir`, `status` (`generated` or `failed`), `commit_count`, `error`, and `verification`, which is what `verify --json` prints (the counts and the findings), or `null` with `--no-verify`. A failed generation prints the document too, and exits 1.
 
 ```bash
 szzbench generate   scenarios/SZZ-0006/scenario.yml   --out generated-input-repos/SZZ-0006/default   --force   --strict   --json
@@ -462,7 +462,7 @@ You can also explicitly specify `commit-map.json` if necessary.
 szzbench verify   generated-input-repos/SZZ-0006/default/repo   --scenario scenarios/SZZ-0006/scenario.yml   --commit-map generated-input-repos/SZZ-0006/default/metadata/commit-map.json
 ```
 
-Use `--strict` to exit with 1 on a warning as well as on an error (such as `W700`, basic blame does not reach the expected BIC), and `--json` to output the result as JSON.
+Use `--strict` to exit with 1 on a warning as well as on an error (such as `W703`, basic blame does not reach the expected BIC), and `--json` to output the result as JSON.
 
 ### new-scenario
 
@@ -725,7 +725,7 @@ Add `--no-verify` to skip post-generation verification for all generated reposit
 szzbench generate-all-repos --no-verify
 ```
 
-The verification warnings of every output are printed to stderr, one line each, after the scenario id (`SZZ-0078: [WARNING] W700: ...`), and the summary counts the outputs with a warning as `Warned`. An output skipped as up to date reports the verification its generation recorded in `metadata/verify-result.json`; one without a readable `verify-result.json` is generated again. Add `--strict` to exit with 1 when the verification of any output warns (it cannot be combined with `--no-verify`), and `--json` to print one JSON document on stdout and nothing else: `items` (one per scenario, with the keys of `generate --json` and `scenario_id`, `overwritten`, `stale_reason`, `traceback` and `leftover`, the warning about a `default.old/` left behind or `null`), `orphans`, and `summary` with the counts of the text summary.
+The verification warnings of every output are printed to stderr, one line each, after the scenario id (`SZZ-0078: [WARNING] W703: ...`), and the summary counts the outputs with a warning as `Warned`. An output skipped as up to date reports the verification its generation recorded in `metadata/verify-result.json`; one without a readable `verify-result.json` is generated again. Add `--strict` to exit with 1 when the verification of any output warns (it cannot be combined with `--no-verify`), and `--json` to print one JSON document on stdout and nothing else: `items` (one per scenario, with the keys of `generate --json` and `scenario_id`, `overwritten`, `stale_reason`, `traceback` and `leftover`, the warning about a `default.old/` left behind or `null`), `orphans`, and `summary` with the counts of the text summary.
 
 ```bash
 szzbench generate-all-repos --strict
@@ -1278,7 +1278,7 @@ szzbench generate   scenarios/SZZ-0006/scenario.yml   --out generated-input-repo
 
 verify でエラーが見つかると、`generate` は `[ERROR] GENERATION_FAILED: Generated repository failed verification.` に続けてその所見を表示し、終了コード 1 で終わります。出力には `metadata/verify-result.json`、`generation.log`、`generation-error.json` が残り、`manifest.json` は書かれないので、`generate-all-repos` はその出力を生成し直します。
 
-verify の警告（基本の blame が期待する BIC に届かないことを示す `W700` など）は表示されるだけで、終了コードは 0 のままです。`--strict` を付けると、`verify --strict` と同じく警告があれば終了コード 1 で終わります。どちらの場合も出力は完全で、そのまま残ります。`--strict` と `--no-verify` は同時に指定できません。`--json` を付けると、標準出力に JSON 文書を 1 つだけ出力します。中身は `kind`、`scenario`、`output_dir`、`status`（`generated` または `failed`）、`commit_count`、`error`、`verification` で、`verification` は `verify --json` が出力するもの（件数と所見）、`--no-verify` のときは `null` です。生成に失敗したときも文書を出力し、終了コード 1 で終わります。
+verify の警告（基本の blame が期待する BIC に届かないことを示す `W703` など）は表示されるだけで、終了コードは 0 のままです。`--strict` を付けると、`verify --strict` と同じく警告があれば終了コード 1 で終わります。どちらの場合も出力は完全で、そのまま残ります。`--strict` と `--no-verify` は同時に指定できません。`--json` を付けると、標準出力に JSON 文書を 1 つだけ出力します。中身は `kind`、`scenario`、`output_dir`、`status`（`generated` または `failed`）、`commit_count`、`error`、`verification` で、`verification` は `verify --json` が出力するもの（件数と所見）、`--no-verify` のときは `null` です。生成に失敗したときも文書を出力し、終了コード 1 で終わります。
 
 ```bash
 szzbench generate   scenarios/SZZ-0006/scenario.yml   --out generated-input-repos/SZZ-0006/default   --force   --strict   --json
@@ -1315,7 +1315,7 @@ szzbench verify   generated-input-repos/SZZ-0006/default/repo   --scenario scena
 szzbench verify   generated-input-repos/SZZ-0006/default/repo   --scenario scenarios/SZZ-0006/scenario.yml   --commit-map generated-input-repos/SZZ-0006/default/metadata/commit-map.json
 ```
 
-`--strict` を付けると、エラーだけでなく警告（基本の blame が期待する BIC に届かないことを示す `W700` など）でも終了コード 1 で終わります。`--json` を付けると、結果を JSON で出力します。
+`--strict` を付けると、エラーだけでなく警告（基本の blame が期待する BIC に届かないことを示す `W703` など）でも終了コード 1 で終わります。`--json` を付けると、結果を JSON で出力します。
 
 ### new-scenario
 
@@ -1578,7 +1578,7 @@ szzbench generate-all-repos --overwrite
 szzbench generate-all-repos --no-verify
 ```
 
-各出力の verify の警告は、1 件 1 行で、シナリオ ID に続けて標準エラーに表示します（`SZZ-0078: [WARNING] W700: ...`）。集計では、警告のある出力の数を `Warned` として示します。最新としてスキップした出力については、その生成が `metadata/verify-result.json` に記録した verify の結果を報告します。読める `verify-result.json` がない出力は生成し直します。`--strict` を付けると、どれかの出力の verify に警告があれば終了コード 1 で終わります（`--no-verify` とは同時に指定できません）。`--json` を付けると、標準出力に JSON 文書を 1 つだけ出力します。中身は `items`（シナリオごとに 1 つで、`generate --json` のキーに `scenario_id`、`overwritten`、`stale_reason`、`traceback`、`leftover`（残った `default.old/` についての警告、または `null`）を加えたもの）、`orphans`、テキストの集計と同じ件数を持つ `summary` です。
+各出力の verify の警告は、1 件 1 行で、シナリオ ID に続けて標準エラーに表示します（`SZZ-0078: [WARNING] W703: ...`）。集計では、警告のある出力の数を `Warned` として示します。最新としてスキップした出力については、その生成が `metadata/verify-result.json` に記録した verify の結果を報告します。読める `verify-result.json` がない出力は生成し直します。`--strict` を付けると、どれかの出力の verify に警告があれば終了コード 1 で終わります（`--no-verify` とは同時に指定できません）。`--json` を付けると、標準出力に JSON 文書を 1 つだけ出力します。中身は `items`（シナリオごとに 1 つで、`generate --json` のキーに `scenario_id`、`overwritten`、`stale_reason`、`traceback`、`leftover`（残った `default.old/` についての警告、または `null`）を加えたもの）、`orphans`、テキストの集計と同じ件数を持つ `summary` です。
 
 ```bash
 szzbench generate-all-repos --strict

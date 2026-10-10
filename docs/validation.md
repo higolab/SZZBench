@@ -532,19 +532,20 @@ scenario declares:
 
 | code | level | meaning |
 |---|---|---|
-| W700 / GW701 | warning | `fault.statement` is not present in the BFC parent, so basic blame is unavailable — and the scenario does not say why |
+| W700 / GW700 | warning | `fault.file` cannot be read at the BFC parent, so the blame check is skipped. A classic scenario that validates always has the file there (`fault.commit` is a BIC, E080, which precedes the BFC, E070, and the classic generator deletes no file), so W700 comes with another finding, such as E300 for a `fault.file` the repository does not have, or from a Git that fails. Until [issue #275](https://github.com/higolab/SZZBench/issues/275) the classic verifier reported W701, W702 and W703 as W700 as well; a `metadata/verify-result.json` written before then keeps that W700, and `generate-all-repos` reports it for an output it skips as up to date, until `--overwrite` generates the output again |
+| W701 / GW701 | warning | `fault.statement` is not present in the BFC parent, so basic blame is unavailable — and the scenario does not say why |
 | I701 / GI701 | info | the same, but `meta.factors` declares a rewrite of the fault line (`after-bic\|rewrite\|refactor\|format\|whitespace\|rename\|move\|inline\|extract`, the vocabulary W320 honours): blame being unavailable is the scenario's point (SZZ-0081–0083, SZZG-0130, SZZG-0132) |
+| W702 / GW702 | warning | `git blame` of the fault line at the BFC parent failed: the check could not run |
 | I700 / GI703 | info | basic blame reaches an expected BIC |
-| W700 / GW703 | warning | basic blame reaches a commit that is not an expected BIC |
-| GW700 / GW702 | warning | the blame check could not run (file unreadable, `git blame` failed) |
+| W703 / GW703 | warning | basic blame reaches a commit that is not an expected BIC |
 
 `generate`, `generate-graph` and `generate-all-repos` run the verification after
 generating, unless `--no-verify` is given, and print its findings. A warning,
-such as W700 for SZZ-0078 and GW703 for SZZG-0016, whose basic blame reaches
+such as W703 for SZZ-0078 and GW703 for SZZG-0016, whose basic blame reaches
 another commit than the expected BIC, leaves the exit code 0; with `--strict` it
 makes it 1, as `verify --strict` does. `generate-all-repos` prints the
 verification warnings of every output to stderr, one line each after the
-scenario id (`SZZ-0078: [WARNING] W700: ...`), the warnings that an output
+scenario id (`SZZ-0078: [WARNING] W703: ...`), the warnings that an output
 skipped as up to date recorded in `metadata/verify-result.json` included, and
 `--strict` fails on those too. `--strict` cannot be combined with `--no-verify`
 ([issue #169](https://github.com/higolab/SZZBench/issues/169)).
