@@ -20,11 +20,10 @@ from szzbench.graph_simulator import simulate_graph_scenario
 from szzbench.graph_validator import validate_graph_scenario_file, validate_graph_static
 
 ROOT = Path(__file__).resolve().parents[1]
-LIMIT = base64.b64encode(b"limit=5\n").decode()
 
 
-def _binary(path: str) -> dict:
-    return {"type": "write_binary_file", "path": path, "content_base64": LIMIT}
+def _binary(path: str, data: bytes = b"limit=5\n") -> dict:
+    return {"type": "write_binary_file", "path": path, "content_base64": base64.b64encode(data).decode()}
 
 
 def _text(path: str, content: str = "limit=5\n") -> dict:
@@ -88,6 +87,12 @@ def test_a_file_written_as_bytes_stays_binary_until_it_is_written_as_text():
     assert refused == ["commits[1].operations[1]", "commits[1].operations[2]", "commits[1].operations[3]"]
 
 
+#: f1 rewrites the bytes of c0, and p1 on main picks it.
+PICKED = (_commit("c0", [], _binary("data.txt")),
+          _commit("f1", ["c0"], _binary("data.txt", b"limit=6\n"), branch="feature"),
+          _commit("p1", ["c0"], cherry_pick_of="f1"))
+
+
 @pytest.mark.parametrize("commits, refused", [
     # the binary file comes in with the second parent
     ((_commit("c0", [], _text("a.txt")), _commit("f1", ["c0"], _binary("data.txt"), branch="feature"),
@@ -100,6 +105,16 @@ def test_a_file_written_as_bytes_stays_binary_until_it_is_written_as_text():
       _commit("p1", ["f1"], branch="feature", cherry_pick_of="c1"),
       _commit("p2", ["p1"], _replace("data.txt"), branch="feature")),
      []),
-], ids=["merge-keeps-the-binary-file", "cherry-pick-of-another-file"])
+    # a pick of p1, and a revert of it, bring what a pick of f1 does (PR #281 review)
+    ((*PICKED, _commit("t1", ["c0"], _text("data.txt"), branch="other", allow_empty=True),
+      _commit("p2", ["t1"], branch="other", cherry_pick_of="p1"),
+      _commit("t2", ["p2"], {"type": "replace", "path": "data.txt", "old": "limit=6", "new": "limit=7"},
+              branch="other")),
+     ["commits[5].operations[0].path"]),
+    ((*PICKED, _commit("t1", ["c0"], _text("data.txt", "limit=6\n"), branch="other"),
+      _commit("p2", ["t1"], branch="other", revert_of="p1"),
+      _commit("t2", ["p2"], _replace("data.txt"), branch="other")),
+     ["commits[5].operations[0].path"]),
+], ids=["merge-keeps-the-binary-file", "cherry-pick-of-another-file", "pick-of-a-pick", "revert-of-a-pick"])
 def test_what_git_computes_brings_the_binary_files_it_may_carry(commits, refused):
     assert _ge065(_scenario(*commits)) == refused
