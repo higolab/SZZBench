@@ -8,10 +8,12 @@ next run took the copy of the scenario that every output keeps in
 ``metadata/`` for a scenario named ``metadata``; such an ``--out-root`` is
 refused now, and only ``<root>/*/`` is read.  And a stale output was removed
 before its regeneration began, so a regeneration that failed left a partial
-output where a complete one had been.
+output where a complete one had been; so did a failure while the new output
+replaced it (PR #268 review).
 """
 from __future__ import annotations
 
+import errno
 import json
 import os
 import shutil
@@ -147,3 +149,64 @@ def test_a_directory_in_the_attempts_place_that_is_not_one_is_kept(tmp_path):
     assert item.status == "failed" and "is not a generated output (it holds notes.txt)" in item.error
     assert (attempt / "notes.txt").read_text(encoding="utf-8") == "mine\n"
     assert not (out / "SZZ-0005/default").exists()
+
+
+def _marked_output(tmp_path: Path) -> tuple[Path, Path, Path, Path, dict[str, bytes]]:
+    """A generated SZZ-0005 whose metadata holds a marker, which tells the previous output from the new one."""
+    scenarios, advanced, out = _roots(tmp_path)
+    _run(scenarios, advanced, out)
+    output = out.resolve() / "SZZ-0005/default"
+    (output / "metadata/marker").write_text("previous\n", encoding="utf-8")
+    return scenarios, advanced, out, output, {path.name: path.read_bytes() for path in (output / "metadata").iterdir()}
+
+
+@pytest.mark.parametrize("failing, message", [
+    ({("default", "default.old")}, "Cannot move the previous output"),
+    ({("default.tmp", "default")}, "; the previous output was left in place"),
+    ({("default.tmp", "default"), ("default.old", "default")}, "could not be moved back"),
+], ids=["aside", "into-place", "into-place-and-back"])
+def test_a_replacement_that_fails_keeps_the_whole_previous_output(tmp_path, monkeypatch, failing, message):
+    """The previous output was removed before the new one was moved in: a removal that failed half way left
+    its manifest without its repository, and a rename that failed after it left nothing (PR #268 review).
+    The failures are injected, since CI's root container ignores file permissions."""
+    scenarios, advanced, out, output, before = _marked_output(tmp_path)
+    real_rename = Path.rename
+
+    def rename(self, target):
+        if (self.name, Path(target).name) in failing:
+            raise OSError(errno.EIO, "Input/output error", str(self))
+        return real_rename(self, target)
+
+    monkeypatch.setattr(Path, "rename", rename)
+    [item] = generate_all_repositories(scenarios_root=scenarios, advanced_scenarios_root=advanced, output_root=out,
+                                       overwrite=True).items
+    monkeypatch.setattr(Path, "rename", real_rename)
+    assert item.status == "failed" and "Input/output error" in item.error
+    if ("default.old", "default") in failing:       # moved aside and not back: the next run moves it back
+        assert not output.exists()
+        assert _run(scenarios, advanced, out).items[0].status == "skipped"
+    assert {path.name: path.read_bytes() for path in (output / "metadata").iterdir()} == before
+    assert (output / "repo/.git").is_dir() and not (output.parent / "default.old").exists()
+    assert message in item.error
+
+
+def test_a_previous_output_that_cannot_be_removed_is_reported_and_removed_by_the_next_run(tmp_path, monkeypatch):
+    scenarios, advanced, out, output, _ = _marked_output(tmp_path)
+    backup = output.parent / "default.old"
+    real_rmtree = shutil.rmtree
+
+    def rmtree(path, *args, **kwargs):
+        if Path(path) == backup:
+            raise PermissionError(errno.EACCES, "Permission denied", str(path))
+        return real_rmtree(path, *args, **kwargs)
+
+    monkeypatch.setattr(shutil, "rmtree", rmtree)
+    [item] = generate_all_repositories(scenarios_root=scenarios, advanced_scenarios_root=advanced, output_root=out,
+                                       overwrite=True).items
+    monkeypatch.setattr(shutil, "rmtree", real_rmtree)
+    assert (item.status, item.error) == ("generated", None)          # the new output is in place
+    assert item.leftover == (f"the previous output, moved aside to {backup}, could not be removed: "
+                             f"[Errno 13] Permission denied: '{backup}'. The next run removes it")
+    assert not (output / "metadata/marker").exists() and (backup / "metadata/marker").is_file()
+    [item] = _run(scenarios, advanced, out).items
+    assert (item.status, item.leftover) == ("skipped", None) and not backup.exists()

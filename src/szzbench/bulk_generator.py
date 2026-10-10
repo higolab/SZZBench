@@ -22,6 +22,9 @@ DEFAULT_ADVANCED_SCENARIOS_ROOT = Path("advanced-scenarios")
 #: generates into: ``<id>/default.tmp``.  The complete output replaces ``<id>/default``
 #: only afterwards, and a failed generation leaves its files there (issue #168).
 ATTEMPT_SUFFIX = ".tmp"
+#: ... and for the name the previous output is moved to while the new one is put in its
+#: place, ``<id>/default.old``; it is removed once the new output is there (issue #168).
+BACKUP_SUFFIX = ".old"
 
 ScenarioKind = Literal["classic", "graph"]
 GenerationStatus = Literal["generated", "skipped", "failed"]
@@ -51,6 +54,9 @@ class GeneratedRepositoryItem:
     #: generation, or, for a skipped output, the one its generation recorded in
     #: metadata/verify-result.json.  None for a run without verification (--no-verify).
     verification: ValidationResult | None = None
+    #: a directory beside the output that could not be removed, and why: the previous
+    #: output, moved aside to ``default.old`` (issue #168).  The next run removes it.
+    leftover: str | None = None
 
     @property
     def warned(self) -> bool:
@@ -70,6 +76,7 @@ class GeneratedRepositoryItem:
             "error": self.error,
             "traceback": self.traceback,
             "verification": self.verification.to_dict() if self.verification is not None else None,
+            "leftover": self.leftover,
         }
 
 
@@ -159,10 +166,18 @@ def generate_all_repositories(
         output_exists = False
         stale_reason = None
         attempt = None          # where this run's generation writes, once it has begun
+        leftover = None
         # Everything done for one scenario -- the staleness check included, which reads
         # the scenario file -- is inside one boundary, so that whatever it raises is that
         # scenario's failure and the run goes on (issue #162, PR #213 review).
         try:
+            # The generators resolve their --out, and the graph generator names the
+            # manifest's scenario after its parent directory, so the directories that
+            # replace an output are siblings of the resolved output (issue #168).
+            target = output_dir.resolve()
+            staging = target.with_name(target.name + ATTEMPT_SUFFIX)
+            backup = target.with_name(target.name + BACKUP_SUFFIX)
+            leftover = _settle_backup(target, backup, scenario_path)
             output_exists = output_dir.exists()
 
             # An existing output is kept only when its manifest says it is complete and
@@ -185,24 +200,20 @@ def generate_all_repositories(
                             output_dir=output_dir,
                             status="skipped",
                             verification=saved,
+                            leftover=leftover,
                         )
                     )
                     continue
 
             # Generated beside the output and put in its place only once complete (and
             # verified): the old output was removed first, so a regeneration that failed
-            # left a partial output where a complete one had been (issue #168).  The
-            # generators resolve their --out, and the graph generator names the manifest's
-            # scenario after its parent directory, so the attempt is a sibling of the
-            # resolved output.
-            target = output_dir.resolve()
-            staging = target.with_name(target.name + ATTEMPT_SUFFIX)
+            # left a partial output where a complete one had been (issue #168).
             _prepare_attempt(target, staging, scenario_path, replace=output_exists)
             attempt = staging
             generate = generate_repository if kind == "classic" else generate_graph_repository
             commit_map, verify_result = generate(scenario_path, staging, verify=verify)
             attempt = None
-            _put_in_place(staging, target, replace=output_exists)
+            leftover = _put_in_place(staging, target, backup, replace=output_exists)
         except (GenerationError, GraphGenerationError) as exc:
             items.append(
                 GeneratedRepositoryItem(
@@ -216,6 +227,7 @@ def generate_all_repositories(
                     stale_reason=stale_reason,
                     verification_errors=(tuple(exc.verify_result.error_findings()) if exc.verify_result is not None else ()),
                     verification=exc.verify_result,
+                    leftover=leftover,
                 )
             )
             continue
@@ -237,6 +249,7 @@ def generate_all_repositories(
                     error=_with_attempt(error, attempt, kept=output_exists),
                     stale_reason=stale_reason,
                     traceback=traceback.format_exc(),
+                    leftover=leftover,
                 )
             )
             continue
@@ -252,6 +265,7 @@ def generate_all_repositories(
                 overwritten=overwrite and output_exists,
                 stale_reason=stale_reason,
                 verification=verify_result,
+                leftover=leftover,
             )
         )
 
@@ -350,19 +364,69 @@ def _prepare_attempt(target: Path, staging: Path, scenario_path: Path, *, replac
             raise GenerationError(f"Cannot remove the failed attempt of an earlier run, {staging}: {exc}") from exc
 
 
-def _put_in_place(staging: Path, target: Path, *, replace: bool) -> None:
-    """Replace ``target`` with the complete output generated into ``staging``.
+def _settle_backup(target: Path, backup: Path, scenario_path: Path) -> str | None:
+    """Deal with a ``backup`` an earlier run left; a note when it is left again, for the item.
+
+    With the output in place, it is the previous output, which could not be
+    removed: it is removed now.  Without one, the replacement was interrupted
+    between its two renames, and the previous output is moved back.  Either is
+    done only under the rule ``generate --force`` follows (issue #165); a
+    backup that does not meet it fails the scenario.
+    """
+    if not (backup.exists() or backup.is_symlink()):
+        return None
+    problem = replaceable_output_problem(backup, scenario_path)
+    if problem is not None:
+        raise GenerationError(f"{problem}.")
+    if not (target.exists() or target.is_symlink()):
+        try:
+            backup.rename(target)
+        except OSError as exc:
+            raise GenerationError(f"Cannot move the previous output back from {backup} to {target}: {exc}") from exc
+        return None
+    return _remove_backup(backup)
+
+
+def _put_in_place(staging: Path, target: Path, backup: Path, *, replace: bool) -> str | None:
+    """Replace ``target`` with the complete output generated into ``staging``; a note when ``backup`` stays.
+
+    The previous output is renamed to ``backup``, not removed, until the new one
+    is in its place, and renamed back when that fails: removing it first lost
+    part of it when the removal failed half way, and all of it when the rename
+    failed after the removal (PR #268 review).  Its removal comes last, and
+    a failure there leaves the new output in place.
 
     Nothing is written into the output: its manifest stays the last file written
     (issue #93), and ``generation.log`` names the repository where it was
     initialized, in ``staging``.
     """
+    if replace:
+        try:
+            target.rename(backup)
+        except OSError as exc:
+            raise GenerationError(f"Cannot move the previous output {target} aside to {backup}: {exc}; it was "
+                                  f"left in place, and the new output is in {staging}") from exc
     try:
-        if replace:
-            shutil.rmtree(target)
         staging.rename(target)
     except OSError as exc:
-        raise GenerationError(f"Cannot put the new output {staging} in place of {target}: {exc}") from exc
+        failed = f"Cannot put the new output {staging} in place of {target}: {exc}"
+        if not replace:
+            raise GenerationError(failed) from exc
+        try:
+            backup.rename(target)
+        except OSError as undo:
+            raise GenerationError(f"{failed}; the previous output is in {backup}, and could not be moved "
+                                  f"back: {undo}. The next run moves it back") from exc
+        raise GenerationError(f"{failed}; the previous output was left in place") from exc
+    return _remove_backup(backup) if replace else None
+
+
+def _remove_backup(backup: Path) -> str | None:
+    try:
+        shutil.rmtree(backup)
+    except OSError as exc:
+        return f"the previous output, moved aside to {backup}, could not be removed: {exc}. The next run removes it"
+    return None
 
 
 def _with_attempt(error: str, attempt: Path | None, *, kept: bool) -> str:

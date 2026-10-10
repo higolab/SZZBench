@@ -938,14 +938,28 @@ after a tool has worked in it, regenerate it (`generate-graph --force`, or
   place, and the files of this attempt are in .../SZZ-0005/default.tmp").
   `evaluate`, `baselines` and `coverage` read `*/default` and never see it. The
   next generation of that scenario removes it first; a run that skips the
-  scenario leaves it. Both directories are replaced only when they
-  hold a generated output or nothing but `repo/` and `metadata/`, the rule
-  `generate --force` follows (issue #165). The first line of `generation.log`
-  names the repository where it was initialized, in `default.tmp`.
-  Until issue #168 the old output was removed before the regeneration began,
-  so a regeneration that failed left a partial output, without its manifest,
-  where a complete one had been. `generate --force` and `generate-graph --force`
-  still remove the old output first.
+  scenario leaves it.
+
+  The replacement itself removes nothing until the new output is in place. The
+  previous output is renamed to `<id>/default.old`, `default.tmp` is renamed
+  to `default`, and only then is `default.old` removed. When either rename
+  fails, the scenario fails and the previous output is in `default` again
+  (renamed back after a failure of the second rename); should renaming it back
+  fail too, the error says where it is, and the next run moves it back. When
+  `default.old` cannot be removed, the new output stays in place and counts
+  as generated; the item's `leftover` (in `--json`) names `default.old` and
+  why, and the next run that visits the scenario removes it. Until it is
+  gone, a replacement of that output fails at the first rename and leaves the
+  output in place.
+
+  `default`, `default.tmp` and `default.old` are replaced or removed only
+  when they hold a generated output or nothing but `repo/` and `metadata/`,
+  the rule `generate --force` follows (issue #165). The first line of
+  `generation.log` names the repository where it was initialized, in
+  `default.tmp`. Until issue #168 the old output was removed before the
+  regeneration began, so a regeneration that failed left a partial output,
+  without its manifest, where a complete one had been. `generate --force` and
+  `generate-graph --force` still remove the old output first.
 - `evaluate`, `baselines` and `coverage` refuse to score a stale output. The
   report gets an error naming the scenario and the reason, and the scenario is
   left out. Scoring the current oracle against an old repository is what went
