@@ -639,6 +639,30 @@ graph:
 Commits that become unreachable are not garbage-collected; the hashes stay
 valid for `commit-map.json`, but tools that walk from refs will not see them.
 
+### Where generation leaves `HEAD` (*graph*)
+
+`generate` leaves the default branch checked out at the last commit.
+`generate-graph` does not check out the default branch at the end: `HEAD`
+stays on **the branch of the scenario's last commit**. When
+`graph.ref_lifecycle.delete_branches` deletes that branch, `HEAD` moves to the
+default branch if it has commits and is not deleted, and otherwise detaches at
+the last commit (above). `verify-graph` reports a `HEAD` anywhere else (GE644).
+`graph-map.json` records where it is: `head: {branch: <name>, hash: <commit>}`,
+with `branch` null when `HEAD` is detached (issue #201).
+
+The branch of the last commit need not be the default branch, and the commits
+the oracle names need not be on it. Eleven shipped graph scenarios end on
+`release`, not on `main`. SZZG-0054's only bug-fixing commit, `c3` on `main`,
+is not reachable from `HEAD`, and neither is a bug-fixing commit of SZZG-0049,
+SZZG-0050, SZZG-0056 and SZZG-0143. With `HEAD` on `main`, SZZG-0075's
+bug-fixing commit `f2` and its bug-introducing commit `f1` stay on a feature
+branch. A tool that walks history from `HEAD` -- `git log` or
+`git rev-list HEAD` without `--all`, or a library that opens the working tree
+and lists its commits -- does not see those commits. A tool should start from
+the bug-fixing commit it is given, as the adapters under `tools/adapters/` do
+(they take it from the scenario and `metadata/commit-map.json` and hand its
+hash to the tool), or walk every ref (`--all`).
+
 ### `cherry_pick_trailer` (*graph*)
 
 ```yaml
@@ -805,7 +829,7 @@ patch operation, so it reports the generation errors above as GE203; until
 New metadata fields: `commit-map.json` -> `author_date`, `committer_date`,
 `body`, `generated_commits`, `inherits`, `resolved_conflicts`, and
 `<owner>.g<N>` entries (`role: generated`, `generated_by`, `path`);
-`graph-map.json` -> `generated_commits`, `refs`, `ref_lifecycle`, per-commit
+`graph-map.json` -> `generated_commits`, `refs`, `ref_lifecycle`, `head`, per-commit
 `revert_of` and `generated_commits`, and pass-through of `squashes`,
 `interactive_rebase`, `rebase_conflict_resolution`, `reverts`,
 `revert_conflict_resolution` when a commit declares them. A commit's

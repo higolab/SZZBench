@@ -207,6 +207,13 @@ def generate_graph_repository(
                                                               branch_heads, default_branch, log)
             graph_map["branches"] = {name: h for name, h in branch_heads.items() if name not in graph_map["ref_lifecycle"]["deleted_branches"]}
         graph_map["refs"] = git_refs(repo_dir)
+        # HEAD need not be on the default branch, so a tool that walks history from it may miss a
+        # bug-fixing commit; nothing in metadata/ said where it was (issue #201)
+        graph_map["head"] = _head_record(repo_dir)
+        if graph_map["head"]["branch"] is None:
+            log(f"HEAD is detached at {graph_map['head']['hash']}")
+        else:
+            log(f"HEAD is on branch {graph_map['head']['branch']} ({graph_map['head']['hash']})")
 
         shutil.copy2(scenario_path, metadata_dir / "scenario.graph.yml")
         (metadata_dir / "commit-map.json").write_text(json.dumps(commit_map, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
@@ -241,6 +248,23 @@ def generate_graph_repository(
         if isinstance(exc, GraphGenerationError):
             raise
         raise GraphGenerationError(str(exc)) from exc
+
+
+def _head_record(repo_dir: Path) -> dict[str, str | None]:
+    """Where generation left HEAD: ``{"branch": name, "hash": commit}``, ``branch`` null when detached.
+
+    HEAD stays on the branch of the scenario's last commit, which need not be
+    the default branch; ``graph.ref_lifecycle`` may move it to the default
+    branch or detach it (``_apply_ref_lifecycle``).  ``verify-graph`` checks
+    the rule (GE644); ``graph-map.json`` records the outcome, so that an
+    adapter can tell which commits HEAD reaches (issue #201).
+    """
+    try:
+        symbolic = run_git(repo_dir, ["symbolic-ref", "-q", "HEAD"]).stdout.strip()
+    except GitError:
+        symbolic = ""  # exit status 1: HEAD is detached
+    branch = symbolic[len("refs/heads/"):] if symbolic.startswith("refs/heads/") else None
+    return {"branch": branch, "hash": run_git(repo_dir, ["rev-parse", "HEAD"]).stdout.strip()}
 
 
 def _scenario_uses_operation(scenario: dict[str, Any], op_type: str) -> bool:

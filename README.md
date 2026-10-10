@@ -187,6 +187,16 @@ scenario id and the commit index, never from the role; and no file content or
 path states which commit is the answer. Bug-fixing commits keep natural fix
 wording, because the BFC is an input to SZZ rather than part of the answer.
 
+Nor is the bug-fixing commit always in the history of HEAD. `generate` leaves
+the default branch checked out, but `generate-graph` leaves HEAD on the branch
+of the scenario's last commit, which may be another branch than the default
+one: SZZG-0054 ends on `release`, and its only bug-fixing commit, on `main`, is
+not reachable from HEAD. A bug-fixing commit may also stay on a branch that is
+never merged, as in SZZG-0075. A tool should therefore start from the
+bug-fixing commit it is given, or walk every ref (`git log --all`), not walk
+history from HEAD. `metadata/graph-map.json` records where HEAD is (`head`);
+`docs/generator-options.md` §3 gives the rule.
+
 Scenario ids, titles and the directory a repository is generated into do
 describe the scenario, and a fix necessarily names what it repairs. The full
 policy, including what is deliberately not hidden and how predictions may name a
@@ -526,7 +536,7 @@ generated-input-repos/SZZG-0001/default/
 
 `commit-map.json` records the mapping between logical commit IDs and actual Git hashes.
 
-`graph-map.json` records additional information for Graph scenarios. It includes information such as branches, parents, and roles. A commit's `parents` and `parent_hashes` are its declared parents. For a commit that owns `commit_generator` operations, Git's first parent is its last generated commit, listed in `generated_commits` (`docs/generator-options.md` §2).
+`graph-map.json` records additional information for Graph scenarios. It includes information such as branches, parents, and roles. A commit's `parents` and `parent_hashes` are its declared parents. For a commit that owns `commit_generator` operations, Git's first parent is its last generated commit, listed in `generated_commits` (`docs/generator-options.md` §2). `head` records where generation left HEAD: `branch`, the branch it is on (null when HEAD is detached), and `hash`, the commit. HEAD stays on the branch of the scenario's last commit, which need not be the default branch (see "What the generated repositories do not reveal" and `docs/generator-options.md` §3).
 
 When verification finds an error, `generate-graph` prints the findings and records the failure as `generate` does. `--no-verify`, `--strict` and `--json` work as they do for `generate`; `kind` is `graph`.
 
@@ -628,6 +638,8 @@ For Graph scenarios, `--evaluation-variant` selects a named `expected_szz.evalua
 The JSON report keeps the strict fields (`true_positives`, `false_positives`, `false_negatives`), reports `unknown_predictions`, `run_status` and `run_errors` per scenario, and also includes Graph-specific details when available: `evaluation_policy`, `evaluation_variant`, `hard_false_positives`, `related_origin_hits`, `related_but_not_correct_hits`, `acceptable_related_hits`, `weighted_credit`, `minimum_required_met`, and `top_k`.
 
 `--json` prints that report on stdout instead of the summary, and `--out` writes it to `evaluation-results.json`, with `evaluation-results.md` beside it. `--scenarios-root` and `--advanced-scenarios-root` say where the scenario files are when they are not under `scenarios/` and `advanced-scenarios/`. `--reference-format` restricts how a prediction may name a commit: `hash` accepts only hashes and hash prefixes, which is all a tool that reads the repository can produce; `logical` only logical ids such as `c1`, for adapters and test fixtures; and `auto`, the default, both. A rejected reference is an unknown prediction (`docs/decisions/oracle-leakage.md`).
+
+A tool is run on a generated repository from the bug-fixing commit: the adapters under `tools/adapters/` take it from the scenario and `metadata/commit-map.json` and hand its hash to the tool. A tool that walks history from HEAD instead, such as one that runs `git log` without `--all`, may miss the bug-fixing commit of a Graph scenario, because `generate-graph` leaves HEAD on the branch of the scenario's last commit, which need not contain it (see "What the generated repositories do not reveal"; `metadata/graph-map.json` records HEAD as `head`).
 
 For SZZ Unleashed, the adapter runs the tool too: build its jar ([examples/szz-unleashed-run/README.md](examples/szz-unleashed-run/README.md)) and pass it with `--jar`. `--depth` is SZZ Unleashed's `-d`, the depth of its line mapping graph (default 3, its own), and changes the results a great deal; that README records a run at depth 3 and at depth 1. Without `--jar`, the adapter only converts the `fix_and_introducers_pairs.json` files an earlier run left under `generated-input-repos/<SCENARIO_ID>/default/szz-unleashed/run-depth<depth>/`.
 
@@ -1039,6 +1051,8 @@ szzbench new-graph-scenario
 
 ツールには生成リポジトリとバグ修正コミットが与えられます。そのリポジトリの中に、コミットの oracle 上の役割を示すものは何もありません。コミットメッセージは作者の視点から変更を説明し、シナリオ id、役割を表す語、操作の一覧を決して含みません。作者と日付はシナリオ id とコミットの番号から導かれ、役割からは導かれません。どのファイル内容もパスも、どのコミットが答えかを述べません。バグ修正コミットは自然な修正の文言を保ちます。BFC は答えの一部ではなく、SZZ への入力だからです。
 
+また、バグ修正コミットが HEAD の履歴にあるとは限りません。`generate` は既定ブランチをチェックアウトした状態で終わりますが、`generate-graph` は HEAD をシナリオの最後のコミットのブランチに残し、それは既定ブランチ以外のブランチのこともあります。SZZG-0054 は `release` で終わり、`main` にある唯一のバグ修正コミットは HEAD から到達できません。SZZG-0075 のように、バグ修正コミットが一度もマージされないブランチに残ることもあります。そのため、ツールは HEAD から履歴をたどるのではなく、与えられたバグ修正コミットから始めるか、すべての ref をたどってください（`git log --all`）。`metadata/graph-map.json` は HEAD の位置を記録します（`head`）。規則は `docs/generator-options.md` §3 にあります。
+
 シナリオ id、タイトル、リポジトリの生成先ディレクトリはシナリオを説明しますし、修正は当然、何を直したかを名指しします。意図的に隠していないものや、予測がコミットをどう名指しできるか（`evaluate --reference-format`）を含む完全な方針は [docs/decisions/oracle-leakage.md](docs/decisions/oracle-leakage.md) にあり、`validate --lint` と `tests/test_no_oracle_leakage.py` が検査します。
 
 ## ディレクトリ構成
@@ -1373,7 +1387,7 @@ generated-input-repos/SZZG-0001/default/
 
 `commit-map.json` は、論理コミット ID と実際の Git hash の対応を記録します。
 
-`graph-map.json` は、Graph シナリオ向けの追加情報を記録します。branch、parent、role などの情報を含みます。コミットの `parents` と `parent_hashes` は、シナリオで宣言された親です。`commit_generator` 操作を持つコミットでは、Git 上の第一親は最後の生成コミットで、それは `generated_commits` に並んでいます（`docs/generator-options.md` §2）。
+`graph-map.json` は、Graph シナリオ向けの追加情報を記録します。branch、parent、role などの情報を含みます。コミットの `parents` と `parent_hashes` は、シナリオで宣言された親です。`commit_generator` 操作を持つコミットでは、Git 上の第一親は最後の生成コミットで、それは `generated_commits` に並んでいます（`docs/generator-options.md` §2）。`head` は、生成が HEAD を残した位置を記録します。`branch` は HEAD のあるブランチ（HEAD が detached のときは null）、`hash` はそのコミットです。HEAD はシナリオの最後のコミットのブランチに残り、それは既定ブランチとは限りません（「生成リポジトリが明かさないもの」と `docs/generator-options.md` §3 を参照）。
 
 verify でエラーが見つかったときの表示と記録は、`generate` と同じです。`--no-verify`、`--strict`、`--json` も `generate` と同じように働きます（`kind` は `graph`）。
 
@@ -1475,6 +1489,8 @@ Graph scenario では、`--evaluation-variant` で `expected_szz.evaluation_vari
 JSON レポートには従来の `true_positives`、`false_positives`、`false_negatives` と、シナリオごとの `unknown_predictions`、`run_status`、`run_errors` に加えて、Graph scenario 用の `evaluation_policy`、`evaluation_variant`、`hard_false_positives`、`related_origin_hits`、`related_but_not_correct_hits`、`acceptable_related_hits`、`weighted_credit`、`minimum_required_met`、`top_k` も出力されます。
 
 `--json` を付けると、集計の代わりにこのレポートを標準出力に出力します。`--out` はこれを `evaluation-results.json` に書き出し、同じ場所に `evaluation-results.md` も書きます。シナリオファイルが `scenarios/` と `advanced-scenarios/` 以下にない場合は、`--scenarios-root` と `--advanced-scenarios-root` でその場所を指定します。`--reference-format` は、予測がコミットを名指す書き方を制限します。`hash` は hash と hash prefix だけを受け付け（リポジトリを読むツールが出せるのはこれだけです）、`logical` は `c1` のような論理 commit id だけを受け付け（adapter とテストの fixture 向け）、デフォルトの `auto` は両方を受け付けます。受け付けなかった参照は unknown prediction になります（`docs/decisions/oracle-leakage.md`）。
+
+ツールは、生成リポジトリの上でバグ修正コミットから実行します。`tools/adapters/` の adapter は、バグ修正コミットをシナリオと `metadata/commit-map.json` から読み取り、その hash をツールに渡します。そうせずに HEAD から履歴をたどるツール（`--all` なしで `git log` を実行するものなど）は、Graph シナリオのバグ修正コミットを見落とすことがあります。`generate-graph` は HEAD をシナリオの最後のコミットのブランチに残し、そのブランチがバグ修正コミットを含むとは限らないからです（「生成リポジトリが明かさないもの」を参照。`metadata/graph-map.json` は HEAD を `head` として記録します）。
 
 SZZ Unleashed は、adapter がツールの実行まで行います。jar をビルドし（[examples/szz-unleashed-run/README.md](examples/szz-unleashed-run/README.md)）、`--jar` で渡してください。`--depth` は SZZ Unleashed の `-d`（行の対応グラフの深さ。既定値は SZZ Unleashed 自身と同じ 3）で、結果を大きく左右します。上の README には深さ 3 と深さ 1 の実行記録があります。`--jar` を付けない場合、adapter は以前の実行が `generated-input-repos/<SCENARIO_ID>/default/szz-unleashed/run-depth<depth>/` に残した `fix_and_introducers_pairs.json` を変換するだけです。
 
