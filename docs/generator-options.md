@@ -226,7 +226,9 @@ after generation: the verifiers read a file's content through Git as text
 (`gitutils.run_git`), and that reading turns every `\r\n`, and a lone `\r`,
 into `\n`, so `\r` never takes part in matching. A statement is matched against
 the LF text, whatever the blob holds; one that spans lines, written with `\n`,
-is found in a CRLF file as in an LF one (no E301 / GE663). The basic blame
+is found in a CRLF file as in an LF one (no E301 / GE663), and
+`validate-graph --simulate`, which looks it up in its LF text by the
+verifier's rule, finds it too (no GE205, issue #238). The basic blame
 check looks for the statement inside a single line of the BFC's parent, so it
 cannot follow a statement that spans lines, whatever the line endings: such a
 statement gets W700 / GW701 ("not present in BFC parent"), or I701 / GI701
@@ -316,9 +318,10 @@ codec. A file in another encoding is written as bytes with
 
 Both are optional strings written before/after the generated lines. A missing
 trailing newline is added, so `footer: "}"` and `footer: "}\n"` are
-equivalent. Defaults: empty. The simulator ignores `header`/`footer`, so
-`replace` operations that target header text pass generation but not
-`validate-graph --simulate`.
+equivalent. Defaults: empty. `validate-graph --simulate` writes them as
+generation does. Until issue #238 it left them out, so a `replace` of header
+text failed it although generation passed, and a fault statement in a header,
+SZZG-0145's, could not have been looked up (GE205).
 
 ### `commit_generator` (*graph*) - real expansion
 

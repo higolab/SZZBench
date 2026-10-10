@@ -2,11 +2,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 import tempfile
 
 from .findings import ValidationResult
-from .graph_operations import CommitGeneratorPlan, commit_generator_changes, commit_generator_plan, decode_content_base64
+from .graph_operations import (CommitGeneratorPlan, _block_text, commit_generator_changes, commit_generator_plan,
+                               decode_content_base64)
+from .graph_scenario import graph_faults, graph_fixes
+from .graph_verifier import (LOOKUP_NO_FILE, LOOKUP_NOT_FOUND, UnreadableFile, look_up_location,
+                             verify_graph_generated_repo)
 from .operations import (OperationError, decode_stored, encode_stored, insert_after_once, normalize_newlines, replace_once,
                          resolve_encoding, text_field)
 from .paths import PathValidationError, file_path_conflict, validate_repo_relative_path
@@ -32,12 +36,15 @@ def simulate_graph_scenario(data: dict[str, Any]) -> ValidationResult:
 
     The replay keeps the files of every commit (:func:`simulated_snapshots`)
     and reports the operations generation would refuse (GE201) and the commits
-    it would find empty (GE202).  It models file operations only.  A commit
-    whose content generation lets Git compute (:func:`git_performed_features`)
-    is GE200, and nothing is replayed: ``validate-graph --simulate`` generates
-    such a scenario with Git instead (:func:`simulate_graph_scenario_with_git`).
-    The replay used to approximate merges and patches file by file, code that
-    no command reached once those scenarios went to Git (issues #94, #183).
+    it would find empty (GE202).  When it finds none, every fault and fix is
+    looked up in the snapshot of its commit as verification looks it up
+    (GE204, GE205; :func:`check_locations`).  It models file operations
+    only.  A commit whose content generation lets Git compute
+    (:func:`git_performed_features`) is GE200, and nothing is replayed:
+    ``validate-graph --simulate`` generates such a scenario with Git instead
+    (:func:`simulate_graph_scenario_with_git`).  The replay used to
+    approximate merges and patches file by file, code that no command
+    reached once those scenarios went to Git (issues #94, #183).
     """
     result = ValidationResult()
     refused = _commits_git_computes(data)
@@ -46,8 +53,57 @@ def simulate_graph_scenario(data: dict[str, Any]) -> ValidationResult:
                      f"({', '.join(found)}); validate-graph --simulate generates such a scenario with Git.",
                      f"commits[{index}]")
     if not refused:
-        simulated_snapshots(data, result)
+        snapshots = simulated_snapshots(data, result)
+        if not result.has_errors():          # a failed operation leaves the files incomplete
+            check_locations(data, snapshots, result)
     return result
+
+
+def check_locations(data: dict[str, Any], snapshots: dict[str, Snapshot], result: ValidationResult) -> None:
+    """Look every fault and fix up in the snapshot of its commit, by the verifier's rule (issue #238).
+
+    The verifier was the first to read a statement (GE662, GE663), so a typo
+    in one, or a ``file`` the commit does not have, passed ``validate-graph
+    --simulate`` and failed ``generate-graph`` once the repository was built.
+    The rule is ``graph_verifier.look_up_location``'s, and the locations the
+    verifier's: a file the commit does not have is GE204, a statement that is
+    not in it GE205.  A statement found more than once is left to
+    verification (GW664), as is what it only notes (GI660, GI661).
+    """
+    read = snapshot_file_reader(snapshots)
+    bugs = data.get("bugs") if isinstance(data.get("bugs"), list) else []
+    for i, bug in enumerate(bugs):
+        if not isinstance(bug, dict):
+            continue
+        bid = bug.get("id", f"<bug[{i}]>")
+        for key, kind, entries in (("faults", "fault", graph_faults(bug)), ("fixes", "fix", graph_fixes(bug))):
+            for j, entry in enumerate(entries):
+                found = look_up_location(entry, snapshots, read, kind=kind)
+                if found is None:
+                    continue
+                where = f"at commit '{entry['commit']}' in the simulation"
+                if found.outcome == LOOKUP_NO_FILE:
+                    result.error("GE204", f"bug {bid} {kind}.file '{entry['file']}' does not exist {where}; "
+                                 "verification would report GE662.", f"bugs[{i}].{key}[{j}]")
+                elif found.outcome == LOOKUP_NOT_FOUND:
+                    result.error("GE205", f"bug {bid} {kind} statement not found in '{entry['file']}' {where}; "
+                                 "verification would report GE663.", f"bugs[{i}].{key}[{j}]")
+
+
+def snapshot_file_reader(snapshots: dict[str, Snapshot]) -> Callable[[str, str], str]:
+    """The ``read_file`` of ``graph_verifier.look_up_location`` for the replay's snapshots.
+
+    A file is read as the verifier reads its blob through Git: as UTF-8 with
+    replacement characters, every line ending ``\\n``; a byte order mark is the
+    leading U+FEFF the replay stores.
+    """
+    def read(commit_id: str, path: str) -> str:
+        file = snapshots[commit_id].get(path)
+        if file is None:
+            raise UnreadableFile(f"commit '{commit_id}' has no file {path}")
+        text = file.content if isinstance(file.content, str) else file.content.decode("utf-8", errors="replace")
+        return normalize_newlines(text)
+    return read
 
 
 def git_performed_features(data: dict[str, Any]) -> list[str]:
@@ -105,7 +161,6 @@ def simulate_graph_scenario_with_git(scenario_path: Path, data: dict[str, Any], 
     """
     # graph_generator imports the validator, which imports this module
     from .graph_generator import GraphGenerationError, generate_graph_repository
-    from .graph_verifier import verify_graph_generated_repo
 
     result = ValidationResult()
     with tempfile.TemporaryDirectory(prefix="szzbench-simulate-") as tmp:
@@ -365,7 +420,9 @@ def _apply_simulated_operation(snapshot: Snapshot, op: dict[str, Any]) -> None:
         path = _validated_path(op["path"])
         lines = int(op["lines"])
         template = str(op["template"])
-        content = "\n".join(_render_template_line(template, line_no) for line_no in range(1, lines + 1)) + "\n"
+        body = "\n".join(_render_template_line(template, line_no) for line_no in range(1, lines + 1)) + "\n"
+        # with the header and footer generation writes around the lines, which the replay left out (issue #238)
+        content = _block_text(op.get("header")) + body + _block_text(op.get("footer"))
         _set_file(snapshot, path, SimFile(encode_stored(content, resolve_encoding(op)), _mode(snapshot, path)), op_type)
         return
 

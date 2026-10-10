@@ -15,6 +15,13 @@ latin-1 cannot encode passed ``--simulate`` and failed generation, and a
 commit that only added a byte order mark was GE202 there and a commit in Git.
 The key is now ``utf-8`` or ``utf-8-sig``, as in the classic suite (E042 /
 GE061), and the replay applies it as the classic replay does.
+
+Issue #238: nothing compared a graph scenario's faults and fixes with the
+replay's files, so a statement that is not in its file, or a ``file`` its
+commit does not have, passed ``--simulate`` and failed ``generate-graph`` at
+verification (GE663, GE662).  The replay now looks each one up by the
+verifier's own rule (GE205, GE204), and writes the ``header`` and ``footer``
+of ``write_generated_text_file``, in which SZZG-0145's fault statement is.
 """
 from __future__ import annotations
 
@@ -29,6 +36,7 @@ from szzbench.graph_validator import validate_graph_scenario_file, validate_grap
 
 from support import git_bytes
 
+ROOT = Path(__file__).resolve().parents[1]
 
 def _write_file(path: str, content: str, **keys) -> dict:
     return {"type": "write_file", "path": path, "content": content, **keys}
@@ -136,3 +144,33 @@ def test_a_bom_only_commit_passes_the_simulation_as_generation_commits_it(tmp_pa
     blob = git_bytes(tmp_path / "out/repo", "cat-file", "blob", f"{commit_map['c1']['hash']}:{LIMITS}")
     assert blob.startswith(b"\xef\xbb\xbf")
     assert simulated_snapshots(data)["c1"][LIMITS].content.encode("utf-8") == blob
+
+
+# --- issue #238: faults and fixes looked up in the replay ------------------------------------
+
+SZZG_0001 = ROOT / "advanced-scenarios/SZZG-0001/scenario.graph.yml"
+
+
+def _mutated_0001(tmp_path: Path, key: str, field: str, value: str) -> Path:
+    data = yaml.safe_load(SZZG_0001.read_text(encoding="utf-8"))
+    data["bugs"][0][key][0][field] = value
+    return _write(tmp_path, data)
+
+
+#: The first three rows of the issue's table: each passed --simulate and failed verification (GE663, GE662).
+@pytest.mark.parametrize("key, field, value, code", [
+    ("faults", "statement", "return value >= min && value < max;", "GE205"),
+    ("fixes", "statement", "return value >= min && value <= mx;", "GE205"),
+    ("faults", "file", "src/main/java/example/Range.java", "GE204"),      # created by c2, not there at c1
+], ids=["fault-statement", "fix-statement", "fault-file"])
+def test_a_fault_or_fix_the_replay_does_not_bear_out_is_an_error_at_it(tmp_path, key, field, value, code):
+    _, result = validate_graph_scenario_file(_mutated_0001(tmp_path, key, field, value), simulate=True, strict_paths=True)
+    assert [(f.code, f.location) for f in result.error_findings()] == [(code, f"bugs[0].{key}[0]")]
+
+
+def test_the_replay_writes_the_header_a_statement_of_szzg_0145_is_in():
+    """F001 of SZZG-0145 is the header of a write_generated_text_file, which the replay left out."""
+    data = yaml.safe_load((ROOT / "advanced-scenarios/SZZG-0145/scenario.graph.yml").read_text(encoding="utf-8"))
+    table = simulated_snapshots(data)["c1"]["src/main/resources/zone-rates.csv"].content
+    assert table.startswith("zone,rate_cents\nzone-1,100\n") and table.endswith("zone-5000,500000\n")
+    assert simulate_graph_scenario(data).error_findings() == []

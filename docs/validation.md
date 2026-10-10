@@ -42,7 +42,7 @@ Checks come in two groups:
 
 | flag | effect |
 |---|---|
-| `--simulate` | replay the graph operations in memory (GE200-GE202); a scenario with commits that Git computes during generation is generated with Git in a temporary directory and verified instead (GE203, GI203) |
+| `--simulate` | replay the graph operations in memory (GE200-GE202) and look every fault and fix up in the replayed files (GE204, GE205); a scenario with commits that Git computes during generation is generated with Git in a temporary directory and verified instead (GE203, GI203) |
 | `--strict-paths` | additionally require `entity` objects on `move_entity` / `copy_entity` (GE056) |
 | `--strict` | treat warnings as failures |
 | `--lint` | run the GW4xx lints (static; they run only when no error was found) |
@@ -308,7 +308,7 @@ generates the scenario again removes the attempt first.
 | GE101 | error | fault/fix location refers to an unknown commit |
 | GE102 | error | fault/fix `file` is not a repository-relative POSIX path (the rule of E050) |
 | GE103 | error | fault/fix `file` is not a string |
-| GE104 | error | a fault's or fix's `statement`, `added_statement`, `removed_statement` or `missing_statement` is not a string (a blank value, YAML null, included) or is empty or only whitespace; or a fault with `change_type: omission` has no `missing_statement` (the counterpart of E351). A statement stays optional: binary changes, deleted files and omissions have none. `verify-graph` skipped GE663 and the blame check of a location whose statement was empty or not a string, without a finding, and found a whitespace-only one anywhere; this check is static, so `generate-graph`, which validates without `--simulate`, refuses it too. Statements are not looked up in the files here ([issue #237](https://github.com/higolab/SZZBench/issues/237)) |
+| GE104 | error | a fault's or fix's `statement`, `added_statement`, `removed_statement` or `missing_statement` is not a string (a blank value, YAML null, included) or is empty or only whitespace; or a fault with `change_type: omission` has no `missing_statement` (the counterpart of E351). A statement stays optional: binary changes, deleted files and omissions have none. `verify-graph` skipped GE663 and the blame check of a location whose statement was empty or not a string, without a finding, and found a whitespace-only one anywhere; this check is static, so `generate-graph`, which validates without `--simulate`, refuses it too. Statements are not looked up in the files here ([issue #237](https://github.com/higolab/SZZBench/issues/237)); `--simulate` looks them up (GE204, GE205) |
 | GW106 | warning | a fault with `change_type: omission` also carries a `statement` (the counterpart of W350) |
 | GE105 | error | fault/fix `entity` is not an object |
 | GE107 | error | a bug's `faults` / `fixes` is not a list, an entry of one is not an object, or its `fault` / `fix` is not an object. The checks read nothing else and skipped the rest: `faults: {commit: no-such-commit}` passed, its unknown commit never checked by GE101 ([issue #160](https://github.com/higolab/SZZBench/issues/160)) |
@@ -349,6 +349,8 @@ With `--simulate`:
 | GE202 | error | a non-merge commit without `allow_empty` would be empty. A `chmod` that changes the mode Git records (`100644` / `100755`) is a change; an owner of `commit_generator` commits is not empty unless its `count` is 0. The replay works on LF text, so a commit whose only change is its line endings (a `format_file` with `line_ending: lf` on a CRLF file without trailing whitespace) is reported too, while generation commits the conversion; `allow_empty: true` lets it pass (generator-options §2, `line_ending`) |
 | GE203 | error | generating the scenario with Git in a temporary directory failed; the message and location name the commit that failed (an unresolved conflict, a revert or cherry-pick that changes nothing, an operation that no longer applies). Also one GE203 per error of verifying the generated repository as `generate-graph` does: the message starts with the verifier's code (`GE630`, `GE663`, ...) and the location is the verifier's, e.g. `bugs[0].faults[0]` ([issue #173](https://github.com/higolab/SZZBench/issues/173)) |
 | GI203 | info | the scenario was simulated by generating it with Git, and the result verified without errors; the message lists the commits Git computes |
+| GE204 | error | a fault's or fix's `file` is not in the replayed files at its `commit`, where verification would report GE662; a fix with `fix_type: file_deletion` may miss its file. Checked when the replay found no other error ([issue #238](https://github.com/higolab/SZZBench/issues/238)) |
+| GE205 | error | a fault's or fix's statement (`statement`, else `added_statement`) is not in its `file` at its `commit` in the replay, where verification would report GE663. The look-up is the verifier's own (`graph_verifier.look_up_location`): the file is read as UTF-8 with replacement characters and LF line endings, an entry without `file` (an `entity` oracle) or without a statement is not looked up, and a statement found more than once is left to verification (GW664, a warning). Until [issue #238](https://github.com/higolab/SZZBench/issues/238) the replay looked nothing up, so a typo in a statement passed `--simulate --strict --lint` and failed `generate-graph` after the repository was built, unless the scenario had commits Git computes (GE203) |
 
 The in-memory replay models file operations. What the generator lets Git
 compute -- merge commits, `revert_of` performed by `git revert` (no operations,
@@ -373,12 +375,14 @@ are not reported: they do not stop generation either.
 `tests/test_simulator_drift.py` keeps the replay and generation together: it
 generates every shipped graph scenario and compares the in-memory snapshot of
 each commit with the generated tree (paths, contents and modes), giving the
-replay the generated trees of the commits Git computes. The only differences
-it allows are the two that [generator-options.md](generator-options.md) §2
-states: the replay works on LF text, and it leaves out the `header` / `footer`
-of `write_generated_text_file`. Until issue #175 nothing compared them, and
-`commit_generator`, `chmod`, `move_entity`'s `overwrite` and a file written
-over a directory had drifted apart.
+replay the generated trees of the commits Git computes. The only difference
+it allows is the one [generator-options.md](generator-options.md) §2 states:
+the replay works on LF text. It also allowed the replay to leave out the
+`header` / `footer` of `write_generated_text_file`, until issue #238. And it
+looks every fault and fix up in both, which must give the same result (GE204 /
+GE205 against GE662 / GE663 and GW664). Until issue #175 nothing compared
+them, and `commit_generator`, `chmod`, `move_entity`'s `overwrite` and a file
+written over a directory had drifted apart.
 
 ### Lints (`--lint`)
 
