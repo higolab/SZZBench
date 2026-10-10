@@ -355,11 +355,16 @@ def test_generate_all_repos_prints_the_verification_errors_under_the_failed_item
                                            "--advanced-scenarios-root", "advanced-scenarios", "--out-root", "repos")
     assert completed.returncode == 1 and "  Failed:      2" in completed.stdout
     lines = completed.stderr.splitlines()
-    classic = lines.index("Failed [classic] SZZ-0005: repos/SZZ-0005/default: Generated repository failed verification.")
+    # generate-all-repos generates into <id>/default.tmp, and names it (issue #168)
+    repos = tmp_path.resolve() / "repos"
+    classic = lines.index("Failed [classic] SZZ-0005: repos/SZZ-0005/default: Generated repository failed verification; "
+                          f"the files of this attempt are in {repos / 'SZZ-0005/default.tmp'}")
     assert lines[classic + 1] == "  [ERROR] E602: Commit message mismatch for 'c0'. (commits.c0.message)"
-    graph = lines.index("Failed [graph] SZZG-0001: repos/SZZG-0001/default: Generated graph repository failed verification.")
+    graph = lines.index("Failed [graph] SZZG-0001: repos/SZZG-0001/default: Generated graph repository failed "
+                        f"verification; the files of this attempt are in {repos / 'SZZG-0001/default.tmp'}")
     assert lines[graph + 1] == "  [ERROR] GE623: Commit message mismatch for 'c1'. (commits[1].message)"
     for sid in ("SZZ-0005", "SZZG-0001"):
-        metadata = tmp_path / "repos" / sid / "default/metadata"
+        assert not (tmp_path / "repos" / sid / "default").exists()
+        metadata = tmp_path / "repos" / sid / "default.tmp/metadata"
         assert (metadata / "generation.log").is_file() and (metadata / "generation-error.json").is_file()
         assert not (metadata / "manifest.json").exists()
