@@ -57,7 +57,7 @@ commits:
   parents:
   - c1
   message: 'Accept the range bounds again'
-  role: intermediate
+  role: bug_introducing
   operations:
   - type: replace
     path: src/main/java/example/Range.java

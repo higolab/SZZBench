@@ -42,7 +42,7 @@ c3: apply follow-up fix with the correct boundary condition
 |---|---|---|---|---|
 | `c0` | `main` | none | initial | Creates the initial correct implementation. |
 | `c1` | `main` | `c0` | bug_introducing | Excludes boundary values by using strict comparisons. |
-| `c2` | `main` | `c1` | intermediate | Attempts a fix, but uses `||` instead of `&&`. |
+| `c2` | `main` | `c1` | bug_introducing | Attempts a fix, but uses `||` instead of `&&`. |
 | `c3` | `main` | `c2` | bug_fixing | Replaces the failed attempted fix with the correct condition. |
 
 ## Code states
