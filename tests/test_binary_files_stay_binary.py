@@ -91,6 +91,12 @@ def test_a_file_written_as_bytes_stays_binary_until_it_is_written_as_text():
 PICKED = (_commit("c0", [], _binary("data.txt")),
           _commit("f1", ["c0"], _binary("data.txt", b"limit=6\n"), branch="feature"),
           _commit("p1", ["c0"], cherry_pick_of="f1"))
+#: data.txt is a copy of source.txt's bytes; p1 picks f1's text over it, and r1 copies the bytes back.
+COPY = {"type": "copy_file", "from": "source.txt", "to": "data.txt", "overwrite": True}
+RECOPIED = (_commit("c0", [], _binary("source.txt"), COPY),
+            _commit("f1", ["c0"], _text("data.txt", "limit=6\n"), branch="feature"),
+            _commit("p1", ["c0"], cherry_pick_of="f1"), _commit("r1", ["p1"], COPY),
+            _commit("t1", ["f1"], _text("data.txt", "limit=6\n"), branch="other", allow_empty=True))
 
 
 @pytest.mark.parametrize("commits, refused", [
@@ -115,6 +121,14 @@ PICKED = (_commit("c0", [], _binary("data.txt")),
       _commit("p2", ["t1"], branch="other", revert_of="p1"),
       _commit("t2", ["p2"], _replace("data.txt"), branch="other")),
      ["commits[5].operations[0].path"]),
-], ids=["merge-keeps-the-binary-file", "cherry-pick-of-another-file", "pick-of-a-pick", "revert-of-a-pick"])
+    # a pick of r1 brings the bytes back, though the writer of data.txt at p1 was still c0's (PR #281 review)
+    ((*RECOPIED, _commit("p2", ["t1"], branch="other", cherry_pick_of="r1"),
+      _commit("t2", ["p2"], _replace("data.txt"), branch="other")),
+     ["commits[6].operations[0].path"]),
+    ((*RECOPIED, _commit("p2", ["t1"], {"type": "apply_patch_from", "commit": "r1"}, branch="other"),
+      _commit("t2", ["p2"], _replace("data.txt"), branch="other")),
+     ["commits[6].operations[0].path"]),
+], ids=["merge-keeps-the-binary-file", "cherry-pick-of-another-file", "pick-of-a-pick", "revert-of-a-pick",
+        "pick-of-a-copy-after-a-picked-text", "patch-of-a-copy-after-a-picked-text"])
 def test_what_git_computes_brings_the_binary_files_it_may_carry(commits, refused):
     assert _ge065(_scenario(*commits)) == refused

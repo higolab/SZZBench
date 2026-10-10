@@ -702,10 +702,13 @@ def _validate_binary_files(commits: list[Any], result: ValidationResult) -> None
     ``apply_patch_from``, ``apply_squash``) adds the ones its source writes as
     bytes, a ``git revert`` the ones its source rewrites, moves or removes; a
     ``resolution``, applied only where Git reports a conflict, is not read.
-    Each commit records what it changes (``changes``), what a cherry-pick or
-    revert brought in included, even where the commit's binary files stay as
-    they were: picking a cherry-pick of a commit then brings what picking the
-    commit does, and so does reverting it (PR #281 review).
+    Each commit records what it changes (``changes``) without comparing
+    binary files, which a change Git makes to text leaves as they were: every
+    path an operation writes or removes, what a cherry-pick or revert brought
+    in, and, for a merge, every binary file of a parent.  Picking a
+    cherry-pick of a commit then brings what picking the commit does, and so
+    does reverting it, and a copy that restores the bytes a path already had
+    here is a change (PR #281 review).
     """
     states: dict[str, _BinaryFiles] = {}
     changes: dict[str, _BinaryChanges] = {}
@@ -731,26 +734,27 @@ def _validate_binary_files(commits: list[Any], result: ValidationResult) -> None
         for parent in parents[1:]:
             for path, origin in states.get(parent, {}).items():
                 binary.setdefault(path, origin)
-        # what a cherry-pick or revert in this commit brings in: path -> (that, the binary file it left)
-        brought: dict[str, tuple[Any, Any]] = {}
+        # what this commit changes, in order: path -> (brought in by Git, what Git left there); a path an
+        # operation writes or removes is its binary file at the end of the commit
+        recorded: dict[str, tuple[bool, Any]] = {}
         revert = commit.get("revert_of")
         if isinstance(revert, str) and (not operations or commit.get("apply_revert")):
-            _bring(binary, brought, _brought_changes(revert, states, changes, parents_of, reverted=True))
+            _bring(binary, recorded, _brought_changes(revert, states, changes, parents_of, reverted=True))
         picked = commit.get("cherry_pick_of") or commit.get("backport_of")
         if isinstance(picked, str) and not operations:
-            _bring(binary, brought, _brought_changes(picked, states, changes, parents_of, reverted=False))
+            _bring(binary, recorded, _brought_changes(picked, states, changes, parents_of, reverted=False))
 
         for j, op in enumerate(operations):
             if not isinstance(op, dict) or not isinstance(op.get("type"), str):     # GE050, GE051
                 continue
             op_type = op["type"]
+            refused = False
             if op_type in ("apply_patch_from", "apply_squash"):
                 sources = [op.get("commit")] if op_type == "apply_patch_from" else op.get("from_commits")
                 for source in sources if isinstance(sources, list) else []:
                     if isinstance(source, str):
-                        _bring(binary, brought, _brought_changes(source, states, changes, parents_of, reverted=False))
+                        _bring(binary, recorded, _brought_changes(source, states, changes, parents_of, reverted=False))
             elif op_type in _TEXT_READ_FIELDS:
-                refused = False
                 for key in _TEXT_READ_FIELDS[op_type]:
                     path = op.get(key)
                     if not isinstance(path, str) or path not in binary:
@@ -784,15 +788,14 @@ def _validate_binary_files(commits: list[Any], result: ValidationResult) -> None
                         binary[target] = origin
                     else:
                         binary.pop(target, None)
-        # a path whose binary file differs from a parent's (every parent: the mainline of a merge is
-        # not known here), and what Git brought in, which `binary` need not show, unless an
-        # operation changed the path afterwards
-        befores = [states.get(parent, {}) for parent in parents] or [{}]
-        differ = {path for before in befores for path in before.keys() | binary.keys()
-                  if before.get(path) != binary.get(path)}
-        changes[cid] = {path: binary.get(path) for path in differ}
-        changes[cid].update({path: change if binary.get(path) == left else binary.get(path)
-                             for path, (change, left) in brought.items()})
+            if not refused:
+                for path in _changed_paths(op):
+                    recorded[path] = (False, None)
+        # a merge's result is not known here, nor its mainline: every binary file of a parent may be a change
+        changes[cid] = ({path: binary.get(path) for parent in parents for path in states.get(parent, {})}
+                        if len(parents) > 1 else {})
+        changes[cid].update({path: left if brought else binary.get(path)
+                             for path, (brought, left) in recorded.items()})
         states[cid] = binary
 
 
@@ -805,7 +808,9 @@ def _brought_changes(source: str, states: dict[str, _BinaryFiles], changes: dict
     has one), or to None.  What ``source`` itself brought in by a cherry-pick
     or revert counts.  Comparing the binary files of ``source`` and its
     parents missed it: a pick kept the writer the path already had, so a pick
-    of a pick, or its revert, brought nothing (PR #281 review).
+    of a pick, or its revert, brought nothing; and after a change Git made to
+    text, which keeps the old writer here, a copy of the same bytes back
+    looked like no change (PR #281 review).
     """
     changed = changes.get(source, {})
     if not reverted:
@@ -814,19 +819,26 @@ def _brought_changes(source: str, states: dict[str, _BinaryFiles], changes: dict
     return {path: next((before[path] for before in befores if path in before), None) for path in changed}
 
 
-def _bring(binary: _BinaryFiles, brought: dict[str, tuple[Any, Any]], changed: _BinaryChanges) -> None:
-    """Apply what a cherry-pick or revert changes, and record it in ``brought``.
+def _bring(binary: _BinaryFiles, recorded: dict[str, tuple[bool, Any]], changed: _BinaryChanges) -> None:
+    """Apply what a cherry-pick or revert changes, and record it in ``recorded``.
 
     A binary file replaces what was there.  A change to text leaves
     ``binary`` as it was, since Git's result is not known, but is recorded,
-    so that a revert of the commit brings the binary file back.  A binary
-    file the commit already has is recorded too: the file may be text in
-    Git's result (a change to text kept it binary here).
+    so that a revert of the commit brings the binary file back and a pick of
+    it brings none.
     """
     for path, origin in changed.items():
         if origin is not None:
             binary[path] = origin
-        brought[path] = (origin, binary.get(path))
+        recorded[path] = (True, origin)
+
+
+def _changed_paths(op: dict[str, Any]) -> list[str]:
+    """The paths an operation writes or removes, whatever it writes there."""
+    keys = [*WRITTEN_PATH_FIELDS_BY_OPERATION.get(op["type"], ()), *_REMOVED_PATH_FIELDS.get(op["type"], ())]
+    if op["type"] == "move_entity" and op.get("remove_source_file"):
+        keys.append("from_file")
+    return [op[key] for key in keys if isinstance(op.get(key), str)]
 
 
 def _validate_commit_ref_entry(entry: Any, commit_by_id: dict[str, dict[str, Any]], result: ValidationResult, loc: str, label: str) -> None:
