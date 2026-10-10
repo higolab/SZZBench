@@ -245,19 +245,42 @@ def canonical_author(author: str | None) -> str:
 MAX_GENERATED_COMMITS = 2000
 
 
+def commit_generator_count(op: dict[str, Any], owner_id: str) -> int:
+    """The ``count`` of a ``commit_generator`` operation of commit ``owner_id``, before the cap.
+
+    A value ``int()`` cannot read -- ``many``, a missing count, ``.nan``, or
+    ``.inf`` and ``-.inf`` (``OverflowError``) -- or a negative one is a
+    ``ValueError`` that names the field and the commit, as
+    ``graph_operations.commit_generator_plan`` (generation and ``--simulate``)
+    refuses it.  ``planned_generated_commits`` reads the count here, so that it
+    skips exactly the counts generation refuses: it caught ``TypeError`` and
+    ``ValueError`` only, and an infinite count ended ``verify-graph`` in a
+    traceback (issue #230).
+    """
+    try:
+        requested = int(op.get("count"))
+    except (TypeError, ValueError, OverflowError):
+        raise ValueError(f"commit_generator.count of commit '{owner_id}' must be an integer.") from None
+    if requested < 0:
+        raise ValueError(f"commit_generator.count of commit '{owner_id}' must not be negative.")
+    return requested
+
+
 def planned_generated_commits(owner_id: str, commit_spec: dict[str, Any]) -> list[str]:
     """The ``<owner>.g<N>`` ids the generator will create for ``commit_spec``'s
     ``commit_generator`` operations, in order and with the count cap applied.
-    A count the generator would reject is skipped here; it is reported there."""
+    A count the generator would reject (``commit_generator_count``) is skipped
+    here; ``validate-graph`` reports it (GE062), and so do ``--simulate`` and
+    generation."""
     total = 0
     for op in commit_spec.get("operations") or []:
         if not isinstance(op, dict) or op.get("type") != "commit_generator":
             continue
         try:
-            requested = int(op.get("count"))
-        except (TypeError, ValueError):
+            requested = commit_generator_count(op, owner_id)
+        except ValueError:
             continue
-        total += min(max(requested, 0), MAX_GENERATED_COMMITS)
+        total += min(requested, MAX_GENERATED_COMMITS)
     return [f"{owner_id}.g{n}" for n in range(1, total + 1)]
 
 

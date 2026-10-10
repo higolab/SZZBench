@@ -258,7 +258,10 @@ def _verify_generated_commits(repo_dir: Path, scenario: dict[str, Any], commit_m
     planned commit must be in the commit map (GE629) and in the repository
     (GE634), have the previous one as its only parent -- ``g1`` the owner's
     declared first parent, or none for a root owner -- (GE635), and carry the
-    author, dates and subject the commit map records (GE636).
+    author, dates and subject the commit map records (GE636).  A count
+    generation refuses, such as ``.inf``, plans no commits
+    (``gitutils.commit_generator_count``): the scenario of an output whose
+    count was changed so is reported here and at GE627 (issue #230).
     """
     owners: list[tuple[str, str, dict[str, Any], list[str]]] = []
     for i, commit_spec in enumerate(scenario.get("commits", []) or []):
