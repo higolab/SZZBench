@@ -859,7 +859,8 @@ output was made from:
 A generation that fails writes no manifest: it writes `generation.log` and
 `generation-error.json` instead, and one that fails verification also keeps
 `verify-result.json`. Until issue #163 the classic generator wrote neither of
-the first two when the verification failed.
+the first two when the verification failed. `generate-all-repos` leaves them
+in `<id>/default.tmp`, beside the output (see below).
 
 An output is **stale** when it has no manifest -- an interrupted generation,
 or one made before 2026-09-29 --, when its manifest cannot be read or parsed or
@@ -925,6 +926,26 @@ after a tool has worked in it, regenerate it (`generate-graph --force`, or
   as `repo/.git` existed: an edited scenario kept its old repository, and a
   generation that failed half way -- a `repo/.git` with no commits -- was
   reported as Skipped.
+- `generate-all-repos` generates each output into `<out-root>/<id>/default.tmp`
+  and puts it in place of `<id>/default` only once the generation, and the
+  verification unless `--no-verify` was given, has succeeded; `--overwrite`
+  replaces an output the same way (issue #168). A failed generation therefore
+  leaves no partial output in `<id>/default`: the previous output stays as it
+  was, manifest included, and the attempt's own files (`generation.log`,
+  `generation-error.json`, and `verify-result.json` after a failed
+  verification) stay in `default.tmp`, which the `Failed` line names
+  ("Generated repository failed verification; the previous output was left in
+  place, and the files of this attempt are in .../SZZ-0005/default.tmp").
+  `evaluate`, `baselines` and `coverage` read `*/default` and never see it. The
+  next generation of that scenario removes it first; a run that skips the
+  scenario leaves it. Both directories are replaced only when they
+  hold a generated output or nothing but `repo/` and `metadata/`, the rule
+  `generate --force` follows (issue #165). The first line of `generation.log`
+  names the repository where it was initialized, in `default.tmp`.
+  Until issue #168 the old output was removed before the regeneration began,
+  so a regeneration that failed left a partial output, without its manifest,
+  where a complete one had been. `generate --force` and `generate-graph --force`
+  still remove the old output first.
 - `evaluate`, `baselines` and `coverage` refuse to score a stale output. The
   report gets an error naming the scenario and the reason, and the scenario is
   left out. Scoring the current oracle against an old repository is what went

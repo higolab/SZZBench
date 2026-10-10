@@ -5,8 +5,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
 import json
+import shutil
 import traceback
 
+from .cleaner import replaceable_output_problem
 from .findings import Finding, ValidationResult
 from .generator import GenerationError, generate_repository
 from .graph_generator import GraphGenerationError, generate_graph_repository
@@ -15,6 +17,10 @@ from .manifest import staleness
 DEFAULT_GENERATED_INPUT_REPOS_ROOT = Path("generated-input-repos")
 DEFAULT_SCENARIOS_ROOT = Path("scenarios")
 DEFAULT_ADVANCED_SCENARIOS_ROOT = Path("advanced-scenarios")
+#: What generate-all-repos appends to an output directory's name for the directory it
+#: generates into: ``<id>/default.tmp``.  The complete output replaces ``<id>/default``
+#: only afterwards, and a failed generation leaves its files there (issue #168).
+ATTEMPT_SUFFIX = ".tmp"
 
 ScenarioKind = Literal["classic", "graph"]
 GenerationStatus = Literal["generated", "skipped", "failed"]
@@ -131,19 +137,24 @@ def generate_all_repositories(
     verify: bool = True,
 ) -> GenerateAllRepositoriesResult:
     output_root = output_root.resolve()
-    output_root.mkdir(parents=True, exist_ok=True)
-
-    items: list[GeneratedRepositoryItem] = []
     scenario_specs = [
         *[(path, "classic") for path in _find_scenario_files(scenarios_root, "scenario.yml")],
         *[(path, "graph") for path in _find_scenario_files(advanced_scenarios_root, "scenario.graph.yml")],
     ]
+    # checked before anything is written: the second scenario overwrote the first one's
+    # output, and was reported as a routine regeneration (issue #168)
+    clash = _shared_output_problem(scenario_specs, output_root)
+    if clash is not None:
+        raise GenerateAllRepositoriesError(clash)
+    output_root.mkdir(parents=True, exist_ok=True)
 
+    items: list[GeneratedRepositoryItem] = []
     for scenario_path, kind in scenario_specs:
         scenario_id = scenario_path.parent.name
         output_dir = output_root / scenario_id / "default"
         output_exists = False
         stale_reason = None
+        attempt = None          # where this run's generation writes, once it has begun
         # Everything done for one scenario -- the staleness check included, which reads
         # the scenario file -- is inside one boundary, so that whatever it raises is that
         # scenario's failure and the run goes on (issue #162, PR #213 review).
@@ -174,12 +185,20 @@ def generate_all_repositories(
                     )
                     continue
 
-            if kind == "classic":
-                commit_map, verify_result = generate_repository(scenario_path, output_dir, force=output_exists,
-                                                                verify=verify)
-            else:
-                commit_map, verify_result = generate_graph_repository(scenario_path, output_dir, force=output_exists,
-                                                                      verify=verify)
+            # Generated beside the output and put in its place only once complete (and
+            # verified): the old output was removed first, so a regeneration that failed
+            # left a partial output where a complete one had been (issue #168).  The
+            # generators resolve their --out, and the graph generator names the manifest's
+            # scenario after its parent directory, so the attempt is a sibling of the
+            # resolved output.
+            target = output_dir.resolve()
+            staging = target.with_name(target.name + ATTEMPT_SUFFIX)
+            _prepare_attempt(target, staging, scenario_path, replace=output_exists)
+            attempt = staging
+            generate = generate_repository if kind == "classic" else generate_graph_repository
+            commit_map, verify_result = generate(scenario_path, staging, verify=verify)
+            attempt = None
+            _put_in_place(staging, target, replace=output_exists)
         except (GenerationError, GraphGenerationError) as exc:
             items.append(
                 GeneratedRepositoryItem(
@@ -189,7 +208,7 @@ def generate_all_repositories(
                     output_dir=output_dir,
                     status="failed",
                     overwritten=overwrite and output_exists,
-                    error=str(exc),
+                    error=_with_attempt(str(exc), attempt, kept=output_exists),
                     stale_reason=stale_reason,
                     verification_errors=(tuple(exc.verify_result.error_findings()) if exc.verify_result is not None else ()),
                     verification=exc.verify_result,
@@ -201,7 +220,8 @@ def generate_all_repositories(
             # run used to stop here with a traceback, leaving the later scenarios
             # unvisited and no summary (issue #162).  KeyboardInterrupt still stops it.
             error = f"{type(exc).__name__}: {exc}"
-            _record_unexpected_failure(output_dir, error)
+            if attempt is not None:
+                _record_unexpected_failure(attempt, error)
             items.append(
                 GeneratedRepositoryItem(
                     kind=kind,
@@ -210,7 +230,7 @@ def generate_all_repositories(
                     output_dir=output_dir,
                     status="failed",
                     overwritten=overwrite and output_exists,
-                    error=error,
+                    error=_with_attempt(error, attempt, kept=output_exists),
                     stale_reason=stale_reason,
                     traceback=traceback.format_exc(),
                 )
@@ -256,13 +276,81 @@ def _saved_verification(output_dir: Path) -> ValidationResult | None:
         return None
 
 
-def _record_unexpected_failure(output_dir: Path, error: str) -> None:
-    """Write ``metadata/generation-error.json`` into an output the generator had begun.
+def _shared_output_problem(scenario_specs: list[tuple[Path, ScenarioKind]], output_root: Path) -> str | None:
+    """Why two scenarios would be generated into one output directory, or None (issue #168).
 
-    The generators write it for their own errors.  An output whose generation
-    had not begun (the exception came before the old output was removed) still
-    has its complete manifest and is left alone; the staleness check already
-    regenerates it on the next run.
+    The output of ``<root>/<id>/`` is ``<out-root>/<id>/default`` for both suites.
+    Letter case does not tell two ids apart, since a case-insensitive file system
+    (macOS, Windows) stores both outputs in one directory.
+    """
+    by_key: dict[str, list[Path]] = {}
+    for path, _ in scenario_specs:
+        by_key.setdefault(path.parent.name.casefold(), []).append(path)
+    clashes = [paths for paths in by_key.values() if len(paths) > 1]
+    if not clashes:
+        return None
+    described = "; ".join(" and ".join(str(path) for path in paths) for paths in clashes)
+    return (f"Two scenarios share an id, and one would overwrite the other's output in "
+            f"{output_root / '<id>' / 'default'}: {described}. Rename one of the directories "
+            "(letter case does not tell two ids apart)")
+
+
+def _prepare_attempt(target: Path, staging: Path, scenario_path: Path, *, replace: bool) -> None:
+    """Check, before generating, that the old output may be replaced, and remove an earlier failed attempt.
+
+    The generators refused to replace an output directory holding anything but a
+    generated output (issue #165); generate-all-repos replaces it itself now, so
+    it asks the same question first.  ``staging`` is left by a failed generation
+    of an earlier run, and is replaced under the same rule.
+    """
+    if replace:
+        problem = replaceable_output_problem(target, scenario_path)
+        if problem is not None:
+            raise GenerationError(f"{problem}.")
+    if staging.exists() or staging.is_symlink():
+        problem = replaceable_output_problem(staging, scenario_path)
+        if problem is not None:
+            raise GenerationError(f"{problem}.")
+        try:
+            shutil.rmtree(staging)
+        except OSError as exc:
+            raise GenerationError(f"Cannot remove the failed attempt of an earlier run, {staging}: {exc}") from exc
+
+
+def _put_in_place(staging: Path, target: Path, *, replace: bool) -> None:
+    """Replace ``target`` with the complete output generated into ``staging``.
+
+    Nothing is written into the output: its manifest stays the last file written
+    (issue #93), and ``generation.log`` names the repository where it was
+    initialized, in ``staging``.
+    """
+    try:
+        if replace:
+            shutil.rmtree(target)
+        staging.rename(target)
+    except OSError as exc:
+        raise GenerationError(f"Cannot put the new output {staging} in place of {target}: {exc}") from exc
+
+
+def _with_attempt(error: str, attempt: Path | None, *, kept: bool) -> str:
+    """``error``, and where the failed generation left its files, once it had begun (issue #168)."""
+    try:
+        begun = attempt is not None and attempt.exists()
+    except OSError:
+        begun = False
+    if not begun:
+        return error
+    previous = "the previous output was left in place, and " if kept else ""
+    return f"{error.rstrip('.')}; {previous}the files of this attempt are in {attempt}"
+
+
+def _record_unexpected_failure(output_dir: Path, error: str) -> None:
+    """Write ``metadata/generation-error.json`` into the attempt the generator had begun.
+
+    The generators write it for their own errors.  ``output_dir`` is the
+    directory generate-all-repos generates into (issue #168), so a complete
+    output is never marked; an attempt with a manifest is left alone all the
+    same.
 
     It is best effort, and nothing in it may raise: it runs inside the handler
     that keeps the run going.  The probes are inside the boundary too, since
@@ -282,9 +370,28 @@ def _record_unexpected_failure(output_dir: Path, error: str) -> None:
 
 
 def _find_scenario_files(root: Path, filename: str) -> list[Path]:
+    """``<root>/*/<filename>``: the scenario of each directory directly below ``root``.
+
+    The search was recursive, so with the outputs below a scenario root it also
+    found the copy of the scenario each output keeps in ``metadata/`` (issue
+    #93), and generated a scenario named ``metadata`` from it (issue #168).
+    """
     root = root.resolve()
     if not root.exists():
         raise GenerateAllRepositoriesError(f"Scenario root does not exist: {root}")
     if not root.is_dir():
         raise GenerateAllRepositoriesError(f"Scenario root is not a directory: {root}")
-    return sorted(path for path in root.rglob(filename) if path.is_file())
+    try:
+        candidates = [child / filename for child in root.iterdir()]
+    except OSError as exc:
+        raise GenerateAllRepositoriesError(f"Cannot read the scenario root {root}: {exc}") from exc
+    return sorted(path for path in candidates if _is_file(path))
+
+
+def _is_file(path: Path) -> bool:
+    """Whether ``path`` is a file; False for one that cannot be inspected, which the recursive search skipped
+    too (before Python 3.14, ``Path.is_file`` raises PermissionError for it)."""
+    try:
+        return path.is_file()
+    except OSError:
+        return False

@@ -106,7 +106,8 @@ def test_a_non_string_content_is_a_validation_failure_of_that_scenario_only(tmp_
 
 
 def test_a_crash_after_the_output_was_begun_marks_it_as_failed(tmp_path, monkeypatch):
-    """An exception the generator does not wrap leaves generation-error.json, as its own errors do."""
+    """An exception the generator does not wrap leaves generation-error.json, as its own errors do: in the
+    directory generate-all-repos generates into, ``<id>/default.tmp`` (issue #168)."""
     scenarios, advanced, out = _roots(tmp_path)
 
     def crash_after_start(scenario_path, output_dir, *, force=False, verify=True):
@@ -117,8 +118,9 @@ def test_a_crash_after_the_output_was_begun_marks_it_as_failed(tmp_path, monkeyp
     monkeypatch.setattr(bulk, "generate_repository", crash_after_start)
     result = generate_all_repositories(scenarios_root=scenarios, advanced_scenarios_root=advanced, output_root=out)
     assert {item.status for item in result.items if item.kind == "classic"} == {"failed"}
-    error = json.loads((out / "SZZ-0005/default/metadata/generation-error.json").read_text(encoding="utf-8"))
+    error = json.loads((out / "SZZ-0005/default.tmp/metadata/generation-error.json").read_text(encoding="utf-8"))
     assert error["error"] == "TypeError: expected str, bytes or os.PathLike object, not NoneType"
+    assert not (out / "SZZ-0005/default").exists()
     assert next(item for item in result.items if item.kind == "graph").status == "generated"
 
 
@@ -188,11 +190,12 @@ def test_a_metadata_probe_that_raises_does_not_stop_the_run(tmp_path, monkeypatc
     scenarios, advanced, out = _roots(tmp_path)
     generate_all_repositories(scenarios_root=scenarios, advanced_scenarios_root=advanced, output_root=out)
     shutil.rmtree(out / "SZZ-0012")
-    metadata = out / "SZZ-0006/default/metadata"
+    metadata = out.resolve() / "SZZ-0006/default.tmp/metadata"        # what generate-all-repos generates into (#168)
     real_generate = bulk.generate_repository
 
     def crash_for_one(scenario_path, output_dir, **kwargs):
         if scenario_path.parent.name == "SZZ-0006":
+            (output_dir / "metadata").mkdir(parents=True)
             raise PermissionError(13, "Permission denied", str(metadata / "manifest.json"))
         return real_generate(scenario_path, output_dir, **kwargs)
 
