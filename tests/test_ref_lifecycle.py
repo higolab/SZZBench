@@ -288,7 +288,7 @@ TAG_NAMES = [
     "@", "a@b", "@a", "a@", "@@", "{@", "@/x", "a{b", "a}b", "a]b", "a#b", "a$b", "a%b", "a&b", "a'b", 'a"b', "a(b)",
     "a+b", "a,b", "a;b", "a<b>", "a=b", "a|b", "a`b", "a!b", "a_b", "1", "a-", "a/-b", "x.lock.y", "lock", "a.lockx",
     "a-.lock-b", "x/lock", "FETCH_HEAD", "ORIG_HEAD", "refs/heads/main", "0123456789abcdef0123456789abcdef01234567",
-    "héllo", "日本語", "ä/ö", "emoji😀", " nbsp",
+    "héllo", "日本語", "ä/ö", "emoji😀",
     # refused
     "", " ", "v 1", "trailing ", " leading", "v\t1", "tab\there", "v\n1", "v\x01", "v\x1f", "v\x7f", "v~1", "v^1",
     "v:1", "v?1", "v*1", "v[1", "v\\1", "a..b", "..", ".", "...", ".v", "x/.y", "x/..", "a/./b", "a/../b", "v1.lock",
@@ -313,7 +313,9 @@ def test_tag_names_are_refused_exactly_where_git_check_ref_format_refuses_them(t
 
 
 #: Names Git accepts as refs/tags/<name> that SZZBench refuses: on macOS and Windows their file is the lock
-#: file of another tag (v1.LOCK is refs/tags/v1.lock), so a tag created later fails with "File exists".
+#: file of another tag (v1.LOCK is refs/tags/v1.lock), so a tag created later fails with "File exists".  The
+#: other names Git accepts and SZZBench refuses (a whitespace character of Unicode such as "\u00a0nbsp", a
+#: component longer than a file name, NFD, HEAD in another letter case) are those of test_branch_names.
 PORTABLE_REFUSALS = ["v1.LOCK", "a/b.Lock", "x.LoCk", CAFE_NFC + ".LOCK", "rel/v2.lOcK"]
 
 

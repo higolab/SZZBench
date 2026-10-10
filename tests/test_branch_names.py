@@ -13,7 +13,11 @@ the rule of the tag names of ``graph.ref_lifecycle`` (``paths.ref_name_problem``
 ``paths.ref_names_clash``), and the generators check the same rules before
 ``git init``.  An empty name is an error; without the key (or with a blank
 value) a commit is on the default branch, the one reading of the validators,
-the generators and the verifiers (``gitutils.commit_branch``).
+the generators and the verifiers (``gitutils.commit_branch``).  The PR #243
+review added two rules for names Git accepts: a whitespace character of
+Unicode (``my\u00a0topic``), which SZZBench cannot read back from Git's list
+of refs, and a component longer than a file name may be (``"a" * 251``, whose
+lock file ``.lock`` makes it 256 bytes long).
 """
 from __future__ import annotations
 
@@ -246,7 +250,8 @@ BRANCH_NAMES = [
     "a@", "@@", "{@", "@/x", "a{b", "a}b", "a]b", "a#b", "a$b", "a%b", "a&b", "a'b", 'a"b', "a(b)", "a+b", "a,b", "a;b",
     "a<b>", "a=b", "a|b", "a`b", "a!b", "a_b", "1", "a-", "a/-b", "x.lock.y", "lock", "a.lockx", "a-.lock-b", "x/lock",
     "FETCH_HEAD", "ORIG_HEAD", "HEAD/x", "x/HEAD", "x/head", "heads", "refs/heads/main",
-    "0123456789abcdef0123456789abcdef01234567", "héllo", "日本語", "ä/ö", "emoji😀", "\u00a0nbsp", CAFE_NFC,
+    "0123456789abcdef0123456789abcdef01234567", "héllo", "日本語", "ä/ö", "emoji😀", CAFE_NFC, "x\u200by", "x\x80y",
+    "a" * 250, "d" * 255 + "/x", "x/" + "a" * 250, "\u00e9" * 125, "\u01d5" * 83, "\U0001f642" * 62,
     # refused
     "", " ", "a b", "trailing ", " leading", "v\t1", "v\n1", "v\x01", "v\x1f", "v\x7f", "v~1", "v^1", "v:1", "v?1",
     "v*1", "v[1", "v\\1", "a..b", "..", ".", "...", ".v", "x/.y", "x/..", "a/./b", "a/../b", "x.lock", "a/b.lock",
@@ -258,7 +263,8 @@ BRANCH_NAMES = [
 #: letter case is another branch's lock file on macOS; Git on macOS converts a name to NFC; ``HEAD`` in another
 #: letter case is stored as ``refs/heads/HEAD`` there, which makes ``HEAD`` ambiguous (``git checkout -b``
 #: fails); Git 2.50 reads ``git checkout @`` as ``HEAD`` and stays on the current branch (Git 2.39 switches
-#: to the branch).
+#: to the branch); a whitespace character of Unicode is accepted by Git and cannot be read back from its list of
+#: refs; a component longer than a file name may be is accepted by Git, which cannot lock it (PR #243 review).
 PORTABLE = {
     "main.LOCK": "ends with '.lock' in another spelling", "a/b.Lock": "ends with '.lock' in another spelling",
     CAFE_NFC + ".LoCk": "ends with '.lock' in another spelling",
@@ -267,6 +273,15 @@ PORTABLE = {
     "head": "it is HEAD in another letter case", "Head": "it is HEAD in another letter case",
     "hEAD": "it is HEAD in another letter case",
     "@": "it is '@', which recent versions of git checkout read as HEAD",
+    "\u00a0nbsp": "it contains the whitespace character U+00A0 NO-BREAK SPACE",
+    "my\u00a0topic": "it contains the whitespace character U+00A0 NO-BREAK SPACE",
+    "a\u2028b": "it contains the whitespace character U+2028 LINE SEPARATOR",
+    "a" * 251: "it is too long for a file name: 251 bytes in UTF-8",
+    "x/" + "a" * 251: "its last component is too long for a file name: 251 bytes in UTF-8",
+    "d" * 256 + "/x": "its component 1 is too long for a file name: 256 bytes in UTF-8, and Git stores it as a directory",
+    "\u00e9" * 126: "it is too long for a file name: 252 bytes in UTF-8",
+    "\u01d5" * 84: "it is too long for a file name: 252 UTF-16 code units in its decomposed form, as HFS+ counts them",
+    "\U0001f642" * 63: "it is too long for a file name: 252 bytes in UTF-8",
 }
 
 
@@ -339,6 +354,160 @@ def test_the_tag_names_follow_the_same_rule_except_at(tmp_path):
     data = copy.deepcopy(_graph())
     data["graph"]["ref_lifecycle"] = {"tags": [{"name": "head", "commit": "c0"}]}
     assert _errors(validate_graph_static(data)) == [("GE157", "graph.ref_lifecycle.tags[0].name")]
+
+
+# --- whitespace, and the longest names (PR #243 review) -----------------------------------------
+
+#: Every whitespace character of Unicode that ``str.split()`` and ``str.strip()`` take, besides the control
+#: characters and the space Git refuses.
+UNICODE_WHITESPACE = [chr(c) for c in range(0x80, 0x110000) if chr(c).isspace()]
+
+
+def test_every_unicode_whitespace_is_refused_where_git_accepts_it(tmp_path):
+    """Git created ``my\u00a0topic`` and ``topic\u00a0``; ``gitutils.git_refs`` splits Git's list of refs at
+    whitespace and the verifiers strip ``HEAD``, so generation failed verification (E607, GE641-GE644)."""
+    assert len(UNICODE_WHITESPACE) == 19            # U+0085, U+00A0, U+1680, U+2000-U+200A, U+2028, U+2029, ...
+    for char in UNICODE_WHITESPACE:
+        for name in (f"my{char}topic", f"topic{char}", f"{char}topic"):
+            assert _git(tmp_path, "check-ref-format", "--branch", name).returncode == 0, ascii(name)
+            for kind in paths.REF_KINDS:
+                assert f"it contains the whitespace character U+{ord(char):04X}" in paths.ref_name_problem(name, kind)
+
+
+def test_git_cannot_lock_a_name_one_byte_longer_than_the_rule_allows(tmp_path):
+    """Git accepts these (``git check-ref-format``) and cannot create them: its lock file ``<name>.lock``, or a
+    directory, is longer than a file name may be (255 bytes on Linux, 255 UTF-16 code units on macOS).  One
+    byte shorter, each is created."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    assert _git(repo, "init", "-q", "--template=").returncode == 0
+    assert _git(repo, "-c", "user.name=a", "-c", "user.email=a@example.com",
+                "commit", "-q", "--allow-empty", "-m", "c0").returncode == 0
+    for too_long, longest in (("a" * 251, "a" * 250), ("x/" + "b" * 251, "x/" + "b" * 250),
+                              ("d" * 256 + "/x", "e" * 255 + "/x")):
+        assert _git(tmp_path, "check-ref-format", "--branch", too_long).returncode == 0
+        for command in ("branch", "tag"):
+            failed = _git(repo, command, too_long)
+            assert failed.returncode != 0 and "fatal:" in failed.stderr, (command, len(too_long))
+            assert _git(repo, command, longest).returncode == 0, (command, len(longest))
+        assert paths.ref_name_problem(too_long, "branch") is not None and paths.ref_name_problem(longest, "branch") is None
+
+
+def _four_fields(name: str) -> dict[str, tuple[str, dict, str, str]]:
+    """``name`` in each field that names a ref: ``(suite, scenario, code, location)``, the code and location
+    of the error a name the rule refuses is."""
+    tagged = _graph()
+    tagged["graph"]["ref_lifecycle"] = {"tags": [{"name": name, "commit": "c1"}]}
+    return {
+        "classic default branch": ("classic", _classic(name), "E015", "repository.default_branch"),
+        "graph default branch": ("graph", _graph(default_branch=name, side="feature"), "GE023",
+                                 "repository.default_branch"),
+        "graph commit branch": ("graph", _graph(side=name), "GE023", "commits[1].branch"),
+        "graph tag": ("graph", tagged, "GE157", "graph.ref_lifecycle.tags[0].name"),
+    }
+
+
+#: The review's names, and one name past each limit of the rule: (name, the reason the message gives).
+REFUSED_IN_EVERY_FIELD = {
+    "a no-break space": ("my\u00a0topic", "it contains the whitespace character U+00A0 NO-BREAK SPACE"),
+    "a trailing no-break space": ("topic\u00a0", "it contains the whitespace character U+00A0 NO-BREAK SPACE"),
+    "an ideographic space": ("a\u3000b", "it contains the whitespace character U+3000 IDEOGRAPHIC SPACE"),
+    "251 bytes": ("a" * 251, "it is too long for a file name: 251 bytes in UTF-8, and Git writes the"),
+    "a last component of 251 bytes": ("x/" + "a" * 251, "its last component is too long for a file name: 251 bytes"),
+    "a directory of 256 bytes": ("d" * 256 + "/x", "its component 1 is too long for a file name: 256 bytes"),
+    "252 bytes of a two-byte letter": ("\u00e9" * 126, "it is too long for a file name: 252 bytes in UTF-8"),
+    "252 code units on HFS+": ("\u01d5" * 84, "252 UTF-16 code units in its decomposed form, as HFS+ counts them"),
+    "252 bytes of an emoji": ("\U0001f642" * 63, "it is too long for a file name: 252 bytes in UTF-8"),
+}
+
+
+@pytest.mark.parametrize("label", list(REFUSED_IN_EVERY_FIELD))
+def test_they_are_one_error_in_every_field_that_names_a_ref(tmp_path, label):
+    name, reason = REFUSED_IN_EVERY_FIELD[label]
+    for field, (suite, data, code, location) in _four_fields(name).items():
+        result = _validate(_write(tmp_path / field.replace(" ", "-"), suite, data), suite)
+        assert _errors(result) == [(code, location)], field
+        assert reason in result.error_findings()[0].message, field
+
+
+@pytest.mark.parametrize("label", ["a trailing no-break space", "251 bytes"])
+def test_the_reviews_commands_refuse_them_and_create_nothing(tmp_path, label):
+    """The unmodified CLI, as the review ran it: strict simulated validation with ``--lint`` is that one error
+    and no warning, and ``generate`` / ``generate-graph`` stop at validation, before ``git init``."""
+    name, _ = REFUSED_IN_EVERY_FIELD[label]
+    for field, (suite, data, code, location) in _four_fields(name).items():
+        directory = tmp_path / field.replace(" ", "-")
+        relative = _write(directory, suite, data).relative_to(directory)
+        command = (["validate-graph", "--simulate", "--strict", "--strict-paths", "--lint"] if suite == "graph"
+                   else ["validate", "--simulate", "--strict", "--lint"])
+        completed = subprocess.run([sys.executable, "-m", "szzbench.cli", *command, "--json", str(relative)],
+                                   cwd=directory, capture_output=True, text=True)
+        assert completed.returncode == 1, completed.stdout + completed.stderr
+        findings = json.loads(completed.stdout)["findings"]
+        assert [(f["code"], f["location"]) for f in findings if f["severity"] != "INFO"] == [(code, location)], field
+        completed = subprocess.run([sys.executable, "-m", "szzbench.cli", "generate-graph" if suite == "graph"
+                                    else "generate", str(relative), "--out", "out"],
+                                   cwd=directory, capture_output=True, text=True)
+        assert completed.returncode == 1 and "validation failed" in completed.stderr, (field, completed.stderr)
+        assert "cannot lock ref" not in completed.stderr and not (directory / "out").exists(), field
+
+
+@pytest.mark.parametrize("label", list(REFUSED_IN_EVERY_FIELD))
+def test_the_generators_refuse_them_before_git_creates_the_ref(tmp_path, monkeypatch, label):
+    """With validation bypassed, a branch name stops generation before ``git init``, and a tag name before the
+    first ref changes (GE157, issue #229): Git never sees the name, and ``cannot lock ref`` never shows."""
+    _bypass_validation(monkeypatch)
+    name, reason = REFUSED_IN_EVERY_FIELD[label]
+    for field, (suite, data, code, location) in _four_fields(name).items():
+        directory = tmp_path / field.replace(" ", "-")
+        out = directory / "out"
+        generate, error = (generate_graph_repository, GraphGenerationError) if suite == "graph" else \
+            (generate_repository, GenerationError)
+        with pytest.raises(error) as excinfo:
+            generate(_write(directory, suite, data), out)
+        message = str(excinfo.value)
+        assert message.startswith(location + " ") and reason in message, (field, message)
+        assert "fatal:" not in message and "cannot lock ref" not in message, field
+        if field == "graph tag":
+            assert message.endswith(f" ({code}). No ref was changed."), message
+            assert git(out / "repo", "tag", "--list") == ""
+        else:
+            assert message.endswith(f" ({code}). Generation stopped before git init."), message
+            assert not (out / "repo" / ".git").exists(), field
+
+
+#: Names at the limits of the rule, and characters a reader may take for whitespace or a control character,
+#: which Git keeps as written and SZZBench reads back.
+ROUND_TRIP = {
+    "250 bytes": "a" * 250,
+    "a directory of 255 bytes": "d" * 255 + "/x",
+    "250 bytes of a two-byte letter": "\u00e9" * 125,
+    "249 code units on HFS+": "\u01d5" * 83,
+    "248 bytes of an emoji": "\U0001f642" * 62,
+    "NFC": CAFE_NFC,
+    "a zero-width space": "x\u200by",
+    "a C1 control character": "x\x80y",
+}
+
+
+@pytest.mark.parametrize("label", list(ROUND_TRIP))
+def test_the_names_the_rule_accepts_generate_and_verify_in_every_field(tmp_path, label):
+    """Strict simulated validation passes without a warning, generation verifies, and the repository has the
+    ref under the name as written."""
+    name = ROUND_TRIP[label]
+    for field, (suite, data, _, _) in _four_fields(name).items():
+        directory = tmp_path / field.replace(" ", "-")
+        path = _write(directory, suite, data)
+        if suite == "graph":
+            result = validate_graph_scenario_file(path, strict_paths=True, simulate=True)[1]
+            _, verify = generate_graph_repository(path, directory / "out")
+        else:
+            result = validate_scenario_file(path, simulate=True)[1]
+            _, verify = generate_repository(path, directory / "out")
+        assert [f.code for f in result.findings if f.severity in ("ERROR", "WARNING")] == [], field
+        assert verify is not None and not verify.has_errors(), (field, verify.to_dict())
+        refs = git(directory / "out" / "repo", "for-each-ref", "--format=%(refname)").split("\n")
+        assert ("refs/tags/" if field == "graph tag" else "refs/heads/") + name in refs, field
 
 
 # --- two names of one scenario ------------------------------------------------------------------

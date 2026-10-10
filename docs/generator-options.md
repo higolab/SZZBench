@@ -462,7 +462,12 @@ default branch of either suite (E015, GE023), is one Git accepts
 starts with `-`) and one every platform keeps as written: in Unicode
 normalization form C (Git on macOS converts the name it is given to NFC), with
 no component that ends with `.lock` in another letter case, and neither `HEAD`
-in another letter case nor `@`. The branch names of one scenario, the default
+in another letter case nor `@`; with no whitespace character (Git refuses the
+space and accepts U+00A0 and the other spaces of Unicode, which SZZBench cannot
+read back from Git's list of refs); and with no component longer than a file
+name may be: 255 bytes of UTF-8 (Linux), or of UTF-16 code units of the
+decomposed name (HFS+), whichever is more, and 250 for the last component,
+which Git writes through a lock file `<name>.lock`. The branch names of one scenario, the default
 branch included, are compared as macOS compares the files Git stores refs in
 (letter case ignored, as for file names above): `Feature` beside `feature`,
 or `feature` beside `feature/x`, is an error (GE024), since macOS made one
