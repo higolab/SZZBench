@@ -73,8 +73,9 @@ def _dot_slash(data: dict) -> None:
 def _resave_as(path: str):
     def mutate(data: dict) -> None:
         content = data["commits"][0]["operations"][1]["content"]
+        # dated between c0 and c1: undated, it took the schedule's date, after c1's (E016, issue #241)
         data["commits"].insert(1, {"id": "c0b", "message": "Re-save the request class", "role": "refactoring",
-                                   "operations": [_write_file(path, content)]})
+                                   "date": "2023-10-17T10:00:00Z", "operations": [_write_file(path, content)]})
     return mutate
 
 
