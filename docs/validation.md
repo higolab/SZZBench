@@ -191,13 +191,25 @@ the repository: `git status` runs with `--no-optional-locks`, so not even the
 index's stat data is refreshed.
 
 When the verification that `generate` runs finds an error, `generate` prints
-the findings after `GENERATION_FAILED` and exits 1, and `generate-all-repos`
-prints the errors under the scenario it lists as `Failed`. The output keeps
+the findings after `GENERATION_FAILED` and exits 1. Its output directory keeps
 `metadata/verify-result.json` and, like any failed generation,
 `generation.log` (ending with the errors) and `generation-error.json`, but no
-`manifest.json`. Until [issue #163](https://github.com/higolab/SZZBench/issues/163) the findings were in
+`manifest.json`. `generate-graph` does the same. Until
+[issue #163](https://github.com/higolab/SZZBench/issues/163) the findings were in
 `verify-result.json` only, and the classic output had neither of the other two
-files. `generate-graph` does the same.
+files.
+
+`generate-all-repos` prints the errors under the scenario it lists as
+`Failed`, but the output directory is not where they are. Since
+[issue #168](https://github.com/higolab/SZZBench/issues/168) it generates into
+`<id>/default.tmp` beside the output `<id>/default`, and puts the result in
+place only once it is complete and verified. A failed attempt leaves the
+previous output, if there is one, in `<id>/default` as it was, manifest
+included, and its own files -- `verify-result.json`, `generation.log` and
+`generation-error.json`, still without `manifest.json` -- in
+`<id>/default.tmp`. The `Failed` line names that directory, and says that the
+previous output was left in place when there was one. A later run that
+generates the scenario again removes the attempt first.
 
 | code | level | condition |
 |---|---|---|
