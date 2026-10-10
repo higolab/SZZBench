@@ -10,17 +10,17 @@
     "start": "node server/index.js --serve-static"
   },
   "dependencies": {
-    "@vitejs/plugin-react": "latest",
-    "concurrently": "latest",
-    "express": "latest",
-    "js-yaml": "latest",
-    "react": "latest",
-    "react-dom": "latest",
-    "vite": "latest"
+    "@vitejs/plugin-react": "^6.0.2",
+    "concurrently": "^9.2.1",
+    "express": "^5.2.1",
+    "js-yaml": "^4.1.1",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "vite": "^8.0.14"
   },
   "devDependencies": {
-    "@types/react": "latest",
-    "@types/react-dom": "latest",
-    "typescript": "latest"
+    "@types/react": "^19.2.15",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^6.0.3"
   }
 }

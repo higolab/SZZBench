@@ -29,9 +29,11 @@ From the SZZBench repository root:
 
 ```bash
 cd tools/generated-repo-viewer
-npm install
+npm ci
 npm run dev
 ```
+
+`npm ci` installs the versions recorded in `package-lock.json` and leaves the file as it is.
 
 Open:
 

@@ -19,8 +19,6 @@ import re
 from collections import Counter
 from pathlib import Path
 
-import pytest
-
 README = Path(__file__).resolve().parents[1] / "README.md"
 DIVIDER = "# 日本語版"
 
@@ -161,9 +159,6 @@ def test_both_halves_link_the_same_targets():
         f"only in Japanese: {sorted(ja[key] for key in ja.keys() - en.keys())}")
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    "README.md: the Japanese Quickstart's [evaluate](#evaluate) opens the English `## evaluate`, because GitHub "
-    "gives the Japanese heading the id evaluate-1; README.md is to be fixed separately (issue #189)"))
 def test_each_half_links_to_its_own_headings():
     anchors = _anchors()
     halves = dict(zip(("English", "Japanese"), _halves()))
