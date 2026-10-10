@@ -131,6 +131,16 @@ another date (both read `0001-01-01` as `2001-01-01`) (issue #152).
 `committer_date` are what Git was given, always with a zone (`Z` or an offset);
 `author` is the effective author (pool author when the scenario had none).
 
+The committer of every commit is its author: both generators give Git the
+effective author's name and e-mail as the committer's too, so
+`git log --format='%an <%ae> | %cn <%ce>'` shows the same identity twice, and
+`commit-map.json` has no separate committer field. `committer_date` is the only
+committer field a scenario controls. The `user.name` / `user.email` in the
+generated repository's `.git/config` (`SZZ Benchmark
+<szz-benchmark@example.com>`) are not the identity of any generated commit;
+Git uses them only where it records an identity without a commit, such as the
+reflog entry of a checkout (issue #170).
+
 ## 2. Operations and placeholders (#18)
 
 ### `core.filemode` and `chmod` (*graph*)
@@ -187,9 +197,17 @@ generation (issue #152).
 
 Limitations: the in-memory simulators (`validate --simulate`,
 `validate-graph --simulate`) always work on LF text, so `old`/`anchor`
-matching is line-ending agnostic. Statements in `bugs` are matched against the
-file content as Git stores it; a statement that spans lines must therefore not
-be used for CRLF files. A BOM is not handled by this key; see `encoding`.
+matching is line-ending agnostic. So is the matching of statements in `bugs`
+after generation: the verifiers read a file's content through Git as text
+(`gitutils.run_git`), and that reading turns every `\r\n`, and a lone `\r`,
+into `\n`, so `\r` never takes part in matching. A statement is matched against
+the LF text, whatever the blob holds; one that spans lines, written with `\n`,
+is found in a CRLF file as in an LF one (no E301 / GE663). The basic blame
+check looks for the statement inside a single line of the BFC's parent, so it
+cannot follow a statement that spans lines, whatever the line endings: such a
+statement gets W700 / GW701 ("not present in BFC parent"), or I701 / GI701
+when the scenario declares a rewrite factor (issue #170). A BOM is not handled
+by this key; see `encoding`.
 
 `line_ending` describes the bytes written to the working tree. What Git stores
 -- the blob that `git show`, the verifier and SZZ tools read -- is decided when
@@ -656,23 +674,41 @@ exactly `message`, so the verifier's subject check is unaffected. Default:
 
 When `git merge`, the implicit `git cherry-pick` of a `cherry_pick_of` /
 `backport_of` commit without operations, or `git revert` reports conflicts,
-the generator writes every `resolution` entry, runs `git add -A` and continues
-with the remaining operations and the commit. Every conflicted path must be
-covered by `resolution`; otherwise, or when the key is absent, generation
-fails with a message that lists the conflicted paths. Conflicted paths are
+the generator writes the `resolution` entries, runs `git add -A` and continues
+with the remaining operations and the commit. The keys must be exactly the
+conflicted paths. Every conflicted path must be covered by `resolution`;
+otherwise, or when the key is absent, generation fails with a message that
+lists the conflicted paths. An entry for a path Git did not report as
+conflicted fails generation too, with a message that names it and the
+conflicted paths: writing it would add a change to the commit that the
+scenario does not declare and `resolved_conflicts` does not list. A change to
+such a file belongs in `operations`, which run after the resolution. Until
+issue #182 the entry was written without a word. Conflicted paths are
 read from Git NUL-separated (`--name-only -z`) and compared verbatim with the
 `resolution` keys, so non-ASCII names such as `src/main/java/example/範囲.java`
-or names containing spaces work. Merges stay merge commits (both parents),
+or names containing spaces work. Merges stay merge commits (all parents),
 cherry-picks/reverts become ordinary commits and no
 `CHERRY_PICK_HEAD`/`REVERT_HEAD` is left behind. `commit-map.json` records
-`resolved_conflicts: [paths]`.
+the conflicted paths, which are the keys, as `resolved_conflicts: [paths]`.
 
 A commit with **three or more parents** is generated as a real octopus merge:
 all extra parents are passed to a single `git merge --no-ff --no-commit`, because
 a second `git merge --no-commit` while `MERGE_HEAD` exists is refused. Git's
-octopus strategy does not resolve conflicts, so `resolution` applies to
-two-parent merges only; an octopus whose branches touch the same lines fails
-generation (SZZG-0129 is the in-suite example of a clean one).
+octopus strategy merges the extra parents into the first one at a time, in the
+order they are listed, and stops at the first conflict:
+
+* a conflict with the **last** parent stays in the index like the conflict of
+  a two-parent merge, and `resolution` resolves it: the commit gets all its
+  parents, and `resolved_conflicts` lists the paths;
+* a conflict with an earlier parent makes Git give up ("Merge with strategy
+  octopus failed") and restore the tree, so there is no conflict to resolve,
+  and generation fails, whatever `resolution` holds, with a message that says
+  so. Listing the conflicting parent last, or merging in two commits, avoids it.
+
+Git 2.39.5 and 2.50.1 behave the same and generate the same hashes.
+SZZG-0129 is the in-suite example of a clean octopus, and
+`tests/test_merge_resolution.py` generates a resolved one. Until issue #177
+this section said that an octopus with a conflict always fails generation.
 
 Git records each merge head once and drops a head that is already merged, so a
 commit that lists a parent twice, or an extra parent that is an ancestor of
@@ -682,11 +718,12 @@ with a message that names the parent Git dropped, e.g. `merge of c1, c0 for
 commit 'm1' recorded no second parent: c0 is already merged` (issue #173).
 
 Limitations: `resolution` is applied only when Git reports a conflict; if the
-merge is clean the entries are ignored. `apply_squash` and `apply_patch_from`
-do not use `resolution`. `validate-graph --simulate` checks a scenario with a
-`resolution` by generating it with Git in a temporary directory, like any
-scenario with a merge, a real cherry-pick or revert, or a patch operation;
-until 2026-09-29 it reported the resolved conflict as an error (issue #94).
+merge, cherry-pick or revert is clean the entries are ignored. `apply_squash`
+and `apply_patch_from` do not use `resolution`. `validate-graph --simulate`
+checks a scenario with a `resolution` by generating it with Git in a temporary
+directory, like any scenario with a merge, a real cherry-pick or revert, or a
+patch operation, so it reports the generation errors above as GE203; until
+2026-09-29 it reported the resolved conflict as an error (issue #94).
 
 ## 4. Summary of new keys
 
@@ -726,7 +763,7 @@ caller's own Git setup:
 | the system configuration (`/etc/gitconfig`; Git for Windows' `etc/gitconfig`) | `GIT_CONFIG_NOSYSTEM=1` |
 | the global configuration (`~/.gitconfig`, `$XDG_CONFIG_HOME/git/config`) and the files Git reads without being told to (`$XDG_CONFIG_HOME/git/ignore`, `$XDG_CONFIG_HOME/git/attributes`) | `HOME` and `XDG_CONFIG_HOME` name an empty temporary directory |
 | the system attributes file | `GIT_ATTR_NOSYSTEM=1` |
-| **every `GIT_*` variable of the caller except `GIT_EXEC_PATH`**: configuration injected through the environment (`GIT_CONFIG_COUNT` with `GIT_CONFIG_KEY_<n>` / `GIT_CONFIG_VALUE_<n>`, `GIT_CONFIG_PARAMETERS`, `GIT_CONFIG_GLOBAL`, `GIT_CONFIG_SYSTEM`), the repository Git works on (everything `git rev-parse --local-env-vars` lists, such as `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE`), the format of a new repository (`GIT_DEFAULT_HASH`, `GIT_DEFAULT_REF_FORMAT`), `GIT_TEMPLATE_DIR`, `GIT_NAMESPACE`, diff and pathspec behaviour (`GIT_EXTERNAL_DIFF`, `GIT_DIFF_OPTS`, `GIT_*_PATHSPECS`), and the caller's `GIT_AUTHOR_*` / `GIT_COMMITTER_*` | removed from the environment; the generators set the identity and dates of every commit themselves (section 1) |
+| **every `GIT_*` variable of the caller except `GIT_EXEC_PATH`**: configuration injected through the environment (`GIT_CONFIG_COUNT` with `GIT_CONFIG_KEY_<n>` / `GIT_CONFIG_VALUE_<n>`, `GIT_CONFIG_PARAMETERS`, `GIT_CONFIG_GLOBAL`, `GIT_CONFIG_SYSTEM`), the repository Git works on (everything `git rev-parse --local-env-vars` lists, such as `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE`), the format of a new repository (`GIT_DEFAULT_HASH`, `GIT_DEFAULT_REF_FORMAT`), `GIT_TEMPLATE_DIR`, `GIT_NAMESPACE`, diff and pathspec behaviour (`GIT_EXTERNAL_DIFF`, `GIT_DIFF_OPTS`, `GIT_*_PATHSPECS`), and the caller's `GIT_AUTHOR_*` / `GIT_COMMITTER_*` | removed from the environment; the generators set the identity and dates of every commit themselves, the committer's identity being the author's (section 1) |
 | the init template (`init.templateDir`, the templates the installation ships) | `git init --template=` copies no hooks |
 | a Git whose built-in default object or ref format differs | `git init --object-format=sha1` (Git 2.29 and later) and `--ref-format=files` (2.45 and later) |
 
@@ -738,7 +775,9 @@ inside the repository would; validation refuses a scenario that writes one,
 unless it declares its `.gitattributes` (section 2, *Files Git reads*; issue
 #164). What a generated repository needs
 is written into its own `.git/config` (`user.name`, `user.email`,
-`core.autocrlf=false`, `core.filemode`, `i18n.*`).
+`core.autocrlf=false`, `core.filemode`, `i18n.*`); its `user.name` and
+`user.email` are not the identity of any generated commit (section 1, *What is
+recorded*).
 
 Before 2026-09-29 Git inherited all of this. Reproduced for issue #96 on
 SZZ-0006, SZZG-0107 and SZZG-0124: an unavailable signing program, an ignore
