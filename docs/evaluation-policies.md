@@ -581,8 +581,17 @@ diffed against the empty tree):
 | class | definition | typical cause | consequence for blame-based SZZ |
 |---|---|---|---|
 | `empty_first_parent` | the diff is empty | a merge BFC whose first parent already contains the fix (e.g. SZZG-0042) | nothing to blame on the first-parent side |
-| `addition_only` | the diff has no deleted lines | the fix adds a guard, a new file, or a missing statement | nothing to blame; a pure "FN" is expected from line-deletion SZZ |
+| `addition_only` | the diff has no deleted lines: its hunks only add lines, or it has no hunk and is neither `binary` nor `mode_only` (an empty file added) | the fix adds a guard, a new file, or a missing statement | nothing to blame; a pure "FN" is expected from line-deletion SZZ |
+| `binary` | no hunk, and a file section reports a binary change (`Binary files … differ`, or `GIT binary patch`) | the fix replaces, adds or deletes a binary resource (e.g. SZZG-0133) | no line for line-based blame to read |
+| `mode_only` | no hunk, and every file section only changes the file mode (`old mode` / `new mode`) | the fix makes a script executable (a `chmod` operation) | nothing to blame; no line changed |
 | `modifies` | at least one deleted line | the usual line modification or deletion | blame is applicable |
+
+Text hunks decide first: a diff with a deleted line is `modifies`, and one
+whose hunks only add lines is `addition_only`, even when it also changes a
+mode or a binary file. A file deleted whole (`deleted file mode` with a hunk
+of `-` lines) is `modifies`. `binary` and `mode_only` exist because a mode
+change or a binary replacement is neither an addition nor a line
+modification; until issue #148 both were `addition_only`.
 
 The result carries `fix_shape` as a map `{bfc id: class}` (or `null` when
 nothing could be classified), the summary counts BFCs per class in

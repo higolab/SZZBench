@@ -20,7 +20,7 @@
 - Known distractor hits: 22
 - Branch-level failures: 1 of 3 scenario(s) with a branch-level oracle
 - Attribution failures: 3 of 9 scenario(s) with several bug-fixing commits
-- Fix shapes (per BFC): empty_first_parent 1, addition_only 16, modifies 274
+- Fix shapes (per BFC): empty_first_parent 1, addition_only 15, binary 1, mode_only 0, modifies 274
 - Weighted credit: 235.000/341.000
 - Precision: 0.781
 - Recall: 0.689
@@ -294,7 +294,7 @@
 | SZZG-0130 | FAIL | ok | advanced-scenarios | exact_set | - | Issue, message, context, and non-local evidence | c1 | c3 | - | c3 | - | c1 | - | 1 | - | - | c4:modifies |
 | SZZG-0131 | PASS | ok | advanced-scenarios | exact_set | - | Issue, message, context, and non-local evidence | r1 | r1 | r1 | - | - | - | - | 1 | - | - | c3:modifies |
 | SZZG-0132 | FAIL | ok | advanced-scenarios | exact_set | - | Issue, message, context, and non-local evidence | c1 | c2 | - | c2 | - | c1 | - | 1 | - | - | c3:modifies |
-| SZZG-0133 | FAIL | ok | advanced-scenarios | exact_set | - | Non-source, binary, generated, and scalability edge cases | c1 | - | - | - | - | c1 | - | 0 | - | - | c2:addition_only |
+| SZZG-0133 | FAIL | ok | advanced-scenarios | exact_set | - | Non-source, binary, generated, and scalability edge cases | c1 | - | - | - | - | c1 | - | 0 | - | - | c2:binary |
 | SZZG-0134 | FAIL | ok | advanced-scenarios | exact_set | - | Non-source, binary, generated, and scalability edge cases | c1 | c0 | - | c0 | - | c1 | - | 1 | - | - | c2:modifies |
 | SZZG-0135 | FAIL | ok | advanced-scenarios | exact_set | - | Evaluation policy variants | none (expect_no_bic) | c0 | - | c0 | - | - | - | 1 | - | c0 | c3:modifies |
 | SZZG-0136 | FAIL | ok | advanced-scenarios | exact_set | - | Evaluation policy variants | none (expect_no_bic) | c0 | - | c0 | - | - | - | 1 | - | c0 | c3:modifies |

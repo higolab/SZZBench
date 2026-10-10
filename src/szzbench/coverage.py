@@ -158,12 +158,19 @@ def _fault_reuse(shapes: list[ScenarioShape]) -> dict[str, Any]:
     }
 
 
+#: The fix shapes with no deleted line for blame to start from.  A mode change
+#: and a binary replacement count with the additions (issue #148).
+_NOTHING_TO_BLAME = ("empty_first_parent", "addition_only", "binary", "mode_only")
+
+
 def _blame_class(history: History, git: GitProbe, required_hashes: set[str]) -> str | None:
     """Classify what naive blame does with this scenario's oracle.
 
     ``empty-first-parent``: no bug-fixing commit changes anything against its
     first parent (a merge that only records the fix arriving).
-    ``addition-only``: the fixes only add lines, so there is nothing to blame.
+    ``addition-only``: no fix deletes a line -- it only adds lines, changes a
+    file mode or changes a binary file (issue #148) -- so there is nothing to
+    blame.
     Otherwise the lines every fix deletes are blamed at the fix's first parent
     and the set of commits compared with the required set: ``exact`` when they
     are the same, ``extra`` when every required commit is blamed and others
@@ -180,7 +187,7 @@ def _blame_class(history: History, git: GitProbe, required_hashes: set[str]) -> 
               for bfc in bfcs]
     if all(shape == "empty_first_parent" for shape in shapes):
         return "empty-first-parent"
-    if all(shape in ("empty_first_parent", "addition_only") for shape in shapes):
+    if all(shape in _NOTHING_TO_BLAME for shape in shapes):
         return "addition-only"
     blamed = set(blame_deleted_lines(git, history))
     if blamed == required_hashes:

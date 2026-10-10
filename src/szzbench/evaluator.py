@@ -78,7 +78,7 @@ class CommitLevelPolicy:
 
 
 #: Outcome classes of a bug-fixing commit's first-parent diff (see docs/evaluation-policies.md).
-FIX_SHAPES = ("empty_first_parent", "addition_only", "modifies")
+FIX_SHAPES = ("empty_first_parent", "addition_only", "binary", "mode_only", "modifies")
 
 
 @dataclass
@@ -1702,17 +1702,38 @@ def _classify_first_parent_diff(repo_dir: Path, commit_hash: str) -> str:
 
 
 def classify_diff_text(diff: str) -> str:
-    """Return the fix shape of a unified diff: empty_first_parent, addition_only, or modifies."""
+    """Return the fix shape of a unified diff, one of ``FIX_SHAPES``.
+
+    Text hunks decide first: a deleted line is ``modifies``, added lines only
+    are ``addition_only``.  A diff without any hunk is ``binary`` when a file
+    section reports a binary change, ``mode_only`` when every section only
+    changes the file mode, and ``addition_only`` otherwise (an empty file added)
+    -- a mode change or a binary replacement is not an addition (issue #148).
+    """
     if not diff.strip():
         return "empty_first_parent"
-    in_hunk = False
+    in_hunk = has_hunk = has_binary = False
+    sections: list[list[str]] = []  # the header lines of each `diff --git` section
     for line in diff.splitlines():
         if line.startswith("diff --git"):
             in_hunk = False
+            sections.append([])
         elif line.startswith("@@"):
-            in_hunk = True
-        elif in_hunk and line.startswith("-"):
-            return "modifies"
+            in_hunk = has_hunk = True
+        elif in_hunk:
+            if line.startswith("-"):
+                return "modifies"
+        elif line == "GIT binary patch" or (line.startswith("Binary files ") and line.endswith(" differ")):
+            has_binary = True
+        elif sections:
+            sections[-1].append(line)
+    if has_hunk:
+        return "addition_only"
+    if has_binary:
+        return "binary"
+    if sections and all(header and all(line.startswith(("old mode ", "new mode ")) for line in header)
+                        for header in sections):
+        return "mode_only"
     return "addition_only"
 
 

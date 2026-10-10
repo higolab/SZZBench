@@ -306,6 +306,23 @@ def test_empty_first_parent_fix_is_its_own_class(tmp_path):
     assert [s["blame_class"] for s in report["shapes"]] == ["empty-first-parent"]
 
 
+def test_a_binary_or_mode_only_fix_leaves_nothing_to_blame(tmp_path):
+    """Neither fix deletes a line, so both count with the additions (issue #148)."""
+    binary_fix = _linear(noise_touches_fault_file=False)
+    binary_fix[0]["operations"].append({"type": "write_binary_file", "path": "assets/icon.bin", "content_base64": "AAECAwQ="})
+    binary_fix[3]["operations"] = [{"type": "write_binary_file", "path": "assets/icon.bin", "content_base64": "/v3//A=="}]
+    mode_fix = _linear(noise_touches_fault_file=False)
+    mode_fix[3]["operations"] = [{"type": "chmod", "path": PATH, "mode": "0755"}]
+    bugs = _bugs(["c1"])
+    bugs[0]["fixes"][0]["statement"] = "public class Range {"  # a line the fix commit leaves in place
+    _write(tmp_path, "SZZG-9125", binary_fix, bugs)
+    _write(tmp_path, "SZZG-9126", mode_fix, bugs)
+    report = _run(tmp_path)
+    assert report["errors"] == [], report["errors"]
+    assert {s["scenario_id"]: (s["blame_class"], s["difficulty_floor"]) for s in report["shapes"]} == {
+        "SZZG-9125": ("addition-only", "medium"), "SZZG-9126": ("addition-only", "medium")}
+
+
 # --- the difficulty floor (issue #35, decided 2026-09-22) ----------------------------
 
 def _with_difficulty(tmp_path, sid, difficulty):
