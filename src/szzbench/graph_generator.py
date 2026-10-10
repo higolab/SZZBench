@@ -368,13 +368,26 @@ def _prepare_merge(
     # All extra parents go into ONE git merge: a second `git merge --no-commit`
     # while MERGE_HEAD exists is refused ("You have not concluded your merge"),
     # so merging them one at a time can never produce an octopus commit.  With
-    # several heads git uses the octopus strategy, which does not resolve
-    # conflicts; `resolution` therefore only applies to two-parent merges.
+    # several heads git uses the octopus strategy, which merges them in the
+    # order given and stops at the first conflict (issue #177).  A conflict
+    # with the last head stays in the index like a two-parent conflict, and
+    # `resolution` resolves it; at an earlier head Git gives up and restores
+    # the tree, so there is no conflict left to resolve (Git 2.39 and 2.50).
     log(f"Merging parent(s) {', '.join(extra_parent_ids)}: {', '.join(hashes)}")
     try:
         run_git(repo_dir, ["merge", "--no-ff", "--no-commit", *hashes])
     except GitError as exc:
-        what = f"Merge of parent '{extra_parent_ids[0]}'" if len(extra_parent_ids) == 1 else f"Octopus merge of parents {extra_parent_ids}"
+        if len(extra_parent_ids) == 1:
+            what = f"Merge of parent '{extra_parent_ids[0]}'"
+        else:
+            what = f"Octopus merge of parents {extra_parent_ids}"
+            if not git_unmerged_paths(repo_dir):
+                raise GraphGenerationError(
+                    f"{what} failed for commit '{commit_spec.get('id')}' and left no conflict to resolve: "
+                    "Git's octopus strategy merges the parents in the order listed and gives up at a conflict "
+                    f"with any parent but the last ('{extra_parent_ids[-1]}'), whatever 'resolution' holds. "
+                    f"List the conflicting parent last or merge in two commits. {exc}"
+                ) from exc
         conflicted.extend(_resolve_conflicts_or_fail(repo_dir, commit_spec, what, exc, log))
     _require_merge_heads(repo_dir, extra_parent_ids, hashes, commit_spec)
     return conflicted
@@ -416,7 +429,8 @@ def _resolve_conflicts_or_fail(repo_dir: Path, commit_spec: dict[str, Any], what
     """After a failed merge/cherry-pick/revert, apply ``resolution`` or raise.
 
     ``resolution`` maps repository paths to their resolved content (``null``
-    deletes the path).  All unmerged paths must be covered.
+    deletes the path).  Its keys must be the unmerged paths: all of them must
+    be covered, and a key for a path Git merged cleanly is refused (issue #182).
     """
     cid = commit_spec.get("id")
     conflicted = git_unmerged_paths(repo_dir)
@@ -433,6 +447,14 @@ def _resolve_conflicts_or_fail(repo_dir: Path, commit_spec: dict[str, Any], what
     missing = [path for path in conflicted if path not in resolved_paths]
     if missing:
         raise GraphGenerationError(f"resolution of commit '{cid}' does not cover conflicted paths {missing}.") from exc
+    # Writing a path Git merged cleanly would add a change the scenario does not
+    # declare and resolved_conflicts does not list (issue #182).
+    unexpected = sorted({Path(key).as_posix() for key in resolution if isinstance(key, str)} - set(conflicted))
+    if unexpected:
+        raise GraphGenerationError(
+            f"resolution of commit '{cid}' names {unexpected}, which Git did not report as conflicted "
+            f"(conflicted: {conflicted}); a change to a path without a conflict belongs in 'operations'."
+        ) from exc
     for rel_path, content in resolution.items():
         if not isinstance(rel_path, str):
             raise GraphGenerationError(f"resolution keys of commit '{cid}' must be repository paths.")
