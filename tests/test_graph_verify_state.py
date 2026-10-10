@@ -24,6 +24,8 @@ import pytest
 import yaml
 
 from support import git
+import szzbench.graph_generator as graph_generator
+from szzbench.findings import ValidationResult
 from szzbench.graph_generator import GraphGenerationError, generate_graph_repository
 from szzbench.graph_verifier import verify_graph_generated_repo
 
@@ -194,7 +196,9 @@ def test_head_is_expected_where_the_generator_leaves_it(tmp_path, name):
 
 # --- commit dates over the whole commit map ---------------------------------------------------
 
-def test_a_child_older_than_its_parent_on_a_deleted_branch_is_ge630(tmp_path):
+def test_a_child_older_than_its_parent_on_a_deleted_branch_is_ge630(tmp_path, monkeypatch):
+    # validate-graph refuses these dates since issue #241 (GE073): a repository generated before that
+    monkeypatch.setattr(graph_generator, "validate_graph_scenario_file", lambda path: (None, ValidationResult()))
     data = _scenario(
         [_commit("c0", [], [_write("a.txt")], date="2024-01-01T10:00:00Z"),
          _commit("f1", ["c0"], [_write("f.txt")], branch="feature", date="2024-01-10T10:00:00Z"),
@@ -207,7 +211,7 @@ def test_a_child_older_than_its_parent_on_a_deleted_branch_is_ge630(tmp_path):
     assert f2 not in git(out / "repo", "log", "--all", "--format=%H").split()
     result = verify_graph_generated_repo(out / "repo", scenario)
     inversions = [f.message for f in result.findings if f.code == "GE630"]
-    assert len(inversions) == 1 and f2[:8] in inversions[0] and f1[:8] in inversions[0]
+    assert len(inversions) == 1 and f"{f2[:8]} (f2)" in inversions[0] and f"{f1[:8]} (f1)" in inversions[0]
     with pytest.raises(GraphGenerationError, match="failed verification"):
         generate_graph_repository(scenario, tmp_path / "verified", force=True)
 

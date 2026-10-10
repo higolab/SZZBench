@@ -271,8 +271,8 @@ CLASSIC_ACCEPTED = [
     (("commits", 1, "date"), "2023-10-19T20:36:00+0900"),
     (("commits", 1, "date"), "2023-10-19T11:36:00"),                   # no zone: UTC
     (("commits", 1, "date"), datetime(2023, 10, 19, 11, 36, tzinfo=timezone(timedelta(hours=-5)))),
-    (("commits", 1, "date"), "1970-01-01T00:00:00Z"),
-    (("commits", 1, "date"), "2099-12-31T23:59:59Z"),
+    (("commits", 0, "date"), "1970-01-01T00:00:00Z"),                  # the first commit: nothing before it (E016)
+    (("commits", 2, "date"), "2099-12-31T23:59:59Z"),                  # the last commit: nothing after it
     (("commits", 1, "author_date"), "2023-10-18T09:00:00Z"),
     (("commits", 1, "committer_date"), "2023-10-20T09:00:00.250Z"),
     (("repository", "base_date"), "2024-06-01T10:00:00Z"),

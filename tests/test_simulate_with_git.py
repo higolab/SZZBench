@@ -132,17 +132,12 @@ def _misquote_the_fault(data):
     data["bugs"][0]["faults"][0]["statement"] = "return attempts <= budget;"
 
 
-def _date_the_fix_after_the_merge(data):
-    # The merge c3 is then committed before its parent f2.  A trailing space in c3's
-    # message (GE623) was this case until validation rejected such a message itself
-    # (GE070, issue #163).
-    _commit(data, "f2")["date"] = "2030-01-01T00:00:00Z"
-
-
+# A trailing space in c3's message (GE623) was a case of its own until validation rejected
+# such a message itself (GE070, issue #163), and a date that put the merge c3 before its
+# parent f2 (GE630) until validation compared the dates (GE073, issue #241).
 @pytest.mark.parametrize("edit, code, location", [
     (_misquote_the_fault, "GE663", "bugs[0].faults[0]"),
-    (_date_the_fix_after_the_merge, "GE630", "commits"),
-], ids=["fault-statement", "commit-date"])
+], ids=["fault-statement"])
 def test_a_verification_error_is_ge203_with_the_verifiers_code_and_location(tmp_path, edit, code, location):
     path = _variant(tmp_path, "SZZG-0123", edit)
     _, static = validate_graph_scenario_file(path, strict_paths=True, lint=True)

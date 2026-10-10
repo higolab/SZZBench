@@ -138,20 +138,30 @@ def _verify_commit_dates(repo_dir: Path, result: ValidationResult, commit_map: d
             "authored": authored,
             "authored_iso": authored_iso,
         }
+    # the logical ids beside the hashes, which were all the message named (issue #241)
+    ids_by_hash: dict[str, list[str]] = {}
+    for cid, map_entry in (commit_map or {}).items():
+        if isinstance(map_entry, dict) and isinstance(map_entry.get("hash"), str):
+            ids_by_hash.setdefault(map_entry["hash"], []).append(str(cid))
+
+    def name(commit_hash: str) -> str:
+        ids = ids_by_hash.get(commit_hash)
+        return f"{commit_hash[:8]} ({', '.join(ids)})" if ids else commit_hash[:8]
+
     for commit_hash, entry in commits.items():
         for parent in entry["parents"]:
             parent_entry = commits.get(parent)
             if parent_entry is not None and parent_entry["committed"] > entry["committed"]:
                 result.error(
                     "GE630",
-                    f"Commit {commit_hash[:8]} was committed at {entry['committed_iso']}, before its parent "
-                    f"{parent[:8]} at {parent_entry['committed_iso']}.",
+                    f"Commit {name(commit_hash)} was committed at {entry['committed_iso']}, before its parent "
+                    f"{name(parent)} at {parent_entry['committed_iso']}.",
                     "commits",
                 )
         if entry["authored"] > entry["committed"]:
             result.warning(
                 "GW631",
-                f"Commit {commit_hash[:8]} was authored at {entry['authored_iso']}, "
+                f"Commit {name(commit_hash)} was authored at {entry['authored_iso']}, "
                 f"after it was committed at {entry['committed_iso']}.",
                 "commits",
             )
