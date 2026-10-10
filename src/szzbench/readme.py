@@ -687,17 +687,29 @@ def scenario_files(scenarios_root: Path, advanced_scenarios_root: Path) -> list[
 
 
 def resolve_targets(targets: list[str]) -> list[Path]:
-    """Scenario files named on the command line, directly or by directory."""
+    """Scenario files named on the command line, directly or by directory.
+
+    A scenario directory gives the scenario file in it.  A directory without
+    one -- a suite root such as ``scenarios/`` -- gives the scenarios under it
+    as ``scenario_files`` finds them in a root, so ``readme scenarios`` checks
+    what ``readme`` without arguments checks of that suite.  A directory that
+    gives neither is kept as it is and reported by ``sync_readme``; it counted
+    as zero scenarios, and the command passed having checked nothing (issue #188).
+    """
     files: list[Path] = []
     for raw in targets:
         path = Path(raw)
         if path.is_dir():
-            for name in ("scenario.yml", "scenario.graph.yml"):
-                if (path / name).exists():
-                    files.append(path / name)
+            found = [path / name for name in ("scenario.yml", "scenario.graph.yml") if (path / name).exists()]
+            files += found or scenario_files(path, path) or [path]
         else:
             files.append(path)
     return files
+
+
+#: Why a directory target is an error: ``resolve_targets`` found no scenario in it (issue #188).
+NO_SCENARIO_FILE = ("no scenario file found: it holds no scenario.yml or scenario.graph.yml, and no "
+                    "SZZ-*/scenario.yml or SZZG-*/scenario.graph.yml directly under it")
 
 
 #: Why a stale README is left as it is: its header would not be found again.
@@ -712,10 +724,17 @@ def sync_readme(scenario_path: Path, *, write: bool) -> ReadmeStatus:
     What is written is read back and checked again, and what is still wrong
     is kept in ``unresolved``; a header the scenario renders out of shape (a
     value with a line break) is not written at all, because the next write
-    could not find where it ends (issue #184).
+    could not find where it ends (issue #184).  A directory is one
+    ``resolve_targets`` found no scenario in, and is an error (issue #188).
     """
+    if scenario_path.is_dir():
+        return ReadmeStatus(scenario_id=str(scenario_path), readme=scenario_path / "README.md",
+                            error=NO_SCENARIO_FILE)
     readme = scenario_path.with_name("README.md")
-    status = ReadmeStatus(scenario_id=scenario_path.parent.name, readme=readme)
+    # A missing file is named by its path: a bare name has no directory to name it by, and the
+    # directory above a mistyped scenario directory is the suite root (issue #188).
+    scenario_id = scenario_path.parent.name if scenario_path.exists() else str(scenario_path)
+    status = ReadmeStatus(scenario_id=scenario_id, readme=readme)
     data, result = load_yaml(scenario_path)
     if data is None:
         status.error = "; ".join(f.message for f in result.findings)

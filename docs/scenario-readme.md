@@ -107,7 +107,18 @@ not valid UTF-8 is listed as unreadable (an `error:` line, exit 1).
 szzbench readme                    # check every README of both suites; exit 1 when one is stale
 szzbench readme --write            # regenerate the stale, malformed or missing headers
 szzbench readme --write advanced-scenarios/SZZG-0022   # one scenario (file or directory)
+szzbench readme scenarios          # one suite
 ```
+
+A target is a scenario file, a scenario directory (the `scenario.yml` or
+`scenario.graph.yml` in it), or a directory of scenario directories such as a
+suite root, which stands for its `SZZ-*/scenario.yml` and
+`SZZG-*/scenario.graph.yml` — what `szzbench readme` without arguments reads
+from `--scenarios-root` and `--advanced-scenarios-root`. A directory that is
+none of these is an error (`error: <target>: no scenario file found`, exit 1),
+as is a file that does not exist; the `error:` line names the target by its path.
+Until issue #188 a suite root resolved to no scenario at all, and the command
+reported `0 scenario(s)` and exited 0 having checked nothing.
 
 `validate --lint` and `validate-graph --lint` report the same disagreement as
 `W455` / `GW455`: the header is missing, it is malformed (the message says
