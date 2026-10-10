@@ -15,7 +15,7 @@ from .graph_operations import (PATH_FIELDS_BY_OPERATION, REQUIRED_FIELDS_BY_OPER
 from .graph_scenario import (branch_name_problems, commit_id_of, graph_bfc_entries, graph_bic_entries, graph_faults,
                              graph_fixes, load_graph_scenario, ref_lifecycle_problems)
 from .graph_simulator import git_performed_features, simulate_graph_scenario, simulate_graph_scenario_with_git
-from .gitutils import (GitError, commit_branch, format_timestamp, history_graph, parse_timestamp,
+from .gitutils import (REWRITE_SOURCE_KEYS, GitError, commit_branch, format_timestamp, history_graph, parse_timestamp,
                        planned_generated_commits, reachable_commit_ids, scenario_default_branch)
 from .operations import OperationError, resolve_line_ending, type_label
 from .paths import PathValidationError, file_system_key, validate_repo_relative_path
@@ -33,7 +33,8 @@ GRAPH_SCHEMA_VERSION = "graph-1.0"
 
 #: The operations whose ``line_ending`` / ``encoding`` graph generation reads
 #: (``graph_operations._apply_graph_operation``); GE061 checks them there (issue #152).
-LINE_ENDING_OPERATIONS = frozenset({"write_file", "replace", "insert_after"})
+#: ``format_file``, ``move_entity`` and ``copy_entity`` read ``line_ending`` since issue #181.
+LINE_ENDING_OPERATIONS = frozenset({"write_file", "replace", "insert_after", "format_file", "move_entity", "copy_entity"})
 ENCODING_OPERATIONS = frozenset({"write_file", "replace", "insert_after", "move_entity", "copy_entity",
                                  "write_generated_text_file", "format_file"})
 
@@ -78,12 +79,12 @@ EXPECTED_SZZ_COMMIT_LISTS = ("required", "acceptable_related", "related_origins"
 #: The keys of a fault or fix location that hold a statement (GE104, issue #237).
 LOCATION_STATEMENT_KEYS = ("statement", "added_statement", "removed_statement", "missing_statement")
 
-#: Where generation takes the subject and the author date of ``inherit_message`` /
-#: ``inherit_author_date`` from: the first of these that is a commit id
-#: (``graph_generator._rewrite_source_id``), GE074 (issue #179).
-INHERIT_SOURCE_KEYS = ("rebase_of", "cherry_pick_of", "backport_of")
+#: Where generation takes the subject, the author date and the author of ``inherit_message``,
+#: ``inherit_author_date`` and ``inherit_author`` from: the first of these that is a commit id
+#: (``gitutils.rewrite_source_id``), GE074 (issue #179).
+INHERIT_SOURCE_KEYS = REWRITE_SOURCE_KEYS
 #: What each inherit option makes the commit take from its source.
-INHERITED_FIELDS = {"inherit_message": "message", "inherit_author_date": "author_date"}
+INHERITED_FIELDS = {"inherit_message": "message", "inherit_author_date": "author_date", "inherit_author": "author"}
 
 
 def validate_graph_scenario_file(
@@ -337,17 +338,21 @@ def validate_graph_static(data: dict[str, Any], *, scenario_path: Path | None = 
 
 
 def _validate_source_options(commits: list[Any], result: ValidationResult) -> None:
-    """GE074 / GE075: a commit option that copies from a source commit has one (issue #179).
+    """GE074 / GE075: a commit option that copies from a source commit has one (issue #179); GE076.
 
-    Generation takes ``inherit_message`` / ``inherit_author_date`` from the
-    first of ``rebase_of``, ``cherry_pick_of`` and ``backport_of`` that is a
-    commit id, and the lines of ``cherry_pick_trailer`` from
+    Generation takes ``inherit_message`` / ``inherit_author_date`` /
+    ``inherit_author`` from the first of ``rebase_of``, ``cherry_pick_of`` and
+    ``backport_of`` that is a commit id, and the lines of ``cherry_pick_trailer`` from
     ``cherry_pick_of`` / ``backport_of`` and every ``apply_patch_from``
     operation (``_cherry_pick_trailer_sources``); a commit with none passed
     ``validate-graph``, ``--simulate`` included, and stopped generation.  A
     ``rebase_of`` list (a squash-rebase, GE046) is not a source: generation
     said the commit had no ``rebase_of``.  Whether a source is an earlier
     commit is GE043's and GE047's.
+
+    GE076: ``inherit_author`` is ``true`` or ``false``, and a commit that
+    inherits its author does not write one too, which one of the two would
+    silently override (issue #180).
     """
     for i, commit in enumerate(commits):
         if not isinstance(commit, dict):
@@ -365,6 +370,15 @@ def _validate_source_options(commits: list[Any], result: ValidationResult) -> No
             else:
                 result.error("GE074", f"Commit '{cid}' sets {options}, but has no rebase_of, cherry_pick_of or "
                              "backport_of to inherit from.", f"{loc}.{flags[0]}")
+        if "inherit_author" in commit:
+            inherit_author = commit["inherit_author"]
+            if not isinstance(inherit_author, bool):
+                shown = "a blank value" if inherit_author is None else repr(inherit_author)
+                result.error("GE076", f"Commit '{cid}' inherit_author must be true or false, not {shown}.",
+                             f"{loc}.inherit_author")
+            elif inherit_author and commit.get("author") is not None:
+                result.error("GE076", f"Commit '{cid}' sets both author and inherit_author: true, which takes the "
+                             "author of its rewrite source; write only one of them.", f"{loc}.inherit_author")
         if commit.get("cherry_pick_trailer"):
             operations = commit.get("operations") if isinstance(commit.get("operations"), list) else []
             sources = [commit.get("cherry_pick_of"), commit.get("backport_of"),

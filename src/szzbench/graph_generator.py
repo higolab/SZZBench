@@ -25,6 +25,7 @@ from .gitutils import (
     parse_timestamp,
     refuse_ignored_written_paths,
     resolve_commit_metadata,
+    rewrite_source_id,
     run_git,
     run_git_with_input,
     scenario_default_branch,
@@ -306,15 +307,6 @@ def _checkout_or_create_branch(repo_dir: Path, branch: str, start_point: str | N
 # ---------------------------------------------------------------------------
 
 
-def _rewrite_source_id(commit_spec: dict[str, Any]) -> str | None:
-    """Return the logical commit a rebased/cherry-picked commit was derived from."""
-    for key in ("rebase_of", "cherry_pick_of", "backport_of"):
-        value = commit_spec.get(key)
-        if isinstance(value, str) and value:
-            return value
-    return None
-
-
 def _apply_inherit_options(
     repo_dir: Path,
     commit_spec: dict[str, Any],
@@ -322,21 +314,23 @@ def _apply_inherit_options(
     metadata: CommitMetadata,
     log,
 ) -> dict[str, Any] | None:
-    """Handle ``inherit_message`` / ``inherit_author_date`` for rewritten commits.
+    """Handle ``inherit_message`` / ``inherit_author_date`` / ``inherit_author`` for rewritten commits.
 
-    ``git rebase`` and ``git cherry-pick`` keep the subject and the author date
-    of the original commit while the committer date is new.  When either
-    option is set the source is ``rebase_of`` (or ``cherry_pick_of`` /
+    ``git rebase`` and ``git cherry-pick`` keep the subject, the author date
+    and the author of the original commit while the committer date is new.
+    When an option is set the source is ``rebase_of`` (or ``cherry_pick_of`` /
     ``backport_of``).  Returns a record of what was inherited, or ``None``.
     """
     inherit_message = bool(commit_spec.get("inherit_message"))
     inherit_author_date = bool(commit_spec.get("inherit_author_date"))
-    if not inherit_message and not inherit_author_date:
+    inherit_author = bool(commit_spec.get("inherit_author"))
+    if not (inherit_message or inherit_author_date or inherit_author):
         return None
-    source_id = _rewrite_source_id(commit_spec)
+    source_id = rewrite_source_id(commit_spec)
     if source_id is None:
         raise GraphGenerationError(
-            f"Commit '{commit_spec.get('id')}' sets inherit_message/inherit_author_date but has no rebase_of, cherry_pick_of or backport_of."
+            f"Commit '{commit_spec.get('id')}' sets inherit_message/inherit_author_date/inherit_author but has no "
+            "rebase_of, cherry_pick_of or backport_of."
         )
     if source_id not in commit_map:
         raise GraphGenerationError(f"Rewrite source '{source_id}' of commit '{commit_spec.get('id')}' has not been generated yet.")
@@ -350,6 +344,14 @@ def _apply_inherit_options(
         metadata.author_date_is_default = False
         record["author_date"] = True
         log(f"Commit {commit_spec.get('id')} inherits author date {metadata.author_date} from {source_id}")
+    if inherit_author:
+        # The identity the source was committed with, which commit-map.json records.  The
+        # committer stays the author, as for every commit.  Only a commit that inherits it
+        # records "author", so the commit maps of the others are as before (issue #180).
+        metadata.author = commit_map[source_id]["author"]
+        metadata.author_is_default = False
+        record["author"] = True
+        log(f"Commit {commit_spec.get('id')} inherits author {metadata.author} from {source_id}")
     return record
 
 
