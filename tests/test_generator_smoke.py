@@ -122,7 +122,7 @@ def _write_graph_scenario(path: Path, scenario_id: str) -> None:
     )
 
 def test_validate_and_generate(tmp_path):
-    scenario = Path("examples/basic/simple-line-modification/scenario.yml")
+    scenario = Path("scenarios/SZZ-0006/scenario.yml")
     out = tmp_path / "generated"
     subprocess.run([sys.executable, "-m", "szzbench.cli", "validate", "--simulate", str(scenario)], check=True)
     subprocess.run([sys.executable, "-m", "szzbench.cli", "generate", str(scenario), "--out", str(out), "--force"], check=True)
@@ -130,8 +130,8 @@ def test_validate_and_generate(tmp_path):
     assert (out / "metadata" / "commit-map.json").exists()
     log = git_stdout(out / "repo", "log", "--oneline")
     assert "Initial correct implementation" in log
-    assert "Introduce boundary bug" in log
-    assert "Fix boundary bug" in log
+    assert "Offset compute() to the preceding value" in log
+    assert "Fix bug" in log
 
 def test_generate_all_repos_generates_skips_and_overwrites(tmp_path):
     scenarios_root = tmp_path / "scenarios"
@@ -171,10 +171,10 @@ def test_generate_all_repos_generates_skips_and_overwrites(tmp_path):
     assert not marker.exists()
 
 def test_clean_removes_generated_outputs(tmp_path):
-    scenario = Path("examples/basic/simple-line-modification/scenario.yml")
+    scenario = Path("scenarios/SZZ-0006/scenario.yml")
     root = tmp_path / "generated-input-repos"
-    out = root / "basic" / "simple-line-modification" / "default"
-    out_variant = root / "basic" / "simple-line-modification" / "variant"
+    out = root / "SZZ-0006" / "default"
+    out_variant = root / "SZZ-0006" / "variant"
     keep = root / "not-generated" / "notes.txt"
     keep.parent.mkdir(parents=True)
     keep.write_text("keep me\n", encoding="utf-8")

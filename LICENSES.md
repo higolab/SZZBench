@@ -36,18 +36,17 @@ includes:
 
 See [`LICENSE-CC-BY-4.0`](LICENSE-CC-BY-4.0) for the complete license text.
 
-## Attribution during anonymous review
+## Attribution
 
-For this anonymous-review release, attribution for materials licensed under
-CC BY 4.0 should be given as:
+The copyright holders are the SZZBench authors, who are listed in the
+"Authors and license" section of [`README.md`](README.md) and in
+`pyproject.toml`. Attribution for materials licensed under CC BY 4.0 should be
+given as:
 
-> Anonymous Authors, *SZZBench*
+> The SZZBench authors, *SZZBench*, https://github.com/higolab/SZZBench
 
 For software licensed under the MIT License, the copyright and permission
 notice in `LICENSE-MIT` must be retained.
-
-A later non-anonymous release may replace "Anonymous Authors" with the actual
-copyright holders without changing the licenses applied to the materials.
 
 ## Third-party materials
 

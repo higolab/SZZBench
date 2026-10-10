@@ -2,7 +2,33 @@
 name = "szzbench"
 version = "0.1.0"
 description = "Synthetic SZZ benchmark utilities"
+readme = "README.md"
+# The software is MIT; the scenarios and the documentation, README.md among them, are CC BY 4.0 (LICENSES.md)
+license = "MIT AND CC-BY-4.0"
+license-files = ["LICENSE-MIT", "LICENSE-CC-BY-4.0", "LICENSES.md"]
+authors = [
+  { name = "Yoshiki Higo", email = "higo@ist.osaka-u.ac.jp" },
+  { name = "Inase Kondo", email = "i-kondou@ist.osaka-u.ac.jp" },
+  { name = "Masanari Kondo", email = "kondo@ait.kyushu-u.ac.jp" },
+  { name = "Yasutaka Kamei", email = "kamei@ait.kyushu-u.ac.jp" },
+]
 requires-python = ">=3.10"
+classifiers = [
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "Operating System :: MacOS",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Software Development :: Quality Assurance",
+  "Topic :: Software Development :: Version Control :: Git",
+]
 dependencies = [
   "PyYAML>=6.0"
 ]
@@ -12,11 +38,17 @@ dev = [
   "pytest>=8.0"
 ]
 
+[project.urls]
+Homepage = "https://github.com/higolab/SZZBench"
+Repository = "https://github.com/higolab/SZZBench"
+Issues = "https://github.com/higolab/SZZBench/issues"
+
 [project.scripts]
 szzbench = "szzbench.cli:main"
 
 [build-system]
-requires = ["setuptools>=68"]
+# 77 is the first setuptools to accept an SPDX expression in `license` and `license-files` (PEP 639)
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
