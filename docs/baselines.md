@@ -243,7 +243,9 @@ the scenarios nothing solves, and a per-category breakdown. The exit code is
 non-zero when the report lists any error, each printed as `[ERROR]`: a scenario,
 commit map or generated history that could not be read, a generated output that
 is stale (#93), or a Git call that failed. It is also non-zero when no generated
-repository could be scored at all (`BASELINES_FAILED`). A warning, such as a
+repository could be scored at all (`BASELINES_FAILED`), and when `--out` names
+something that is not a directory or cannot be created, which is checked before
+the run (`BASELINES_FAILED`, issue #143). A warning, such as a
 generated output whose scenario was retired, leaves it at zero.
 
 ## The two tiers
@@ -511,7 +513,8 @@ szzbench coverage --out studies/coverage
 `--out DIR` writes `coverage.json` and `coverage.md`. The exit code follows the
 rule of `szzbench baselines` (see [Output](#output)): non-zero when the report
 lists any `[ERROR]`, including a scenario it cannot read for coverage, and when
-nothing could be scored (`COVERAGE_FAILED`).
+nothing could be scored or `--out` is not a directory it can create
+(`COVERAGE_FAILED`).
 
 | dimension | meaning |
 |---|---|

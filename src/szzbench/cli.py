@@ -505,7 +505,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_coverage.set_defaults(func=cmd_coverage)
 
     p_readme = sub.add_parser("readme", help="Check or regenerate the generated header of every scenario README")
-    p_readme.add_argument("scenarios", nargs="*", help="Scenario files or directories (default: every scenario of both suites)")
+    p_readme.add_argument("scenarios", nargs="*", help="Scenario files, scenario directories or suite roots (default: every scenario of both suites)")
     p_readme.add_argument("--scenarios-root", default=str(DEFAULT_SCENARIOS_ROOT), help="Root directory for classic scenarios")
     p_readme.add_argument("--advanced-scenarios-root", default=str(DEFAULT_ADVANCED_SCENARIOS_ROOT), help="Root directory for graph scenarios")
     p_readme.add_argument("--write", action="store_true", help="Rewrite missing or stale headers and drop the hand-written Factors/Source copies")

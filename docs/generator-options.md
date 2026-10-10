@@ -39,7 +39,11 @@ A scenario that pins **any** timestamp (`date`, `author_date` or
 `committer_date` on any commit) keeps the plain schedule, `base_date + commit
 index` days, for the commits it leaves to the generator: spreading only some of
 them over the irregular gaps would place them after the pinned ones and invert
-the history. The schedule below therefore applies to scenarios whose timeline is
+the history. A date the scenario writes still has to come after the dates of
+the commit's parents, written or scheduled: validation refuses a commit that
+would be committed before one of its parents (E016 / GE073, issue #241), and
+the classic verify checks the order of the generated commits (E610), as the
+graph verify does (GE630). The schedule below therefore applies to scenarios whose timeline is
 entirely generated, which is most of the graph suite.
 
 The commit index is the 0-based position of the commit in the `commits` list.
