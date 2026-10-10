@@ -13,10 +13,9 @@ meta:
   - branch
   - rebase
   - interactive-rebase
-  - dropped-origin-bic
+  - dropped-commit
+  - origin-vs-direct
   - deleted-branch
-  - direct-bic
-  - origin-bic
   difficulty: easy
   status: active
   tier: control

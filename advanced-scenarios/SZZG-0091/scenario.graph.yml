@@ -13,7 +13,7 @@ meta:
   - partial-revert
   - multi-bic
   - single-fault-reintroduced
-  - re-bic
+  - origin-vs-direct
   - wrong-operator
   difficulty: easy
   status: active

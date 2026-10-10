@@ -10,8 +10,7 @@ meta:
   - revert
   - revert-of-fix
   - reintroduced-bug
-  - re-bic
-  - origin-bic
+  - origin-vs-direct
   difficulty: easy
   status: active
   tier: control

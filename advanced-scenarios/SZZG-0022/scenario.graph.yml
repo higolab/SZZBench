@@ -10,8 +10,7 @@ meta:
   category_code: "G2"
   factors:
   - copy-propagation
-  - direct-bic
-  - origin-bic
+  - origin-vs-direct
   - evaluation-variant
   - relaxed-with-credit
   difficulty: easy

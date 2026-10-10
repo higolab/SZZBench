@@ -8,7 +8,7 @@
 | status | `active` |
 | difficulty | `easy` |
 | language | `java` |
-| factors | `reintroduction`, `partial-revert`, `origin-bic`, `evaluation-variant` |
+| factors | `reintroduction`, `partial-revert`, `origin-vs-direct`, `evaluation-variant` |
 | oracle | default (`reintroduction-direct`): `exact_set`; required `c3`; related origins `c1` · `origin-aware`: `relaxed_with_related`; required `c3`; acceptable `c1` (credit 0.5) · BFC `c4` |
 | defeats | none (a control: every declared cheap rule may solve it) |
 | graph features | revert `c3`; 2 BICs; origin faults; 2 evaluation variants (`reintroduction-direct`, `origin-aware`) |

@@ -1,9 +1,10 @@
 """What `docs/decisions/vocabulary.md` says about factors and roles holds for the suites (issues #187, #197, #198).
 
 The factor vocabulary is open (§1.1), so no lint reports a word outside the
-recommended lists. §1.4 still names old spellings that are replaced, and until
+recommended lists. §1.4 still names old spellings that are replaced. Until
 2026-10-10 twenty scenarios used them while the document called the vocabulary
-closed (issue #197). §2.1 listed a BFC role, `attempted_fix`, that the validator
+closed (issue #197), and 39 more used the hyphen-case forms of the table's
+other spellings. §2.1 listed a BFC role, `attempted_fix`, that the validator
 rejected (issue #187). These tests compare the document with the suites and
 the validator, the way `test_docs_field_paths.py` does for field paths.
 """
@@ -39,8 +40,8 @@ def _shipped_factors() -> dict[str, list[str]]:
     return factors
 
 
-def _old_spellings() -> tuple[set[str], set[str]]:
-    """``(replaced, not_applied)``: the old spellings of §1.4 and those it says are still in use."""
+def _old_spellings() -> set[str]:
+    """The old spellings of §1.4, in hyphen-case."""
     section = _section("### 1.4", "## 2. Roles")
     # the words §1.2 lists in its first column and §1.3 in its paragraph, not the ones they replace
     recommended = {w for line in _section("### 1.2", "### 1.3").splitlines() if line.startswith("| `")
@@ -51,22 +52,15 @@ def _old_spellings() -> tuple[set[str], set[str]]:
         old, new = row.split("|")[1:3]
         replacements = {_spelling(w) for w in CODE.findall(re.sub(r"`[a-z0-9_-]+`→", "", new))}
         replaced |= {_spelling(w) for w in CODE.findall(old)} - replacements - recommended
-    not_applied = next((line for line in section.splitlines() if line.startswith("- **Not applied.**")), "")
-    return replaced, {_spelling(w) for w in CODE.findall(not_applied)}
+    return replaced
 
 
-def test_no_scenario_uses_an_old_spelling_the_synonym_table_replaced():
-    replaced, not_applied = _old_spellings()
-    assert {"context", "context-dependent", "comment-only-intermediate"} <= replaced, "fixture sanity: §1.4 parsed"
-    offenders = [f"{sid}: {word}" for sid, words in _shipped_factors().items()
-                 for word in words if word in replaced - not_applied]
+def test_no_scenario_uses_an_old_spelling_of_the_synonym_table():
+    replaced = _old_spellings()
+    assert {"context", "comment-only-intermediate", "multi-file", "same-bug", "dropped-origin-bic"} <= replaced, \
+        "fixture sanity: §1.4 parsed"
+    offenders = [f"{sid}: {word}" for sid, words in _shipped_factors().items() for word in words if word in replaced]
     assert offenders == [], "§1.4 replaces these spellings; use the word it names instead"
-
-
-def test_every_spelling_listed_as_not_applied_is_still_in_use():
-    _, not_applied = _old_spellings()
-    in_use = {word for words in _shipped_factors().values() for word in words}
-    assert not_applied - in_use == set(), "§1.4 lists a spelling as not applied that no scenario uses any more"
 
 
 def test_the_bfc_roles_of_the_vocabulary_are_the_ones_the_validator_accepts():

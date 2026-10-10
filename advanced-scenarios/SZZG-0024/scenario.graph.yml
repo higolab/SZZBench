@@ -14,8 +14,7 @@ meta:
   - rebase
   - copy-propagation
   - clone-divergence
-  - direct-bic
-  - origin-bic
+  - origin-vs-direct
   - wrong-operator
   difficulty: hard
   status: active

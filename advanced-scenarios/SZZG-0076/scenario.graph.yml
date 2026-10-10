@@ -14,9 +14,7 @@ meta:
   - branch
   - rebase
   - multi-bic
-  - rebased-bic
-  - direct-bic
-  - origin-bic
+  - origin-vs-direct
   - integer-overflow
   - wrong-operator
   difficulty: hard

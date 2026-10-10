@@ -13,7 +13,7 @@ meta:
   - rebase
   - generated-files
   - generated-code-noise
-  - direct-bic
+  - origin-vs-direct
   - boolean-negation
   difficulty: easy
   status: active

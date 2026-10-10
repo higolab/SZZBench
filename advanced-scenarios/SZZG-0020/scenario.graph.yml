@@ -10,8 +10,7 @@ meta:
   factors:
   - copy-propagation
   - evaluation-variant
-  - direct-bic
-  - origin-bic
+  - origin-vs-direct
   difficulty: easy
   status: active
   tier: control

@@ -13,7 +13,6 @@ meta:
   - rebase
   - rebase-conflict-resolution
   - conflict-resolution-bic
-  - direct-bic
   - fault-in-neither-parent
   difficulty: easy
   status: active

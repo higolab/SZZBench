@@ -14,8 +14,7 @@ meta:
   - branch
   - squash-merge
   - squashed-bic
-  - direct-bic
-  - origin-bic
+  - origin-vs-direct
   - exception-swallowed
   difficulty: easy
   status: active

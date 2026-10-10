@@ -11,8 +11,7 @@ meta:
   - rebase
   - release-branch
   - release-to-main
-  - direct-bic
-  - origin-bic
+  - origin-vs-direct
   difficulty: easy
   status: active
   tier: control

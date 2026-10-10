@@ -9,7 +9,7 @@ meta:
   category: "Multiple BICs, multiple BFCs, and partial fixes"
   category_code: "G3"
   factors:
-  - root-cause
+  - root-cause-not-in-diff
   - wrong-constant
   difficulty: hard
   status: active

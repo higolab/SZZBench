@@ -9,7 +9,7 @@ meta:
   factors:
   - branch
   - rebase
-  - rebased-bic
+  - origin-vs-direct
   - multi-bfc
   - partial-fix
   - complete-fix

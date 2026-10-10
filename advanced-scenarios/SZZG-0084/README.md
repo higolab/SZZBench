@@ -8,7 +8,7 @@
 | status | `active` |
 | difficulty | `easy` |
 | language | `java` |
-| factors | `linear-history`, `revert`, `partial-revert`, `reintroduced-bug`, `re-bic`, `origin-bic`, `revert-footer` |
+| factors | `linear-history`, `revert`, `partial-revert`, `reintroduced-bug`, `origin-vs-direct`, `revert-footer` |
 | oracle | default: `reintroduction_direct`; required `c3`; related origins `c1` · `origin-aware`: `relaxed_with_related`; required `c3`; acceptable `c1` (credit 0.5) · BFC `c4` |
 | defeats | none (a control: every declared cheap rule may solve it) |
 | graph features | revert `c3`; 2 BICs; origin faults; policy `reintroduction_direct`; 1 evaluation variant (`origin-aware`) |
@@ -151,8 +151,8 @@ without errors.
 ## Notes
 
 - `factors` was empty before this repair; it now names the shape
-  (`linear_history`, `revert`, `partial_revert`, `revert_footer`) and the
-  oracle situation (`reintroduced_bug`, `re_bic`, `origin_bic`).
+  (`linear-history`, `revert`, `partial-revert`, `revert-footer`) and the
+  oracle situation (`reintroduced-bug`, `origin-vs-direct`).
 - `validate-graph --simulate` does not model `git revert`, so the operations of
   `c3` write the whole file. The simulated state and the state Git produces are
   identical, and the resulting Git diff is the single hunk shown above.

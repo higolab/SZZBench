@@ -15,10 +15,9 @@ meta:
   - rebase
   - large-noisy-commit
   - generated-file
-  - multi-file
+  - multi-file-bic
   - robustness
-  - direct-bic
-  - origin-bic
+  - origin-vs-direct
   - wrong-variable
   difficulty: easy
   status: active

@@ -11,7 +11,7 @@ meta:
   factors:
   - reintroduction
   - partial-revert
-  - origin-bic
+  - origin-vs-direct
   - evaluation-variant
   difficulty: easy
   status: active

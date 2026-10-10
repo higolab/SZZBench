@@ -8,7 +8,7 @@ meta:
     the BFC does not edit.
   category: "Context, message, and non-local evidence"
   factors:
-  - root-cause
+  - root-cause-not-in-diff
   difficulty: hard
   status: active
   tier: control

@@ -14,7 +14,7 @@ meta:
   - rebase
   - rebase-conflict-resolution
   - conflict-resolution-bfc
-  - rebased-bic
+  - origin-vs-direct
   difficulty: easy
   status: active
   tier: control

@@ -8,7 +8,7 @@
 | status | `active` |
 | difficulty | `hard` |
 | language | `java` |
-| factors | `multi-bic`, `single-bfc`, `composite-bug`, `same-bug`, `multiple-fault-locations` |
+| factors | `multi-bic`, `single-bfc`, `composite-bug`, `multiple-fault-locations` |
 | oracle | `exact_set`; required `c1`, `c2` · BFC `c3` |
 <!-- /szzbench:header -->
 

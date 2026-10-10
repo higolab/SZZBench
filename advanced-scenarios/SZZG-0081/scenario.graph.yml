@@ -15,8 +15,7 @@ meta:
   - formatting-noise
   - whitespace-only-change
   - blame-stops-at-formatting
-  - direct-bic
-  - origin-bic
+  - origin-vs-direct
   - null-check-omission
   difficulty: hard
   status: active

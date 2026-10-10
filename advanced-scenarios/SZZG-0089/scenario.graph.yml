@@ -13,7 +13,7 @@ meta:
   - intermediate-change
   - variable-rename
   - revert-footer
-  - re-bic
+  - origin-vs-direct
   difficulty: hard
   status: active
   tier: control
