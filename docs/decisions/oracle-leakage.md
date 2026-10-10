@@ -53,11 +53,19 @@ Rules:
 Both are assigned **deterministically from (scenario id, commit index)** and
 never from the role.
 
-- **Normal suite**: written into the scenario files. Authors come from an
+- **Normal suite**: written into the scenario files, and the generator takes
+  them from there. When they were first written, authors came from an
   eight-name pool, with a 30% chance of repeating the previous commit's author
-  so that runs by one developer still occur. Dates are weekday timestamps
+  so that runs by one developer still occur, and dates were weekday timestamps
   between 2023 and mid-2025 with gaps of one to nine days and working-hour
-  times.
+  times. Scenarios added since choose their own, and 21 of them (SZZ-0195
+  onwards) also name authors from the six-name pool the graph suite's
+  generator uses (`gitutils.DEFAULT_AUTHOR_POOL`). On 2026-10-10 the 133
+  classic files name fourteen authors: the eight with 51–73 commits each and
+  the six with 6–12. A classic commit without an `author` would be given one
+  from the six-name pool, as a graph commit is; none is today. The author
+  checks of §7 measure the authors the generated repository will have
+  (`gitutils.resolved_commit_authors`), not either pool.
 - **Graph suite**: not written into the scenario files; the generator supplies
   them (`gitutils.deterministic_author`, `gitutils.deterministic_date`), with a
   per-scenario base date so repositories do not all start on the same day.

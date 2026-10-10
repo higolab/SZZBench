@@ -67,7 +67,7 @@ Status: **decided and applied** (2026-09-19; proposed 2026-09-17; §7 `meta.tier
 
 **BIC entries** — canonical roles `direct`, `origin`, `contributing`, `reintroducing`. The 23 spellings in use (`direct_squash_bic`, `merge_introducing`, `direct_reintroduction`, `origin_bic`, `old_origin_bic`, `related_reintroducing`, …) are classified by `normalize_bic_role()` (issue #15, PR #27) and rewritten to the canonical spelling by the sweep. `normalize_bic_role()` classifies **BIC roles only**: it returns `other` for every BFC role, including `complete_fix` and `partial_fix`, so it must not be applied to BFC entries.
 
-**BFC entries** — canonical roles `complete_fix` (the commit removes the fault of this bug entry), `partial_fix` (removes part of it; another BFC completes it) and `attempted_fix` (a developer attempt that does **not** remove the fault; kept as context and excluded from the evaluated BFC set). No BFC normalizer exists yet; the sweep applies the table below explicitly, and a `normalize_bfc_role()` should be added next to the BIC one before the migration script runs. Today BFC roles do not influence scoring: the verifier's blame check uses the *last* BFC entry and PR #27's `fix_shape` classifies every listed BFC regardless of role.
+**BFC entries** — canonical roles `complete_fix` (the commit removes the fault of this bug entry), `partial_fix` (removes part of it; another BFC completes it) and `attempted_fix` (a developer attempt that does **not** remove the fault; kept as context and excluded from the evaluated BFC set). BFC roles are not normalized: the sweep applied the table below explicitly, no BFC counterpart of `normalize_bic_role()` was written, and every shipped BFC entry now declares `complete_fix` (153) or `partial_fix` (6). `validate-graph --lint` accepts those two spellings only (`GE404`); `attempted_fix` is not among them today (issue #187). Today BFC roles do not influence scoring: the verifier's blame check uses the *last* BFC entry and PR #27's `fix_shape` classifies every listed BFC regardless of role.
 
 | canonical | today (scenarios) |
 |---|---|
@@ -119,7 +119,7 @@ Legacy README labels map as follows: "BFC shape scenarios" → S4/G1 by content;
 ## 5. Identifiers and index
 
 - Scenario ids are stable and are **not** renumbered. Gaps are documented in `docs/retired-ids.md` (id, former title, reason, replacement).
-- `scenario_count` is removed from the index files or recomputed by `szzbench validate-index` (issue #16); it is never hand-edited.
+- `scenario_count` is optional, and nothing recomputes it. `scenarios/index.yml` has none; `advanced-scenarios/index.yml` has one. `szzbench validate-index` reports `IE010` when it differs from the number of entries (issue #16), and `new-scenario` and `new-graph-scenario` raise it when they add an entry (issue #111); an entry added or removed by hand has to change it too.
 - Index entries are generated from the YAML `meta` block (title, slug, category, factors, difficulty, status, and `blame_class` once §4's field exists); the sweep regenerates both index files. `title`, `factors` and `status` are checked against the scenario by IE041/IE043/IE045, and `slug`, `category`, `category_code` and `difficulty` by IE046; the value of `difficulty` itself is checked against its measured floor by `szzbench coverage` (§4).
 
 ## 6. Sweep plan (after issues #15–#18 land)
