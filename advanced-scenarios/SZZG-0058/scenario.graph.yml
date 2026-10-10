@@ -9,10 +9,8 @@ meta:
   factors:
   - branch
   - rebase
-  - rebased-bic
+  - origin-vs-direct
   - rebased-bfc
-  - direct-bic
-  - origin-bic
   difficulty: easy
   status: active
   tier: control

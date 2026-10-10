@@ -10,8 +10,7 @@ meta:
   - branch
   - rebase
   - patch-modified-during-rebase
-  - origin-bic
-  - direct-bic
+  - origin-vs-direct
   difficulty: easy
   status: active
   tier: control

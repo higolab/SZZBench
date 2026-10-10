@@ -9,7 +9,6 @@ meta:
   category: "Non-source, configuration, test-only, and file-level edge cases"
   factors:
   - config
-  - code-interaction
   - caller-callee
   - config-value
   difficulty: hard

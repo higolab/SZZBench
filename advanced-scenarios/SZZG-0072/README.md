@@ -8,7 +8,7 @@
 | status | `active` |
 | difficulty | `easy` |
 | language | `java` |
-| factors | `branch`, `rebase`, `interactive-rebase`, `dropped-origin-bic`, `deleted-branch`, `direct-bic`, `origin-bic` |
+| factors | `branch`, `rebase`, `interactive-rebase`, `dropped-commit`, `origin-vs-direct`, `deleted-branch` |
 | oracle | default: `exact_set`; required `r2`; related origins `f2`, `f1` · `origin-aware`: `relaxed_with_related`; required `r2`; acceptable `f2` (credit 0.5), `f1` (credit 0.5) · BFC `c3` |
 | defeats | none (a control: every declared cheap rule may solve it) |
 | graph features | 2 branches; rebase `r2`; ref lifecycle; 3 BICs; origin faults; 1 evaluation variant (`origin-aware`) |
@@ -27,11 +27,12 @@ introduced it. After the rebase the feature branch is deleted, so the dropped
 commit and the replay source are no longer reachable from any ref — exactly
 what is left after `git rebase -i` plus a force-push that removes the branch.
 
-This is what makes `f1` a genuine `origin` of `B001` and the factor
-`dropped_origin_bic` real: the dropped commit is an ancestor *of the fault*,
-not of an unrelated second fault. (Before this repair `f1` tightened the
-*delay* window while the surviving bug was in the *backoff* window, so `f1` had
-no causal link to `B001` at all — PR #33 review finding 2.)
+This is what makes `f1` a genuine `origin` of `B001` and the factors
+`dropped-commit` and `origin-vs-direct` real: the dropped commit is an
+ancestor *of the fault*, not of an unrelated second fault. (Before this
+repair `f1` tightened the *delay* window while the surviving bug was in the
+*backoff* window, so `f1` had no causal link to `B001` at all — PR #33 review
+finding 2.)
 
 ## Commit graph (as generated)
 

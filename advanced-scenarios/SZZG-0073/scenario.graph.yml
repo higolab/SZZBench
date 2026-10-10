@@ -16,8 +16,7 @@ meta:
   - rebase
   - interactive-rebase
   - reorder
-  - direct-bic
-  - origin-bic
+  - origin-vs-direct
   - inherited-commit-metadata
   - api-misuse
   difficulty: easy

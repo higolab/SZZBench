@@ -11,10 +11,8 @@ meta:
   factors:
   - branch
   - rebase
-  - rebased-bic
+  - origin-vs-direct
   - intermediate-commit
-  - direct-bic
-  - origin-bic
   - inherited-commit-metadata
   difficulty: easy
   status: active

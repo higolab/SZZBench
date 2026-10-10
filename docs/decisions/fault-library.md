@@ -38,8 +38,9 @@ of the most reused statement, printed by `szzbench coverage`.
 ## 2. The kinds
 
 Names are the canonical fault factors of `vocabulary.md` §1.3. "Exemplar" is
-correct → faulty. "In the suite" cites scenarios that carry the kind today
-(their factors may still use an older spelling; the sweep of §1.4 maps them).
+correct → faulty. "In the suite" cites scenarios that carry the kind today. The
+vocabulary is open (§1.1), so a scenario may name the kind with a tag of its own;
+no old spelling of §1.4 is left in the suite since 2026-10-10.
 
 | kind | exemplar | observable failure | in the suite |
 |---|---|---|---|

@@ -13,8 +13,7 @@ meta:
   - rebase
   - commit-messages
   - message-trailer
-  - origin-bic
-  - direct-bic
+  - origin-vs-direct
   difficulty: easy
   status: active
   tier: control

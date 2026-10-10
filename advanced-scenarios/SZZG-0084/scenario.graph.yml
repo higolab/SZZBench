@@ -14,8 +14,7 @@ meta:
   - revert
   - partial-revert
   - reintroduced-bug
-  - re-bic
-  - origin-bic
+  - origin-vs-direct
   - revert-footer
   difficulty: easy
   status: active

@@ -15,8 +15,7 @@ meta:
   - rebase
   - split-bic
   - multi-bic
-  - origin-bic
-  - direct-bic
+  - origin-vs-direct
   - wrong-constant
   difficulty: hard
   status: active

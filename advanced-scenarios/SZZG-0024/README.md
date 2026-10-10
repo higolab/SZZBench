@@ -8,7 +8,7 @@
 | status | `active` |
 | difficulty | `hard` |
 | language | `java` |
-| factors | `branch`, `rebase`, `copy-propagation`, `clone-divergence`, `direct-bic`, `origin-bic`, `wrong-operator` |
+| factors | `branch`, `rebase`, `copy-propagation`, `clone-divergence`, `origin-vs-direct`, `wrong-operator` |
 | oracle | default: `exact_set`; required `r1`; related origins `f1`; related but not correct `r2`, `f2` · `origin-aware`: `relaxed_with_related`; required `r1`; acceptable `f1` (credit 0.5); related but not correct `r2`, `f2` · BFC `c4` |
 | graph features | 2 branches; rebase `r1`, `r2`; 2 BICs; origin faults; 1 evaluation variant (`origin-aware`) |
 <!-- /szzbench:header -->

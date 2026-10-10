@@ -16,7 +16,7 @@ meta:
   - interactive-rebase
   - squash
   - multiple-origin-bic
-  - direct-bic
+  - origin-vs-direct
   - off-by-one
   difficulty: easy
   status: active

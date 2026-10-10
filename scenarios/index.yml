@@ -1005,7 +1005,6 @@ scenarios:
   - multi-bic
   - single-bfc
   - composite-bug
-  - same-bug
   - multiple-fault-locations
   difficulty: hard
   status: active
@@ -1114,7 +1113,7 @@ scenarios:
   category_code: S7
   category: Context, message, and non-local evidence
   factors:
-  - root-cause
+  - root-cause-not-in-diff
   difficulty: hard
   status: active
   path: scenarios/SZZ-0169/scenario.yml
@@ -1152,7 +1151,6 @@ scenarios:
   category: Non-source, configuration, test-only, and file-level edge cases
   factors:
   - config
-  - code-interaction
   - caller-callee
   - config-value
   difficulty: hard

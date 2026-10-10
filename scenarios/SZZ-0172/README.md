@@ -8,7 +8,7 @@
 | status | `active` |
 | difficulty | `hard` |
 | language | `java` |
-| factors | `config`, `code-interaction`, `caller-callee`, `config-value` |
+| factors | `config`, `caller-callee`, `config-value` |
 | oracle | `exact_set`; required `c1` · BFC `c3` |
 <!-- /szzbench:header -->
 

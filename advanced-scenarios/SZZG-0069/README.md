@@ -8,7 +8,7 @@
 | status | `active` |
 | difficulty | `hard` |
 | language | `java` |
-| factors | `branch`, `rebase`, `split-bic`, `multi-bic`, `origin-bic`, `direct-bic`, `wrong-constant` |
+| factors | `branch`, `rebase`, `split-bic`, `multi-bic`, `origin-vs-direct`, `wrong-constant` |
 | oracle | default: `exact_set`; required `r1`, `r2`; related origins `f1` · `origin-aware`: `relaxed_with_related`; required `r1`, `r2`; acceptable `f1` (credit 0.5) · BFC `c3` |
 | defeats | `blame`, `shape`, `position` |
 | graph features | 2 branches; rebase `r1`, `r2`; 3 BICs; origin faults; 1 evaluation variant (`origin-aware`) |

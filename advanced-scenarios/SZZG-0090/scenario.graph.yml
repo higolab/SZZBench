@@ -12,7 +12,7 @@ meta:
   - revert-of-revert
   - repeated-toggling
   - reintroduced-bug
-  - re-bic
+  - origin-vs-direct
   difficulty: easy
   status: active
   tier: control

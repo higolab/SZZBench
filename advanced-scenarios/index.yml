@@ -245,8 +245,7 @@ scenarios:
   factors:
   - copy-propagation
   - evaluation-variant
-  - direct-bic
-  - origin-bic
+  - origin-vs-direct
   difficulty: easy
   status: active
   path: advanced-scenarios/SZZG-0020/scenario.graph.yml
@@ -270,8 +269,7 @@ scenarios:
   category: Clone, copy propagation, and origin-vs-direct BIC
   factors:
   - copy-propagation
-  - direct-bic
-  - origin-bic
+  - origin-vs-direct
   - evaluation-variant
   - relaxed-with-credit
   difficulty: easy
@@ -288,8 +286,7 @@ scenarios:
   - rebase
   - copy-propagation
   - duplicate-code
-  - direct-bic
-  - origin-bic
+  - origin-vs-direct
   difficulty: easy
   status: active
   path: advanced-scenarios/SZZG-0023/scenario.graph.yml
@@ -304,8 +301,7 @@ scenarios:
   - rebase
   - copy-propagation
   - clone-divergence
-  - direct-bic
-  - origin-bic
+  - origin-vs-direct
   - wrong-operator
   difficulty: hard
   status: active
@@ -407,7 +403,6 @@ scenarios:
   factors:
   - multi-bfc
   - progressive-fix
-  - same-bug
   - partial-fix
   - complete-fix
   difficulty: easy
@@ -447,7 +442,7 @@ scenarios:
   category_code: G3
   category: Multiple BICs, multiple BFCs, and partial fixes
   factors:
-  - root-cause
+  - root-cause-not-in-diff
   - wrong-constant
   difficulty: hard
   status: active
@@ -472,7 +467,7 @@ scenarios:
   category: Multiple BICs, multiple BFCs, and partial fixes
   factors:
   - multi-bic
-  - multiple-file
+  - multi-file-bfc
   - single-bfc
   difficulty: easy
   status: active
@@ -608,8 +603,7 @@ scenarios:
   - branch
   - squash-merge
   - squashed-bic
-  - direct-bic
-  - origin-bic
+  - origin-vs-direct
   - exception-swallowed
   difficulty: easy
   status: active
@@ -624,8 +618,7 @@ scenarios:
   - branch
   - cherry-pick
   - release-branch
-  - direct-bic
-  - origin-bic
+  - origin-vs-direct
   difficulty: easy
   status: active
   path: advanced-scenarios/SZZG-0048/scenario.graph.yml
@@ -726,8 +719,7 @@ scenarios:
   - rebase
   - release-branch
   - release-to-main
-  - direct-bic
-  - origin-bic
+  - origin-vs-direct
   difficulty: easy
   status: active
   path: advanced-scenarios/SZZG-0055/scenario.graph.yml
@@ -759,8 +751,7 @@ scenarios:
   - rebase
   - old-base
   - unrelated-main-changes
-  - direct-bic
-  - origin-bic
+  - origin-vs-direct
   difficulty: easy
   status: active
   path: advanced-scenarios/SZZG-0057/scenario.graph.yml
@@ -773,10 +764,8 @@ scenarios:
   factors:
   - branch
   - rebase
-  - rebased-bic
+  - origin-vs-direct
   - rebased-bfc
-  - direct-bic
-  - origin-bic
   difficulty: easy
   status: active
   path: advanced-scenarios/SZZG-0058/scenario.graph.yml
@@ -841,10 +830,8 @@ scenarios:
   factors:
   - branch
   - rebase
-  - rebased-bic
+  - origin-vs-direct
   - intermediate-commit
-  - direct-bic
-  - origin-bic
   - inherited-commit-metadata
   difficulty: easy
   status: active
@@ -860,7 +847,6 @@ scenarios:
   - rebase
   - rebase-conflict-resolution
   - conflict-resolution-bic
-  - direct-bic
   - fault-in-neither-parent
   difficulty: easy
   status: active
@@ -875,8 +861,7 @@ scenarios:
   - branch
   - rebase
   - rebase-conflict-resolution
-  - origin-bic
-  - direct-bic
+  - origin-vs-direct
   difficulty: easy
   status: active
   path: advanced-scenarios/SZZG-0066/scenario.graph.yml
@@ -891,7 +876,7 @@ scenarios:
   - rebase
   - rebase-conflict-resolution
   - conflict-resolution-bfc
-  - rebased-bic
+  - origin-vs-direct
   difficulty: easy
   status: active
   path: advanced-scenarios/SZZG-0067/scenario.graph.yml
@@ -905,8 +890,7 @@ scenarios:
   - branch
   - rebase
   - patch-modified-during-rebase
-  - origin-bic
-  - direct-bic
+  - origin-vs-direct
   difficulty: easy
   status: active
   path: advanced-scenarios/SZZG-0068/scenario.graph.yml
@@ -921,8 +905,7 @@ scenarios:
   - rebase
   - split-bic
   - multi-bic
-  - origin-bic
-  - direct-bic
+  - origin-vs-direct
   - wrong-constant
   difficulty: hard
   status: active
@@ -939,7 +922,7 @@ scenarios:
   - interactive-rebase
   - squash
   - multiple-origin-bic
-  - direct-bic
+  - origin-vs-direct
   - off-by-one
   difficulty: easy
   status: active
@@ -955,8 +938,7 @@ scenarios:
   - rebase
   - interactive-rebase
   - patch-modified-during-rebase
-  - direct-bic
-  - origin-bic
+  - origin-vs-direct
   difficulty: easy
   status: active
   path: advanced-scenarios/SZZG-0071/scenario.graph.yml
@@ -970,10 +952,9 @@ scenarios:
   - branch
   - rebase
   - interactive-rebase
-  - dropped-origin-bic
+  - dropped-commit
+  - origin-vs-direct
   - deleted-branch
-  - direct-bic
-  - origin-bic
   difficulty: easy
   status: active
   path: advanced-scenarios/SZZG-0072/scenario.graph.yml
@@ -988,8 +969,7 @@ scenarios:
   - rebase
   - interactive-rebase
   - reorder
-  - direct-bic
-  - origin-bic
+  - origin-vs-direct
   - inherited-commit-metadata
   - api-misuse
   difficulty: easy
@@ -1022,9 +1002,7 @@ scenarios:
   - branch
   - rebase
   - multi-bic
-  - rebased-bic
-  - direct-bic
-  - origin-bic
+  - origin-vs-direct
   - integer-overflow
   - wrong-operator
   difficulty: hard
@@ -1039,7 +1017,7 @@ scenarios:
   factors:
   - branch
   - rebase
-  - rebased-bic
+  - origin-vs-direct
   - multi-bfc
   - partial-fix
   - complete-fix
@@ -1057,8 +1035,7 @@ scenarios:
   - rebase
   - commit-messages
   - message-trailer
-  - origin-bic
-  - direct-bic
+  - origin-vs-direct
   difficulty: easy
   status: active
   path: advanced-scenarios/SZZG-0078/scenario.graph.yml
@@ -1074,8 +1051,7 @@ scenarios:
   - formatting-noise
   - whitespace-only-change
   - blame-stops-at-formatting
-  - direct-bic
-  - origin-bic
+  - origin-vs-direct
   - null-check-omission
   difficulty: hard
   status: active
@@ -1091,7 +1067,7 @@ scenarios:
   - rebase
   - generated-files
   - generated-code-noise
-  - direct-bic
+  - origin-vs-direct
   - boolean-negation
   difficulty: easy
   status: active
@@ -1107,10 +1083,9 @@ scenarios:
   - rebase
   - large-noisy-commit
   - generated-file
-  - multi-file
+  - multi-file-bic
   - robustness
-  - direct-bic
-  - origin-bic
+  - origin-vs-direct
   - wrong-variable
   difficulty: easy
   status: active
@@ -1126,8 +1101,7 @@ scenarios:
   - revert
   - partial-revert
   - reintroduced-bug
-  - re-bic
-  - origin-bic
+  - origin-vs-direct
   - revert-footer
   difficulty: easy
   status: active
@@ -1141,7 +1115,7 @@ scenarios:
   factors:
   - reintroduction
   - partial-revert
-  - origin-bic
+  - origin-vs-direct
   - evaluation-variant
   difficulty: easy
   status: active
@@ -1156,8 +1130,7 @@ scenarios:
   - revert
   - revert-of-fix
   - reintroduced-bug
-  - re-bic
-  - origin-bic
+  - origin-vs-direct
   difficulty: easy
   status: active
   path: advanced-scenarios/SZZG-0086/scenario.graph.yml
@@ -1172,7 +1145,7 @@ scenarios:
   - partial-revert
   - reintroduced-bug
   - single-fault-reintroduced
-  - re-bic
+  - origin-vs-direct
   - wrong-variable
   difficulty: easy
   status: active
@@ -1190,7 +1163,7 @@ scenarios:
   - intermediate-change
   - variable-rename
   - revert-footer
-  - re-bic
+  - origin-vs-direct
   difficulty: hard
   status: active
   path: advanced-scenarios/SZZG-0089/scenario.graph.yml
@@ -1205,7 +1178,7 @@ scenarios:
   - revert-of-revert
   - repeated-toggling
   - reintroduced-bug
-  - re-bic
+  - origin-vs-direct
   difficulty: easy
   status: active
   path: advanced-scenarios/SZZG-0090/scenario.graph.yml
@@ -1220,7 +1193,7 @@ scenarios:
   - partial-revert
   - multi-bic
   - single-fault-reintroduced
-  - re-bic
+  - origin-vs-direct
   - wrong-operator
   difficulty: easy
   status: active
@@ -1591,8 +1564,7 @@ scenarios:
   - rebase
   - old-base
   - unrelated-main-changes
-  - direct-bic
-  - origin-bic
+  - origin-vs-direct
   difficulty: easy
   status: active
   path: advanced-scenarios/SZZG-0122/scenario.graph.yml

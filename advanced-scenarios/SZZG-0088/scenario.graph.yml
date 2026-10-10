@@ -13,7 +13,7 @@ meta:
   - partial-revert
   - reintroduced-bug
   - single-fault-reintroduced
-  - re-bic
+  - origin-vs-direct
   - wrong-variable
   difficulty: easy
   status: active

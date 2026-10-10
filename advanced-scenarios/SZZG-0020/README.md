@@ -8,7 +8,7 @@
 | status | `active` |
 | difficulty | `easy` |
 | language | `java` |
-| factors | `copy-propagation`, `evaluation-variant`, `direct-bic`, `origin-bic` |
+| factors | `copy-propagation`, `evaluation-variant`, `origin-vs-direct` |
 | oracle | default: `direct_only`; required `c2`; related origins `c1` · `direct-only`: `direct_only`; required `c2` · `origin-aware`: `relaxed_with_related`; required `c2`; acceptable `c1` (credit 0.5) · BFC `c3` |
 | graph features | operation `copy_file`; 2 BICs; policy `direct_only`; 2 evaluation variants (`direct-only`, `origin-aware`); `clone_relationships` |
 <!-- /szzbench:header -->

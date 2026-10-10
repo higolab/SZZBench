@@ -8,7 +8,7 @@
 | status | `active` |
 | difficulty | `easy` |
 | language | `java` |
-| factors | `branch`, `rebase`, `rebase-conflict-resolution`, `conflict-resolution-bfc`, `rebased-bic` |
+| factors | `branch`, `rebase`, `rebase-conflict-resolution`, `conflict-resolution-bfc`, `origin-vs-direct` |
 | oracle | default: `exact_set`; required `r1`; related origins `f1`; related but not correct `f2` · `origin-aware`: `relaxed_with_related`; required `r1`; acceptable `f1` (credit 0.5); related but not correct `f2` · BFC `r2` |
 | defeats | none (a control: every declared cheap rule may solve it) |
 | graph features | 2 branches; rebase `r1`, `r2`; 2 BICs; origin faults; 1 evaluation variant (`origin-aware`) |

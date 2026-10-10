@@ -12,8 +12,7 @@ meta:
   - branch
   - cherry-pick
   - release-branch
-  - direct-bic
-  - origin-bic
+  - origin-vs-direct
   difficulty: easy
   status: active
   tier: control

@@ -8,7 +8,7 @@
 | status | `active` |
 | difficulty | `hard` |
 | language | `java` |
-| factors | `root-cause` |
+| factors | `root-cause-not-in-diff` |
 | oracle | `exact_set`; required `c1` · BFC `c2` |
 <!-- /szzbench:header -->
 

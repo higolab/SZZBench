@@ -8,7 +8,7 @@
 | status | `active` |
 | difficulty | `easy` |
 | language | `java` |
-| factors | `multi-bfc`, `progressive-fix`, `same-bug`, `partial-fix`, `complete-fix` |
+| factors | `multi-bfc`, `progressive-fix`, `partial-fix`, `complete-fix` |
 | oracle | `exact_set`; required `c1` · BFCs `c2`, `c3` |
 | graph features | 2 BFCs; 2 fault sites |
 <!-- /szzbench:header -->
