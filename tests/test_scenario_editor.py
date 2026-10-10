@@ -259,6 +259,18 @@ def test_the_checks_warn_where_validate_refuses_the_statement(tmp_path):
     assert [finding["code"] for finding in _lint(_save_as_the_server_does(tmp_path, generated))["findings"]] == ["E311"]
 
 
+@pytest.mark.parametrize("typed", ["", "  \n"], ids=["empty", "blank"])
+def test_a_blank_missing_statement_writes_no_key_and_the_checks_say_validate_refuses_it(tmp_path, typed):
+    """The editor wrote `missing_statement: ""`, which E351 accepted until issue #237.  A blank
+    field writes no key, as a blank author field does, and the save is refused with E351."""
+    generated = _model(tmp_path, picks=("omission",), tier="control", missingStatement=typed)
+    assert "missing_statement" not in yaml.safe_load(generated["yaml"])["bugs"][0]["fault"]
+    assert "WARN: missing statement is empty (validate refuses an omission without one, E351)" in generated["checks"]
+    report = _lint(_save_as_the_server_does(tmp_path, generated))
+    assert [(f["code"], f["location"]) for f in report["findings"] if f["severity"] == "ERROR"] == \
+        [("E351", "bugs[0].fault.missing_statement")]
+
+
 @pytest.mark.parametrize("tail", ["", "}\n"], ids=["method", "method-and-closing-brace"])
 def test_a_source_with_an_indented_first_line_loads_back_as_typed(tmp_path, tail):
     """A plain ``|`` block takes its indentation from its first line that is not

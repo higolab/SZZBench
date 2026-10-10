@@ -5,8 +5,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 import re
+import reprlib
 
-from .evaluator import _commit_level_policy, _selected_evaluation_variant, classify_prediction
+from .evaluator import (_commit_level_policy, _is_int, _number_value, _selected_evaluation_variant, _string_list,
+                        classify_prediction)
 from .findings import ValidationResult
 from .graph_operations import (PATH_FIELDS_BY_OPERATION, REQUIRED_FIELDS_BY_OPERATION, SUPPORTED_GRAPH_OPERATIONS,
                                WRITTEN_PATH_FIELDS_BY_OPERATION, decode_content_base64)
@@ -18,10 +20,10 @@ from .gitutils import (GitError, commit_branch, format_timestamp, history_graph,
 from .operations import OperationError, resolve_line_ending, type_label
 from .paths import PathValidationError, file_system_key, validate_repo_relative_path
 from .policies import SUPPORTED_EVALUATION_POLICIES
-from .validator import (COMMIT_MESSAGE_RULE, check_commit_date_order, check_commit_metadata, check_git_control_files,
-                        check_scheduled_dates, commit_message_problem, lint_author_coincidence,
-                        lint_defeats, lint_difficulty, lint_factors, lint_leakage, lint_readme_header, lint_tier,
-                        timestamp_problem)
+from .validator import (COMMIT_MESSAGE_RULE, LINT_INPUT_ERRORS, check_commit_date_order, check_commit_metadata,
+                        check_git_control_files, check_scheduled_dates, commit_message_problem,
+                        lint_author_coincidence, lint_defeats, lint_difficulty, lint_factors, lint_leakage,
+                        lint_readme_header, lint_tier, timestamp_problem)
 
 GRAPH_ID_RE = re.compile(r"^SZZG-\d{4}$")
 
@@ -72,6 +74,9 @@ APPROXIMATE_OPERATIONS: dict[str, tuple[str, str]] = {
 
 # expected_szz.commit_level lists that may name an origin BIC.
 EXPECTED_SZZ_COMMIT_LISTS = ("required", "acceptable_related", "related_origins", "related_but_not_correct", "relevant")
+
+#: The keys of a fault or fix location that hold a statement (GE104, issue #237).
+LOCATION_STATEMENT_KEYS = ("statement", "added_statement", "removed_statement", "missing_statement")
 
 
 def validate_graph_scenario_file(
@@ -230,6 +235,10 @@ def validate_graph_static(data: dict[str, Any], *, scenario_path: Path | None = 
             if ref is not None:
                 if not isinstance(ref, str):
                     result.error("GE042", f"{ref_key} must be a string when present.", f"{loc}.{ref_key}")
+                elif ref == cid:
+                    # the commit is registered above, so it passed as "earlier" (issue #159; GE047 tests it)
+                    result.error("GE043", f"{ref_key} names commit '{cid}' itself; it must name an earlier commit.",
+                                 f"{loc}.{ref_key}")
                 elif ref not in commit_by_id:
                     result.error("GE043", f"{ref_key} refers to unknown or later commit '{ref}'.", f"{loc}.{ref_key}")
         _validate_rewrite_references(commit, cid, commit_by_id, result, loc)
@@ -303,9 +312,9 @@ def validate_graph_static(data: dict[str, Any], *, scenario_path: Path | None = 
             _validate_commit_ref_entry(entry, commit_by_id, result, f"{loc}.bug_fixing_commits[{j}]", "BFC")
 
         for j, fault in enumerate(graph_faults(bug)):
-            _validate_location_entry(fault, commit_by_id, result, f"{loc}.faults[{j}]", require_statement=False)
+            _validate_location_entry(fault, commit_by_id, result, f"{loc}.faults[{j}]", kind="fault")
         for j, fix in enumerate(graph_fixes(bug)):
-            _validate_location_entry(fix, commit_by_id, result, f"{loc}.fixes[{j}]", require_statement=False)
+            _validate_location_entry(fix, commit_by_id, result, f"{loc}.fixes[{j}]", kind="fix")
 
     _validate_expected_szz(data.get("expected_szz"), commit_by_id, result)
     _warn_inferred_commit_level(data, result)
@@ -437,7 +446,7 @@ def _validate_commit_ref_entry(entry: Any, commit_by_id: dict[str, dict[str, Any
         result.error("GE093", f"{label} refers to unknown commit '{cid}'.", loc)
 
 
-def _validate_location_entry(entry: dict[str, Any], commit_by_id: dict[str, dict[str, Any]], result: ValidationResult, loc: str, *, require_statement: bool) -> None:
+def _validate_location_entry(entry: dict[str, Any], commit_by_id: dict[str, dict[str, Any]], result: ValidationResult, loc: str, *, kind: str) -> None:
     commit = entry.get("commit")
     if not isinstance(commit, str):
         result.error("GE100", "Location entry must contain commit.", f"{loc}.commit")
@@ -452,8 +461,24 @@ def _validate_location_entry(entry: dict[str, Any], commit_by_id: dict[str, dict
                 result.error("GE102", f"Invalid file path '{file_value}': {exc}", f"{loc}.file")
         else:
             result.error("GE103", "Location file must be a string when present.", f"{loc}.file")
-    if require_statement and not isinstance(entry.get("statement"), str):
-        result.error("GE104", "Location entry requires a statement.", f"{loc}.statement")
+    # A statement stays optional (a binary change, a deleted file, an omission), but one that is
+    # there is text: verify-graph skipped the checks of an empty or non-string one, and found a
+    # blank one anywhere (issue #237, the rule of E301 / E311)
+    for key in LOCATION_STATEMENT_KEYS:
+        if key not in entry:
+            continue
+        value = entry[key]
+        if not isinstance(value, str):
+            result.error("GE104", f"{kind} {key} must be a string, not {type_label(value)}.", f"{loc}.{key}")
+        elif not value.strip():
+            result.error("GE104", f"{kind} {key} is empty; write the statement.", f"{loc}.{key}")
+    if kind == "fault" and entry.get("change_type") == "omission":
+        # the counterparts of E351 and W350
+        if "missing_statement" not in entry:
+            result.error("GE104", "fault is an omission, but missing_statement is missing; write the statement "
+                         "the fault omits.", f"{loc}.missing_statement")
+        if "statement" in entry:
+            result.warning("GW106", "fault is an omission, but statement is present.", f"{loc}.statement")
     if "entity" in entry and not isinstance(entry.get("entity"), dict):
         result.error("GE105", "Location entity must be an object when present.", f"{loc}.entity")
 
@@ -588,8 +613,9 @@ def _validate_oracle_lists(commit_level: dict[str, Any], commit_by_id: dict[str,
                            result: ValidationResult, loc: str) -> None:
     """The commit lists of one oracle, ``commit_level`` or a variant's: GW130
     hands either to the evaluator, which reads every one of them (PR #124
-    review: ``acceptable_related: 5`` was neither checked nor survivable)."""
-    for key in ["required", "relevant", "related_origins", "related_but_not_correct"]:
+    review: ``acceptable_related: 5`` was neither checked nor survivable).
+    ``known_distractors`` too: an unknown id never matched a prediction (issue #159)."""
+    for key in ["required", "relevant", "related_origins", "related_but_not_correct", "known_distractors"]:
         _validate_commit_list(commit_level.get(key), commit_by_id, result, f"{loc}.{key}")
     acceptable = commit_level.get("acceptable_related")
     if acceptable is not None and not isinstance(acceptable, list):
@@ -602,6 +628,49 @@ def _validate_oracle_lists(commit_level: dict[str, Any], commit_by_id: dict[str,
             cid = item.get("commit")
             if isinstance(cid, str) and cid not in commit_by_id:
                 result.error("GE121", f"expected_szz acceptable_related refers to unknown commit '{cid}'.", f"{loc}.acceptable_related[{i}].commit")
+            credit = item.get("credit")
+            if credit is not None and _number_value(credit) is None:
+                result.error("GE131", f"acceptable_related credit must be a number, not {_value_label(credit)}; "
+                             "the evaluator would count 0.", f"{loc}.acceptable_related[{i}].credit")
+    _validate_oracle_values(commit_level, result, loc)
+
+
+def _value_label(value: Any) -> str:
+    """A value as GE131 names it: a boolean in its YAML spelling, anything else shortened."""
+    if isinstance(value, bool):
+        return f"the boolean {str(value).lower()}"
+    return reprlib.repr(value)
+
+
+def _validate_oracle_values(commit_level: dict[str, Any], result: ValidationResult, loc: str) -> None:
+    """GE131 and GE132: the values of one oracle that are not commit lists, read as the evaluator reads them.
+
+    The evaluator ignores what it cannot read with a note at every evaluation; a
+    boolean passed for an integer, so ``status_k: true`` decided a ``top_k`` oracle
+    at the largest ``k`` instead of 1 (issue #146).  ``required`` beside
+    ``expect_no_bic: true`` is resolved by ignoring the flag (issue #159).
+    """
+    k_values = commit_level.get("k_values")
+    if k_values is not None and not isinstance(k_values, list):
+        result.error("GE131", f"k_values must be a list of positive integers, not {type_label(k_values)}; the "
+                     "evaluator would ignore it.", f"{loc}.k_values")
+    for i, k in enumerate(k_values if isinstance(k_values, list) else []):
+        if not (_is_int(k) and k > 0):
+            result.error("GE131", f"k_values entries must be positive integers, not {_value_label(k)}; the "
+                         "evaluator would ignore it.", f"{loc}.k_values[{i}]")
+    status_k = commit_level.get("status_k")
+    if status_k is not None and not (_is_int(status_k) and status_k > 0):
+        result.error("GE131", f"status_k must be a positive integer, not {_value_label(status_k)}; the evaluator "
+                     "would ignore it and decide at the largest of k_values (1 without them).", f"{loc}.status_k")
+    minimum = commit_level.get("minimum_required")
+    if minimum is not None and not (_is_int(minimum) and minimum >= 0):
+        result.error("GE131", f"minimum_required must be a non-negative integer, not {_value_label(minimum)}; the "
+                     "evaluator would ignore it.", f"{loc}.minimum_required")
+    required = _string_list(commit_level.get("required"))
+    if commit_level.get("expect_no_bic") is True and required:
+        result.error("GE132", f"expect_no_bic is true, but required names {', '.join(required)}: an intentionally "
+                     "empty oracle has no required commits. The evaluator would keep required and ignore "
+                     "expect_no_bic, with a note at every evaluation; remove one of the two.", f"{loc}.expect_no_bic")
 
 
 def _validate_commit_list(value: Any, commit_by_id: dict[str, dict[str, Any]], result: ValidationResult, loc: str) -> None:
@@ -1096,7 +1165,11 @@ def _lint_origin_coverage(bugs: list[dict[str, Any]], data: dict[str, Any], resu
     mentioned = _expected_szz_commit_ids(expected)
     try:
         default = _commit_level_policy(data, "advanced-scenarios", None)
-    except Exception:                                   # a malformed oracle is other checks' business
+    except LINT_INPUT_ERRORS as exc:
+        # GW130 has asked the same of the evaluator, so this is a safety net; a lint
+        # that cannot run says so rather than passing (issue #161)
+        result.warning("GW450", f"the origin lint could not resolve the default oracle ({exc}); GW450-GW453 "
+                       "were not checked.", "expected_szz")
         return
     required = set(default.required)
     related_origins = set(default.related_origins)
@@ -1129,7 +1202,9 @@ def _lint_origin_coverage(bugs: list[dict[str, Any]], data: dict[str, Any], resu
         return
     try:
         variant = _commit_level_policy(data, "advanced-scenarios", "origin-aware")
-    except Exception:
+    except LINT_INPUT_ERRORS as exc:
+        result.warning("GW453", f"the origin lint could not resolve the 'origin-aware' variant ({exc}); GW453 "
+                       "was not checked.", "expected_szz.evaluation_variants")
         return
     scored = classify_prediction(variant, sorted(required | set(origins)))
     if scored.status != "PASS":

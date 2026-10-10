@@ -400,7 +400,11 @@ export function generateScenarioYaml(state: AppState): string {
   lines.push(`        signature: ${yamlScalar(state.entitySignature)}`);
   if (state.faultType === 'omission') {
     lines.push('      change_type: "omission"');
-    lines.push(...statementLines('missing_statement', state.missingStatement, 6));
+    // A blank field writes no key, as a blank author field does: validate refuses an
+    // omission without a missing statement (E351), and the checks below say so (issue #237)
+    if (state.missingStatement.trim()) {
+      lines.push(...statementLines('missing_statement', state.missingStatement, 6));
+    }
   } else {
     lines.push(...statementLines('statement', state.faultStatement, 6));
     lines.push('      change_type: "line_modification"');
@@ -511,7 +515,7 @@ export function localValidate(state: AppState): string[] {
     else messages.push(`WARN: fix statement does not appear in BFC version${exactly}`);
   } else {
     if (state.missingStatement.trim()) messages.push('OK: missing statement is set');
-    else messages.push('WARN: missing statement is empty');
+    else messages.push('WARN: missing statement is empty (validate refuses an omission without one, E351)');
     if (state.addedStatement && bfcFile.includes(lf(state.addedStatement))) messages.push('OK: added statement appears in BFC version');
     else messages.push(`WARN: added statement does not appear in BFC version${exactly}`);
   }

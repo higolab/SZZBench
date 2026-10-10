@@ -23,7 +23,9 @@ per-fix checks; commit-level scoring ignores it.
 The file is UTF-8, with or without a byte-order mark; a file that is not UTF-8
 is a loading error that gives the first byte that is not, and its offset
 (issue #137). A prediction record names a scenario and one or more inducing commits, each
-optionally with a `rank` (integer, 1 = best) and a `confidence`. The value of
+optionally with a `rank` (integer, 1 = best) and a `confidence` (a number). A
+JSON `true` or `false` is neither: it was read as 1 or 0 until issue #146, so
+`rank: true` sorted first. The value of
 `inducing_commit` is normalized against the scenario's `commit-map.json`:
 
 | accepted spelling | example | normalized to |
@@ -126,6 +128,18 @@ Keys understood inside `commit_level` (base or variant):
 | `minimum_required` | non-negative int | threshold for `partial_credit` |
 | `expect_no_bic` | boolean | intentionally empty oracle (section 6) |
 | `known_distractors` | list of ids | diagnostic bucket (section 5) |
+
+A boolean is not an integer or a number in this table, although Python's `bool`
+is a kind of `int`. Until issue #146, `k_values: [true, 3]` reported a `hit_at`
+key `"True"`, `minimum_required: true` was reported as `true` and applied as 1,
+and `credit: true` counted 1.0; only `status_k: true` was ignored, so a `top_k`
+oracle meant to decide at 1 decided at the largest `k`. The evaluator now
+ignores each value it cannot read, with a note: a `k_values` entry is dropped
+(the `hit_at` keys are the declared positive integers), `status_k` and
+`minimum_required` are ignored, and a `credit` counts 0. `validate-graph`
+reports such a value (GE131), so the notes do not fire on a validated scenario.
+It also reports an unknown id in `known_distractors` (GE124-GE126) and a
+non-empty `required` beside `expect_no_bic: true` (GE132, section 6).
 
 ### 1.4 Missing `required`: inference from bug metadata
 
@@ -262,7 +276,7 @@ A record that names a scenario has a **loading error** when it has
   (`README.md`, under `evaluate`), so put every prediction in the list;
 - a prediction that is not a JSON object; that has no inducing commit, or one
   that is not a non-empty string; that has a `rank` that is not an integer or a
-  `confidence` that is not a number; or that supplies a fix reference that is
+  `confidence` that is not a number, a boolean included; or that supplies a fix reference that is
   not a non-empty string (section 1.5).
 
 Such a record is not read at all, and its scenario is `invalid` even when its
@@ -531,6 +545,8 @@ record (section 1.6). Every known prediction is a false positive and fails;
 unknown predictions fail as under any policy, and so do a tool error and a
 missing record. If a scenario sets `expect_no_bic: true` *and* a non-empty `required`,
 the flag is ignored with a note (the two are contradictory; `required` wins).
+`validate-graph` reports the pair as GE132, once, rather than a note at every
+evaluation (issue #159).
 
 Because every known prediction is a false positive, allowances make no sense
 under this policy: when `expect_no_bic` is effective, `acceptable_related`,
