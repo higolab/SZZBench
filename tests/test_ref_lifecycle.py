@@ -22,11 +22,11 @@ import pytest
 import yaml
 
 import szzbench.graph_generator as graph_generator
-import szzbench.graph_scenario as graph_scenario
 from support import git, git_env, scenario_file
 from szzbench.findings import ValidationResult
 from szzbench.graph_generator import GraphGenerationError, generate_graph_repository
 from szzbench.graph_validator import validate_graph_scenario_file, validate_graph_static
+from szzbench.paths import ref_name_problem
 
 ROOT = Path(__file__).resolve().parents[1]
 SZZG_0072 = yaml.safe_load(scenario_file("SZZG-0072").read_text(encoding="utf-8"))
@@ -176,12 +176,13 @@ MORE_CASES = {
                                                                [("GE158", "graph.ref_lifecycle.tags[0].name")]),
     "a tag named like the deleted branch": ({"delete_branches": ["feature"], "tags": [{"name": "feature", "commit": "f2"}]},
                                             [("GE158", "graph.ref_lifecycle.tags[0].name")]),
-    # PR #231 review: names macOS stores as one ref file, and a lock file in capitals
+    # PR #231 review: names macOS stores as one ref file, and a lock file in capitals.  A name in another
+    # normalization than NFC is GE157 since issue #239: Git on macOS converts it to NFC itself
     "two tags in two Unicode normalizations": ({"tags": [{"name": CAFE_NFC, "commit": "c0"}, {"name": CAFE_NFD, "commit": "c3"}]},
-                                               [("GE158", "graph.ref_lifecycle.tags[1].name")]),
+                                               [("GE157", "graph.ref_lifecycle.tags[1].name")]),
     "a tag below another in another normalization": ({"tags": [{"name": CAFE_NFC, "commit": "c0"},
                                                                {"name": CAFE_NFD + "/rc", "commit": "c3"}]},
-                                                     [("GE158", "graph.ref_lifecycle.tags[1].name")]),
+                                                     [("GE157", "graph.ref_lifecycle.tags[1].name")]),
     "two tags apart by a code point HFS+ ignores": ({"tags": [{"name": "v1", "commit": "c0"}, {"name": "v1\u200c", "commit": "c3"}]},
                                                     [("GE158", "graph.ref_lifecycle.tags[1].name")]),
     "a tag ending in .LOCK": ({"tags": [{"name": "v1.LOCK", "commit": "c0"}]}, [("GE157", "graph.ref_lifecycle.tags[0].name")]),
@@ -287,7 +288,7 @@ TAG_NAMES = [
     "@", "a@b", "@a", "a@", "@@", "{@", "@/x", "a{b", "a}b", "a]b", "a#b", "a$b", "a%b", "a&b", "a'b", 'a"b', "a(b)",
     "a+b", "a,b", "a;b", "a<b>", "a=b", "a|b", "a`b", "a!b", "a_b", "1", "a-", "a/-b", "x.lock.y", "lock", "a.lockx",
     "a-.lock-b", "x/lock", "FETCH_HEAD", "ORIG_HEAD", "refs/heads/main", "0123456789abcdef0123456789abcdef01234567",
-    "héllo", "日本語", "ä/ö", "emoji😀", " nbsp",
+    "héllo", "日本語", "ä/ö", "emoji😀",
     # refused
     "", " ", "v 1", "trailing ", " leading", "v\t1", "tab\there", "v\n1", "v\x01", "v\x1f", "v\x7f", "v~1", "v^1",
     "v:1", "v?1", "v*1", "v[1", "v\\1", "a..b", "..", ".", "...", ".v", "x/.y", "x/..", "a/./b", "a/../b", "v1.lock",
@@ -305,21 +306,23 @@ def test_tag_names_are_refused_exactly_where_git_check_ref_format_refuses_them(t
     mismatches = []
     for name in TAG_NAMES:
         git_accepts = _git(tmp_path, "check-ref-format", f"refs/tags/{name}").returncode == 0
-        if git_accepts != (graph_scenario.tag_name_problem(name) is None):
-            mismatches.append((name, "git accepts" if git_accepts else "git refuses", graph_scenario.tag_name_problem(name)))
+        if git_accepts != (ref_name_problem(name, "tag") is None):
+            mismatches.append((name, "git accepts" if git_accepts else "git refuses", ref_name_problem(name, "tag")))
     assert mismatches == []
-    assert sum(graph_scenario.tag_name_problem(name) is None for name in TAG_NAMES) >= 40     # both kinds are compared
+    assert sum(ref_name_problem(name, "tag") is None for name in TAG_NAMES) >= 40     # both kinds are compared
 
 
 #: Names Git accepts as refs/tags/<name> that SZZBench refuses: on macOS and Windows their file is the lock
-#: file of another tag (v1.LOCK is refs/tags/v1.lock), so a tag created later fails with "File exists".
+#: file of another tag (v1.LOCK is refs/tags/v1.lock), so a tag created later fails with "File exists".  The
+#: other names Git accepts and SZZBench refuses (a whitespace character of Unicode such as "\u00a0nbsp", a
+#: component longer than a file name, NFD, HEAD in another letter case) are those of test_branch_names.
 PORTABLE_REFUSALS = ["v1.LOCK", "a/b.Lock", "x.LoCk", CAFE_NFC + ".LOCK", "rel/v2.lOcK"]
 
 
 def test_a_lock_suffix_in_any_letter_case_is_refused_although_git_accepts_it(tmp_path):
     for name in PORTABLE_REFUSALS:
         assert _git(tmp_path, "check-ref-format", f"refs/tags/{name}").returncode == 0, name
-        assert "ends with '.lock' in another spelling" in graph_scenario.tag_name_problem(name), name
+        assert "ends with '.lock' in another spelling" in ref_name_problem(name, "tag"), name
 
 
 def test_git_tag_creates_every_name_szzbench_accepts(tmp_path):
@@ -327,15 +330,15 @@ def test_git_tag_creates_every_name_szzbench_accepts(tmp_path):
     assert _git(tmp_path, "init", "-q", "--template=").returncode == 0
     assert _git(tmp_path, "-c", "user.name=a", "-c", "user.email=a@example.com",
                 "commit", "-q", "--allow-empty", "-m", "c0").returncode == 0
-    for name in [n for n in TAG_NAMES if graph_scenario.tag_name_problem(n) is None]:
+    for name in [n for n in TAG_NAMES if ref_name_problem(n, "tag") is None]:
         created = _git(tmp_path, "tag", name, "HEAD")
         assert created.returncode == 0, (name, created.stderr)
         assert _git(tmp_path, "tag", "-d", name).returncode == 0
     for name in ("-d", "-v1", "--list"):
         assert _git(tmp_path, "check-ref-format", f"refs/tags/{name}").returncode == 0
-        assert "starts with '-'" in graph_scenario.tag_name_problem(name)
+        assert "starts with '-'" in ref_name_problem(name, "tag")
     # git tag HEAD: Git 2.50 refuses it, Git 2.39 creates refs/tags/HEAD; SZZBench refuses it everywhere
-    assert graph_scenario.tag_name_problem("HEAD") == "it is HEAD, which recent versions of git tag refuse"
+    assert ref_name_problem("HEAD", "tag") == "it is HEAD, which recent versions of git tag refuse"
 
 
 # --- the generator checks every entry before it changes a ref ---------------------------
@@ -393,20 +396,21 @@ def _with_branch(branch: str, lifecycle) -> dict:
 
 def test_a_tag_named_like_a_branch_in_another_normalization_is_an_error():
     """The review's verified repository: branch café (NFC) at c3, tag café (NFD) at c0, and git rev-parse café
-    resolved to the tag.  A tag in the branch's own spelling is the same error."""
-    for tag in (CAFE_NFD, CAFE_NFC):
+    resolved to the tag.  A tag in the branch's own spelling is the same error (GE158).  The NFD tag is GE157
+    since issue #239: Git on macOS converts the name to NFC (core.precomposeUnicode), the branch's spelling."""
+    for tag, code in ((CAFE_NFD, "GE157"), (CAFE_NFC, "GE158")):
         result = validate_graph_static(_with_branch(CAFE_NFC, {"tags": [{"name": tag, "commit": "c0"}]}))
-        assert _errors(result) == [("GE158", "graph.ref_lifecycle.tags[0].name")], tag
+        assert _errors(result) == [(code, "graph.ref_lifecycle.tags[0].name")], tag
     assert _errors(validate_graph_static(_with_branch(CAFE_NFC, {"tags": [{"name": "v1", "commit": "c0"}]}))) == []
 
 
 REVIEW_INPUTS = {
     "duplicate in two normalizations": (_with_lifecycle({"tags": [{"name": CAFE_NFC, "commit": "c0"},
-                                                                  {"name": CAFE_NFD, "commit": "r2"}]}), "GE158"),
+                                                                  {"name": CAFE_NFD, "commit": "r2"}]}), "GE157"),
     "prefix in two normalizations": (_with_lifecycle({"tags": [{"name": CAFE_NFC, "commit": "c0"},
-                                                               {"name": CAFE_NFD + "/rc", "commit": "r2"}]}), "GE158"),
+                                                               {"name": CAFE_NFD + "/rc", "commit": "r2"}]}), "GE157"),
     "tag like a branch in another normalization": (_with_branch(CAFE_NFC, {"tags": [{"name": CAFE_NFD, "commit": "c0"}]}),
-                                                   "GE158"),
+                                                   "GE157"),
     ".LOCK before the tag it would lock": (_with_lifecycle({"tags": [{"name": "v1.LOCK", "commit": "c0"},
                                                                      {"name": "v1", "commit": "r2"}]}), "GE157"),
 }

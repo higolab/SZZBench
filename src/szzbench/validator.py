@@ -10,7 +10,7 @@ import re
 from .findings import ValidationResult
 from .operations import (SUPPORTED_OPERATIONS, FUTURE_OPERATIONS, OperationError, apply_operation_to_memory,
                          find_all_occurrences, resolve_encoding, resolve_line_ending, type_label)
-from .paths import PathValidationError, file_path_conflict, file_system_key, validate_repo_relative_path
+from .paths import PathValidationError, file_path_conflict, file_system_key, ref_name_problem, validate_repo_relative_path
 from .retired_ids import read_retired_ids
 from .scenario import load_yaml
 from .gitutils import (_AUTHOR_RE, TIMESTAMP_KEYS, GitError, parse_timestamp, resolve_commit_metadata,
@@ -190,6 +190,22 @@ def author_problem(value: Any) -> str | None:
     if not match.group("email").strip():
         return f"{value!r} has an empty e-mail address"
     return None
+
+
+def default_branch_problem(repository: Any) -> str | None:
+    """E015's message for a ``repository.default_branch`` generation cannot create, or None (issue #239).
+
+    The rule of the graph suite's branch names (GE023, ``paths.ref_name_problem``).
+    ``validate`` asks it, and ``generate`` before ``git init``: the field was
+    checked for its type only, and a name Git refuses failed ``git branch -M``
+    with Git's message (``unknown switch`` for ``-x``).  A value that is not a
+    string is E010's.
+    """
+    name = repository.get("default_branch") if isinstance(repository, dict) else None
+    if not isinstance(name, str):
+        return None
+    problem = ref_name_problem(name, "branch")
+    return None if problem is None else f"repository.default_branch {name!r} is not a valid branch name: {problem}."
 
 
 def check_scheduled_dates(data: dict[str, Any], result: ValidationResult, *, code: str, graph: bool = False) -> None:
@@ -507,6 +523,9 @@ def validate_static(data: dict[str, Any], *, scenario_path: Path | None = None) 
                 # default_branch: 1 ended generate in a TypeError traceback from git (issue #152)
                 result.error("E010", f"repository.{key} must be a string, not {type_label(repository[key])}.",
                              f"repository.{key}")
+        problem = default_branch_problem(repository)
+        if problem is not None:
+            result.error("E015", problem, "repository.default_branch")
         if "base_date" in repository:
             problem = timestamp_problem(repository["base_date"])
             if problem is not None:

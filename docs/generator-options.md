@@ -452,6 +452,29 @@ For commits that declare `rebase_of` (or `cherry_pick_of` / `backport_of`).
 
 ### A commit's `branch` and its first parent (*graph*)
 
+A commit without `branch`, or with a blank `branch:` (YAML null), is on the
+default branch, `repository.default_branch` (`main` without the key). An empty
+`branch: ""` is an error (GE023), not the default branch: until issue #239 the
+validator, the generator and the verifiers read an empty name in three ways,
+and `gitutils.commit_branch` is now the one reading. A branch name, and the
+default branch of either suite (E015, GE023), is one Git accepts
+(`git check-ref-format --branch`, which also refuses `HEAD` and a name that
+starts with `-`) and one every platform keeps as written: in Unicode
+normalization form C (Git on macOS converts the name it is given to NFC), with
+no component that ends with `.lock` in another letter case, and neither `HEAD`
+in another letter case nor `@`; with no whitespace character (Git refuses the
+space and accepts U+00A0 and the other spaces of Unicode, which SZZBench cannot
+read back from Git's list of refs); and with no component longer than a file
+name may be: 255 bytes of UTF-8 (Linux), or of UTF-16 code units of the
+decomposed name (HFS+), whichever is more, and 250 for the last component,
+which Git writes through a lock file `<name>.lock`. The branch names of one scenario, the default
+branch included, are compared as macOS compares the files Git stores refs in
+(letter case ignored, as for file names above): `Feature` beside `feature`,
+or `feature` beside `feature/x`, is an error (GE024), since macOS made one
+branch of the first pair and Git refuses the second. The generators check
+both rules before `git init`, so a name never reaches `git branch -M` or
+`git checkout -B`.
+
 The generator keeps one branch per `branch` name, and **a branch's tip is the
 last commit declared on it**. A commit whose branch does not exist yet creates
 the branch at its first parent. A commit whose branch exists and whose first
@@ -520,7 +543,8 @@ graph:
   letter case and Unicode normalization, as macOS compares the files Git
   stores refs in (Windows ignores letter case), and a component that ends with
   `.lock` in any spelling is refused, since its file would be another tag's
-  lock file there.
+  lock file there. The name rule is that of branch names (above; issue #239),
+  `@` aside.
   Until issue #229 only the generator read the section: a value that was not
   an object, or a misspelt key, was ignored, and unknown branch names or
   commit ids were errors at generation only.

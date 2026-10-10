@@ -6,7 +6,8 @@ from typing import Any
 import difflib
 
 from .operations import type_label
-from .paths import file_system_key
+from .gitutils import scenario_default_branch
+from .paths import file_system_key, ref_name_problem, ref_names_clash
 from .scenario import load_yaml
 from .findings import ValidationResult
 
@@ -114,62 +115,74 @@ def graph_fixes(bug: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 # ---------------------------------------------------------------------------
+# Branch names (issue #239)
+# ---------------------------------------------------------------------------
+
+def branch_name_problems(scenario: dict[str, Any]) -> list[tuple[str, str, str]]:
+    """``(code, location, message)`` for every branch name generation cannot create as written (GE023, GE024).
+
+    The names are ``repository.default_branch`` (``main`` without the key)
+    and every commit's ``branch``, read as ``gitutils.commit_branch`` reads
+    them: without the key, or with a blank value (null), a commit is on the
+    default branch; an empty string is a name, and not a valid one.  Each
+    name is checked once, where the scenario first names it: GE023 when it is
+    not a branch name the generator can create (``paths.ref_name_problem``),
+    GE024 when it cannot sit beside a name before it
+    (``paths.ref_names_clash``): the two differ only in letter case (or in
+    code points HFS+ ignores; a name not in NFC is GE023 already), which
+    macOS (and Windows, for letter case) reads as one name, or one is a
+    directory of the other.  A value that is not a
+    string is GE022's or GE035's.  ``validate-graph`` and the generator ask
+    this, the generator before ``git init`` (issue #239): both fields were
+    checked for their type only, a name Git refuses stopped generation with
+    Git's message, and on macOS ``Feature`` beside ``feature`` became one
+    branch while verification passed.  The tag names of
+    ``graph.ref_lifecycle`` are compared with these names by GE158.
+    """
+    named: list[tuple[str, Any]] = [("repository.default_branch", scenario_default_branch(scenario))]
+    commits = scenario.get("commits") if isinstance(scenario.get("commits"), list) else []
+    for i, commit in enumerate(commits):
+        if isinstance(commit, dict) and commit.get("branch") is not None:
+            named.append((f"commits[{i}].branch", commit["branch"]))
+    problems: list[tuple[str, str, str]] = []
+    seen: set[str] = set()
+    valid: list[tuple[str, str]] = []              # (name, where it is first named), for the clashes
+    for where, name in named:
+        if not isinstance(name, str) or name in seen:
+            continue
+        seen.add(name)
+        problem = ref_name_problem(name, "branch")
+        if problem is not None:
+            hint = "; without the key the commit is on the default branch" if name == "" and where != named[0][0] else ""
+            problems.append(("GE023", where, f"{where} {name!r} is not a valid branch name: {problem}{hint}."))
+            continue
+        for other, other_where in valid:
+            clash = ref_names_clash(name, other)
+            if clash is None:
+                continue
+            them = (f"the default branch '{other}'" if other_where == named[0][0]
+                    else f"the branch '{other}' ({other_where})")
+            if clash == "spelling":
+                spelt = "" if (name + other).isascii() else f" (spelt {name!a} and {other!a})"
+                problems.append(("GE024", where, f"{where} '{name}' differs only in letter case or Unicode normalization "
+                                 f"from {them}{spelt}: macOS (and Windows, for letter case) stores both as one ref, so "
+                                 "generation would depend on the platform."))
+            else:
+                problems.append(("GE024", where, f"{where} '{name}' and {them} cannot both be branches: Git stores a "
+                                 "ref as a file, and the one would be a directory of the other."))
+            break
+        else:
+            valid.append((name, where))
+    return problems
+
+
+# ---------------------------------------------------------------------------
 # graph.ref_lifecycle (issue #229)
 # ---------------------------------------------------------------------------
 
 #: The keys of ``graph.ref_lifecycle``, and of each of its tags.
 REF_LIFECYCLE_KEYS = ("delete_branches", "tags")
 REF_LIFECYCLE_TAG_KEYS = ("name", "commit")
-
-#: The characters Git refuses anywhere in a ref name, besides the control
-#: characters (refs.c ``refname_disposition``; ``*`` only outside refspec patterns).
-_REF_NAME_FORBIDDEN = {" ": "a space", "~": "'~'", "^": "'^'", ":": "':'", "?": "'?'", "*": "'*'", "[": "'['",
-                       "\\": "a backslash", "\x7f": "the control character DEL"}
-
-
-def tag_name_problem(name: str) -> str | None:
-    """Why ``git tag <name>`` refuses ``name``, or None when it accepts it.
-
-    The rules of ``git check-ref-format refs/tags/<name>`` (refs.c
-    ``check_refname_format``), and the two names ``git tag`` refuses on top of
-    them: one that starts with ``-``, which it would read as an option, and
-    ``HEAD``, which Git 2.50 refuses and Git 2.39 accepts.
-    """
-    if name == "":
-        return "it is empty"
-    try:
-        name.encode("utf-8")
-    except UnicodeEncodeError:
-        return "it is not valid UTF-8"
-    if name.startswith("-"):
-        return "it starts with '-', which git tag reads as an option"
-    if name == "HEAD":
-        return "it is HEAD, which recent versions of git tag refuse"
-    for char in name:
-        if char in _REF_NAME_FORBIDDEN:
-            return f"it contains {_REF_NAME_FORBIDDEN[char]}"
-        if ord(char) < 0x20:
-            return f"it contains the control character {char!r}"
-    if ".." in name:
-        return "it contains '..'"
-    if "@{" in name:
-        return "it contains '@{'"
-    components = name.split("/")
-    if "" in components:
-        return "it has an empty component (a '/' at its start or end, or '//')"
-    for component in components:
-        if component.startswith("."):
-            return f"its component '{component}' starts with '.'"
-        if component.endswith(".lock"):
-            return f"its component '{component}' ends with '.lock'"
-        if file_system_key(component).endswith(".lock"):
-            # Git accepts v1.LOCK, but on macOS and Windows its file is v1's lock file, so a
-            # later tag v1 fails with Git's "File exists" after the first one was created (PR #231 review)
-            return (f"its component '{component}' ends with '.lock' in another spelling, which a file system that "
-                    "ignores letter case or Unicode normalization (macOS; Windows ignores case) reads as Git's lock file")
-    if name.endswith("."):
-        return "it ends with '.'"
-    return None
 
 
 def _non_text_label(value: Any) -> str:
@@ -260,7 +273,7 @@ def ref_lifecycle_problems(
                                  "commit of the scenario (declared, or generated by commit_generator)."))
             if not isinstance(name, str):
                 continue
-            problem = tag_name_problem(name)
+            problem = ref_name_problem(name, "tag")
             if problem is not None:
                 problems.append(("GE157", f"{entry}.name", f"{entry}.name {name!r} is not a tag name Git accepts: "
                                  f"{problem}."))
@@ -287,11 +300,11 @@ def _tag_name_collision(name: str, earlier: list[tuple[int, str]], loc: str, bra
     for j, other in earlier:
         if other == name:
             return f"is the name of {loc}[{j}] as well; Git keeps one tag per name."
-        other_key = file_system_key(other)
-        if other_key == key:
+        clash = ref_names_clash(name, other)
+        if clash == "spelling":
             return (f"differs from {loc}[{j}].name '{other}' only in letter case or Unicode normalization: macOS "
                     "(and Windows, for letter case) stores both as one ref, so generation would depend on the platform.")
-        if key.startswith(other_key + "/") or other_key.startswith(key + "/"):
+        if clash == "directory":
             return (f"and {loc}[{j}].name '{other}' cannot both be tags: Git stores a ref as a file, and the one "
                     "would be a directory of the other.")
     matches = sorted(branch for branch in set(branches) if file_system_key(branch) == key)

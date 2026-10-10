@@ -7,11 +7,12 @@ from datetime import datetime, timezone
 
 from .cleaner import replaceable_output_problem
 from .findings import ValidationResult
-from .gitutils import GitError, commit_all, init_repo, json_safe_timestamp, resolve_commit_metadata
+from .gitutils import (GitError, commit_all, init_repo, json_safe_timestamp, resolve_commit_metadata,
+                       scenario_default_branch)
 from .manifest import write_manifest
 from .operations import OperationError, apply_operation_to_filesystem
 from .scenario import load_yaml
-from .validator import validate_scenario_file
+from .validator import default_branch_problem, validate_scenario_file
 from .verifier import verify_generated_repo
 
 class GenerationError(RuntimeError):
@@ -48,7 +49,15 @@ def generate_repository(scenario_path: Path, out_dir: Path, *, force: bool = Fal
     def log(msg: str) -> None:
         generation_log.append(msg)
     try:
-        branch = scenario.get("repository", {}).get("default_branch", "main")
+        # checked before git init, as validate checks it (E015): a name Git refuses failed
+        # `git branch -M` with Git's message, `-x` with "unknown switch" (issue #239)
+        problem = default_branch_problem(scenario.get("repository"))
+        if problem is not None:
+            error = f"{problem.rstrip('.')} (E015). Generation stopped before git init."
+            log(f"ERROR: {error}")
+            _record_failure(metadata_dir, generation_log, error)
+            raise GenerationError(error)
+        branch = scenario_default_branch(scenario)
         init_repo(repo_dir, branch)
         log(f"Initialized Git repository at {repo_dir}")
         for index, commit_spec in enumerate(scenario.get("commits", [])):

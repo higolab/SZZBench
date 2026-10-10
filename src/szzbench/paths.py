@@ -36,6 +36,165 @@ def file_system_key(name: str) -> str:
     return unicodedata.normalize("NFD", unicodedata.normalize("NFD", visible).casefold())
 
 
+#: The characters Git refuses anywhere in a ref name, besides the control
+#: characters (refs.c ``refname_disposition``; ``*`` only outside refspec patterns).
+_REF_NAME_FORBIDDEN = {" ": "a space", "~": "'~'", "^": "'^'", ":": "':'", "?": "'?'", "*": "'*'", "[": "'['",
+                       "\\": "a backslash", "\x7f": "the control character DEL"}
+
+#: The refs the generators create by name: branches (``git branch -M``, ``git checkout -B``,
+#: ``git checkout``) and the tags of ``graph.ref_lifecycle`` (``git tag``).
+REF_KINDS = ("branch", "tag")
+
+#: The longest file name the file systems take: 255 bytes of UTF-8 (Linux), 255 UTF-16 code units of the
+#: name as written (APFS) or of its decomposed form (HFS+).  Git stores a ref as a file, each component of
+#: its name a file name, and writes the ref through a lock file named as the last component and ``.lock``.
+FILE_NAME_MAX = 255
+_LOCK_SUFFIX = ".lock"
+_FILE_NAME_UNITS = "bytes in UTF-8 on Linux, UTF-16 code units on macOS, of the decomposed form on HFS+"
+
+
+def _file_name_length(component: str) -> tuple[int, str]:
+    """The length of ``component`` as the strictest file system counts it, and the unit (PR #243 review).
+
+    Linux counts the bytes of UTF-8; APFS counts the UTF-16 code units of the
+    name as written, never more than those bytes; HFS+ counts the UTF-16 code
+    units of the decomposed form (NFD), more than the bytes for a character
+    such as U+01D5 (two bytes, three code points once decomposed).
+    """
+    utf8 = len(component.encode("utf-8"))
+    hfs = len(unicodedata.normalize("NFD", component).encode("utf-16-le")) // 2
+    if hfs > utf8:
+        return hfs, "UTF-16 code units in its decomposed form, as HFS+ counts them"
+    return utf8, "bytes in UTF-8"
+
+
+def ref_name_problem(name: str, kind: str) -> str | None:
+    """Why the generators cannot create the ``kind`` ref ``name`` as written, or None (issues #229, #239).
+
+    ``kind`` is ``"branch"`` (``refs/heads/<name>``) or ``"tag"``
+    (``refs/tags/<name>``).  The rules are those of ``git check-ref-format``
+    (refs.c ``check_refname_format``), and what Git's commands and the file
+    systems of macOS add to them:
+
+    - a name that starts with ``-``, which ``git branch`` and ``git tag`` read
+      as an option (``git check-ref-format --branch`` refuses it too);
+    - ``HEAD``, which Git refuses as a branch, and Git 2.50 as a tag (Git 2.39
+      accepts that one);
+    - ``HEAD`` in another letter case (``head``), which Git accepts: macOS
+      (and Windows) stores it in the file of ``refs/heads/HEAD`` or
+      ``refs/tags/HEAD``, and Git then finds the name ``HEAD`` ambiguous, so
+      ``git checkout -b`` fails (``fatal: ambiguous object name: 'HEAD'``);
+    - a component that ends with ``.lock`` in another spelling (``v1.LOCK``),
+      which is the lock file of another ref there (PR #231 review);
+    - a name not in Unicode normalization form C: Git on macOS converts the
+      names it is given to NFC (``core.precomposeUnicode``, which ``git init``
+      sets there), so ``cafe`` with a combining accent became ``café`` with a
+      precomposed ``é`` there and stayed as written elsewhere;
+    - for a branch, ``@``: Git 2.50 reads ``git checkout @`` as ``HEAD`` and
+      stays on the current branch, which the generator then reset to the
+      branch's commit (Git 2.39 switches to the branch);
+    - a whitespace character other than the ASCII space Git refuses
+      (U+00A0 and the other spaces of Unicode): Git creates the ref, and
+      SZZBench reads the refs and ``HEAD`` back from Git's output split and
+      stripped at whitespace, so verification failed (PR #243 review);
+    - a component longer than a file name may be (:data:`FILE_NAME_MAX`,
+      counted by :func:`_file_name_length`), the last one less the
+      ``.lock`` of its lock file: Git failed with ``cannot lock ref`` after
+      ``git init`` (PR #243 review).
+
+    A test compares the rule with ``git check-ref-format`` on about a hundred
+    names, under Git 2.39 and 2.50.
+    """
+    if kind not in REF_KINDS:
+        raise ValueError(f"unknown ref kind {kind!r}")
+    if name == "":
+        return "it is empty"
+    try:
+        name.encode("utf-8")
+    except UnicodeEncodeError:
+        return "it is not valid UTF-8"
+    if name.startswith("-"):
+        return f"it starts with '-', which git {kind} reads as an option"
+    if name == "HEAD":
+        return "it is HEAD, which Git refuses as a branch name" if kind == "branch" else \
+            "it is HEAD, which recent versions of git tag refuse"
+    for char in name:
+        if char in _REF_NAME_FORBIDDEN:
+            return f"it contains {_REF_NAME_FORBIDDEN[char]}"
+        if ord(char) < 0x20:
+            return f"it contains the control character {char!r}"
+        if char.isspace():
+            # Git accepts U+00A0, U+2028 and the like; git_refs splits Git's list of refs at whitespace and
+            # HEAD is read stripped, so my\u00a0topic was generated and failed verification (PR #243 review)
+            return (f"it contains the whitespace character U+{ord(char):04X} {unicodedata.name(char, '')}".rstrip()
+                    + ", which Git accepts and SZZBench cannot read back from Git's list of refs "
+                      "(Git refuses the ASCII space)")
+    if ".." in name:
+        return "it contains '..'"
+    if "@{" in name:
+        return "it contains '@{'"
+    components = name.split("/")
+    if "" in components:
+        return "it has an empty component (a '/' at its start or end, or '//')"
+    for component in components:
+        if component.startswith("."):
+            return f"its component '{component}' starts with '.'"
+        if component.endswith(".lock"):
+            return f"its component '{component}' ends with '.lock'"
+        if file_system_key(component).endswith(".lock"):
+            # Git accepts v1.LOCK, but on macOS and Windows its file is v1's lock file, so a
+            # later tag v1 fails with Git's "File exists" after the first one was created (PR #231 review)
+            return (f"its component '{component}' ends with '.lock' in another spelling, which a file system that "
+                    "ignores letter case or Unicode normalization (macOS; Windows ignores case) reads as Git's lock file")
+    for index, component in enumerate(components):
+        # Git accepts a component of any length: "a" * 251 failed with "cannot lock ref" (File name too long)
+        # after git init, since the lock file a.....a.lock is longer than a file name may be (PR #243 review)
+        length, unit = _file_name_length(component)
+        which = "it is" if len(components) == 1 else (
+            "its last component is" if index == len(components) - 1 else f"its component {index + 1} is")
+        if index == len(components) - 1 and length > FILE_NAME_MAX - len(_LOCK_SUFFIX):
+            return (f"{which} too long for a file name: {length} {unit}, and Git writes the {kind} through a lock "
+                    f"file named as it and '{_LOCK_SUFFIX}'. A file name takes at most {FILE_NAME_MAX} "
+                    f"({_FILE_NAME_UNITS}), so the last component takes at most {FILE_NAME_MAX - len(_LOCK_SUFFIX)}")
+        if length > FILE_NAME_MAX:
+            return (f"{which} too long for a file name: {length} {unit}, and Git stores it as a directory, whose "
+                    f"name takes at most {FILE_NAME_MAX} ({_FILE_NAME_UNITS})")
+    if name.endswith("."):
+        return "it ends with '.'"
+    precomposed = unicodedata.normalize("NFC", name)
+    if precomposed != name:
+        # Git on macOS (core.precomposeUnicode, which git init sets there) converts the name
+        # in its arguments to NFC: cafe + U+0301 became the branch caf\u00e9 (issue #239)
+        return (f"it is not in Unicode normalization form C (NFC): Git on macOS creates the {kind} {precomposed!a} "
+                "instead, and Git elsewhere the name as written")
+    if file_system_key(name) == file_system_key("HEAD"):
+        return (f"it is HEAD in another letter case, which a file system that ignores letter case (macOS, Windows) "
+                f"stores as the {kind} HEAD: Git then finds the name HEAD ambiguous, and git checkout -b fails")
+    if kind == "branch" and name == "@":
+        return "it is '@', which recent versions of git checkout read as HEAD instead of the branch"
+    return None
+
+
+def ref_names_clash(name: str, other: str) -> str | None:
+    """How two refs of one kind, named ``name`` and ``other``, clash in the files Git stores them in, or None (issues #229, #239).
+
+    ``"spelling"``: the names differ only in what the file systems of macOS
+    ignore (:func:`file_system_key`: letter case, Unicode normalization), so
+    macOS (and Windows, for letter case) stores both as one file.
+    ``"directory"``: one name is a leading path of the other, compared the same
+    way (``feature`` and ``feature/x``): Git stores a ref as a file, and the
+    one would be a directory of the other.  Equal names are one ref: None.
+    """
+    if name == other:
+        return None
+    key, other_key = file_system_key(name), file_system_key(other)
+    if key == other_key:
+        return "spelling"
+    if key.startswith(other_key + "/") or other_key.startswith(key + "/"):
+        return "directory"
+    return None
+
+
 def _names_the_git_directory(component: str) -> bool:
     """Whether a file system may resolve ``component`` to the repository's own ``.git`` (issue #135).
 

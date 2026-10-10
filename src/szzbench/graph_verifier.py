@@ -9,6 +9,7 @@ from .findings import ValidationResult
 from .gitutils import (
     GitError,
     canonical_author,
+    commit_branch,
     git_blame_line,
     git_hash_exists,
     git_message,
@@ -17,6 +18,7 @@ from .gitutils import (
     planned_generated_commits,
     run_git,
     run_git_with_input,
+    scenario_default_branch,
     timestamp_to_git_raw,
 )
 from .graph_scenario import graph_bfc_entries, graph_bic_entries, graph_faults, graph_fixes, load_graph_scenario
@@ -442,11 +444,10 @@ def _expected_head(scenario: dict[str, Any], commit_map: dict[str, Any]) -> tupl
     commits = [c for c in scenario.get("commits") or [] if isinstance(c, dict) and isinstance(c.get("id"), str)]
     if not commits:
         return None
-    repository = scenario.get("repository") if isinstance(scenario.get("repository"), dict) else {}
-    default_branch = str(repository.get("default_branch") or "main")
+    default_branch = str(scenario_default_branch(scenario))
 
     def branch_of(commit: dict[str, Any]) -> str:
-        return str(commit.get("branch") or default_branch)
+        return str(commit_branch(commit, default_branch))
 
     graph = scenario.get("graph") if isinstance(scenario.get("graph"), dict) else {}
     lifecycle = graph.get("ref_lifecycle") if isinstance(graph.get("ref_lifecycle"), dict) else {}
