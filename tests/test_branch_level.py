@@ -173,6 +173,22 @@ def test_a_null_required_fails_the_branch_even_before_validation(tmp_path):
     assert any("has no list under required" in note for note in result.result_notes)
 
 
+def test_an_entry_without_bfc_fails_and_takes_no_prediction_even_before_validation(tmp_path):
+    """A fix_commit that resolves to nothing compared equal to the missing bfc (None == None), so
+    `release` took that prediction and passed, while the note said it counted for no branch (issue #147)."""
+    scenario = _scenario()
+    del scenario["expected_szz"]["branch_level"]["release"]["bfc"]
+    result = _evaluate([{"inducing_commit": "c1", "fix_commit": "c3"},
+                        {"inducing_commit": "c1", "fix_commit": "zzzzzzzzzzzz"}], tmp_path, scenario)
+    assert result.branch_level["branches"]["release"] == {
+        "bfc": None, "required": ["c1"], "predicted": [], "false_positives": [], "false_negatives": [],
+        "unknown_predictions": [], "status": "FAIL"}
+    assert result.branch_level["branches"]["main"]["status"] == "PASS"
+    assert result.status == "FAIL"
+    assert "branch_level: entry 'release' has no commit id under bfc (GE127); the branch fails." in result.result_notes
+    assert any("resolve to no declared branch BFC (zzzzzzzzzzzz)" in note for note in result.result_notes)
+
+
 def test_an_invalid_fix_reference_in_a_predictions_file_is_an_error_not_an_unspecified_fix(tmp_path):
     """The loader used to coerce 123, [] or "" to None, which the branch-level rule reads as
     'counts for every branch' (PR #71 review)."""

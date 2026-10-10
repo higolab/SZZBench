@@ -28,10 +28,18 @@ optionally with a `rank` (integer, 1 = best) and a `confidence`. The value of
 
 | accepted spelling | example | normalized to |
 |---|---|---|
-| logical commit id from `commit-map.json` | `c2` | `c2` |
-| full Git hash | `9f3b...` (40 hex chars) | the logical id that owns the hash |
-| hash prefix of at least 7 characters that matches exactly one commit | `9f3b0a1` | the logical id |
-| anything else | `HEAD`, a 6-char prefix, an ambiguous prefix | **unknown prediction** |
+| logical commit id from `commit-map.json`, in its own letter case | `c2` | `c2` |
+| full Git hash, in any letter case | `9f3b...` or `9F3B...` (40 hex chars) | the logical id that owns the hash |
+| hash prefix of at least 7 characters that matches exactly one commit, in any letter case | `9f3b0a1` | the logical id |
+| anything else | `HEAD`, `C2` for `c2`, a 6-char prefix, an ambiguous prefix | **unknown prediction** |
+
+Whitespace around a reference -- spaces, tabs, the newline a shell pipeline
+leaves after a hash -- is not part of it, and a hash is read in any letter case,
+as Git reads it; a logical id is matched as written. Until issue #142 an
+upper-case hash, or a hash followed by a newline, was an unknown prediction,
+so a tool that printed `hash\n` failed every scenario. `fix_commit` is read
+the same way (sections 1.5 and 1.7). `--reference-format hash` or `logical`
+still decides which of the two kinds of name counts.
 
 Accepting logical ids is a deliberate interface choice: adapters and tests can
 write oracle-style ids without regenerating repositories, and a tool running on
@@ -77,6 +85,23 @@ suite.
 is an optional list of `{name, description, commit_level}` entries and
 `default_variant` names the one used when `--evaluation-variant` is omitted.
 Variant names are matched after lower-casing and treating `-` and `_` alike.
+
+`--evaluation-variant` names one variant for every scenario of a run. A
+scenario that does not define it is scored as if the option were omitted --
+against its `default_variant`, or `commit_level` without one -- and its result
+notes which: `Requested evaluation variant 'relaxed-with-credit' is not
+defined; using the default variant 'reintroduction-direct'.` The run reports
+those scenarios in one warning, with their count, rather than one warning
+each. An empty or blank name (`--evaluation-variant ""`, which is what an unset
+shell variable expands to) is the omitted option. Until issue #140 an undefined
+name selected `commit_level` even beside a `default_variant`, and an empty one
+did so without a note; SZZG-0022, SZZG-0085 and SZZG-0146 keep their whole
+oracle in variants, so they were scored against the required set inferred from
+`bugs[]` (section 1.4), without the `related_origins` and `acceptable_related`
+of their default variant. The classic suite has no variants (section 1.2): a
+run that names one says once, as information, that its classic scenarios were
+scored against their own oracle.
+
 A `default_variant` must name a declared variant; one that does not is a
 validation error (GE129), because the evaluator would ignore it and score
 `commit_level` instead. That includes a blank `default_variant:`, which YAML
@@ -126,9 +151,11 @@ not reach every evaluation of a shipped scenario: declare `required`, or
 
 Notes like these are not hidden in the JSON. `evaluate` promotes every
 oracle-related result note (inferred required set, ignored allowances,
-unsupported policy names, unknown evaluation variants) to a report warning
-prefixed with the scenario id. The plain CLI prints these warnings, and the
-Markdown report lists them under `## Warnings`.
+unsupported policy names, a `default_variant` that names no variant) to a
+report warning prefixed with the scenario id. The plain CLI prints these
+warnings, and the Markdown report lists them under `## Warnings`. The note
+that a scenario does not define the requested `--evaluation-variant` is one
+warning for the run instead (section 1.3).
 
 The note that `expected_szz` declares sections the commit-level evaluator does
 not read is information instead (issue #126). Nothing in such a scenario is
@@ -172,6 +199,10 @@ from that fix must report. Scoring (since 2026-09-22, issue #22):
   the attributed predictions are exactly `required`, FAIL on any false positive,
   false negative or unresolvable prediction. `required` must be a list — an
   intentionally empty answer is written `required: []`; a blank value is `GE127`.
+  So is an entry without a `bfc` commit id. The evaluator does not validate, so
+  it fails either entry with a note and attributes no prediction to it; until
+  issue #147 an entry without `bfc` took every prediction whose `fix_commit`
+  resolved to no commit, and passed on them.
 - The block is PASS when every entry is. **A FAIL fails the scenario even when
   the commit-level oracle passes**, with a `result_notes` entry naming the
   failed branches. The commit-level status is computed exactly as before; a
@@ -384,7 +415,9 @@ original introduction. They do not change the scoring rule.
 `minimum_required` the threshold is `|required|` (i.e. plain exact recall).
 Missing required commits beyond the threshold are still reported as
 `false_negatives`, and `weighted_credit` / `credit_ratio` express how much of
-the oracle was recovered.
+the oracle was recovered. The rule is the same whatever the variant is called:
+under a variant named `origin-aware`, a `related_origins` hit is still a false
+positive and fails the scenario (section 4).
 
 Exercised by SZZG-0033 (one of two), SZZG-0138 (two of three: a majority
 threshold, where plain blame finds exactly two because the third fix is
@@ -406,8 +439,10 @@ hit).
 - `1` when `k_values` is absent.
 
 `status_k` is reported inside `top_k`. False positives never fail a `top_k`
-scenario; they are reported as usual. An unknown reference holds its rank and
-is never a hit: `[not-a-commit, c1]` puts `c1` at rank 2, and so does an
+scenario; they are reported as usual. Nor does a variant's name change the
+status: a `related_origins` commit ranked first puts the relevant commit at
+rank 2 under a variant named `origin-aware` too (section 4). An unknown
+reference holds its rank and is never a hit: `[not-a-commit, c1]` puts `c1` at rank 2, and so does an
 unknown reference spelled `c1` (the scenario fails anyway, step 2). Use `status_k` when the scenario should
 be strict about the top rank while still reporting `hit_at` for larger k.
 
@@ -435,20 +470,28 @@ required set.
 
 ## 4. The three "related" lists
 
-| list | `false_positives` | `hard_false_positives` | affects status under `exact_set` / `direct_only` / `reintroduction_direct` / `partial_credit` | affects status under relaxed evaluation | credit |
+| list | `false_positives` | `hard_false_positives` | affects status under strict evaluation (`exact_set`, `direct_only`, `reintroduction_direct`, `partial_credit`) | affects status under relaxed evaluation | credit |
 |---|---|---|---|---|---|
 | `acceptable_related` | excluded | excluded | protects (never a failing FP) | protects | `credit` counts towards `weighted_credit` |
 | `related_origins` | counted | excluded | does **not** protect: the prediction fails the scenario | protects | none |
 | `related_but_not_correct` | counted | excluded | does not protect | does **not** protect | none |
 
 "Relaxed evaluation" means the policy is `relaxed_with_related` or
-`relaxed_with_credit`, **or** the selected variant's name contains `origin` or
-`related` (after lower-casing, `-` and `_` treated alike). This variant-name
-convention is what makes `origin-aware` / `origin_aware` variants tolerate
-`related_origins` even when their `evaluation_policy` is `direct_only` or
-`exact_set` (SZZG-0020 is the reference case). Name variants accordingly:
-`direct-only`, `direct_bic_only` → strict; `origin-aware`, `related-tolerant`
-→ relaxed.
+`relaxed_with_credit`, **or** the policy is one of the other set comparisons --
+`exact_set`, `direct_only` or `reintroduction_direct` -- and the selected
+variant's name contains `origin` or `related` (after lower-casing, `-` and `_`
+treated alike). This variant-name convention is what makes `origin-aware` /
+`origin_aware` variants tolerate `related_origins` even when their
+`evaluation_policy` is `direct_only` or `exact_set` (SZZG-0020 is the reference
+case). Name variants accordingly: `direct-only`, `direct_bic_only` → strict;
+`origin-aware`, `related-tolerant` → relaxed.
+
+A variant's name changes nothing under the two policies with rules of their
+own (issue #145). `partial_credit` is strict whatever its variant is called: a
+`related_origins` hit is a false positive and fails the scenario (section
+3.3). `top_k` is outside the table: its status is decided by rank alone
+(section 3.4), and a related commit ranked before the relevant one pushes it
+down like any other prediction.
 
 `related_but_not_correct` therefore only changes diagnostics: those hits are
 kept out of `hard_false_positives` so a report can separate "found a related

@@ -501,11 +501,32 @@ def evaluate_prediction_map(
     # still goes with every result (PR #27 review), but nothing in the scenario
     # is wrong (issue #126).
     info: list[str] = []
+    requested_variant = _requested_evaluation_variant(evaluation_variant)
+    # A requested variant that a scenario does not define is a note on that
+    # scenario's result, and one warning for the run: one per scenario buried
+    # the warnings that matter among 143 of them (issue #140).
+    undefined_prefix = (_UNDEFINED_VARIANT_NOTE.split("{used}")[0].format(name=requested_variant)
+                        if requested_variant is not None else None)
+    undefined: list[str] = []
     for item in evaluations:
         for note in item.result_notes:
             if note.startswith("fix_shape not computed"):
                 continue
+            if undefined_prefix is not None and note.startswith(undefined_prefix):
+                undefined.append(item.scenario_id)
+                continue
             (info if _is_information_note(note) else warnings).append(f"{item.scenario_id}: {note}")
+    if undefined:
+        graph_count = sum(1 for item in evaluations if item.suite == "advanced-scenarios")
+        warnings.append(
+            f"Evaluation variant '{requested_variant}' is not defined in {len(undefined)} of the {graph_count} graph "
+            "scenario(s) evaluated; they were scored as without --evaluation-variant, against their default_variant "
+            "or else commit_level, and each one's result notes say which.")
+    classic_count = sum(1 for item in evaluations if item.suite == "scenarios")
+    if requested_variant is not None and classic_count:
+        # the classic suite has no variants (docs/evaluation-policies.md section 1.2); say so once, not per scenario
+        info.append(f"--evaluation-variant applies to graph scenarios only; the {classic_count} classic scenario(s) "
+                    "were scored against their own oracle.")
     return EvaluationReport(evaluations, errors=errors, warnings=warnings, info=info)
 
 
@@ -662,8 +683,10 @@ def _branch_level_result(
     ``fix_commit`` counts for every branch; one whose ``fix_commit`` resolves to
     no declared ``bfc`` counts for none and is noted.  Each branch is PASS or
     FAIL; the block is PASS when every branch is, and a FAIL fails the scenario
-    even when the commit-level oracle passes.  Returns ``None`` when the
-    scenario declares no branch-level oracle.
+    even when the commit-level oracle passes.  An entry without a string
+    ``bfc`` or a ``required`` list (GE127) fails, with a note, and no
+    prediction is attributed to it.  Returns ``None`` when the scenario
+    declares no branch-level oracle.
     """
     if suite != "advanced-scenarios":
         return None
@@ -683,17 +706,26 @@ def _branch_level_result(
             notes.append(f"branch_level: entry '{name}' is not an object and was skipped.")
             continue
         bfc = spec.get("bfc")
+        declared_required = spec.get("required")
         if isinstance(bfc, str):
             declared_bfcs.add(bfc)
-        if not isinstance(spec.get("required"), list):
+        else:
+            # without a bfc, the entry collected every prediction whose fix_commit
+            # resolved to nothing, and passed on them (issue #147)
+            notes.append(f"branch_level: entry '{name}' has no commit id under bfc (GE127); the branch fails.")
+        if not isinstance(declared_required, list):
             notes.append(f"branch_level: entry '{name}' has no list under required (GE127); the branch fails.")
-            branches[str(name)] = {"bfc": bfc, "required": None, "predicted": [], "false_positives": [],
-                                   "false_negatives": [], "unknown_predictions": [], "status": "FAIL"}
+        if not isinstance(bfc, str) or not isinstance(declared_required, list):
+            branches[str(name)] = {"bfc": bfc,
+                                   "required": _string_list(declared_required) if isinstance(declared_required, list) else None,
+                                   "predicted": [], "false_positives": [], "false_negatives": [],
+                                   "unknown_predictions": [], "status": "FAIL"}
             continue
-        required = _string_list(spec["required"])
+        required = _string_list(declared_required)
         attributed = [
             prediction for index, prediction in enumerate(predictions)
-            if prediction.fix_commit is None or resolved_fix.get(index) == bfc
+            # a fix_commit that resolves to nothing is attributed to no branch
+            if prediction.fix_commit is None or (resolved_fix[index] is not None and resolved_fix[index] == bfc)
         ]
         ranked, unknown = _ranked_actual_ids(attributed, commit_map, hash_to_id, reference_format=reference_format)
         actual = set(ranked)
@@ -1201,28 +1233,67 @@ _SUPPORTED_GRAPH_POLICIES = {
 }
 
 
+#: The note on a scenario that does not define the requested variant.  A run
+#: reports these once, as one warning, instead of once per scenario (issue #140).
+_UNDEFINED_VARIANT_NOTE = "Requested evaluation variant '{name}' is not defined; using {used}."
+
+
+def _requested_evaluation_variant(value: str | None) -> str | None:
+    """``--evaluation-variant`` as the evaluator reads it: an empty or blank
+    name, which is what an unset shell variable expands to, is no name, and
+    selects what an omitted option selects (issue #140)."""
+    return value if value is not None and value.strip() else None
+
+
 def _selected_evaluation_variant(
     expected_szz: dict[str, Any],
     requested_variant: str | None,
     notes: list[str],
 ) -> dict[str, Any] | None:
+    """The evaluation variant to score, or None for ``commit_level``.
+
+    Without a requested name, the scenario's ``default_variant`` (None when it
+    names no variant: GE129).  A requested name that the scenario does not
+    define selects the same, with a note naming what was used.  It used to
+    select ``commit_level``, so SZZG-0022, SZZG-0085 and SZZG-0146, which keep
+    their whole oracle in variants, were scored against a required set
+    inferred from bugs[] (issue #140).
+    """
+    requested_variant = _requested_evaluation_variant(requested_variant)
     variants = expected_szz.get("evaluation_variants")
+    if requested_variant is not None:
+        found = _evaluation_variant_named(variants, requested_variant)
+        if found is not None:
+            return found
+        fallback_notes: list[str] = []
+        fallback = _selected_evaluation_variant(expected_szz, None, fallback_notes)
+        used = f"the default variant '{fallback['name']}'" if fallback is not None else "commit_level"
+        notes.append(_UNDEFINED_VARIANT_NOTE.format(name=requested_variant, used=used))
+        notes.extend(fallback_notes)
+        return fallback
     if not isinstance(variants, list):
-        if requested_variant:
-            notes.append(f"Requested evaluation variant '{requested_variant}' is not defined; using commit_level.")
         return None
     default_variant = expected_szz.get("default_variant")
-    selected_name = requested_variant if requested_variant is not None else default_variant
-    if not isinstance(selected_name, str) or not selected_name:
+    if not isinstance(default_variant, str) or not default_variant:
+        return None
+    found = _evaluation_variant_named(variants, default_variant)
+    if found is None:
+        notes.append(f"default_variant '{default_variant}' is not defined; using commit_level.")
+    return found
+
+
+def _evaluation_variant_named(variants: Any, name: str) -> dict[str, Any] | None:
+    """The variant called ``name``: spelt as written first, then after
+    lower-casing and treating ``-`` and ``_`` alike."""
+    if not isinstance(variants, list):
         return None
     for item in variants:
-        if isinstance(item, dict) and item.get("name") == selected_name:
+        if isinstance(item, dict) and item.get("name") == name:
             return item
-    selected_key = _evaluation_variant_key(selected_name)
+    key = _evaluation_variant_key(name)
     for item in variants:
-        if isinstance(item, dict) and _evaluation_variant_key(item.get("name")) == selected_key:
+        if isinstance(item, dict) and _evaluation_variant_key(item.get("name")) == key:
             return item
-    notes.append(f"Requested evaluation variant '{selected_name}' is not defined; using commit_level.")
     return None
 
 
@@ -1618,7 +1689,8 @@ def _hash_to_logical_id(commit_map: dict[str, Any]) -> dict[str, str]:
     lookup = {}
     for logical_id, entry in commit_map.items():
         if isinstance(logical_id, str) and isinstance(entry, dict) and isinstance(entry.get("hash"), str):
-            lookup[entry["hash"]] = logical_id
+            # in lower case, as _normalize_commit_ref compares a hash (issue #142)
+            lookup[entry["hash"].lower()] = logical_id
     return lookup
 
 
@@ -1631,6 +1703,10 @@ def _hash_to_logical_id(commit_map: dict[str, Any]) -> dict[str, str]:
 REFERENCE_FORMATS = ("auto", "hash", "logical")
 
 
+#: A full hash or an abbreviation of one, in any letter case (SHA-1: the generators use no other).
+_HEX_REFERENCE = re.compile(r"[0-9a-fA-F]{7,40}")
+
+
 def _normalize_commit_ref(
     ref: str,
     commit_map: dict[str, Any],
@@ -1638,12 +1714,25 @@ def _normalize_commit_ref(
     *,
     reference_format: str = "auto",
 ) -> str | None:
+    """The logical id that a predicted ``inducing_commit`` or ``fix_commit`` names, or None.
+
+    Surrounding whitespace is not part of a reference, and a hash or a hash
+    prefix is read in any letter case, as Git reads it: an upper-case hash,
+    or one with the newline a shell pipeline leaves on it, was an unknown
+    prediction (issue #142).  A logical id is matched as written.  The caller
+    keeps an unknown reference as written.
+    """
     if reference_format not in REFERENCE_FORMATS:
         raise ValueError(f"reference_format must be one of {REFERENCE_FORMATS}, got {reference_format!r}")
+    ref = ref.strip()
+    if not ref:
+        return None
     if reference_format != "hash" and ref in commit_map:
         return ref
     if reference_format == "logical":
         return None
+    if _HEX_REFERENCE.fullmatch(ref):
+        ref = ref.lower()
     if ref in hash_to_id:
         return hash_to_id[ref]
     if len(ref) >= 7:
