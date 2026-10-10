@@ -18,7 +18,7 @@ Without these tools, the tests that need them are skipped. `pytest -rs` lists ev
   - Python 3.14 with the current Git of the `ubuntu-latest` runner;
   - Python 3.10, the oldest version `pyproject.toml` declares, in a `python:3.10-bookworm` container with Debian 12's Git 2.39. Git before 2.45 has no `--ref-format`, so `init_args()` leaves it out, and this job takes that path.
 
-  Both jobs provide the tools above: JDK 21, and Node.js 22 with `npm ci` in `tools/scenario-editor` and `tools/generated-repo-viewer`. No test should skip there for a missing tool; the log lists the skips that remain.
+  Both jobs provide the tools above: JDK 21, and Node.js 22 with `npm ci` in `tools/scenario-editor` and `tools/generated-repo-viewer`. No test should skip there for a missing tool; the log lists the skips that remain. One of them is `test_quickstart_numbers.py::test_rescoring_the_example_reproduces_the_report`, which re-scores the recorded PyDriller run and needs current outputs under `generated-input-repos/`, which CI does not generate (issue #189).
 - **Builds the two web tools** under `tools/`.
 
 To resume pull request CI, uncomment `pull_request:` in `.github/workflows/tests.yml` and restore these required status checks for `main` (with GitHub Actions as their source):
