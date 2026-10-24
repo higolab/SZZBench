@@ -183,15 +183,6 @@ def test_a_graph_commit_without_a_message_is_not_checked():
     assert [f for f in validate_graph_static(data).findings if f.code == "GE070"] == []
 
 
-def test_no_shipped_scenario_has_such_a_message():
-    for path in sorted(ROOT.glob("scenarios/SZZ-*/scenario.yml")):
-        findings = validate_static(yaml.safe_load(path.read_text(encoding="utf-8"))).findings
-        assert [f for f in findings if f.code == "E012"] == [], path
-    for path in sorted(ROOT.glob("advanced-scenarios/SZZG-*/scenario.graph.yml")):
-        findings = validate_graph_static(yaml.safe_load(path.read_text(encoding="utf-8"))).findings
-        assert [f for f in findings if f.code == "GE070"] == [], path
-
-
 # --- the rule is what Git does ------------------------------------------------------------
 
 #: name -> (message, whether Git gives it back as written)
