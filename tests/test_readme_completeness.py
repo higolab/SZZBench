@@ -4,10 +4,9 @@
 `baselines` and `coverage` had no section, options of `build_parser()` such as
 `--family`, `--out-root` and `--slug` appeared nowhere, and the directory tree
 listed seventeen of the twenty-eight Python files under `src/szzbench/`.
-`tests/test_readme_parity.py` compares the two halves with each other, so a gap
-that both halves shared passed it.  These tests compare each half with the
-code: every subcommand has a section headed with its name, that section names
-each of the subcommand's options, and the tree names every module.
+These tests compare the README with the code: every subcommand has a section
+headed with its name, that section names each of the subcommand's options,
+and the tree names every module. Page links must name existing headings.
 
 The Scenario Editor declared all ten of its dependencies as `latest`, and the
 READMEs set both web tools up with `npm install`, which may resolve the ranges
@@ -20,27 +19,19 @@ from __future__ import annotations
 import argparse
 import json
 import re
+from collections import Counter
 from pathlib import Path
 
 from szzbench.cli import build_parser
 
 REPO = Path(__file__).resolve().parents[1]
 README = REPO / "README.md"
-DIVIDER = "# 日本語版"
 TOOLS = ("scenario-editor", "generated-repo-viewer")
 FENCE = re.compile(r"^ {0,3}```")
 
 
-def _halves() -> dict[str, list[str]]:
-    lines = README.read_text(encoding="utf-8").split("\n")
-    split = lines.index(DIVIDER)
-    return {"English": lines[:split], "Japanese": lines[split + 1:]}
-
-
-def _sections(lines: list[str]) -> dict[str, list[str]]:
-    """Each heading's text, and the sections it heads: the text up to the next
-    heading of the same or a higher level. A `#` line inside a code block is
-    not a heading."""
+def _headings(lines: list[str]) -> list[tuple[int, int, str]]:
+    """Heading positions, levels and text, ignoring lines inside code blocks."""
     headings: list[tuple[int, int, str]] = []
     in_block = False
     for index, line in enumerate(lines):
@@ -48,6 +39,14 @@ def _sections(lines: list[str]) -> dict[str, list[str]]:
             in_block = not in_block
         elif not in_block and (match := re.match(r"^(#{1,6}) (.+)$", line)):
             headings.append((index, len(match.group(1)), match.group(2).strip()))
+    assert not in_block, "unclosed code fence"
+    return headings
+
+
+def _sections(lines: list[str]) -> dict[str, list[str]]:
+    """Each heading's text, and the sections it heads: the text up to the next
+    heading of the same or a higher level."""
+    headings = _headings(lines)
     sections: dict[str, list[str]] = {}
     for position, (start, level, text) in enumerate(headings):
         end = next((index for index, other, _ in headings[position + 1:] if other <= level), len(lines))
@@ -79,30 +78,41 @@ def _commands() -> dict[str, list[str]]:
             for name, command in subparsers.choices.items()}
 
 
-def test_every_command_has_a_section_that_names_each_of_its_options_in_both_halves():
+def test_every_command_has_a_section_that_names_each_of_its_options():
     problems = []
-    for half, lines in _halves().items():
-        sections = _sections(lines)
-        for command, options in _commands().items():
-            found = sections.get(command, [])
-            if len(found) != 1:
-                problems.append(f"the {half} half has {len(found)} sections headed `{command}`")
-                continue
-            # `--out` is not named by `--out-root`, nor `--strict` by `--strict-paths`
-            missing = [option for option in options
-                       if not re.search(rf"(?<![\w-]){re.escape(option)}(?![\w-])", found[0])]
-            if missing:
-                problems.append(f"the {half} section `{command}` does not name {', '.join(missing)}")
+    sections = _sections(README.read_text(encoding="utf-8").splitlines())
+    for command, options in _commands().items():
+        found = sections.get(command, [])
+        if len(found) != 1:
+            problems.append(f"the README has {len(found)} sections headed `{command}`")
+            continue
+        # `--out` is not named by `--out-root`, nor `--strict` by `--strict-paths`
+        missing = [option for option in options
+                   if not re.search(rf"(?<![\w-]){re.escape(option)}(?![\w-])", found[0])]
+        if missing:
+            problems.append(f"the section `{command}` does not name {', '.join(missing)}")
     assert problems == []
 
 
 def test_the_directory_tree_names_every_module_of_the_package():
     modules = sorted(path.name for path in (REPO / "src" / "szzbench").glob("*.py"))
-    for half, lines in _halves().items():
-        trees = [block for block in _code_blocks(lines) if block and block[0] == "SZZBench/"]
-        assert len(trees) == 1, f"the {half} half has {len(trees)} directory trees"
-        listed = {match.group(1) for line in trees[0] if (match := re.search(r"[├└]── (\S+\.py)$", line))}
-        assert [module for module in modules if module not in listed] == [], f"the {half} tree lacks these modules"
+    lines = README.read_text(encoding="utf-8").splitlines()
+    trees = [block for block in _code_blocks(lines) if block and block[0] == "SZZBench/"]
+    assert len(trees) == 1, f"the README has {len(trees)} directory trees"
+    listed = {match.group(1) for line in trees[0] if (match := re.search(r"[├└]── (\S+\.py)$", line))}
+    assert [module for module in modules if module not in listed] == [], "the tree lacks these modules"
+
+
+def test_the_readme_links_to_existing_headings():
+    lines = README.read_text(encoding="utf-8").splitlines()
+    anchors = set()
+    seen: Counter[str] = Counter()
+    for _, _, heading in _headings(lines):
+        anchor = re.sub(r"[^\w\- ]", "", heading.lower()).replace(" ", "-")
+        anchors.add(f"{anchor}-{seen[anchor]}" if seen[anchor] else anchor)
+        seen[anchor] += 1
+    targets = re.findall(r"\]\((#[^)\s]+)\)", "\n".join(lines))
+    assert [target for target in targets if target[1:] not in anchors] == [], "links to missing headings"
 
 
 def test_each_tool_names_its_dependency_versions_and_its_lock_records_the_same_ranges():
