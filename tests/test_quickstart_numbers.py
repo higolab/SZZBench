@@ -3,8 +3,8 @@
 The Quickstart of `README.md` says that re-scoring
 `examples/pydriller-run/predictions.jsonl` prints `PASS: 161`, `FAIL: 118`,
 precision 0.781 and recall 0.689, and that the tool passes 68.7 % of the
-`control` scenarios and 2.2 % of the `discriminating` ones.  Both halves of
-`README.md`, the example's README, the comparison tables of the other example
+`control` scenarios and 2.2 % of the `discriminating` ones. `README.md`,
+the example's README, the comparison tables of the other example
 runs and `docs/baselines.md` quote that run, and nothing compared any of them
 with the report it came from, `examples/pydriller-run/evaluation-results.md`.
 These tests take the numbers from the report (the tier shares from its rows and
@@ -49,19 +49,12 @@ _ROW_FIELDS = ("pass", "control_pass", "control_total", "discriminating_pass", "
 #: Each copy: its file, the section of it to read (None: all of it), and what
 #: it quotes -- a pattern, and the fields its numbers are, in order.
 COPIES = {
-    "README.md (English Quickstart)": ("README.md", "## Quickstart", [
+    "README.md (Quickstart)": ("README.md", "## Quickstart", [
         (r"writes # repositories", ("total",)),
         (r"`PASS: #`, `FAIL: #`", ("pass", "fail")),
         (r"precision # and recall #", ("precision", "recall")),
         (r"# % of the `control`", ("control_share",)),
         (r"# % of the `discriminating`", ("discriminating_share",)),
-    ]),
-    "README.md (Japanese Quickstart)": ("README.md", "## クイックスタート", [
-        (r"# 個のリポジトリ", ("total",)),
-        (r"`PASS: #`、`FAIL: #`", ("pass", "fail")),
-        (r"precision #、recall #", ("precision", "recall")),
-        (r"`control` の # %", ("control_share",)),
-        (r"`discriminating` の # %", ("discriminating_share",)),
     ]),
     "examples/pydriller-run/README.md": ("examples/pydriller-run/README.md", None, [
         (r"\| scenarios \| # \|", ("total",)),
