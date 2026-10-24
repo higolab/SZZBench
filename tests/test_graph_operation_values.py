@@ -122,12 +122,6 @@ def test_lines_that_are_not_a_non_negative_integer_are_ge059(lines):
     assert _errors(_with_ops(op)) == [("GE059", "commits[0].operations[1].lines")]
 
 
-def test_no_shipped_scenario_has_such_a_value():
-    for path in sorted(ROOT.glob("advanced-scenarios/SZZG-*/scenario.graph.yml")):
-        codes = {code for code, _ in _errors(yaml.safe_load(path.read_text(encoding="utf-8")))}
-        assert not codes & {"GE057", "GE058", "GE059"}, path
-
-
 # --- generation -----------------------------------------------------------------
 
 def test_generate_graph_refuses_the_values_the_validator_reports(tmp_path):

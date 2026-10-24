@@ -3,7 +3,7 @@
 A scenario README opens with a header rendered from the scenario file; the
 prose after it belongs to the author.  These tests pin what the header says,
 that writing it never touches the prose, that `szzbench readme` and the
-W455/GW455 lint agree, and that every shipped README is current.
+W455/GW455 lint agree. Shipped README checks live in test_shipped_metadata.py.
 """
 from __future__ import annotations
 
@@ -24,12 +24,10 @@ from szzbench.readme import (
     graph_features,
     header_rows,
     render_header,
-    scenario_files,
     split_header,
 )
 from szzbench.scenario import load_yaml
 
-REPO = Path(__file__).resolve().parents[1]
 JAVA = "src/main/java/example/Range.java"
 
 
@@ -296,20 +294,6 @@ def test_new_scenario_skeletons_start_with_a_current_header(tmp_path):
     greadme = gscenario.with_name("README.md").read_text()
     assert greadme.startswith(render_header(gdata, "advanced-scenarios"))
     assert "## Expected history" in greadme
-
-
-# --- the shipped suites -------------------------------------------------------------------
-
-@pytest.mark.parametrize("scenario_path", scenario_files(REPO / "scenarios", REPO / "advanced-scenarios"),
-                         ids=lambda p: p.parent.name)
-def test_every_shipped_readme_header_is_current(scenario_path: Path):
-    """Regenerate with `szzbench readme --write` when a scenario's metadata or oracle changes."""
-    from szzbench.readme import suite_of
-
-    data, result = load_yaml(scenario_path)
-    assert data is not None, result.findings
-    text = scenario_path.with_name("README.md").read_text(encoding="utf-8")
-    assert check_readme(text, render_header(data, suite_of(scenario_path))) == []
 
 
 # --- the body is the author's, byte for byte (PR #66 review) ---------------------------

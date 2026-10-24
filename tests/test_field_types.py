@@ -17,14 +17,18 @@ The validators now report each value at its field, and what they accept the
 generators build: the sweep below sets the commit, operation, repository and
 meta fields of both suites to values of the wrong type (an error at the field,
 no exception, and generation refused before Git runs), and the values next to
-them that are spelt otherwise but valid validate and generate.
+them that are spelt otherwise but valid validate and generate. The non-string
+text and message regressions of issue #151 use the same case table; an identical
+input is checked once, with all of its API and CLI assertions.
 """
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 from copy import deepcopy
+from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
@@ -33,11 +37,14 @@ import yaml
 
 import szzbench.generator as generator
 import szzbench.graph_generator as graph_generator
+from support import git
 from szzbench.findings import ValidationResult
 from szzbench.generator import GenerationError, generate_repository
 from szzbench.graph_generator import GraphGenerationError, generate_graph_repository
-from szzbench.graph_validator import validate_graph_scenario_file
-from szzbench.validator import validate_scenario_file
+from szzbench.graph_simulator import simulate_graph_scenario
+from szzbench.graph_validator import validate_graph_scenario_file, validate_graph_static
+from szzbench.operations import OperationError, normalize_newlines, text_field
+from szzbench.validator import simulate_commits, validate_scenario_file, validate_static
 
 ROOT = Path(__file__).resolve().parents[1]
 CLASSIC = yaml.safe_load((ROOT / "scenarios/SZZ-0005/scenario.yml").read_text(encoding="utf-8"))
@@ -48,6 +55,7 @@ GRAPH_WITH_GENERATOR["commits"][1]["operations"].append(
     {"type": "commit_generator", "generator": "unrelated_changes", "count": 2, "files": 1, "path": "generated"})
 CLASSIC_FILE = "SZZ-0005/scenario.yml"
 GRAPH_FILE = "SZZG-0001/scenario.graph.yml"
+OLD_RANGE = "src/main/java/example/OldRange.java"
 
 
 def _location(path: tuple) -> str:
@@ -124,37 +132,49 @@ GRAPH_ROWS = {
     "lifecycle": (_at(("graph", "ref_lifecycle"), {"delete_branches": ["nope"]}), "GE154",
                   "graph.ref_lifecycle.delete_branches[0]"),
 }
-ROWS = [(False, row) for row in CLASSIC_ROWS] + [(True, row) for row in GRAPH_ROWS]
 
 
-def _row(graph: bool, row: str) -> tuple[dict, str, str, str]:
-    mutate, code, location = (GRAPH_ROWS if graph else CLASSIC_ROWS)[row]
-    data = deepcopy(GRAPH if graph else CLASSIC)
+def _op(commit: int, op: int, key: str, value):
+    return _at(("commits", commit, "operations", op, key), value)
+
+
+def _message(commit: int, value):
+    return _at(("commits", commit, "message"), value)
+
+
+def _insert_after(key: str, value):
+    """An ``insert_after`` appended to SZZG-0001's c1, with ``key`` set to ``value``."""
+    def mutate(data: dict) -> None:
+        op = {"type": "insert_after", "path": OLD_RANGE, "anchor": "package example;\n", "content": "// range checks\n"}
+        data["commits"][1]["operations"].append({**op, key: value})
+    return mutate
+
+
+def _mutated(base: dict, mutate) -> dict:
+    data = deepcopy(base)
     mutate(data)
-    return data, code, location, GRAPH_FILE if graph else CLASSIC_FILE
+    return data
 
 
-@pytest.mark.parametrize("graph, row", ROWS, ids=[f"{'graph' if g else 'classic'}-{r}" for g, r in ROWS])
-def test_each_row_is_an_error_at_its_field_in_validate_json(tmp_path, graph, row):
-    """On a path relative to the working directory, as the issue's reproduction runs it."""
-    data, code, location, relative = _row(graph, row)
-    _write(tmp_path, relative, data)
-    command = ["validate-graph", "--simulate", "--strict-paths", "--lint"] if graph else ["validate", "--simulate", "--lint"]
-    completed = subprocess.run([sys.executable, "-m", "szzbench.cli", *command, "--json", relative], cwd=tmp_path,
-                               capture_output=True, text=True)
-    assert completed.returncode == 1 and "Traceback" not in completed.stderr, completed.stderr
-    errors = [(f["code"], f["location"]) for f in json.loads(completed.stdout)["findings"] if f["severity"] == "ERROR"]
-    assert errors == [(code, location)]
-
-
-@pytest.mark.parametrize("graph, row", ROWS, ids=[f"{'graph' if g else 'classic'}-{r}" for g, r in ROWS])
-def test_each_row_stops_generation_before_git(tmp_path, graph, row):
-    data, _, _, relative = _row(graph, row)
-    scenario = _write(tmp_path, relative, data)
-    generate, error = (generate_graph_repository, GraphGenerationError) if graph else (generate_repository, GenerationError)
-    with pytest.raises(error, match="validation failed"):
-        generate(scenario, tmp_path / "out")
-    assert not (tmp_path / "out").exists()
+# Non-string text and message regressions (issue #151).
+CLASSIC_TEXT_ROWS = {
+    "content-int": (_op(0, 0, "content", 42), "E041", "commits[0].operations[0].content"),
+    "content-null": (_op(0, 0, "content", None), "E041", "commits[0].operations[0].content"),
+    "old-int": (_op(1, 0, "old", 42), "E041", "commits[1].operations[0].old"),
+    "new-null": (_op(1, 0, "new", None), "E041", "commits[1].operations[0].new"),
+    "message-int": (_message(1, 123), "E010", "commits[1].message"),
+    "message-null": (_message(1, None), "E010", "commits[1].message"),   # issue #152: TypeError in generate
+}
+GRAPH_TEXT_ROWS = {
+    "content-null": (_op(0, 0, "content", None), "GE053", "commits[0].operations[0].content"),
+    "content-int": (_op(0, 0, "content", 42), "GE053", "commits[0].operations[0].content"),
+    "old-int": (_op(1, 0, "old", 42), "GE053", "commits[1].operations[0].old"),
+    "new-null": (_op(2, 2, "new", None), "GE053", "commits[2].operations[2].new"),
+    "anchor-int": (_insert_after("anchor", 7), "GE053", "commits[1].operations[1].anchor"),
+    "inserted-content-null": (_insert_after("content", None), "GE053", "commits[1].operations[1].content"),
+    "message-int": (_message(1, 123), "GE040", "commits[1].message"),
+    "message-null": (_message(1, None), "GE040", "commits[1].message"),  # issue #152: subject 'c1'
+}
 
 
 # --- the sweep: wrong types for the commit, operation, repository and meta fields -----
@@ -232,28 +252,86 @@ def _sweep_id(case) -> str:
     return f"{_location(path)}={value!r}"
 
 
-def _check_sweep_case(tmp_path: Path, graph: bool, path: tuple, code: str, value) -> None:
-    base = GRAPH_WITH_GENERATOR if graph else CLASSIC
-    data = _set(base, path, value)
-    scenario = _write(tmp_path, GRAPH_FILE if graph else CLASSIC_FILE, data)
-    try:
-        result = _validate(scenario, graph)
-    except Exception as exc:                            # noqa: BLE001 - the point of the test
-        pytest.fail(f"{_location(path)} = {value!r} raised {exc!r} in validation")
-    assert (code, _location(path)) in _errors(result), (value, result.to_dict())
-    generate, error = (generate_graph_repository, GraphGenerationError) if graph else (generate_repository, GenerationError)
+@dataclass
+class InvalidFieldCase:
+    graph: bool
+    name: str
+    data: dict
+    code: str
+    location: str
+    cli_modes: set[bool] = field(default_factory=set)  # validate with and/or without --lint
+    generate_cli: bool = False
+
+
+def _invalid_cases() -> list[InvalidFieldCase]:
+    """One input per case, retaining every CLI mode attached to duplicate rows.
+
+    YAML distinguishes bools from ints, nulls from strings, and all the other
+    wrong types in the sweep. Graph cases with generated commits remain distinct
+    from the plain graph fixture even when the changed field is the same.
+    """
+    cases = {}
+
+    def add(graph, name, data, code, location, *, lint=None, generate_cli=False):
+        key = graph, yaml.safe_dump(data, sort_keys=True)
+        if key not in cases:
+            cases[key] = InvalidFieldCase(graph, f"{'graph' if graph else 'classic'}-{name}", data, code, location)
+        case = cases[key]
+        assert (case.code, case.location) == (code, location), name
+        if lint is not None:
+            case.cli_modes.add(lint)
+        case.generate_cli |= generate_cli
+
+    for graph, sweep in ((False, CLASSIC_SWEEP), (True, GRAPH_SWEEP)):
+        base = GRAPH_WITH_GENERATOR if graph else CLASSIC
+        for path, code, value in _sweep_cases(sweep):
+            add(graph, _sweep_id((path, code, value)), _set(base, path, value), code, _location(path))
+    for graph, rows, text_rows in ((False, CLASSIC_ROWS, CLASSIC_TEXT_ROWS), (True, GRAPH_ROWS, GRAPH_TEXT_ROWS)):
+        base = GRAPH if graph else CLASSIC
+        for name, (mutate, code, location) in rows.items():
+            add(graph, name, _mutated(base, mutate), code, location, lint=True,
+                generate_cli=not graph and name == "branch-int")
+        for name, (mutate, code, location) in text_rows.items():
+            add(graph, name, _mutated(base, mutate), code, location, lint=False, generate_cli=True)
+    return list(cases.values())
+
+
+INVALID_CASES = _invalid_cases()
+
+
+@pytest.mark.parametrize("case", INVALID_CASES, ids=lambda case: case.name)
+def test_an_invalid_value_is_reported_and_stops_generation(tmp_path, case):
+    relative = GRAPH_FILE if case.graph else CLASSIC_FILE
+    scenario = _write(tmp_path, relative, case.data)
+    result = _validate(scenario, case.graph)
+    assert (case.code, case.location) in _errors(result), result.to_dict()
+    generate, error = (generate_graph_repository, GraphGenerationError) if case.graph else (generate_repository, GenerationError)
     with pytest.raises(error, match="validation failed"):
         generate(scenario, tmp_path / "out")
+    assert not (tmp_path / "out").exists()
 
-
-@pytest.mark.parametrize("path, code, value", _sweep_cases(CLASSIC_SWEEP), ids=map(_sweep_id, _sweep_cases(CLASSIC_SWEEP)))
-def test_a_wrong_classic_value_is_an_error_at_its_field_and_stops_generate(tmp_path, path, code, value):
-    _check_sweep_case(tmp_path, False, path, code, value)
-
-
-@pytest.mark.parametrize("path, code, value", _sweep_cases(GRAPH_SWEEP), ids=map(_sweep_id, _sweep_cases(GRAPH_SWEEP)))
-def test_a_wrong_graph_value_is_an_error_at_its_field_and_stops_generate_graph(tmp_path, path, code, value):
-    _check_sweep_case(tmp_path, True, path, code, value)
+    # Keep the original relative-path CLI checks, including both lint modes where
+    # two issue reproductions shared the input but used different command options.
+    for lint in sorted(case.cli_modes):
+        command = ["validate-graph" if case.graph else "validate", "--simulate"]
+        if lint:
+            command += ["--strict-paths", "--lint"] if case.graph else ["--lint"]
+        completed = subprocess.run([sys.executable, "-m", "szzbench.cli", *command, "--json", relative], cwd=tmp_path,
+                                   capture_output=True, text=True)
+        assert completed.returncode == 1 and "Traceback" not in completed.stderr, completed.stderr
+        errors = [(f["code"], f["location"]) for f in json.loads(completed.stdout)["findings"] if f["severity"] == "ERROR"]
+        assert errors == [(case.code, case.location)]
+        if case.graph and case.generate_cli:
+            assert "not found" not in completed.stdout
+    if case.generate_cli:
+        command = "generate-graph" if case.graph else "generate"
+        completed = subprocess.run([sys.executable, "-m", "szzbench.cli", command, relative, "--out", "cli-out"],
+                                   cwd=tmp_path, capture_output=True, text=True)
+        assert completed.returncode == 1 and "Traceback" not in completed.stderr, completed.stderr
+        prefix = ("[ERROR] GRAPH_GENERATION_FAILED: Graph scenario validation failed." if case.graph else
+                  "[ERROR] GENERATION_FAILED: Scenario validation failed.")
+        assert completed.stderr.startswith(prefix), completed.stderr
+        assert not (tmp_path / "cli-out").exists()
 
 
 # --- what the checks accept, the generators build ----------------------------------
@@ -383,16 +461,6 @@ def test_a_lookup_error_from_an_operation_is_a_reported_failure(tmp_path, monkey
     assert "unknown encoding: bogus" in (tmp_path / "out" / "metadata" / "generation.log").read_text(encoding="utf-8")
 
 
-def test_the_issues_traceback_row_is_generation_failed_through_the_cli(tmp_path):
-    """``generate`` printed a TypeError traceback for ``default_branch: 1``; it now stops at validation."""
-    data, _, _, relative = _row(False, "branch-int")
-    _write(tmp_path, relative, data)
-    completed = subprocess.run([sys.executable, "-m", "szzbench.cli", "generate", relative, "--out", "out"], cwd=tmp_path,
-                               capture_output=True, text=True)
-    assert completed.returncode == 1 and "Traceback" not in completed.stderr, completed.stderr
-    assert completed.stderr.startswith("[ERROR] GENERATION_FAILED: Scenario validation failed."), completed.stderr
-
-
 # --- PR #236 review: values the first checks passed, and Git still could not record --------------
 
 def _without_dates(data: dict) -> dict:
@@ -496,3 +564,94 @@ def test_the_dates_the_schedule_still_gives_are_checked(tmp_path, variant):
     data = _inheriting(inherit=False) if variant == "without inherit_author_date" else _inheriting(committer_date=None)
     scenario = _write(tmp_path, GRAPH_FILE, data)
     assert _errors(_validate(scenario, True)) == [("GE071", "repository.base_date")]
+
+
+# --- non-string text, replay, and generation without validation (issue #151) ---
+
+@pytest.mark.parametrize("value, label", [(42, "int"), (None, "null (a blank value)"), (["x"], "list"), (1.5, "float")],
+                         ids=["int", "null", "list", "float"])
+def test_the_finding_names_the_type_it_got(value, label):
+    findings = validate_static(_mutated(CLASSIC, _op(0, 0, "content", value))).findings
+    assert [f.message for f in findings if f.severity == "ERROR"] == \
+        [f"Operation 'write_file' field 'content' must be a string, not {label}."]
+    findings = validate_graph_static(_mutated(GRAPH, _message(1, value))).findings
+    assert [f.message for f in findings if f.severity == "ERROR"] == \
+        [f"commit.message must be a string when present, not {label}."]
+
+
+def test_an_empty_string_is_a_string():
+    """The check is the type: an empty ``content`` or ``new`` is still text."""
+    assert not validate_static(_mutated(CLASSIC, _op(1, 0, "new", ""))).has_errors()
+    assert not validate_graph_static(_mutated(GRAPH, _op(0, 0, "content", ""))).has_errors()
+
+
+# --- what still reaches the operations (belt and braces) --------------------------
+
+@pytest.mark.parametrize("value, label", [(42, "int"), (None, "null (a blank value)"), (True, "bool"), ({"a": 1}, "dict")],
+                         ids=["int", "null", "bool", "dict"])
+def test_normalize_newlines_refuses_what_is_not_text(value, label):
+    with pytest.raises(OperationError, match=f"^{re.escape(f'expected text, not {label}')}$"):
+        normalize_newlines(value)
+
+
+def test_normalize_newlines_reads_text_as_before():
+    assert normalize_newlines("a\r\nb\rc\n") == "a\nb\nc\n"
+
+
+def test_text_field_names_the_operation_and_the_field():
+    op = {"type": "replace", "path": "a.txt", "old": 42}
+    with pytest.raises(OperationError, match=r"^replace\.old must be a string, not int$"):
+        text_field(op, "old")
+    with pytest.raises(OperationError, match=r"^replace\.new is missing$"):
+        text_field(op, "new")
+    assert text_field({"type": "write_file", "content": "x\r\n"}, "content") == "x\r\n"
+
+
+@pytest.mark.parametrize("row", ["content-int", "content-null", "old-int", "new-null"])
+def test_the_classic_simulation_reports_an_unvalidated_value_as_e201(row):
+    """``simulate_commits`` without ``validate_static`` first: an error, not an AttributeError."""
+    mutate, _, location = CLASSIC_TEXT_ROWS[row]
+    snapshots, result = simulate_commits(_mutated(CLASSIC, mutate))
+    assert snapshots is None
+    [finding] = result.findings
+    field = location.rsplit(".", 1)[1]
+    assert (finding.code, finding.location) == ("E201", location.rsplit(".", 1)[0])
+    assert f".{field} must be a string" in finding.message
+
+
+def test_classic_generation_fails_on_an_unvalidated_value(tmp_path, monkeypatch):
+    _no_validation(monkeypatch)
+    scenario = _write(tmp_path, CLASSIC_FILE, _mutated(CLASSIC, _op(1, 0, "old", 42)))
+    with pytest.raises(GenerationError, match=r"replace\.old must be a string, not int"):
+        generate_repository(scenario, tmp_path / "out")
+    error = json.loads((tmp_path / "out/metadata/generation-error.json").read_text(encoding="utf-8"))
+    assert error["error"] == "replace.old must be a string, not int"
+
+
+@pytest.mark.parametrize("row, location, message", [
+    ("content-null", "commits[0].operations[0]", "write_file.content must be a string, not null (a blank value)"),
+    ("old-int", "commits[1].operations[0]", "replace.old must be a string, not int"),
+    ("anchor-int", "commits[1].operations[1]", "insert_after.anchor must be a string, not int"),
+], ids=["content-null", "old-int", "anchor-int"])
+def test_the_graph_simulation_reports_the_operation_with_the_value(row, location, message):
+    """``simulate_graph_scenario`` without the static checks: the first error is the operation itself."""
+    result = simulate_graph_scenario(_mutated(GRAPH, GRAPH_TEXT_ROWS[row][0]))
+    first = next(f for f in result.findings if f.severity == "ERROR")
+    assert (first.code, first.location) == ("GE201", location)
+    assert first.message.endswith(message)
+
+
+def test_graph_generation_writes_no_none_for_an_unvalidated_null(tmp_path, monkeypatch):
+    _no_validation(monkeypatch)
+    scenario = _write(tmp_path, GRAPH_FILE, _mutated(GRAPH, _op(0, 0, "content", None)))
+    with pytest.raises(GraphGenerationError, match=r"write_file\.content must be a string, not null"):
+        generate_graph_repository(scenario, tmp_path / "out")
+    assert not (tmp_path / "out/repo" / OLD_RANGE).exists()
+
+
+def test_graph_generation_commits_no_subject_for_an_unvalidated_message(tmp_path, monkeypatch):
+    _no_validation(monkeypatch)
+    scenario = _write(tmp_path, GRAPH_FILE, _mutated(GRAPH, _message(1, 123)))
+    with pytest.raises(GraphGenerationError, match=r"^message of commit 'c1' must be a string, not int\.$"):
+        generate_graph_repository(scenario, tmp_path / "out")
+    assert git(tmp_path / "out/repo", "log", "--format=%s") == "Add the range check"

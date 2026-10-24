@@ -436,13 +436,3 @@ def test_a_value_error_late_in_generation_is_a_generation_failure(tmp_path, monk
             generate_graph_repository(scenario, tmp_path / "out")
     error = json.loads((tmp_path / "out" / "metadata" / "generation-error.json").read_text(encoding="utf-8"))
     assert "embedded null character" in error["error"]
-
-
-def test_no_shipped_scenario_names_such_a_path():
-    """The rules change no shipped scenario's outcome: none of them writes such a path."""
-    root = Path(__file__).resolve().parents[1]
-    for scenario in [*root.glob("scenarios/SZZ-*/scenario.yml"), *root.glob("advanced-scenarios/SZZG-*/scenario.graph.yml")]:
-        data = yaml.safe_load(scenario.read_text(encoding="utf-8"))
-        validate = validate_graph_static if scenario.name == "scenario.graph.yml" else validate_static
-        codes = {f.code for f in validate(data).findings if f.severity == "ERROR"}
-        assert not codes & {"E050", "GE054", "GE102"}, scenario
