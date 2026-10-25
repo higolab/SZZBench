@@ -113,12 +113,17 @@ DRIVER = """
 import java.lang.reflect.*;
 public class Drive {
     public static void main(String[] a) throws Exception {
-        Class<?> c = Class.forName(%(cls)s);
+        switch (Integer.parseInt(a[0])) {
+%(cases)s
+            default: throw new IllegalArgumentException("unknown probe");
+        }
+    }
+    private static void probe(String cls, String method, Object[] args) throws Exception {
+        Class<?> c = Class.forName(cls);
         Object inst = c.getDeclaredConstructor().newInstance();
         for (Method m : c.getDeclaredMethods()) {
-            if (!m.getName().equals(%(method)s)) continue;
+            if (!m.getName().equals(method)) continue;
             Class<?>[] ps = m.getParameterTypes();
-            Object[] args = new Object[] { %(args)s };
             if (ps.length != args.length) continue;
             System.out.print(m.invoke(inst, args));
             return;
@@ -161,13 +166,17 @@ def test_the_fixed_snapshot_is_exact_at_the_top_of_its_domain(fixed_snapshot, tm
     work = tmp_path / sid
     work.mkdir(parents=True, exist_ok=True)
     export_tree(repo, "HEAD", work)
+    cases = []
+    for index, (cls, method, args, _) in enumerate(probes):
+        cases.append(f"            case {index}: probe({json.dumps(cls)}, {json.dumps(method)}, "
+                     f"new Object[] {{ {_java_args(args)} }}); return;")
+    (work / "Drive.java").write_text(DRIVER % {"cases": "\n".join(cases)})
+    sources = [str(p) for p in work.rglob("*.java")]
+    subprocess.run(["javac", "-nowarn", "-d", str(work / "out"), *sources], check=True, capture_output=True)
     wrong = []
-    for cls, method, args, expected in probes:
-        (work / "Drive.java").write_text(DRIVER % {"cls": json.dumps(cls), "method": json.dumps(method),
-                                                   "args": _java_args(args)})
-        sources = [str(p) for p in work.rglob("*.java")]
-        subprocess.run(["javac", "-nowarn", "-d", str(work / "out"), *sources], check=True, capture_output=True)
-        answer = subprocess.run(["java", "-cp", str(work / "out"), "Drive"], cwd=work,
+    # A fresh JVM for every input preserves isolation while compilation is shared.
+    for index, (cls, method, args, expected) in enumerate(probes):
+        answer = subprocess.run(["java", "-cp", str(work / "out"), "Drive", str(index)], cwd=work,
                                 capture_output=True, text=True, check=True).stdout.strip()
         if answer != str(expected):
             wrong.append(f"{cls}.{method}{tuple(args)} answered {answer}, not {expected}")
