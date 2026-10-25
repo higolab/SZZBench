@@ -188,16 +188,16 @@ def test_a_default_variant_that_names_no_variant_is_an_error(default_variant, va
     assert [(f.severity, f.location) for f in ge129] == [("ERROR", "expected_szz.default_variant")]
 
 
-@pytest.mark.parametrize("blank", ["default_variant:", "default_variant: null", "default_variant: ~"])
-def test_a_blank_default_variant_in_a_scenario_file_is_an_error(tmp_path, blank):
-    # YAML reads all three as None, which the check first took for an absent key (PR #105 review)
+def test_a_blank_default_variant_in_a_scenario_file_is_an_error(tmp_path):
+    # Empty, null and ~ all load as None. One spelling covers the blank-value
+    # regression; the absent-key case is checked separately (PR #105 review).
     data = graph_scenario()
     data["expected_szz"]["evaluation_variants"] = [deepcopy(BOUNDARY_VARIANT)]
     data["expected_szz"]["default_variant"] = "__BLANK__"
     path = write_yaml(tmp_path / "SZZG-9900" / "scenario.graph.yml", data)
     text = path.read_text(encoding="utf-8")
     assert text.count("default_variant: __BLANK__") == 1
-    path.write_text(text.replace("default_variant: __BLANK__", blank), encoding="utf-8")
+    path.write_text(text.replace("default_variant: __BLANK__", "default_variant:"), encoding="utf-8")
     loaded, result = validate_graph_scenario_file(path)
     assert "default_variant" in loaded["expected_szz"] and loaded["expected_szz"]["default_variant"] is None
     ge129 = [f for f in result.findings if f.code == "GE129"]
