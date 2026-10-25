@@ -94,9 +94,9 @@ def test_each_row_of_the_table_is_an_error_at_its_key_or_entry(tmp_path, case):
     assert [f.severity for f in result.findings if f.code == code] == ["ERROR"]
 
 
-@pytest.mark.parametrize("case", list(CASES))
+@pytest.mark.parametrize("case", ["unknown-branch", "bad-tag-name"])
 def test_validate_graph_fails_on_them_from_a_relative_path(tmp_path, case):
-    """The issue's command line, run from the directory that holds the copies."""
+    """API tests cover every rule; branch and tag errors exercise CLI formatting and relative paths."""
     lifecycle, code, location = CASES[case]
     _write(tmp_path / case, _with_lifecycle(lifecycle))
     relative = f"{case}/SZZG-0072/scenario.graph.yml"
@@ -130,8 +130,9 @@ def test_the_messages_say_what_is_wrong():
         "and Git reads a bare 'main' as the tag")
 
 
-@pytest.mark.parametrize("case", list(CASES))
+@pytest.mark.parametrize("case", ["unknown-branch", "bad-tag-name"])
 def test_generate_graph_refuses_them_at_validation(tmp_path, case):
+    """Representative errors stop at the shared validation gate, before any output is written."""
     with pytest.raises(GraphGenerationError, match="validation failed"):
         generate_graph_repository(_write(tmp_path, _with_lifecycle(CASES[case][0])), tmp_path / "out")
     assert not (tmp_path / "out").exists()

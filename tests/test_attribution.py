@@ -179,7 +179,9 @@ def test_the_report_counts_attribution(generated, tmp_path):
 
 
 def test_blame_and_shape_answer_per_fix_and_keep_their_scenarios(generated):
-    report = run_baselines(generated_root=generated, scenarios_root=ROOT / "scenarios", advanced_scenarios_root=GRAPH)
+    # This check uses position, shape and blame results; metadata predictors are covered elsewhere.
+    report = run_baselines(generated_root=generated, scenarios_root=ROOT / "scenarios", advanced_scenarios_root=GRAPH,
+                           families=["position", "shape", "blame"])
     assert report["errors"] == []
     solved = {entry["name"]: set(entry["solved"]) for entry in report["baselines"]}
     for name in ("blame-deleted-lines", "shape-last-toucher"):

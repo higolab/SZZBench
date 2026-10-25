@@ -36,6 +36,7 @@ ROOT = Path(__file__).resolve().parents[1]
 GRAPH_SCENARIOS = sorted((ROOT / "advanced-scenarios").glob("SZZG-*/scenario.graph.yml"))
 FORMERLY_REJECTED = ["SZZG-0089", "SZZG-0123", "SZZG-0124", "SZZG-0125", "SZZG-0126", "SZZG-0127",
                      "SZZG-0147", "SZZG-0150", "SZZG-0151"]
+assert set(FORMERLY_REJECTED) <= {path.parent.name for path in GRAPH_SCENARIOS}, "missing regression scenario"
 
 
 def _codes(result, severity: str) -> list[str]:
@@ -51,14 +52,9 @@ def _findings(result, code: str) -> list[dict]:
 def test_every_shipped_graph_scenario_passes_the_simulation(path):
     _, result = validate_graph_scenario_file(path, simulate=True, strict_paths=True, lint=True)
     assert _codes(result, "ERROR") == [], result.to_dict()
-
-
-@pytest.mark.parametrize("scenario_id", FORMERLY_REJECTED)
-def test_the_nine_formerly_rejected_scenarios_are_checked_with_git(scenario_id):
-    path = ROOT / "advanced-scenarios" / scenario_id / "scenario.graph.yml"
-    _, result = validate_graph_scenario_file(path, simulate=True, strict_paths=True)
-    assert _codes(result, "ERROR") == []
-    assert len(_findings(result, "GI203")) == 1
+    # Reuse the full-suite result instead of generating these nine histories a second time.
+    if path.parent.name in FORMERLY_REJECTED:
+        assert len(_findings(result, "GI203")) == 1
 
 
 def test_a_scenario_without_git_computed_commits_keeps_the_in_memory_check():

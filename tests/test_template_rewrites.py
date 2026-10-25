@@ -206,13 +206,22 @@ def test_fault_is_observed_exactly_where_the_readme_says(scenarios, tmp_path, si
     _, cmap, repo = _generate(scenarios, sid)
     assert set(expected) == set(cmap), (sid, sorted(cmap))
     driver = f"public class Driver {{ public static void main(String[] a) throws Exception {{ {driver_body} }} }}"
+    # The driver is fixed for this scenario. Reuse classes only when the entire
+    # exported tree (including resources and file modes) is identical.
+    compiled: dict[str, Path] = {}
     for cid, want in expected.items():
-        work = tmp_path / f"run-{sid}-{cid}"
-        work.mkdir()
-        export_tree(repo, cmap[cid]["hash"], work)
-        (work / "Driver.java").write_text(driver)
-        subprocess.run(["javac", "-d", str(work / "out"), *[str(p) for p in work.rglob("*.java")]], check=True, capture_output=True)
-        out = subprocess.run(["java", "-cp", str(work / "out"), "Driver"], capture_output=True, text=True, check=True).stdout
+        commit = cmap[cid]["hash"]
+        tree = git(repo, "rev-parse", f"{commit}^{{tree}}")
+        if tree not in compiled:
+            work = tmp_path / f"run-{sid}-{cid}"
+            export_tree(repo, commit, work)
+            (work / "Driver.java").write_text(driver)
+            subprocess.run(["javac", "-d", str(work / "out"), *[str(p) for p in work.rglob("*.java")]],
+                           check=True, capture_output=True)
+            compiled[tree] = work / "out"
+        # Each commit still gets its own JVM and its own expected-output assertion.
+        out = subprocess.run(["java", "-cp", str(compiled[tree]), "Driver"],
+                             capture_output=True, text=True, check=True).stdout
         assert out == want, (sid, cid, out)
 
 

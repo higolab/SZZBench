@@ -132,9 +132,9 @@ def test_each_row_is_one_error_at_its_field(tmp_path, row):
     assert _errors(_validate(_write(tmp_path, suite, data), suite)) == [(code, location)]
 
 
-@pytest.mark.parametrize("row", list(ROWS))
+@pytest.mark.parametrize("row", ["g-branch-dash", "g-default-dash", "c-default-dash", "g-case-default"])
 def test_each_row_fails_the_issues_command_with_a_relative_path(tmp_path, row):
-    """The issue's commands, run from the directory that holds the scenario, with a relative path."""
+    """API tests cover every name; the CLI covers both suites, both fields and a clash on relative paths."""
     suite, data, code, location = ROWS[row]
     relative = _write(tmp_path, suite, data).relative_to(tmp_path)
     command = (["validate-graph", "--simulate", "--strict", "--strict-paths", "--lint"] if suite == "graph"

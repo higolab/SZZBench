@@ -131,30 +131,29 @@ def _json_errors(completed: subprocess.CompletedProcess) -> list[tuple[str, str,
 
 # --- validation refuses the three variants ----------------------------------------------
 
-@pytest.mark.parametrize("simulate", [False, True], ids=["static", "simulate"])
+# Static errors stop before simulation. The CLI checks both modes on one
+# representative input per suite; the API keeps all three variants.
 @pytest.mark.parametrize("variant", VARIANTS)
-def test_validate_refuses_each_variant(tmp_path, variant, simulate):
+def test_validate_refuses_each_variant(tmp_path, variant):
     path = _save(tmp_path, CLASSIC_FILE, _classic(variant))
-    _, result, _ = validate_scenario_file(path, simulate=simulate)
+    _, result, _ = validate_scenario_file(path)
     assert _errors(result) == [("E051", "commits[0].operations[0].path")]
     [finding] = [f for f in result.findings if f.code == "E051"]
     assert f"writes '{CONTROL_FILE[variant]}', a file Git reads: " in finding.message
 
 
-@pytest.mark.parametrize("simulate", [False, True], ids=["static", "simulate"])
 @pytest.mark.parametrize("variant", VARIANTS)
-def test_validate_graph_refuses_each_variant(tmp_path, variant, simulate):
+def test_validate_graph_refuses_each_variant(tmp_path, variant):
     path = _save(tmp_path, GRAPH_FILE, _graph(variant))
-    _, result = validate_graph_scenario_file(path, simulate=simulate)
+    _, result = validate_graph_scenario_file(path)
     assert _errors(result) == [("GE063", "commits[0].operations[0].path")]
     [finding] = [f for f in result.findings if f.code == "GE063"]
     assert f"writes '{CONTROL_FILE[variant]}', a file Git reads: " in finding.message
 
 
-@pytest.mark.parametrize("variant", VARIANTS)
-def test_the_classic_commands_refuse_each_variant(tmp_path, variant):
+def test_the_classic_commands_refuse_a_control_file(tmp_path):
     """Through the CLI, on paths relative to the working directory."""
-    _save(tmp_path, CLASSIC_FILE, _classic(variant))
+    _save(tmp_path, CLASSIC_FILE, _classic("ignored"))
     for flags in ([], ["--simulate"]):
         completed = _szzbench(tmp_path, "validate", *flags, "--json", CLASSIC_FILE)
         assert completed.returncode == 1, completed.stdout + completed.stderr
@@ -166,9 +165,8 @@ def test_the_classic_commands_refuse_each_variant(tmp_path, variant):
     assert not (tmp_path / "out").exists()
 
 
-@pytest.mark.parametrize("variant", VARIANTS)
-def test_the_graph_commands_refuse_each_variant(tmp_path, variant):
-    _save(tmp_path, GRAPH_FILE, _graph(variant))
+def test_the_graph_commands_refuse_a_control_file(tmp_path):
+    _save(tmp_path, GRAPH_FILE, _graph("ignored"))
     for flags in ([], ["--simulate"]):
         completed = _szzbench(tmp_path, "validate-graph", *flags, "--json", GRAPH_FILE)
         assert completed.returncode == 1, completed.stdout + completed.stderr
