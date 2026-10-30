@@ -10,7 +10,7 @@
 | language | `java` |
 | factors | `linear-history`, `revert`, `partial-revert`, `reintroduced-bug`, `origin-vs-direct`, `revert-footer` |
 | oracle | default: `reintroduction_direct`; required `c3`; related origins `c1` · `origin-aware`: `relaxed_with_related`; required `c3`; acceptable `c1` (credit 0.5) · BFC `c4` |
-| defeats | none (a control: every declared cheap rule may solve it) |
+| defeats | none (a control: every declared naive rule may solve it) |
 | graph features | revert `c3`; 2 BICs; origin faults; policy `reintroduction_direct`; 1 evaluation variant (`origin-aware`) |
 <!-- /szzbench:header -->
 

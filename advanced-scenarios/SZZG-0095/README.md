@@ -10,7 +10,7 @@
 | language | `java` |
 | factors | `work-item`, `intermediate-commit`, `related-but-not-correct` |
 | oracle | `exact_set`; required `c1`; related but not correct `c2` · BFC `c3` |
-| defeats | none (a control: every declared cheap rule may solve it) |
+| defeats | none (a control: every declared naive rule may solve it) |
 | graph features | `work_items` |
 <!-- /szzbench:header -->
 

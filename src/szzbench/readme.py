@@ -252,7 +252,7 @@ def header_rows(data: dict[str, Any], suite: str) -> list[tuple[str, str]]:
     ]
     if isinstance(meta.get("defeats"), list):
         defeats = [d for d in meta["defeats"] if isinstance(d, str)]
-        rows.append(("defeats", _codes(defeats) if defeats else "none (a control: every declared cheap rule may solve it)"))
+        rows.append(("defeats", _codes(defeats) if defeats else "none (a control: every declared naive rule may solve it)"))
     if suite == "advanced-scenarios":
         features = graph_features(data)
         rows.append(("graph features", "; ".join(features) if features else NO_GRAPH_FEATURE))

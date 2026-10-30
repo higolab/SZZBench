@@ -10,7 +10,7 @@
 | language | `java` |
 | factors | `revert`, `merge-revert`, `reintroduction`, `fix-on-feature-branch` |
 | oracle | default: `exact_set`; required `c4`; related origins `c1`; related but not correct `f1`, `c3` · `origin-aware`: `relaxed_with_related`; required `c4`; acceptable `c1` (credit 0.5); related but not correct `f1`, `c3` · BFC `c5` |
-| defeats | none (a control: every declared cheap rule may solve it) |
+| defeats | none (a control: every declared naive rule may solve it) |
 | graph features | 2 branches; merge commit `c3`; revert `c4`; 2 BICs; origin faults; 1 evaluation variant (`origin-aware`) |
 <!-- /szzbench:header -->
 

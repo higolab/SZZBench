@@ -10,7 +10,7 @@
 | language | `java` |
 | factors | `issue-evidence` |
 | oracle | `exact_set`; required `c2` · BFC `c3` |
-| defeats | none (a control: every declared cheap rule may solve it) |
+| defeats | none (a control: every declared naive rule may solve it) |
 | graph features | `issues` |
 <!-- /szzbench:header -->
 

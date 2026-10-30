@@ -53,10 +53,10 @@ Split by `meta.tier`, which is what the tier is for:
 | `control` | 160 / 233 | 68.7 % |
 | `discriminating` | **1 / 46** | **2.2 %** |
 
-## How that compares with the cheap rules
+## How that compares with the naive rules
 
-A cheap-rule floor for the same suite is in [docs/baselines.md](../../docs/baselines.md): some
-declared cheap rule solves 233 of the 279 scenarios, none of them a `discriminating` one. PyDriller
+A naive-rule floor for the same suite is in [docs/baselines.md](../../docs/baselines.md): some
+declared naive rule solves 233 of the 279 scenarios, none of them a `discriminating` one. PyDriller
 lands below that union, and one scenario above the best individual rule — a margin worth less than
 the detail under it:
 

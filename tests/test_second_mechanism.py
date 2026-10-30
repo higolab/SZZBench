@@ -208,4 +208,4 @@ def test_only_a_multi_commit_oracle_can_discriminate():
             policy = _commit_level_policy(scenario, suite, None)
             if policy.expect_no_bic or len(policy.required) < 2:
                 offenders.append(f"{path.parent.name}: required={policy.required} expect_no_bic={policy.expect_no_bic}")
-    assert offenders == [], "a cheap rule solves these by construction: " + "; ".join(offenders)
+    assert offenders == [], "a naive rule solves these by construction: " + "; ".join(offenders)

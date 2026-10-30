@@ -125,7 +125,7 @@ rebuilt:
 
 | row | why |
 |---|---|
-| SZZG-0038 → SZZG-0040 (§4) | both are now `discriminating` — two of the 46 scenarios no cheap rule solves. Merging them would spend one of them. |
+| SZZG-0038 → SZZG-0040 (§4) | both are now `discriminating` — two of the 46 scenarios no naive rule solves. Merging them would spend one of them. |
 | SZZG-0060 → SZZG-0043 (§4) | they now differ by seven declared factors, which is this matrix's own criterion (§1 step 3) pointing the other way. |
 | SZZG-0013 → SZZG-0008 (§4) | five factors apart, same reason. |
 

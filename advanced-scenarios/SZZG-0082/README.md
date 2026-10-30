@@ -10,7 +10,7 @@
 | language | `java` |
 | factors | `branch`, `rebase`, `generated-files`, `generated-code-noise`, `origin-vs-direct`, `boolean-negation` |
 | oracle | default: `exact_set`; required `r1`; related origins `f1`; related but not correct `r2` · `origin-aware`: `relaxed_with_related`; required `r1`; acceptable `f1` (credit 0.5); related but not correct `r2` · BFC `c3` |
-| defeats | none (a control: every declared cheap rule may solve it) |
+| defeats | none (a control: every declared naive rule may solve it) |
 | graph features | 2 branches; rebase `r1`; 2 BICs; origin faults; 1 evaluation variant (`origin-aware`) |
 <!-- /szzbench:header -->
 

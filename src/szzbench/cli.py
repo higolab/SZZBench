@@ -612,7 +612,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_verify_graph.add_argument("--json", action="store_true", help="Print JSON output")
     p_verify_graph.set_defaults(func=cmd_verify_graph)
 
-    p_baselines = sub.add_parser("baselines", help="Score cheap baselines to show what SZZBench does not test")
+    p_baselines = sub.add_parser("baselines", help="Score naive baselines to show what SZZBench does not test")
     p_baselines.add_argument("--generated-root", default=str(DEFAULT_GENERATED_INPUT_REPOS_ROOT), help="Root directory for generated repositories")
     p_baselines.add_argument("--scenarios-root", default=str(DEFAULT_SCENARIOS_ROOT), help="Root directory for classic scenarios")
     p_baselines.add_argument("--advanced-scenarios-root", default=str(DEFAULT_ADVANCED_SCENARIOS_ROOT), help="Root directory for graph scenarios")

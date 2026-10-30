@@ -260,7 +260,7 @@ expected_szz:
       linear twin of this shape and SZZG-0138 the control where blame reaches two of three.
 scenario_design:
   purpose: >
-    Reduce the largest pocket of cheaply-solved scenarios (issue #80, proposal 3). G4 held 27 of its 29
+    Reduce the largest pocket of scenarios solved by naive rules (issue #80, proposal 3). G4 held 27 of its 29
     scenarios in that pocket and every one of them had a one-commit oracle, which a positional rule names
     by construction; this one names three commits under a threshold, and puts them on three branches so
     that the reader has to cross two merges as well.

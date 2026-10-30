@@ -1,4 +1,4 @@
-"""Cheap baselines: how much of SZZBench is solved without doing SZZ.
+"""Naive baselines: how much of SZZBench is solved without doing SZZ.
 
 A benchmark result only means something against a floor.  This module runs a
 declared family of predictors over the generated repositories and scores them
@@ -36,7 +36,7 @@ from .evaluator import Prediction, evaluate_prediction_map
 from .gitutils import GitError, run_git
 from .manifest import stale_message, staleness
 
-#: Ordered families, cheapest first.
+#: Ordered families, by how much of the repository they read.
 FAMILIES = ("metadata", "position", "shape", "blame")
 
 
@@ -88,7 +88,7 @@ class Scenario:
     history: History
     #: the logical id ``commit-map.json`` gives each commit of the history, by hash
     logical_ids: dict[str, str]
-    #: the cheap-rule families the scenario declares it defeats (``meta.defeats``); None when undeclared
+    #: the naive-rule families the scenario declares it defeats (``meta.defeats``); None when undeclared
     defeats: list[str] | None = None
 
     @property
@@ -135,7 +135,7 @@ Attributor = Callable[[History], Iterable[tuple[str, str]]]
 
 @dataclass
 class Baseline:
-    """One cheap rule.
+    """One naive rule.
 
     ``scores_on_abstention`` decides what happens on a scenario the rule makes
     no prediction for. Every rule but :data:`ABSTAIN` is credited **only where
@@ -671,7 +671,7 @@ def format_report(report: dict[str, Any]) -> str:
     lines.append(f"  declared tiers: " + ", ".join(f"{k} {v}" for k, v in report["tiers"].items()))
     wrong = report["declared_discriminating_but_solved"]
     if wrong:
-        lines.append(f"  [WARNING] declared discriminating but solved by a cheap rule: {', '.join(wrong)}")
+        lines.append(f"  [WARNING] declared discriminating but solved by a naive rule: {', '.join(wrong)}")
     promote = report["declared_control_but_unsolved"]
     if promote is None:
         lines.append(f"  promotion candidates: not assessed - only the "
@@ -679,7 +679,7 @@ def format_report(report: dict[str, Any]) -> str:
                      f"{'y' if len(report['families_run']) == 1 else 'ies'} ran; "
                      f"a control can only be promoted when no declared family solves it")
     elif promote:
-        lines.append(f"  declared control but solved by no cheap rule (promotion candidates): {', '.join(promote)}")
+        lines.append(f"  declared control but solved by no naive rule (promotion candidates): {', '.join(promote)}")
     declaring = report.get("scenarios_declaring_defeats", 0)
     if declaring:
         contradictions = report.get("declared_defeated_but_solved", [])

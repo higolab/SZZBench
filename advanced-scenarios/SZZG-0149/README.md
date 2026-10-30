@@ -16,7 +16,7 @@
 
 ## Purpose
 
-G4 held 27 of its 29 scenarios in the cheaply-solved set, the second largest
+Naive rules solved 27 of G4's 29 scenarios, the second largest
 pocket in the suite, and every one of them had a one-commit oracle — which a
 positional rule names by construction
 (`tests/test_second_mechanism.py`). This one names **three** commits under

@@ -10,7 +10,7 @@
 | language | `java` |
 | factors | `generated-history` |
 | oracle | `exact_set`; required `c1` · BFC `c4` |
-| defeats | none (a control: every declared cheap rule may solve it) |
+| defeats | none (a control: every declared naive rule may solve it) |
 | graph features | generated commits (`commit_generator`); operation `write_generated_text_file` |
 <!-- /szzbench:header -->
 

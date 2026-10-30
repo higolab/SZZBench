@@ -10,7 +10,7 @@
 | language | `java` |
 | factors | `branch`, `rebase`, `interactive-rebase`, `squash`, `transient-bug`, `scope-boundary`, `no-main-line-bfc` |
 | oracle | default: `exact_set`; required `f1`; related but not correct `r1` · `main-line-only`: `exact_set`; expects no BIC · BFC `f2` |
-| defeats | none (a control: every declared cheap rule may solve it) |
+| defeats | none (a control: every declared naive rule may solve it) |
 | graph features | 2 branches; rebase `r1`; ref lifecycle; operation `apply_squash`; 1 evaluation variant (`main-line-only`) |
 <!-- /szzbench:header -->
 

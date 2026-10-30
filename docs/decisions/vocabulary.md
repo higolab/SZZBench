@@ -160,13 +160,13 @@ Added 2026-09-18. Every scenario declares one of two values.
 
 | tier | meaning |
 |---|---|
-| `control` | The scenario checks that a method handles a specific input condition. A cheap rule may well solve it; that is expected of a control, and failing it means the method is broken on that condition. |
-| `discriminating` | The scenario is designed so that none of the declared cheap baselines solves it, so it separates methods rather than only checking them. |
+| `control` | The scenario checks that a method handles a specific input condition. A naive rule may well solve it; that is expected of a control, and failing it means the method is broken on that condition. |
+| `discriminating` | The scenario is designed so that none of the declared naive baselines solves it, so it separates methods rather than only checking them. |
 
 The tier is a **declaration**, not a measurement: it says what the scenario is
 for. `szzbench baselines` then checks the declaration against the suite and
-reports any scenario declared `discriminating` that a cheap rule solves, and
-any `control` that no cheap rule solves (a promotion candidate).
+reports any scenario declared `discriminating` that a naive rule solves, and
+any `control` that no naive rule solves (a promotion candidate).
 `validate --lint` requires the field and the vocabulary (`W460` / `GW460`).
 
 The initial assignment followed the measurement at `6ed60a0`: **203 control and
@@ -180,7 +180,7 @@ Two more, added the same day for issue #80, are in the tier **without being on
 that axis**: SZZ-0218, where blame reaches both required commits and names a
 third that is not an answer, and SZZG-0148, where blame is right about what it
 names and still short of a credit threshold. Three more on 2026-09-24 shrank the
-two largest cheaply-solved pockets (issue #80, proposal 3): SZZ-0219 and
+two largest pockets solved by naive rules (issue #80, proposal 3): SZZ-0219 and
 SZZ-0220 in S3, where thirty-nine of forty scenarios had a one-commit oracle,
 and SZZG-0149 in G4. Nine more gave every category that still rested on a
 single history a second one: SZZ-0221 to SZZ-0225 for S1, S2, S5, S7 and S8,
@@ -210,7 +210,7 @@ dimensions for anyone who wants to select on it.
 
 ## 8. `meta.defeats` and `scenario_design.failure_mode`: what a scenario is built to break (issue #35)
 
-Added 2026-09-22. A scenario may declare the **cheap-rule families it is built to
+Added 2026-09-22. A scenario may declare the **naive-rule families it is built to
 make fail**:
 
 ```yaml

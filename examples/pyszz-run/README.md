@@ -86,7 +86,7 @@ path and the repeated `scenario_id` removed from every prediction, and
 No run reported a tool error, and every variant wrote a record for all 279 scenarios. L-SZZ's row
 holds for this hash seed: under another it passes between 152 and 155 (see below).
 
-Against [the cheap-rule floor](../../docs/baselines.md) — `position-1`, which opens no file, solves
+Against [the naive-rule floor](../../docs/baselines.md) — `position-1`, which opens no file, solves
 160 and `blame-deleted-lines` 156 — the scoreboard says the five are one family, between 153 and
 161, around a rule that opens no file. The sets say more.
 
