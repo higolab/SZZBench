@@ -140,13 +140,13 @@ In short, `scenario.yml` is treated as a restricted subset of `scenario.graph.ym
 
 ### What the benchmark does not test
 
-`szzbench baselines` scores a declared family of cheap predictors — metadata
+`szzbench baselines` scores a declared family of naive predictors — metadata
 only, history position only, file-touch shape, and the classic blame baseline —
 with the ordinary evaluator, so every result on SZZBench can be read against a
 floor. Measured on the shipped suite of 279 scenarios: **"report the second
 commit of the history", which opens no file at all, solves 160/279 — four more
 than the classic `blame-deleted-lines` baseline at 156/279**, and the lead has
-changed hands with every batch of new scenarios. Some cheap rule solves 233 of
+changed hands with every batch of new scenarios. Some naive rule solves 233 of
 the 279 scenarios, an oracle-aware upper bound rather than an attacker's score;
 the forty-six it does not reach all have a multi-commit oracle, which is
 forced rather than chosen: a one-commit answer is always named by one of the
@@ -154,18 +154,18 @@ positional rules, and an empty one by `abstain`. The metadata
 family is at chance, which is the leakage guarantee below holding.
 
 Every scenario declares `meta.tier`: **233 are `control`** — they check that a
-method handles a specific input condition, and a cheap rule may well solve them
-— and **46 are `discriminating`**, which no declared cheap baseline solves.
+method handles a specific input condition, and a naive rule may well solve them
+— and **46 are `discriminating`**, which no declared naive baseline solves.
 Thirty-four of those were designed against one axis: the answer is two commits,
-and the fix's deleted lines do not blame to one of them. Five more fail the cheap
+and the fix's deleted lines do not blame to one of them. Five more fail the naive
 rules differently — SZZ-0218's and SZZ-0220's answers are entirely reachable by
 blame, which also hands over commits that are not answers; SZZ-0222's blame
 answer contains no required commit at all; and SZZG-0148 and SZZG-0149 name
 three commits under a credit threshold of two. The remaining seven were not
 designed for the tier: they are older scenarios that turned out to resist every
-cheap rule. Every one of the seventeen categories has at least two, so a method
-cannot pass a category by overfitting to a single history. A control being
-cheaply solvable is not a defect; what the tier prevents is reading a
+naive rule. Every one of the seventeen categories has at least two, so a method
+cannot pass a category by overfitting to a single history. A control that a
+naive rule solves is not a defect; what the tier prevents is reading a
 control as evidence that a method discriminates.
 
 `szzbench coverage` is the companion command: it measures each scenario's
@@ -673,14 +673,14 @@ For B-SZZ on token-level histories, `tools/adapters/token_bszz_to_predictions.py
 
 ## baselines
 
-Score the declared families of cheap predictors over the generated repositories with the ordinary evaluator: the floor described under "What the benchmark does not test" above. [docs/baselines.md](docs/baselines.md) describes the families and what they measure on the shipped suite.
+Score the declared families of naive predictors over the generated repositories with the ordinary evaluator: the floor described under "What the benchmark does not test" above. [docs/baselines.md](docs/baselines.md) describes the families and what they measure on the shipped suite.
 
 ```bash
 szzbench baselines --out results/floor
 szzbench baselines --family position --family blame
 ```
 
-`--family` runs only the named families, `metadata`, `position`, `shape` or `blame`, and can be repeated; the default is all four. A run limited this way does not say which `control` scenarios no cheap rule solves. `--out` writes `baselines.json` and `baselines.md` to a directory, and `--json` prints the report as JSON. `--generated-root` and `--variant` select the generated repositories, and `--scenarios-root` and `--advanced-scenarios-root` the scenario files, as for `evaluate`. A stale output is not scored but reported as an error, and any error exits with 1.
+`--family` runs only the named families, `metadata`, `position`, `shape` or `blame`, and can be repeated; the default is all four. A run limited this way does not say which `control` scenarios no naive rule solves. `--out` writes `baselines.json` and `baselines.md` to a directory, and `--json` prints the report as JSON. `--generated-root` and `--variant` select the generated repositories, and `--scenarios-root` and `--advanced-scenarios-root` the scenario files, as for `evaluate`. A stale output is not scored but reported as an error, and any error exits with 1.
 
 ## coverage
 

@@ -1024,7 +1024,7 @@ def lint_readme_header(data: dict[str, Any], suite: str, scenario_path: Path, re
 
 
 #: What a scenario is for (issue #14).  ``control`` verifies that a method
-#: handles a specific input condition and may well be solvable by a cheap rule;
+#: handles a specific input condition and may well be solvable by a naive rule;
 #: ``discriminating`` is designed so the declared baselines do not solve it.
 #: ``szzbench baselines`` checks the declaration against the measurement.
 SCENARIO_TIERS = ("control", "discriminating")
@@ -1046,14 +1046,14 @@ def lint_difficulty(meta: Any, result: ValidationResult, *, prefix: str) -> None
                        "'szzbench coverage' reports the floor the blame class sets.", "meta.difficulty")
 
 
-#: The cheap-rule families a scenario may declare it defeats (issue #35).  A
+#: The naive-rule families a scenario may declare it defeats (issue #35).  A
 #: family is defeated when none of its declared baselines solves the scenario;
 #: ``szzbench baselines`` checks the declaration against the measurement.
 DEFEATABLE_FAMILIES = ("blame", "shape", "position")
 
 
 def lint_defeats(meta: Any, result: ValidationResult, *, prefix: str) -> None:
-    """``<prefix>462``: ``meta.defeats`` names the cheap-rule families the scenario is built to make fail.
+    """``<prefix>462``: ``meta.defeats`` names the naive-rule families the scenario is built to make fail.
 
     Optional for a ``control``.  When present it must be a list of distinct
     family names, and a ``discriminating`` scenario must declare it and list
@@ -1094,7 +1094,7 @@ def lint_tier(meta: Any, result: ValidationResult, *, prefix: str) -> None:
 def lint_author_coincidence(data: dict[str, Any], suite: str, result: ValidationResult, *, prefix: str) -> None:
     """Issue #43: does some author's set of commits equal the resolved default oracle?
 
-    That is exactly the condition under which the cheap baseline "report every
+    That is exactly the condition under which the naive baseline "report every
     commit written by X" returns the oracle, so the scenario is solved by the
     author rotation rather than by any signal.  The oracle is resolved the way
     the evaluator resolves it (default variant, inferred BICs); the history is
@@ -1103,7 +1103,7 @@ def lint_author_coincidence(data: dict[str, Any], suite: str, result: Validation
     Git records it (``name <email>``), plus the commits ``commit_generator``
     expands, which the author baseline sees through ``git log --all``.  A
     multi-commit coincidence is a warning
-    (``<prefix>413``); a one-commit oracle is solved by many cheap rules anyway,
+    (``<prefix>413``); a one-commit oracle is solved by many naive rules anyway,
     so its coincidence is reported as information (``<info prefix>413``).
     """
     from .evaluator import _commit_level_policy   # evaluator imports nothing from here
@@ -1134,7 +1134,7 @@ def lint_author_coincidence(data: dict[str, Any], suite: str, result: Validation
         if len(required) >= 2:
             result.warning(f"{prefix}413", message, "commits")
         else:
-            result.info(f"{info_prefix}413", message + " - or leave it: a one-commit oracle is solved by many cheap rules anyway", "commits")
+            result.info(f"{info_prefix}413", message + " - or leave it: a one-commit oracle is solved by many naive rules anyway", "commits")
 
 
 def lint_leakage(commits: Iterable[Any], bfc_ids: set[str], result: ValidationResult, *, prefix: str) -> None:

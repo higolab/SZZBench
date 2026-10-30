@@ -138,7 +138,7 @@ that recognises the benchmark answer in the scenario's own vocabulary.
   `GW410`/`GW411`/`GW412` (see [validation.md](../validation.md)); and
   `W413`/`GW413` (issue #43), which warns when some author's set of commits is
   exactly a multi-commit oracle — the coincidence of the author rotation that
-  twice made a discriminating scenario cheaply solvable (SZZG-0118, SZZG-0028)
+  twice let a naive rule solve a discriminating scenario (SZZG-0118, SZZG-0028)
   and that the `meta.tier` check only catches for discriminating scenarios. The
   one-commit form is reported as `I413`/`GI413` and left alone. When the lint
   fired on the first sweep (SZZG-0007, SZZG-0039), the repair was an explicit

@@ -102,7 +102,7 @@ answer on all 279 scenarios.
   - It passes five scenarios that depth 1 fails. Four are `discriminating`: SZZ-0136, SZZG-0028,
     SZZG-0069 and SZZG-0076. Each has a two-commit oracle; depth 1 answers one of the two commits
     and depth 3 answers both. Token-level B-SZZ ([../token-bszz-run/](../token-bszz-run/README.md))
-    passes all four too; no other run under `examples/` passes them, and no cheap rule does. The
+    passes all four too; no other run under `examples/` passes them, and no naive rule does. The
     fifth is SZZG-0140, a `top_k` oracle whose first-ranked answer must be `c1`.
 
 One parameter therefore moves SZZ Unleashed from a near-copy of the blame baseline to four

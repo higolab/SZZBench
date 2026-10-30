@@ -1,7 +1,7 @@
 # Baselines: what SZZBench does not test
 
 A result on a benchmark only means something against a floor. `szzbench baselines`
-runs a declared family of cheap predictors over the generated repositories and
+runs a declared family of naive predictors over the generated repositories and
 scores them with the ordinary evaluator, so their numbers come from exactly the
 policies a real tool run is scored with.
 
@@ -73,7 +73,7 @@ issue #23, SZZ-0207 and SZZ-0208, the divergent-fix scenario of issue #22, SZZG-
 the three multi-hop line histories of issue #24, SZZ-0209–0211, the ten discriminating
 scenarios of issue #35's rebalance, SZZ-0212–0217 and SZZG-0144–0147, the two
 second-mechanism scenarios of issue #80, SZZ-0218 and SZZG-0148, the three it
-added to the largest cheaply-solved pockets, SZZ-0219, SZZ-0220 and SZZG-0149, and
+added to the largest pockets solved by naive rules, SZZ-0219, SZZ-0220 and SZZG-0149, and
 the three that gave S1, S2 and S5 a second one, SZZ-0221 to SZZ-0223, the two
 that did the same for S7 and S8, SZZ-0224 and SZZ-0225, and the four that did it
 for the graph categories G1, G6, G7 and G8, SZZG-0150 to SZZG-0153, and the
@@ -107,7 +107,7 @@ no other number on this page moved.
 scenario, which is what an attacker can actually do. The union of the rows is
 *not* an attacker's score: choosing which rule to use per scenario needs the
 oracle. The union is reported below as an upper bound on how much of the suite
-a cheap rule could explain — headroom, not a result.
+a naive rule could explain — headroom, not a result.
 
 A real implementation scored on the same suite is in
 [../examples/pydriller-run/](../examples/pydriller-run/README.md): PyDriller 2.12 passes 161 of the
@@ -169,7 +169,7 @@ Read this table before reading any result reported on SZZBench:
   and the lead has since changed hands with every batch of five to eight
   scenarios — a property of the last batch's composition, not of the suite.
 - **Upper bound (oracle-aware): 233 of 279 scenarios are solved by *some*
-  cheap rule.** Forty-six resist all of them — SZZ-0132, SZZ-0136, SZZ-0190 to
+  naive rule.** Forty-six resist all of them — SZZ-0132, SZZ-0136, SZZ-0190 to
   SZZ-0199, SZZ-0212 to SZZ-0225, SZZG-0028, SZZG-0038, SZZG-0040, SZZG-0069,
   SZZG-0076, SZZG-0117 to SZZG-0121 and SZZG-0144 to SZZG-0153 — and every one of
   them has a **multi-commit oracle**, which the next section shows is not a
@@ -184,12 +184,12 @@ Read this table before reading any result reported on SZZBench:
   | 2 scenarios with an empty oracle (SZZG-0135, SZZG-0136) | 2/2 (`abstain`) | 2/2 |
 
   A one-commit answer inside a three- or four-commit history is reachable by
-  *some* cheap rule in every single case, at every depth — 104/104 at depth 1,
+  *some* naive rule in every single case, at every depth — 104/104 at depth 1,
   86/86 at depth 2, 18/18 at depth 3 and 8/8 beyond. Oracle size is the
   dimension that separates them, and a longer or deeper history on its own
   will not raise the floor.
 
-  Thirteen of the fourteen two-commit oracles a cheap rule solves fall to the
+  Thirteen of the fourteen two-commit oracles a naive rule solves fall to the
   same rule, `blame-deleted-lines`, and for the same reason: their fix deletes one
   line from each of the two commits, so naive blame returns both. That is the
   shape the discriminating tier is built to avoid.
@@ -207,7 +207,7 @@ Read this table before reading any result reported on SZZBench:
   (An earlier revision of this table reported `1/21` as the best fixed rule on
   two-commit oracles. That figure was wrong: recomputed on the same 215-scenario
   measurement, it is `9/21`, by `blame-deleted-lines`. The union was right.)
-- **No category is 100% solvable** by a cheap baseline any more: S6 42.1%
+- **No category is 100% solvable** by a naive baseline any more: S6 42.1%
   (8/19), S7 71.4% (5/7), S8 75.0% (6/8), S5 77.8% (7/9), G3 78.6% (11/14),
   G6 81.8% (9/11), G8 83.3% (10/12), G9 83.3% (10/12), G1 86.7% (13/15),
   S1 86.7% (13/15), G2 87.5% (14/16), S2 88.2% (15/17), S4 88.2% (15/17),
@@ -254,17 +254,17 @@ Every scenario declares `meta.tier`, which says what it is for:
 
 | tier | meaning | count |
 |---|---|---|
-| `control` | checks that a method handles a specific input condition; a cheap rule may well solve it | **233** |
-| `discriminating` | designed so that none of the declared cheap baselines solves it | **46** |
+| `control` | checks that a method handles a specific input condition; a naive rule may well solve it | **233** |
+| `discriminating` | designed so that none of the declared naive baselines solves it | **46** |
 
 Every one of the forty-six has a multi-commit oracle, which section *Why a
 discriminating scenario needs a multi-commit oracle* below shows is forced.
 Seven are pre-existing scenarios that turned out to resist the baselines;
 twenty-five were **designed** against one axis, on one skeleton — the answer is
 two commits, one of which the fix's deleted lines do not blame to — and the
-remaining fourteen come from issue #80: SZZ-0218 and SZZG-0148 fail the cheap
+remaining fourteen come from issue #80: SZZ-0218 and SZZG-0148 fail the naive
 rules in two further ways (*Two mechanisms inside that room* below), three
-shrink the two largest cheaply-solved pockets (*Three for the largest
+shrink the two largest pockets solved by naive rules (*Three for the largest
 pockets*), and nine give a category that rested on a single history a second
 one (*A second scenario where a category had only one*). The first fifteen of
 the twenty-five were built from five reasons that half the answer can be out of
@@ -353,13 +353,13 @@ scenarios is declared `control`.
 fails the build if a scenario ever declares otherwise.
 
 The consequence worth stating plainly: **the tier does not measure "hard", it
-measures "needs more than one commit and the cheap rules cannot assemble the
+measures "needs more than one commit and the naive rules cannot assemble the
 set"**. Raising the floor by adding a deeper single-commit answer is not
 possible; the only room is inside multi-commit oracles.
 
 ### Two mechanisms inside that room (issue #80)
 
-Until 2026-09-22 all of them failed the cheap rules the same way: two commits,
+Until 2026-09-22 all of them failed the naive rules the same way: two commits,
 one of them not reachable from the lines the fix deletes. Two scenarios added
 that day fail differently, so that a method which handles the first kind does
 not thereby pass the tier:
@@ -375,17 +375,17 @@ policy and threshold, with two of its three causes on deleted lines, so blame
 passes it.
 
 A third candidate does not exist and cannot: an `expect_no_bic` scenario that
-makes the cheap rules *answer* rather than abstain would still be passed by
+makes the naive rules *answer* rather than abstain would still be passed by
 `abstain` itself, for the reason given above.
 
 ### Three for the largest pockets (issue #80, proposal 3)
 
-S3 held 39 of its 40 scenarios in the cheaply-solved set and G4 27 of 29, the
+Naive rules solved 39 of S3's 40 scenarios and 27 of G4's 29, the
 two largest such pockets. Every one of those had a one-commit oracle, which the
 section above shows a positional rule names by construction, so the pocket could
 only shrink by adding scenarios whose oracle names more than one commit:
 
-| scenario | category | how it fails the cheap rules |
+| scenario | category | how it fails the naive rules |
 |---|---|---|
 | SZZ-0219 | S3 | **two** behaviour-preserving rewrites separate the first fault from the fix — a comparison extracted into a named local, then that local renamed — so recursion has to run twice and no blame variant shortens it |
 | SZZ-0220 | S3 | the fix also drops a deprecated alias, so blame returns `{c0, c1, c2, c3}` against an answer of `{c1, c3}` and a tool has to reject **two** commits |
@@ -404,7 +404,7 @@ that introduced nothing.
 
 A category whose claim to discriminate rests on a single history gives a method
 one example to overfit to, and nine categories were in that position. All nine
-now have a second, each failing the cheap rules for a reason its first one does
+now have a second, each failing the naive rules for a reason its first one does
 not:
 
 | scenario | category | the category's first one | the new reason |
@@ -456,14 +456,14 @@ by the release commit rather than by the commit it describes, and
 `tests/test_graph_deepened_categories.py::test_no_commit_message_gives_the_unit_away`
 greps the generated histories for the words that would give it away.
 
-A control being cheaply solvable is not a defect: a benchmark needs cases that
+A control that a naive rule solves is not a defect: a benchmark needs cases that
 verify the basics, and a method that fails one of them is broken on that input
 condition. What the tier does is stop a control from being read as evidence
 that a method *discriminates*.
 
 `szzbench baselines` checks the declaration against the measurement and reports
-any scenario declared `discriminating` that a cheap rule solves, and any
-`control` that no cheap rule solves — the latter is a promotion candidate. The
+any scenario declared `discriminating` that a naive rule solves, and any
+`control` that no naive rule solves — the latter is a promotion candidate. The
 vocabulary is in [decisions/vocabulary.md](decisions/vocabulary.md) and
 `validate --lint` enforces it (`W460` / `GW460`).
 
@@ -478,7 +478,7 @@ scoped to the families that ran.
 Raising the discriminating count is the work tracked in issues #13, #14 and
 #35; the measured axis is oracle size.
 
-Between the two tiers sits a finer declaration, `meta.defeats`: the cheap-rule
+Between the two tiers sits a finer declaration, `meta.defeats`: the naive-rule
 **families** a scenario is built to make fail (`blame`, `shape`, `position`;
 `decisions/vocabulary.md` §8), with the wrong step spelled out in
 `scenario_design.failure_mode`. A `discriminating` scenario defeats all three;
@@ -625,7 +625,7 @@ in every graph category, reached on 2026-09-21 — is the number a rewrite is
 measured by. Read together
 with the baseline table, the suite still concentrates in one cell — a
 one-commit answer, one or two commits before the fix, in a three- or
-four-commit single-branch history — and **that cell is where the cheap rules
+four-commit single-branch history — and **that cell is where the naive rules
 win**.
 
 The discriminating tier is deliberately spread out of it: its 46 scenarios

@@ -2,7 +2,7 @@
 
 G1, G6, G7 and G8 each had a single discriminating history, so a method could
 pass the category by overfitting to one example.  These are their seconds, and
-each fails the cheap rules for a reason its category's first one does not: a
+each fails the naive rules for a reason its category's first one does not: a
 merge resolution owns the rewrite, a merge reintroduces a reverted change, the
 evidence is a release tag and a changelog, and the unreachable commit touches
 nothing but a binary file.

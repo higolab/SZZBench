@@ -10,7 +10,7 @@
 | language | `java` |
 | factors | `branch`, `cherry-pick`, `release-branch`, `origin-vs-direct` |
 | oracle | default: `exact_set`; required `r1`; related origins `c1` · `origin-aware`: `relaxed_with_related`; required `r1`; acceptable `c1` (credit 0.5) · BFC `c4` |
-| defeats | none (a control: every declared cheap rule may solve it) |
+| defeats | none (a control: every declared naive rule may solve it) |
 | graph features | 3 branches; merge commit `c3`; cherry-pick `r1`; operation `apply_patch_from`; 2 BICs; origin faults; 1 evaluation variant (`origin-aware`) |
 <!-- /szzbench:header -->
 

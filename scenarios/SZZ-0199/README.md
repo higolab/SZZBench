@@ -23,7 +23,7 @@ never opens, this one puts it outside the language entirely, so a tool that
 reasons only over source cannot see it at all.
 
 It is the first scenario in the non-source category (S8) with a two-commit
-oracle; the other four are solved by a cheap baseline.
+oracle; the other four are solved by a naive baseline.
 
 ## Commit structure
 

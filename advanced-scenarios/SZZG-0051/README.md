@@ -10,7 +10,7 @@
 | language | `java` |
 | factors | `branch`, `backport`, `wrong-constant` |
 | oracle | `exact_set`; required `r1` · BFC `r2` |
-| defeats | none (a control: every declared cheap rule may solve it) |
+| defeats | none (a control: every declared naive rule may solve it) |
 | graph features | 2 branches; backport `r1` |
 <!-- /szzbench:header -->
 

@@ -10,7 +10,7 @@
 | language | `java` |
 | factors | `branch`, `squash-merge`, `squashed-bic`, `origin-vs-direct`, `exception-swallowed` |
 | oracle | default: `exact_set`; required `c3`; related origins `c1` · `origin-aware`: `relaxed_with_related`; required `c3`; acceptable `c1` (credit 0.5) · BFC `c4` |
-| defeats | none (a control: every declared cheap rule may solve it) |
+| defeats | none (a control: every declared naive rule may solve it) |
 | graph features | 2 branches; operation `apply_squash`; 2 BICs; origin faults; 1 evaluation variant (`origin-aware`) |
 <!-- /szzbench:header -->
 

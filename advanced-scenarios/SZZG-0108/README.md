@@ -10,7 +10,7 @@
 | language | `java` |
 | factors | `binary-file`, `wrong-constant` |
 | oracle | `exact_set`; required `c1` · BFC `c2` |
-| defeats | none (a control: every declared cheap rule may solve it) |
+| defeats | none (a control: every declared naive rule may solve it) |
 | graph features | operation `write_binary_file` |
 <!-- /szzbench:header -->
 

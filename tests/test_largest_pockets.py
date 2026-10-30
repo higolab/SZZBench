@@ -1,6 +1,6 @@
-"""Discriminating scenarios for the categories a cheap rule almost always solved (issue #80, proposal 3).
+"""Discriminating scenarios for the categories a naive rule almost always solved (issue #80, proposal 3).
 
-S3 held 39 of its 40 scenarios in the cheaply-solved set and G4 27 of 29, the two
+Naive rules solved 39 of S3's 40 scenarios and 27 of G4's 29, the two
 largest such pockets in the suite.  By the rule of
 ``tests/test_second_mechanism.py`` every one of those had a one-commit oracle, so
 the pocket can only shrink by adding scenarios whose oracle names more than one

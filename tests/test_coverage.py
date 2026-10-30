@@ -112,7 +112,7 @@ def test_scenarios_that_agree_on_every_dimension_are_reported_as_redundant(tmp_p
 
 
 def test_oracle_size_separates_scenarios_of_the_same_shape(tmp_path):
-    """Oracle size is the dimension the cheap baselines cannot absorb."""
+    """Oracle size is the dimension the naive baselines cannot absorb."""
     two_bic = _linear(noise_touches_fault_file=True)
     two_bic[2] = {"id": "c2", "branch": "main", "parents": ["c1"],
                   "message": "narrow the upper bound too", "role": "bug_introducing",

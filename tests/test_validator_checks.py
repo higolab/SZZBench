@@ -1230,7 +1230,7 @@ def _with_authors(data: dict, *authors: str) -> dict:
 
 def test_author_coincidence_on_a_one_commit_oracle_is_information():
     """An author who wrote exactly the single required commit: the author baseline solves the
-    scenario by coincidence, but one-commit oracles are cheap to solve anyway -> I413 / GI413."""
+    scenario by coincidence, but many naive rules solve one-commit oracles anyway -> I413 / GI413."""
     result = lint_classic(_with_authors(classic_scenario(), "Ann", "Bob", "Ann"))
     assert codes(result) == [] and info_codes(result) == ["I413"]
     finding = result.findings[0]
@@ -1520,7 +1520,7 @@ def test_every_shipped_scenario_declares_a_graded_difficulty():
 
 
 def test_defeats_lint_checks_the_family_vocabulary_and_the_tier():
-    """W462 / GW462: `meta.defeats` names cheap-rule families; a discriminating scenario defeats them all (issue #35)."""
+    """W462 / GW462: `meta.defeats` names naive-rule families; a discriminating scenario defeats them all (issue #35)."""
     from szzbench.validator import DEFEATABLE_FAMILIES
 
     assert DEFEATABLE_FAMILIES == ("blame", "shape", "position")

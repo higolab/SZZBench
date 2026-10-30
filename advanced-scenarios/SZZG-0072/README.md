@@ -10,7 +10,7 @@
 | language | `java` |
 | factors | `branch`, `rebase`, `interactive-rebase`, `dropped-commit`, `origin-vs-direct`, `deleted-branch` |
 | oracle | default: `exact_set`; required `r2`; related origins `f2`, `f1` · `origin-aware`: `relaxed_with_related`; required `r2`; acceptable `f2` (credit 0.5), `f1` (credit 0.5) · BFC `c3` |
-| defeats | none (a control: every declared cheap rule may solve it) |
+| defeats | none (a control: every declared naive rule may solve it) |
 | graph features | 2 branches; rebase `r2`; ref lifecycle; 3 BICs; origin faults; 1 evaluation variant (`origin-aware`) |
 <!-- /szzbench:header -->
 

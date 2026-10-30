@@ -10,7 +10,7 @@
 | language | `java` |
 | factors | `revert`, `revert-of-revert`, `repeated-toggling`, `reintroduced-bug`, `origin-vs-direct` |
 | oracle | default: `exact_set`; required `c5`; related origins `c1`; related but not correct `c3`, `c2`, `c4` · `origin-aware`: `relaxed_with_related`; required `c5`; acceptable `c1` (credit 0.5); related but not correct `c3`, `c2`, `c4` · BFC `c6` |
-| defeats | none (a control: every declared cheap rule may solve it) |
+| defeats | none (a control: every declared naive rule may solve it) |
 | graph features | 3 BICs; 2 fault sites; 1 evaluation variant (`origin-aware`) |
 <!-- /szzbench:header -->
 

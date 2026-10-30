@@ -1,4 +1,4 @@
-"""Cheap-baseline family (#14, #35).
+"""Naive-baseline family (#14, #35).
 
 The baselines exist to publish the floor a real SZZ variant has to beat, so
 the tests check two things: that each predictor reads only what its family is
@@ -323,7 +323,7 @@ def test_a_failing_git_call_is_reported_rather_than_counted_as_no_prediction(tmp
 
 
 def test_a_filtered_run_does_not_claim_promotion_candidates(tmp_path):
-    """A control the selected family misses is not "solved by no cheap rule".
+    """A control the selected family misses is not "solved by no naive rule".
 
     Promotion asserts that *no* declared baseline solves the scenario, which a
     filtered run cannot establish; refuting a `discriminating` declaration by
